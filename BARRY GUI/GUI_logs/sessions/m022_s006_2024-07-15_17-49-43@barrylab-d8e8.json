@@ -23,11 +23,15 @@
     "schema": "2026-09-04T15:57:01.695048+00:00",
     "session": "2026-09-04T15:57:01.695048+00:00",
     "start": "2026-09-04T15:57:01.695048+00:00",
-    "updated": "2026-09-22T18:40:52.450386+00:00",
+    "updated": "2026-09-23T18:08:56.030468+00:00",
     "view_state": "2026-09-22T18:40:52.450386+00:00"
   },
   "_keys": {
     "paths": {
+      "D:\\Data\\Archive\\PTEN Project\\Control\\m22_s6\\2024-07-15_17-49-43": [
+        "set",
+        "2026-09-23T18:08:56.030468+00:00"
+      ],
       "D:\\PTEN\\CTL\\m22_ptenblind\\m22s6jul15\\2024-07-15_17-49-43": [
         "set",
         "2026-09-04T15:57:01.695048+00:00"
@@ -53,7 +57,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-22T18:40:52.450386+00:00",
+    "at": "2026-09-23T18:08:56.030468+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -85,7 +89,8 @@
   "n_channels": 64,
   "paths": [
     "D:\\PTEN\\CTL\\m22_ptenblind\\m22s6jul15\\2024-07-15_17-49-43",
-    "Y:\\ProcessedPtenData\\m22_ptenblind\\m22s6jul15\\2024-07-15_17-49-43"
+    "Y:\\ProcessedPtenData\\m22_ptenblind\\m22s6jul15\\2024-07-15_17-49-43",
+    "D:\\Data\\Archive\\PTEN Project\\Control\\m22_s6\\2024-07-15_17-49-43"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -118,8 +123,8 @@
   "session": 6,
   "start": "2024-07-15T17:49:43",
   "updated": {
-    "app_version": "2026.09.22.2",
-    "at": "2026-09-22T14:40:52-04:00",
+    "app_version": "2026.09.23.8",
+    "at": "2026-09-23T14:08:56-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
