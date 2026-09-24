@@ -2113,7 +2113,7 @@ BARRY.views.sessions = (function () {
           previewRetime(sess, cont, entry, v.v);
         },
       }, [
-        el('strong', { text: 'v' + v.v }),
+        el('strong', { text: 'v' + (v.name != null ? v.name : v.v) }),
         el('span', { class: 'ver-n', text: (v.n != null ? v.n : '?') + ' ev' }),
         v.current ? el('span', { class: 'ver-tag', text: 'current' }) : null,
         v.retimed ? el('span', { class: 'ver-tag', text: 'corrected' }) : null,
@@ -2394,7 +2394,7 @@ BARRY.views.sessions = (function () {
           title: (v.note || '') + (v.by ? '\n\u2014 ' + v.by : ''),
           onclick: () => { picked = v.v; draw(); go.disabled = false; },
         }, [
-          el('strong', { text: 'v' + v.v }),
+          el('strong', { text: 'v' + (v.name != null ? v.name : v.v) }),
           el('span', { class: 'ver-n',
                        text: (v.n != null ? v.n : '?') + ' ev' }),
           v.current ? el('span', { class: 'ver-tag', text: 'current' }) : null,
@@ -2920,7 +2920,7 @@ BARRY.views.sessions = (function () {
     const st = (BARRY.vacc && BARRY.vacc.last) || {};
 
     host.appendChild(el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', style: 'margin-top:0',
+      el('div', { class: 'section-label',
                   text: 'What the cluster can reach' }),
       el('p', { class: 'hint', style: 'max-width:78ch',
         text: st.available
@@ -2994,7 +2994,7 @@ BARRY.views.sessions = (function () {
     }
 
     const box = el('div', { class: 'card' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: 'Look around it, and scan' }));
     box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
       text: 'Scanning a folder walks everything under it and tells the '

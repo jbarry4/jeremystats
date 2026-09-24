@@ -629,20 +629,15 @@ BARRY.views.results = (function () {
   function toolbar(list) {
     const bar = el('div', { class: 'res-toolbar' });
 
-    bar.appendChild(el('div', { class: 'search-wrap inline' }, [
-      el('svg', { viewBox: '0 0 20 20', class: 'search-icon',
-        html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
-      el('input', {
-        type: 'search', value: query,
-        placeholder: 'Search, or mouse:306  tool:panorama  project:PTEN…',
-        title: 'Plain words search everything. A prefix searches one field:'
-             + '\n  project:  mouse:  session:  on:  tool:  kind:  type:'
-             + '\n  by:  machine:  tag:  run:  gid:  title:'
-             + '\nTerms are combined. Use "quotes" for a phrase.',
-        oninput: debounceInput(
-          (e) => { query = e.target.value; keepFocus(render); }, 140),
-      }),
-    ]));
+    bar.appendChild(BARRY.ui.searchField({
+      value: query,
+      placeholder: 'Search, or mouse:306  tool:panorama  project:PTEN…',
+      title: 'Plain words search everything. A prefix searches one field:'
+           + '\n  project:  mouse:  session:  on:  tool:  kind:  type:'
+           + '\n  by:  machine:  tag:  run:  gid:  title:'
+           + '\nTerms are combined. Use "quotes" for a phrase.',
+      oninput: (e) => { query = e.target.value; keepFocus(render); },
+    }));
 
     const pills = el('div', { class: 'filter-row' });
     const pill = (label, active, fn) => el('button', {

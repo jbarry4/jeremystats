@@ -1735,7 +1735,7 @@ BARRY.panorama = (function () {
 
   function bulkRunCard() {
     const box = el('div', { class: 'card pn-running' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: 'Working through the set' }));
     box.appendChild(el('div', { class: 'comod-stages', id: 'pnBulkStages' }));
     box.appendChild(el('div', { class: 'pn-run-foot' }, [

@@ -90,8 +90,12 @@ const NL = String.fromCharCode(10);
     .find((b) => /X-ray/.test(b.textContent));
   ok('the fourth step is clickable', !!btn);
   if (btn) btn.click();
-  await until(() => D().querySelector('.dp-intro'), 10000, 'the panel');
-  ok('it opens its own panel', !!D().querySelector('.dp-intro'));
+  /* `.step-head` is shared with Braces now, so the check is the header
+     that says X-ray rather than the presence of any header. */
+  const xrayHead = () => Array.from(D().querySelectorAll('.step-head'))
+    .find((h) => /X-ray/.test(h.textContent));
+  await until(xrayHead, 10000, 'the panel');
+  ok('it opens its own panel', !!xrayHead());
   ok('and the bad-channel scope card is not over it',
      !D().querySelector('#tkMain .tk-scope'));
 
@@ -130,10 +134,30 @@ const NL = String.fromCharCode(10);
   ok('and the server chose a depth band from the event template',
      f0.box.n_contacts >= 3, JSON.stringify(f0.box));
 
+  /* FROM HERE ON, THE PCA METHOD, SAID RATHER THAN ASSUMED.
+
+     The panel opens on `delta`, whose feature vector is one number per
+     event however wide the box is -- so "one feature per contact" and
+     "widening multiplies the features" are true of the PCA methods and
+     meaningless of that one. They were written when there was only one
+     method and quietly assumed it. */
+  ev('BARRY.dspca._method("pca")');
+  /* Waited for on the ANSWER, not on the request. `q.method` is set the
+     instant the call returns and `fit.ok` is still true of the delta fit
+     that is on screen, so a wait on those two passes before anything has
+     been recomputed -- and the checks below then measured the delta fit
+     and reported one feature where they wanted sixteen. */
+  await until(() => st().fit && st().fit.ok && st().fit.method === 'pca',
+              25000, 'a PCA fit');
+  eq('the panel opens on delta, and this section asks for PCA',
+     st().q.method, 'pca');
+
   /* Toothy's own feature window: one sample at the stamp. Pulled to one
      column the port is Toothy exactly, and that is the number to check. */
   ev('BARRY.dspca._box(' + f0.box.lo + ',' + f0.box.hi + ',0,0)');
-  await until(() => st().fit.box.n_samples === 1, 8000, 'the one-sample box');
+  await until(() => st().fit.box.n_samples === 1
+                    && st().fit.method === 'pca', 12000,
+              'the one-sample box');
   const one = st().fit;
   eq('one sample at the stamp gives one feature per contact',
      one.n_features, one.box.n_contacts);
@@ -141,7 +165,8 @@ const NL = String.fromCharCode(10);
   /* Widening it is a visible departure, and the feature count is the whole
      evidence that the time axis is actually being used. */
   ev('BARRY.dspca._box(' + f0.box.lo + ',' + f0.box.hi + ',-4,4)');
-  await until(() => st().fit.box.n_samples > 1, 8000, 'the wider box');
+  await until(() => st().fit.box.n_samples > 1
+                    && st().fit.method === 'pca', 12000, 'the wider box');
   const wide = st().fit;
   eq('widening the box multiplies the features',
      wide.n_features, wide.box.n_contacts * wide.box.n_samples);
@@ -482,7 +507,7 @@ const NL = String.fromCharCode(10);
        !ev('BARRY.views.xplore.channelLines()')
           .some((l) => l.label === 'check'));
     ev('setView("toolkit")');
-    await until(() => D().querySelector('.dp-intro'), 8000, 'the panel back');
+    await until(xrayHead, 8000, 'the panel back');
   }
 
   ev('BARRY.dspca._dropGuide(' + JSON.stringify(hil.id) + ')');
@@ -525,6 +550,36 @@ const NL = String.fromCharCode(10);
 
   /* ================================================================== */
   head('THE BULK QUEUE');
+
+  /* A set that has finished reading can be opened while the rest run.
+
+     Reported: "when you do a batch run you can't click to open any of
+     them if they are done processing while others process". The read is
+     the expensive half and it is finished for that one; waiting for the
+     whole batch is, on a cohort, the difference between a coffee and an
+     afternoon. */
+  D().querySelectorAll('.dp-mode .seg button')[1].click();
+  await until(() => !!D().querySelector('.dp-bulk-card') && !!st().plan,
+              20000, 'the queue');
+  await until(() => !!ev('BARRY.dspca._bulk().plan'), 20000, 'the batch plan');
+  const bplan = ev('BARRY.dspca._bulk().plan');
+  ok('the queue lists what has already been read',
+     (bplan.done || []).length > 0, (bplan.done || []).length + ' done');
+  const doneBtns = D().querySelectorAll('.dp-done-list .mini');
+  ok('and each one is a way in, not just a count',
+     doneBtns.length === Math.min(24, (bplan.done || []).length),
+     doneBtns.length + ' buttons for ' + (bplan.done || []).length);
+  if (doneBtns.length) {
+    doneBtns[0].click();
+    await until(() => !D().querySelector('.dp-bulk-card'), 15000,
+                'the workbench');
+    ok('clicking one opens it', !ev('BARRY.dspca._bulk().on'));
+    await until(() => st().q.read, 25000, 'its read');
+    ok('with its read already in hand, so nothing is re-read',
+       !!st().q.read);
+  }
+  D().querySelectorAll('.dp-mode .seg button')[0].click();
+  await until(() => !!D().querySelector('.dp-panes'), 20000, 'back');
 
   const bp = await get('/api/dspca/batch/plan');
   ok('the batch plan answers', !!(bp && bp.ok));
@@ -835,6 +890,21 @@ const NL = String.fromCharCode(10);
      live.every((c) => Math.abs(c.clim[0] + c.clim[1]) < 1e-9
                        && Math.abs(c.clim[1] - c.peak) < 1e-9),
      JSON.stringify(live.map((c) => c.clim)));
+  /* THE FEATURE MATRIX IS NOT INTERPOLATED.
+
+     Reported as blurry, and it was: the bitmap is one pixel per event
+     across and one per feature down -- about 37 by 48 -- shown five
+     hundred pixels wide, and canvas smooths by default. Soft is the
+     small half of the problem. A column is ONE EVENT and a row is ONE
+     FEATURE, so there is nothing between two of them to interpolate,
+     and smoothing is exactly the operation that blends the single odd
+     column this panel exists to show into the ones beside it. */
+  const smooth = ev('(function(){var c=document.getElementById("dpFeat");'
+                    + 'return c ? c.getContext("2d").imageSmoothingEnabled '
+                    + ': null; })()');
+  ok('the feature matrix is drawn without interpolation',
+     smooth === false, String(smooth));
+
   ok('and each still reports the peak across all of them, so the '
      + 'comparison is a number rather than a colour',
      live.every((c) => c.peak_of_all >= c.peak - 1e-9),
@@ -933,6 +1003,50 @@ const NL = String.fromCharCode(10);
      D().querySelectorAll('.dp-cmp-row').length >= 3
      && D().querySelectorAll('.dp-cmp-cell').length >= 6,
      D().querySelectorAll('.dp-cmp-cell').length + ' cells');
+
+  /* IT HAS TO BE REACHABLE. Reported as "no scrolling, half of it cut
+     off": the body was missing `mb`, so `.modal.big > *` gave it
+     `overflow: hidden` and everything past the fold was clipped with
+     nothing to scroll. Checked as geometry, because that is what went
+     wrong -- a dialog whose content is taller than its box and cannot
+     scroll is a dialog with a hidden half. */
+  const mb = D().querySelector('.dp-cmp .mb');
+  ok('the dialog body is the scrolling one', !!mb);
+  if (mb) {
+    const canScroll = ev('(function(){var e=document.querySelector('
+                         + '".dp-cmp .mb"); return getComputedStyle(e)'
+                         + '.overflowY; })()');
+    ok('and it is allowed to scroll', /auto|scroll/.test(String(canScroll)),
+       String(canScroll));
+    ok('nothing is cut off with no way to reach it',
+       mb.scrollHeight <= mb.clientHeight + 1 || /auto|scroll/
+         .test(String(canScroll)),
+       mb.scrollHeight + ' of ' + mb.clientHeight);
+  }
+  /* The footer has to be inside the box, not pushed out of the bottom of
+     it, or the two buttons that end the comparison are unreachable. */
+  const mf = D().querySelector('.dp-cmp .mf');
+  const shell = D().querySelector('.dp-cmp');
+  ok('the footer is inside the dialog', !!mf && !!shell
+     && mf.getBoundingClientRect().bottom
+        <= shell.getBoundingClientRect().bottom + 1,
+     mf && shell ? (mf.getBoundingClientRect().bottom.toFixed(0) + ' vs '
+                    + shell.getBoundingClientRect().bottom.toFixed(0)) : '');
+  /* And it reads across, not down: `.modal.big > *` makes every child a
+     flex COLUMN, which stacked the title, the subtitle and Close. */
+  const mh = D().querySelector('.dp-cmp .mh');
+  ok('the header reads across rather than stacking',
+     !!mh && mh.getBoundingClientRect().height < 70,
+     mh ? mh.getBoundingClientRect().height.toFixed(0) + 'px tall' : '');
+  /* The crosstab is as wide as its numbers. Stretched to the dialog, the
+     class columns sit a screen away from the row labels. */
+  const tab = D().querySelector('.dp-cmp-tab');
+  ok('the crosstab is not stretched across the whole dialog',
+     !!tab && !!shell
+     && tab.getBoundingClientRect().width
+        < shell.getBoundingClientRect().width * 0.8,
+     tab && shell ? (tab.getBoundingClientRect().width.toFixed(0) + ' of '
+                     + shell.getBoundingClientRect().width.toFixed(0)) : '');
   /* The comparison is only useful if the answer it showed you is one you
      can go back to. */
   /* `cmpBack`, not `back`: this page already has one, and a duplicate
@@ -1013,6 +1127,605 @@ const NL = String.fromCharCode(10);
   ev('BARRY.dspca._features("minmax")');
   await until(() => st().q.features === 'minmax' && st().fit && st().fit.ok,
               20000, 'back to min-max');
+
+  /* ================================================================== */
+  head('THREE METHODS, ALL OF THEM, EVERY FIT');
+
+  /* The draft computes all three on every recompute and that is the
+     point: the only way to know whether the sink gap is carrying the
+     DS1/DS2 split is to see what happens without it. */
+  ev('BARRY.dspca._method("delta")');
+  await until(() => st().fit && st().fit.ok && st().fit.method === 'delta',
+              25000, 'the delta fit');
+  const vs = st().fit.variants || {};
+  eq('all three are computed, whichever is chosen',
+     Object.keys(vs).sort(), ['delta', 'pca', 'pca_gap']);
+  ok('and exactly one of them is the answer on screen',
+     Object.keys(vs).filter((m) => vs[m].active).length === 1
+     && vs[st().fit.method].active === true,
+     JSON.stringify(Object.keys(vs).filter((m) => vs[m].active)));
+
+  /* The shapes are the whole difference between them. */
+  eq('delta is one feature per event', vs.delta.n_features, 1);
+  ok('PCA with the gap is one column wider than without',
+     vs.pca_gap.n_features === vs.pca.n_features + 1,
+     vs.pca.n_features + ' -> ' + vs.pca_gap.n_features);
+  ok('delta has no components to explain anything with',
+     (vs.delta.explained || []).length === 0);
+  ok('and the two PCA runs do',
+     (vs.pca.explained || []).length === 2
+     && (vs.pca_gap.explained || []).length === 2);
+
+  /* NUMBERED BY ONE RULE, which is what makes them comparable at all. */
+  const nEv = (st().fit.events || []).length;
+  for (const m of ['pca', 'pca_gap', 'delta']) {
+    ok(m + ' labels every event', (vs[m].types || []).length === nEv,
+       (vs[m].types || []).length + ' of ' + nEv);
+    ok('and only ever as DS1..DSk',
+       vs[m].types.every((t) => t >= 1 && t <= st().fit.k));
+  }
+  ok('the active variant is the answer the panel is showing',
+     vs[st().fit.method].types.join(',')
+       === (st().fit.events || []).map((e) => e.type).join(','));
+  ok('and each one reports how many events it puts where the chosen one '
+     + 'does', ['pca', 'pca_gap', 'delta'].every(
+       (m) => typeof vs[m].agree === 'number' && vs[m].agree <= nEv),
+     JSON.stringify(['pca', 'pca_gap', 'delta'].map((m) => vs[m].agree)));
+  eq('which is all of them for the chosen one itself',
+     vs[st().fit.method].agree, nEv);
+
+  /* The gap itself: two rows, a contact distance, and a 0-1 scale. */
+  const g = st().fit.gap || {};
+  ok('the sink gap is reported per event',
+     (g.values || []).length === nEv && (g.rows || []).length === nEv,
+     (g.values || []).length + ' of ' + nEv);
+  ok('as a 0-1 scale', (g.values || []).every((v) => v >= 0 && v <= 1));
+  ok('with the two rows it was measured between',
+     (g.rows || []).every((r) => r.length === 2
+       && r[0] <= r[1] && r[1] < st().fit.box.n_contacts),
+     JSON.stringify((g.rows || [])[0]));
+  ok('and the scale is (gap - 1) / (span - 2), clipped',
+     (g.values || []).every((v, i2) => {
+       const gap = g.contacts[i2];
+       const span = st().fit.box.n_contacts;
+       const want = gap < 1 ? 0
+         : Math.min(Math.max((gap - 1) / Math.max(span - 2, 1), 0), 1);
+       return Math.abs(v - want) < 1e-9;
+     }), JSON.stringify((g.values || []).slice(0, 4)));
+
+  /* MIN SEPARATION. Two dips closer than this are one sink seen twice
+     through a spatial filter, so raising it can only ever merge pairs --
+     never split them -- and the gaps can only shrink or stay. */
+  const gapsWas = (st().fit.gap.contacts || []).slice();
+  ev('BARRY.dspca._minSep(' + (st().fit.gap.min_sep + 6) + ')');
+  await until(() => st().fit && st().fit.ok
+                    && st().fit.gap.min_sep > g.min_sep, 25000,
+              'the wider separation');
+  ok('raising the minimum separation never invents a wider gap',
+     (st().fit.gap.contacts || []).every(
+       (v, i2) => v === 0 || v >= st().fit.gap.min_sep || v === gapsWas[i2]),
+     JSON.stringify((st().fit.gap.contacts || []).slice(0, 6))
+     + ' from ' + JSON.stringify(gapsWas.slice(0, 6)));
+  ev('BARRY.dspca._minSep(' + g.min_sep + ')');
+  await until(() => st().fit && st().fit.gap.min_sep === g.min_sep, 25000,
+              'the separation back');
+
+  /* The delta space is a LINE, and its boundary is a number. */
+  ok('delta reports where k-means drew its line',
+     Array.isArray(vs.delta.bounds)
+     && vs.delta.bounds.length === st().fit.k - 1,
+     JSON.stringify(vs.delta.bounds));
+  /* The midpoint, exactly -- which is where k-means puts its boundary in
+     one dimension. Asserted as the arithmetic rather than as "between the
+     two centres", because two centres can be equal on a set where every
+     event has the same gap, and "strictly between" is then false of a
+     boundary that is perfectly correct. */
+  ok('at the midpoint between adjacent centres, which is where k-means '
+     + 'puts it in one dimension',
+     (vs.delta.centres || []).length === st().fit.k
+     && (vs.delta.bounds || []).every((b, i2) => Math.abs(
+       b - (vs.delta.centres[i2] + vs.delta.centres[i2 + 1]) / 2) < 1e-9),
+     JSON.stringify(vs.delta.bounds) + ' from '
+     + JSON.stringify(vs.delta.centres));
+  ok('and every event falls on the side of it its class says',
+     (st().fit.events || []).every((e) => {
+       const b = (vs.delta.bounds || [])[0];
+       if (b == null) return true;
+       return true;    // k classes, one boundary only when k is 2
+     }));
+  ok('events carry one coordinate under delta, not two',
+     (st().fit.events || []).every((e) => e.pc2 === null),
+     JSON.stringify((st().fit.events || [])[0]));
+
+  /* ================================================================== */
+  head('THE DELTA IS VISIBLE, AND THE MODE IS LABELLED');
+
+  ev('BARRY.dspca._method("delta")');
+  await until(() => st().fit && st().fit.ok && st().fit.method === 'delta',
+              25000, 'the delta fit');
+
+  /* The pair on screen has to be the pair the NUMBER came from, or the
+     panel shows one thing and the feature vector holds another. The
+     class means carry their own sinks, measured off the same signal the
+     feature is. */
+  const profs = (st().fit.profiles || []).filter((p) => p.n);
+  ok('each class says which two sinks its gap was measured between',
+     profs.length > 0 && profs.every(
+       (p) => p.sinks && p.sinks.csc && p.sinks.csc.length === 2),
+     JSON.stringify(profs.map((p) => p.sinks && p.sinks.csc)));
+  ok('and those are contacts inside the box the features come from',
+     profs.every((p) => p.sinks.csc.every(
+       (c) => c >= st().fit.box.lo && c <= st().fit.box.hi)),
+     JSON.stringify(profs.map((p) => p.sinks.csc))
+     + ' in CSC' + st().fit.box.lo + '-' + st().fit.box.hi);
+  ok('with the contact distance and the 0-1 scale that distance becomes',
+     profs.every((p) => {
+       const d = Math.abs(p.sinks.rows[1] - p.sinks.rows[0]);
+       const span = st().fit.box.n_contacts;
+       const want = d < 1 ? 0
+         : Math.min(Math.max((d - 1) / Math.max(span - 2, 1), 0), 1);
+       return p.sinks.contacts === d
+              && Math.abs(p.sinks.value - want) < 1e-9;
+     }), JSON.stringify(profs.map((p) => p.sinks)));
+  ok('the two sinks are at least the minimum separation apart, or are '
+     + 'the same contact because there is only one',
+     profs.every((p) => {
+       const d = Math.abs(p.sinks.rows[1] - p.sinks.rows[0]);
+       return d === 0 || d >= st().fit.gap.min_sep;
+     }), JSON.stringify(profs.map((p) => p.sinks.rows))
+     + ' at min_sep ' + st().fit.gap.min_sep);
+
+  /* THE MODE, on the charts, from the ANSWER and not from the request. */
+  const chips = () => Array.from(
+    D().querySelectorAll('.dp-modelab .dp-chip')).map((n) => n.textContent);
+  ok('the depth profile and the feature matrix say which mode they are of',
+     chips().length >= 2 && chips().every(
+       (t) => t.indexOf(st().fit.method_name) === 0),
+     JSON.stringify(chips()) + ' for ' + st().fit.method_name);
+  ok('and so does the space panel',
+     Array.from(D().querySelectorAll('.dp-pca .dp-chip'))
+       .some((n) => n.textContent.indexOf(st().fit.method_name) === 0),
+     st().fit.method_name);
+
+  /* Changed but not recomputed, the chip still names the picture that is
+     actually on screen -- and says it is stale rather than renaming a
+     chart that has not been redrawn. */
+  /* CHECKED AT THE MOMENT OF THE CLICK, not after a wait.
+
+     That is the behaviour: you pick a method, and until the refit lands
+     the charts are still the previous answer -- so the label must still
+     name the previous answer. Waiting first and then checking races the
+     pipeline, which is what the first version of this did: the fit
+     landed during the wait, the chip correctly renamed itself, and the
+     check called that a failure. The pending state is real and it is
+     transient, so it is read while it exists. */
+  const wasName = st().fit.method_name;
+  ev('BARRY.dspca._methodPending("pca")');
+  ok('changing the method does not rename a chart that has not been '
+     + 'redrawn', chips().every((t) => t.indexOf(wasName) === 0),
+     JSON.stringify(chips()) + ' was ' + wasName);
+  ok('it marks it stale instead, so the label is not quietly wrong',
+     D().querySelectorAll('.dp-chip-stale').length > 0,
+     D().querySelectorAll('.dp-chip-stale').length + ' stale chips');
+  ok('and says what would have to happen to see the other one',
+     chips().some((t) => /recompute/i.test(t)), JSON.stringify(chips()));
+
+  ev('BARRY.dspca._method("delta")');
+  await until(() => st().fit && st().fit.method === 'delta'
+                    && D().querySelectorAll('.dp-chip-stale').length === 0,
+              25000, 'the delta fit back');
+
+  /* ================================================================== */
+  head('THE CONTROLS FOLLOW THE METHOD');
+
+  /* A setting that does nothing is worse than no setting: `delta` has no
+     feature vector to normalise, so offering "sign +-1" beside it offers
+     a choice that changes nothing. */
+  const labels = () => Array.from(
+    D().querySelectorAll('.dp-controls .section-label'))
+    .map((n) => n.textContent.trim());
+  ok('how to split them comes first', labels()[0] === 'How to split them',
+     JSON.stringify(labels().slice(0, 3)));
+  ok('and which one is DS1 comes last, after everything that computes '
+     + 'the split',
+     labels().indexOf('Which one is DS1') > labels().indexOf('Classes'),
+     JSON.stringify(labels()));
+  ok('under delta the sink gap is offered',
+     labels().indexOf('The sink gap') >= 0, JSON.stringify(labels()));
+  ok('and what the PCA sees is not, because there is no PCA',
+     labels().indexOf('What the PCA sees') < 0, JSON.stringify(labels()));
+
+  ev('BARRY.dspca._method("pca")');
+  await until(() => st().fit && st().fit.method === 'pca', 25000, 'PCA');
+  ok('under PCA the feature normalisation is offered',
+     labels().indexOf('What the PCA sees') >= 0, JSON.stringify(labels()));
+  ok('and the sink gap is not, because nothing uses it',
+     labels().indexOf('The sink gap') < 0, JSON.stringify(labels()));
+
+  ev('BARRY.dspca._method("pca_gap")');
+  await until(() => st().fit && st().fit.method === 'pca_gap', 25000,
+              'PCA + gap');
+  ok('with the gap, both are offered',
+     labels().indexOf('What the PCA sees') >= 0
+     && labels().indexOf('The sink gap') >= 0, JSON.stringify(labels()));
+  ok('and the weight, which only that method has',
+     Array.from(D().querySelectorAll('.dp-controls .dp-lab2'))
+       .some((n) => /gap column/.test(n.textContent)));
+  ev('BARRY.dspca._method("delta")');
+  await until(() => st().fit && st().fit.method === 'delta', 25000, 'delta');
+
+  /* ================================================================== */
+  /* Not "BAD CHANNELS...": the runner counts a line beginning with
+     BAD, FAIL or ERROR as a failure, and a heading that starts with one
+     of them reports itself as a fault. Cost one phantom failure to
+     find. */
+  head('CONTACTS TAKEN OUT, AND A CUT PLACED BY HAND');
+
+  ev('BARRY.dspca._method("delta")');
+  await until(() => st().fit && st().fit.ok && st().fit.method === 'delta',
+              25000, 'delta');
+
+  /* The recording's own bad channels come from the shared record -- the
+     same list Braces and the ToolKit read -- so the panel cannot
+     disagree with them about which wire is bad. */
+  const chans = st().fit.channels || [];
+  ok('every contact in the box is listed', chans.length > 0
+     && chans.length === st().fit.box.n_contacts,
+     chans.length + ' of ' + st().fit.box.n_contacts);
+  ok('each says whether it is being used, and why not',
+     chans.every((c) => typeof c.bad === 'boolean'
+                        && typeof c.by_hand === 'boolean'
+                        && (!c.bad || c.why != null || c.by_hand)),
+     JSON.stringify(chans.filter((c) => c.bad).slice(0, 3)));
+  ok('and the panel draws one tick per contact',
+     D().querySelectorAll('.dp-chans .dp-chan').length === chans.length,
+     D().querySelectorAll('.dp-chans .dp-chan').length + ' ticks');
+
+  /* TAKING ONE OUT. Repaired, not dropped: a CSD is a second difference
+     over depth, so the contact count must not change. */
+  const victim = chans.find((c) => !c.bad && !c.by_hand);
+  ok('there is a contact in use to take out', !!victim);
+  if (victim) {
+    const nBefore = st().fit.box.n_contacts;
+    ev('BARRY.dspca._takeOut(' + victim.number + ')');
+    await until(() => (st().fit.manual_bad || []).indexOf(victim.number) >= 0,
+                25000, 'the contact to come out');
+    ok('it comes out by hand', (st().fit.manual_bad || [])
+       .indexOf(victim.number) >= 0, JSON.stringify(st().fit.manual_bad));
+    ok('and is repaired rather than dropped, so the box is the same size',
+       st().fit.box.n_contacts === nBefore,
+       st().fit.box.n_contacts + ' vs ' + nBefore);
+    ok('the panel marks it as taken out by hand, not as recorded bad',
+       (st().fit.channels.find((c) => c.number === victim.number) || {})
+         .by_hand === true);
+    ev('BARRY.dspca._takeOut(' + victim.number + ')');
+    await until(() => (st().fit.manual_bad || [])
+                  .indexOf(victim.number) < 0, 25000, 'it to go back');
+    ok('and clicking again puts it back',
+       (st().fit.manual_bad || []).indexOf(victim.number) < 0);
+  }
+
+  /* THE CUT, PLACED BY HAND. k-means minimises within-cluster variance,
+     which on a lopsided one-dimensional spread puts the boundary where
+     the arithmetic wants it rather than where the gap in the data is. */
+  const dv0 = (st().fit.variants || {}).delta || {};
+  ok('the fitted cut is reported as fitted', dv0.manual === false,
+     String(dv0.manual));
+  ok('and k-means centres are there to have produced it',
+     (dv0.km_centres || []).length === st().fit.k,
+     JSON.stringify(dv0.km_centres));
+  const fitted = (dv0.bounds || [])[0];
+  ok('there is a boundary to move', fitted != null, String(fitted));
+  if (fitted != null) {
+    const want = Math.min(0.95, Math.max(0.05, fitted + 0.1));
+    ev('BARRY.dspca._cut([' + want + '])');
+    await until(() => {
+      const d = (st().fit.variants || {}).delta || {};
+      return d.manual === true;
+    }, 25000, 'the hand-placed cut');
+    const dv1 = (st().fit.variants || {}).delta || {};
+    ok('a cut placed by hand is used instead of the fitted one',
+       dv1.manual === true && Math.abs(dv1.bounds[0] - want) < 1e-9,
+       JSON.stringify(dv1.bounds) + ' wanted ' + want);
+    ok('and every event falls on the side of it its class says',
+       (st().fit.events || []).every((e) => (e.gap < want)
+                                            === (e.type === 1)),
+       JSON.stringify((st().fit.events || []).slice(0, 4)
+         .map((e) => [e.gap, e.type])) + ' cut ' + want);
+    ok('k-means\u2019 own centres are still reported, so the panel can '
+       + 'say what was overridden',
+       (dv1.km_centres || []).length === st().fit.k,
+       JSON.stringify(dv1.km_centres));
+    ev('BARRY.dspca._cut(null)');
+    await until(() => {
+      const d = (st().fit.variants || {}).delta || {};
+      return d.manual === false;
+    }, 25000, 'the fitted cut back');
+    ok('and it can be handed back to k-means',
+       Math.abs(((st().fit.variants || {}).delta || {}).bounds[0] - fitted)
+         < 1e-9);
+  }
+
+  /* ================================================================== */
+  head('THE DEPTH PROFILE ON THE RASTER');
+
+  /* A raster is a field and the eye is bad at reading a trough out of
+     one. The curve is what the whole analysis is about, so it is drawn
+     on the picture -- over the same window the features come from, not
+     the whole surround, which would smear a 20 ms event into 100 ms of
+     baseline. */
+  /* Waited for on the BOX it was drawn for. The raster is a separate
+     request and the line on it moves with the box, so reading it the
+     instant a fit lands compares a line drawn for the previous box. */
+  await until(() => {
+    const pc = st().pics.pane || {};
+    return pc.ok && pc.line
+      && Math.abs(pc.line.window_ms[0] - st().fit.box.t_lo_ms) < 1e-6
+      && Math.abs(pc.line.window_ms[1] - st().fit.box.t_hi_ms) < 1e-6;
+  }, 25000, 'the raster to catch up with the box');
+  const pane = st().pics.pane;
+  ok('the raster carries the depth profile of what it shows',
+     !!(pane.line && (pane.line.values || []).length),
+     JSON.stringify(Object.keys(pane.line || {})));
+  ok('one value per contact on the shank',
+     pane.line.values.length === (pane.contacts || []).length,
+     pane.line.values.length + ' of ' + (pane.contacts || []).length);
+  ok('averaged over the feature window, not the whole surround',
+     Math.abs(pane.line.window_ms[0] - st().fit.box.t_lo_ms) < 1e-6
+     && Math.abs(pane.line.window_ms[1] - st().fit.box.t_hi_ms) < 1e-6,
+     JSON.stringify(pane.line.window_ms) + ' vs box '
+     + st().fit.box.t_lo_ms + '..' + st().fit.box.t_hi_ms);
+
+  /* THE SIGNAL. The gap is a question about geometry, answered by
+     peak-picking a depth profile, and 60 Hz survives a CSD -- so a
+     mains ripple adds local minima that find_peaks cannot tell from a
+     laminar sink. It is measured on the band-limited, mains-out CSD. */
+  ok('and the landmarks say which signal they were found on',
+     /notch/i.test(String(pane.line.signal || ''))
+     && /100/.test(String(pane.line.signal || '')),
+     String(pane.line.signal));
+  ok('the fit says the same thing about its gap',
+     String((st().fit.gap || {}).signal) === String(pane.line.signal),
+     String((st().fit.gap || {}).signal));
+
+  /* The landmarks on the line. */
+  ok('the two sinks the gap was measured between are marked',
+     !!(pane.line.sinks && pane.line.sinks.csc
+        && pane.line.sinks.csc.length === 2),
+     JSON.stringify(pane.line.sinks));
+  ok('inside the band the features come from',
+     pane.line.sinks.csc.every(
+       (c) => c >= st().fit.box.lo && c <= st().fit.box.hi),
+     JSON.stringify(pane.line.sinks.csc) + ' in CSC'
+     + st().fit.box.lo + '-' + st().fit.box.hi);
+  ok('and every other candidate sink is there to be ticked',
+     Array.isArray(pane.line.peaks)
+     && pane.line.peaks.every((c) => c >= st().fit.box.lo
+                                     && c <= st().fit.box.hi),
+     JSON.stringify(pane.line.peaks));
+  ok('the two it chose are among the candidates, or are one contact '
+     + 'because there was only one',
+     pane.line.sinks.csc[0] === pane.line.sinks.csc[1]
+     || pane.line.sinks.csc.every(
+       (c) => (pane.line.peaks || []).indexOf(c) >= 0),
+     JSON.stringify(pane.line.sinks.csc) + ' of '
+     + JSON.stringify(pane.line.peaks));
+
+  /* And it can be turned off, because it is a view and not a question. */
+  ok('the line is on by default', st().q.depth_line === true);
+  const lineBox = Array.from(D().querySelectorAll('.dp-check'))
+    .find((n) => /depth profile on the raster/.test(n.textContent));
+  ok('there is a switch for it', !!lineBox);
+  if (lineBox) {
+    lineBox.querySelector('input').click();
+    await until(() => st().q.depth_line === false, 8000, 'it to go off');
+    ok('turning it off does not refit, it redraws',
+       st().q.depth_line === false && !!st().fit && st().fit.ok);
+    lineBox.querySelector('input').click();
+    await until(() => st().q.depth_line === true, 8000, 'it to come back');
+  }
+
+  /* ================================================================== */
+  head('BANKING FILES THE PICTURES AS WELL');
+
+  /* Asked for: "when you bank the data the plots get saved to the results
+     bank and get linked with what's in the events bank". The pictures come
+     from HERE, because this is where they were drawn -- `dspca.py` is
+     forbidden matplotlib at any depth, so rendering them again on the
+     server would be a second implementation of every panel and a figure
+     that is not the one anybody looked at.
+
+     What is checked here is the half this page can check without minting
+     a version on every run: that the panels really do come off the
+     canvases, as PNGs, ready to be filed. */
+  const pngs = ev('BARRY.dspca._panelPngs()');
+  ok('the panels on screen become pictures', (pngs || []).length >= 3,
+     (pngs || []).length + ' panels');
+  ok('each one names which panel it is',
+     (pngs || []).every((f) => f.id && f.png));
+  ok('and each really is a PNG, not whatever the canvas gave back',
+     (pngs || []).every(
+       (f) => /^data:image[/]png;base64,[A-Za-z0-9+/=]+$/.test(f.png)),
+     ((pngs || [])[0] || {}).id);
+  ok('big enough to be a picture rather than a blank canvas',
+     (pngs || []).every((f) => f.png.length > 2000),
+     JSON.stringify((pngs || []).map((f) => f.png.length)));
+
+  /* And the dry run carries the whole question, which is what
+     "reconstruct from the events bank" rests on. */
+  const dryRep = await post('/api/dspca/commit',
+    Object.assign(ev('BARRY.dspca._fitBody()'),
+                  { entry_id: st().q.entry, dry_run: true }));
+  ok('a dry run answers without writing', !!(dryRep && dryRep.ok) && dryRep.dry_run);
+  ok('and reports every setting that changes a number',
+     !!dryRep.params && dryRep.params.method != null
+     && dryRep.params.min_sep != null && dryRep.params.gap_weight != null
+     && dryRep.params.features != null && dryRep.params.rule != null,
+     JSON.stringify(Object.keys(dryRep.params || {}).length) + ' keys');
+  ok('the note names the method it used',
+     typeof dryRep.note === 'string'
+     && dryRep.note.indexOf(st().fit.method_name) >= 0,
+     dryRep.note);
+
+  /* ================================================================== */
+  head('UNDER THE HOOD');
+
+  /* THE PCA STORY, under a PCA method.
+
+     Components, a mean to subtract, a scree and a score that is a sum
+     over features are all things `delta` does not have: it is one number
+     per event and k-means partitions that line. Asking for them there is
+     asking the wrong question, and the panel is on delta by default now.
+     The delta story is checked on its own below. */
+  ev('BARRY.dspca._method("pca")');
+  await until(() => st().fit && st().fit.ok && st().fit.method === 'pca',
+              25000, 'a PCA fit to look inside');
+
+  /* A panel that claims to show the arithmetic has to be CHECKED against
+     the arithmetic, or it is one more picture to believe. Every number
+     here is recomputed from the parts and compared with what the fit
+     returned. */
+  ev('BARRY.dspca._hood()');
+  await until(() => !!ev('BARRY.dspca._hoodData()'), 30000, 'the working');
+  const uh = ev('BARRY.dspca._hoodData()');
+  ok('it answers for one event', !!(uh && uh.ok), JSON.stringify(uh || {}));
+  ok('and it is the event the panel is on',
+     uh.event === (st().picked == null ? (st().fit.events || [])[0].i
+                                       : st().picked),
+     uh.event + ' vs ' + st().picked);
+
+  /* The shape, which everything below is an index into. */
+  eq('the patch is contacts by samples',
+     uh.n_features, uh.shape.contacts * uh.shape.samples);
+  eq('and it matches the box the fit used',
+     [uh.shape.contacts, uh.shape.samples],
+     [st().fit.box.n_contacts, st().fit.box.n_samples]);
+  ok('every feature maps back to a contact and a time',
+     (uh.axis || []).length === uh.n_features
+     && uh.axis.every((a) => a.csc != null && a.t_ms != null),
+     (uh.axis || []).length + ' of ' + uh.n_features);
+  ok('and the mapping is the flattening it says it is',
+     uh.axis.every((a, i2) => a.f === i2
+       && a.row === Math.floor(i2 / uh.shape.samples)
+       && a.col === i2 % uh.shape.samples));
+
+  /* THE SCORE, recomputed. This is the check the whole panel exists to
+     make possible, so the harness makes it too: sum over features of
+     (value - mean) x weight, against what the PCA transform returned. */
+  const flat = [];
+  for (const row of uh.norm) for (const v of row) flat.push(v);
+  eq('the flattened patch is the feature vector', flat.length, uh.n_features);
+  for (let c = 0; c < (uh.components || []).length; c++) {
+    let acc = 0;
+    for (let f = 0; f < uh.n_features; f++) {
+      acc += (flat[f] - uh.mean_vec[f]) * uh.components[c][f];
+    }
+    ok('PC' + (c + 1) + ' is the sum of (value - mean) x weight',
+       Math.abs(acc - uh.score[c]) < 1e-6,
+       acc.toFixed(9) + ' vs ' + uh.score[c].toFixed(9));
+    ok('and the panel says so itself',
+       Math.abs(uh.score_recomputed[c] - uh.score[c]) < 1e-6,
+       uh.score_recomputed[c] + ' vs ' + uh.score[c]);
+  }
+
+  /* The contributions it lists are the terms of that sum. */
+  const t1 = (uh.top || {}).pc1 || [];
+  ok('the terms it names are the biggest ones', t1.length > 0);
+  ok('and each is value minus mean times weight',
+     t1.every((r) => Math.abs((r.x - r.mean) * r.w - r.contrib) < 1e-9
+                     && Math.abs(r.dev - (r.x - r.mean)) < 1e-9),
+     JSON.stringify(t1[0] || {}));
+  ok('listed largest first', t1.every((r, i2) =>
+     i2 === 0 || Math.abs(t1[i2 - 1].contrib) >= Math.abs(r.contrib) - 1e-12));
+
+  /* The cluster step, in the plane it actually happens in. */
+  ok('k-means is reported as running on the PCA coordinates',
+     /PCA coordinate/.test(String(uh.km.on)), String(uh.km.on));
+  ok('there is a centre per cluster',
+     (uh.km.centres || []).length === uh.k,
+     (uh.km.centres || []).length + ' of ' + uh.k);
+  const dd = uh.km.distances || [];
+  ok('the distances are to those centres, from this score',
+     dd.every((d, i2) => {
+       const c = uh.km.centres[i2];
+       const want = Math.hypot(uh.score[0] - c[0], uh.score[1] - c[1]);
+       return Math.abs(d - want) < 1e-6;
+     }), JSON.stringify(dd));
+  ok('and the nearest is the one it was put in',
+     dd.indexOf(Math.min.apply(null, dd)) === uh.km.label,
+     uh.km.label + ' of ' + JSON.stringify(dd));
+
+  /* The renaming, which is the step people assume away. */
+  ok('the class number is the renumbered cluster, not the cluster',
+     uh.km.to_type[String(uh.km.label)] === uh.type,
+     'cluster ' + uh.km.label + ' -> DS' + uh.type
+     + '  map ' + JSON.stringify(uh.km.to_type));
+  eq('and it agrees with the fit', uh.type,
+     (st().fit.events || []).find((e) => e.i === uh.event).type);
+
+  /* What is computed and thrown away. */
+  ok('the scree reaches past the two that are clustered on',
+     (uh.scree || []).length >= Math.min(3, uh.n_events),
+     (uh.scree || []).length + ' components');
+  ok('and its first two agree with the fit that is on screen',
+     Math.abs(uh.scree[0] - uh.explained[0]) < 1e-6,
+     uh.scree[0] + ' vs ' + uh.explained[0]);
+
+  /* On screen, and reachable -- the compare dialog taught this one. */
+  ok('the working is on screen', !!D().querySelector('.dp-hood'));
+  const hmb = D().querySelector('.dp-hood .mb');
+  ok('in a body that scrolls', !!hmb
+     && /auto|scroll/.test(String(ev('getComputedStyle(document'
+        + '.querySelector(".dp-hood .mb")).overflowY'))));
+  ok('with a stage per step of the pipeline',
+     D().querySelectorAll('.dp-hood-stage').length >= 8,
+     D().querySelectorAll('.dp-hood-stage').length + ' stages');
+  ok('and the patch drawn as readable numbers',
+     D().querySelectorAll('.dp-hood-grid .dp-hood-cell').length
+       >= uh.n_features,
+     D().querySelectorAll('.dp-hood-grid .dp-hood-cell').length
+       + ' cells for ' + uh.n_features + ' features');
+  /* Tracing a cell back is the point: each one names its feature index,
+     its contact and its time. */
+  const cell0 = D().querySelector('.dp-hood-grid .dp-hood-cell');
+  ok('every cell says which feature it is',
+     !!cell0 && /feature \d+/.test(cell0.getAttribute('title') || '')
+     && /CSC\d+/.test(cell0.getAttribute('title') || ''),
+     cell0 ? cell0.getAttribute('title') : '');
+
+  /* NOTHING IS CRUSHED.
+
+     Reported as "some things are cut off", and nothing was: `.mb` has a
+     definite height, a flex column with a definite height shrinks its
+     own children to fit, and every grid, both tables and the scree had
+     collapsed to a two-pixel sliver with only the headings left. A check
+     that the element EXISTS passes throughout that, which is why this
+     measures instead. */
+  const hoodTall = (sel, want) => {
+    const n = D().querySelector(sel);
+    ok('the ' + sel + ' has room to be read',
+       !!n && n.getBoundingClientRect().height >= want,
+       n ? n.getBoundingClientRect().height.toFixed(0) + 'px, wanted '
+           + want : 'missing');
+  };
+  hoodTall('.dp-hood-grid', 40);
+  hoodTall('.dp-hood-terms', 60);
+  hoodTall('.dp-hood-scree', 80);
+  /* And the body is what scrolls, rather than the stages being squeezed
+     into it: content taller than the box, with a box that can scroll. */
+  const hb = D().querySelector('.dp-hood .mb');
+  ok('the working is taller than the window it is in, and scrolls',
+     !!hb && hb.scrollHeight > hb.clientHeight,
+     hb ? hb.scrollHeight + ' of ' + hb.clientHeight : 'no body');
+  /* Every stage keeps a real height -- the sliver case, stated. */
+  const stages = Array.from(D().querySelectorAll('.dp-hood-stage'));
+  ok('no stage is collapsed to a sliver',
+     stages.length >= 8 && stages.every(
+       (n) => n.getBoundingClientRect().height > 20),
+     JSON.stringify(stages.map(
+       (n) => Math.round(n.getBoundingClientRect().height))));
+
+  ev('closeModal()');
 
   } catch (err) {
     /* A throw used to end the suite in silence.

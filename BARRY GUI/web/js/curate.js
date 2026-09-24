@@ -1221,7 +1221,7 @@ BARRY.curate = (function () {
           const v = vs[i];
           list.appendChild(el('div', { class: 'ver-row' }, [
             el('div', { class: 'ver-top' }, [
-              el('span', { class: 'ver-n', text: 'v' + v.v }),
+              el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
               v.imported ? el('span', { class: 'flagchip',
                                         text: 'the import' }) : null,
               el('span', { class: 'ver-when',

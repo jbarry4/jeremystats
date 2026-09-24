@@ -54,7 +54,8 @@
                         is the check that catches that family.
      compositions       the same class must not have two different internal
                         shapes (`.cur-set` did), and two classes must not
-                        have the same one (`.br-intro` and `.dp-intro` do).
+                        have the same one (`.br-intro` and `.dp-intro` did, until they became
+                        one `.step-head`).
      the named claims   the specific findings, asserted individually so a
                         fix can be seen landing.
 */
@@ -126,10 +127,18 @@ function shape(cs) {
 
 /* How a node is named in the dump. Its own classes, sorted and capped, so
    the line is stable whatever order they were written in. */
+/* Classes that reflect the machine this ran on rather than the styling.
+   `dirty` is on the sync chip when the working tree has uncommitted changes,
+   so the dump moved between a clean checkout and a dirty one -- a line of
+   diff with no cause in the stylesheet, which is exactly the noise this
+   file exists not to have. */
+const ENVIRONMENTAL = new Set(['dirty']);
+
 function idOf(n) {
   const raw = (n.className && n.className.baseVal !== undefined)
     ? n.className.baseVal : (n.className || '');
-  const cls = String(raw).trim().split(/\s+/).filter(Boolean).sort();
+  const cls = String(raw).trim().split(/\s+/)
+    .filter((c) => c && !ENVIRONMENTAL.has(c)).sort();
   return n.tagName.toLowerCase()
        + (cls.length ? '.' + cls.slice(0, 4).join('.') : '');
 }
@@ -149,6 +158,7 @@ function fingerprint(n) {
 
 const shapes = new Map();   /* family -> Map(shape -> Set(id)) */
 const gaps = new Map();     /* id -> Set(gap) -- see below */
+const labels = new Map();   /* "first"|"later" -> Set(margin-top) */
 const grids = new Map();    /* "pass|id" -> column count */
 const overflow = new Set(); /* "pass|id" */
 const comps = new Map();    /* class -> Set(fingerprint) */
@@ -210,11 +220,21 @@ function walk(pass, root, win) {
     }
   });
 
+  root.querySelectorAll('.section-label').forEach((n) => {
+    const cs2 = win.getComputedStyle(n);
+    if (cs2.display === 'none') return;
+    const where = n.previousElementSibling ? 'later' : 'first';
+    const inline = n.getAttribute('style') ? ' (inline style)' : '';
+    const k = where + inline;
+    if (!labels.has(k)) labels.set(k, new Set());
+    labels.get(k).add(cs2.marginTop);
+  });
+
   /* Compositions, once -- they do not change with width. */
   if (pass === PASSES[0][0] + 'x' + PASSES[0][1]) {
     root.querySelectorAll(
-      '.card, .cur-set, .tk-head, .view-head, .sec-head, .br-intro, '
-      + '.dp-intro, .modal, .empty-state'
+      '.card, .cur-set, .tk-head, .view-head, .sec-head, .step-head, '
+      + '.modal, .empty-state'
     ).forEach((n) => {
       if (counted.has(n)) return;
       counted.add(n);
@@ -342,6 +362,16 @@ function styledClasses(doc) {
   L.push('## compositions');
   for (const k of [...comps.keys()].sort()) {
     for (const p of [...comps.get(k)].sort()) L.push(k + '  |  ' + p);
+  }
+  L.push('');
+  /* Section labels carry the only margin in the file worth tracking: the
+     rule gave every one of them 22px on top, which is wrong whenever it is
+     the first thing in a card, so 41 call sites pasted an inline style to
+     undo it. Recorded as "is it the first child, and what did it get", which
+     is the question. */
+  L.push('## section-label top margins');
+  for (const k of [...labels.keys()].sort()) {
+    L.push(k + '  |  ' + [...labels.get(k)].sort().join('  '));
   }
   L.push('');
   L.push('## container gaps');

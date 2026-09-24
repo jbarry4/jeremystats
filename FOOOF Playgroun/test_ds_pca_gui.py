@@ -245,7 +245,7 @@ state["on_click"](Click(state["axes"]["csd1"], 22.2))
 check("right-clicking it again takes it off",
       not any(g["csc"] == 22 for g in state["guides"]))
 
-state["on_click"](Click(state["axes"]["pca"], 0.5))
+state["on_click"](Click(state["axes"]["space_off"], 0.5))
 n_before = len(state["guides"])
 check("right-click on the PCA scatter does nothing (not a depth axis)",
       len(state["guides"]) == n_before)
@@ -276,14 +276,14 @@ def n_guide_lines(ax):
 state["picked"] = 3
 G.draw(state, state["res"])
 per_panel = {k: n_guide_lines(state["axes"][k])
-             for k in ("volt", "csd", "profile", "csd1", "csd2")}
+             for k in ("volt", "csd", "csd1", "csd2", "prof_off")}
 check("guides drawn on an individual spike and on both averages",
       all(v >= 10 for v in per_panel.values()), str(per_panel))
 
 state["picked"] = None
 G.draw(state, state["res"])
 per_panel2 = {k: n_guide_lines(state["axes"][k])
-              for k in ("volt", "csd", "profile", "csd1", "csd2")}
+              for k in ("volt", "csd", "csd1", "csd2", "prof_off")}
 check("the same guides survive the switch back to the average",
       per_panel2 == per_panel, str(per_panel2))
 
@@ -300,6 +300,22 @@ fig.savefig(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 state["clear_guides"](None)
 check("clear empties them", state["guides"] == []
       and G.load_guides(state["args"]) == [])
+
+# ===================== the sink-gap separation floor =====================
+_mu = np.zeros(30)
+_mu[10] = -1.0; _mu[12] = -0.9; _mu[20] = -0.5
+_mu[5] = 0.4; _mu[16] = 0.6; _mu[25] = 0.3
+check("min_sep=2 allows the 2-apart pair", G.two_sinks(_mu, 2) == (10, 12))
+check("min_sep=5 rejects it and takes the far sink",
+      G.two_sinks(_mu, 5) == (10, 20), str(G.two_sinks(_mu, 5)))
+check("min_sep past every candidate collapses to one sink",
+      G.two_sinks(_mu, 12) == (10, 10), str(G.two_sinks(_mu, 12)))
+check("the default floor is MIN_SINK_SEP",
+      G.two_sinks(_mu) == G.two_sinks(_mu, G.MIN_SINK_SEP))
+_blk = np.repeat(_mu[None, :, None], 4, axis=0)
+check("the gap feature honours the floor",
+      float(G.sink_gap_feature(_blk, 1.0, 12)[0, 0]) == 0.0
+      and float(G.sink_gap_feature(_blk, 1.0, 2)[0, 0]) > 0.0)
 
 print("")
 print("%d failed" % len(FAIL))

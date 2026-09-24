@@ -66,6 +66,21 @@ async function untilN(fn, tries = 900, gap = 100) {
   await untilN(() => typeof W.setView === 'function');
   const ev = (s) => W.eval(s);
 
+  /* The wash strengths, read out of the app rather than written down here.
+
+     This file used to carry its own copy of the table -- faint 0.10, clear
+     0.22, solid 0.42 -- and assert against those numbers by name. That is
+     the duplication xplore.js goes out of its way to avoid (it reads the
+     list off BARRY.strata rather than keeping one), and it failed in the
+     way a copy always does: the strengths were raised because the old ones
+     were not visible on a raster, and six checks here reported the overlay
+     as gone. They were measuring this file's memory of strata.js, not the
+     app. Now there is one table and this reads it. */
+  WASH_A = JSON.parse(ev(
+    'JSON.stringify((BARRY.strata.washes || []).reduce('
+    + 'function (o, w) { o[w.id] = w.alpha; return o; }, {}))') || '{}');
+  say('note', '  wash strengths, from strata.js: ' + JSON.stringify(WASH_A));
+
   /* ---------------------------------------------------------------
      Pick a recording that actually has a labelled sheet.
      --------------------------------------------------------------- */
@@ -400,9 +415,10 @@ async function untilN(fn, tries = 900, gap = 100) {
   ev('BARRY.views.xplore._redrawPane(0)');
   await sleep(150);
   log = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
-  const solidFills = log.filter((r) => r[0] === 'fill' && near(r[1], 0.42));
-  ck('picking Solid repaints at 0.42, strata.js’s own number',
-     solidFills.length > 0, solidFills.length + ' fills at 0.42');
+  const aSolid = LAYER_ALPHA('solid');
+  const solidFills = log.filter((r) => r[0] === 'fill' && near(r[1], aSolid));
+  ck('picking Solid repaints at ' + aSolid + ', strata.js’s own number',
+     solidFills.length > 0, solidFills.length + ' fills at ' + aSolid);
   // Back down, so the rest of the run measures the ordinary case.
   grp = await openMore();
   const faint = grp && Array.from(grp.querySelectorAll('.ctl-seg .mini'))
@@ -417,17 +433,18 @@ async function untilN(fn, tries = 900, gap = 100) {
   ev('BARRY.views.xplore.setPanes([{panel:"traces"},{panel:"csd"}],'
      + '{col:0.5,row:0.5})');
   ev('window.__tracesCv = document.querySelector("#paneGrid canvas"); window.__log = []');
+  const aFaint = LAYER_ALPHA('faint');
   const drew = await untilN(() => {
     const l = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
-    return l.some((r) => r[3] === 'I' && r[0] === 'fill' && near(r[1], 0.10));
+    return l.some((r) => r[3] === 'I' && r[0] === 'fill' && near(r[1], aFaint));
   }, 900, 150);
   log = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
   const rast = log.filter((r) => r[3] === 'I');
   ck('the CSD raster gets the same bands', drew >= 0,
      rast.length + ' ops on raster canvases, '
-     + rast.filter((r) => r[0] === 'fill' && near(r[1], 0.10)).length
+     + rast.filter((r) => r[0] === 'fill' && near(r[1], aFaint)).length
      + ' of them band fills');
-  const rb = rast.findIndex((r) => r[0] === 'fill' && near(r[1], 0.10));
+  const rb = rast.findIndex((r) => r[0] === 'fill' && near(r[1], aFaint));
   const rd = rast.findIndex((r) => r[0] === 'dash');
   ck('and they sit under its marks too',
      rb >= 0 && rd >= 0 && rb < rd,
@@ -489,8 +506,9 @@ async function untilN(fn, tries = 900, gap = 100) {
   await sleep(150);
   log = JSON.parse(ev('JSON.stringify(window.__log)') || '[]');
   ck('the bands stop being drawn',
-     !log.some((r) => r[0] === 'fill' && near(r[1], 0.10)),
-     log.filter((r) => r[0] === 'fill' && near(r[1], 0.10)).length + ' left');
+     !log.some((r) => r[0] === 'fill' && near(r[1], LAYER_ALPHA('faint'))),
+     log.filter((r) => r[0] === 'fill'
+                    && near(r[1], LAYER_ALPHA('faint'))).length + ' left');
   ck('and the session stops carrying the flags',
      ev('!BARRY.views.xplore.current().layerView')
      && ev('!BARRY.views.xplore.current().strata'));
@@ -552,7 +570,13 @@ async function untilN(fn, tries = 900, gap = 100) {
 } })();
 
 function near(a, b) { return Math.abs(a - b) < 0.006; }
+/* Filled from BARRY.strata.washes as soon as the frame is up (see above).
+   The fallback is only for a frame that never answered -- and it is the
+   'off' end, so a check that lands on it fails loudly rather than passing
+   against a number nobody is drawing at. */
+let WASH_A = {};
 function LAYER_ALPHA(id) {
-  return ({ off: 0, faint: 0.10, clear: 0.22, solid: 0.42 })[id] || 0.10;
+  const a = WASH_A[id];
+  return typeof a === 'number' ? a : 0;
 }
 </script>

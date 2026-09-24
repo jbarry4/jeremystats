@@ -415,15 +415,14 @@ BARRY.braces = (function () {
   function pickView() {
     const box = el('div', { class: 'br-wrap' });
 
-    box.appendChild(el('div', { class: 'card br-intro' }, [
-      el('div', { class: 'section-label', style: 'margin-top:0',
-                  text: 'Braces · step 3 of The Dentist' }),
-      el('p', { class: 'hint', text:
-        'Every stamp onto the peak it belongs to. A ±100 ms window, the '
-        + 'DS-filtered magnitude, and one peak per stamp — so a spike '
-        + 'that drifted early is not corrected by stealing the next '
-        + 'one’s. Nothing is written until you accept it.' }),
-    ]));
+    box.appendChild(BARRY.ui.stepHeader({
+      title: 'Braces',
+      step: 'step 3 of The Dentist',
+      blurb: 'Every stamp onto the peak it belongs to. A ±100 ms window, the '
+           + 'DS-filtered magnitude, and one peak per stamp — so a spike '
+           + 'that drifted early is not corrected by stealing the next '
+           + 'one’s. Nothing is written until you accept it.',
+    }));
 
     if (!cands) {
       box.appendChild(el('div', { class: 'card', text: 'Reading the bank…' }));
@@ -516,7 +515,7 @@ BARRY.braces = (function () {
       q.gid = (on && on.gid) || (rows[0] || {}).gid || null;
     }
 
-    card.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    card.appendChild(el('div', { class: 'section-label',
                                  text: 'Recording' }));
     card.appendChild(BARRY.pickSession({
       rows,
@@ -604,7 +603,7 @@ BARRY.braces = (function () {
 
     /* Settings. */
     const set = el('div', { class: 'card' });
-    set.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    set.appendChild(el('div', { class: 'section-label',
                                 text: 'Settings' }));
     set.appendChild(el('div', { class: 'br-fields' }, [
       el('div', { class: 'br-field' }, [
@@ -752,7 +751,7 @@ BARRY.braces = (function () {
 
   function planCard() {
     const card = el('div', { class: 'card br-plan' });
-    card.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    card.appendChild(el('div', { class: 'section-label',
                                  text: 'What it will read' }));
     if (!plan) {
       card.appendChild(el('p', { class: 'hint', text: 'Working it out…' }));
@@ -1366,7 +1365,7 @@ BARRY.braces = (function () {
 
   function recentSets() {
     const box = el('div', { class: 'card br-recent' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: 'Alignments on this machine' }));
     box.appendChild(el('p', { class: 'hint', id: 'brRecent',
                               text: 'Looking…' }));
@@ -1615,7 +1614,7 @@ BARRY.braces = (function () {
 
   function histCard(sum) {
     const card = el('div', { class: 'card' });
-    card.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    card.appendChild(el('div', { class: 'section-label',
                                  text: 'How far they moved' }));
     const hist = sum.hist || [];
     const top = Math.max(1, ...hist);

@@ -337,8 +337,7 @@ BARRY.views.explorer = (function () {
                     text: 'Source \u00b7 ' + lines.length + ' lines' }),
         el('div', { class: 'spacer' }),
         el('div', { class: 'search-wrap inline', style: 'max-width:260px' }, [
-          el('svg', { class: 'search-icon', viewBox: '0 0 20 20',
-                      html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
+          BARRY.ui.magnifier(),
           el('input', {
             type: 'search', placeholder: 'Find in this file\u2026',
             value: sourceQuery,

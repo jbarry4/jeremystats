@@ -64,7 +64,23 @@ async function until(fn, ms) {
 
   say('');
   say('=== on brings the wiring up ===');
-  ev('applyVacc(true, false)');
+  /* Turned on and read in the same breath, with nothing awaited between.
+     `circuit()` appends the layer synchronously and schedules the drawing
+     for the next idle callback, so this is the one moment the deferral is
+     visible -- and after a sleep it is not, because a prompt browser has
+     already drawn. */
+  const deferred = ev('(function(){ applyVacc(true, false);'
+    + ' var n = document.getElementById("vaccCircuit");'
+    + ' var t = n && n.querySelector(".vcx-traces");'
+    + ' return JSON.stringify({ layer: !!n,'
+    + '   drawn: t ? t.children.length : -1 }); })()');
+  const d0 = JSON.parse(deferred);
+  check('the layer goes up immediately', d0.layer === true);
+  /* The cost design in one assertion: the single paint never lands during
+     boot, when every view is rendering, or during the power-up, when the
+     compositor is already busy. */
+  check('and nothing is drawn yet, so the paint is not on the way in',
+        d0.drawn === 0, d0.drawn + ' children at the moment it appeared');
   await sleep(400);
   const layer = D().getElementById('vaccCircuit');
   check('the circuit layer appears', !!layer);
@@ -81,9 +97,6 @@ async function until(fn, ms) {
      callback. That is the whole cost design: one paint, never on the way
      in, where it would land during boot or during the power-up when the
      compositor is already busy. */
-  check('the board starts empty, so nothing is drawn on the way in',
-        board && board.children.length === 0,
-        board ? board.children.length + ' children' : '-');
   const svg = await until(() => layer.querySelector('.vcx-traces svg'), 8000);
   check('and the artwork arrives once the browser is idle', !!svg);
 
@@ -171,14 +184,19 @@ async function until(fn, ms) {
   say('=== the glow moves by transform, and only by transform ===');
   check('the pointer listeners are attached', ev('BARRY.vaccfx.wired') === true);
   const before = W().getComputedStyle(glow).transform;
-  ev('window.dispatchEvent(new PointerEvent("pointermove",'
-     + '{clientX: 500, clientY: 300, bubbles: true}))');
-  await until(() => W().getComputedStyle(glow).transform !== before, 3000);
+  await until(() => {
+    ev('window.dispatchEvent(new PointerEvent("pointermove",'
+       + '{clientX: 500, clientY: 300, bubbles: true}))');
+    return W().getComputedStyle(glow).transform !== before;
+  }, 6000);
   say('    ' + ev('JSON.stringify(BARRY.vaccfx.stats)'), 'note');
   const after = W().getComputedStyle(glow).transform;
   check('a pointer move moves it', before !== after,
         'stats=' + ev('JSON.stringify(BARRY.vaccfx.stats)')
         + '  ' + String(after).slice(0, 40));
+  check('and the listener is what did it, not the test',
+        (JSON.parse(ev('JSON.stringify(BARRY.vaccfx.stats)')).moves || 0) > 0,
+        ev('JSON.stringify(BARRY.vaccfx.stats)'));
   /* The one that matters for cost. `left`/`top` would relayout the layer
      and repaint everything under it at pointer rate. */
   const box = W().getComputedStyle(glow);
@@ -190,11 +208,24 @@ async function until(fn, ms) {
         /matrix|translate/.test(after), String(after).slice(0, 40));
 
   const at500 = after;
-  ev('BARRY.vaccfx.moveTo(900, 640)');
-  await until(() => W().getComputedStyle(glow).transform !== at500, 3000);
+  /* Nudged repeatedly while waiting, because the write is coalesced to one
+     `requestAnimationFrame` per burst and rAF does not run on this
+     harness's wall clock. A real pointer sends a stream of events; sending
+     one and waiting a fixed time is a coin toss that fails honest code. */
+  await until(() => {
+    ev('BARRY.vaccfx.moveTo(900, 640)');
+    return W().getComputedStyle(glow).transform !== at500;
+  }, 6000);
+  /* Read, not returned. The wait is best effort: the parent page's
+     `setTimeout` and the iframe's `requestAnimationFrame` advance at
+     different rates under `--virtual-time-budget`, so a wait measured in
+     one cannot bound the other -- and the first version of this failed
+     while printing the correct value in its own failure note. */
+  const nowAt = W().getComputedStyle(glow).transform;
   check('and it follows, rather than jumping once and stopping',
-        W().getComputedStyle(glow).transform !== at500,
-        String(W().getComputedStyle(glow).transform).slice(0, 44));
+        nowAt !== at500,
+        'stats=' + ev('JSON.stringify(BARRY.vaccfx.stats)') + '  '
+        + String(nowAt).slice(0, 34));
 
   say('');
   say('=== clicking sends a ring, and the ring leaves ===');

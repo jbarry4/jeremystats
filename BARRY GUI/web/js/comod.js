@@ -313,7 +313,7 @@ BARRY.views.comod = (function () {
     const span = q.t1 - q.t0;
     const cycles = span * (q.slow_lo + (q.slow_bw || q.slow_step) / 2);
 
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: 'What to measure' }));
 
     // ---- where ----

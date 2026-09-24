@@ -1,0 +1,286 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the shared controls</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 58vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 42vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* `ui.js` only earns its place if adopting it changes nothing on screen.
+
+   The whole argument for the shared controls is that the call sites are
+   already trying to produce these and drifting. So the test is not "does
+   ui.button make a button" -- it is "does ui.button make the SAME button the
+   hand-written markup makes", measured, for every kind and size. If any pair
+   differs, migrating a call site would be a visual change smuggled inside a
+   refactor, and the phase that migrates them would be unreviewable.
+
+   Also checks the guards, because they are the point of having a function at
+   all: `.btn.small` is refused rather than quietly rendering full size,
+   which is the exact fault that put eleven PCA buttons a pixel out of step
+   with the other eighty-four.
+
+   Built in the live page, so the real stylesheet decides. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const ready = await untilN(() => typeof W().setView === 'function');
+  check('the application loads', ready >= 0, 'no setView after 25s');
+  if (ready < 0) { document.title = 'FAIL'; return; }
+
+  const ui = W().eval('BARRY.ui');
+  check('BARRY.ui is there', !!ui, 'ui.js did not load or did not attach');
+  if (!ui) { document.title = 'FAIL'; return; }
+
+  /* A stage inside the real page, off screen, so every rule that depends on
+     an ancestor still applies. */
+  const stage = D().createElement('div');
+  stage.style.cssText = 'position:absolute;left:-9999px;top:0;width:900px';
+  D().body.appendChild(stage);
+
+  const shape = (n) => {
+    const cs = W().getComputedStyle(n);
+    return [cs.fontSize, cs.fontWeight, cs.fontFamily, cs.paddingTop,
+            cs.paddingRight, cs.paddingBottom, cs.paddingLeft,
+            cs.borderTopLeftRadius, cs.borderTopWidth, cs.backgroundColor,
+            cs.color].join(' | ');
+  };
+  /* The hand-written equivalent, written the way the call sites write it. */
+  const raw = (tag, cls, text) => {
+    const n = D().createElement(tag);
+    n.className = cls;
+    if (text) n.textContent = text;
+    stage.appendChild(n);
+    return n;
+  };
+  const via = (node) => { stage.appendChild(node); return node; };
+
+  head('every control measures the same as the markup it replaces');
+
+  const PAIRS = [
+    /* `kind` defaults to ghost, deliberately: most buttons are not the
+       primary one and the constitution allows a surface only one, so the
+       filled button is the one you have to ask for by name. */
+    ['ghost by default', () => ui.button({ text: 'Go' }),           'btn ghost'],
+    ['primary',        () => ui.button({ text: 'Go', kind: 'primary' }), 'btn'],
+    ['ghost',          () => ui.button({ text: 'Go', kind: 'ghost' }), 'btn ghost'],
+    ['ghost sm',       () => ui.button({ text: 'Go', kind: 'ghost', size: 'sm' }),
+                       'btn ghost sm'],
+    ['primary sm',     () => ui.button({ text: 'Go', kind: 'primary', size: 'sm' }),
+                       'btn sm'],
+    ['mini',           () => ui.button({ text: 'Go', kind: 'mini' }), 'mini'],
+    ['link',           () => ui.button({ text: 'Go', kind: 'link' }), 'linkish'],
+    ['ghost danger',   () => ui.button({ text: 'Go', kind: 'ghost', danger: true }),
+                       'btn ghost danger'],
+  ];
+  for (const [name, make, cls] of PAIRS) {
+    const a = via(make());
+    const b = raw('button', cls, 'Go');
+    check('button ' + name + ' == <button class="' + cls + '">',
+          shape(a) === shape(b), shape(a) + '  vs  ' + shape(b));
+  }
+
+  const chipA = via(ui.chip('24 / 24'));
+  const chipB = raw('span', 'stat-chip', '24 / 24');
+  check('chip == <span class="stat-chip">', shape(chipA) === shape(chipB),
+        shape(chipA) + '  vs  ' + shape(chipB));
+
+  const flagA = via(ui.chip('left', { flag: true }));
+  const flagB = raw('span', 'flagchip', 'left');
+  check('chip flag == <span class="flagchip">', shape(flagA) === shape(flagB));
+
+  head('the search field, which had three shapes');
+  const sfA = via(ui.searchField({ placeholder: 'Search…' }));
+  const sfB = (() => {
+    const w = D().createElement('div');
+    w.className = 'search-wrap inline';
+    w.innerHTML = '<svg viewBox="0 0 20 20" class="search-icon">'
+                + '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/></svg>'
+                + '<input type="search" placeholder="Search…">';
+    stage.appendChild(w);
+    return w;
+  })();
+  check('searchField == the markup it replaces',
+        shape(sfA.input) === shape(sfB.querySelector('input')),
+        shape(sfA.input) + '  vs  ' + shape(sfB.querySelector('input')));
+  check('it hands back its input', sfA.input && sfA.input.tagName === 'INPUT');
+  check('the icon is one path pair, not a re-drawing',
+        sfA.querySelector('.search-icon circle')
+        && sfA.querySelector('.search-icon path'));
+
+  head('the guards, which are why this is a function');
+
+  const refuses = (fn, why) => {
+    try { fn(); return false; } catch (e) { return true; }
+  };
+  check('.btn.small is refused, not silently rendered',
+        refuses(() => ui.button({ text: 'x', size: 'small' })),
+        'ui.button accepted size "small" -- the spelling with no rule '
+        + 'behind it');
+  check('an unknown kind is refused',
+        refuses(() => ui.button({ text: 'x', kind: 'secondary' })));
+  check('a size on .mini is refused, not dropped',
+        refuses(() => ui.button({ text: 'x', kind: 'mini', size: 'sm' })));
+  check('a good call is not refused',
+        !refuses(() => ui.button({ text: 'x', kind: 'ghost', size: 'sm' })));
+
+  head('.badbtn: one control, five places');
+
+  /* None of these render during a walk of the views -- they live in the
+     channel overlay, a storyboard thumbnail and a feedback screenshot --
+     so the measurement dump cannot see them and they have to be built.
+
+     The point of the base rule is that the five agree about what this
+     control IS and differ only in where it sits and, for two of them, what
+     it means. `.fb-shot .badbtn` is the one that proves it: it sets only a
+     position and a background, so before there was a base it had no font
+     size, no padding and no pointer cursor at all. */
+  const inCtx = (wrapCls, extra) => {
+    const w = D().createElement('div');
+    w.className = wrapCls;
+    const b = D().createElement('button');
+    b.className = 'badbtn' + (extra || '');
+    b.textContent = 'bad';
+    w.appendChild(b);
+    stage.appendChild(w);
+    return b;
+  };
+  const chRow   = inCtx('ch-row');
+  const lane    = (() => { const o = D().createElement('div');
+                           o.className = 'ch-overlay';
+                           const l = D().createElement('div');
+                           l.className = 'ch-lane';
+                           const b = D().createElement('button');
+                           b.className = 'badbtn'; b.textContent = 'bad';
+                           l.appendChild(b); o.appendChild(l);
+                           stage.appendChild(o); return b; })();
+  const thumb   = inCtx('sb-thumb');
+  const shot    = inCtx('fb-shot');
+  const ctlChan = inCtx('ctl-chan');
+
+  const cs = (n) => W().getComputedStyle(n);
+  for (const [name, n] of [['ch-row', chRow], ['ch-lane', lane],
+                           ['sb-thumb', thumb], ['fb-shot', shot],
+                           ['ctl-chan', ctlChan]]) {
+    check(name + ' badbtn has a pointer cursor',
+          cs(n).cursor === 'pointer', cs(n).cursor);
+    check(name + ' badbtn has a font size under 10px',
+          parseFloat(cs(n).fontSize) > 0 && parseFloat(cs(n).fontSize) < 10,
+          cs(n).fontSize);
+    check(name + ' badbtn is monospaced',
+          /mono|consol|courier/i.test(cs(n).fontFamily),
+          cs(n).fontFamily);
+  }
+  check('the feedback one now has padding, which it never had',
+        parseFloat(cs(shot).paddingLeft) > 0, cs(shot).paddingLeft);
+  check('the lane one is still the tightest, for a 12px lane',
+        parseFloat(cs(lane).fontSize) < parseFloat(cs(chRow).fontSize),
+        cs(lane).fontSize + ' vs ' + cs(chRow).fontSize);
+  check('the channel control is still a hit target',
+        parseFloat(cs(ctlChan).minWidth) >= 26, cs(ctlChan).minWidth);
+
+  head('the tool header Braces and X-ray now share');
+
+  const h1 = via(ui.stepHeader({ title: 'Braces', step: 'step 3 of The Dentist',
+                                 blurb: 'Every stamp onto the peak it belongs to.' }));
+  const h2 = via(ui.stepHeader({ title: 'X-ray', step: 'step 4 of The Dentist',
+                                 blurb: 'Which kind of dentate spike each one is.' }));
+  const print = (n) => Array.from(n.children)
+    .map((k) => k.tagName.toLowerCase() + '.' + (k.className || '')).join(' ');
+  check('the two steps are built the same way', print(h1) === print(h2),
+        print(h1) + '  vs  ' + print(h2));
+  check('and measure the same', shape(h1) === shape(h2));
+  check('the title is mixed case, not shouted',
+        W().getComputedStyle(h1.querySelector('strong')).textTransform === 'none',
+        W().getComputedStyle(h1.querySelector('strong')).textTransform);
+  check('the step is a chip beside the title, not part of it',
+        !!h1.querySelector('.step-n')
+        && !/step 3/.test(h1.querySelector('strong').textContent));
+  check('a tool with no bundle gets no chip',
+        !ui.stepHeader({ title: 'Panorama', blurb: 'x' }).querySelector('.step-n'));
+
+  head('a labelled control');
+  const fld = via(ui.field({ label: 'Recording',
+                             control: D().createElement('select'),
+                             hint: 'which one to read' }));
+  check('the label is the house one',
+        !!fld.querySelector('.section-label'));
+  check('the label opening a field has no top margin',
+        W().getComputedStyle(fld.querySelector('.section-label')).marginTop
+          === '0px',
+        W().getComputedStyle(fld.querySelector('.section-label')).marginTop);
+  const inl = via(ui.field({ label: 'Set', control: D().createElement('select'),
+                             inline: true }));
+  check('inline puts the label beside the control',
+        W().getComputedStyle(inl).display === 'flex');
+
+  head('the rest');
+  const acts = via(ui.actions([ui.button({ text: 'a' }), null, false,
+                               ui.button({ text: 'b' })]));
+  check('actions drops falsey children', acts.children.length === 2,
+        acts.children.length + ' children');
+  check('actions is right-aligned',
+        W().getComputedStyle(acts).justifyContent === 'flex-end',
+        W().getComputedStyle(acts).justifyContent);
+
+  const foot = via(ui.modalFoot([ui.button({ text: 'open' })],
+                                [ui.button({ text: 'Cancel', kind: 'ghost' }),
+                                 ui.button({ text: 'Do it', kind: 'primary' })]));
+  const kids = Array.from(foot.children);
+  check('modalFoot puts the spacer between the two groups',
+        kids.length === 4 && kids[1].className === 'spacer',
+        kids.map((k) => k.className || k.tagName).join(' '));
+  check('and the primary is last',
+        kids[kids.length - 1].className === 'btn',
+        kids[kids.length - 1].className);
+
+  let picked = null;
+  const s = via(ui.seg([['a', 'One'], ['b', 'Two']], 'a', (v) => { picked = v; }));
+  check('seg marks the current item',
+        s.children[0].className === 'active' && s.children[1].className === '');
+  s.children[1].click();
+  check('seg reports a change', picked === 'b', String(picked));
+  s.children[0].click();
+  picked = null;
+  s.children[0].click();
+  check('seg does not report picking what is already picked', picked === null,
+        String(picked));
+
+  stage.remove();
+  head(bad === 0 ? 'the shared controls are the controls' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+} catch (e) {
+  say('bad', 'harness threw: ' + e.message);
+  document.title = 'FAIL';
+} })();
+</script>

@@ -159,7 +159,11 @@ class Params:
     FIT_KEYS = ("notch", "screen", "csd_bad_x", "csd_span", "nclasses",
                 "rule", "flip", "seed", "sel_lo", "sel_hi", "t_lo_ms",
                 "t_hi_ms", "cond", "f_order", "f_sigma", "no_vaknin",
-                "h_power", "features", "dead")
+                "h_power", "features", "dead",
+                # Which of the three methods, and the two numbers the two
+                # that use the sink gap are shaped by.
+                "method", "min_sep", "gap_weight", "delta_cut",
+                "manual_bad")
 
     def __init__(self, **kw):
         # -- the read ---------------------------------------------------
@@ -205,6 +209,48 @@ class Params:
         self.features = feats if feats in FEATURES else "minmax"
         self.dead = float(kw.get("dead") if kw.get("dead") is not None
                           else DEAD_FRAC)
+        # DELTA IS THE DEFAULT, deliberately. The thing being clustered is
+        # then the thing somebody meant to cluster on, and the boundary is
+        # a threshold that can be read off an axis and quoted. The two PCA
+        # methods are computed beside it every time, so the choice is
+        # always visible rather than assumed -- see `fit`.
+        # CONTACTS TAKEN OUT BY HAND, on top of the ones the recording
+        # is already marked with.
+        #
+        # A FIT parameter and not a read one: taking a wire out changes
+        # the answer and must not invalidate the minutes of reading. It
+        # does NOT change the refinement either -- those stamps were
+        # timed during the read against the read-time bad list -- which
+        # is a real limitation and a small one: one dead wire among
+        # sixty-four moves a mean over depth by almost nothing.
+        #
+        # And they are REPAIRED, not dropped. A CSD is a second
+        # difference over depth and needs an even grid; a contact taken
+        # out of the middle leaves the rest unevenly spaced.
+        mb = kw.get("manual_bad")
+        if isinstance(mb, dict):
+            self.manual_bad = {int(k2): (v or "by hand")
+                               for k2, v in mb.items()}
+        elif mb:
+            self.manual_bad = {int(n): "by hand" for n in mb}
+        else:
+            self.manual_bad = {}
+
+        # A THRESHOLD PLACED BY HAND, for the one method whose axis has
+        # units. See `fit`. A list, because k classes need k-1 of them.
+        cut = kw.get("delta_cut")
+        if cut in (None, "", []):
+            self.delta_cut = None
+        else:
+            try:
+                self.delta_cut = sorted(float(c) for c in cut)
+            except (TypeError, ValueError):
+                self.delta_cut = None
+        meth = str(kw.get("method") or "delta")
+        self.method = meth if meth in METHODS else "delta"
+        self.min_sep = max(1, int(kw.get("min_sep") or MIN_SINK_SEP))
+        gw = kw.get("gap_weight")
+        self.gap_weight = float(GAP_WEIGHT if gw is None else max(0.0, gw))
         self.f_order = int(kw.get("f_order") or T_F_ORDER)
         self.f_sigma = float(kw.get("f_sigma") or T_F_SIGMA)
         self.no_vaknin = bool(kw.get("no_vaknin", not T_VAKNIN))
@@ -442,6 +488,99 @@ FEATURE_NAMES = {
     "sign": "sign ±1",
     "sign_dead": "sign + deadband",
 }
+
+
+MIN_SINK_SEP = 5        # contacts; two sinks closer than this are one sink
+GAP_WEIGHT = 1.0       # how hard the gap column is allowed to pull
+
+METHODS = ("pca", "pca_gap", "delta")
+METHOD_NAMES = {
+    "pca": "PCA, no gap",
+    "pca_gap": "PCA + gap",
+    "delta": "delta only, no PCA",
+}
+
+
+def two_sinks(mu, min_sep=MIN_SINK_SEP):
+    """The two LARGEST sinks of one depth profile, shallower first.
+
+    Largest by how far the CSD actually dips, not by prominence.
+    Prominence asks how far a dip stands above its own surroundings, which
+    can rank a small notch on a flat stretch above a deep trough on a
+    slope; "largest" is the plainer question and the one that was asked
+    for.
+
+    A MINIMUM SEPARATION, because two dips three contacts apart are the
+    same sink seen twice through a spatial filter, not two laminar sinks.
+    A 3-point Gaussian taper across depth plus a second difference will
+    routinely split one trough into a pair, and without this floor the
+    gap measures the width of that artefact rather than the distance
+    between the molecular layers. Contacts are 30 um, so the default of 5
+    is 150 um -- comfortably under the OML-to-MML spacing and comfortably
+    over anything the smoothing can manufacture.
+
+    Recomputed from the profile it is handed, every time. The pair is what
+    the gap feature measures AND what the panels draw, from this one
+    function, so the marks on screen cannot drift from the number in the
+    feature vector.
+    """
+    mu = np.asarray(mu, dtype=np.float64)
+    sep = MIN_SINK_SEP if min_sep is None else max(1, int(min_sep))
+    try:
+        from scipy.signal import find_peaks
+        idx, _props = find_peaks(-mu)
+    except Exception:                                    # noqa: BLE001
+        idx = np.array([], dtype=int)
+    if idx.size == 0:
+        r = int(np.argmin(mu))
+        return r, r
+    order = [int(r) for r in idx[np.argsort(mu[idx])]]   # deepest first
+    first = order[0]
+    second = next((r for r in order[1:] if abs(r - first) >= sep), None)
+    if second is None:
+        return first, first          # only one real sink in this profile
+    return (min(first, second), max(first, second))
+
+
+def sink_gap(block, min_sep=MIN_SINK_SEP):
+    """How far apart each event's two sinks are, on a 0-to-1 scale.
+
+        0  the two sinks are neighbouring contacts
+        1  they are at opposite ends of the selected band
+
+    which is `(gap - 1) / (span - 2)`, clipped. Put that way it is pure
+    geometry: two events with the same laminar spacing give the same
+    number whatever the band width, wherever the probe sits, and however
+    big the event was.
+
+    WHAT IS AND IS NOT AMPLITUDE-FREE. The VALUE carries no amplitude --
+    it is two row indices and nothing else, so a loud event and a quiet
+    one with the same geometry are identical here. The CHOICE of which two
+    sinks to measure does rank candidates by depth, but that ranking never
+    reaches the output.
+
+    On a 0-1 scale it also sits in the same range as the min-max profile
+    features, so it is one column among many rather than the column that
+    decides everything. In raw contacts it did decide everything: its
+    spread was five times a min-max column's, and switching it on took
+    PC1's correlation with loudness from 0.52 to 0.75.
+
+    An event with fewer than two detectable sinks gets 0. Returns the
+    scale, the raw contact gap and the two rows, because the panels draw
+    all three.
+    """
+    prof = np.asarray(block, dtype=np.float64).mean(axis=2)   # [nEv x span]
+    span = prof.shape[1]
+    out = np.zeros((prof.shape[0], 1), dtype=np.float64)
+    gaps, rows = [], []
+    for i, mu in enumerate(prof):
+        r1, r2 = two_sinks(mu, min_sep)
+        gap = abs(r2 - r1)
+        rows.append((int(r1), int(r2)))
+        gaps.append(int(gap))
+        if gap >= 1:
+            out[i, 0] = min(max((gap - 1.0) / max(span - 2.0, 1.0), 0.0), 1.0)
+    return out, gaps, rows
 
 
 def normalize_block(block, mode="minmax", dead=DEAD_FRAC):
@@ -1071,7 +1210,7 @@ def fit(got, p, layers=None):
     # a real limitation rather than a serious one -- and with `refine` off,
     # which is the default in the bundle, it does not arise at all.
     bad = dict(got.get("bad") or {})
-    manual = dict(p.__dict__.get("manual_bad") or {})
+    manual = dict(getattr(p, "manual_bad", None) or {})
     bad.update(manual)
     if manual:
         sur = np.array([braces.repair(s, chans, bad) for s in sur])
@@ -1129,17 +1268,109 @@ def fit(got, p, layers=None):
 
     # The measurement: CSD computed WITHIN the chosen contacts, Toothy-style.
     feat_csd = stack_csd(sur[:, sel, :], p, p.spacing)[:, :, t0:t1]
-    norm = normalize_block(feat_csd, p.features, p.dead)
-    X = norm.reshape(norm.shape[0], -1)
 
-    pca = PCA(n_components=2)
-    coords = pca.fit_transform(X)
+    # THE GAP IS MEASURED ON THE 5-100 Hz, MAINS-OUT SIGNAL.
+    #
+    # Not on `feat_csd`, which is broadband because that is Toothy's
+    # method for the FEATURE VECTOR and the method is the thing being
+    # ported. The gap is not part of that vector's heritage: it is a
+    # question about GEOMETRY -- which two contacts the sinks sit on --
+    # and the answer to it is found by peak-picking a depth profile.
+    #
+    # 60 Hz sits INSIDE the 5-100 Hz band and it survives a CSD: it is
+    # common-mode, but a second difference of a common-mode line is not
+    # zero on a real probe. A mains ripple across depth adds local
+    # minima, and `find_peaks` cannot tell one of those from a laminar
+    # sink -- so on the broadband signal the "two main sinks" could be
+    # two crests of the mains. This is the same reason the refinement is
+    # always notched whatever the features do; see `_read_span`.
+    #
+    # `sur["band"]` is built from the NOTCHED trace and then filtered to
+    # the DS band, so it is both at once.
+    gap_csd = stack_csd(sur_band[:, sel, :], p, p.spacing)[:, :, t0:t1]
+    norm = normalize_block(feat_csd, p.features, p.dead)
+    X_pca = norm.reshape(norm.shape[0], -1)
+
     k = int(p.nclasses)
-    if k > X.shape[0]:
+    if k > X_pca.shape[0]:
         raise DsPcaError(
             "%d classes out of %d event(s) is more clusters than points."
-            % (k, X.shape[0]))
-    km = KMeans(n_clusters=k, n_init="auto", random_state=p.seed).fit(coords)
+            % (k, X_pca.shape[0]))
+
+    # The sink gap, once. Both methods that use it use this.
+    gap_col, gap_contacts, gap_rows = sink_gap(gap_csd, p.min_sep)
+    X_gap = np.hstack([X_pca, gap_col * float(p.gap_weight)])
+
+    # ALL THREE, EVERY FIT.
+    #
+    # A PCA over a few dozen columns and a few hundred events is
+    # milliseconds, so there is nothing saved by computing only the one
+    # that happens to be chosen -- and having all three is the only way to
+    # show what the extra column did, or whether the gap was carrying the
+    # split at all. The third has no PCA in it: one number per event, and
+    # k-means partitions that line directly, so the boundary is a
+    # threshold that can be read off the axis and quoted.
+    def _pca_fit(Xv):
+        pv = PCA(n_components=2)
+        return pv, pv.fit_transform(Xv)
+
+    runs = {}
+    pca_off, coords_off = _pca_fit(X_pca)
+    runs["pca"] = {"pca": pca_off, "coords": coords_off, "X": X_pca,
+                   "labels": KMeans(n_clusters=k, n_init="auto",
+                                    random_state=p.seed)
+                   .fit(coords_off).labels_,
+                   "kind": "pca"}
+    pca_on, coords_on = _pca_fit(X_gap)
+    runs["pca_gap"] = {"pca": pca_on, "coords": coords_on, "X": X_gap,
+                       "labels": KMeans(n_clusters=k, n_init="auto",
+                                        random_state=p.seed)
+                       .fit(coords_on).labels_,
+                       "kind": "pca"}
+    kd = KMeans(n_clusters=k, n_init="auto", random_state=p.seed).fit(gap_col)
+    km_centres = sorted(float(c) for c in kd.cluster_centers_[:, 0])
+    if p.delta_cut:
+        # A HAND-PLACED THRESHOLD BEATS A FITTED ONE when you can see the
+        # distribution. k-means minimises within-cluster variance, which
+        # on a lopsided one-dimensional spread puts the boundary where
+        # the arithmetic wants it rather than where the gap in the data
+        # is. Here the axis has units and the events are on screen along
+        # it, so a person can simply say where the line goes -- and the
+        # counts, the profiles and the DS1/DS2 call all recompute from
+        # that exactly as they would from k-means.
+        cuts = list(p.delta_cut)
+        labels = np.digitize(gap_col[:, 0], cuts)
+        centres = None
+    else:
+        labels = kd.labels_
+        centres = km_centres
+        cuts = [(km_centres[i] + km_centres[i + 1]) / 2.0
+                for i in range(len(km_centres) - 1)]
+    runs["delta"] = {
+        "pca": None, "coords": gap_col, "X": gap_col,
+        "labels": labels, "kind": "delta",
+        "centres": centres,
+        # Where k-means WOULD have put them, kept even when a hand has
+        # overridden it: "you moved it from 0.31 to 0.44" is the useful
+        # sentence, and it needs both numbers.
+        "km_centres": km_centres,
+        "bounds": cuts,
+        "manual": bool(p.delta_cut),
+    }
+
+    use = runs[p.method]
+    pca, coords, X = use["pca"], use["coords"], use["X"]
+
+    class _Km(object):
+        pass
+    km = _Km()
+    km.labels_ = use["labels"]
+    km.cluster_centers_ = (kd.cluster_centers_ if p.method == "delta"
+                           else np.asarray(
+                               [coords[use["labels"] == c].mean(axis=0)
+                                if (use["labels"] == c).any()
+                                else np.zeros(coords.shape[1])
+                                for c in range(k)]))
 
     # EVERY PICTURE COMES OFF THE SAME SIGNAL, and it is not the features.
     #
@@ -1192,15 +1423,87 @@ def fit(got, p, layers=None):
 
     decide = _working(types, prof, ns, marker, km.labels_, k, p, layers)
 
+    # AND THE SAME NUMBERING FOR ALL THREE.
+    #
+    # Run through the identical rule, so "DS1" means the shallower class
+    # in each of them and the three can be put side by side. Numbering
+    # them by whatever k-means happened to return would make the
+    # comparison meaningless in exactly the way it exists to avoid.
+    variants = {}
+    for name, r in runs.items():
+        lab = np.asarray(r["labels"])
+        mus_v = {c: np.nanmean(prof[lab == c], axis=0)
+                 for c in range(k) if (lab == c).any()}
+        live_v = sorted(mus_v)
+        if p.rule == "tort":
+            rows_v, _up = tort_order([mus_v[c] for c in live_v])
+            mark_v = dict(zip(live_v, rows_v))
+        elif p.rule == "anatomy":
+            mark_v = _anatomy_marker(mus_v, ns, layers)
+        else:
+            mark_v = {c: class_marker(mu, p.rule)[0]
+                      for c, mu in mus_v.items()}
+        ord_v = sorted(range(k), key=lambda c: mark_v.get(c, 10 ** 6))
+        if p.flip:
+            ord_v = ord_v[::-1]
+        remap_v = {c: i + 1 for i, c in enumerate(ord_v)}
+        types_v = np.array([remap_v[x] for x in lab])
+        variants[name] = {
+            "method": name,
+            "name": METHOD_NAMES.get(name, name),
+            "kind": r["kind"],
+            "n_features": int(np.asarray(r["X"]).shape[1]),
+            "types": types_v,
+            "decide": _working(types_v, prof, ns, mark_v, lab, k, p, layers),
+            "coords": np.asarray(r["coords"]),
+            "explained": ([float(v) for v in r["pca"]
+                           .explained_variance_ratio_]
+                          if r["pca"] is not None else []),
+            "centres": r.get("centres"),
+            "km_centres": r.get("km_centres"),
+            "bounds": r.get("bounds"),
+            "manual": bool(r.get("manual")),
+            "active": name == p.method,
+        }
+
     return {
         "disp": disp, "feat": feat_csd, "norm": norm,
+        # What the gap was measured on, so the marks drawn for it come
+        # off the same array the number did.
+        "gap_csd": gap_csd,
+        "gap_signal": "5-%g Hz, 60 Hz notched" % p.band[1],
         "coords": coords, "pca": pca, "types": types, "k": k,
+        # For `under_hood`: where k-means put its centres, and how its
+        # labels were renumbered into DS1..DSk. Both are thrown away by
+        # every other caller, and both are needed to show the step rather
+        # than assert it.
+        "km_centres": km.cluster_centers_,
+        "km_to_type": dict(remap),
+        # The three, all numbered by the same rule, so they compare.
+        "variants": variants,
+        "method": p.method,
+        "method_name": METHOD_NAMES.get(p.method, p.method),
+        # The gap itself, which two of the three are built on and the
+        # panels draw: the 0-1 scale, the raw contact distance, and the
+        # two rows it was measured between.
+        "gap": [float(v) for v in gap_col[:, 0]],
+        "gap_contacts": [int(v) for v in gap_contacts],
+        "gap_rows": [[int(a), int(b)] for a, b in gap_rows],
+        "min_sep": int(p.min_sep),
+        "gap_weight": float(p.gap_weight),
+        # Which contacts were taken out by hand, on top of whatever the
+        # recording is marked with. `bad` above is all of them together.
+        "manual_bad": sorted(int(n) for n in manual),
         "bad": bad, "prof": prof, "decide": decide,
         "sel": sel, "nums_sel": ns, "t0": t0, "t1": t1, "tw": tw,
         "prof_all": prof_all, "nums_all": nums,
         "n_features": int(X.shape[1]),
         "tort_upside": upside,
-        "explained": [float(v) for v in pca.explained_variance_ratio_],
+        # Empty under `delta`, which has no components to explain
+        # anything with: one number per event is the whole feature
+        # space, and there is nothing to rotate.
+        "explained": ([float(v) for v in pca.explained_variance_ratio_]
+                      if pca is not None else []),
         "spacing_um": float(p.spacing),
     }
 
@@ -1340,10 +1643,43 @@ def profiles(res):
             continue
         mu = np.nanmean(prof[rr], axis=0)
         sem = np.nanstd(prof[rr], axis=0) / np.sqrt(rr.size)
+        # THE TWO SINKS THIS CLASS'S GAP WAS MEASURED BETWEEN.
+        #
+        # From `feat` and not from the curve beside it, which is the
+        # display CSD: the mark on screen has to be the pair the NUMBER
+        # came from, or the panel shows one thing and the feature vector
+        # holds another. Reported as contact numbers, so it can be drawn
+        # on a full-shank axis without anyone re-deriving the mapping.
+        sinks = None
+        try:
+            # The same array the gap number came off, not `feat`:
+            # `feat` is broadband because that is Toothy's feature
+            # method, and the gap is measured on the band-limited,
+            # mains-out CSD. A mark drawn from the other one would be a
+            # different pair of sinks.
+            feat = np.asarray(res.get("gap_csd"))
+            if not feat.size:
+                feat = np.asarray(res.get("feat"))
+            if feat.size and sel_ns:
+                mu_feat = feat[rr].mean(axis=0).mean(axis=1)
+                r1, r2 = two_sinks(mu_feat,
+                                   res.get("min_sep") or MIN_SINK_SEP)
+                gap = abs(r2 - r1)
+                span = len(sel_ns)
+                sinks = {
+                    "rows": [int(r1), int(r2)],
+                    "csc": [int(sel_ns[r1]), int(sel_ns[r2])],
+                    "contacts": int(gap),
+                    "value": (0.0 if gap < 1 else
+                              min(max((gap - 1.0) / max(span - 2.0, 1.0),
+                                      0.0), 1.0)),
+                }
+        except Exception:                                # noqa: BLE001
+            sinks = None
         out.append({"c": c, "n": int(rr.size), "contacts": ns,
                     "mean": [float(v) for v in mu],
                     "sem": [float(v) for v in sem],
-                    "band": band})
+                    "band": band, "sinks": sinks})
     return out
 
 
@@ -1390,10 +1726,73 @@ def pictures(got, what, index=None, cmap="jet", gain=None, fit_params=None,
             mat = disp.mean(axis=0)
             title = "mean of %d" % disp.shape[0]
         clim = clim_of(mat)
+
+        # THE DEPTH PROFILE OF WHAT THIS RASTER IS SHOWING.
+        #
+        # A raster is a field and the eye is bad at reading a trough out
+        # of one: "where is the sink" is a question about a curve, and
+        # the curve is not drawn anywhere. This is that curve, over the
+        # SAME time window the features come from -- averaging the whole
+        # surround instead would smear a 20 ms event into 100 ms of
+        # baseline and flatten the thing being looked for.
+        #
+        # Whole shank, because that is what the raster spans. The
+        # LANDMARKS on it are a different matter: the two sinks are the
+        # pair the gap number was measured from, and that is measured
+        # inside the selected band on the band-limited, mains-out CSD.
+        # So the line is the picture's own signal and the marks are the
+        # measurement's, which is the same split the box already has and
+        # is stated rather than hidden.
+        line = None
+        try:
+            res_ = fit(got, p, layers=layers)
+            t0_, t1_ = res_["t0"], res_["t1"]
+            prof_all = mat[:, t0_:t1_].mean(axis=1)
+            sel_ns = [int(n) for n in res_["nums_sel"]]
+            gsrc = np.asarray(res_.get("gap_csd"))
+            if what == "event" and gsrc.size:
+                mu_band = gsrc[i].mean(axis=1)
+            elif gsrc.size:
+                mu_band = gsrc.mean(axis=0).mean(axis=1)
+            else:
+                mu_band = None
+            peaks, sinks = [], None
+            if mu_band is not None and sel_ns:
+                try:
+                    from scipy.signal import find_peaks
+                    idx, _pr = find_peaks(-np.asarray(mu_band))
+                except Exception:                        # noqa: BLE001
+                    idx = []
+                peaks = [int(sel_ns[int(r)]) for r in idx
+                         if 0 <= int(r) < len(sel_ns)]
+                r1, r2 = two_sinks(mu_band, p.min_sep)
+                gap = abs(r2 - r1)
+                span = len(sel_ns)
+                sinks = {
+                    "csc": [int(sel_ns[r1]), int(sel_ns[r2])],
+                    "contacts": int(gap),
+                    "value": (0.0 if gap < 1 else
+                              min(max((gap - 1.0) / max(span - 2.0, 1.0),
+                                      0.0), 1.0)),
+                }
+            line = {
+                "values": [float(v) for v in prof_all],
+                "contacts": nums,
+                "window_ms": [float(tw[t0_]),
+                              float(tw[max(t0_, t1_ - 1)])],
+                "peaks": peaks,
+                "sinks": sinks,
+                "band": [min(sel_ns), max(sel_ns)] if sel_ns else None,
+                "signal": res_.get("gap_signal"),
+            }
+        except Exception:                                # noqa: BLE001
+            line = None
+
         return {"ok": True, "what": what, "title": title,
                 "image": encode(mat, cmap, clim),
                 "extent": extent, "clim": [float(clim[0]), float(clim[1])],
                 "contacts": nums, "lo": nums[0], "hi": nums[-1],
+                "line": line,
                 "layers": layers or {}}
 
     if what == "features":
@@ -1466,6 +1865,185 @@ def pictures(got, what, index=None, cmap="jet", gain=None, fit_params=None,
             "clim": [float(clim[0]), float(clim[1])],
             "contacts": nums, "band_contacts": ns, "colors": CLASS_COLORS,
             "layers": layers or {}}
+
+
+def under_hood(got, p, index=None, layers=None, n_scree=8):
+    """Every number between one event's CSD patch and the class it was put
+    in, in the order they are computed.
+
+    WHY THIS EXISTS. Everything else in this panel is a picture of an
+    answer. A picture cannot be checked: "DS1 is the shallower one" and
+    "this event is DS2" are claims, and the only way to test a claim is to
+    follow the arithmetic that produced it. This returns that arithmetic
+    for one event -- the raw patch, what the normalisation did to it, the
+    component weights it was multiplied by, the score that came out, and
+    the distance to each cluster centre that decided the rest.
+
+    THE THINGS IT MAKES VISIBLE, which are not obvious from the pictures:
+
+      * The PCA sees a FLATTENED patch. Feature 37 is not a depth or a
+        time, it is (contact 5, sample 2), and the `axis` list here is
+        what turns one back into the other.
+      * `mean` is subtracted before projecting. A loading is a weight on a
+        DEVIATION from the average event, not on the value.
+      * K-MEANS RUNS ON THE TWO PCA COORDINATES, not on the features. Every
+        component past the second is computed and then thrown away before
+        anything is clustered, and `scree` is how much was in them. On a
+        set where PC3 carries as much as PC2 that is worth knowing, and
+        nothing on screen says it anywhere else.
+      * The class NUMBER comes last, from the depth of a landmark, and is
+        not what k-means returned. `km_label` and `type` are both here so
+        the renumbering can be seen rather than assumed.
+    """
+    res = fit(got, p, layers=layers)
+    X = np.asarray(res["norm"]).reshape(np.asarray(res["norm"]).shape[0], -1)
+    n_ev, n_f = X.shape
+    sel, nums = res["sel"], [int(n) for n in got["nums"]]
+    ns = [int(n) for n in res["nums_sel"]]
+    t0, t1 = res["t0"], res["t1"]
+    tw = res["tw"]
+    n_t = max(1, t1 - t0)
+
+    i = 0 if index is None else int(index)
+    if not 0 <= i < n_ev:
+        raise DsPcaError("There is no event %d in this read." % i)
+
+    pca = res["pca"]
+    coords = np.asarray(res["coords"])
+    x = X[i]
+    # `delta` has no components and no mean to subtract: the feature space
+    # IS the one number, so the arithmetic below is about that number
+    # instead of about a rotation. Zeros rather than a branch everywhere,
+    # so the shape of the answer does not change with the method.
+    if pca is None:
+        comps = np.zeros((0, X.shape[1]))
+        mean = np.zeros(X.shape[1])
+    else:
+        comps = np.asarray(pca.components_)        # [2 x n_features]
+        mean = np.asarray(pca.mean_)
+    dev = x - mean
+
+    # The score, recomputed HERE from the parts rather than read off the
+    # transform. If the two disagree the panel is lying about the
+    # arithmetic, and a check is cheap.
+    recomputed = [float(np.dot(dev, comps[c])) for c in range(comps.shape[0])]
+
+    # What was thrown away. `fit` asks for two components because two is
+    # what the scatter draws; this asks for more, on the same matrix, only
+    # to say how much is in the ones nobody clusters on.
+    scree = []
+    try:
+        n_more = int(min(n_scree, n_ev, n_f))
+        if pca is not None and n_more >= 1:
+            more = PCA(n_components=n_more).fit(X)
+            scree = [float(v) for v in more.explained_variance_ratio_]
+    except Exception:                                    # noqa: BLE001
+        scree = ([float(v) for v in pca.explained_variance_ratio_]
+                 if pca is not None else [])
+
+    # The cluster step, in the plane it actually happens in.
+    km_centres = np.asarray(res.get("km_centres"))
+    dists, km_label = [], None
+    if km_centres.size:
+        d = [float(np.linalg.norm(coords[i] - c)) for c in km_centres]
+        dists = d
+        km_label = int(np.argmin(d))
+    order = res.get("km_to_type") or {}
+
+    # index -> (contact, sample), which is the whole of "trace it back".
+    axis = [{"f": int(f), "csc": int(ns[f // n_t]),
+             "row": int(f // n_t), "col": int(f % n_t),
+             "t_ms": float(tw[t0 + (f % n_t)])}
+            for f in range(n_f)]
+
+    # The features that actually moved this event's score, largest first.
+    def top_for(c):
+        # `delta` has no components, so there are no terms to rank: the
+        # feature vector is one number and the "contribution" of that
+        # number is the whole of it. An empty list says that plainly
+        # rather than inventing a breakdown of a sum with one term.
+        if c >= comps.shape[0]:
+            return []
+        contrib = dev * comps[c]
+        idx = np.argsort(-np.abs(contrib))[:12]
+        return [{"f": int(j), "csc": axis[j]["csc"],
+                 "t_ms": axis[j]["t_ms"],
+                 "x": float(x[j]), "mean": float(mean[j]),
+                 "dev": float(dev[j]), "w": float(comps[c][j]),
+                 "contrib": float(contrib[j])}
+                for j in idx]
+
+    raw = np.asarray(res["feat"])[i]               # [contacts x samples]
+    nrm = np.asarray(res["norm"])[i]
+    return {
+        "ok": True,
+        "event": i,
+        "n_events": int(n_ev),
+        "n_features": int(n_f),
+        "shape": {"contacts": len(ns), "samples": int(n_t)},
+        "contacts": ns,
+        "times_ms": [float(tw[t0 + j]) for j in range(n_t)],
+        "features_mode": p.features,
+        "features_mode_name": FEATURE_NAMES.get(p.features, p.features),
+        "dead": float(p.dead),
+        # The three states of one event's patch, same shape, same order.
+        "raw": [[float(v) for v in row] for row in raw],
+        "norm": [[float(v) for v in row] for row in nrm],
+        "mean_vec": [float(v) for v in mean],
+        "axis": axis,
+        "components": [[float(v) for v in comps[c]]
+                       for c in range(comps.shape[0])],
+        # Empty under `delta`, which has no components to explain
+        # anything with: one number per event is the whole feature
+        # space, and there is nothing to rotate.
+        "explained": ([float(v) for v in pca.explained_variance_ratio_]
+                      if pca is not None else []),
+        "scree": scree,
+        "score": [float(v) for v in coords[i]],
+        "score_recomputed": recomputed,
+        "top": {"pc1": top_for(0), "pc2": top_for(1)},
+        "km": {
+            "on": "the two PCA coordinates",
+            "centres": [[float(v) for v in c] for c in km_centres]
+                       if km_centres.size else [],
+            "distances": dists,
+            "label": km_label,
+            "to_type": {str(a): int(b) for a, b in (order or {}).items()},
+        },
+        "method": res.get("method"),
+        "method_name": res.get("method_name"),
+        # The sink gap for THIS event: the two rows it was measured
+        # between, the raw contact distance, and the 0-1 scale that
+        # distance becomes. Under `delta` this one number is the entire
+        # feature vector; under `pca_gap` it is the last column; under
+        # `pca` it is computed and not used, which is worth being able to
+        # see rather than having to infer.
+        "gap": {
+            "value": float((res.get("gap") or [0])[i]),
+            "contacts": int((res.get("gap_contacts") or [0])[i]),
+            "rows": [int(v) for v in (res.get("gap_rows") or [[0, 0]])[i]],
+            "csc": [int(ns[v]) for v in (res.get("gap_rows")
+                                         or [[0, 0]])[i]],
+            "min_sep": int(res.get("min_sep") or MIN_SINK_SEP),
+            "weight": float(res.get("gap_weight") or 1.0),
+            "span": len(ns),
+            "used": res.get("method") in ("pca_gap", "delta"),
+        },
+        # Where k-means drew its line, for the one method where that is a
+        # number on an axis rather than a plane.
+        "bounds": ((res.get("variants") or {}).get("delta") or {}).get(
+            "bounds") or [],
+        # What the other two methods called this same event. The whole
+        # reason all three are computed.
+        "agree": {name: int(np.asarray(v["types"])[i])
+                  for name, v in (res.get("variants") or {}).items()},
+        "type": int(np.asarray(res["types"])[i]),
+        "k": int(res["k"]),
+        "rule": p.rule,
+        "flip": bool(p.flip),
+        "decide": res.get("decide") or [],
+        "colors": CLASS_COLORS,
+    }
 
 
 def _picture_features(got, p, cmap, encode, layers):

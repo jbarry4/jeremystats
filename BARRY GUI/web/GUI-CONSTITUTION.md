@@ -212,11 +212,76 @@ nothing here.
 
 ## 6. Compositions
 
-*Being built. `stepHeader`, `field`, `workbenchCard` and `analysisRun` will
-live in `web/js/ui.js`; this section will say what each contains and in what
-order, with Braces-vs-X-ray and Checkup-vs-StrataScope as the worked
-before/after. Until then, follow §1 and copy the nearest well-behaved
-neighbour.*
+A control can measure identically to its neighbour and still look like it
+belongs to a different application, because what differs is one level up.
+These are the shapes that answer that, in `web/js/ui.js`.
+
+### `stepHeader({ title, step, blurb })`
+
+Every tool's header. Mixed-case title, an optional step chip, then the blurb.
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ X-ray  (step 4 of The Dentist)  Which kind of dentate…   │
+└──────────────────────────────────────────────────────────┘
+   strong        .step-n              p.hint
+```
+
+**The worked example.** Braces and X-ray are adjacent steps of one bundle and
+had nothing in common:
+
+| | Braces (before) | X-ray (before) |
+|---|---|---|
+| header | `.card.br-intro` › `.section-label` + `p.hint` | `.dp-intro` › `strong` + `.dp-step` + `.hint` |
+| title | ALL CAPS, boxed in a card | mixed case, unboxed |
+| step | text, inside the title | a chip of its own |
+
+Across the app there were thirteen bespoke tool headers using **four
+alignments, seven gaps, three title elements and three subtitle classes**.
+
+X-ray's shape won, because it was already closest to the two headers that
+*were* shared — `.tk-head` and `.view-head` are both a mixed-case title with a
+subtitle beside it, and neither is boxed. The step is a chip because a title
+should say what the tool is; "step 4 of The Dentist" is a different fact
+about it.
+
+Do not add a fourteenth. If a tool needs something the header cannot express,
+change `stepHeader` so every tool gets it.
+
+### `field({ label, control, hint, inline })`
+
+One labelled control. `.section-label` above, the control, the hint under it.
+`inline: true` puts the label beside a control too short to deserve a line.
+
+Six primitives did this: `.section-label`, `.field label`, `.dp-lab`,
+`.ctl > label`, `.mini-field`, `.vacc-field` — and `.wiz-grid .field label`
+un-uppercasing some of them. `.section-label` won on merit and on usage.
+
+### `workbenchCard({ title, chips, count, owner, when, progress, tally, actions })`
+
+A thing you have open, on a bench, until you put it down. Checkup and
+StrataScope both build one.
+
+**The owner is always stated, including when there is not one.** "Nobody has
+this" is what a bench exists to say. StrataScope used to omit it entirely
+when unassigned, so an unclaimed sheet looked identical to one whose owner you
+simply had not read.
+
+**What is deliberately not unified.** A curation set can be handed to
+somebody; a sheet cannot — there is no assign path for one. So a set's owner
+is a `button.cur-who` and a sheet's is `span.cur-who.static`: same words, same
+place, no hover, no pointer. A control that looks pressable and is not would
+be a worse lie than the inconsistency it replaced.
+
+That is the general rule when two surfaces differ: **unify the shape, keep the
+difference that is about what the thing can do.**
+
+### Still to come
+
+`analysisRun`. Comod, Incisor, Panorama and Spectrum share three dead
+`.comod-*` classes, which is its own evidence they were copy-pasted from one
+another. Until it lands, follow §1 and copy the nearest well-behaved
+neighbour.
 
 ---
 

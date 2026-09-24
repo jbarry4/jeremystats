@@ -1,0 +1,429 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>strataglow — can you see the layers on the support panels?</title>
+<style>
+ body { background:#0c0f14; color:#dfe6ee; font:12px/1.6 ui-monospace,Consolas,monospace;
+        margin:0; padding:10px 14px; }
+ #frames { position:fixed; right:0; top:0; width:52vw; height:100vh; }
+ iframe { width:100%; height:50%; border:0; border-left:1px solid #243; background:#fff; }
+ #out { width:46vw; }
+ .ok::before { content:'ok    '; color:#7fe3b0; }
+ .bad::before { content:'FAIL  '; color:#ff8a7a; }
+ .bad { color:#ffb0a5; } .note { color:#7593a2; }
+ h2 { color:#ffb81c; font-size:12px; margin:14px 0 3px; }
+ div { white-space:pre-wrap; }
+</style>
+<p class="note">Two complaints, measured separately.
+
+"The overlays do not show up on all the support panels." StrataScope puts the
+CSD, the theta CSD, the voltage raster and the stacked time-frequency view in
+a SECOND window (strata.js openAids), and a second window is a separate page
+with its own session objects. The overlay is gated on a payload nobody was
+putting there, so the four panels a boundary is actually read off were the
+four with no boundaries drawn on them. Part 3 drives the real aid-window URL
+and asks whether the sheet arrives.
+
+"Not enough contrast or line thickness to see it on the rasters." A claim
+about pixels, so it is measured in pixels: the overlay is drawn over a
+synthetic raster as busy and as saturated as jet, and the checks below are
+differences between the before and after images -- how far the wash moves a
+pixel, how many pixels thick a boundary rule comes out, and whether the
+opaque spine and the region names are there at all.</p>
+<div id="out"></div>
+<div id="frames">
+  <iframe id="app"></iframe>
+  <iframe id="aid"></iframe>
+</div>
+<script>
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+/* Installed into the app frame once, and then called for each panel shape.
+
+   It draws a backdrop first -- a smooth, fully saturated field in the same
+   spirit as jet, because that is what these overlays actually land on and a
+   grey canvas would flatter every one of them -- keeps a copy, runs the REAL
+   BARRY.strata.draw over it, and reports the difference.
+
+   `BARRY` is a top-level const in core.js, so it is not a property of the
+   frame's window and has to be reached through eval inside it. */
+const INSTALL = `
+window.__glow = function (cfgJson) {
+  var cfg = JSON.parse(cfgJson);
+  var w = cfg.w, h = cfg.h;
+  var cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  var ctx = cv.getContext('2d');
+
+  // A jet-ish backdrop: every pixel saturated, nothing near the neutrals.
+  var img = ctx.createImageData(w, h);
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      var t = 0.5 + 0.5 * Math.sin(x / 23 + y / 9);
+      var i = (y * w + x) * 4;
+      img.data[i]     = Math.round(255 * Math.max(0, Math.min(1, 1.5 - Math.abs(4 * t - 3))));
+      img.data[i + 1] = Math.round(255 * Math.max(0, Math.min(1, 1.5 - Math.abs(4 * t - 2))));
+      img.data[i + 2] = Math.round(255 * Math.max(0, Math.min(1, 1.5 - Math.abs(4 * t - 1))));
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  var before = ctx.getImageData(0, 0, w, h).data.slice();
+
+  var fills = 0, strokes = 0, widths = [], texts = [];
+  var rf = ctx.fillRect.bind(ctx);
+  ctx.fillRect = function (a, b, c, d) { fills += 1; rf(a, b, c, d); };
+  var rs = ctx.stroke.bind(ctx);
+  ctx.stroke = function () { strokes += 1; widths.push(ctx.lineWidth); rs(); };
+  var rt = ctx.fillText.bind(ctx);
+  ctx.fillText = function (s, a, b) { texts.push(String(s)); rt(s, a, b); };
+
+  /* Both flags, because there are two doors into the same painter and a
+     window that has the read-only look switched on has wrapped it
+     (xplore.js installLayerHook). That wrapper decides whether to paint
+     from 'layerView' and the strength from 'layerWash', and the labelling
+     mode's own painter reads 'strata'. A session carrying only one of them
+     measures whichever door happens to be open in the frame it is in. */
+  var sess = { strata: cfg.payload, layerView: cfg.payload,
+               layerWash: cfg.wash || 'faint',
+               info: { channels: cfg.channels } };
+  var err = null;
+  try {
+    BARRY.strata.draw(ctx, sess, { t0: 0, t1: 10 }, 0, w, 0, h,
+                      { accent: '#4bc7f0' }, cfg.panel);
+  } catch (e) { err = String((e && e.message) || e); }
+  var after = ctx.getImageData(0, 0, w, h).data;
+
+  var D = function (x, y) {
+    var i = (y * w + x) * 4;
+    return Math.max(Math.abs(after[i] - before[i]),
+                    Math.abs(after[i + 1] - before[i + 1]),
+                    Math.abs(after[i + 2] - before[i + 2]));
+  };
+
+  // The body of the plot: away from the left tick and the right spine, and
+  // away from the boundary rules, so this is the WASH on its own.
+  var probeX = Math.floor(w * 0.45);
+  var lane = h / cfg.nrows;
+  var bounds = (cfg.boundaries || []).map(function (r) { return r * lane; });
+  var nearBound = function (y) {
+    for (var k = 0; k < bounds.length; k++) {
+      if (Math.abs(y - bounds[k]) < 7) return true;
+    }
+    return false;
+  };
+  var sum = 0, n = 0, hit = 0;
+  for (var y2 = 2; y2 < h - 2; y2++) {
+    if (nearBound(y2)) continue;
+    for (var x2 = 20; x2 < w - 20; x2 += 7) {
+      var d = D(x2, y2);
+      sum += d; n += 1; if (d > 0) hit += 1;
+    }
+  }
+  var washMean = n ? sum / n : 0;
+  var washCover = n ? hit / n : 0;
+
+  // How thick a boundary rule comes out, in whole pixels, measured on the
+  // picture rather than read off lineWidth: a 2px stroke on a half-pixel
+  // centre is not 2px of visible ink.
+  var thick = [];
+  for (var b2 = 0; b2 < bounds.length; b2++) {
+    var yc = Math.round(bounds[b2]);
+    var run = 0;
+    for (var dy = -6; dy <= 6; dy++) {
+      var yy = yc + dy;
+      if (yy < 0 || yy >= h) continue;
+      if (D(probeX, yy) > 55) run += 1;
+    }
+    thick.push(run);
+  }
+
+  // The spine, and the selection tick.
+  var edge = function (x0, x1) {
+    var s = 0, c = 0;
+    for (var y3 = 3; y3 < h - 3; y3 += 2) {
+      for (var x3 = x0; x3 < x1; x3++) { s += D(x3, y3); c += 1; }
+    }
+    return c ? s / c : 0;
+  };
+
+  return JSON.stringify({
+    err: err, fills: fills, strokes: strokes,
+    widths: widths, texts: texts,
+    washMean: Math.round(washMean * 10) / 10,
+    washCover: Math.round(washCover * 100) / 100,
+    thick: thick,
+    spine: Math.round(edge(w - 7, w) * 10) / 10,
+    tick: Math.round(edge(0, 5) * 10) / 10
+  });
+};
+true`;
+
+(async () => { try {
+  const f = document.getElementById('app');
+  f.src = '/?linkhold=0';
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  await untilN(() => typeof W.setView === 'function');
+
+  head('0. What this is measured on');
+  /* A 64-channel recording that is actually here, the built-in one by
+     preference: parts 1 and 2 paint from a payload built below and touch
+     no sheet at all, and part 3 opens the real labelling mode, so it has
+     to be a recording whose sheet nobody minds being opened. */
+  const reg = await (await fetch('/api/registry')).json();
+  const wide = [];
+  for (const p of (reg.tree || [])) {
+    for (const m of p.mice) {
+      for (const s of m.sessions) {
+        if (s.n_channels >= 64 && (s.here || []).length) wide.push(s);
+      }
+    }
+  }
+  const pick = wide.find((s) => String(s.gid || '').startsWith('demo-'))
+            || wide[0];
+  if (!pick) { say('bad', 'no 64-channel recording is reachable here'); return; }
+  say('note', '  ' + pick.label + '   gid=' + pick.gid);
+
+  let regions = [];
+  try {
+    const rr = await (await fetch('/api/layers/regions')).json();
+    regions = rr.regions || [];
+  } catch (e) { regions = []; }
+  check('the region vocabulary is reachable', regions.length >= 3,
+        regions.length + ' regions');
+  if (regions.length < 3) return;
+
+  /* A sheet with boundaries in it.
+
+     Built here rather than read off the recording, and that is the point:
+     the demo's sheet has one region on all 64 channels, so every boundary
+     check against it would pass by having nothing to draw. This one has
+     three regions and two boundaries at known channels, and it is never
+     saved anywhere -- it is a payload handed straight to the painter. */
+  const N = 64;
+  const CUT = [22, 43];                  // 1-based channel where a run starts
+  const labels = {};
+  for (let n = 1; n <= N; n++) {
+    const which = n < CUT[0] ? 0 : (n < CUT[1] ? 1 : 2);
+    labels[String(n)] = regions[which].id;
+  }
+  const payload = { gid: pick.gid, labels, regions, picked: [] };
+  const allCh = [];
+  for (let n = 1; n <= N; n++) allCh.push({ number: n });
+
+  await W.eval(INSTALL);
+
+  /* Each support panel, as the server really answers it.
+
+     `rows` is what an image panel reports it actually drew, and the three
+     shapes here are not interchangeable: the CSD and theta CSD are a second
+     spatial derivative and drop the first and last channel (analysis.py
+     _panel_raster), the voltage raster keeps them, and the stacked
+     time-frequency view StrataScope opens is every eighth channel and
+     nothing else (strata.js openAids). A boundary lands on a different lane
+     in each, which is the whole reason the painter is given the rows. */
+  const rowsOf = (nums) => nums.map((n) => ({ number: n, label: 'CSC' + n }));
+  const seq = (a, b, step) => {
+    const o = []; for (let n = a; n <= b; n += (step || 1)) o.push(n); return o;
+  };
+  const every8 = seq(1, N, 8);
+  const PANELS = [
+    { name: 'traces (no panel object)', panel: null, nums: seq(1, N) },
+    { name: 'voltage raster', panel: { panel: 'voltage', rows: rowsOf(seq(1, N)) },
+      nums: seq(1, N) },
+    { name: 'CSD raster', panel: { panel: 'csd', rows: rowsOf(seq(2, N - 1)) },
+      nums: seq(2, N - 1) },
+    { name: 'theta CSD', panel: { panel: 'theta', rows: rowsOf(seq(2, N - 1)) },
+      nums: seq(2, N - 1) },
+    { name: 'stacked spectrogram', panel: { panel: 'spectrogram',
+      rows: rowsOf(every8), stacked: true }, nums: every8 },
+  ];
+
+  // Which LANE a run starts on, per panel: the boundary is a change of
+  // label between one drawn row and the next, not a fixed channel number.
+  const boundsFor = (nums) => {
+    const b = [];
+    for (let i = 1; i < nums.length; i++) {
+      if (labels[String(nums[i])] !== labels[String(nums[i - 1])]) b.push(i);
+    }
+    return b;
+  };
+
+  const glow = async (p, extra) => {
+    const cfg = Object.assign({
+      w: 420, h: 320, panel: p.panel, payload,
+      channels: allCh, nrows: p.nums.length, boundaries: boundsFor(p.nums),
+    }, extra || {});
+    return JSON.parse(await W.eval(
+      'window.__glow(' + JSON.stringify(JSON.stringify(cfg)) + ')'));
+  };
+
+  head('1. Every support panel gets the overlay at all');
+  const got = {};
+  for (const p of PANELS) {
+    const r = await glow(p);
+    got[p.name] = r;
+    say('note', '  ' + p.name + ': ' + r.fills + ' fills, ' + r.strokes
+        + ' strokes, wash ' + r.washMean + ' over ' + Math.round(r.washCover * 100)
+        + '% of the body' + (r.err ? '   err=' + r.err : ''));
+    check(p.name + ' is painted', !r.err && r.fills > 0,
+          r.err || (r.fills + ' fills'));
+  }
+
+  head('2. And it is strong enough to see on a raster');
+  /* The thresholds.
+
+     `washMean` is the mean absolute change of the strongest channel of a
+     pixel, out of 255, at the DEFAULT wash -- the one nobody has touched,
+     which is the one people meet. Six or seven is the old faint, which is
+     below a JND on a busy picture. Twelve is where a region colour starts
+     to read as a tint rather than as noise.
+
+     `thick` is how many rows of pixels a boundary rule actually covers,
+     counted on the image at a column well away from both edges. One is a
+     hairline, which is what a 1px stroke gives and what disappeared into
+     jet. */
+  for (const p of PANELS) {
+    const r = got[p.name];
+    const thin = (r.thick || []).filter((t) => t < 3).length;
+    say('note', '  ' + p.name + ': boundary rules ' + JSON.stringify(r.thick)
+        + ' px thick, spine ' + r.spine + ', wash ' + r.washMean);
+    check(p.name + ': the wash moves a pixel enough to see',
+          r.washMean >= 12, 'mean delta ' + r.washMean + '/255');
+    check(p.name + ': the wash covers the whole plot, not a stripe of it',
+          r.washCover > 0.9, Math.round(r.washCover * 100) + '%');
+    check(p.name + ': every boundary rule is at least 3px of ink',
+          (r.thick || []).length > 0 && thin === 0,
+          JSON.stringify(r.thick));
+    check(p.name + ': the opaque spine is there down the right edge',
+          r.spine >= 60, 'mean delta ' + r.spine + ' in the last 7 columns');
+    check(p.name + ': and the regions are named on it',
+          (r.texts || []).length >= 3,
+          JSON.stringify(r.texts));
+  }
+
+  head('2b. The selection reaches the rasters too');
+  /* Which channels are about to be labelled is the question the CSD can
+     answer and the rail cannot. In the aid window it arrives on the
+     payload, because that window has no module state and no rail in it. */
+  const sel = [];
+  for (let n = 25; n <= 34; n++) sel.push(n);
+  const csd = PANELS[2];
+  const withSel = await glow(csd, {
+    payload: Object.assign({}, payload, { picked: sel }),
+  });
+  say('note', '  CSD with 10 channels selected on the payload: left-edge '
+      + 'delta ' + withSel.tick + ' (was ' + got[csd.name].tick + ')');
+  check('a selection published by the labelling window shows on the CSD',
+        withSel.tick > got[csd.name].tick + 15,
+        withSel.tick + ' vs ' + got[csd.name].tick);
+
+  head('3. The aid window: does the sheet get there at all?');
+  /* The real URL, not a re-implementation of it.
+
+     `window.open` is stubbed first so the mode's own pop-out is captured
+     rather than opened -- a headless run should not be spraying windows,
+     and what is wanted is the URL StrataScope really builds. That URL then
+     goes into the second frame, which is the aid window in every respect
+     that matters: same page, same modules, its own session objects. */
+  W.eval('window.__aid = null; window.open = function (u) {'
+         + ' window.__aid = u; return null; };');
+  W.eval("setView('toolkit')");
+  await sleep(300);
+  await W.eval('BARRY.strata.enter(' + JSON.stringify(pick.gid) + ')');
+  await untilN(() => W.eval('!!BARRY.strata.active'), 200);
+  check('StrataScope opened on the labelling window',
+        !!W.eval('!!BARRY.strata.active'));
+  const aidUrl = W.eval('window.__aid');
+  check('it asked for an aid window', !!aidUrl, String(aidUrl));
+  if (!aidUrl) return;
+  say('note', '  ' + String(aidUrl).replace(/^[^?]*/, ''));
+
+  const af = document.getElementById('aid');
+  af.src = aidUrl;
+  await new Promise((r) => af.addEventListener('load', r, { once: true }));
+  const A = af.contentWindow;
+  await untilN(() => typeof A.setView === 'function');
+  const nSess = await untilN(
+    () => A.eval('BARRY.views.xplore.state.order.length') > 0, 300);
+  check('the aid window opened the recording', nSess >= 0);
+
+  /* The claim, in one line: does a session in THAT window end up holding
+     the sheet? Everything the overlay does on an image panel is gated on
+     it, so this is the difference between four banded panels and four
+     bare ones. */
+  const arrived = await untilN(() => A.eval(
+    '(function () { var X = BARRY.views.xplore.state;'
+    + ' var s = X.sessions[X.order[0]];'
+    + ' return !!(s && s.strata && s.strata.labels'
+    + '           && Object.keys(s.strata.labels).length); })()'), 300);
+  check('the layer sheet reaches the aid window', arrived >= 0,
+        arrived < 0 ? 'never arrived' : 'after ' + arrived + ' polls');
+  if (arrived >= 0) {
+    const n = await A.eval(
+      '(function () { var X = BARRY.views.xplore.state;'
+      + ' var s = X.sessions[X.order[0]];'
+      + ' return Object.keys(s.strata.labels).length; })()');
+    const wsh = await A.eval(
+      '(function () { var X = BARRY.views.xplore.state;'
+      + ' return X.sessions[X.order[0]].layerWash; })()');
+    say('note', '  ' + n + ' labelled channels, wash "' + wsh + '"');
+    check('with a wash strength, so it is switched ON and not merely present',
+          wsh && wsh !== 'off', String(wsh));
+
+    // And it paints: the sheet being in the session is not the same claim
+    // as the panels showing it.
+    await A.eval(INSTALL);
+    const csdRows = [];
+    for (let n2 = 2; n2 <= 63; n2++) csdRows.push({ number: n2, label: 'CSC' + n2 });
+    const live = JSON.parse(await A.eval(
+      '(function () { var X = BARRY.views.xplore.state;'
+      + ' var s = X.sessions[X.order[0]];'
+      + ' return window.__glow(JSON.stringify({ w: 420, h: 320,'
+      + '   panel: ' + JSON.stringify({ panel: 'csd', rows: csdRows }) + ','
+      + '   payload: s.strata, channels: s.info.channels,'
+      + '   nrows: 62, boundaries: [] })); })()'));
+    say('note', '  aid-window CSD: ' + live.fills + ' fills, wash '
+        + live.washMean + (live.err ? '   err=' + live.err : ''));
+    check('and the CSD in the aid window actually paints it',
+          !live.err && live.fills > 0 && live.washMean > 5,
+          live.err || (live.fills + ' fills, wash ' + live.washMean));
+  }
+
+  head('4. Putting it back');
+  /* Nothing here wrote a label -- the sheets in parts 1 and 2 were made up
+     and never left the canvas -- but the mode was OPENED, which puts the
+     sheet on the bench. Leaving is what the person would do, and it is
+     what stops this harness leaving work-in-progress behind it. */
+  W.eval('BARRY.strata.exit()');
+  await sleep(500);
+  check('the labelling mode is shut', !W.eval('!!BARRY.strata.active'));
+  const cleared = await untilN(() => A.eval(
+    '(function () { var X = BARRY.views.xplore.state;'
+    + ' var s = X.sessions[X.order[0]];'
+    + ' return !(s && s.strata); })()'), 200);
+  check('and the aid window stops drawing a sheet nobody is working on',
+        cleared >= 0, cleared < 0 ? 'still drawing it' : 'after '
+        + cleared + ' polls');
+
+  head(bad ? bad + ' FAILED' : 'all checks passed');
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+} })();
+</script>

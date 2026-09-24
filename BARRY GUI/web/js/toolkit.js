@@ -179,7 +179,7 @@ BARRY.views.toolkit = (function () {
     host.innerHTML = '';
     host.appendChild(el('div', { class: 'tk-layout' }, [
       el('div', { class: 'tk-tools' }, [
-        el('div', { class: 'section-label', style: 'margin-top:0',
+        el('div', { class: 'section-label',
                     text: 'Bundles' }),
         bundleCard(),
         el('div', { class: 'section-label', text: 'Tools' }),
@@ -386,7 +386,7 @@ BARRY.views.toolkit = (function () {
   /* ---------- picking the scope ---------- */
   function scopeCard() {
     const box = el('div', { class: 'card tk-scope' });
-    box.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    box.appendChild(el('div', { class: 'section-label',
                                 text: 'Which recordings' }));
 
     const total = (scopes && scopes.total) || 0;
@@ -1161,47 +1161,34 @@ BARRY.views.toolkit = (function () {
          it destroys nothing. */
     ]);
 
-    return el('div', {
-      class: 'cur-set' + (done ? ' done' : '') + (st.archived ? ' archived' : ''),
-    }, [
-      el('div', { class: 'cur-set-top' }, [
-        el('strong', { text: st.name }),
+    /* Whose it is and when it was last picked up. Without a name on it,
+       forty sets are forty identical rows and there is no way to tell
+       "mine, this morning" from "somebody's, in June".
+
+       `presenceLine` goes above the progress bar, because it is about right
+       now and the bar is about the set. */
+    const card = BARRY.ui.workbenchCard({
+      done: done,
+      extra: st.archived ? 'archived' : null,
+      title: st.name,
+      chips: [
         el('span', { class: 'hk-chip', text: st.kind_name }),
         el('span', { class: 'cur-set-sess',
                      text: (st.session || {}).label || st.gid }),
-        el('div', { style: 'flex:1' }),
-        el('span', { class: 'cur-set-n',
-          text: pr.specified + ' / ' + pr.total
-              + (done ? '  ✓' : '  ·  ' + pr.left + ' left') }),
-      ]),
-      /* Whose it is and when it was last picked up. Without a name on it,
-         forty sets are forty identical rows and there is no way to tell
-         "mine, this morning" from "somebody's, in June". */
-      el('div', { class: 'cur-set-who' }, [
-        el('button', {
-          class: 'cur-who' + (who ? '' : ' none'),
-          title: who ? 'Assigned to ' + who + ' — click to change'
-                     : 'Nobody has this one. Click to put a name on it.',
-          text: who || 'unassigned',
-          onclick: () => assignSet(st),
-        }),
-        when ? el('span', { class: 'cur-set-when',
-          text: 'opened ' + when
-              + (st.opened_by && st.opened_by !== who
-                  ? ' by ' + st.opened_by : '') }) : null,
-      ].filter(Boolean)),
-      /* Above the progress bar, because it is about right now and the bar
-         is about the set. */
-      presenceLine(st),
-      el('div', { class: 'cur-prog small' }, [
-        el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
-      ]),
-      el('div', { class: 'cur-set-tally' },
-         (st.labels || []).map((l) => el('span', {
-           class: 'cur-tally', style: '--cat:' + l.color,
-           text: l.name + '  ' + ((pr.by_label || {})[l.id] || 0),
-         }))),
-      el('div', { class: 'cur-set-acts' }, [
+      ],
+      count: pr.specified + ' / ' + pr.total
+             + (done ? '  ✓' : '  ·  ' + pr.left + ' left'),
+      owner: { name: who, onAssign: () => assignSet(st) },
+      when: when ? 'opened ' + when
+                   + (st.opened_by && st.opened_by !== who
+                       ? ' by ' + st.opened_by : '') : null,
+      extras: [presenceLine(st)].filter(Boolean),
+      progress: pr.percent || 0,
+      tally: (st.labels || []).map((l) => el('span', {
+        class: 'cur-tally', style: '--cat:' + l.color,
+        text: l.name + '  ' + ((pr.by_label || {})[l.id] || 0),
+      })),
+      actions: [
         el('button', {
           class: 'btn sm', text: pr.left ? 'Carry on…' : 'Look again…',
           disabled: reach ? null : 'disabled',
@@ -1236,9 +1223,13 @@ BARRY.views.toolkit = (function () {
             renderCuration();
           },
         }),
-      ]),
-      more,
-    ]);
+      ],
+    });
+    /* The administrative half, folded away, sits below everything the card
+       is about -- so it is appended rather than being a slot every other
+       bench card would have to know about. */
+    if (more) card.appendChild(more);
+    return card;
   }
 
   /* Which cards have their administrative half showing. Outside the render
@@ -1535,7 +1526,7 @@ BARRY.views.toolkit = (function () {
             disabled: v.usable ? null : 'disabled',
             checked: ver && ver.v === v.v ? 'checked' : null,
             onchange: () => { ver = v; paint(); } }),
-          el('span', { class: 'ver-n', text: 'v' + v.v }),
+          el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
           v.imported ? el('span', { class: 'flagchip',
                                     text: 'the detector' }) : null,
           el('span', { class: 'mk-name', text: mix || (v.n || 0) + ' events' }),
@@ -1554,7 +1545,7 @@ BARRY.views.toolkit = (function () {
         body.appendChild(el('p', { class: 'confirm-msg',
           text: 'The set will hold ' + (ver.n || 0) + ' candidate(s)'
               + (decided ? ', ' + decided + ' of them already decided as of '
-                           + 'v' + ver.v + '.'
+                           + 'v' + (ver.name != null ? ver.name : ver.v) + '.'
                          : ', none decided \u2014 a fresh pass.') }));
         if (ver.note) {
           body.appendChild(el('p', { class: 'hint', text: '\u201c'
@@ -2298,37 +2289,34 @@ BARRY.views.toolkit = (function () {
       onclick: () => archiveSheet(sh),
     }));
 
-    return el('div', {
-      class: 'cur-set' + (done ? ' done' : '') + (onBench ? ' on-bench' : ''),
-      'data-gid': sh.gid,
-    }, [
-      el('div', { class: 'cur-set-top' }, [
-        nameCell(sh),
+    /* The same card Checkup builds. The owner is text rather than a button
+       here because a sheet cannot be handed to somebody -- there is no
+       assign path for one -- but it is stated either way, including when
+       nobody has it, which is the thing a bench is for saying. */
+    return BARRY.ui.workbenchCard({
+      gid: sh.gid,
+      done: done,
+      extra: onBench ? 'on-bench' : null,
+      title: nameCell(sh),
+      chips: [
         el('span', { class: 'hk-chip', text: 'layers' }),
         sh.name && sh.session_label
-          ? el('span', { class: 'hint', text: sh.session_label }) : null,
-        sh.archived
-          ? el('span', { class: 'hk-chip', text: 'archived' }) : null,
-        el('div', { style: 'flex:1' }),
-        sh.assignee
-          ? el('span', { class: 'csr-who', text: sh.assignee }) : null,
-        el('span', { class: 'cur-set-n',
-          text: (pr.labelled || 0) + ' / ' + (pr.total || 0) + ' channels' }),
-      ].filter(Boolean)),
-      when ? el('div', { class: 'hint',
-        text: (onBench ? 'picked up ' : 'last touched ') + when
-          + (sh.opened_by && onBench ? ' by ' + sh.opened_by : '') }) : null,
-      el('div', { class: 'cur-prog small' }, [
-        el('i', { style: 'width:' + (pr.percent || 0) + '%' }),
-      ]),
-      el('div', { class: 'cur-set-tally' },
-         (sh.regions || []).filter(
-           (r) => (pr.by_region || {})[r.id]).map((r) => el('span', {
-             class: 'cur-tally', style: '--cat:' + r.color,
-             text: r.name + '  ' + pr.by_region[r.id],
-           }))),
-      el('div', { class: 'cur-set-acts' }, acts),
-    ].filter(Boolean));
+          ? el('span', { class: 'cur-set-sess', text: sh.session_label }) : null,
+        sh.archived ? el('span', { class: 'hk-chip', text: 'archived' }) : null,
+      ].filter(Boolean),
+      count: (pr.labelled || 0) + ' / ' + (pr.total || 0) + ' channels',
+      owner: { name: sh.assignee || null },
+      when: when ? (onBench ? 'picked up ' : 'last touched ') + when
+                   + (sh.opened_by && onBench ? ' by ' + sh.opened_by : '')
+                 : null,
+      progress: pr.percent || 0,
+      tally: (sh.regions || []).filter(
+        (r) => (pr.by_region || {})[r.id]).map((r) => el('span', {
+          class: 'cur-tally', style: '--cat:' + r.color,
+          text: r.name + '  ' + pr.by_region[r.id],
+        })),
+      actions: acts,
+    });
   }
 
   /* ==================================================================
@@ -2409,7 +2397,7 @@ BARRY.views.toolkit = (function () {
     ]));
 
     const card = el('div', { class: 'card' });
-    card.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    card.appendChild(el('div', { class: 'section-label',
                                  text: 'Open a recording' }));
     card.appendChild(pick);
     card.appendChild(el('div', { class: 'tk-actions' }, [
@@ -2426,7 +2414,7 @@ BARRY.views.toolkit = (function () {
        obvious from their names and the second one is the whole reason the
        mode exists. */
     const what = el('div', { class: 'card' });
-    what.appendChild(el('div', { class: 'section-label', style: 'margin-top:0',
+    what.appendChild(el('div', { class: 'section-label',
                                  text: 'What it gives you' }));
     what.appendChild(el('dl', { class: 'tk-what' }, [
       el('dt', { text: 'Theta power, band by band' }),

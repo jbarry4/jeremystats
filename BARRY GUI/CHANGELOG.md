@@ -15,6 +15,559 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.24.2 - The gap is measured on the signal it should be, and the curve is on the picture
+
+### Fixed
+
+- **The sink gap was measured on the broadband CSD.** It should be the
+  5—100 Hz, mains-out one, and now is.
+
+  The feature vector is broadband because that is Toothy’s method and the
+  method is the thing being ported. The gap is not part of that
+  heritage: it is a question about GEOMETRY — which two contacts the
+  sinks sit on — and it is answered by peak-picking a depth profile.
+  60 Hz sits inside the 5—100 Hz band and it SURVIVES A CSD: it is
+  common-mode, but a second difference of a common-mode line is not zero
+  on a real probe. A mains ripple across depth adds local minima, and
+  `find_peaks` cannot tell one of those from a laminar sink — so on the
+  broadband signal the "two main sinks" could be two crests of the
+  mains.
+
+  This is the same reason the refinement has always been notched
+  whatever the features do. `sur["band"]` is built from the notched
+  trace and then filtered to the DS band, so it is both at once, and the
+  panel says which signal the landmarks were found on rather than
+  leaving it to be assumed.
+
+  **It changes the numbers**, deliberately. Anything banked before today
+  measured its gap on the broadband CSD.
+
+### Added
+
+- **The depth profile, drawn on the raster.** A raster is a field and
+  the eye is bad at reading a trough out of one: "where is the sink" is
+  a question about a curve, and the curve was not drawn anywhere.
+
+  Over the SAME window the features come from — averaging the whole
+  surround instead would smear a 20 ms event into 100 ms of baseline and
+  flatten the thing being looked for. Down the right-hand side, so it
+  does not cover the event. Every candidate sink is ticked on it and the
+  two the gap was measured between are bracketed with the delta.
+
+  A checkbox turns it off, and it is a view rather than a question, so
+  it redraws rather than refits.
+
+- **The delta in the recording window too.** As channel lines, which is
+  the mechanism XploreFinder already has for "a laminar landmark, marked
+  across the panes" — the same one Incisor puts its layer picks on. The
+  two sinks are drawn on the raw recording at the contacts they were
+  found on, so they can be checked against data the tool never touched.
+  Nothing in that window had to learn what a dentate spike class is; it
+  already knows how to draw a line at a contact.
+
+### Changed
+
+- **The centre raster is refetched when the box moves, and it did not
+  use to be.** For a long time the box genuinely did not enter into it:
+  the two panes are a whole-shank average, and moving the box moved a
+  rectangle drawn client-side and nothing else. The depth profile
+  changed that — it is averaged over the feature window and its
+  landmarks are the sinks the gap was measured between, so both move
+  with the box. Leaving it out left a line drawn for a box nobody had
+  any more. One more request per fit; being right costs that.
+
+### Checked
+
+- `web/_dev/dspca.html` is 282 checks. The new ones pin the line to one
+  value per contact over the feature window, the landmarks to inside the
+  band they were measured in, the chosen pair to being among the
+  candidates, the switch to redrawing rather than refitting, and — the
+  point of the fix — that both the line and the fit report the gap as
+  measured on the notched DS band.
+
+- The check that caught the staleness above was itself reading the
+  raster the instant a fit landed, which compares a line drawn for the
+  previous box. It waits on the box the picture was drawn for.
+
+- `ui_baseline.py` shows two lines moving on `button.chip-btn.vacc-live`
+  gaining and losing its `.on` state. That is whether this machine is
+  signed in to the cluster, not a change to any rule, and `vacc.js` is
+  not touched here — so the baseline is left as it is rather than
+  having one machine’s VACC state written into it.
+
+## 2026.09.24.1 - The delta is on the panels, and the cut can be placed by hand
+
+### Added
+
+- **The sink gap is drawn where it is measured.** It was a number in a
+  feature vector and nowhere on screen. Now the two sinks and the bracket
+  between them are marked on the class-average depth profile, on the
+  raster of whichever spike is showing, and as a thin line across the
+  feature matrix — one point per event, in the same column order, so
+  under `delta` the line IS the feature vector and the class blocks below
+  should line up with the steps in it. That is the whole claim of the
+  method, visible rather than asserted.
+
+  Drawn from `feat`, the signal the feature is measured on, and not from
+  the curve beside it, which is the display CSD. The mark on screen has
+  to be the pair the NUMBER came from or the panel shows one thing and
+  the vector holds another.
+
+- **A cut placed by hand, for the one method whose axis has units.**
+  k-means minimises within-cluster variance, which on a lopsided
+  one-dimensional spread puts the boundary where the arithmetic wants it
+  rather than where the gap in the data is. Click the sink-gap panel to
+  move the line; right-click to hand it back. The counts, the profiles
+  and the DS1/DS2 call all recompute from it exactly as they would from
+  k-means, and where k-means WOULD have put it is kept, because "you
+  moved it from 0.31 to 0.44" needs both numbers.
+
+- **The contacts in the box, and which ones are in use.** The recording’s
+  own bad channels come from the shared record — the same list Braces
+  and the ToolKit read — so the panel cannot disagree with them about
+  which wire is bad. Any contact can be taken out here on top of that,
+  and the two are marked differently: "this recording is marked bad" and
+  "I took it out just now" are different facts.
+
+  REPAIRED, NOT DROPPED, and the count says so. A CSD is a second
+  difference over depth; a contact taken out of the middle leaves the
+  rest unevenly spaced, and a second difference over an uneven grid is
+  not a CSD.
+
+  It is a FIT parameter, not a read one: taking a wire out changes the
+  answer and must not throw away the minutes of reading.
+
+- **A chip on each chart saying which method it is of.** On the depth
+  profile, the feature matrix and the space panel. Off the FIT and never
+  off the request: `q.method` changes the instant a radio is clicked
+  while the chart underneath is still the previous answer, so the chip
+  names what is actually drawn and marks itself stale until the recompute
+  lands. A label that renamed a picture before the picture changed would
+  be telling you something untrue about what you are looking at.
+
+### Changed
+
+- **The control strip is in the order the question is asked.** How to
+  split them first, because it decides which of the settings below mean
+  anything — `delta` has no feature vector to normalise, so "what the
+  PCA sees" is not a choice it has, and offering `sign ±1` beside a
+  method with no PCA in it is offering a setting that does nothing. The
+  gap settings are the mirror of that. The box, the class count and the
+  notch apply to all three and sit between. Which one is DS1 comes last:
+  it is not part of computing the split, it names the two groups once
+  they exist.
+
+- **The picker no longer offers what the next step refuses.** Candidates
+  say whether they can actually be read, and a set that cannot is shown
+  disabled with the reason rather than listed and then rejected — which
+  is how "This set is not attached to a recording" came to appear under
+  the name of the recording. Three cheap tiers: no registry id, an id
+  this machine has never seen, a recording not mounted here. Indexed once
+  for the handful of gids that have sets, because `REG.by_gid` re-stats
+  every shard at about 0.7s a call and summarising the whole registry is
+  an `isdir` per path.
+
+### Checked
+
+- `web/_dev/dspca.html` is 270 checks. The new ones cover the class-mean
+  sinks against the box they must lie in and the scale they must produce,
+  the minimum separation, taking a contact out and putting it back (and
+  that the box stays the same size, because it is repaired), the cut
+  placed by hand overriding the fitted one and every event falling on the
+  side of it its class says, and the mode chip naming the fit rather than
+  the request.
+
+- **A heading that starts with the word BAD reports itself as a
+  failure.** The runner counts a line beginning with BAD, FAIL or ERROR
+  as one, so "BAD CHANNELS, AND A CUT PLACED BY HAND" was a phantom
+  failure in an otherwise clean suite. Renamed. A phantom failure is as
+  corrosive as a missed one — it teaches people to ignore the runner.
+
+- Two checks were written when there was only one method and assumed it;
+  one waited on `q.method` and `fit.ok`, which are both true before
+  anything is recomputed, and measured the previous fit. They ask for the
+  method they are about, and wait on the answer.
+
+## 2026.09.23.13 - X-ray gets the draft’s three methods, and banking files the pictures
+
+### Added
+
+- **Three ways of splitting the events, and all three are computed every
+  fit.**
+
+    * **PCA, no gap** — the laminar profile and nothing else. What this
+      tool did before.
+    * **PCA + gap** — the same, with one extra column: how far apart the
+      event’s two sinks are, on a 0—1 scale. One column among many, so
+      it nudges rather than decides. The weight is a knob because the
+      first version of the feature was effectively 9 and took PC1’s
+      correlation with loudness from 0.52 to 0.75.
+    * **delta only, no PCA** — one number per event, and k-means
+      partitions that line directly. No rotation and no variance to be
+      dominated by: what is clustered IS what you meant to cluster on, and
+      the boundary is a threshold you can read off the axis and quote.
+
+  **Delta is the default.** All three run on every fit anyway — a PCA
+  over a few dozen columns is milliseconds, and it is the only way to know
+  whether the gap is carrying the DS1/DS2 split or is along for the ride.
+  The panel says what the two you did not choose made of the same events,
+  and **all three are numbered by one rule**, so DS1 means the shallower
+  class in each and they can be put side by side at all.
+
+- **The sink gap, with the two numbers that shape it.** `(gap - 1) /
+  (span - 2)`, clipped: pure geometry, so two events with the same laminar
+  spacing give the same number whatever the band width and however big the
+  event was. `min_sep` defaults to 5 contacts — 150 µm — because two
+  dips closer than that are one sink seen twice through a spatial filter,
+  not two laminar sinks: a 3-point taper plus a second difference will
+  routinely split one trough into a pair, and without the floor the gap
+  measures the width of that artefact.
+
+- **Banking files the numbers and the pictures, separately.**
+
+    * The **pictures** go to Results as runs, each carrying the session,
+      the settings for reading and a `recipe` for rebuilding. They are
+      rendered in the browser because that is where they were drawn:
+      `dspca.py` is forbidden matplotlib at any depth, so re-rendering
+      them on the server would be a second implementation of every panel
+      and a figure that is not the one anybody looked at.
+    * The **numbers** go to the DSPCA vault, keyed on the question — the
+      recording and a hash of every setting that changes a number — so
+      asking the same thing twice costs nothing and two machines write the
+      same record. The per-event labels are NOT duplicated there: they are
+      the bank version that was just written, and a second copy that could
+      disagree with it is worse than no copy.
+    * The **link** goes both ways. The version carries the whole parameter
+      set plus the result’s hash and the figures it filed; the result
+      carries the entry and the version. Either end finds the other
+      without a search.
+
+  Filed **before** the version is minted, so the version can carry the
+  link: a figure filed afterwards needs the version patched to point at
+  it, and a patch that fails leaves a version claiming pictures nobody can
+  find. A figure filed for a commit that then fails is an orphan in
+  Results, which is untidy and not wrong.
+
+### Changed
+
+- **The space panel is a line under `delta`.** One number per event, so
+  there is no plane and no rotation: the events lie along the axis they
+  were clustered on, jittered vertically only so ties are countable, and
+  the boundary k-means drew is a rule at a value that can be read off.
+  That is the whole argument for the method — a threshold for a methods
+  section, rather than "the first two components of a rotation".
+
+- **The version note names the method.** It said "by PCA" whichever of the
+  three had been used.
+
+### Checked
+
+- `web/_dev/dspca.html` is 238 checks. The new ones verify the gap scale
+  as `(gap - 1) / (span - 2)` against the contact distance it came from,
+  that raising the minimum separation can only ever merge sinks and never
+  invent a wider gap, that all three methods label every event and only as
+  DS1..DSk, that the active one is the answer on screen, and that the
+  delta boundary is the midpoint between adjacent centres — which is
+  exactly where k-means puts it in one dimension.
+
+- `tools/check_dspca_filing.py` is new, and covers the half a browser
+  harness should not: banking writes a version, and a harness that did it
+  every run would mint one on the demo entry forever. It checks the gate
+  that decides what becomes a file in Results (a PNG data URI in,
+  everything else refused — a JPEG called a PNG, base64 of something
+  that is not an image, a bare string with no header), and that **every**
+  setting that changes a number is in the record’s key: thirteen of them,
+  one at a time, plus the three methods as three records rather than one
+  question asked three ways. That key is what params-only reconstruction
+  rests on.
+
+- Two checks in the existing suite were written when there was only one
+  method and quietly assumed it — "one feature per contact" and
+  "widening multiplies the features" are true of the PCA methods and
+  meaningless of `delta`, whose feature vector is one number however wide
+  the box is. They ask for the method they are about now. Two more waited
+  on `q.method` and `fit.ok`, which are both true the instant the call
+  returns and before anything is recomputed, so they measured the previous
+  fit; they wait on the answer.
+
+## 2026.09.23.12 - X-ray shows its working
+
+### Added
+
+- **Under the hood.** Every number between one spike’s CSD patch and the
+  class it was put in, in the order they are computed, with the numbers
+  rather than a description of them.
+
+  Everything else in this tool draws an ANSWER, and a picture cannot be
+  checked. "DS1 is the shallower one" and "this event is DS2" are claims,
+  and the only way to test a claim is to follow the arithmetic that
+  produced it. Eight stages: the patch as CSD values, what the
+  normalisation did to it, the flattening, the component weights laid back
+  out over the patch as a picture, the score as the sum that produced it,
+  the variance nobody clusters on, the distance to each cluster centre,
+  and the renaming.
+
+  Four things in it are not visible anywhere else in the panel:
+
+    * the PCA sees a FLATTENED patch, so feature 37 is (contact 5, sample
+      2) and not a depth or a time — every cell names the index it
+      becomes, which is the whole of tracing a dot on the scatter back to
+      a contact and a millisecond;
+    * the mean is subtracted first, so a loading weights a DEVIATION from
+      the average event rather than a value;
+    * **k-means runs on the two PCA coordinates, not on the features.**
+      Every component past the second is computed and then discarded
+      before anything is clustered, and the scree bars past PC2 are
+      variance the classification never saw. On a set where PC3 carries as
+      much as PC2 that is worth knowing, and nothing said it anywhere;
+    * the class NUMBER comes last, from a landmark depth, and is not what
+      k-means returned — both are shown, so the renumbering can be seen
+      rather than assumed. It is also why DS1 before and after a refit
+      need not hold the same events.
+
+  **Not a neural network, and that was considered.** PCA is a linear
+  rotation: the weights are a matrix that exists, can be printed, and can
+  be reshaped back into a depth-by-time picture of what the component
+  measures. A network would replace a method whose workings can be read
+  with one whose workings cannot, to answer a question that is already
+  answerable — and with tens to hundreds of events there is nothing to
+  train it on. The honest under-the-hood view of a linear method is the
+  linear algebra, shown.
+
+### Checked
+
+- The panel claims to show the arithmetic, so the harness checks it
+  against the arithmetic rather than checking that it rendered.
+  `web/_dev/dspca.html` is 201 checks, and the new ones recompute:
+
+    * each PC score as the sum over features of (value — mean) × weight,
+      against what the transform returned — agreeing to 1e-6;
+    * each listed contribution as exactly its own term, and the list as
+      the largest ones in order;
+    * each cluster distance as the Euclidean distance from this event’s
+      score to that centre, and the nearest as the one it was put in;
+    * the class number as the renumbering of that cluster;
+    * the feature index as the flattening it says it is, cell by cell.
+
+  A panel of numbers that nobody has checked against their source is one
+  more picture to believe, which is the thing it was built to replace.
+
+## 2026.09.23.11 - StrataScope's support panels get the layers, and you can see them
+
+### Fixed
+
+- **The aid window showed no layers at all.** StrataScope puts the CSD, the
+  theta CSD, the voltage raster and the stacked time-frequency view in a
+  second window, because the traces need the whole of the first one. A
+  second window is a separate page: its own session objects, its own
+  modules, none of the labelling mode's state. The overlay is gated on a
+  payload, nothing was putting one there, and so the four panels a boundary
+  is actually read off were the four with no boundaries drawn on them.
+
+  The sheet now goes over the link channel, the way the curation pointer
+  already did -- the labels, the regions, the wash strength and the current
+  selection, coalesced so a drag down the rail is one request in flight
+  rather than sixty-four queued behind a long poll. The aid window adopts it
+  into exactly the state a window has when somebody turns the layer wash on
+  by hand, so there is one painter and one set of rules rather than two.
+
+  The selection travels with it, which is the part that was missing even in
+  principle: "which channels am I about to label" is the question the CSD
+  can answer and the rail cannot, and the aid window has no rail in it.
+
+### Changed
+
+- **The overlay is drawn to be seen on a raster.** It was a 10% wash and a
+  one-pixel coloured hairline. Both were being asked to show up on jet,
+  which is saturated everywhere -- and the region colours were chosen to be
+  told apart from each other, not from a colormap. Where the two agreed the
+  overlay was invisible at any alpha.
+
+  So the answer is carried by ink that does not fade, and the wash is left
+  to be atmosphere:
+
+  - an opaque column of the region colour down the **right** edge of every
+    panel with channel lanes -- right, because the left edge already carries
+    the channel numbers on a raster and the selection tick on the traces;
+  - boundary rules drawn twice, a dark rule first and the region colour on
+    top of it, so the line is findable anywhere on the picture and still
+    says which boundary it is: 5-6 pixels of ink where there was 1;
+  - the region's name against that column wherever the run is tall enough
+    to hold one, because a colour with nothing to decode it is not an answer
+    in a window with no rail;
+  - the selection tick widened and made opaque, and the wash strengths
+    raised by about half.
+
+  Measured rather than eyeballed: `web/_dev/strataglow.html` draws the real
+  painter over a synthetic raster as saturated as jet and reports the
+  difference -- how far the wash moves a pixel, how many pixels thick each
+  boundary rule comes out, and whether the spine and the names are there --
+  for each of the four panel shapes the server really sends, and then drives
+  the real aid-window URL to check the sheet arrives and paints. 40 checks;
+  17 of them fail against the code this replaces.
+
+---
+
+## 2026.09.23.10 - The first sign-in sent a broken script, and setup now finishes the job
+
+### Fixed
+
+- **The very first sign-in failed with `bash: -c: line 16: ` ; }'`.** The
+  remote command is assembled by formatting a shell block into
+  `printf ... | { ... ; }`, and the block already ends with a newline -- so
+  the appended `" ; }"` landed a bare semicolon at the start of its own
+  line, and a semicolon with no command before it is a syntax error.
+
+  The bad news is where it sat: the failure came AFTER authenticating. The
+  password, the key generation and the connection had all worked. The only
+  thing wrong was the shape of the text being sent, which is the one part
+  nothing was checking.
+
+  So it is checked now. `install_script()` is split out of `install_key()`
+  and `tools/test_vaccsignin.py` runs the result through `bash -n` -- both
+  the current form, which must parse, and the exact form that failed, which
+  must still not. The checker is calibrated against a known-good and a
+  known-bad script first, because `bash -n -c <string>` returns 1 on this
+  platform whatever it is given and would have made the test pass
+  vacuously.
+
+### Changed
+
+- **Setup asks for the password and installs the key**, rather than
+  recording a NetID and leaving the real work to the app.
+
+  It asks in the right order, which is what makes it bearable: keys already
+  on the machine are tried against the account FIRST, and on a shared rig
+  that is the ordinary case -- one person sets the cluster up and everybody
+  after them is asked for nothing but their NetID. Measured on this machine,
+  an existing key is found in 1.5 s and a wrong NetID is ruled out in 0.3 s.
+
+  `getpass` rather than `input`, so it is not echoed into the scrollback of
+  a window that stays open all day, and a console that cannot suppress the
+  echo is told to use the app instead of having somebody's password printed
+  across it. The password is held for one `ssh` invocation and dropped.
+
+  The key is proved with a key-only connection before the config is written.
+  Recording "signed in" on the strength of a password that has now been
+  discarded is how a machine ends up configured and unable to connect, with
+  nothing left to retry.
+
+  Skipping stays a first-class answer at every step, and a launcher with no
+  terminal -- a double-clicked window -- asks nothing at all.
+
+## 2026.09.23.9 - A version number is not a version name
+
+### Fixed
+
+- **The same history read differently in different panels.** X-ray’s picker
+  listed v0 to v4; the bank’s own history strip, for the same entry, listed
+  v0, v1, v2, v3, v3 — five versions, four names, one of them twice, and no
+  way to tell which was which. Another entry showed ten pills reading v0, v1,
+  v2, v3, v3, v4, v4, v5, v5, v6, with two different people’s v5 under it.
+
+  `v` is what a machine minted and it is NOT unique: two machines mint
+  independently and the union keeps both, which is the right outcome and
+  the reason `versions.label_rows` exists — it walks the lineage in
+  creation order and hands back a name that is. Half the application was
+  showing the number anyway.
+
+  There is one namer now. `named_versions` in `app.py` wraps `label_rows`,
+  every endpoint that serialises versions goes through it or builds the
+  name alongside the row, and the twelve places in the browser that wrote
+  `'v' + v.v` read `v.name` with the number as a fallback. The curation
+  list is sorted by the name’s key rather than the raw number too: two
+  versions numbered 3 sorted against each other arbitrarily, so the
+  history could list them in a different order on two machines.
+
+- **Clicking the second of two versions with the same number opened the
+  first.** The history strip keyed its selection on `v.v`. It keys on the
+  name, which is the thing that is unique.
+
+- **"This set does not say which recording it came from" — under the name
+  of the recording.** Three different failures shared one sentence, and
+  the one it described was the rarest. It now says which of them it is: no
+  registry id at all (a label is a name and not a locator), an id the
+  registry here has never heard of, or a recording the registry knows with
+  no folder recorded anywhere. Each names the set and the id it is talking
+  about.
+
+### Added
+
+- **Every version says whether it is shared.** A version history that does
+  not say this is the same history on a machine that has pushed and one
+  that has not, and the difference is whether a colleague can see any of
+  it. `/api/bank/sync` already answered it per version; the history strip
+  now shows it: **shared**, **shared, no snapshot** (the pass is readable
+  and cannot be restored, which is the one people get caught by), **this
+  computer only**, or **not checked**.
+
+  Unverified says so rather than guessing, because "probably shared" is
+  not a thing to tell somebody about their only copy of a day’s work. The
+  database is asked when somebody presses, not on every render: egress
+  there is counted in requests, and the instant answer from the local push
+  cursor is honest about being a cursor.
+
+- **A set that has finished reading can be opened while the rest run.**
+  The X-ray batch was a plain table, so the answer to "this one is done,
+  let me look at it" was to wait for the whole queue — on a cohort, the
+  difference between a coffee and an afternoon. Done rows are buttons now,
+  the batch keeps running when you take one, and the mode switch keeps
+  reporting it so nothing reads as having cancelled it. The sets already
+  read are listed the same way, which is how last week’s reading becomes
+  reachable at all.
+
+- **The feature matrix is drawn without interpolation.** It is one pixel
+  per event across and one per feature down — about 37 by 48 — shown
+  five hundred wide, and canvas smooths by default. Soft was the small
+  half of it: a column is ONE EVENT and a row is ONE FEATURE, so there is
+  nothing between two of them to interpolate, and smoothing is precisely
+  the operation that blends the single odd column this panel exists to
+  show into the ones beside it.
+
+### Changed
+
+- **The compare dialog is built the way `.modal.big` wants.** Reported as
+  "no scrolling, half of it cut off", and it was: the body was missing
+  `mb`, which is the element that scrolls, so `.modal.big > *` gave it
+  `overflow: hidden` and everything past the fold was unreachable. The
+  header stacked its title, subtitle and close button because
+  `.modal.big > *` also makes every child a flex column and `.mh` never
+  sets it back — scoped here rather than fixed in the shared rule, which
+  belongs to dialogs this work has nothing to do with. The crosstab is as
+  wide as its numbers again instead of stretching its two columns to the
+  far edge.
+
+- **`DSPCA-UI-HANDOFF.md`, most of it.** The dead `.dp-lab` rule is gone,
+  and the four inline `margin-top:0` undos beside `.section-label` in this
+  file with it. `.dp-intro` is left alone until `stepHeader` lands, as
+  asked.
+
+  **On the collision:** the other session and I both fixed the
+  `.section-label` margin at the same time. Their `* + .section-label`
+  landed and mine is removed — it is the better rule and they measured
+  why, first-in-parent labels still reading 22px under a scoped
+  `:first-child` in every container nobody had named. My `.dp-controls`
+  override stays, as they asked, merged into the one rule that was already
+  there instead of sitting above it as a second — which was the same
+  two-rules-for-one-thing fault, committed by me, in the pass that exists
+  to remove it.
+
+### Checked
+
+- `web/_dev/dspca.html` is 174 checks, and the bank suite (`bank`,
+  `bankdupes`, `bankimport`, `banklayers`, `bankscroll`, `bankback`) is
+  clean alongside it, which is what covers the version renaming.
+
+- **The harnesses really do delete real records.** The handoff warns about
+  it; measured here, a run of the bank suite removed 33 files from
+  `GUI_logs/event_bank/`, of which 30 were real KCNT1 entries and no
+  tombstone recorded any of them. Restored both times. Check
+  `git status` after a run — it is not an occasional thing.
+
+- **A stale Edge profile makes `ui_baseline.py` capture nothing**, which
+  it correctly refuses to call a clean baseline. Deleting
+  `%TEMP%\jarvis-uibaseline-profile` fixes it.
+
 ## 2026.09.23.8 - X-ray: comparing two answers, and the recording beside the panel
 
 ### Added
@@ -1791,7 +2344,7 @@ This file is the only place the version is written. The app reads it.
   since they started being scored on the event-triggered template. Shown as a
   percentage of the strongest contact, which is what they are.
 
-## 2026.09.21.3 - The cluster matcher was fed two different things
+## 2026.09.21.12 - The cluster matcher was fed two different things
 
 ### Fixed
 
@@ -1815,7 +2368,7 @@ This file is the only place the version is written. The app reads it.
 
   `/api/incisor/batch/plan` answers again: 38 runnable, 1 blocked.
 
-## 2026.09.21.2 - What kind of recording this is, on the row; and the sync stops shouting
+## 2026.09.21.11 - What kind of recording this is, on the row; and the sync stops shouting
 
 ### Fixed
 
@@ -1894,7 +2447,7 @@ This file is the only place the version is written. The app reads it.
 
   Together, an idle machine goes from 90,720 requests a day to about 270.
 
-## 2026.09.21.1 - Two probes in two places, the cluster gets the catalogue, and signing in
+## 2026.09.21.10 - Two probes in two places, the cluster gets the catalogue, and signing in
 
 ### Added
 

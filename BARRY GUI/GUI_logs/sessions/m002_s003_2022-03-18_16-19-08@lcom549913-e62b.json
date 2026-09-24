@@ -7,24 +7,28 @@
     "label": "2026-09-18T15:46:11.116053+00:00",
     "loose_key": "2026-09-18T15:46:11.116053+00:00",
     "mouse": "2026-09-18T15:46:11.116053+00:00",
-    "project": "2026-09-18T15:46:11.116053+00:00",
-    "project_source": "2026-09-18T15:46:11.116053+00:00",
+    "project": "2026-09-18T19:23:34.848792+00:00",
+    "project_source": "2026-09-18T19:23:34.848792+00:00",
     "retired": "2026-09-18T15:46:11.116053+00:00",
     "schema": "2026-09-18T15:46:11.116053+00:00",
     "session": "2026-09-18T15:46:11.116053+00:00",
     "start": "2026-09-18T15:46:11.116053+00:00",
-    "updated": "2026-09-18T15:53:54.366581+00:00"
+    "updated": "2026-09-18T19:23:55.960155+00:00"
   },
   "_keys": {
     "paths": {
       "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08": [
         "set",
         "2026-09-18T15:53:54.366581+00:00"
+      ],
+      "Z:\\harness\\split-me": [
+        "set",
+        "2026-09-18T19:23:55.960155+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-18T15:53:54.366581+00:00",
+    "at": "2026-09-18T19:23:55.960155+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -43,16 +47,19 @@
   "loose_key": "m002_s003",
   "mouse": 2,
   "paths": [
-    "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08"
+    "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S3_03182022\\2022-03-18_16-19-08",
+    "Z:\\harness\\split-me"
   ],
-  "project": "KCNT1",
-  "project_source": "guessed",
+  "project": "KCNT1 Urethane",
+  "project_source": "manual",
   "retired": false,
   "schema": 1,
   "session": 3,
   "start": "2022-03-18T20:19:08+00:00",
   "updated": {
-    "at": "2026-09-18T11:53:54-04:00",
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-18T15:23:55-04:00",
+    "commit": "644b0e4",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",

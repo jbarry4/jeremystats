@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import socket
+import getpass
 import sys
 import threading
 import time
@@ -244,32 +245,36 @@ def ask_for_key(logs_dir):
 
 
 def ask_for_netid(logs_dir):
-    """First start on a new machine: which VACC account is this.
+    """First start on a new machine: get onto the cluster, here, once.
 
-    A NetID is the whole question. `<netid>@login.vacc.uvm.edu` is the
-    account, `/gpfs1/home/<n>/<e>/<netid>` is the home directory and
-    `/gpfs2/scratch/<netid>` is the scratch space -- all of it derived, so
-    there is nothing else to ask for and no reason to ask for it twice.
+    A NetID is the whole question anybody can be expected to answer.
+    `<netid>@login.vacc.uvm.edu` is the account, `/gpfs1/home/<n>/<e>/<netid>`
+    is the home directory and `/gpfs2/scratch/<netid>` is the scratch space --
+    all derived. So this asks for the NetID, and for a password only if it
+    turns out one is needed.
 
-    Deliberately no password here. Installing a key needs one, and a console
-    that may be a double-clicked window is the wrong place to type one:
-    there is no way to promise it was not echoed, and the Duo push that
-    follows needs somebody watching. So this records the NetID, and the
-    sign-in panel in the app does the part that needs a password -- in a
-    password field, with the push explained, on a screen that can say what
-    is happening while it waits.
+    THE ORDER MATTERS. Keys already on this machine are tried against the
+    account FIRST, and on a shared rig that is the ordinary case: one person
+    sets the cluster up and everybody after them is asked for nothing but
+    their NetID. Being asked for a password by software that does not need
+    one is how people learn to type passwords into things that should not
+    have them, so not asking is a small security property and not only a
+    convenience.
 
-    Skipping is a first-class answer, for the same reason it is for the
-    cloud key: Jarvis runs entirely without the cluster, and start-up must
-    never depend on somebody having a credential to hand.
+    `getpass` rather than `input`, so it is not echoed and does not land in
+    the scrollback of a window that stays open all day. It is held for one
+    `ssh` invocation and dropped -- never written to disk, never logged,
+    never on a command line.
+
+    Skipping is a first-class answer throughout. Jarvis runs entirely
+    without a cluster, and start-up must never depend on somebody having a
+    credential to hand.
     """
     from backend import vacc
 
     cfg = vacc.load_config(logs_dir)
     if cfg.get("configured"):
         print("  VACC    : %s@%s" % (cfg.get("netid"), cfg.get("host")))
-        return
-    if not cfg.get("needs_netid"):
         return
     if not vacc.have_ssh():
         # Nothing here can work without it, and saying so once is better
@@ -284,11 +289,8 @@ def ask_for_netid(logs_dir):
     print("  email before the @.")
     print()
     print("  It is stored in GUI_logs/.vacc.json, which git ignores.")
-    print("  No password is asked for here: the one time one is needed, the")
-    print("  Sign in to VACC panel in the app asks for it, installs an SSH")
-    print("  key, and never asks again.")
-    print()
-    print("  Press Enter to skip.")
+    print("  Press Enter to skip; you can set this up later from your")
+    print("  profile inside the app.")
     print()
 
     if not sys.stdin or not sys.stdin.isatty():
@@ -309,17 +311,81 @@ def ask_for_netid(logs_dir):
         print("  spaces, no @). Skipping -- the app can set it up later.")
         return
 
-    vacc.save_config(logs_dir, netid=netid)
-    keys = [k for k in vacc.existing_keys()]
-    if keys:
-        print("  Saved. There %s already %d SSH key%s on this machine; if one"
-              % ("are" if len(keys) != 1 else "is", len(keys),
-                 "s" if len(keys) != 1 else ""))
-        print("  of them works on the cluster, Jarvis will use it. Otherwise")
-        print("  open Sign in to VACC in the app and it will install one.")
-    else:
-        print("  Saved. Open Sign in to VACC in the app to install a key --")
-        print("  that is the one time your password is needed.")
+    # A key this machine already has, that this account already accepts.
+    print("  Checking the keys already on this computer...")
+    try:
+        already = vacc.working_key(netid)
+    except Exception as exc:                           # noqa: BLE001
+        print("  (could not reach the cluster: %s)" % str(exc)[:90])
+        already = None
+
+    if already:
+        vacc.save_config(logs_dir, netid=netid, key_path=already)
+        print("  Signed in as %s. An existing key works, so no password was"
+              % netid)
+        print("  needed.")
+        return
+
+    print()
+    print("  No key on this computer works for %s yet, so a password is" % netid)
+    print("  needed ONCE to install one. After that the key signs in and")
+    print("  this is never asked again.")
+    print()
+    print("  It is used for that one connection and then dropped: not")
+    print("  written to disk, not logged, and sent nowhere but the cluster.")
+    print("  Press Enter to skip.")
+    print()
+
+    try:
+        password = getpass.getpass("  UVM password (not shown): ")
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return
+    except Exception:                                  # noqa: BLE001
+        # Some consoles cannot suppress the echo. Better to send somebody to
+        # the app than to print their password across the window.
+        print("  This console cannot hide a password. Set it up from your")
+        print("  profile inside the app instead.")
+        return
+    if not password:
+        print("  Skipped. Set it up later from your profile in the app.")
+        return
+
+    print("  Installing a key...")
+    try:
+        vacc.install_key(netid, password)
+    except Exception as exc:                           # noqa: BLE001
+        print("  That did not work: %s" % str(exc)[:160])
+        print("  Nothing was saved. You can try again from your profile in")
+        print("  the app.")
+        return
+    finally:
+        # Gone from this frame either way, and never anywhere else.
+        password = None
+
+    # Prove the key before writing it down. Recording "signed in" on the
+    # strength of a password that has now been discarded is how a machine
+    # ends up configured and unable to connect, with nothing left to retry.
+    key_path = vacc.key_paths()[0]
+    try:
+        who = vacc._ssh(dict(vacc.load_config(logs_dir),
+                             netid=netid, key_path=key_path),
+                        "whoami", timeout=30).strip()
+    except Exception as exc:                           # noqa: BLE001
+        print("  The key was installed but would not sign in: %s"
+              % str(exc)[:120])
+        print("  Nothing was saved.")
+        return
+    if who and who != netid:
+        print("  The cluster says that account is %r rather than %r."
+              % (who, netid))
+        print("  Nothing was saved -- check the NetID.")
+        return
+
+    vacc.save_config(logs_dir, netid=netid, key_path=key_path, enabled=True)
+    print("  Signed in as %s. The key is installed, so this will not ask"
+          % netid)
+    print("  again -- on this computer, for anybody.")
 
 
 def main():

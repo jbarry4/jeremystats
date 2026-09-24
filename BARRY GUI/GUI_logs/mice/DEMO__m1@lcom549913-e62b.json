@@ -4,18 +4,18 @@
     "mouse": "2026-09-09T02:56:07.457844+00:00",
     "project": "2026-09-09T02:56:07.457844+00:00",
     "schema": "2026-09-09T02:56:07.457844+00:00",
-    "updated": "2026-09-10T19:21:43.724739+00:00"
+    "updated": "2026-09-21T14:12:30.878596+00:00"
   },
   "_keys": {
     "attrs": {
       "genotype": [
         "set",
-        "2026-09-10T01:56:11.612294+00:00"
+        "2026-09-21T14:12:30.878596+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-10T19:21:43.724739+00:00",
+    "at": "2026-09-21T14:12:30.878596+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -34,11 +34,13 @@
   "project": "DEMO",
   "schema": 1,
   "updated": {
-    "at": "2026-09-10T15:21:43-04:00",
-    "email": "rain.younger@uvm.edu",
+    "app_version": "2026.09.17.9",
+    "at": "2026-09-21T10:12:30-04:00",
+    "commit": "644b0e4",
+    "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
-    "machine": "Bluebarry",
+    "machine": "Blackbarry",
     "os": "Windows",
-    "user": "Shahriar Tafti"
+    "user": "Isabella Piatek"
   }
 }

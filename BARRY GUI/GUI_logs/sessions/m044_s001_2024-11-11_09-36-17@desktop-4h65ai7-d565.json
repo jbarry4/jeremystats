@@ -28,7 +28,7 @@
     "schema": "2026-09-04T15:57:01.824837+00:00",
     "session": "2026-09-04T15:57:01.824837+00:00",
     "start": "2026-09-04T15:57:01.824837+00:00",
-    "updated": "2026-09-09T05:59:28.931509+00:00"
+    "updated": "2026-09-24T13:59:03.831544+00:00"
   },
   "_keys": {
     "paths": {
@@ -53,11 +53,15 @@
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T15:57:01.824837+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-24T13:59:03.831544+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-09T05:59:28.931509+00:00",
+    "at": "2026-09-24T13:59:03.831544+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -113,13 +117,23 @@
       "path": "D:\\PTEN\\PTEN_DKO\\PtenDKOM44\\M44S1\\2024-11-11_09-36-17",
       "root": "D:/PTEN",
       "scan": "scan_765fa11e51"
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-24T09:59:03-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\PTEN_DKO\\PtenDKOM44\\M44S1\\2024-11-11_09-36-17",
+      "root": null,
+      "scan": null
     }
   },
   "session": 1,
   "start": "2024-11-11T09:36:17",
   "updated": {
-    "at": "2026-09-09T01:59:28-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-24T09:59:03-04:00",
+    "commit": "5924a80",
+    "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
     "os": "Windows",

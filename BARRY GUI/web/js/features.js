@@ -240,8 +240,7 @@ BARRY.palette = (function () {
     box = el('div', { class: 'pal-backdrop hidden', id: 'palette' }, [
       el('div', { class: 'pal-box', onclick: (e) => e.stopPropagation() }, [
         el('div', { class: 'pal-input-wrap' }, [
-          el('svg', { class: 'search-icon', viewBox: '0 0 20 20',
-                      html: '<circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/>' }),
+          BARRY.ui.magnifier(),
           input,
           el('kbd', { class: 'pal-esc', text: 'esc' }),
         ]),

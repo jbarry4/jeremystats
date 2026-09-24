@@ -6,6 +6,7 @@ live server with no build step and no test framework:
 
 | page | what it checks |
 | --- | --- |
+| `dspca.html` | X-ray end to end on the demo recording: the read, the box, the three methods and that all of them are computed every fit, the sink gap's arithmetic, banking's pictures, and the under-the-hood panel checked against the arithmetic it claims to show |
 | `smoke.html` | 77 assertions across every section — every feature's controls render and respond |
 | `pose.html`  | opens one specific UI state and leaves it open, for screenshots |
 | `align.html` | measures each channel row's center against its trace's midline, before and after a resize |
@@ -67,6 +68,7 @@ live server with no build step and no test framework:
 | `scanlive.html` | the running scan says what it is finding -- see the row above for the rest |
 | `projflag.html` | the filing flag, and mostly its restraint: that a path naming a project other than the one the recording is filed under raises a chip and moves nothing; that the two PTEN recordings with "urethane" in the filename — where the word is the anaesthetic, not the project — are flagged **and still PTEN**; that anything filed by hand is silent, because setting it is the answer; and that flagged plus the rest is the whole catalogue, so the filter divides instead of emptying. Completeness is computed from the raw paths rather than from the flag, so an implementation that quietly skipped the awkward pair fails |
 
+| `uikit.html` | that adopting the shared controls in `js/ui.js` changes nothing on screen: every kind and size of `ui.button`, the chips and the search field are built in the live page and measured against the hand-written markup they replace, attribute for attribute. If any pair differed, migrating a call site would be a visual change smuggled inside a refactor. Also checks the guards — that `size: 'small'` is refused rather than quietly rendering full size, which is the fault that put eleven buttons out of step with the other eighty-four |
 | `sessload.html` | what the Sessions wait actually says: that a loader appears *while* the registry is being read rather than after, that it names the size of the job once there is a previous run to take it from and refuses to invent a number when there is not, that the skeleton stays underneath it (the loader says what is happening, the bones say what is coming), and that both clear on every exit including the failing one. Catches the loader in flight, and says so rather than passing when the answer arrived too early to see anything. Puts the remembered size back afterwards |
 | `uiaudit.html` | one interface, or several: walks every view and reads the *computed* style of every control, then groups each family by measured shape — font size, padding, radius, border. A family with one shape is one control; a family with nine is nine controls wearing one name. Also checks the claims that came out of that: that a size modifier has a rule behind it (`.btn.small` does not), that every search field is one shape, and that search boxes open with one verb |
 
