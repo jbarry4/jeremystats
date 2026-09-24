@@ -11,10 +11,11 @@ somebody can read it *before* writing the next tool rather than after.
 Every rule cites the code that proves it. Where a rule exists because
 something broke, the counter-example is named — those are the useful half.
 
-> **Status.** Sections 1–5 and 7–9 describe the application as it is and are
-> in force now. Section 6 describes shared compositions that are still being
-> built; until it is filled in, follow section 1 and copy the nearest
-> well-behaved neighbour.
+> **Status.** All in force. §6 covers the shared compositions that exist
+> today (`analysisRun` is still to come and says so); **§6b is the one to read
+> before building a new tool, bundle or Xplorefinder mode** — it is about the
+> machinery rather than the look, and most of it is there because getting it
+> wrong loses somebody's work quietly.
 
 ---
 
@@ -284,6 +285,187 @@ another. Until it lands, follow §1 and copy the nearest well-behaved
 neighbour.
 
 ---
+
+## 6b. Building a tool, a bundle, or an Xplorefinder mode
+
+Sections 1–6 are about how a control looks. This one is about the machinery a
+new tool has to join, and the parts of it that are easy to get wrong in ways
+nothing catches until somebody's decisions are gone.
+
+### The three shapes a new thing can take
+
+| shape | example | what it is |
+|---|---|---|
+| **a tool** | Panorama, Kilosort | a panel in ToolKit. Owns the result area, reads a recording, may write to Results |
+| **a bundle** | The Dentist | an ordered set of tools that are steps of one job |
+| **an Xplorefinder mode** | Checkup, StrataScope | takes over the panes, the keyboard and the aid window to work *on* a recording |
+
+Start with a tool. A bundle is what you make once several tools turn out to
+be steps of one job, and a mode is only justified when the work needs the
+traces on screen.
+
+### A tool
+
+```js
+toolButton('panorama', 'Panorama', 'The whole recording at once: …')
+```
+
+- Register it in ToolKit, **not the rail** (§1 — eleven slots, all taken).
+- The blurb says what the tool *does*, not what it is called.
+- Dispatch a `q.tool === 'yours'` branch to your paint function.
+- If it can run on the cluster, add its id to `VACC_TOOLS` — and only then.
+  A tool marked as offloadable that is not is worse than no mark.
+
+### A bundle
+
+```js
+const DENTIST = [
+  ['incisor', 'Incisor', 'find them'],
+  ['curate',  'Checkup', 'clean them'],
+  ['braces',  'Braces',  'line them up'],
+  ['dspca',   'X-ray',   'tell them apart'],
+];
+```
+
+Each step is `[id, name, what it does in three words]`, in the order you do
+them.
+
+**A bundle must remove its members from the flat tool list below it.** This is
+the rule with the longest comment in `toolkit.js` and it is worth reading:
+a bundle that does not is "a menu that describes one thing twice and makes
+the reader work out that it is one thing."
+
+Every step gets a `stepHeader` with its `step` set (§6). The header is where
+somebody arriving at step 3 learns there are four.
+
+### An Xplorefinder mode
+
+A mode is entered with a gid and takes the whole interface:
+
+```js
+BARRY.yours.enter(gid)   →  true/false
+BARRY.yours.exit()
+BARRY.yours.active       //  a GETTER. Calling it throws.
+BARRY.yours.rebind(sess) //  a reopen replaces the session object
+BARRY.yours.state        //  what a pop-out or a deep link needs
+```
+
+**One mode at a time, and `enter` is responsible for that.** Both modes take
+over the panes, the keyboard and the aid window. Entering one on top of the
+other left two toolbars stacked, two sets of key handlers fighting over the
+same presses, and an aid window belonging to whichever got there first. So:
+
+```js
+if (BARRY.curate && BARRY.curate.active) BARRY.curate.exit();
+if (mine) exit();          // re-entering: start clean
+```
+
+**Resolve the recording, do not assume a path.** Registry rows carry `here`,
+a list of paths reachable from *this* machine — not `path`. Ask for `here[0]`
+and say so plainly when it is empty:
+
+> None of this recording's paths are reachable from this machine, so there is
+> nothing to look at.
+
+**`rebind` exists because reopening a recording replaces the session object.**
+A mode holding the old one keeps painting into a detached tree.
+
+### Bad channels
+
+Read `README.md § Session identity` before touching these.
+
+- **Stored by CSC channel number, never by row index.** An index shifts the
+  moment somebody toggles even-only.
+- Identity is **mouse + session + the recording start time from the Neuralynx
+  header** — not the path, which differs per machine. Matching is tiered:
+  exact, then strong (mouse+session, unambiguous), then weak (nearest start).
+- Mouse + session alone is **not unique**. `M5s2bnov16` and `M5s2cnov16` are
+  both mouse 5 session 2.
+- In a CSD panel a bad channel is **interpolated from its neighbours, not
+  blanked** — a second spatial derivative would lose three rows to one bad
+  channel.
+
+**A harness that touches bad channels must put them back.** The first version
+of `incisorsel.html` established a known starting point by clearing them. It
+reported twenty-six passing checks and had deleted a real one. Read them,
+work, restore in a `finally`.
+
+### Banking
+
+An entry is evidence, and evidence that cannot say where it came from is not
+evidence. The bank refuses one that cannot state **who**, **when** and **what
+produced it** — script, detector or file. There is no default and no guess.
+
+- Times are **seconds from the start of that recording**, so they only mean
+  anything against it.
+- Match on the **registry gid**. Matching banked data by an identity string
+  returns zero, silently.
+- **Version numbers are not unique.** Two machines curating the same entry
+  both mint the next number, and the union keeps both — a real entry is
+  numbered `0,1,2,3,4,3,4`. The per-version **`id`** is the identity. Asking
+  by an ambiguous number is refused rather than answered, "because there is no
+  defensible way to pick and a wrong answer here reads events that somebody
+  else decided."
+- A snapshot's digest is canonicalised — times to the microsecond, labels as
+  text — so `315.275` and `315.27500000000003` are one snapshot, not two. That
+  digest is what makes "both copies agree" a check instead of an assumption.
+
+**If your tool moves an event in time, it must carry `from_t`.** Time was the
+only identity a banked event had. Without the time it used to have, a moved
+stamp arrives as one event vanishing and an unrelated one appearing — a
+history reading "1198 lost, 1198 gained" about a pass in which nothing was
+decided differently at all.
+
+### Sets, benches and shelves
+
+A set is work somebody has open. The view is a **workbench, not a table**:
+
+- The **bench** holds what is open; the **shelf** holds everything else.
+- Putting a set down costs nothing and saves nothing, because every decision
+  was written the moment it was made. Say so in the button's title.
+- A set carries an **owner**, and the card states it even when there is not
+  one (§6).
+- Use `ui.workbenchCard`. Do not build a third one.
+
+**Storage: no two machines ever write the same file.** Every editable record
+is split by machine — `sessions/m1s2@z390-4f1a.json` — so git sees unrelated
+files and a conflict is impossible rather than rare. The merge happens on
+read, in code, because only code knows that two `paths` lists should be
+unioned while two `note` strings should not. **Never write another machine's
+shard.**
+
+### Presence
+
+If two people could be in the same set, use presence — and understand what it
+is not.
+
+- It lives **only in Supabase**. No local shard, nothing in `GUI_logs`,
+  because a presence row that survives a restart is a lie.
+- It **expires rather than unlocks** (TTL 150s against a shorter client beat).
+  A lock somebody has to give back strands the set when a machine crashes, and
+  the one thing worse than two people in a set is nobody able to get into it.
+- The holding is **advisory**. The point is to stop two people colliding
+  *accidentally*; a hard block would also stop the deliberate case, which is
+  legitimate and common — somebody left a set open on a rig and went home.
+- If the cloud is unreachable the answer is "nobody is reported present",
+  which is exactly the truth available.
+
+### Cost, before it is spent
+
+Supabase egress is counted in **requests, not bytes**. Ask once per entry and
+hold it; do not ask per render. State the cost and the step size before
+anything long runs — Panorama does this and it is the pattern to copy.
+
+### Before you call it done
+
+- [ ] A ToolKit entry, and removed from the flat list if it is in a bundle
+- [ ] `enter` / `exit` / `active` / `rebind` / `state` if it is a mode
+- [ ] `onHide` if it starts a poll or a beat
+- [ ] Bad channels by CSC number; restored by any harness that touches them
+- [ ] Banked entries state who, when and what produced them
+- [ ] `from_t` on anything that moves an event
+- [ ] Writes only this machine's shard
+- [ ] A `_dev/` harness, listed in `_dev/README.md`
 
 ## 7. Breaking a rule
 
