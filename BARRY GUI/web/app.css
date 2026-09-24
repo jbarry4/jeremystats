@@ -9724,6 +9724,38 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dp-controls > .section-label {
   grid-column: 1 / -1; margin-top: var(--sp-8); margin-bottom: 0;
 }
+/* What the two methods nobody chose made of the same events. The
+   headline of the comparison, and the reason all three are computed. */
+/* A heading with the mode its chart was computed with beside it. The
+   chip goes stale-looking when the method has been changed and not yet
+   recomputed: the picture is still the old one and the label says so. */
+/* The contacts in the box, as a dense grid of ticks: sixty-four of them
+   in a control strip is a wall unless they are small and wrap. Out is
+   dimmed; out BY HAND is marked, because "the recording says this wire
+   is bad" and "I took it out just now" are different facts. */
+.dp-chans {
+  grid-column: 1 / -1; display: flex; flex-wrap: wrap;
+  gap: 2px var(--sp-6);
+}
+.dp-chan {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: var(--fs-10); white-space: nowrap; cursor: pointer;
+}
+.dp-chan.off { color: var(--text-3); text-decoration: line-through; }
+.dp-chan.hand { color: var(--warn); text-decoration: line-through; }
+
+.dp-modelab { display: flex; align-items: baseline; gap: var(--sp-8);
+              flex-wrap: wrap; }
+.dp-chip-stale { color: var(--warn); border-color: var(--warn); }
+
+.dp-agree { grid-column: 1 / -1; display: flex; flex-wrap: wrap;
+            gap: var(--sp-4) var(--sp-12); margin-top: var(--sp-2); }
+.dp-agree-row { display: flex; align-items: center; gap: var(--sp-6); }
+.dp-agree-row .flagchip.ok { color: var(--ok); border-color: var(--ok); }
+/* A label beside a number field, where `.section-label` would be a
+   heading for a group rather than a name for one input. */
+.dp-lab2 { font-size: var(--fs-11); color: var(--text-3); }
+
 .dp-controls > .dp-rules { grid-column: 1 / -1; display: grid;
   gap: var(--sp-2) var(--sp-8);
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

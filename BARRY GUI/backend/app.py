@@ -4371,7 +4371,14 @@ def _dspca_params_raw(body, sess, stored=None):
         # How the patch becomes a feature vector: min-max (Toothy),
         # or one of the two that throw the magnitudes away and keep
         # only the laminar pattern. See dspca.normalize_block.
-        features=body.get("features"), dead=body.get("dead"))
+        features=body.get("features"), dead=body.get("dead"),
+        # Which of the three methods, and the two numbers that shape the
+        # sink gap the other two are built on.
+        method=body.get("method"), min_sep=body.get("min_sep"),
+        gap_weight=body.get("gap_weight"),
+        # The hand-placed threshold, and the contacts taken out by hand.
+        delta_cut=body.get("delta_cut"),
+        manual_bad=body.get("manual_bad"))
 
 
 def _dspca_params(body, sess, stored=None):
@@ -4460,6 +4467,10 @@ def api_dspca_candidates():
             "project": rec.get("project"), "mouse": rec.get("mouse"),
             "session": rec.get("session"),
             "session_label": rec.get("session_label"),
+            # The plan falls back to this when the registry has no folder,
+            # so the readable check below has to see it too or the two
+            # disagree about the same set.
+            "session_path": rec.get("session_path"),
             "by_label": rec.get("by_label") or {},
             "n_good": _n_good(rec),
             "current_version": max([v.get("v") or 0 for v in vers] or [0]),
@@ -4484,6 +4495,68 @@ def api_dspca_candidates():
         })
     out.sort(key=lambda r: ((r.get("added") or {}).get("at") or ""),
              reverse=True)
+
+    # CAN THIS SET ACTUALLY BE READ? Asked here, once, for all of them.
+    #
+    # The list offered anything curated with spikes left in it, and the
+    # plan then refused some of them the moment they were picked -- "This
+    # set is not attached to a recording", under the name of the
+    # recording. A picker that offers what the next step rejects is the
+    # picker being wrong, not the next step.
+    #
+    # ONLY THE GIDS THAT HAVE SETS, and one registry read for all of
+    # them. `REG.by_gid` re-stats every shard at about 0.7s a call, so a
+    # lookup per candidate would be half a minute to draw a list; and
+    # summarising the whole registry is worse, because `here` is an
+    # `isdir` per path and touching an unmounted network path costs a
+    # timeout. A handful of gids have sets. Those are the ones asked
+    # about.
+    #
+    # The cheap three tiers only: no registry id, an id the registry here
+    # has never seen, and a recording with no folder on this machine.
+    # NOT whether the folder opens -- that is seconds per recording, and
+    # the plan is where it belongs.
+    want = {r.get("gid") for r in out if r.get("gid")}
+    known = {}
+    if want:
+        try:
+            for row in demomod.registry_rows():
+                if row.get("gid") in want:
+                    known[row["gid"]] = row
+            for rec_ in (REG.all() or []):
+                g = rec_.get("gid")
+                if g in want and g not in known:
+                    known[g] = REG.summary(rec_) or {}
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error(
+                "dspca/candidates",
+                "Could not index the registry, so no set could be told "
+                "apart from one that cannot be read: %s" % exc, None)
+            known = None
+
+    for row in out:
+        g = row.get("gid")
+        if known is None:
+            # The index failed. Say nothing rather than marking every set
+            # unreadable, which would empty the picker over a registry
+            # hiccup.
+            row["readable"], row["why_not"] = True, None
+        elif not g:
+            row["readable"] = False
+            row["why_not"] = ("not attached to a recording -- it carries a "
+                              "label, which is a name, but no registry id, "
+                              "which is what finds the folder")
+        elif g not in known:
+            row["readable"] = False
+            row["why_not"] = ("its recording is not in the registry on this "
+                              "machine")
+        elif not ((known[g] or {}).get("here") or row.get("session_path")):
+            row["readable"] = False
+            row["why_not"] = "its recording is not on this machine"
+        else:
+            row["readable"], row["why_not"] = True, None
+
+
     return jsonify({"ok": True, "sets": out, "n": len(out)})
 
 
@@ -4757,7 +4830,14 @@ def api_dspca_fit():
             # How the patch becomes a feature vector: min-max (Toothy),
             # or one of the two that throw the magnitudes away and keep
             # only the laminar pattern. See dspca.normalize_block.
-            features=body.get("features"), dead=body.get("dead"))
+            features=body.get("features"), dead=body.get("dead"),
+        # Which of the three methods, and the two numbers that shape the
+        # sink gap the other two are built on.
+        method=body.get("method"), min_sep=body.get("min_sep"),
+        gap_weight=body.get("gap_weight"),
+        # The hand-placed threshold, and the contacts taken out by hand.
+        delta_cut=body.get("delta_cut"),
+        manual_bad=body.get("manual_bad"))
         res = dspca.fit(got, p, layers=_dspca_layers(gid))
     except dspca.DsPcaError as exc:
         return fail("dspca/fit", exc, 400, {"gid": gid})
@@ -4780,14 +4860,69 @@ def api_dspca_fit():
         "events": [{"i": r.get("i"), "n": r.get("n"),
                     "t": r.get("refined_s"), "stamp_s": r.get("stamp_s"),
                     "offset_ms": r.get("offset_ms"),
+                    # Under `delta` the space is a LINE, so there is one
+                    # coordinate and `pc2` is nothing. Sent as null rather
+                    # than as a zero, which would draw a row of dots along
+                    # an axis that means nothing.
                     "pc1": float(res["coords"][k][0]),
-                    "pc2": float(res["coords"][k][1]),
+                    "pc2": (float(res["coords"][k][1])
+                            if len(res["coords"][k]) > 1 else None),
+                    "gap": float((res.get("gap") or [0])[k]),
+                    "gap_contacts": int((res.get("gap_contacts") or [0])[k]),
                     "type": types[k]}
                    for k, r in enumerate(rows)],
         "counts": counts,
         "k": res["k"],
         "explained": res["explained"],
         "n_features": res["n_features"],
+        # WHICH METHOD, and what the other two made of the same events.
+        #
+        # All three are computed on every fit -- see `fit` -- because the
+        # only way to know whether the sink gap is carrying the DS1/DS2
+        # split is to see what happens without it. They are numbered by
+        # one rule, so DS1 means the shallower class in all three and the
+        # three can be put side by side.
+        "method": res.get("method"),
+        "method_name": res.get("method_name"),
+        "methods": [{"id": m, "name": dspca.METHOD_NAMES[m]}
+                    for m in dspca.METHODS],
+        "variants": {
+            name: {
+                "method": name, "name": v["name"], "kind": v["kind"],
+                "n_features": v["n_features"],
+                "explained": v["explained"],
+                "active": v["active"],
+                "centres": v.get("centres"),
+                # Where k-means WOULD have put them, kept even when a
+                # hand has overridden it: "you moved it from 0.31 to
+                # 0.44" needs both numbers.
+                "km_centres": v.get("km_centres"),
+                "bounds": v.get("bounds"),
+                "manual": bool(v.get("manual")),
+                "types": [int(t) for t in v["types"]],
+                "decide": v["decide"],
+                # How many events this method puts where the chosen one
+                # does. The headline of the comparison, computed once here
+                # rather than in three places in the browser.
+                "agree": int(sum(1 for a2, b2 in zip(v["types"], types)
+                                 if int(a2) == int(b2))),
+            }
+            for name, v in (res.get("variants") or {}).items()
+        },
+        # The sink gap: what two of the three are built on, and what the
+        # depth panels mark. Per event, plus the two settings that shape
+        # it.
+        "gap": {
+            "values": [float(v) for v in (res.get("gap") or [])],
+            "contacts": [int(v) for v in (res.get("gap_contacts") or [])],
+            "rows": [[int(a2), int(b2)]
+                     for a2, b2 in (res.get("gap_rows") or [])],
+            "min_sep": int(res.get("min_sep") or dspca.MIN_SINK_SEP),
+            "weight": float(res.get("gap_weight") or 1.0),
+            # Which signal it was measured on, said rather than implied:
+            # the features are broadband and this is not.
+            "signal": res.get("gap_signal"),
+        },
         "box": {"lo": int(min(res["nums_sel"])),
                 "hi": int(max(res["nums_sel"])),
                 "n_contacts": len(res["sel"]),
@@ -4795,6 +4930,20 @@ def api_dspca_fit():
                 "t_hi_ms": float(res["tw"][max(res["t0"], res["t1"] - 1)]),
                 "n_samples": int(res["t1"] - res["t0"])},
         "contacts": [int(n) for n in res["nums_sel"]],
+        # EVERY CONTACT IN THE BOX, and whether it is being used.
+        #
+        # Three sources of "not used" and the panel has to tell them
+        # apart: the recording is marked bad in the shared record, the
+        # amplitude screen caught it at read time, or somebody took it
+        # out here. All three are REPAIRED rather than dropped -- a CSD
+        # is a second difference over depth and needs an even grid.
+        "channels": [
+            {"number": int(n),
+             "bad": int(n) in (res["bad"] or {}),
+             "why": (res["bad"] or {}).get(int(n)),
+             "by_hand": int(n) in set(res.get("manual_bad") or [])}
+            for n in res["nums_sel"]],
+        "manual_bad": res.get("manual_bad") or [],
         # The class-average depth profiles, with their standard error --
         # the panel that says whether the box is in the right place. Two
         # curves differing in SHAPE are two kinds of event; two of the same
@@ -5107,6 +5256,38 @@ def api_dspca_raster():
         return fail("dspca/raster", exc, 500, {"gid": gid, "what": what})
 
 
+@app.route("/api/dspca/underhood", methods=["POST"])
+def api_dspca_underhood():
+    """Every number between one event's patch and the class it was put in.
+
+    The panel draws answers; this is the arithmetic that produced one of
+    them, so it can be checked rather than believed. Per event, because
+    the interesting question is always about a particular spike -- and
+    because the feature vector, the loadings and the per-feature
+    contributions for seven hundred events at once is a megabyte nobody
+    reads.
+    """
+    body = request.get_json(force=True) or {}
+    gid, ph = body.get("gid"), body.get("read")
+    if not gid or not ph:
+        return jsonify({"ok": False,
+                        "error": "Say which recording and which read "
+                                 "(gid and read)."}), 400
+    try:
+        got = _dspca_load(gid, ph)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/underhood", exc, 400, {"gid": gid, "read": ph})
+    try:
+        return jsonify(dspca.under_hood(
+            got, _dspca_fit_params(body, got),
+            index=body.get("index"),
+            layers=_dspca_layers(gid)))
+    except dspca.DsPcaError as exc:
+        return fail("dspca/underhood", exc, 400, {"gid": gid})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/underhood", exc, 500, {"gid": gid})
+
+
 @app.route("/api/dspca/commit", methods=["POST"])
 def api_dspca_commit():
     """Write the DS1/DS2 call as the next version of the bank entry.
@@ -5227,10 +5408,11 @@ def api_dspca_commit():
 
     box = res
     note = (
-        "DS1/DS2 by PCA over CSC%d–%d × %s to %s, %s features, "
+        "DS1/DS2 by %s over CSC%d–%d × %s to %s, %s features, "
         "%d classes, ordered by the %s rule. %s. Read from %s. "
         "No stamp moved."
-        % (min(res["nums_sel"]), max(res["nums_sel"]),
+        % (dspca.METHOD_NAMES.get(p.method, p.method),
+           min(res["nums_sel"]), max(res["nums_sel"]),
            _ms(res["tw"][res["t0"]]),
            _ms(res["tw"][max(res["t0"], res["t1"] - 1)]),
            "60 Hz notched" if p.notch else "broadband (Toothy)",
@@ -5267,6 +5449,74 @@ def api_dspca_commit():
         return jsonify(report)
 
     who = (body.get("by") or "").strip() or None
+
+    # THE PICTURES, FILED BEFORE THE VERSION IS MINTED.
+    #
+    # So the version can carry the link. A figure filed afterwards would
+    # need the version patched to point at it, and a patch that fails
+    # leaves a version claiming pictures nobody can find -- whereas a
+    # figure filed for a commit that then fails is an orphan in Results,
+    # which is untidy and not wrong.
+    #
+    # They come from the browser because that is where they were drawn.
+    # `dspca.py` is forbidden matplotlib at any depth -- the whole claim
+    # of the module is that it does not draw -- so re-rendering them here
+    # would mean a second implementation of every panel, and a figure that
+    # is not the one anybody looked at.
+    answer_hash = DSPCA.hash_of(p.as_dict())
+    filed = []
+    for fig in (body.get("figures") or [])[:12]:
+        blob = _png_bytes(fig.get("png"))
+        if not blob:
+            continue
+        what = str(fig.get("id") or "panel")[:40]
+        label = "X-ray %s \u2014 %s" % (
+            what, rec.get("session_label") or rec.get("name") or rec["id"])
+        try:
+            run = STORE.record_run({
+                "kind": "figure", "script": "X-ray (dspca)",
+                "label": label, "status": "done", "format": "png",
+                # For READING: what somebody needs to know to understand
+                # the picture without opening the tool.
+                "parameters": {
+                    "method": p.method,
+                    "method_name": dspca.METHOD_NAMES.get(p.method, p.method),
+                    "panel": what,
+                    "contacts": "CSC%d-%d" % (min(res["nums_sel"]),
+                                              max(res["nums_sel"])),
+                    "window_ms": [float(res["tw"][res["t0"]]),
+                                  float(res["tw"][max(res["t0"],
+                                                      res["t1"] - 1)])],
+                    "features": p.features, "rule": p.rule,
+                    "classes": res["k"], "notch": bool(p.notch),
+                    "min_sep": p.min_sep, "gap_weight": p.gap_weight,
+                    "entry_id": rec["id"],
+                },
+                # For REBUILDING. A summary cannot be rebuilt from, so the
+                # whole parameter set goes in -- every key that changes a
+                # number, which is what `Params.as_dict` is.
+                "recipe": {"tool": "dspca", "params": p.as_dict(),
+                           "entry_id": rec["id"], "gid": rec.get("gid"),
+                           "from_version": src_v,
+                           "params_hash": answer_hash},
+                "session": {"gid": rec.get("gid"),
+                            "label": rec.get("session_label"),
+                            "key": rec.get("session_key"),
+                            "path": rec.get("session_path")},
+            })
+            saved = save_output(
+                blob, "xray_%s_%s_%s.png" % (
+                    _safe_name(rec.get("session_label") or rec["id"]),
+                    what, answer_hash[:8]),
+                subdir=rec.get("session_label"), lane="exhibit")
+            STORE.update_run(run["id"], {"output": saved})
+            filed.append({"panel": what, "run": run["id"],
+                          "rel": (saved or {}).get("rel")})
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("dspca/figure",
+                               "Could not file the %s panel: %s" % (what, exc),
+                               None, {"entry_id": rec["id"]})
+
     try:
         made = BANK.add({
             # The SAME entry id, so this replaces in place and everything
@@ -5298,9 +5548,21 @@ def api_dspca_commit():
             # Where this pass belongs in the history, so the lineage reads
             # as a line rather than as two branches from the same parent.
             "based_on": src_v if src_v is not None else rec.get("based_on"),
-            "pipeline": "X-ray (DS1/DS2 by PCA)",
+            "pipeline": "X-ray (DS1/DS2 by %s)" % dspca.METHOD_NAMES.get(
+                p.method, p.method),
             "added_by": who,
-            "parameters": p.as_dict(),
+            # EVERY SETTING THAT CHANGES A NUMBER, on the version itself.
+            #
+            # This is what "reconstruct from the events bank" means: the
+            # version carries the whole question, so the answer can be
+            # rebuilt from the recording without anything else surviving.
+            # `params_hash` is the same key the result record is filed
+            # under, so the version also finds the numbers and the
+            # pictures without a search.
+            "parameters": dict(p.as_dict(),
+                               tool="dspca",
+                               params_hash=answer_hash,
+                               figures=filed),
             "version_note": note,
         })
     except Exception as exc:                             # noqa: BLE001
@@ -5310,6 +5572,51 @@ def api_dspca_commit():
     # rounds to six decimals; both are harmless here and neither is assumed.
     back = made or BANK.get(rec["id"]) or {}
     kept = back.get("events") or []
+
+    # THE ANSWER, filed as a result.
+    #
+    # Keyed on the question -- the recording and a hash of every setting
+    # that changes a number -- so asking the same thing twice costs
+    # nothing and two machines computing it write the same record. The
+    # per-event labels are NOT duplicated here: they are the version that
+    # was just written, and a second copy that could disagree with it is
+    # worse than no copy. What this holds is the question, the shape of
+    # the answer, and where to find both halves.
+    try:
+        DSPCA.put({
+            "gid": rec.get("gid"),
+            "params_hash": answer_hash,
+            "kind": "classification",
+            "entry_id": rec["id"],
+            "entry_name": rec.get("name"),
+            "session_label": rec.get("session_label"),
+            "version": (made or {}).get("version_name"),
+            "from_version": src_v,
+            "method": p.method,
+            "method_name": dspca.METHOD_NAMES.get(p.method, p.method),
+            "params": p.as_dict(),
+            "n": len(out),
+            "counts": counts,
+            "by_label": tally,
+            "label_names": names,
+            "k": res["k"],
+            "box": {"lo": int(min(res["nums_sel"])),
+                    "hi": int(max(res["nums_sel"])),
+                    "t_lo_ms": float(res["tw"][res["t0"]]),
+                    "t_hi_ms": float(res["tw"][max(res["t0"],
+                                                   res["t1"] - 1)])},
+            "decide": res["decide"],
+            "explained": res["explained"],
+            "min_sep": p.min_sep,
+            "gap_weight": p.gap_weight,
+            "figures": filed,
+            "note": note,
+        })
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("dspca/result",
+                           "The call was banked but the result record was "
+                           "not filed: %s" % exc, None,
+                           {"entry_id": rec["id"]})
 
     # WHETHER ANYTHING WAS ACTUALLY WRITTEN.
     #
@@ -5380,7 +5687,14 @@ def _dspca_fit_params(body, got):
         # How the patch becomes a feature vector: min-max (Toothy),
         # or one of the two that throw the magnitudes away and keep
         # only the laminar pattern. See dspca.normalize_block.
-        features=body.get("features"), dead=body.get("dead"))
+        features=body.get("features"), dead=body.get("dead"),
+        # Which of the three methods, and the two numbers that shape the
+        # sink gap the other two are built on.
+        method=body.get("method"), min_sep=body.get("min_sep"),
+        gap_weight=body.get("gap_weight"),
+        # The hand-placed threshold, and the contacts taken out by hand.
+        delta_cut=body.get("delta_cut"),
+        manual_bad=body.get("manual_bad"))
 
 
 @app.route("/api/cfc/cache")
@@ -5831,6 +6145,34 @@ def api_figure_preview():
     return jsonify({"ok": True, "problems": problems,
                     "image": "data:image/png;base64,"
                              + base64.b64encode(blob).decode("ascii")})
+
+
+PNG_MAGIC = bytes([137, 80, 78, 71, 13, 10, 26, 10])
+
+
+def _png_bytes(data_uri):
+    """The bytes of a `data:image/png;base64,...` the browser drew.
+
+    The pictures are filed from the browser because that is where they
+    were drawn: `dspca.py` is forbidden matplotlib at any depth, so
+    re-rendering them on this side would mean a second implementation of
+    every panel and a figure that is not the one anybody looked at.
+
+    Refuses anything that is not a PNG data URI rather than writing
+    whatever arrived under a .png name.
+    """
+    import base64
+    raw = str(data_uri or "")
+    head, _, b64 = raw.partition(",")
+    if not b64 or "base64" not in head or "image/png" not in head:
+        return None
+    try:
+        blob = base64.b64decode(b64, validate=True)
+    except Exception:                                    # noqa: BLE001
+        return None
+    # The PNG signature, as bytes rather than an escape sequence, so a
+    # mislabelled blob does not become a file.
+    return blob if blob[:8] == PNG_MAGIC else None
 
 
 def _safe_name(text):

@@ -6,6 +6,7 @@ live server with no build step and no test framework:
 
 | page | what it checks |
 | --- | --- |
+| `dspca.html` | X-ray end to end on the demo recording: the read, the box, the three methods and that all of them are computed every fit, the sink gap's arithmetic, banking's pictures, and the under-the-hood panel checked against the arithmetic it claims to show |
 | `smoke.html` | 77 assertions across every section — every feature's controls render and respond |
 | `pose.html`  | opens one specific UI state and leaves it open, for screenshots |
 | `align.html` | measures each channel row's center against its trace's midline, before and after a resize |

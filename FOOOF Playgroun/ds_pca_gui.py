@@ -95,6 +95,10 @@ CACHE_VERSION = 2          # bumped when the cached arrays change shape
 CLASS_COLORS = ["#1a7f37", "#7b3fa0", "#b8620a", "#1f6feb", "#a3155f"]
 GREY = "#8c9994"
 INK = "#1b2220"
+VARIANTS = ("off", "on", "delta")
+VLABEL = {"off": "PCA, no gap", "on": "PCA + gap",
+          "delta": "delta only, NO PCA"}
+
 GUIDE = "#101010"          # depth guides: neutral, so no class owns them
 MAX_GUIDES = 10
 
@@ -190,9 +194,13 @@ def load_flip(args):
             got = json.load(fh)
         return (bool(got.get("flip")), str(got.get("rule") or "tort"),
                 str(got.get("features") or "minmax"),
-                bool(got.get("depth_feat")))
+                bool(got.get("depth_feat")), bool(got.get("mult_on")),
+                float(got.get("depth_weight") or 25.0),
+                int(got.get("min_sep") or MIN_SINK_SEP),
+                got.get("delta_cut"))
     except Exception:
-        return False, "tort", "minmax", False
+        return (False, "tort", "minmax", False, False, 25.0,
+                MIN_SINK_SEP, None)
 
 
 def save_flip(state):
@@ -201,7 +209,13 @@ def save_flip(state):
             json.dump({"flip": bool(state.get("flip")),
                        "rule": state.get("rule", "tort"),
                        "features": state.get("features", "minmax"),
-                       "depth_feat": bool(state.get("depth_feat"))}, fh)
+                       "depth_feat": bool(state.get("depth_feat")),
+                       "mult_on": bool(state.get("mult_on")),
+                       "depth_weight": float(
+                           state.get("depth_weight", 25.0)),
+                       "min_sep": int(state.get("min_sep",
+                                                MIN_SINK_SEP)),
+                       "delta_cut": state.get("delta_cut")}, fh)
     except Exception as err:
         print("could not save the flip: %s" % err)
 
@@ -423,45 +437,135 @@ def normalize_block(block, mode="minmax", dead=0.15):
     return out
 
 
-def sink_depth_features(block, weight=1.0):
-    """Each event's own two sink depths, as two extra features.
+MIN_SINK_SEP = 5           # contacts; two sinks closer than this are one sink
 
-    THE IDEA. Every other feature is a magnitude at a contact, so the PCA has
-    to INFER depth from the pattern across contacts -- and it will only do
-    that if depth happens to be the largest source of variance, which on
-    these recordings it is not (amplitude is). This hands it the depth
-    directly: find the two most prominent sinks in this event's own profile
-    and put where they are into the vector, as numbers.
 
-    Sorted by DEPTH, not by prominence, so the pair means "the shallower
-    sink and the deeper sink" for every event. Sorting by prominence would
-    make feature 1 the main sink for some events and the secondary sink for
-    others, and a PCA cannot make anything of a column that changes meaning
-    row to row.
+def two_sinks(mu, min_sep=None):
+    """The two LARGEST sinks of one depth profile, returned shallower first.
 
-    Scaled to [0, 1] across the selected band, so the two new columns sit in
-    the same range as min-max features and neither swamps nor vanishes
-    against them. `weight` scales them further: at 1.0 two depth columns sit
-    among sixteen profile columns, so raise it if depth should count for
-    more than an eighth of the vector.
+    Largest by how far the CSD actually dips, not by prominence. Prominence
+    asks how far a dip stands above its own surroundings, which can rank a
+    small notch on a flat stretch above a deep trough on a slope; "largest"
+    is the plainer question and it is the one asked for.
 
-    An event with fewer than two detectable sinks repeats what it has, which
-    keeps the column count fixed and says, truthfully, that its two sinks
-    are at the same place.
+    Recomputed from the profile it is handed every time, and the profile is
+    rebuilt from the current contacts and the current time window on every
+    drag -- so moving the box re-finds the sinks rather than carrying the
+    old pair along. Nothing here is cached.
+
+    The pair is what `sink_gap_feature` measures AND what the panels draw,
+    from this one function, so the highlight on screen cannot drift from the
+    number in the feature vector.
+    """
+    mu = np.asarray(mu, dtype=np.float64)
+    sep = MIN_SINK_SEP if min_sep is None else int(min_sep)
+    idx, _props = find_peaks(-mu)
+    if idx.size == 0:
+        r = int(np.argmin(mu))
+        return r, r
+    order = [int(r) for r in idx[np.argsort(mu[idx])]]   # deepest first
+    first = order[0]
+    # A MINIMUM SEPARATION, because two dips three contacts apart are the
+    # same sink seen twice through a spatial filter, not two laminar sinks.
+    # A 3-point Gaussian taper across depth plus a second difference will
+    # routinely split one trough into a pair, and without this floor the
+    # "gap" measured the width of that artefact instead of the distance
+    # between the molecular layers. Contacts are 30 um, so the default of 5
+    # is 150 um -- comfortably under the OML-to-MML spacing and comfortably
+    # over anything the smoothing can manufacture.
+    second = next((r for r in order[1:] if abs(r - first) >= sep), None)
+    if second is None:
+        return first, first          # only one real sink in this profile
+    return (min(first, second), max(first, second))
+
+
+def draw_delta(state, ax, mu, ns, color, x=.045, label=True,
+               min_sep=None):
+    """Mark the two sinks and bracket the gap between them.
+
+    Drawn in axes fraction on x and data on y, so it sits at a fixed place
+    horizontally however the CSD axis is scaled, and lines up exactly with
+    the contacts vertically.
+    """
+    r1, r2 = two_sinks(mu, min_sep)
+    arts = state.setdefault("guide_artists", [])
+    tr = ax.get_yaxis_transform()
+    gap = abs(r2 - r1)
+    span = len(ns)
+    norm = 0.0 if gap < 1 else min(
+        max((gap - 1.0) / max(span - 2.0, 1.0), 0.0), 1.0)
+    for r in (r1, r2):
+        arts.append(ax.plot([x], [ns[r]], marker="_", ms=11, mew=2.4,
+                            color=color, transform=tr, clip_on=False,
+                            zorder=10)[0])
+    if r1 != r2:
+        arts.append(ax.plot([x, x], [ns[r1], ns[r2]], lw=1.8, color=color,
+                            transform=tr, clip_on=False, zorder=10)[0])
+    if label:
+        arts.append(ax.text(
+            x + .015, (ns[r1] + ns[r2]) / 2.0,
+            "\u0394 %d ctc \u2192 %.2f" % (gap, norm),
+            transform=tr, fontsize=8,
+            color=color, va="center", ha="left", clip_on=False, zorder=11,
+            path_effects=_HALO))
+    return r1, r2, gap, norm
+
+
+def gap_weight(state):
+    """How hard the sink-gap column is allowed to pull.
+
+    One column against sixteen is about 3% of the feature variance, which is
+    why at weight 1 it shifts every event in PC space and moves none of them
+    across a cluster boundary. The multiplier is the knob that changes that,
+    and it is a knob rather than a default because the first version of this
+    feature -- in raw contacts, effectively a weight of about 9 -- did move
+    the clustering, and moved it the wrong way: it took PC1's correlation
+    with loudness from 0.52 to 0.75. Turn it up deliberately, and watch the
+    two PCA panels rather than just the one.
+    """
+    if not state.get("mult_on"):
+        return 1.0
+    try:
+        return max(0.0, float(state.get("depth_weight", 25.0)))
+    except (TypeError, ValueError):
+        return 1.0
+
+
+def sink_gap_feature(block, weight=1.0, min_sep=None):
+    """One extra row at the bottom of the matrix: how far apart an event's
+    two sinks are, on a 0-to-1 scale, with no amplitude in it.
+
+        0  the two sinks are neighbouring contacts
+        1  they are at opposite ends of the selected band
+
+    which is (gap - 1) / (span - 2), clipped. Put that way it is pure
+    geometry: two events with the same laminar spacing give the same number
+    whatever the band width, wherever the probe sits, and however big the
+    event was.
+
+    WHAT IS AND IS NOT AMPLITUDE-FREE. The VALUE carries no amplitude -- it
+    is two row indices and nothing else, so a loud event and a quiet one
+    with the same geometry are identical here. The CHOICE of which two sinks
+    to measure does use prominence, because "the two main sinks" has to mean
+    something; but prominence only ranks the candidates, it never reaches
+    the output.
+
+    On a 0-1 scale it also sits in the same range as the min-max profile
+    features, so it is one column among many rather than the column that
+    decides everything. In contacts it did decide everything: its spread was
+    five times a min-max column's, and switching it on took PC1's
+    correlation with loudness from 0.52 to 0.75.
+
+    An event with fewer than two detectable sinks gets 0.
     """
     prof = np.asarray(block, dtype=np.float64).mean(axis=2)   # [nEv x span]
     span = prof.shape[1]
-    out = np.zeros((prof.shape[0], 2), dtype=np.float64)
+    out = np.zeros((prof.shape[0], 1), dtype=np.float64)
     for i, mu in enumerate(prof):
-        idx, props = find_peaks(-mu, prominence=0.0)
-        if idx.size == 0:
-            rows = [int(np.argmin(mu))] * 2
-        else:
-            best = np.argsort(props["prominences"])[::-1][:2]
-            rows = sorted(int(idx[j]) for j in best)
-            if len(rows) == 1:
-                rows = rows * 2
-        out[i] = [r / max(span - 1, 1) for r in rows]
+        r1, r2 = two_sinks(mu, min_sep)
+        gap = abs(r2 - r1)
+        if gap >= 1:
+            out[i, 0] = min(max((gap - 1.0) / max(span - 2.0, 1.0), 0.0), 1.0)
     return out * float(weight)
 
 
@@ -503,14 +607,17 @@ def recompute(state):
     sel, t0, t1 = state["sel"], state["t0"], state["t1"]
     feat_csd = stack_csd(sur[:, sel, :], a)[:, :, t0:t1]
     norm = normalize_block(feat_csd, state.get("features", "minmax"))
-    X = norm.reshape(norm.shape[0], -1)
-    if state.get("depth_feat"):
-        X = np.hstack([X, sink_depth_features(feat_csd,
-                                              state.get("depth_weight", 1.0))])
-
+    X_off = norm.reshape(norm.shape[0], -1)
+    X_on = np.hstack([X_off, sink_gap_feature(
+        feat_csd, gap_weight(state), state.get("min_sep", MIN_SINK_SEP))])
+    # BOTH feature sets are clustered, every update. A PCA over sixteen
+    # columns and forty events is microseconds, so there is nothing to
+    # save by computing only the one that happens to be ticked -- and
+    # having both is the only way to show what the extra column did.
+    k = int(state["nclasses"])
+    X = X_on if state.get("depth_feat") else X_off
     pca = PCA(n_components=2)
     fit = pca.fit_transform(X)
-    k = int(state["nclasses"])
     km = KMeans(n_clusters=k, n_init="auto", random_state=a.seed).fit(fit)
 
     # EVERY PICTURE COMES OFF THE SAME SIGNAL, and it is not the features.
@@ -583,14 +690,245 @@ def recompute(state):
                            sink=ns[int(np.argmin(mu))],
                            lows=[ns[i] for i in lows], mu=mu))
 
-    return dict(disp=disp, feat=feat_csd, norm=norm, fit=fit, pca=pca,
-                types=types, k=k, bad=bad, prof=prof, decide=decide,
-                nums_sel=ns, n_features=X.shape[1])
+    out = dict(disp=disp, feat=feat_csd, norm=norm, fit=fit, pca=pca,
+               types=types, k=k, bad=bad, prof=prof, decide=decide,
+               nums_sel=ns, n_features=X.shape[1])
+
+    # The other feature set, clustered the same way and ordered by the same
+    # rule, so the two rows of panels differ ONLY by the extra column.
+    out["variants"] = {}
+    for vk, Xv in (("off", X_off), ("on", X_on)):
+        if (vk == "on") == bool(state.get("depth_feat")):
+            out["variants"][vk] = dict(
+                fit=fit, pca=pca, types=types, decide=decide, kind="pca",
+                n_features=X.shape[1], active=True)
+            continue
+        pv = PCA(n_components=2)
+        fv = pv.fit_transform(Xv)
+        kv = KMeans(n_clusters=k, n_init="auto",
+                    random_state=a.seed).fit(fv)
+        tv, dv = _label_classes(state, prof, kv.labels_, k, ns, rule)
+        out["variants"][vk] = dict(fit=fv, pca=pv, types=tv, decide=dv,
+                                   kind="pca", n_features=Xv.shape[1],
+                                   active=False)
+
+    # THE THIRD ONE HAS NO PCA IN IT AT ALL.
+    #
+    # One number per event -- how far apart its two sinks are -- and k-means
+    # partitions that line directly. No rotation, no components, no variance
+    # to be dominated by: the thing being clustered IS the thing you meant
+    # to cluster on, and the boundary is a threshold you can read off the
+    # axis and quote.
+    #
+    # It is the honest test of whether the gap carries the DS1/DS2 split. If
+    # the classes it finds line up with the PCA's, the gap was doing the
+    # work; if they do not, the PCA was separating on something else and the
+    # gap was along for the ride.
+    D = sink_gap_feature(feat_csd, 1.0, state.get("min_sep", MIN_SINK_SEP))
+    manual = state.get("delta_cut")
+    if manual:
+        # A HAND-PLACED THRESHOLD BEATS A FITTED ONE when you can see the
+        # distribution. k-means minimises within-cluster variance, which on
+        # a lopsided 1-D spread puts the boundary where the arithmetic wants
+        # it rather than where the gap in the data is. Here the axis has
+        # units and the histogram is on screen, so a person can simply say
+        # where the line goes -- and then the counts and the depth profiles
+        # below recompute from that, exactly as they would from k-means.
+        cuts = sorted(float(c) for c in manual)
+        labels = np.digitize(D[:, 0], cuts)
+        centres = None
+    else:
+        kd = KMeans(n_clusters=k, n_init="auto", random_state=a.seed).fit(D)
+        labels = kd.labels_
+        centres = sorted(float(c) for c in kd.cluster_centers_[:, 0])
+        cuts = [(centres[i] + centres[i + 1]) / 2.0
+                for i in range(len(centres) - 1)]
+    td, dd = _label_classes(state, prof, labels, k, ns, rule)
+    out["variants"]["delta"] = dict(
+        fit=D, pca=None, types=td, decide=dd, kind="delta", n_features=1,
+        active=False, centres=centres, bounds=cuts, manual=bool(manual))
+    return out
+
+
+def _label_classes(state, prof, labels, k, ns, rule):
+    """Order and number the classes of one clustering. Same rule, twice.
+
+    Pulled out of `recompute` so the gap-off and the gap-on runs cannot end
+    up numbered by different logic -- which would make the two rows of
+    panels incomparable in exactly the way they exist to avoid.
+    """
+    mus = {c: np.nanmean(prof[labels == c], axis=0)
+           for c in range(k) if (labels == c).any()}
+    if rule == "tort":
+        live = sorted(mus)
+        rows_, _up = tort_order([mus[c] for c in live])
+        marker = dict(zip(live, rows_))
+    else:
+        marker = {c: class_marker(mu, rule)[0] for c, mu in mus.items()}
+    order = sorted(range(k), key=lambda c: marker.get(c, 10 ** 6))
+    if state.get("flip"):
+        order = order[::-1]
+    remap = {c: i + 1 for i, c in enumerate(order)}
+    types = np.array([remap[x] for x in labels])
+
+    decide = []
+    for c in range(1, k + 1):
+        rr = np.where(types == c)[0]
+        if rr.size == 0:
+            decide.append(dict(c=c, n=0))
+            continue
+        mu = np.nanmean(prof[rr], axis=0)
+        j, peaks = class_marker(mu, rule)
+        if rule == "tort":
+            j = marker.get(int(labels[rr[0]]), j)
+        lows = [i for i in range(1, len(mu) - 1)
+                if mu[i] < mu[i - 1] and mu[i] < mu[i + 1] and mu[i] < 0]
+        decide.append(dict(c=c, n=int(rr.size), row=j, csc=ns[j],
+                           value=float(mu[j]), rule=rule,
+                           peaks=(peaks if isinstance(peaks, int) else
+                                  [(ns[r], v, pr) for r, v, pr in
+                                   (peaks or [])]),
+                           sink=ns[int(np.argmin(mu))],
+                           lows=[ns[i] for i in lows], mu=mu))
+    return types, decide
 
 
 # --------------------------------------------------------------------------
 # Drawing
 # --------------------------------------------------------------------------
+def draw_space(state, res, vk, ax, colors, pickable=False):
+    """One clustering's own space: a PCA plane, or the delta line.
+
+    For the two PCA variants this is the familiar scatter. For the delta
+    variant there is only one dimension, so the events are laid along it
+    with a little vertical jitter to stop them piling up, and the vertical
+    lines are where k-means actually cut -- midway between adjacent
+    centres, which for one dimension IS the decision boundary. That line is
+    a threshold on a quantity with units, so it can be read off and quoted:
+    "DS1 is anything whose sinks are more than X apart".
+    """
+    v = res["variants"][vk]
+    k, n_ev = res["k"], v["types"].size
+    active = bool(v.get("active"))
+    pick = state["picked"]
+    if pickable:
+        state["pick_artists"] = []
+
+    if v["kind"] == "delta":
+        d = np.asarray(v["fit"])[:, 0]
+        rng = np.random.RandomState(0)
+        y = rng.uniform(-.35, .35, size=d.size)
+        for c in range(1, k + 1):
+            rr = np.where(v["types"] == c)[0]
+            if rr.size:
+                art = ax.scatter(d[rr], y[rr], s=30, c=colors.get(c, INK),
+                                 lw=.5, edgecolors="white", zorder=3,
+                                 label="DS%d n=%d" % (c, rr.size),
+                                 picker=6 if pickable else None)
+                if pickable:
+                    art._event_rows = rr
+                    state["pick_artists"].append(art)
+        _man = bool(v.get("manual"))
+        for b in v.get("bounds", []):
+            ax.axvline(b, color="#a4531c" if _man else INK, lw=2.0 if _man
+                       else 1.6, ls="-" if _man else "--", zorder=4)
+            ax.text(b, .46, " %s %.2f" % ("MANUAL cut" if _man else "cut at",
+                                          b),
+                    fontsize=8, color="#a4531c" if _man else INK,
+                    ha="left", va="top",
+                    fontweight="bold" if _man else "normal")
+        ax.text(.5, .015, "click to move the cut  \u00b7  right-click for "
+                "k-means", transform=ax.transAxes, fontsize=7.5,
+                color=GREY, ha="center", va="bottom")
+        if pick is not None:
+            ax.scatter([d[pick]], [y[pick]], s=190, facecolors="none",
+                       edgecolors=INK, lw=1.8, zorder=5)
+        ax.set_ylim(-.6, .6)
+        ax.set_yticks([])
+        ax.set_xlabel("sink gap (0 = adjacent, 1 = full band)", fontsize=9)
+    else:
+        f = v["fit"]
+        for c in range(1, k + 1):
+            rr = np.where(v["types"] == c)[0]
+            if rr.size:
+                art = ax.scatter(f[rr, 0], f[rr, 1], s=30 + 4 * active,
+                                 c=colors.get(c, INK), lw=.5,
+                                 edgecolors="white", zorder=3,
+                                 label="DS%d n=%d" % (c, rr.size),
+                                 picker=6 if pickable else None)
+                if pickable:
+                    art._event_rows = rr
+                    state["pick_artists"].append(art)
+        if pick is not None:
+            ax.scatter([f[pick, 0]], [f[pick, 1]], s=190, facecolors="none",
+                       edgecolors=INK, lw=1.8, zorder=5)
+        ax.set_xlabel("PC1 (%.0f%%)"
+                      % (100 * v["pca"].explained_variance_ratio_[0]),
+                      fontsize=9)
+        ax.set_ylabel("PC2 (%.0f%%)"
+                      % (100 * v["pca"].explained_variance_ratio_[1]),
+                      fontsize=9)
+
+    base = res["variants"]["off"]["types"]
+    agree = int((v["types"] == base).sum())
+    if v.get("manual"):
+        VLABEL_NOW = VLABEL[vk] + ", MANUAL cut"
+    else:
+        VLABEL_NOW = VLABEL[vk]
+    ax.set_title("%s  %s %d feature%s%s"
+                 % (VLABEL_NOW, "—", v["n_features"],
+                    "" if v["n_features"] == 1 else "s",
+                    "" if vk == "off" else "  (agrees %d/%d)" % (agree, n_ev)),
+                 fontsize=9.5, fontweight="bold" if active else "normal",
+                 color=INK if active else GREY)
+    ax.legend(fontsize=8, frameon=False)
+    ax.grid(alpha=.15, lw=.6)
+    ax.tick_params(labelsize=8)
+
+
+def draw_profile(state, res, vk, ax, colors, full=False):
+    """One clustering's class-average depth profiles."""
+    a = state["args"]
+    v = res["variants"][vk]
+    ns = res["nums_sel"]
+    by_class = {d["c"]: d for d in v["decide"]}
+    src_rule = state.get("rule", "tort") == "sources"
+    sep = state.get("min_sep", MIN_SINK_SEP)
+    for c in range(1, res["k"] + 1):
+        rr = np.where(v["types"] == c)[0]
+        if rr.size == 0:
+            continue
+        mu = np.nanmean(res["prof"][rr], axis=0)
+        sem = np.nanstd(res["prof"][rr], axis=0) / np.sqrt(rr.size)
+        ax.fill_betweenx(ns, mu - sem, mu + sem, color=colors.get(c, INK),
+                         alpha=.20, lw=0)
+        d = by_class.get(c, {})
+        ax.plot(mu, ns, color=colors.get(c, INK), lw=1.9 if full else 1.6,
+                label="DS%d  %s CSC%s" % (c, "source" if src_rule else "sink",
+                                          d.get("csc", "?")))
+        if "row" in d:
+            ax.plot([mu[d["row"]]], [ns[d["row"]]], "o", ms=8 if full else 7,
+                    color=colors.get(c, INK), mec="white", mew=1.3, zorder=6)
+        r1, r2 = two_sinks(mu, sep)
+        for r in (r1, r2):
+            ax.plot([mu[r]], [ns[r]], "v", ms=6.5, color=colors.get(c, INK),
+                    mec="white", mew=1.0, zorder=7)
+        if full:
+            draw_delta(state, ax, mu, ns, colors.get(c, INK),
+                       x=.030 + .085 * (c - 1), min_sep=sep)
+    ax.axvline(0, color="#444444", lw=.9, ls="--")
+    draw_guides(state, ax, labels=full)
+    ax.set_ylim(max(ns) + .5, min(ns) - .5)
+    ax.set_xlabel(r"mean CSD ($\mu V/mm^2$)", fontsize=9)
+    if full:
+        ax.set_ylabel("CSC number", fontsize=9)
+    ax.set_title("profiles \u2014 %s" % VLABEL[vk], fontsize=9.5,
+                 color=INK if v.get("active") else GREY)
+    ax.legend(fontsize=8, frameon=False)
+    ax.grid(alpha=.15, lw=.6)
+    ax.tick_params(labelsize=8, labelleft=full)
+
+
 def draw(state, res):
     a = state["args"]
     nums, types = state["nums"], res["types"]
@@ -602,7 +940,9 @@ def draw(state, res):
     lo_n, hi_n = nums[sel[0]], nums[sel[-1]]
 
     forget_guide_artists(state)
-    for key in ("volt", "pca", "profile", "csd1", "csd2", "why"):
+    for key in ("volt", "csd1", "csd2", "why", "feat",
+                "space_off", "space_on", "space_delta",
+                "prof_off", "prof_on", "prof_delta"):
         state["axes"][key].clear()
 
     # --- 1. voltage traces --------------------------------------------
@@ -656,71 +996,43 @@ def draw(state, res):
     lim = float(np.percentile(np.abs(mat), 99.5)) or 1.0
     state["raster_im"].set_data(mat)
     state["raster_im"].set_clim(-lim, lim)
+    # The delta for whatever the raster is showing -- this spike if one is
+    # picked, the event-triggered mean otherwise -- measured over the SAME
+    # block the features come from, so the number on screen is the number in
+    # the vector.
+    _dmu = (res["disp"][pick] if pick is not None
+            else res["disp"].mean(axis=0))[sel, t0:t1].mean(axis=1)
+    _r1, _r2, _gap, _nrm = draw_delta(
+        state, state["axes"]["csd"], _dmu, res["nums_sel"],
+        colors.get(int(types[pick]), INK) if pick is not None else INK,
+        x=.022, min_sep=state.get("min_sep", MIN_SINK_SEP))
+    state["axes"]["csd"].set_xlabel(
+        "ms from the refined stamp        \u0394 = %d contacts "
+        "(CSC%d \u2192 CSC%d)   feature %.2f"
+        % (_gap, res["nums_sel"][_r1], res["nums_sel"][_r2], _nrm),
+        fontsize=9)
+
     draw_guides(state, state["axes"]["csd"], side="right")
     state["axes"]["csd"].set_title(
         "CSD  %g–%g Hz, 60 Hz out   —   drag a box: depth × time"
         % (a.band[0], a.band[1]), fontsize=10)
 
-    # --- 3. PCA scatter, pickable -------------------------------------
-    ax = state["axes"]["pca"]
-    state["pick_artists"] = []
-    for c, rr in groups:
-        if rr.size == 0:
-            continue
-        art = ax.scatter(res["fit"][rr, 0], res["fit"][rr, 1], s=34,
-                         c=colors[c], lw=.6, edgecolors="white",
-                         label="DS%d  n=%d" % (c, rr.size), picker=6,
-                         zorder=3)
-        art._event_rows = rr
-        state["pick_artists"].append(art)
-    if pick is not None:
-        ax.scatter([res["fit"][pick, 0]], [res["fit"][pick, 1]], s=190,
-                   facecolors="none", edgecolors=INK, lw=1.8, zorder=4)
-    ax.set_xlabel("PC1 (%.0f%%)" % (100 * res["pca"].explained_variance_ratio_[0]),
-                  fontsize=9)
-    ax.set_ylabel("PC2 (%.0f%%)" % (100 * res["pca"].explained_variance_ratio_[1]),
-                  fontsize=9)
-    ax.set_title("PCA of %d features — click a dot" % res["n_features"],
-                 fontsize=10)
-    ax.legend(fontsize=8, frameon=False)
-    ax.grid(alpha=.15, lw=.6)
-    ax.tick_params(labelsize=8)
+    # --- 3. the three clusterings, each in its own space ---------------
+    # Same events, same CSD, same band, same window, same naming rule. The
+    # only difference between the three is what was handed to the clusterer,
+    # so anything that moves between them moved for that reason alone.
+    for _i, _vk in enumerate(VARIANTS):
+        draw_space(state, res, _vk, state["axes"]["space_" + _vk], colors,
+                   pickable=(_i == 0))
 
-    # --- 4. class-average depth profile -------------------------------
-    # The panel that says whether the box is in the right place. Two curves
-    # differing in SHAPE -- sinks at different depths -- are two kinds of
-    # event. Two of the same shape at different heights are one kind, loud
-    # and quiet, which is a badly placed box sorting events by amplitude.
-    ax = state["axes"]["profile"]
+    # --- 4. what each clustering's classes actually look like ----------
+    # The panel that says whether a split is real. Two curves differing in
+    # SHAPE -- sinks at different depths -- are two kinds of event. Two of
+    # the same shape at different heights are one kind, loud and quiet.
     ns = res["nums_sel"]
-    by_class = {d["c"]: d for d in res["decide"]}
-    src_rule = state.get("rule", "tort") == "sources"
-    for c, rr in groups:
-        if rr.size == 0:
-            continue
-        mu = np.nanmean(res["prof"][rr], axis=0)
-        sem = np.nanstd(res["prof"][rr], axis=0) / np.sqrt(rr.size)
-        ax.fill_betweenx(ns, mu - sem, mu + sem, color=colors[c], alpha=.20,
-                         lw=0)
-        d = by_class.get(c, {})
-        ax.plot(mu, ns, color=colors[c], lw=1.9,
-                label="DS%d  %s CSC%s" % (c, "source" if src_rule else "sink",
-                                          d.get("csc", "?")))
-        # The point the ACTIVE rule used, marked. Without it the legend
-        # asserts a landmark and the curve beside it has three.
-        if "row" in d:
-            ax.plot([mu[d["row"]]], [ns[d["row"]]], "o", ms=8,
-                    color=colors[c], mec="white", mew=1.4, zorder=6)
-    ax.axvline(0, color="#444444", lw=.9, ls="--")
-    draw_guides(state, ax)
-    ax.set_ylim(max(ns) + .5, min(ns) - .5)
-    ax.set_xlabel(r"mean CSD over the window ($\mu V/mm^2$)", fontsize=9)
-    ax.set_ylabel("CSC number", fontsize=9)
-    ax.set_title("class-average depth profile ± SEM  (%g–%g Hz, 60 Hz out)"
-                 % (a.band[0], a.band[1]), fontsize=10)
-    ax.legend(fontsize=8, frameon=False)
-    ax.grid(alpha=.15, lw=.6)
-    ax.tick_params(labelsize=8)
+    for _i, _vk in enumerate(VARIANTS):
+        draw_profile(state, res, _vk, state["axes"]["prof_" + _vk], colors,
+                     full=(_i == 0))
 
     # --- 5 & 6. mean CSD per class, over the whole surround -----------
     mats = []
@@ -869,7 +1181,9 @@ def draw(state, res):
         state.get("features", "minmax"), "min-max")
     state["fig"].texts[0].set_text(
         state["fig"].texts[0].get_text() + "   \u00b7   features " + _fname
-        + ("  + sink depths" if state.get("depth_feat") else ""))
+        + ("  + sink gap/2" + (" x%g" % gap_weight(state)
+                               if state.get("mult_on") else "")
+           if state.get("depth_feat") else ""))
     state["fig"].texts[0].set_text(state["fig"].texts[0].get_text())
     state["repaired_note"].set_text(
         "repaired — amplitude: %s   ·   CSD: %s   ·   by hand: %s"
@@ -879,22 +1193,30 @@ def draw(state, res):
 
 # --------------------------------------------------------------------------
 def build(state):
-    fig = plt.figure(figsize=(17.6, 9.6))
+    fig = plt.figure(figsize=(17.8, 13.2))
     state["fig"] = fig
     # Four columns, the last one narrower: it carries the decision panel,
     # which is text and needs less width than a raster.
-    gs = gridspec.GridSpec(2, 4, figure=fig, hspace=.34, wspace=.27,
-                           width_ratios=[1, 1, 1, .72],
-                           left=.048, right=.988, top=.905, bottom=.215)
+    # Three rows. The top one is what you look at and drag on; the two
+    # below are the three clusterings side by side -- their own space, then
+    # the classes each one produced. Reading down a column tells you what a
+    # clustering did; reading across a row tells you how the three differ.
+    gs = gridspec.GridSpec(3, 4, figure=fig, hspace=.40, wspace=.26,
+                           height_ratios=[1.05, 1, 1],
+                           left=.050, right=.988, top=.940, bottom=.205)
     state["axes"] = {
         "volt": fig.add_subplot(gs[0, 0]),
         "csd": fig.add_subplot(gs[0, 1]),
-        "pca": fig.add_subplot(gs[0, 2]),
-        "why": fig.add_subplot(gs[0, 3]),
-        "profile": fig.add_subplot(gs[1, 0]),
-        "csd1": fig.add_subplot(gs[1, 1]),
-        "csd2": fig.add_subplot(gs[1, 2]),
-        "feat": fig.add_subplot(gs[1, 3]),
+        "csd1": fig.add_subplot(gs[0, 2]),
+        "csd2": fig.add_subplot(gs[0, 3]),
+        "space_off": fig.add_subplot(gs[1, 0]),
+        "space_on": fig.add_subplot(gs[1, 1]),
+        "space_delta": fig.add_subplot(gs[1, 2]),
+        "why": fig.add_subplot(gs[1, 3]),
+        "prof_off": fig.add_subplot(gs[2, 0]),
+        "prof_on": fig.add_subplot(gs[2, 1]),
+        "prof_delta": fig.add_subplot(gs[2, 2]),
+        "feat": fig.add_subplot(gs[2, 3]),
     }
 
     nums, tw = state["nums"], state["tw"]
@@ -953,7 +1275,7 @@ def build(state):
     ax_rad.set_frame_on(False)
     fig.text(.372, .152, "features", fontsize=8.5, color=INK,
              va="center", fontweight="bold")
-    ax_feat = fig.add_axes([.372, .048, .105, .100])
+    ax_feat = fig.add_axes([.372, .062, .105, .086])
     ax_feat.set_frame_on(False)
     _feats = ["min-max (Toothy)", "sign +-1", "sign + deadband"]
     _fkey = {"minmax": _feats[0], "sign": _feats[1], "sign_dead": _feats[2]}
@@ -982,11 +1304,25 @@ def build(state):
     for t in chk.labels:
         t.set_fontsize(9)
 
-    ax_dep = fig.add_axes([.372, .006, .105, .030])
+    ax_dep = fig.add_axes([.372, .034, .105, .026])
     ax_dep.set_frame_on(False)
-    chk_dep = CheckButtons(ax_dep, ["+ sink depths"],
+    chk_dep = CheckButtons(ax_dep, ["+ sink gap / 2"],
                            [bool(state.get("depth_feat"))])
-    for t in chk_dep.labels:
+    ax_mul = fig.add_axes([.372, .004, .078, .026])
+    ax_mul.set_frame_on(False)
+    chk_mul = CheckButtons(ax_mul, ["multiply"],
+                           [bool(state.get("mult_on"))])
+    tb_mul = TextBox(fig.add_axes([.450, .007, .036, .024]), "",
+                     initial=str(state.get("depth_weight", 25.0)),
+                     textalignment="center")
+    tb_sep = TextBox(fig.add_axes([.600, .005, .030, .024]),
+                     "min sink separation ",
+                     initial=str(state.get("min_sep", MIN_SINK_SEP)),
+                     textalignment="center")
+    for _t in (tb_mul, tb_sep):
+        _t.text_disp.set_fontsize(8.5)
+    tb_sep.label.set_fontsize(8.5)
+    for t in list(chk_dep.labels) + list(chk_mul.labels):
         t.set_fontsize(8.5)
 
     b_auto = Button(fig.add_axes([.492, .090, .072, .042]), "auto box")
@@ -1084,7 +1420,9 @@ def build(state):
         # Nothing here may fire while the guide box has the keyboard, or
         # typing "next" in a label would step four spikes.
         if (getattr(tb, "capturekeystrokes", False)
-                or getattr(tb_bad, "capturekeystrokes", False)):
+                or getattr(tb_bad, "capturekeystrokes", False)
+                or getattr(tb_mul, "capturekeystrokes", False)
+                or getattr(tb_sep, "capturekeystrokes", False)):
             return
         if event.key in ("right", "n"):
             step(+1)
@@ -1114,11 +1452,42 @@ def build(state):
         redraw_guides()
 
     def on_click(event):
-        """Right-click on any depth panel: add a guide there, or take it off."""
-        if event.button != 3 or event.inaxes is None or event.ydata is None:
+        """Clicks: the delta cut on its own panel, guides on the depth ones."""
+        if event.inaxes is None:
             return
-        depth_axes = [state["axes"][k]
-                      for k in ("volt", "csd", "profile", "csd1", "csd2")]
+        # The delta panel first -- its y axis is jitter, not depth, so a
+        # guide there would mean nothing and the click is free for the cut.
+        if event.inaxes is state["axes"]["space_delta"]:
+            if event.xdata is None:
+                return
+            if event.button == 3:
+                state["delta_cut"] = None
+                save_flip(state)
+                say("delta cut back to k-means")
+                refresh()
+                return
+            if event.button != 1:
+                return
+            v = (state.get("res") or {}).get("variants", {}).get("delta", {})
+            cur = list(state.get("delta_cut") or v.get("bounds") or [])
+            if not cur:
+                cur = [float(event.xdata)]
+            else:
+                j = int(np.argmin([abs(c - event.xdata) for c in cur]))
+                cur[j] = float(event.xdata)
+            state["delta_cut"] = sorted(cur)
+            save_flip(state)
+            say("manual cut at %.3f" % event.xdata)
+            refresh()
+            return
+        if event.button != 3 or event.ydata is None:
+            return
+        # Every panel whose y axis is the contact number -- the three
+        # profile panels included, so a guide can be dropped on whichever
+        # clustering you happen to be looking at.
+        depth_axes = [state["axes"][k] for k in
+                      ("volt", "csd", "csd1", "csd2",
+                       "prof_off", "prof_on", "prof_delta")]
         if event.inaxes not in depth_axes:
             return
         label = parse_guide("0 " + tb.text)
@@ -1138,10 +1507,44 @@ def build(state):
         save_bad(state)
         refresh()
 
+    def set_sep(text):
+        try:
+            v = int(round(float(str(text).strip())))
+        except ValueError:
+            say("the separation has to be a whole number of contacts")
+            tb_sep.set_val(str(state.get("min_sep", MIN_SINK_SEP)))
+            return
+        state["min_sep"] = max(1, v)
+        save_flip(state)
+        say("two sinks must be %d contacts apart (%d um)"
+            % (state["min_sep"], state["min_sep"] * int(state["args"].spacing)))
+        refresh()
+
+    def toggle_mult(_label):
+        state["mult_on"] = not state.get("mult_on")
+        save_flip(state)
+        say("gap column x%g" % gap_weight(state) if state["mult_on"]
+            else "gap column back to x1")
+        refresh()
+
+    def set_mult(text):
+        try:
+            w = float(str(text).strip())
+        except ValueError:
+            say("the multiplier has to be a number")
+            tb_mul.set_val(str(state.get("depth_weight", 25.0)))
+            return
+        state["depth_weight"] = max(0.0, w)
+        save_flip(state)
+        say("gap column x%g%s" % (state["depth_weight"],
+                                  "" if state.get("mult_on")
+                                  else "  (tick 'multiply' to apply)"))
+        refresh()
+
     def toggle_depth(_label):
         state["depth_feat"] = not state.get("depth_feat")
         save_flip(state)
-        say("sink depths %s the feature vector"
+        say("sink gap/2 %s the feature vector"
             % ("added to" if state["depth_feat"] else "removed from"))
         refresh()
 
@@ -1218,6 +1621,9 @@ def build(state):
     rad.on_clicked(pick_rule)
     radf.on_clicked(pick_features)
     chk_dep.on_clicked(toggle_depth)
+    chk_mul.on_clicked(toggle_mult)
+    tb_mul.on_submit(set_mult)
+    tb_sep.on_submit(set_sep)
     tb.on_submit(on_submit)
     tb_bad.on_submit(on_bad)
     fig.canvas.mpl_connect("pick_event", on_pick)
@@ -1235,8 +1641,11 @@ def build(state):
     state["pick_rule"] = pick_rule
     state["pick_features"] = pick_features
     state["toggle_depth"] = toggle_depth
+    state["toggle_mult"] = toggle_mult
+    state["set_mult"] = set_mult
+    state["set_sep"] = set_sep
     state["_widgets"] = (s_k, chk, b_auto, b_one, b_prev, b_next, b_mean,
-                         b_save, b_clear, tb, b_unbad, tb_bad, b_flip, rad, radf, chk_dep)
+                         b_save, b_clear, tb, b_unbad, tb_bad, b_flip, rad, radf, chk_dep, chk_mul, tb_mul, tb_sep)
     state["refresh"] = refresh
     refresh()
     return fig
@@ -1309,8 +1718,9 @@ def main():
     state["t0"], state["t1"] = state["centre_i"], state["centre_i"] + 1
     state["sel"] = ds_pca.depth_band(got["sur"]["notch"], a, chans, got["bad"])
 
-    (state["flip"], state["rule"], state["features"],
-     state["depth_feat"]) = load_flip(args)
+    (state["flip"], state["rule"], state["features"], state["depth_feat"],
+     state["mult_on"], state["depth_weight"],
+     state["min_sep"], state["delta_cut"]) = load_flip(args)
 
     fig = build(state)
     print("opening box: CSC%d-%d, 1 sample at the stamp  (drag to change)"

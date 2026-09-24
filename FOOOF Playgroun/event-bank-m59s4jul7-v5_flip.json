@@ -1,1 +1,1 @@
-{"flip": false, "rule": "tort", "features": "sign"}
+{"flip": false, "rule": "tort", "features": "minmax", "depth_feat": true, "mult_on": true, "depth_weight": 25.0}
