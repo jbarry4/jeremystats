@@ -581,6 +581,19 @@ const NL = String.fromCharCode(10);
   D().querySelectorAll('.dp-mode .seg button')[0].click();
   await until(() => !!D().querySelector('.dp-panes'), 20000, 'back');
 
+  /* AND THE QUEUE KEEPS REPORTING ITSELF while you look at one of its
+     results.
+
+     Reported as "if we open one of the batch items the processing
+     stops". It did not: the queue card is not on screen in
+     one-at-a-time mode, so the poll that only refreshed that card left
+     the count frozen at whatever it said when you left -- which reads
+     exactly like a batch that has stopped. */
+  ok('the mode switch is where the count goes when the card is not there',
+     !!D().querySelector('.dp-mode'));
+  ok('and it says nothing about a batch when none is running',
+     !D().querySelector('.dp-bulk-note'));
+
   const bp = await get('/api/dspca/batch/plan');
   ok('the batch plan answers', !!(bp && bp.ok));
   ok('every set is in exactly one of the three lists',
@@ -1444,6 +1457,56 @@ const NL = String.fromCharCode(10);
     ok('and it can be handed back to k-means',
        Math.abs(((st().fit.variants || {}).delta || {}).bounds[0] - fitted)
          < 1e-9);
+  }
+
+  /* ================================================================== */
+  head('THE CUT HAS ITS OWN RAIL, AND THE DOTS HAVE THEIR CLICKS');
+
+  /* Reported: trying to click a dot to look at the spike moved the
+     k-means boundary instead. Clicking a dot is what you do constantly
+     and moving the cut is what you do once, so a click that did the
+     rare thing by default did the wrong thing. */
+  ev('BARRY.dspca._method("delta")');
+  await until(() => st().fit && st().fit.ok && st().fit.method === 'delta',
+              25000, 'delta');
+  ev('BARRY.dspca._cut(null)');
+  await until(() => {
+    const d = (st().fit.variants || {}).delta || {};
+    return d.manual === false;
+  }, 25000, 'the fitted cut');
+  ev('BARRY.dspca._esc()');
+  await until(() => st().picked == null, 8000, 'the average');
+
+  const geom = ev('BARRY.dspca._scatterGeom()');
+  ok('the panel reserves a rail for the cut', !!(geom && geom.rail)
+     && geom.rail.y1 > geom.rail.y0, JSON.stringify(geom && geom.rail));
+  ok('and the dots are all below it',
+     (geom.pick || []).length > 0
+     && geom.pick.every((p) => p.y > geom.rail.y1),
+     JSON.stringify((geom.pick || []).slice(0, 3).map((p) => p.y))
+     + ' rail ends ' + (geom.rail || {}).y1);
+
+  /* A CLICK ON A DOT PICKS IT, and leaves the boundary alone. */
+  const cutWas = JSON.stringify(
+    ((st().fit.variants || {}).delta || {}).bounds);
+  const dot = (geom.pick || [])[0];
+  ok('there is a dot to click', !!dot);
+  if (dot) {
+    const cv = D().getElementById('dpScatter');
+    const r = cv.getBoundingClientRect();
+    cv.dispatchEvent(new (frame.contentWindow.MouseEvent)('click', {
+      clientX: r.left + dot.x, clientY: r.top + dot.y, bubbles: true,
+    }));
+    await until(() => st().picked === dot.i, 15000, 'the spike');
+    ok('clicking a dot shows that spike', st().picked === dot.i,
+       st().picked + ' wanted ' + dot.i);
+    ok('and does not move the cut',
+       JSON.stringify(((st().fit.variants || {}).delta || {}).bounds)
+         === cutWas,
+       JSON.stringify(((st().fit.variants || {}).delta || {}).bounds)
+       + ' was ' + cutWas);
+    ok('the boundary is still the fitted one, not a hand-placed one',
+       ((st().fit.variants || {}).delta || {}).manual === false);
   }
 
   /* ================================================================== */

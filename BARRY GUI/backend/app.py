@@ -5183,6 +5183,17 @@ def api_dspca_batch():
                            of=len(stamps))
                 out["read"].append({"entry_id": eid, "read": ph,
                                     "n": len(got["rows"])})
+            except cfcmod.Canceled:
+                # STOPPING IS NOT A FAILED RECORDING.
+                #
+                # The catch-all below turns anything that goes wrong into
+                # a red row and carries on, which is right for a set that
+                # cannot be read and exactly wrong for Stop: the
+                # cancellation was filed as an error against whichever
+                # set was in flight, and the queue moved on to the next
+                # one. Pressing Stop worked and looked like it had not.
+                job.member(eid, status="stopped")
+                raise
             except Exception as exc:                     # noqa: BLE001
                 # One set that cannot be read must not end the queue. The
                 # row says why and the run carries on, which is the whole

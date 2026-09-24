@@ -832,7 +832,19 @@ BARRY.dspca = (function () {
       catch (e) { return; }
       bulk.job = got.job || bulk.job;
       if (bulk.job.status === 'running') {
-        swap('.dp-bulk-card', bulkCard());
+        /* WHICHEVER MODE YOU ARE IN.
+           
+           Taking a finished set out of the queue to look at it switches
+           to one-at-a-time, and the queue card is then not on screen --
+           so a poll that only refreshed that card left the count frozen
+           at whatever it said when you left. The batch was still
+           running; the panel had simply stopped saying so, which reads
+           exactly like it had stopped. The mode switch carries the
+           count in that case, so refresh whichever of the two is
+           there. */
+        if (!swap('.dp-bulk-card', bulkCard())) {
+          swap('.dp-mode', modeSwitch());
+        }
         return;
       }
       clearInterval(bulk.poll);
@@ -840,11 +852,19 @@ BARRY.dspca = (function () {
       const done = bulk.job;
       bulk.job = null;
       const n = (done.members || []).filter((m) => m.status === 'done').length;
-      toast('Read ' + n + ' of ' + (done.members || []).length
-            + '. Nothing was classified or banked.', 'ok', 8000);
+      const quit = done.status === 'canceled';
+      toast(quit
+        ? ('Stopped. ' + n + ' of ' + (done.members || []).length
+           + ' were read and are kept; the rest were not started.')
+        : ('Read ' + n + ' of ' + (done.members || []).length
+           + '. Nothing was classified or banked.'),
+        quit ? 'warn' : 'ok', 8000);
       // The plan has changed: what was `todo` is now `done`.
       bulk.plan = null;
       loadBulk();
+      // And the switch stops saying a batch is running, wherever you
+      // happen to be standing.
+      if (!bulk.on) swap('.dp-mode', modeSwitch());
     }, 900);
   }
 
@@ -4580,6 +4600,13 @@ BARRY.dspca = (function () {
       refit();
     },
     _cut: (c) => { q.delta_cut = c; refit(); },
+    /* Where the dots and the cut's rail actually landed, so a harness
+       can press on one without knowing how the panel is laid out. */
+    _scatterGeom: () => (GEOM.scatter
+      ? { rail: GEOM.scatter.rail,
+          pick: (GEOM.scatter.pick || []).map(
+            (p) => ({ i: p.i, x: p.x, y: p.y })) }
+      : null),
     _fitBody: () => fitBody({}),
     _pickedClass: pickedClass,
     _hood: openHood,

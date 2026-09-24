@@ -713,7 +713,7 @@ def pick_peak(trace, t_ms, mode="nearest", frac=0.25):
     return int(pk[int(np.argmin(np.abs(t_ms[pk])))])
 
 
-def read(session, channels, stamps, p, bad=None, job=None):
+def read(session, channels, stamps, p, bad=None, job=None, stop=None):
     """Every event's window, read once, in three filterings.
 
     READ IN MERGED SPANS, NOT ONE WINDOW PER STAMP. `braces.spans` is what
@@ -758,6 +758,19 @@ def read(session, channels, stamps, p, bad=None, job=None):
     at = 0
 
     for k, (a, b) in enumerate(runs):
+        # STOPPING AND COUNTING ARE TWO DIFFERENT JOBS.
+        #
+        # A batch owns the progress bar -- it counts recordings, and the
+        # read inside it counts windows -- so the read cannot be handed
+        # the batch's job without rescaling the bar out from under it.
+        # It was therefore handed nothing at all, and nothing at all is
+        # also nothing to ask "have I been cancelled". Pressing Stop did
+        # nothing until the recording in flight had finished, which on a
+        # long one is minutes and reads as a button that does not work.
+        #
+        # `stop` is that question on its own, with no progress attached.
+        if stop:
+            stop()
         if job:
             job.check()
             job.tick("ds pca read", k)

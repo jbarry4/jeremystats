@@ -15,6 +15,81 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.24.3 - Clicking a dot looks at the spike, and Stop stops
+
+### Fixed
+
+- **Clicking a dot on the delta panel moved the boundary instead of
+  showing the spike.** The panel took a plain click as "put the cut
+  here" and reserved shift-click for picking an event, which has the
+  frequencies backwards: looking at a spike is what you do constantly
+  and moving the cut is what you do once, so the click that did the rare
+  thing by default was the click that did the wrong thing.
+
+  The cut has a rail of its own now, a strip above the dots with a grip
+  on it and nothing else to hit. Drag it to move the boundary, and it
+  commits on release rather than on every pointermove — a refit is a
+  second of server, and one per pixel of drag would be minutes.
+  Right-click the rail hands it back to k-means. Everywhere below the
+  rail, a click picks the dot.
+
+- **Stop did nothing until the recording in flight had finished.** Two
+  faults, one on each side of the same button.
+
+  The batch passes `job=None` into the read, deliberately, because the
+  read would otherwise call `begin("ds pca read", of=<its own windows>)`
+  and rescale the bar the queue is counting recordings on. But nothing
+  at all is also nothing to ask "have I been cancelled" — so the only
+  `job.check()` in the whole batch was the one between recordings, and
+  on a long read that is minutes of a button that looks broken.
+  Stopping and counting are two different jobs, so `read` takes a
+  `stop` callable that has no progress attached, and the batch hands it
+  `job.check`.
+
+  And when the cancellation did finally arrive, the queue swallowed it:
+  the loop catches everything so that one unreadable recording cannot
+  end the run, which is right for a set that cannot be read and exactly
+  wrong for Stop. The cancellation was filed as an error against
+  whichever set was in flight and the queue moved on to the next one.
+  `Canceled` now has its own clause above the catch-all, the member is
+  marked `stopped`, and it is re-raised so the job ends canceled.
+
+- **Opening a finished set looked like it stopped the batch.** It never
+  did — the queue card is simply not on screen in one-at-a-time mode,
+  so a poll that only refreshed that card left the count frozen at
+  whatever it said when you left. The mode switch carries the count in
+  that case, and the poll now refreshes whichever of the two is there.
+  Finishing says how it finished, too: a stopped run reports what was
+  read and kept rather than reporting a total.
+
+### Changed
+
+- **Both sinks get a circle on the class profile, not just one.** The
+  gap is a statement about a PAIR, and marking one of them says "here is
+  the sink" — which is the claim the pair exists to replace. The one
+  the ordering rule scored on is filled and the other is open, so the
+  picture still says which number the DS1/DS2 call came off. The bracket
+  labels stagger, because two classes with sinks at similar depths were
+  printing one over the other.
+
+### Checked
+
+- `web/_dev/dspca.html` is 290 checks. The new ones press an actual dot
+  and assert that the spike changes and the boundary does not, that the
+  rail is above every dot, and that the panel keeps a place to report a
+  running batch when the queue card is not on screen.
+
+- **The dot-click checks were confirmed to bite**: with the old handler
+  put back they fail three ways. A regression test nobody has watched
+  fail is not yet a regression test.
+
+- `tools/check_dspca_filing.py` is 28 checks. The new ones cover the
+  cancellation contract the Stop button rests on, which a browser
+  harness cannot reach without a minutes-long read: that `read` can be
+  asked to stop without owning the progress bar, that it asks before
+  each window rather than after, and that cancelling a running job
+  reaches the work and ends the job `canceled` rather than `failed`.
+
 ## 2026.09.24.2 - The gap is measured on the signal it should be, and the curve is on the picture
 
 ### Fixed
