@@ -117,6 +117,11 @@ BARRY.dspca = (function () {
      drawn while the pointer is down and only committed on release: a
      refit per pointermove would be a second of server per pixel. */
   let cutDrag = null;
+  /* The HF pass, while it runs. Its own job and its own poll: it is a
+     second read of the recording and has nothing to do with the fit. */
+  let hfJob = null;
+  let hfPoll = null;
+  let hfBusy = false;
 
   /* ---------- guides ----------
 
@@ -808,6 +813,58 @@ BARRY.dspca = (function () {
     BARRY.activity.log('dspca.open_from_batch', { entry: entryId });
   }
 
+  /* Read the recording again at 5 kHz and measure the band.
+
+     Minutes, and cached on the question, so it is minutes once per
+     recording rather than per look. Driven as a job for the same reason
+     the first read is: a request that takes minutes is a request that
+     has already timed out. */
+  async function startHf(force) {
+    if (hfBusy || !q.entry) return;
+    hfBusy = true;
+    render();
+    let got;
+    try {
+      got = await apiPost('/api/dspca/hf', fitBody({
+        entry_id: q.entry, from_version: q.from_version, force: !!force,
+      }));
+    } catch (e) {
+      hfBusy = false;
+      toast(e.message, 'err', 10000);
+      render();
+      return;
+    }
+    if (got.cached) {
+      hfBusy = false;
+      toast('Already measured on this recording.', 'ok', 5000);
+      refit();
+      return;
+    }
+    hfJob = got.job;
+    render();
+    if (hfPoll) clearInterval(hfPoll);
+    hfPoll = setInterval(async () => {
+      if (!hfJob) { clearInterval(hfPoll); hfPoll = null; return; }
+      let j;
+      try { j = await api('/api/cfc/job/' + hfJob.id); }
+      catch (e) { return; }
+      hfJob = j.job || hfJob;
+      if (hfJob.status === 'running') { swap('.dp-busy', busyLine()); return; }
+      clearInterval(hfPoll);
+      hfPoll = null;
+      const bad = hfJob.status === 'error';
+      const quit = hfJob.status === 'canceled';
+      hfJob = null;
+      hfBusy = false;
+      toast(bad ? 'The power measurement failed.'
+            : quit ? 'Stopped. Nothing was measured.'
+            : 'Measured. The delta panel’s Y axis is power now.',
+            bad ? 'err' : quit ? 'warn' : 'ok', 8000);
+      // The fit is what carries the numbers out, so ask it again.
+      refit();
+    }, 900);
+  }
+
   async function runBulk() {
     const want = (bulk.plan.todo || [])
       .filter((r) => bulk.pick[r.entry_id] !== false)
@@ -1289,6 +1346,13 @@ BARRY.dspca = (function () {
 
   function busyLine() {
     const n = (plan && plan.ok && plan.stamps && plan.stamps.n) || null;
+    if (hfJob) {
+      const st2 = (hfJob.stages || [])[0] || {};
+      return el('div', { class: 'dp-busy on' }, [
+        loader('Reading again at 5 kHz for 500–1000 Hz power — '
+               + (st2.done || 0) + ' of ' + (st2.of || '?') + ' spikes'),
+      ]);
+    }
     const what = fitting
       /* THE SIZE OF THE JOB, and what is actually in it.
 
@@ -1778,6 +1842,39 @@ BARRY.dspca = (function () {
       out.push(el('p', { class: 'hint', text:
         'Click the sink-gap panel to move the cut; right-click it to '
         + 'hand it back to k-means.' }));
+    }
+    if (isDelta() || q.method === 'pca_gap') {
+      /* THE Y AXIS, AND WHY IT COSTS A READ.
+
+         X-ray reads at 1000 Hz, so 500-1000 Hz is entirely above its
+         Nyquist and already gone -- there is nothing in the cache to
+         measure. The band is not a setting for the same reason
+         `ied_ampwidth_gui_v5` does not make it one: it is part of what
+         the measurement is, and two runs under one name that used
+         different bands are not comparable. */
+      const pw2 = power();
+      out.push(label('High-frequency power'));
+      out.push(el('div', { class: 'dp-row' }, [
+        el('span', { class: 'hint', text: hasPower()
+          ? (pw2.band || []).join('–') + ' Hz, dB against each '
+            + 'contact’s own baseline'
+          : 'not measured on this recording yet' }),
+        el('button', {
+          class: 'btn ghost sm',
+          text: hasPower() ? 'measure again' : 'measure it…',
+          disabled: hfBusy || null,
+          title: 'Reads the recording again at 5 kHz, which is minutes, '
+               + 'and keeps the answer. X-ray’s own read is 1 kHz '
+               + 'and this band is above its Nyquist, so there is '
+               + 'nothing in it to measure.',
+          onclick: () => startHf(!!hasPower()),
+        }),
+      ]));
+      if (hasPower() && pw2.missed) {
+        out.push(el('p', { class: 'hint dp-warn', text:
+          pw2.missed + ' spike(s) were too near an edge of the recording '
+          + 'for a baseline window, and have no power.' }));
+      }
     }
     if (q.method === 'pca_gap') {
       out.push(el('div', { class: 'dp-row' }, [
@@ -2474,7 +2571,11 @@ BARRY.dspca = (function () {
             + ' · PC2 ' + pct((fit.explained || [])[1]) }),
         el('div', { style: 'flex:1' }),
         el('span', { class: 'hint', text: isDelta()
-          ? 'one number per event; click a dot to see that spike'
+          ? (hasPower()
+             ? 'gap across, ' + (power().band || []).join('–')
+               + ' Hz power up; click a dot to see that spike'
+             : 'one number per event, and the vertical spread is '
+               + 'nothing; click a dot to see that spike')
           : 'click a dot to see that spike' }),
       ]),
       el('canvas', { class: 'dp-canvas dp-scatter', id: 'dpScatter' }),
@@ -3051,6 +3152,22 @@ BARRY.dspca = (function () {
      show that event -- the check that separates a type from a line drawn
      through a cloud. */
   const isDelta = () => (fit && fit.ok && fit.method === 'delta');
+
+  /* HIGH-FREQUENCY POWER, when the second read has been done.
+
+     Y on the delta panel was jitter -- a number chosen so that events
+     with the same gap could be counted, and meaning nothing. This makes
+     it a measurement: 500-1000 Hz power in dB against the same
+     contact's own baseline 150 ms earlier, which is
+     `ied_ampwidth_gui_v5`'s measure, at v5's band and windows.
+
+     It needs a SECOND READ. X-ray reads at 1000 Hz and that band is
+     entirely above the Nyquist of it, so there is nothing in the cache
+     to measure and no honest way to pretend otherwise. Until the pass
+     has been run the axis says so and the dots go back to jitter. */
+  const power = () => (fit && fit.ok && fit.power) || null;
+  const hasPower = () => !!(power() && power().have
+                            && (power().values || []).some((v) => v != null));
   /* Where k-means drew its line. Off the active variant, so it is the
      boundary of the answer on screen and not of one beside it. */
   /* The boundaries as they should be DRAWN: the dragged one follows the
@@ -3137,6 +3254,88 @@ BARRY.dspca = (function () {
       s.g.fillText(b.toFixed(3), bx + 7, rail0 + 13);
     });
 
+    /* Y IS POWER WHERE THERE IS POWER, and jitter where there is not.
+
+       Jitter is a number chosen so that two events with the same gap can
+       be told apart by eye; it is not a measurement and it should not
+       look like one. Where the HF pass has been run, Y is that
+       measurement and the panel is a real scatter: gap against power,
+       which is the plot the two halves of this tool were always
+       implying. */
+    const pw_ = power();
+    const pv = (pw_ && pw_.values) || [];
+    const on = hasPower();
+    let plo = Infinity, phi = -Infinity;
+    if (on) {
+      for (const v of pv) {
+        if (v == null || !isFinite(v)) continue;
+        plo = Math.min(plo, v); phi = Math.max(phi, v);
+      }
+      if (!(phi > plo)) { phi = plo + 1; }
+      const padp = (phi - plo) * 0.08;
+      plo -= padp; phi += padp;
+    }
+    const PY = (v) => y0 + ph - ((v - plo) / (phi - plo)) * ph;
+
+    if (on) {
+      // A ground at 0 dB: below it the event was quieter in the band
+      // than its own baseline, which is a different claim from "less".
+      if (plo < 0 && phi > 0) {
+        s.g.strokeStyle = k.dim;
+        s.g.setLineDash([2, 3]);
+        s.g.beginPath();
+        s.g.moveTo(x0, PY(0)); s.g.lineTo(x0 + pw, PY(0));
+        s.g.stroke();
+        s.g.setLineDash([]);
+      }
+      s.g.fillStyle = k.dim;
+      s.g.font = '9px system-ui, sans-serif';
+      s.g.textAlign = 'right';
+      s.g.fillText(phi.toFixed(0), x0 - 3, y0 + 8);
+      s.g.fillText(plo.toFixed(0), x0 - 3, y0 + ph);
+      s.g.textAlign = 'left';
+    }
+
+    /* THE AXIS SAYS WHICH OF THE TWO IT IS, ALWAYS.
+
+       This label used to be drawn only when the pass HAD been run, which
+       left the other case -- the common one, before anybody spends the
+       minutes -- as a bare vertical axis with dots spread up it. That
+       reads as a measurement whether or not one was taken, which is the
+       entire fault the HF pass was added to fix. So it is drawn in both
+       states and the state that is not a measurement says so.
+
+       The word "power" is in it on purpose. An IED's fast edges raise
+       the whole spectrum, and band-passing a sharp transient makes a
+       filter ring convincingly; band power cannot tell either of those
+       from an oscillation, and an axis reading "500-1000 Hz" alone
+       invites exactly that reading. v5 answers the oscillation question
+       with a FOOOF fit on averaged spectra, which is a different panel
+       and a different question.
+
+       Shrunk to fit rather than cut: an axis label with its end missing
+       is worse than a small one, and "dB re baseline" is the half that
+       would go. */
+    const ylab = on
+      ? (pw_.band || [500, 1000]).join('\u2013')
+        + ' Hz power \u00b7 dB re baseline'
+      : 'no measurement \u2014 spread apart to separate the dots';
+    s.g.fillStyle = k.dim;
+    let ypt = 9;
+    s.g.font = ypt + 'px system-ui, sans-serif';
+    while (ypt > 7 && s.g.measureText(ylab).width > ph - 4) {
+      ypt -= 0.5;
+      s.g.font = ypt + 'px system-ui, sans-serif';
+    }
+    s.g.save();
+    s.g.translate(x0 - (on ? 24 : 12), y0 + ph / 2);
+    s.g.rotate(-Math.PI / 2);
+    s.g.textAlign = 'center';
+    s.g.fillText(ylab, 0, 0);
+    s.g.restore();
+    s.g.textAlign = 'left';
+    s.g.font = '9px system-ui, sans-serif';
+
     /* Jittered by INDEX, not at random: the same event lands in the same
        place on every redraw, so stepping through them does not make the
        cloud shuffle under the pointer. */
@@ -3145,7 +3344,11 @@ BARRY.dspca = (function () {
     for (const e of evs) {
       const key = e.pc1.toFixed(4);
       const n = (seen[key] = (seen[key] || 0) + 1);
-      const y = y0 + ph * (0.5 + 0.34 * Math.sin(n * 2.399963));
+      const pvi = on ? pv[(fit.events || []).findIndex((z) => z.i === e.i)]
+                     : null;
+      const y = (on && pvi != null && isFinite(pvi))
+        ? PY(pvi)
+        : y0 + ph * (0.5 + 0.34 * Math.sin(n * 2.399963));
       const x = X(e.pc1);
       s.g.beginPath();
       s.g.arc(x, y, 4.2, 0, 6.2832);

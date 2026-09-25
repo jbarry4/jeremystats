@@ -93,6 +93,106 @@ BARRY.vacc = (function () {
     return knows[gid] || null;
   }
 
+  /* ---- opening one, off the cluster ------------------------------------- */
+  /* Whether a recording can be READ off the cluster.
+
+     Not the same question as `of()`, and the difference is what decides
+     whether an Open button exists. `of()` answers four ways and two of them
+     are affirmative: `native` is a share VACC mounts, `staged` is a copy in
+     its scratch, and both can be opened. `local-only` and `unknown` cannot,
+     and neither can a recording nobody has established an answer for -- for
+     which `of()` returns null rather than a no, for the reason its own
+     comment gives at length. */
+  function canRead(sess) {
+    const got = of(sess);
+    const st = got && got.state;
+    return st === 'native' || st === 'staged';
+  }
+
+  /* The id a cluster read is opened by.
+
+     A gid, not a path. `vaccio.py` carries the three reasons; the one that
+     matters here is that everything attached to a recording -- its view
+     state, its bad channels, its curation set, its bank -- is keyed on the
+     gid, so a recording read off the cluster has to BE the recording
+     somebody opened off Y: last week rather than one that looks like it. */
+  function pathFor(sess) {
+    const gid = sess && (sess.gid || (sess.identity && sess.identity.gid));
+    return gid ? ('vacc:' + gid) : null;
+  }
+
+  /* Open it in Xplorefinder, reading off the cluster.
+
+     The same call every other Open in this interface makes. What is
+     different is the path, and that is the whole point: a recording on a
+     share this computer does not mount opens into the same tabs, the same
+     panes and the same curation as one on a drive.
+
+     ONE WAIT, SO ONE `loader`
+
+     Measured: about two seconds to open the recording, and up to five more
+     on top when the link has to be started first. There are no named stages
+     worth drawing -- `stepLoader` with a dot that lights for zero
+     milliseconds is a progress bar lying about where the time goes -- so it
+     is `loader`, and it says the size of the job.
+
+     `host` is where it is drawn: the surface the click happened on. Given
+     rather than assumed, because the caller is the only thing that knows
+     which box it owns.
+
+     AND THE VIEW DOES NOT MOVE UNTIL IT IS OPEN
+
+     Xplorefinder used to be shown first and then filled. Which meant the
+     wait happened on a view that had nothing on it yet, so the loader would
+     have had to be drawn somewhere the person had just been sent rather
+     than where they clicked -- and if the cluster refused, they had been
+     moved to an empty viewer to be told so. */
+  async function open(sess, opts) {
+    const path = pathFor(sess);
+    if (!path) {
+      toast('This recording has no permanent id yet, so there is nothing to '
+            + 'ask the cluster for. Scan the folder it is in first.',
+            'err', 8000);
+      return null;
+    }
+    const got = of(sess) || {};
+    const host = (opts || {}).host || null;
+    const put = host ? Array.from(host.childNodes) : null;
+    if (host) {
+      host.innerHTML = '';
+      host.appendChild(loader(
+        'Opening it off the cluster',
+        'The link opens, then the recording\u2019s header is read where it '
+        + 'is — a few seconds. After that each window is one round trip.'));
+    }
+    try {
+      const opened = await BARRY.views.xplore.open(path);
+      if (opened) {
+        setView('xplore');
+        BARRY.activity.log('vacc.open', { gid: path.slice(5),
+                                          state: got.state,
+                                          remote: got.remote || null });
+      }
+      return opened;
+    } catch (e) {
+      /* A refusal from the cluster is not this: `xplore.open` toasts that
+         one itself and hands back null. This is the other kind -- something
+         threw where nothing was expected to -- and a catch that only put it
+         on the console would be a fault nobody hears about. */
+      reportClientError('vacc.open', e.message, e.stack);
+      toast('Could not open it off the cluster: ' + e.message, 'err', 9000);
+      return null;
+    } finally {
+      /* Put the surface back whatever happened. A refusal leaves somebody
+         looking at the panel they clicked on, with the reason in a toast
+         and the button still there to try again. */
+      if (host) {
+        host.innerHTML = '';
+        put.forEach((node) => host.appendChild(node));
+      }
+    }
+  }
+
   /* ---- looking around the cluster --------------------------------------- */
   let here = null;           // the listing of wherever we are
   let scanning = false;
@@ -680,7 +780,8 @@ BARRY.vacc = (function () {
     if (!on && timer) { clearInterval(timer); timer = null; }
   }
 
-  return { init, status, showVacc, loadKnows, of, watch,
+  return { init, status, showVacc, loadKnows, of, canRead, open, pathFor,
+           watch,
            offerSignIn, showSignIn, signOut,
            get last() { return last; },
            counts: {}, drives: {} };

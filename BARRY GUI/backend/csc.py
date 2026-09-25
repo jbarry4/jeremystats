@@ -20,7 +20,7 @@ import os
 import warnings
 import numpy as np
 
-from . import demo, nlx
+from . import demo, nlx, vaccio
 
 try:
     from scipy.signal import butter, sosfiltfilt, iirnotch, tf2sos
@@ -73,6 +73,13 @@ def open_session(path, even_only=None, invert=True):
     """
     if demo.is_demo(path):
         return demo.open_session(path, even_only, invert)
+    # A "vacc:" path is a recording on the cluster and not on this disk --
+    # see vaccio.py. Here rather than in the route, so that every caller of
+    # open_session gets it: the exporter, the panel renderer and the health
+    # check all reach a recording through this function and none of them
+    # should have to know where it is.
+    if vaccio.is_vacc(path):
+        return vaccio.open_session(path, even_only=even_only, invert=invert)
 
     info = describe_path(path)
     if not info.get("ok"):
@@ -681,6 +688,21 @@ def get_window(session, t0, t1, channels=None, px=1400,
     recording rather than a summary of it. `report`, if given, is filled in
     with what was actually done either way.
     """
+    # A recording on the cluster is read there, by this same function.
+    #
+    # Forwarded HERE rather than one layer down at `_read_channel_window`,
+    # and the difference is the whole reason a live read is usable. Measured
+    # on a 64-channel 30 kHz recording: ten seconds of it is 39 MB of raw
+    # records and 2.9 MB once enveloped to 1400 columns -- and the envelope
+    # is what the viewer was going to be sent either way. Reading remotely
+    # and filtering locally would put the 39 MB on the wire for a picture
+    # 1400 pixels wide.
+    if session.get("source") == "vacc":
+        return vaccio.get_window(
+            session, t0, t1, channels=channels, px=px, highpass=highpass,
+            lowpass=lowpass, notch=notch, mode=mode, spacing_um=spacing_um,
+            ylim=ylim, full_rate=full_rate, report=report)
+
     all_ch = session["channels"]
     if channels:
         sel = [all_ch[i] for i in channels if 0 <= i < len(all_ch)]

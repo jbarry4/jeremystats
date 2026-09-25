@@ -477,6 +477,13 @@ class Store:
             rec["updated"] = self.provenance()
             if not rec.get("key"):
                 rec["key"] = identity.get("key")
+            # What a DEWEY recording is called out loud. Derived from the
+            # path and deterministic, so filling a blank cannot disagree with
+            # anything -- but only ever a blank, because a record that
+            # predates the DEWEY rule has these missing rather than wrong.
+            for field in ("phase", "phase_n", "run", "repeat"):
+                if rec.get(field) is None and identity.get(field) is not None:
+                    rec[field] = identity.get(field)
             # A record with no permanent id cannot be reached by anything:
             # every by-gid route answers 404, nothing can be attached to it,
             # and it files itself under the shared `unknown` shard below.

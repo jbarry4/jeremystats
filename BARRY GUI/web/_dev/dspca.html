@@ -76,17 +76,29 @@ const NL = String.fromCharCode(10);
 
   ev('setView("toolkit")');
   await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
-  const steps = Array.from(D().querySelectorAll('.tk-step'))
+  /* SCOPED TO THE DENTIST, because it is no longer the only bundle.
+
+     There are two now -- The Arc joined it -- and `.tk-step` matches the
+     steps of both, so reading them all and comparing against four found
+     nine and called it a fault. What this check is about is that this
+     tool is the fourth step of ITS bundle; how many bundles the ToolKit
+     offers is somebody else's business. */
+  const dentist = Array.from(D().querySelectorAll('.tk-bundle'))
+    .find((b) => /The Dentist/.test(
+      (b.querySelector('.tk-bundle-hd') || {}).textContent || ''));
+  ok('the ToolKit still offers The Dentist', !!dentist);
+  const steps = Array.from((dentist || D()).querySelectorAll('.tk-step'))
     .map((b) => (b.querySelector('.tk-step-n') || {}).textContent);
-  eq('the rail lists all four, in order', steps,
+  eq('and it lists all four, in order', steps,
      ['Incisor', 'Checkup', 'Braces', 'X-ray']);
-  const count = (D().querySelector('.tk-bundle-c') || {}).textContent;
+  const count = ((dentist || D()).querySelector('.tk-bundle-c')
+                 || {}).textContent;
   eq('the header counts them', count, '4 tools');
 
   /* The step opens, and owns the whole pane -- the bad-channel scope card
      belongs to a different question and was being shown over three tools
      that have nothing to do with it. */
-  const btn = Array.from(D().querySelectorAll('.tk-step'))
+  const btn = Array.from((dentist || D()).querySelectorAll('.tk-step'))
     .find((b) => /X-ray/.test(b.textContent));
   ok('the fourth step is clickable', !!btn);
   if (btn) btn.click();
@@ -1508,6 +1520,75 @@ const NL = String.fromCharCode(10);
     ok('the boundary is still the fitted one, not a hand-placed one',
        ((st().fit.variants || {}).delta || {}).manual === false);
   }
+
+  /* ================================================================== */
+  head('THE Y AXIS SAYS WHICH OF THE TWO IT IS');
+
+  /* Y on this panel is one of two completely different things: a real
+     500-1000 Hz power measurement where the HF pass has been run, and
+     a spread chosen so that two events with the same gap can be told
+     apart where it has not. The second is not a measurement, and an
+     unlabelled vertical axis with dots up it reads as one either way.
+
+     Read off the canvas rather than off the source, by spying on
+     `fillText` -- checking that the code CONTAINS a string proves the
+     string exists, not that anything draws it, and the fault being
+     guarded here was precisely a label that existed and was skipped. */
+  const ylSpy = '(function(){ var W = window;'
+    + ' var C = W.CanvasRenderingContext2D.prototype;'
+    + ' if (!C.__ylOrig) { C.__ylOrig = C.fillText;'
+    + ' C.fillText = function(t, x, y) { (W.__yl = W.__yl || [])'
+    + '.push(String(t)); return C.__ylOrig.call(this, t, x, y); }; }'
+    + ' W.__yl = []; })()';
+  const ylOff = '(function(){ var C = window.CanvasRenderingContext2D'
+    + '.prototype; if (C.__ylOrig) { C.fillText = C.__ylOrig;'
+    + ' delete C.__ylOrig; } })()';
+  const ylDrawn = () => ev('JSON.stringify(window.__yl || [])');
+
+  ev(ylSpy);
+  ev('BARRY.dspca._draw()');
+  const ylNone = JSON.parse(ylDrawn());
+  const ylSaid = ylNone.filter((t) => /measurement|power|dB/i.test(t));
+  ok('with no HF pass the axis is still labelled',
+     ylSaid.length > 0, JSON.stringify(ylNone.slice(0, 12)));
+  ok('and it says the spread is not a measurement',
+     ylSaid.some((t) => /no measurement/i.test(t)),
+     JSON.stringify(ylSaid));
+  ok('so it does not claim a band it never measured',
+     !ylSaid.some((t) => /power/i.test(t)), JSON.stringify(ylSaid));
+
+  /* AND THE OTHER STATE. The 5 kHz pass is minutes, so the number is
+     put in by hand here: what is being checked is the axis, not the
+     arithmetic, and the arithmetic was checked against a 700 Hz burst
+     and against noise before any of this was drawn. `_state` hands
+     back the live objects, which is what makes this possible. */
+  const ylHad = ev('JSON.stringify(BARRY.dspca._state().fit.power || null)');
+  ev('(function(){ var f = BARRY.dspca._state().fit;'
+     + ' f.power = { have: true, band: [500, 1000], unit: "dB re baseline",'
+     + ' values: (f.events || []).map(function(e, i) '
+     + '{ return (i % 7) - 3; }) }; })()');
+  ev('window.__yl = []');
+  ev('BARRY.dspca._draw()');
+  const ylOn = JSON.parse(ylDrawn());
+  ok('with the pass run the axis names the band',
+     ylOn.some((t) => t.indexOf('500') >= 0 && t.indexOf('1000') >= 0),
+     JSON.stringify(ylOn.slice(0, 12)));
+  ok('and calls it POWER, not just a frequency range -- an IED\u2019s '
+     + 'edges raise the whole spectrum and this cannot tell that from '
+     + 'an oscillation',
+     ylOn.some((t) => /power/i.test(t)), JSON.stringify(ylOn.slice(0, 12)));
+  ok('and says what the dB is against, so it is not read as absolute',
+     ylOn.some((t) => /re baseline/i.test(t)),
+     JSON.stringify(ylOn.slice(0, 12)));
+
+  /* Put it back, or every check after this one is looking at a panel
+     with a made-up axis on it. */
+  ev('(function(){ BARRY.dspca._state().fit.power = ' + (
+     ylHad === 'null' ? 'null' : ylHad) + '; })()');
+  ev(ylOff);
+  ev('BARRY.dspca._draw()');
+  ok('the invented power is taken back out again',
+     ev('JSON.stringify(BARRY.dspca._state().fit.power || null)') === ylHad);
 
   /* ================================================================== */
   head('THE DEPTH PROFILE ON THE RASTER');

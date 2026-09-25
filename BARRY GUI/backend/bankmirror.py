@@ -33,15 +33,19 @@ import json
 import os
 import re
 
+from . import ids
+
 FOLDER = "Data Bank"
 README = """# Data Bank
 
 Written by Jarvis, from the Event Bank. Open anything here in Excel or MATLAB;
 nothing needs Jarvis to read it.
 
-    <Project>/m<mouse>/s<session> <date>/<type> - <name>.csv     the times
-    <Project>/m<mouse>/s<session> <date>/<type> - <name>.json    everything else
-    <Project>/m<mouse>/_mouse.json                               the animal
+    <Project>/<m|r><animal>/s<session> <date>/<type> - <name>.csv   the times
+    <Project>/<m|r><animal>/s<session> <date>/<type> - <name>.json  the rest
+    <Project>/<m|r><animal>/_mouse.json                             the animal
+
+`m` for a mouse, `r` for a rat -- DEWEY is rats, everything else is mice.
     _index.csv                                                   all of it
 
 `specified` is the column that matters. False means a detector proposed these
@@ -64,7 +68,10 @@ def _safe(text, fallback="x"):
 def _entry_dir(root, entry):
     project = _safe(entry.get("project") or "Unfiled", "Unfiled")
     mouse = entry.get("mouse")
-    mdir = "m%s" % mouse if mouse is not None else "m unknown"
+    # Same letter the registry and the shard names use, so a DEWEY folder
+    # on disk reads `DEWEY/r9/...` rather than calling a rat a mouse.
+    pre = ids.subject_prefix(entry.get("project"))
+    mdir = ("%s%s" % (pre, mouse)) if mouse is not None else (pre + " unknown")
     sess = entry.get("session")
     date = (entry.get("recording_start") or "")[:10]
     sdir = "s%s" % sess if sess is not None else "s unknown"
@@ -206,7 +213,9 @@ class BankMirror:
                 continue
             path = os.path.join(self.root, _safe(rec.get("project")
                                                  or "Unfiled", "Unfiled"),
-                                _safe("m%s" % rec["mouse"]), "_mouse.json")
+                                _safe("%s%s" % (ids.subject_prefix(
+                                    rec.get("project")), rec["mouse"])),
+                                "_mouse.json")
             body = {k: v for k, v in rec.items() if not k.startswith("_")}
             if self._safe_write(path, json.dumps(
                     body, indent=2, sort_keys=True, default=str) + "\n"):

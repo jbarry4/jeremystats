@@ -1,0 +1,122 @@
+{
+  "_at": {
+    "created": "2026-09-24T19:24:50.954492+00:00",
+    "duration_s": "2026-09-24T19:49:54.364656+00:00",
+    "first_seen_by": "2026-09-24T19:24:50.954492+00:00",
+    "fs": "2026-09-24T19:24:50.954492+00:00",
+    "gid": "2026-09-24T19:24:50.954492+00:00",
+    "group": "2026-09-24T19:24:50.954492+00:00",
+    "has_video": "2026-09-24T19:24:50.954492+00:00",
+    "key": "2026-09-24T16:34:21-04:00",
+    "label": "2026-09-24T16:34:21-04:00",
+    "loose_key": "2026-09-24T16:34:21-04:00",
+    "mouse": "2026-09-24T19:24:50.954492+00:00",
+    "n_channels": "2026-09-24T19:24:50.954492+00:00",
+    "phase": "2026-09-24T19:24:50.954492+00:00",
+    "phase_n": "2026-09-24T19:24:50.954492+00:00",
+    "probe": "2026-09-24T19:44:39.710505+00:00",
+    "probe_source": "2026-09-24T19:44:39.710505+00:00",
+    "project": "2026-09-24T19:24:50.954492+00:00",
+    "project_source": "2026-09-24T19:24:50.954492+00:00",
+    "retired": "2026-09-24T19:27:55.540763+00:00",
+    "run": "2026-09-24T19:24:50.954492+00:00",
+    "schema": "2026-09-24T19:24:50.954492+00:00",
+    "session": "2026-09-24T19:24:50.954492+00:00",
+    "start": "2026-09-24T19:24:50.954492+00:00",
+    "updated": "2026-09-25T16:45:14.398731+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-41-10": [
+        "set",
+        "2026-09-24T20:01:04.438888+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-45-46": [
+        "set",
+        "2026-09-24T20:03:32.525516+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-46-34": [
+        "set",
+        "2026-09-24T20:03:33.124528+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP2\\2026-08-19_12-26-36": [
+        "set",
+        "2026-09-24T20:10:02.811082+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_SPC\\2026-08-19_10-52-05": [
+        "set",
+        "2026-09-24T20:10:02.811082+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-25T16:45:14.398731+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T16:45:14.398731+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.24.6",
+    "at": "2026-09-24T15:24:50-04:00",
+    "commit": "0fc4943",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "duration_s": 305.456,
+  "first_seen_by": "scan",
+  "fs": 32000.0,
+  "gid": "s2ecaf1b278cd",
+  "group": "DEWEY",
+  "has_video": true,
+  "key": "r008_s014_2026-08-19_10-46-34",
+  "label": "DEWEY r8 s14 Con4 FP1 2026-08-19",
+  "loose_key": "r008_s014",
+  "mouse": 8,
+  "n_channels": 32,
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-41-10",
+    "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-45-46",
+    "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-46-34",
+    "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_SPC\\2026-08-19_10-52-05",
+    "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP2\\2026-08-19_12-26-36"
+  ],
+  "phase": "Con",
+  "phase_n": 4,
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "run": "FP1",
+  "schema": 2,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-25T12:45:14-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "E:\\Joe Multisite 2026 data\\J8\\J8_Con4\\J8_Con4_FP1\\2026-08-19_10-46-34",
+      "root": "E:/Joe Multisite 2026 data",
+      "scan": "scan_175198d703"
+    }
+  },
+  "session": 14,
+  "start": "2026-08-19T10:46:34",
+  "updated": {
+    "app_version": "2026.09.24.8",
+    "at": "2026-09-25T12:45:14-04:00",
+    "commit": "0fc4943",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

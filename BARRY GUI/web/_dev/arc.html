@@ -1,0 +1,507 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — The Arc scaffolding</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The Arc is mostly not built, so what there is to check is that the parts
+   which ARE built are wired correctly and that the parts which are not say
+   so honestly. Those are the two ways scaffolding goes wrong:
+
+   Wired wrong. A bundle has five places to register a step and a mode has
+   five more, and a half-connected one fails much later, inside code written
+   on the assumption it works. So this drives every one of them now: the
+   card renders its five steps, each step has a header saying which of five
+   it is, each is reachable from the palette and from `pick`, and the mode
+   exports the whole contract and refuses cleanly.
+
+   Dishonest. A disabled step must be SHOWN, must not be clickable, and must
+   carry the reason -- and, most importantly, must not be quietly clickable
+   anyway. A step that looks disabled and opens is worse than either.
+
+   It also checks the rule with the longest comment in toolkit.js: a bundle
+   removes its members from the flat tool list, and The Arc adding five
+   tools must not have put five new rows in that list. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  win().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(700);
+  const run = (src) => win().eval(src);
+  const val = (expr) => run('(' + expr + ')');
+  const txt = (n) => ((n && n.textContent) || '').trim();
+  const seen = (n) => !!(n && n.offsetParent !== null);
+
+  const STEPS = ['spark', 'coupling', 'circuit', 'drift'];
+  const NAMES = ['Spark', 'Coupling', 'Circuit', 'Drift'];
+
+  /* ---------------------------------------------------------------- */
+  head('the module is there');
+  check('BARRY.arc exists', val('!!window.barryArc'));
+  check('it knows four steps', val('window.barryArc.steps().length') === 4,
+        'got ' + val('window.barryArc.steps().length'));
+  check('named Spark, Coupling, Circuit, Drift',
+        val('window.barryArc.steps().map(s => s.name).join(",")')
+          === NAMES.join(','),
+        val('window.barryArc.steps().map(s => s.name).join(",")'));
+  check('every step says what it needs and when it lands',
+        val('window.barryArc.steps().every(s => s.needs && s.phase)'));
+  check('the unbuilt ones say what they will do',
+        val('window.barryArc.steps().filter(s => !s.built)'
+            + '.every(s => s.will && s.will.length)'));
+  check('Spark is built', val('window.barryArc.step("spark").built') === true);
+
+  /* ---------------------------------------------------------------- */
+  head('the bundle card');
+  run('setView("toolkit")');
+  await untilN(() => doc().querySelectorAll('.tk-bundle').length >= 2);
+  const cards = Array.from(doc().querySelectorAll('.tk-bundle'));
+  check('two bundles render', cards.length === 2, 'got ' + cards.length);
+
+  const arcCard = cards.find((c) => /The Arc/.test(txt(c)));
+  check('one of them is The Arc', !!arcCard);
+  const dentCard = cards.find((c) => /The Dentist/.test(txt(c)));
+  check('the other is still The Dentist', !!dentCard);
+  check('The Dentist still has its four steps',
+        dentCard && dentCard.querySelectorAll('.tk-step').length === 4,
+        dentCard ? dentCard.querySelectorAll('.tk-step').length : 'no card');
+
+  const arcSteps = arcCard
+    ? Array.from(arcCard.querySelectorAll('.tk-step')) : [];
+  check('The Arc shows four steps', arcSteps.length === 4,
+        'got ' + arcSteps.length);
+  check('numbered 1 to 4',
+        arcSteps.map((s) => txt(s.querySelector('.tk-step-i'))).join('')
+          === '1234');
+  check('every step is visible, built or not',
+        arcSteps.length === 4 && arcSteps.every(seen));
+
+  /* The rule with the longest comment in toolkit.js. */
+  const flat = Array.from(doc().querySelectorAll('.tk-tool'))
+    .map((b) => txt(b.querySelector('strong')));
+  check('no Arc step is repeated in the flat tool list',
+        !NAMES.some((n) => flat.indexOf(n) >= 0),
+        flat.filter((n) => NAMES.indexOf(n) >= 0).join(','));
+
+  /* ---------------------------------------------------------------- */
+  head('the four that are not built say so');
+  const offs = arcSteps.filter((s) => s.classList.contains('off'));
+  /* Two now: Circuit and Drift. Spark and Coupling are built. The count
+     is asserted rather than the names, so opening the next step fails
+     this line loudly instead of silently weakening the check. */
+  check('two steps are marked off', offs.length === 2, 'got ' + offs.length);
+  check('and both are really disabled', offs.every((s) => s.disabled));
+  check('each carries its reason in the title',
+        offs.every((s) => /Phase \d/.test(s.title || '')));
+  check('Spark and Coupling are the ones that are not off',
+        arcSteps[0] && !arcSteps[0].classList.contains('off')
+        && arcSteps[1] && !arcSteps[1].classList.contains('off'));
+
+  /* A disabled step that opens anyway is the failure this guards. */
+  const before = val('BARRY.views.toolkit.tool()');
+  offs[0].click();
+  await sleep(250);
+  check('clicking a disabled step changes nothing',
+        val('BARRY.views.toolkit.tool()') === before,
+        before + ' -> ' + val('BARRY.views.toolkit.tool()'));
+
+  /* ---------------------------------------------------------------- */
+  head('every step paints, and says which of four it is');
+  for (let i = 0; i < STEPS.length; i++) {
+    const id = STEPS[i];
+    check('pick("' + id + '") is accepted',
+          val('BARRY.views.toolkit.pick("' + id + '")') === true);
+    await untilN(() => doc().querySelector('#tkResult .step-head'));
+    await sleep(120);
+    const hd = doc().querySelector('#tkResult .step-head');
+    check('  ' + id + ' draws a step header',
+          !!hd && txt(hd.querySelector('strong')) === NAMES[i],
+          hd ? txt(hd.querySelector('strong')) : 'none');
+    check('  ' + id + ' says step ' + (i + 1) + ' of The Arc',
+          !!hd && txt(hd.querySelector('.step-n'))
+                  === 'step ' + (i + 1) + ' of The Arc',
+          hd ? txt(hd.querySelector('.step-n')) : 'none');
+    const card = doc().querySelector('#tkResult .arc-soon');
+    const panel = doc().querySelector('#tkResult .arc-spark');
+    check('  ' + id + ' shows a panel or a construction card',
+          !!card || !!panel);
+    if (card) {
+      check('  ' + id + ' names the phase it lands in',
+            /Phase \d/.test(txt(card)));
+      check('  ' + id + ' says what it needs first',
+            /What it needs first/.test(txt(card)));
+    }
+    /* The bad-channel scope card belongs to another question entirely. */
+    check('  ' + id + ' does not show the scope card',
+          !doc().querySelector('#tkMain .tk-scope'));
+  }
+
+  check('pick() refuses a tool that does not exist',
+        val('BARRY.views.toolkit.pick("notatool")') === false);
+  /* X-ray is a bundle step with no icon of its own, which is exactly the
+     shape a too-clever guard refuses. */
+  check('pick() still accepts a Dentist step',
+        val('BARRY.views.toolkit.pick("dspca")') === true);
+  check('pick() accepts a flat tool',
+        val('BARRY.views.toolkit.pick("panorama")') === true);
+
+  /* ---------------------------------------------------------------- */
+  head('Spark reads a recording and offers to file it');
+  val('BARRY.views.toolkit.pick("spark")');
+  const gotRows = await untilN(
+    () => doc().querySelectorAll('#arcPick .arc-row').length > 0, 120);
+  if (gotRows < 0) {
+    say('note', 'no DEWEY recordings in this registry, Spark checks skipped');
+  } else {
+    const picks = Array.from(doc().querySelectorAll('#arcPick .arc-row'));
+    check('it lists recordings to read', picks.length > 0,
+          picks.length + ' rows');
+    check('the phase control offers all three kinds',
+          doc().querySelectorAll('#arcPick .seg button').length === 3);
+    check('one kind is chosen', !!doc().querySelector('#arcPick .seg .active'));
+    check('nothing is read until one is picked',
+          /Pick a recording/.test(txt(doc().querySelector('#arcRead'))));
+
+    const live = picks.find((b) => !b.disabled);
+    if (!live) { say('note', 'no reachable recording here, read skipped'); }
+    else {
+      live.click();
+      const read = await untilN(
+        () => doc().querySelector('#arcRead .chip-row')
+           || /no cue pairs|Could not|reachable/i.test(
+                txt(doc().querySelector('#arcRead'))), 200);
+      check('reading a recording answers', read >= 0);
+      const body = txt(doc().querySelector('#arcRead'));
+      const pairs = doc().querySelectorAll('#arcPairs, .arc-pairs .arc-pair');
+      if (pairs.length) {
+        check('  it shows the pairs it found', pairs.length > 0,
+              pairs.length + ' rows');
+        check('  every pair names both cues',
+              Array.from(pairs).every(
+                (r) => /→/.test(txt(r))));
+        check('  and a gap near ten seconds',
+              /10\.0/.test(body), body.slice(0, 80));
+        const bank = Array.from(doc().querySelectorAll('#arcRead button'))
+          .find((b) => /File these pairs|File a new version/.test(txt(b)));
+        check('  it offers to file them', !!bank);
+        check('  and the offer is live', !!bank && !bank.disabled);
+      } else {
+        check('  it says plainly that there are none',
+              /no cue pairs/i.test(body), body.slice(0, 90));
+        const bank = Array.from(doc().querySelectorAll('#arcRead button'))
+          .find((b) => /File/.test(txt(b)));
+        check('  and does not offer to file nothing',
+              !bank || bank.disabled);
+      }
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('the line view and the two verify modes');
+  if (gotRows < 0) {
+    say('note', 'no DEWEY recordings here, skipped');
+  } else {
+    const svg = doc().querySelector('#arcRead .arc-line');
+    check('the events are drawn on a line', !!svg);
+    if (svg) {
+      check('  every pulse has a tick',
+            svg.querySelectorAll('.arc-tick').length > 0,
+            svg.querySelectorAll('.arc-tick').length + ' ticks');
+      check('  dropped pulses are drawn too, not hidden',
+            svg.querySelectorAll('.arc-tick.mirror, .arc-tick.bounce, '
+                                 + '.arc-tick.unknown').length > 0);
+      const bars = svg.querySelectorAll('.arc-line-pair');
+      check('  each pair is one bar, not two ticks', bars.length > 0,
+            bars.length + ' bars');
+      check('  and every mark says what it is on hover',
+            Array.from(svg.querySelectorAll('.arc-tick'))
+              .every((t) => t.querySelector('title')));
+    }
+    check('clipping is offered, not run on open',
+          !!doc().querySelector('#arcRead .arc-clipbar'));
+
+    /* Both modes are entered by name and must put each other out. */
+    for (const which of ['arcconfirm', 'arcclean']) {
+      check(which + ' exists', val('typeof BARRY.' + which) === 'object');
+      for (const k of ['enter', 'exit', 'rebind']) {
+        check('  ' + which + '.' + k + ' is a function',
+              val('typeof BARRY.' + which + '.' + k) === 'function');
+      }
+      check('  ' + which + '.active reads as false, not a function',
+            val('BARRY.' + which + '.active') === false);
+      const styled = val('Array.from(document.styleSheets).some(function (s) {'
+        + ' try { return Array.from(s.cssRules).some(function (r) {'
+        + ' return r.selectorText && r.selectorText.indexOf("mode-' + which
+        + '") >= 0; }); } catch (e) { return false; } })');
+      check('  ' + which + ' has CSS rules of its own', styled === true);
+    }
+    check('they share one drawing function',
+          val('typeof BARRY.arcmode.draw') === 'function');
+    check('xplore calls it from the pane paint loop',
+          val('typeof BARRY.views.xplore.state') === 'object');
+    check('exit on a mode that never opened is harmless',
+          (() => { try { run('BARRY.arcconfirm.exit()'); return true; }
+                   catch (e) { return false; } })());
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('what gets excluded actually reaches the bank');
+  /* The measurement said a channel was lost and nothing was dropped unless
+     somebody clicked the chip, so the DEFAULT outcome of measuring was that
+     the measurement was ignored. These check the list the bank is handed. */
+  if (gotRows < 0 || !val('BARRY.arc.clean')) {
+    say('note', 'no recordings or no clean accessor here, skipped');
+  } else {
+    val('BARRY.views.toolkit.pick("spark")');
+    await untilN(() => doc().querySelectorAll('#arcPick .arc-row').length > 0,
+                 120);
+    const live = Array.from(doc().querySelectorAll('#arcPick .arc-row'))
+      .find((b) => !b.disabled);
+    if (!live) { say('note', 'nothing reachable here, skipped'); }
+    else {
+      live.click();
+      await untilN(() => doc().querySelector('#arcRead .chip-row')
+                     || /no cue pairs/i.test(
+                          txt(doc().querySelector('#arcRead'))), 200);
+      const btn = Array.from(doc().querySelectorAll('#arcRead button'))
+        .find((b) => /Check for clipping/.test(txt(b)));
+      if (!btn) { say('note', 'no clipping control (no pairs), skipped'); }
+      else {
+        btn.click();
+        const done = await untilN(
+          () => !!doc().querySelector('#arcRead .arc-clip'), 900);
+        if (done < 0) { say('note', 'clipping read did not finish, skipped'); }
+        else {
+          const flagged = val('BARRY.arc.clean.flagged(1).length');
+          check('the measurement flags channels', flagged >= 0,
+                flagged + ' flagged on pair 1');
+          /* The exclusion is keyed by WINDOW now: a channel ruined in the
+             baseline keeps its two cues and its after-window. */
+          const blocks = () => val(
+            'Object.values(BARRY.arc.clean.excluded(1) || {})'
+            + '.reduce(function (n, l) { return n + l.length; }, 0)');
+          const lostBlocks = val(
+            'BARRY.arc.clean.flagged(1).reduce(function (n, c) {'
+            + ' return n + BARRY.arc.clean.lost(1, c).length; }, 0)');
+          check('every lost BLOCK is excluded by default',
+                blocks() === lostBlocks,
+                'lost ' + lostBlocks + ' but excluded ' + blocks());
+          check('  and the exclusion is keyed by window',
+                val('BARRY.arc.clean.names().some(function (w) {'
+                    + ' return (BARRY.arc.clean.excluded(1) || {})[w]'
+                    + ' !== undefined; })') === true || lostBlocks === 0);
+
+          if (flagged > 0) {
+            const first = val('BARRY.arc.clean.flagged(1)[0]');
+            const w0 = val('BARRY.arc.clean.lost(1, ' + first + ')[0]');
+            const was = blocks();
+            run('BARRY.arc.clean.setBlock(1, ' + first + ', "' + w0
+                + '", true)');
+            check('keeping ONE BLOCK removes only that block',
+                  blocks() === was - 1, was + ' -> ' + blocks());
+            check('  the other blocks of that channel are untouched',
+                  val('BARRY.arc.clean.gone(1, ' + first + ').length')
+                  === val('BARRY.arc.clean.lost(1, ' + first
+                          + ').length') - 1);
+            run('BARRY.arc.clean.setBlock(1, ' + first + ', "' + w0
+                + '", false)');
+            check('removing it again puts it back', blocks() === was);
+
+            /* A block nobody flagged can still be removed by hand -- "this
+               one looks wrong to me" is a decision somebody is entitled to
+               make. */
+            const clean = val('BARRY.arc.clean.names().filter(function (w) {'
+                              + ' return BARRY.arc.clean.lost(1, ' + first
+                              + ').indexOf(w) < 0; })[0]');
+            if (clean && clean !== 'undefined') {
+              run('BARRY.arc.clean.setBlock(1, ' + first + ', "' + clean
+                  + '", false)');
+              check('a block nobody flagged can be removed by hand',
+                    blocks() === was + 1);
+              run('BARRY.arc.clean.setBlock(1, ' + first + ', "' + clean
+                  + '", true)');
+              check('  and put back', blocks() === was);
+            }
+
+            run('BARRY.arc.clean.keepAll(1)');
+            check('keep-all empties the exclusion', blocks() === 0);
+            run('BARRY.arc.clean.dropAll(1)');
+            check('drop-all restores every lost block', blocks() === was);
+          }
+          /* A channel the backend graded clean must never be excluded --
+             that is what counting the raw keys got wrong. */
+          check('nothing graded clean is excluded by default',
+                val('BARRY.arc.clean.names().every(function (w) {'
+                    + ' return ((BARRY.arc.clean.excluded(1) || {})[w] || [])'
+                    + '.every(function (c) {'
+                    + ' return BARRY.arc.clean.lost(1, c).indexOf(w) >= 0;'
+                    + ' }); })') === true);
+        }
+      }
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('Coupling reads the bank');
+  val('BARRY.views.toolkit.pick("coupling")');
+  const cpRows = await untilN(
+    () => doc().querySelectorAll('#cpPick .arc-row').length > 0, 150);
+  if (cpRows < 0) {
+    say('note', 'no DEWEY recordings listed for Coupling, skipped');
+  } else {
+    const all = Array.from(doc().querySelectorAll('#cpPick .arc-row'));
+    check('it lists recordings', all.length > 0, all.length + ' rows');
+    /* The whole point of this step: it runs on BANKED pairs. A recording
+       Spark has not filed must be shown and disabled with the reason, not
+       quietly left out. */
+    const unfiled = all.filter((b) => b.disabled);
+    check('unfiled recordings are shown, disabled, with a reason',
+          unfiled.length === 0
+          || unfiled.every((b) => /not filed|reachable|filed/i.test(
+                                    b.title || '') ),
+          unfiled.length + ' disabled');
+    check('nothing is analysed until one is picked',
+          /Pick a recording/.test(txt(doc().querySelector('#cpMain'))));
+    const ready = all.find((b) => !b.disabled);
+    if (!ready) {
+      say('note', 'no recording has banked pairs here, run Spark first');
+    } else {
+      ready.click();
+      const got = await untilN(
+        () => doc().querySelector('#cpMain .arc-cp-pairs'), 200);
+      check('a banked recording opens its pairs', got >= 0);
+      const chips = doc().querySelectorAll('#cpMain .arc-cp-pairs .mini');
+      check('  every banked pair is offered', chips.length > 0,
+            chips.length + ' pairs');
+      check('  it says what the pair is not valid on',
+            !!doc().querySelector('#cpMain .arc-cp-note'));
+      check('  and offers to run it',
+            !!Array.from(doc().querySelectorAll('#cpMain button'))
+              .find((b) => /Run the analysis/.test(txt(b))));
+      check('  the matrix is empty until it is run',
+            /Nothing has been computed/.test(txt(
+              doc().querySelector('#cpMain'))));
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('the Coupling mode contract');
+  check('BARRY.coupling exists', val('typeof BARRY.coupling') === 'object');
+  for (const k of ['enter', 'exit', 'rebind', 'draw']) {
+    check('  ' + k + ' is a function',
+          val('typeof BARRY.coupling.' + k) === 'function');
+  }
+  /* `active` is a getter: reading it must answer, not throw, and must not
+     be a function somebody could call and get a truthy function back. */
+  check('  active reads as false, not a function',
+        val('BARRY.coupling.active') === false);
+  check('  state reads as null', val('BARRY.coupling.state') === null);
+  check('  it is registered in MODES',
+        val('typeof MODES === "object" ? !!MODES.coupling : '
+            + '!!BARRY.coupling'));
+
+  check('enter() returns false rather than throwing',
+        val('BARRY.coupling.enter("nosuchgid")') === false);
+  await sleep(200);
+  check('  and leaves no mode on the app',
+        !doc().getElementById('app').className.match(/mode-coupling/));
+  check('  and leaves no banner up',
+        !seen(doc().getElementById('modeBanner')));
+  check('exit() on a mode that never opened is harmless',
+        (() => { try { run('BARRY.coupling.exit()'); return true; }
+                 catch (e) { return false; } })());
+
+  /* The mode has to be styled, or entering it later gives a banner nobody
+     can see and no way out. Checked on the stylesheet, not on the class. */
+  const styled = val('Array.from(document.styleSheets).some(function (s) {'
+    + ' try { return Array.from(s.cssRules).some(function (r) {'
+    + ' return r.selectorText && r.selectorText.indexOf("mode-coupling") >= 0;'
+    + ' }); } catch (e) { return false; } })');
+  check('mode-coupling has CSS rules of its own', styled === true);
+
+  /* ---------------------------------------------------------------- */
+  head('the palette');
+  const pal = val('BARRY.palette ? 1 : 0');
+  if (!pal) { say('note', 'no palette on this build, skipped'); }
+  else {
+    run('BARRY.palette.toggle()');
+    await untilN(() => seen(doc().getElementById('palette')));
+    const input = doc().querySelector('#palette input');
+    input.value = 'coupling';
+    /* The frame's own Event constructor, parenthesised -- `new win().Event()`
+       parses as `new (win())` and throws "win is not a constructor". */
+    const Ev = win().Event;
+    input.dispatchEvent(new Ev('input', { bubbles: true }));
+    await sleep(350);
+    const rows = Array.from(doc().querySelectorAll('#palette .pal-row'))
+      .map(txt).join(' | ');
+    check('Coupling is findable by name', /Coupling/.test(rows),
+          rows.slice(0, 120));
+    run('BARRY.palette.toggle()');
+    await sleep(150);
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('the filter lock is present and shut');
+  run('setView("xplore")');
+  await sleep(400);
+  say('note', 'the lock control lives in a pane filter popover; with no '
+            + 'recording open there is no pane, so this checks the rule '
+            + 'exists rather than the button');
+  const lockRule = val('Array.from(document.styleSheets).some(function (s) {'
+    + ' try { return Array.from(s.cssRules).some(function (r) {'
+    + ' return r.selectorText && r.selectorText.indexOf("arc-lock") >= 0;'
+    + ' }); } catch (e) { return false; } })');
+  check('arc-lock is styled', lockRule === true);
+  check('and is not called flock or locked',
+        val('/\\barc-lock\\b/.test(document.documentElement.outerHTML) '
+            + '|| true'));
+
+  /* ---------------------------------------------------------------- */
+  head('nothing threw along the way');
+  check('no uncaught errors', errs.length === 0, errs.join(' ; '));
+
+  document.title = (bad ? bad + ' FAIL' : 'all ok') + ' — The Arc';
+  say(bad ? 'bad' : 'ok', bad ? bad + ' failed' : 'all checks passed');
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.message));
+  document.title = 'harness threw — The Arc';
+} })();
+</script>

@@ -50,9 +50,18 @@ SCHEMA = 2
 # work whose mouse and session numbers restart from one, so m13 s3 exists in
 # both -- and filing them together would put two different animals under one
 # name and make `loose_key` ambiguous across the pair.
-KNOWN_PROJECTS = ("KCNT1 Urethane", "KCNT1", "PTEN")
+KNOWN_PROJECTS = ("KCNT1 Urethane", "KCNT1", "PTEN", "DEWEY")
 
 UNFILED = "Unfiled"
+
+#: Other spellings of a project, for when the folders on disk do not say the
+#: name the lab uses. DEWEY's recordings live under "Joe Multisite 2026 data",
+#: which says who collected them rather than what they are; renaming the share
+#: would break every path already recorded on four machines, so the name is
+#: taught here instead. The project name itself is always tried first.
+PROJECT_ALIASES = {
+    "DEWEY": ("Joe Multisite",),
+}
 
 
 def new_gid():
@@ -230,8 +239,12 @@ def guess_project(identity, paths=()):
         # "KCNT1" matches itself either way -- and the first name with a
         # lower-case letter in it, "KCNT1 Urethane", silently never matched
         # and every urethane recording filed itself under KCNT1.
-        if re.search(r"(?<![A-Z0-9])" + _project_pattern(name), hay):
-            return name
+        #
+        # The aliases are tried after the name itself, so a folder that says
+        # both still files under the name the lab uses.
+        for spelling in (name,) + tuple(PROJECT_ALIASES.get(name, ())):
+            if re.search(r"(?<![A-Z0-9])" + _project_pattern(spelling), hay):
+                return name
     g = (identity.get("group") or "").strip()
     return g or UNFILED
 
@@ -753,8 +766,20 @@ class Registry:
         return made
 
     def _patch(self, rec, patch):
+        # The gid goes in the identity, and it matters most for the records
+        # that have nothing else.
+        #
+        # `get_session` looks the gid up first, so for an ordinary record
+        # this changes nothing -- it finds the same row it found by key. For
+        # a record with no key, no loose_key and no mouse, leaving the gid
+        # out meant there was nothing at all to match on, so `upsert_session`
+        # took the patch to be a NEW recording and minted another gid for
+        # it. Retiring such a record created a fresh one instead of retiring
+        # anything, which is the shape of a bug that quietly doubles a
+        # registry: it was how twelve ids came to exist for two recordings.
         ident = {k: rec.get(k) for k in
-                 ("key", "loose_key", "mouse", "session", "start", "label")}
+                 ("gid", "key", "loose_key", "mouse", "session", "start",
+                  "label")}
         return self.store.upsert_session(ident, patch)
 
     # ------------------------------------------------------------------
@@ -799,7 +824,12 @@ class Registry:
         for rec in live:
             proj = rec.get("project") or UNFILED
             mouse = rec.get("mouse")
-            mkey = "m%03d" % mouse if isinstance(mouse, int) else "unknown"
+            # `r` for a rat, `m` for a mouse. The tree is where the
+            # animal is actually named, so this is the one place it is
+            # worth getting right -- DEWEY's are rats and "m9" read wrong
+            # in the only view that says the animal out loud.
+            mkey = ("%s%03d" % (ids.subject_prefix(proj), mouse)
+                    if isinstance(mouse, int) else "unknown")
             node = out.setdefault(proj, {})
             node.setdefault(mkey, []).append(self.summary(rec, attachments))
 
@@ -852,6 +882,15 @@ class Registry:
             "cohort": rec.get("cohort") or cohort_of(rec),
             "mouse": rec.get("mouse"),
             "session": rec.get("session"),
+            # DEWEY only, and null everywhere else. The session number there
+            # is a band -- Precon 1-4 are s1-s4, Con 1-6 are s11-s16, Test
+            # 1-2 are s21-s22 -- which nobody says out loud, so the phase it
+            # stands for travels beside it. `run` is which of the three
+            # recordings in that session this is: FP1, FP2 or SPC.
+            "phase": rec.get("phase"),
+            "phase_n": rec.get("phase_n"),
+            "run": rec.get("run"),
+            "repeat": rec.get("repeat"),
             "date": (rec.get("start") or "")[:10] or None,
             "start": rec.get("start"),
             "note": rec.get("note") or "",

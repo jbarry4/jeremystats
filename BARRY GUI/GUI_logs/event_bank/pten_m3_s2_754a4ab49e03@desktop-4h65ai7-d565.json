@@ -1,0 +1,296 @@
+{
+  "_at": {
+    "added": "2026-09-24T19:07:27.434072+00:00",
+    "by_label": "2026-09-24T19:07:27.434072+00:00",
+    "curation_label": "2026-09-24T19:07:27.434072+00:00",
+    "duration_s": "2026-09-24T19:07:27.434072+00:00",
+    "events": "2026-09-24T19:07:27.434072+00:00",
+    "gid": "2026-09-24T19:07:27.434072+00:00",
+    "id": "2026-09-24T19:07:27.434072+00:00",
+    "label_names": "2026-09-24T19:07:27.434072+00:00",
+    "mouse": "2026-09-24T19:07:27.434072+00:00",
+    "n": "2026-09-24T19:07:27.434072+00:00",
+    "name": "2026-09-24T19:07:27.434072+00:00",
+    "note": "2026-09-24T19:07:27.434072+00:00",
+    "project": "2026-09-24T19:07:27.434072+00:00",
+    "recording_start": "2026-09-24T19:07:27.434072+00:00",
+    "schema": "2026-09-24T19:07:27.434072+00:00",
+    "session": "2026-09-24T19:07:27.434072+00:00",
+    "session_key": "2026-09-24T19:07:27.434072+00:00",
+    "session_label": "2026-09-24T19:07:27.434072+00:00",
+    "session_loose_key": "2026-09-24T19:07:27.434072+00:00",
+    "session_path": "2026-09-24T19:07:27.434072+00:00",
+    "source": "2026-09-24T19:07:27.434072+00:00",
+    "specified": "2026-09-24T19:07:27.434072+00:00",
+    "type": "2026-09-24T19:07:27.434072+00:00",
+    "type_name": "2026-09-24T19:07:27.434072+00:00",
+    "units": "2026-09-24T19:07:27.434072+00:00",
+    "version": "2026-09-24T19:07:27.434072+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "5f4abcb1c559": [
+        "set",
+        "2026-09-24T19:07:27.434072+00:00"
+      ],
+      "v0-9b166579": [
+        "set",
+        "2026-09-24T19:07:27.434072+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-24T19:07:27.434072+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-24T15:07:27-04:00",
+    "by": "import_ied",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "Solid": 11
+  },
+  "curation_label": null,
+  "duration_s": 1985.6213333333333,
+  "events": [
+    {
+      "end": 13.273367,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 13.2732
+    },
+    {
+      "end": 167.2296,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 167.229433
+    },
+    {
+      "end": 307.862433,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 307.862267
+    },
+    {
+      "end": 449.0748,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 449.074633
+    },
+    {
+      "end": 449.537467,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 449.5373
+    },
+    {
+      "end": 822.5053,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 822.505133
+    },
+    {
+      "end": 1034.095233,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1034.095067
+    },
+    {
+      "end": 1764.4481,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1764.447933
+    },
+    {
+      "end": 1806.737933,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1806.737767
+    },
+    {
+      "end": 1869.869933,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1869.869767
+    },
+    {
+      "end": 1969.037933,
+      "label": "Solid",
+      "label_id": "solid",
+      "start": 1969.037767
+    }
+  ],
+  "gid": "sd0d0bded958b",
+  "id": "754a4ab49e03",
+  "label_names": {
+    "flag": "Flag",
+    "garbage": "Garbage",
+    "solid": "Solid",
+    "sputter": "Sputter"
+  },
+  "mouse": 3,
+  "n": 11,
+  "name": "IED spikes (confirmed)",
+  "note": "Confirmed IEDs, imported from PTEN_M3_pten_m3s2sept20 (Handsorted). All 11 are Solid: this folder's spreadsheet is a separate, later, solid-only run of point markers, and its Solid folder holds exactly one stub per row numbered 1 to 11 against it. The 0-row ets.mat beside it is a DIFFERENT detection run -- every row there is a 750 to 50,000 sample window and the times do not line up -- so that run's Garbage sort was not merged in. Times are the MIDPOINT of the table's on/off pair at 30000 Hz, which is what the review images are aligned to; the onset is 2*start - end. `Evt###` is a 1-based row of that table. Both established by measurement -- see tools/import_ied.py.",
+  "project": "PTEN",
+  "recording_start": "2023-09-20T12:55:14",
+  "schema": 1,
+  "session": 2,
+  "session_key": "m003_s002_2023-09-20_12-55-14",
+  "session_label": "PTEN m3 s2 2023-09-20",
+  "session_loose_key": "m003_s002",
+  "session_path": "D:\\Data\\Archive\\PTEN Project\\PTEN\\M3_s2\\2023-09-20_12-55-14",
+  "source": {
+    "detector": "ETS",
+    "file": "C:\\Users\\Z390\\Desktop\\IED DATA\\Take 3\\PTEN_M3_pten_m3s2sept20 (Handsorted)\\ets_converted_events.xlsx",
+    "parameters": {
+      "below_categories": {},
+      "fs": 30000.0,
+      "index_base": 1,
+      "solid_only": true,
+      "sorted_in": null,
+      "stamp": "midpoint",
+      "withdrawn": 0
+    },
+    "pipeline": "IED hand-sort (ETS)",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ied",
+  "type_name": "IED",
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-09-24T15:07:27-04:00",
+      "by": "import_ied",
+      "by_label": {
+        "unspecified": 11
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-9b166579",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 11,
+      "note": "Imported from IED hand-sort (ETS). 11 candidates, none decided yet.",
+      "snap": [
+        [
+          13.2732,
+          null
+        ],
+        [
+          167.229433,
+          null
+        ],
+        [
+          307.862267,
+          null
+        ],
+        [
+          449.074633,
+          null
+        ],
+        [
+          449.5373,
+          null
+        ],
+        [
+          822.505133,
+          null
+        ],
+        [
+          1034.095067,
+          null
+        ],
+        [
+          1764.447933,
+          null
+        ],
+        [
+          1806.737767,
+          null
+        ],
+        [
+          1869.869767,
+          null
+        ],
+        [
+          1969.037767,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "at": "2026-09-24T15:07:27-04:00",
+      "by": "import_ied",
+      "by_label": {
+        "Solid": 11
+      },
+      "changed": 11,
+      "from_v": 0,
+      "gained": 0,
+      "id": "5f4abcb1c559",
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {
+        "undecided \u2192 solid": 11
+      },
+      "n": 11,
+      "note": "",
+      "snap": [
+        [
+          13.2732,
+          "solid"
+        ],
+        [
+          167.229433,
+          "solid"
+        ],
+        [
+          307.862267,
+          "solid"
+        ],
+        [
+          449.074633,
+          "solid"
+        ],
+        [
+          449.5373,
+          "solid"
+        ],
+        [
+          822.505133,
+          "solid"
+        ],
+        [
+          1034.095067,
+          "solid"
+        ],
+        [
+          1764.447933,
+          "solid"
+        ],
+        [
+          1806.737767,
+          "solid"
+        ],
+        [
+          1869.869767,
+          "solid"
+        ],
+        [
+          1969.037767,
+          "solid"
+        ]
+      ],
+      "v": 1
+    }
+  ]
+}

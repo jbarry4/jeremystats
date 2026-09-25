@@ -1,0 +1,100 @@
+{
+  "_at": {
+    "created": "2026-09-25T16:45:17.318951+00:00",
+    "duration_s": "2026-09-25T16:45:17.318951+00:00",
+    "first_seen_by": "2026-09-25T16:45:17.318951+00:00",
+    "fs": "2026-09-25T16:45:17.318951+00:00",
+    "gid": "2026-09-25T16:45:17.318951+00:00",
+    "group": "2026-09-25T16:45:17.318951+00:00",
+    "has_video": "2026-09-25T16:45:17.318951+00:00",
+    "key": "2026-09-25T16:45:17.318951+00:00",
+    "label": "2026-09-25T16:45:17.318951+00:00",
+    "loose_key": "2026-09-25T16:45:17.318951+00:00",
+    "mouse": "2026-09-25T16:45:17.318951+00:00",
+    "n_channels": "2026-09-25T16:45:17.318951+00:00",
+    "phase": "2026-09-25T16:45:17.318951+00:00",
+    "phase_n": "2026-09-25T16:45:17.318951+00:00",
+    "project": "2026-09-25T16:45:17.318951+00:00",
+    "project_source": "2026-09-25T16:45:17.318951+00:00",
+    "repeat": "2026-09-25T16:45:17.318951+00:00",
+    "retired": "2026-09-25T16:47:23.672245+00:00",
+    "run": "2026-09-25T16:45:17.318951+00:00",
+    "schema": "2026-09-25T16:45:17.318951+00:00",
+    "session": "2026-09-25T16:45:17.318951+00:00",
+    "start": "2026-09-25T16:45:17.318951+00:00",
+    "updated": "2026-09-25T16:47:23.672245+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J9\\J9_Con3R\\J9_Con3_SPC\\2026-08-18_12-35-40": [
+        "set",
+        "2026-09-25T16:45:17.318951+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-25T16:45:17.318951+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T16:47:23.672245+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.24.8",
+    "at": "2026-09-25T12:45:17-04:00",
+    "commit": "0fc4943",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "duration_s": 5440.064,
+  "first_seen_by": "scan",
+  "fs": 32000.0,
+  "gid": "sdb93cb0cbfcb",
+  "group": "DEWEY",
+  "has_video": true,
+  "key": "r009_s013_2026-08-18_12-35-40",
+  "label": "DEWEY r9 s13 Con3R SPC 2026-08-18",
+  "loose_key": "r009_s013",
+  "mouse": 9,
+  "n_channels": 32,
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J9\\J9_Con3R\\J9_Con3_SPC\\2026-08-18_12-35-40"
+  ],
+  "phase": "Con",
+  "phase_n": 3,
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "repeat": "R",
+  "retired": false,
+  "run": "SPC",
+  "schema": 2,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-25T12:45:17-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "E:\\Joe Multisite 2026 data\\J9\\J9_Con3R\\J9_Con3_SPC\\2026-08-18_12-35-40",
+      "root": "E:/Joe Multisite 2026 data",
+      "scan": "scan_175198d703"
+    }
+  },
+  "session": 13,
+  "start": "2026-08-18T12:35:40",
+  "updated": {
+    "app_version": "2026.09.23.10",
+    "at": "2026-09-25T12:47:23-04:00",
+    "commit": "c752335",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

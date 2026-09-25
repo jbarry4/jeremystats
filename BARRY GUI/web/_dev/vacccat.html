@@ -90,17 +90,82 @@ async function until(fn, ms) {
 
   ev("BARRY.views.sessions.setMode('vacc')");
   await until(() => D().querySelector('#vaccBody .vacc-seg'), 40000);
-  check('the cluster view offers both halves',
-        $$('#vaccBody .vacc-seg button').length === 2,
+  check('the cluster view offers all three',
+        $$('#vaccBody .vacc-seg button').length === 3,
         $$('#vaccBody .vacc-seg button').map((b) => b.textContent).join(' | '));
   const tabs = $$('#vaccBody .vacc-seg button').map((b) => b.textContent);
+  check('the cards are one of them', tabs.indexOf('Recordings') >= 0,
+        tabs.join(' | '));
   check('the catalogue is one of them', tabs.indexOf('Catalogue') >= 0,
         tabs.join(' | '));
   check('and the directory walk is still there',
         tabs.indexOf('Directories') >= 0, tabs.join(' | '));
-  check('the catalogue is what opens first',
+  /* The cards open first now. It used to be the tree, and the change is
+     deliberate: the cards are the same shelf Scan a drive draws, and
+     reading a shelf is how anybody actually looks for a recording. The
+     tree is the second view of it, for when the question is about an
+     animal. */
+  check('the cards are what open first',
         (D().querySelector('#vaccBody .vacc-seg button.active') || {})
-          .textContent === 'Catalogue');
+          .textContent === 'Recordings');
+
+  say('');
+  say('=== the cards are the drive view, narrowed ===');
+  /* ONE list, moved between pads -- see `parkList` in sessions.js. The
+     check that matters is that they are the SAME nodes: a second
+     `#sessFilters` under another id would mean a second search box, and
+     typing in one would filter the other. */
+  await until(() => D().querySelector('#vaccBody #sessTree'), 40000);
+  await sleep(900);
+  check('the cards are drawn inside the cluster view',
+        !!D().querySelector('#vaccBody #sessTree'));
+  check('and it is the one list, not a second copy of it',
+        D().querySelectorAll('#sessTree').length === 1
+        && D().querySelectorAll('#sessFilters').length === 1,
+        D().querySelectorAll('#sessTree').length + ' trees, '
+        + D().querySelectorAll('#sessFilters').length + ' filter bars');
+  check('the search box came with it',
+        !!D().querySelector('#vaccBody #sessSearch'));
+  const cardGids = $$('#vaccBody .sess-card').length;
+  say('    ' + cardGids + ' card(s) on the cluster view', 'note');
+  /* Every card is a recording the cluster said yes to. A list that drew
+     everything would pass "it rendered" and be useless -- the same
+     assertion this page already makes about the tree. */
+  const cardTitles = $$('#vaccBody .sess-card')
+    .map((c) => (c.textContent || '').replace(/\s+/g, ' '));
+  check('every card carries the cluster mark',
+        cardTitles.every((t) => /VACC/.test(t)),
+        cardTitles.filter((t) => !/VACC/.test(t)).slice(0, 2).join(' | '));
+  check('and the line above the list says which question it is answering',
+        /can be read by VACC/.test(
+          (D().getElementById('sessSub') || {}).textContent || ''),
+        (D().getElementById('sessSub') || {}).textContent);
+  /* The cohort pills count what the VIEW holds, not what the catalogue
+     does. They used to count the catalogue whatever the mode was, so this
+     row offered "PTEN (381)" above a list of 109 and clicking it narrowed
+     to a handful -- a count describing something other than the list under
+     it. Summed rather than compared one by one: the pills and the cards
+     are two readings of the same set and they have to agree. */
+  const pillN = $$('#vaccBody #sessGroupFilter .pill')
+    .map((b) => (/\((\d+)\)\s*$/.exec(b.textContent) || [])[1])
+    .filter((x) => x != null)
+    .reduce((a, b) => a + Number(b), 0);
+  check('the cohort counts add up to the list they sit above',
+        pillN === cardGids, pillN + ' across the pills, ' + cardGids
+        + ' cards');
+
+  say('');
+  say('=== and the tree is still the same renderer ===');
+  $$('#vaccBody .vacc-seg button')
+    .find((b) => b.textContent === 'Catalogue').click();
+  await sleep(700);
+  /* Leaving the cards must put them back rather than destroy them:
+     `paintVacc` clears `#vaccBody` with `innerHTML = ''`, and these are the
+     real nodes. */
+  check('leaving the cards parks them rather than destroying them',
+        D().querySelectorAll('#sessTree').length === 1
+        && D().querySelectorAll('#sessFilters').length === 1,
+        D().querySelectorAll('#sessTree').length + ' trees');
 
   const host = await until(() => D().querySelector('#vaccCatalogue'), 20000);
   check('it has a host to draw into', !!host);
@@ -155,6 +220,24 @@ async function until(fn, ms) {
   await sleep(900);
   check('the scope is reset', ev('BARRY.views.housekeeping.scope') === 'jarvis',
         String(ev('BARRY.views.housekeeping.scope')));
+  /* And the drive view gets its list back. The cards live in whichever pad
+     is showing them, so leaving the cluster view has to hand them over --
+     otherwise Scan a drive comes back to an empty pad and the only symptom
+     is that the recordings are gone. */
+  ev("BARRY.views.sessions.setMode('scan')");
+  await sleep(700);
+  check('and Scan a drive has its cards back',
+        !!D().querySelector('#sessScanPad #sessTree')
+        && !!D().querySelector('#sessScanPad #sessFilters'),
+        'tree in ' + ((D().querySelector('#sessTree') || {}).parentNode
+                      || {}).id);
+  check('with every recording in it again, not only the cluster ones',
+        $$('#sessScanPad .sess-card').length >= cardGids,
+        $$('#sessScanPad .sess-card').length + ' vs ' + cardGids
+        + ' on the cluster view');
+  ev("BARRY.views.sessions.setMode('housekeeping')");
+  await until(() => D().querySelector('#hkBody .hk-tree'), 40000);
+  await sleep(700);
   const backRows = $$('#hkBody .hk-row').length;
   check('and the full catalogue is full again',
         backRows === jarvisRows, backRows + ' vs ' + jarvisRows);

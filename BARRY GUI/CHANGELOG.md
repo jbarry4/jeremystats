@@ -15,6 +15,588 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.25.2 - Everything VACC knows gets the cards
+
+### Added
+
+- **The cluster view opens on a shelf of cards.** The same cards
+  Scan a drive draws — the same search box, the same cohort pills,
+  the same filters, the same probe chip, health pill and note —
+  narrowed to the recordings VACC can read. Reading a shelf is how
+  anybody actually looks for a recording; the project/mouse tree is
+  the second view of it, for when the question is about an animal.
+  Three tabs now: **Recordings**, Catalogue, Directories.
+
+- **Clicking a card opens it.** Off a drive if this computer has one,
+  off the cluster if it does not — the same call the catalogue's
+  Open uses. A card with no path here used to say "none of this
+  recording's paths are on this machine" and stop there, which was
+  true and was a dead end with the answer one function away.
+
+### Changed
+
+- **It is ONE list, moved between pads, not a second one.**
+  `.pad` is `flex: 1`, so two visible pads split the height and the
+  cards could not simply be shown beside the cluster panel. The
+  choice was a second `#sessFilters` and a second `#sessTree` under
+  other ids — a second search box, a second filter bar — or the same
+  two nodes, moved. Moved, for the reason `housekeeping.catalogue`
+  gives about the tree: two copies of a list is two copies to keep in
+  step, and they drift. `parkList` hands them back before anything
+  clears the pad, because `innerHTML = ''` on a host holding them
+  would not move them, it would destroy them.
+
+- **The cohort pills count what the view is showing.** They counted
+  the whole catalogue whatever the mode was, so the cluster view
+  offered **"PTEN (381)" above a list of 109** and clicking it
+  narrowed to nothing — a count describing something other than the
+  list beneath it, which is the complaint the scope chip in
+  housekeeping.js already answers in the same words. A cohort with
+  nothing in this view now reads `(0)` and is dimmed rather than
+  removed: a pill that vanishes when you change mode is one you
+  cannot change back with. **This also changes the numbers in Scan a
+  drive**, which had the quieter half of the same fault.
+
+- The mode's own narrowing is one function, `modeAllows`, because the
+  list and the counts above it both read it — the last time a rule
+  like that was written out twice the view said "188 of 185".
+
+- The line above the list says which of the three questions it is
+  answering, and the clause dividing the shared catalogue into
+  "found by this scan / remembered" is left off where it is not about
+  the list underneath: it read **"0 found by this scan, 916
+  remembered" beside a count of 109**.
+
+- An empty cluster view says what fills it — scan a folder under
+  Directories — rather than "nothing matches those filters", which
+  would send somebody looking for a filter to switch off that does
+  not exist.
+
+- No selection checkbox on a recording that is only on the cluster.
+  The selection is keyed on a path on this machine and everything
+  reached from it reads files here, so a checkbox that queued one
+  would queue a row nothing in the queue can act on.
+
+### Checked
+
+- `web/_dev/vacccat.html` is 30 checks, up 8, and it now owns the
+  three-tab contract: that the cards open first, that there is
+  **one** `#sessTree` and **one** `#sessFilters` rather than two,
+  that every card carries the cluster mark, that the cohort counts
+  add up to the list they sit above, and that leaving the cluster
+  view hands the cards back to Scan a drive rather than destroying
+  them.
+
+- The cohort check caught a real fault on its first run: the recount
+  fell back to the catalogue's tally for a cohort with nothing in
+  view, so the pills summed to **860 over a list of 109** — the exact
+  fault the recount was added to fix, put back by the fallback meant
+  to be careful. Zero is the answer, not a missing one.
+
+- `web/_dev/vaccshot.html` poses the view for a screenshot, because a
+  shelf of cards is a thing you have to look at and `--dump-dom` will
+  report a collapsed layout as a passing one.
+
+- `check_classes.py` clean. `ui_baseline.py` diff carries nothing
+  from this change.
+
+## 2026.09.25.1 - A recording on the cluster opens in Xplorefinder
+
+### Added
+
+- **"Everything VACC knows" can now open one.** It could tell you the
+  cluster had a recording and it could run a tool on it. It could
+  not show it to you — the Open buttons all read `here`, which is
+  whether a path is reachable from *this* computer, so a recording
+  VACC reads perfectly well on a share this machine does not mount
+  had no Open anywhere. It has one now, and it opens into the same
+  tabs, the same panes, the same curation and the same bank as a
+  recording on a drive.
+
+- **Nothing is copied down.** `backend/vaccserve.py` runs on the login
+  node with the same backend this desktop has and answers with the
+  payload the viewer draws. Measured on a 64-channel recording at
+  30 kHz: ten seconds of it is **39 MB of raw records and 2.9 MB once
+  enveloped** to the 1400 columns actually drawn — and the envelope is
+  what the browser was going to be sent either way. So
+  `csc.get_window` runs there, filters and all.
+
+- **The same arithmetic, not a second copy of it.** The ops on the
+  cluster side are a lookup table of functions that already exist:
+  `csc.open_session`, `csc.get_window`, `extras.overview`,
+  `extras.band_profile`, `nlx.nev_events`. `vacc_run.py` makes the
+  same argument for a compute node and this is it for a viewer — two
+  implementations of one measurement is how a lab ends up with two
+  answers and no way to tell which is right.
+
+- **One kept ssh process, not one per window.** A handshake per window
+  would be a second of latency on every scrub. The link opens on the
+  first `vacc:` recording, holds the opened session on the far side so
+  the header is read once rather than once per window, and **closes
+  itself after ten minutes idle** — a login node is shared, and a
+  process somebody left running over lunch is somebody else's problem.
+  `/api/vacc/link` says whether one is open and `?close=1` puts it
+  down.
+
+- Cheetah's own `.nev` files come through the same link, resolved
+  against the recording's own clock **on the cluster** — a .nev read
+  against the wrong t0 gives events that land plausibly and in the
+  wrong place.
+
+### Changed
+
+- **A recording is opened by its permanent id, `vacc:<gid>`, never by
+  a cluster path.** Three reasons and all three matter: `resolve_gid`
+  already decides where on the cluster it is and prefers a share VACC
+  mounts over a scratch copy that gets purged without notice;
+  everything attached to a recording is keyed on the gid, so one read
+  off the cluster is the SAME recording somebody opened off `Y:` last
+  week; and a cluster path must never enter the registry as a path.
+
+- **Opening one writes nothing.** `REG.ensure` files every path a
+  recording is opened from, and `/gpfs2/scratch/…` filed as though it
+  were local comes back out of `resolve_path` as `local-only` — the
+  recording would report that the cluster cannot reach it *on the
+  strength of having just been read off the cluster*, quietly, in a
+  shard that travels to everybody. A live read lays eyes on nothing
+  that is on this machine and says so by writing nothing down.
+
+- The cluster mark on an Xplorefinder tab is `.flagchip.vacc`, the
+  chip Sessions already draws — so the rule that green is only ever
+  "reads it in place" and a scratch copy takes the warning colour is
+  in one place rather than two that could disagree.
+
+- `extras.py` imports `panorama` where it uses it rather than at the
+  top. It pulls in `analysis`, which imports matplotlib at module
+  scope, and `overview` is the strip that appears the moment any
+  recording opens. The cluster's environment has numpy, scipy and
+  fooof — so `extras` would not import there at all, and the amplitude
+  strip failed on a module a strip does not use.
+
+- A `ModuleNotFoundError` on the cluster is answered with the package
+  and the fix rather than an import traceback. The band strip still
+  needs matplotlib there and now says so in a sentence.
+
+### Checked
+
+- `web/_dev/vaccopen.html`, 27 checks, and it runs with the cluster
+  **down** — a harness that only passes on VPN is one nobody runs. The
+  checks that need a live link are skipped in their own colour, and
+  the page says how many, because a sweep that proved less than a full
+  one must not read as a clean one.
+
+- Measured end to end against the real cluster, through the real
+  routes, on a 45-minute 64-channel recording in scratch: link up
+  1.4 s, open 1.8 s, a filtered 10 s window 1.3 s, the same window
+  again 0.7 s, a CSD 0.7 s, the amplitude overview 4.6 s, the `.nev`
+  0.03 s. The registry was 913 records before and 913 after.
+
+- `check_classes.py` clean. `ui_baseline.py` diff carries nothing from
+  this change.
+
+## 2026.09.24.8 - The delta panel's Y axis is labelled, in both states
+
+### Fixed
+
+- **The Y axis label was only drawn when the HF pass HAD been run.**
+  Which left the common case — before anybody spends the minutes —
+  as a bare vertical axis with dots spread up it, and that reads as a
+  measurement whether or not one was taken. That is the entire fault
+  the HF pass was added to fix, still present in the state the panel
+  is in most of the time. It is drawn in both states now, and the one
+  that is not a measurement says so: **"no measurement — spread
+  apart to separate the dots"**.
+
+- **It said "500—1000 Hz, dB". It says "500—1000 Hz power - dB re
+  baseline".** Two words, both load-bearing. "power", because an
+  IED’s fast edges raise the whole spectrum and band-passing a sharp
+  transient makes a filter ring convincingly — band power cannot tell
+  either of those from an oscillation, and an axis reading
+  "500—1000 Hz" alone invites exactly that reading. v5 answers the
+  oscillation question with a FOOOF fit on averaged spectra, which is
+  a different panel. "re baseline", because dB against the same
+  contact’s own quiet period is not an absolute, and an unqualified
+  dB gets compared across contacts that have no business being
+  compared.
+
+- Shrunk to fit rather than cut. An axis label with its end missing is
+  worse than a small one, and "dB re baseline" is the half that would
+  go.
+
+- The head hint matched: with no pass it said "one number per event",
+  which is true and says nothing about the vertical. It now says the
+  spread is nothing.
+
+### Checked
+
+- `web/_dev/dspca.html` is 298 checks, up 7.
+
+- Read off the CANVAS, by spying on `fillText`, not off the source. A
+  check that the code contains a string proves the string exists, not
+  that anything draws it — and the fault here was precisely a label
+  that existed and was skipped.
+
+- Both states, the measured one by putting a number in by hand: what
+  is under test is the axis, not the arithmetic, and the arithmetic
+  was checked against a 700 Hz burst (+38.7 dB) and noise against
+  noise (-0.5 dB) before any of it was drawn. The invented number is
+  taken back out, and there is a check that it was.
+
+- The new checks were confirmed to bite: with the label suppressed
+  again the suite goes to 3 failures, not 0.
+
+## 2026.09.24.7 - A solids-only version of every IED set
+
+### Added
+
+- **`tools/clean_ied.py`**, and each imported IED set now carries a
+  version holding only the events somebody confirmed: **170 Solid out
+  of 3,461**, across the ten recordings. Dry run by default, `--write`
+  to bank, `--keep` to choose the labels.
+
+  It is a VERSION, not a second entry and not a deletion. Same id,
+  same lineage, and the bank computes the diff itself, so m28 s2 reads
+  `v2, n=8, lost=1002` and v1 still holds all 1,010. What gets plotted
+  and what the folders actually said are now both answerable, from one
+  entry, without either one having to be reconstructed.
+
+- Seven sets gained a v2. Three — m3 s2, m3 s7, m28 s7 — were
+  already nothing but Solid, because their import came from the
+  solid-only run, and the bank declines to write a version in which
+  nothing moved. So the newest version of every IED set is the clean
+  one either way, which is the property that makes it usable
+  downstream.
+
+### Judgement, stated and one flag away
+
+- **Sputter is dropped, and that is a call rather than a fact.**
+  `curation.KINDS['ied']` counts Sputter as good — a sputtering
+  discharge is still a discharge — but this tree was described as
+  "the Solid folder tells us which ones are the real IED events", so
+  Solid is the default. It costs 44 events, the count prints on every
+  run, and `--keep solid,sputter` keeps them.
+
+- The other 3,291 are 2,760 nobody rendered, 419 Garbage, 68 Flag and
+  those 44. Dropping the unrendered ones from the clean version is
+  right — they are not confirmed IEDs — but they are not rejects
+  either, and v1 is where that distinction survives.
+
+## 2026.09.24.6 - Ten hand-sorted IED recordings come in from the folders
+
+### Added
+
+- **`tools/import_ied.py`**, and 3,461 IED events across ten PTEN
+  recordings are now in the Event Bank with 701 hand-filed verdicts on
+  them — 170 Solid, 44 Sputter, 68 Flag, 419 Garbage. Dry run by
+  default, `--write` to bank, `--replace` to re-import, idempotent on
+  its own pipeline name.
+
+  The tree it reads is a detector's table plus a person dragging
+  rendered pictures into `Solid` / `Sputter` / `Flag` / `Garbage`. The
+  directory listing was the ONLY record of that work. A decision that
+  lives in a folder name is one `robocopy` from being gone, and this
+  was a day of somebody's looking.
+
+### Measured rather than assumed
+
+Four things the files do not say, each of which would have been wrong
+in a way that still looked right:
+
+- **30 kHz.** `onsamp` is a sample index of nothing stated. The last
+  event of m13 s2 is sample 56,101,080 and the registry has the
+  recording at 1871.97 s — 29,968. At 1 kHz it would have been a
+  fifteen-hour session. Checked per folder now; a set landing more
+  than thirty-fold past the end is refused.
+
+- **`Evt010` is 1-based.** Both bases land on SOME event, so this was
+  settled by whether the labels mean anything: 1-based makes the Solid
+  events 1.48x the amplitude of the Garbage ones, 0-based makes it
+  1.04 — no separation, which is what an off-by-one looks like.
+
+- **The stamp is the MIDPOINT of the on/off pair**, which is what the
+  review images are aligned to; their names say so. `end` is kept, so
+  the onset is exactly `2*start - end`.
+
+- **The sort is not always at the top.** In two recordings the
+  categories sit inside `group_05-10 (N)/` and the top-level
+  `Solid`/`Sputter` are copies of two of the four. Taken as the
+  directory holding the most distinct categories, so a render folder
+  that also has a `Solid` cannot win.
+
+### Refused to guess
+
+- **`Garbage/` has sub-folders that OVERLAP.** In m13 s2 the same
+  Evt002 is in `Dentate Spike`, `Flag` and `Garbage` at once, so they
+  are not a partition and cannot be read as verdicts. Only the sort
+  root's own children count; everything under `Garbage/` is garbage
+  either way. Corroborated exactly by the pipeline's own
+  Master_Stats.csv — 13 SOLID, 18 SPUTTER for m13 s2.
+
+- **A picture in two categories: the newer copy wins**, stated rather
+  than left to `sorted()`. m13 s2's Evt035 and Evt040 are in Solid
+  from September and Sputter from six weeks later. Alphabetical order
+  happens to agree there and would not next time.
+
+- **The three folders marked "(Handsorted)" hold two different runs.**
+  Their `ets_converted_events.xlsx` is not the export of their
+  `ets.mat`: shorter (18 of 67; 49 of 172; 11 with no .mat at all),
+  every row exactly 10 samples wide where a real window is 750 to
+  50,000, and the midpoints do not line up — nearest row a median of
+  492 and 269,210 samples away. It is a separate, later, solid-only
+  run, and `Solid/` there holds one blank 289-byte stub per row
+  numbered 1..N against IT. Those stubs read as a hand-sort and are
+  not one. The solid-only list is imported as confirmed IEDs; the
+  other run's Garbage numbering is left where it is rather than
+  merged into times it does not describe.
+
+- **`Hidden/` is a withdrawal, not a verdict.** Nothing under one is
+  labelled. `Take 3/HIDDEN/` holds eleven more recordings set aside
+  the same way — including one named "(Flagship)" — reported and
+  not imported.
+
+- **The 226 to 883 events per recording nobody rendered are
+  unspecified, not rejected.** "The rest are garbage" is true of what
+  was looked at; most of each table never was, and `by_label` says so
+  on every entry.
+
+## 2026.09.24.5 - The delta panel gets a Y axis that means something
+
+### Added
+
+- **High-frequency power, per dentate spike**, and the delta panel’s Y
+  axis is it. That axis was JITTER: a number chosen so two events with
+  the same sink gap could be told apart by eye, meaning nothing, and
+  looking exactly like a measurement. It is now 500—1000 Hz power in dB
+  against the same contact’s own baseline 150 ms earlier, so the panel
+  is a real scatter — gap across, power up.
+
+  The measurement is `ied_ampwidth_gui_v5`’s, at its band and its
+  windows: ±25 ms about the stamp, a ±20 ms baseline 150 ms before it,
+  Welch PSD, the band integrated by trapezoid, and 10*log10 of the
+  ratio. dB against its own baseline rather than an absolute, because
+  impedance varies across a probe and across a day: raw band power on
+  contact 40 is not comparable with contact 12, and a ratio to the same
+  contact’s own quiet period a moment earlier is.
+
+  **IT NEEDS A SECOND READ, and there was no honest way round it.**
+  X-ray reads at 1000 Hz, which is right for everything else it does —
+  a dentate spike is tens of milliseconds and the DS band is 5—100 Hz.
+  The Nyquist of that is 500, so 500—1000 Hz is entirely at or above it
+  AND has already been taken out by the anti-alias filter the decimation
+  applies. A number computed for that band out of the existing cache
+  would not be high-frequency power; it would be whatever survived,
+  scaled to look like an answer. So `dspcahf.py` reads the recording
+  again at 5 kHz, which is v5’s own `HF_Q = 6` on a 30 kHz file.
+
+  Minutes, and cached on the question like every other expensive thing
+  here, so it is minutes once per recording rather than per look. Run
+  from a button that says what it costs, as a job with a progress bar,
+  and stoppable. Until it has been run the axis says so and the dots go
+  back to jitter — an axis of nothing, drawn as though it were
+  something, is the fault this replaces.
+
+  The band is **not a setting**, for the reason v5 gives: it is part of
+  what the measurement IS, and two runs under one name that used
+  different bands are not comparable with nothing in the numbers to say
+  so.
+
+  One thing it is deliberately NOT: evidence of an oscillation. An
+  IED’s fast edges raise the whole spectrum, and band-passing a sharp
+  transient makes a filter ring convincingly; band power cannot tell
+  either of those from a ripple. v5 answers that with a FOOOF fit on
+  averaged spectra, which is a different panel and a different question.
+  This is labelled as power, and only that.
+
+### Checked
+
+- `web/_dev/dspca.html` is 291 checks.
+
+- The arithmetic was checked against signals with known answers before
+  it went anywhere near a recording: a 700 Hz burst against flat noise
+  reads +38.7 dB, and noise against noise reads -0.5 dB.
+
+- **The bundle checks were reading two bundles as one.** The Arc joined
+  The Dentist in the ToolKit, `.tk-step` matches the steps of both, and
+  a check that read them all and compared against four found nine and
+  called it a fault. It scopes to the bundle it is about now; how many
+  bundles the ToolKit offers is not this suite’s business.
+
+- **Two sessions running harnesses in one tree collide.** The runner
+  writes one shared dump file and uses one shared Edge profile, so a
+  concurrent run overwrites the dump being read and the results belong
+  to whichever page finished last — which cost a real failure being
+  mistaken for a phantom one, and then a phantom one being mistaken for
+  real. Worth knowing before trusting a red line while somebody else is
+  running the suite.
+
+- A harness run deleted 49 Event Bank records again; restored. That is
+  three runs in three that have done it.
+
+## 2026.09.25.1 - Clipping is decided block by block, and gain reaches every pane
+
+### Added
+- Clean decides a BLOCK, not a channel. Each row is one channel and each of
+  the four blocks is one window of the cue pair: click a block to keep it or
+  remove it, click the channel name for all four. Every block is clickable,
+  including ones the measurement was happy with -- "this one looks wrong to
+  me" is a decision somebody is entitled to make.
+- The exclusion is banked per window, and Coupling reads it per window. A
+  channel ruined in the baseline keeps its two cues and its after-window.
+  Measured on r4 Precon1 pair 1: excluding by event left 0 of 264
+  region-pair-windows usable; by block it is 66, the whole of cue 1
+  recovered.
+
+### Fixed
+- **Gain only changed the pane whose control you touched.** `sess.gain` was
+  set, which is right and is why every control strip agreed about the
+  number, and then a single `drawPane(index)` redrew one pane. On a
+  one-pane H3 layout that is every pane there is, so the fault was
+  invisible; on a probe layout the other five kept a canvas drawn at the
+  old scale. One function now owns it and redraws every pane of that
+  recording, and `_dev/gain.html` reads the canvas pixels of each pane to
+  prove it -- the value was always correct, so only the picture is
+  evidence.
+
+## 2026.09.24.7 - Clipping is acted on, and Coupling runs off the bank
+
+### Added
+- Coupling, step two of The Arc. It reads the BANK and never a .nev: by the
+  time a pair is filed, somebody has looked at it, the clipping is measured
+  and the channels it is not valid on travel with it. Four windows, 66 region
+  pairs, three methods, about five seconds a pair. Saves as a CSV under
+  Results in the same shape the cluster's `summary_<session>.csv` used, so
+  one script reads both.
+- Mains is notched before correlating, harmonics included. There is MORE
+  power at 60 Hz than at 8 Hz in this data (348 against 271), and un-notched,
+  twelve of 264 region-pair cells put their peak lag on an exact multiple of
+  16.667 ms -- the mains period being reported as brain coupling. On a
+  synthetic pair with a real 30 ms delay, un-notched gives r = -0.94 at
+  +25 ms; notched gives r = +0.68 at -33 ms.
+- The Clean mode is a working surface rather than a status line: every
+  flagged channel as a button, red for dropped and green for kept, the
+  saturated stretches listed and editable, and a sentence naming exactly
+  which channels will be excluded. Arrows and n/p both step, and the arrows
+  are finally advertised.
+
+### Fixed
+- **Measuring clipping did not exclude anything.** The exclusion list only
+  filled if somebody clicked a chip in the pair table, so the default
+  outcome of running a clipping check was that the check was ignored. It
+  now seeds from the measurement, and one function owns the list the bank
+  is handed so it cannot disagree with the list on screen.
+- The clipped-channel count included channels the backend grades clean --
+  which is how a bar announced "56 channel(s) clipped" on a recording whose
+  card listed nine, and would have dropped a channel with three
+  milliseconds against it.
+- Clipping was graded on presence, so a channel that lost three
+  milliseconds out of forty seconds came back "major event loss". A window
+  is lost at half a percent or a 50 ms unbroken run; smaller is reported as
+  touched and not graded. Thresholds measured, not chosen -- see the
+  calibration note in `spark.py`.
+- The CSV export read the summary from the wrong shape and would have
+  written a header and no rows.
+
+## 2026.09.24.6 - Every pulse on a line, clipping per window, and rats are rats
+
+### Added
+- A line view in Spark: every TTL pulse in the recording on one line, with
+  each cue pair drawn as a bar rather than two ticks. The pulses that were
+  DROPPED are drawn too -- mirrors, bounces, codes nobody has named -- because
+  a view that showed only the survivors would be showing its own answer back.
+- Clipping, measured per window. A cue pair is analysed in four windows --
+  ten seconds of baseline, cue 1, cue 2, ten seconds after cue 2 ends -- and
+  each is checked separately so a pair whose baseline saturated still has
+  three good windows in it. Lose one and it is a partial event loss, two or
+  three is major, all four and the event is gone on that channel.
+- Both travel to the bank: `clipped` is what was measured, `excluded` is what
+  somebody decided, and they are kept apart all the way through because a
+  measurement and a judgement are different claims.
+- Two Xplorefinder modes on Spark. Confirm draws every pulse and shades the
+  four analysis windows, so "why were these two paired" is answered by
+  looking. Clean marks the saturated stretches on the channels that
+  saturated -- per row, because "CSC17 was at the rail here" and "the
+  recording was bad here" are different claims and only the first is true.
+- DEWEY's animals are rats, so their keys start `r`: `r009_s002_...`, and the
+  tree says r3 to r11. Every other project keeps `m`.
+
+### Fixed
+- A probe layout could only open six panes, which was an H10-D's column
+  count. The twelve-region DEWEY montage laid out against that cap drew the
+  first six and dropped the rest without a word -- CSC 1 to 20, with no left
+  OFC, no left ACC, neither hippocampus and neither retrosplenial.
+
+## 2026.09.24.5 - Spark reads the cue pairs, and three ways the registry was lying
+
+### Added
+- Spark, step one of The Arc: reads a DEWEY recording's TTL pulses, pairs
+  each cue with the one it opens onto, and files the pairs in the Event Bank.
+  Finding and filing are one step rather than two, because a pair that has
+  been found and not banked is a number on a screen.
+- Which cue pairs with which is READ, not assumed. The pilot animals were run
+  on `High tone -> Low Tone`; J3 is run on `Click -> Low Tone`, and it varies
+  by animal. The rule is structural instead: two different cues about ten
+  seconds apart.
+- The third analysis boundary is read off the rig rather than derived. The
+  line returns to its resting code when a cue ends, so that mark IS the end
+  of cue 2. Measured against the old derived value it agrees to 3 ms.
+- The DEWEY probe can be picked. It groups channels by region where the
+  arrays group by column, and every picker only looked for columns -- which
+  is what "that probe has no column map to lay out" was. All 280 recordings
+  are on it, J3 included.
+- Session cards say `s1 Precon1 SPC`, so three recordings of one session no
+  longer read as three identical s1s.
+
+### Fixed
+- Marking a recording "good" did not flag it -- it minted a new empty record
+  holding nothing but the flag, because the Sessions view sent a write
+  identity with no gid, no key and no loose key. The card showed the flag
+  instantly either way, so it only came undone on a refresh. Five stranded
+  flags were moved back onto their recordings.
+- Three recordings of one session were collapsing into one row. FP1, SPC and
+  FP2 share a mouse and a session by design, and `ids.match` merged anything
+  within six hours -- which is all three, recorded the same afternoon. 93
+  rows were holding 257 recordings. The matcher knows about runs now, and
+  tells a folder name sixteen seconds off its own header from a flower pot
+  run started the next morning.
+- `Registry._patch` left the gid out of the identity it patched with, so
+  patching a record that had no key created another record instead. That is
+  how twelve ids came to exist for two recordings.
+
+## 2026.09.24.4 - DEWEY RATs can be filed, and The Arc has its five steps
+
+### Added
+- DEWEY RATs is a project Jarvis knows. A recording named `J10_Precon1_SPC`
+  now reads as mouse 10, session 13, run SPC -- the animal from the `J<n>`
+  folder, the session banded so the phase is readable off the number
+  (Precon 1-4 are s1-s4, Con 1-6 are s11-s16, Test 1-2 are s21-s22), and the
+  run kept beside it rather than folded in. All 280 recordings on the share
+  parse, across the five different spellings the folders use.
+- A probe template for the DEWEY headstage: 32 channels into twelve
+  bilateral targets, transcribed from `electrode_map.xlsx`. It has regions
+  where the arrays have columns, and no columns at all -- there is no line
+  down these channels for a CSD to run along, and saying so is the point of
+  the template.
+- The Arc, a ToolKit bundle: Spark, Relay, Coupling, Circuit, Drift. Four of
+  the five are not built yet and say so, each with what it will do and what
+  has to happen before it can.
+- `tools/check_ids_dewey.py`, which replays every path in the registry with
+  the new rule switched off and on and proves only DEWEY paths answer
+  differently, and `tools/check_electrode_map.py`, which holds the probe
+  template against the workbook channel for channel.
+
+### Fixed
+- A recording Jarvis could not name minted a fresh permanent id every time
+  it was opened, because with no key there was nothing to match it against.
+  Two DEWEY recordings had collected twelve ids between them that way.
+  Naming them stops it; `tools/refile_dewey.py` cleans up what is already
+  there.
+
+### Known
+- The workbook and the older 64-channel map disagree about left OFC and left
+  ACC -- 21-22 and 23-24 are swapped between them -- and the workbook says
+  its labels were read off handwriting. The workbook is what the template
+  follows, and both regions are flagged until somebody checks the notebook.
+
 ## 2026.09.24.3 - Clicking a dot looks at the spike, and Stop stops
 
 ### Fixed

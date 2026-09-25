@@ -1,0 +1,415 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>vaccopen: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:700px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.skip{color:#c8a45c}
+iframe{position:fixed;left:700px;top:0;right:0;bottom:0;width:calc(100vw - 700px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Opening a recording that is on the cluster and not on this disk.
+
+   Written to run with the cluster DOWN, because that is the state this
+   machine is in most of the time and a harness that only passes on VPN is a
+   harness nobody runs. Everything about which recordings offer the button,
+   what the button is called, and what is written down when one is opened, is
+   arithmetic over `/api/vacc/knows` and needs no connection. The checks that
+   genuinely need a live link say so and are skipped rather than failed --
+   `skipped` is printed in its own colour so a sweep that proved nothing
+   cannot read as a clean one.
+
+   The assertion this page exists for is the last section. A cluster path
+   must NEVER enter the registry as a path. `REG.ensure` files every path a
+   recording is opened from, and `/gpfs2/scratch/...` filed as though it were
+   a local path comes back out of `vacc.resolve_path` as `local-only` -- so
+   the recording would report that the cluster cannot reach it, on the
+   strength of having just been read off the cluster. It would do that
+   quietly, it would travel to every colleague in a shard, and the only
+   symptom would be a chip that says the opposite of the truth.
+
+   The second-most important is "absent draws nothing", which this codebase
+   has now got wrong twice: once in `canOpen` in sessions.js, where a missing
+   field read as "not on this machine" hid every recording that was certainly
+   openable, and once in the VACC chips, which is what `vaccknows.html` is
+   about. Most of a fresh scan has no gid. A recording nobody has established
+   an answer for must offer nothing -- not an Open, and not a refusal. */
+const L = document.getElementById('log');
+let fails = 0, skips = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const skip = (what, why) => { skips++;
+  say('  skip ' + what + '   [' + why + ']', 'skip'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 8000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(60);
+  }
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const json = async (c) => JSON.parse(await ev(c));
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              25000);
+
+  say('=== the three things the Open needs, offline ===');
+  check('BARRY.vacc.canRead exists',
+        ev('typeof BARRY.vacc.canRead') === 'function');
+  check('BARRY.vacc.pathFor exists',
+        ev('typeof BARRY.vacc.pathFor') === 'function');
+  check('BARRY.vacc.open exists',
+        ev('typeof BARRY.vacc.open') === 'function');
+
+  /* A gid, not a path, and it reads the two shapes a row arrives in.
+
+     The tree hands rows with `gid` on them; Xplorefinder hands sessions with
+     `identity.gid`. `of()` already reads both and this has to agree with it,
+     or the chip and the button would disagree about the same recording. */
+  check('a row with a gid gets vacc:<gid>',
+        ev('BARRY.vacc.pathFor({ gid: "sABC" })') === 'vacc:sABC');
+  check('so does a session carrying its gid on its identity',
+        ev('BARRY.vacc.pathFor({ identity: { gid: "sDEF" } })') === 'vacc:sDEF');
+  check('and a row with no id at all gets nothing',
+        ev('BARRY.vacc.pathFor({ label: "nothing" })') === null,
+        String(ev('String(BARRY.vacc.pathFor({label:"nothing"}))')));
+
+  say('');
+  say('=== absent is not an offer, and it is not a refusal ===');
+  await ev('BARRY.vacc.loadKnows()');
+  await sleep(400);
+  check('a recording with no gid cannot be read off the cluster',
+        ev('BARRY.vacc.canRead({ label: "nothing" })') === false);
+  check('nor can a gid the cluster has never heard of',
+        ev('BARRY.vacc.canRead({ gid: "sZZZZnotreal" })') === false);
+
+  say('');
+  say('=== the two affirmative states open, the other two do not ===');
+  const kn = await json('fetch("/api/vacc/knows").then(r=>r.text())');
+  check('/api/vacc/knows answers with the cluster down', kn.ok === true);
+  const byState = {};
+  for (const [gid, v] of Object.entries(kn.knows || {})) {
+    (byState[v.state] = byState[v.state] || []).push(gid);
+  }
+  say('    ' + JSON.stringify(kn.counts || {}), 'note');
+  const canRead = (gid) =>
+    ev('BARRY.vacc.canRead({ gid: ' + JSON.stringify(gid) + ' })');
+  for (const [state, want] of [['native', true], ['staged', true],
+                               ['local-only', false], ['unknown', false]]) {
+    const gid = (byState[state] || [])[0];
+    if (!gid) { skip('a ' + state + ' recording ' + (want ? 'opens' : 'does not'),
+                     'none in this registry'); continue; }
+    check('a ' + state + ' recording ' + (want ? 'opens' : 'does not open'),
+          canRead(gid) === want, gid);
+  }
+
+  /* Which of those the CATALOGUE actually draws.
+
+     Not the same set, and picking from the wrong one is why the first run
+     of this page failed: `/api/vacc/knows` answers over every record in the
+     registry, and the tree leaves out the retired ones. A gid that is
+     readable and not in the tree is a perfectly good answer to "can VACC
+     reach this" and nothing to select in a view. */
+  const flat = async () => {
+    const r = await json('fetch("/api/registry").then(r=>r.text())');
+    const out = [];
+    for (const proj of (r.tree || [])) {
+      for (const m of (proj.mice || [])) {
+        for (const sess of (m.sessions || [])) out.push(sess);
+      }
+    }
+    return out;
+  };
+  const rows = await flat();
+  const inTree = new Set(rows.map((x) => x.gid));
+  const firstDrawn = (state) =>
+    (byState[state] || []).filter((g) => inTree.has(g))[0] || null;
+  say('    ' + rows.length + ' recordings in the tree, of '
+      + Object.keys(kn.knows || {}).length + ' the registry holds', 'note');
+
+  say('');
+  say('=== looking does not open a connection ===');
+  /* The same discipline `/api/vacc/status` follows and for the same reason:
+     this is what decides whether to SAY a recording is read off the cluster,
+     and a probe here would put an ssh handshake in front of a chip. Read
+     twice, because "it was closed once" and "reading it does not open one"
+     are different claims. */
+  const lk1 = await json('fetch("/api/vacc/link").then(r=>r.text())');
+  check('/api/vacc/link answers', lk1.ok === true, JSON.stringify(lk1));
+  const lk2 = await json('fetch("/api/vacc/link").then(r=>r.text())');
+  check('and reading it did not start a link',
+        lk2.open === lk1.open, JSON.stringify(lk2));
+
+  say('');
+  say('=== the catalogue offers it exactly where it can be read ===');
+  await ev('setView("sessions")');
+  await sleep(700);
+  const vBtn = () => Array.from(
+    frame.contentDocument.querySelectorAll('#sessModeSeg button'))
+    .find((b) => b.dataset.mode === 'vacc');
+  const cfgd = !!(await json('fetch("/api/vacc/status").then(r=>r.text())')).configured;
+  if (!vBtn() || vBtn().hidden) {
+    skip('the VACC catalogue draws an Open',
+         cfgd ? 'the mode switch is hidden' : 'no cluster configured here');
+  } else {
+    vBtn().click();
+    await sleep(1800);
+    /* The cluster view opens on the cards now, and the detail panel these
+       checks read lives on the Catalogue tab. Clicked rather than assumed:
+       a harness that waited for `#vaccDetail` on whatever tab happened to
+       be showing would report the panel missing the next time the default
+       moved. */
+    const vTab = (name) => Array.from(frame.contentDocument.querySelectorAll(
+      '#vaccBody .vacc-seg button')).find((b) => b.textContent === name);
+    check('the cluster view opens on the cards',
+          (frame.contentDocument.querySelector(
+            '#vaccBody .vacc-seg button.active') || {}).textContent
+          === 'Recordings');
+
+    /* And a card is a way in. The cards are the surface somebody lands on,
+       so the Open has to be reachable from one -- a recording that is only
+       on the cluster has no path for the ordinary click to use, and the
+       card has to fall through to the cluster rather than say it cannot be
+       opened. Checked on the handler's own terms rather than by clicking,
+       because clicking opens a recording and navigates away. */
+    const onlyRemote = (byState['native'] || []).concat(byState['staged'] || [])
+      .filter((g) => inTree.has(g))
+      .find((g) => !((rows.find((r) => r.gid === g) || {}).here || []).length);
+    if (!onlyRemote) {
+      skip('a card with no path here still opens',
+           'every readable recording is also on a drive here');
+    } else {
+      check('a recording that is only on the cluster is still openable '
+            + 'from a card',
+            ev('BARRY.vacc.canRead({ gid: ' + JSON.stringify(onlyRemote)
+               + ' })') === true, onlyRemote);
+    }
+
+    if (vTab('Catalogue')) vTab('Catalogue').click();
+    await sleep(900);
+    await until(() => frame.contentDocument.getElementById('vaccCatalogue'), 9000);
+
+    const detailText = () => {
+      const d = frame.contentDocument.getElementById('vaccDetail');
+      return d ? (d.textContent || '') : '';
+    };
+    const openBtn = () => Array.from(
+      frame.contentDocument.querySelectorAll('#vaccDetail button'))
+      .find((b) => /open from the cluster/i.test(b.textContent || ''));
+
+    const readable = firstDrawn('native') || firstDrawn('staged');
+    if (!readable) {
+      skip('a readable recording offers Open from the cluster',
+           'nothing in the tree is native or staged');
+    } else {
+      await ev('BARRY.views.housekeeping.inspect('
+               + JSON.stringify(readable) + ')');
+      await sleep(600);
+      check('a readable recording says where the cluster has it',
+            /on the cluster/i.test(detailText()), readable);
+      check('and offers Open from the cluster', !!openBtn(),
+            detailText().slice(0, 90).replace(/\s+/g, ' '));
+      /* Stated before it is spent, the way Panorama states a run's cost.
+         What this costs is not disk and not a download -- it is a round
+         trip per window -- and somebody expecting a local file's response
+         should read why before clicking, not after. */
+      check('and says what reading it costs before anything is spent',
+            /round trip/i.test(detailText()) && /first one/i.test(detailText()));
+    }
+
+    const cannot = firstDrawn('local-only');
+    if (!cannot) {
+      skip('a local-only recording offers no Open', 'none in the tree');
+    } else {
+      await ev('BARRY.views.housekeeping.inspect(' + JSON.stringify(cannot) + ')');
+      await sleep(600);
+      check('a local-only recording says the cluster cannot reach it',
+            /cannot reach/i.test(detailText()), cannot);
+      check('and offers no Open from the cluster', !openBtn(),
+            'a button that cannot work is worse than no button');
+    }
+
+    /* The whole "absent draws nothing" rule, at the surface it decides.
+       A recording nobody has established an answer for gets no section --
+       not an offer, and not a refusal either, because "VACC cannot reach
+       this" is a claim and nobody has checked. */
+    const anyUnknown = firstDrawn('unknown');
+    if (!anyUnknown) {
+      skip('an unestablished recording draws no cluster section',
+           'every recording in the tree has a verdict');
+    } else {
+      await ev('BARRY.views.housekeeping.inspect('
+               + JSON.stringify(anyUnknown) + ')');
+      await sleep(600);
+      check('an unestablished recording draws no cluster section',
+            !/on the cluster/i.test(detailText())
+            && !/cannot reach/i.test(detailText()), anyUnknown);
+    }
+  }
+
+  say('');
+  say('=== findable by name ===');
+  /* The palette is how people find out what exists. Somebody who cannot
+     find a recording on any drive this computer has will type "cluster" or
+     "VACC", and a feature missing from the palette reads as one that is
+     not there. */
+  const typeInto = async (word) => {
+    await ev('BARRY.palette.show()');
+    await sleep(200);
+    const box = frame.contentDocument.getElementById('palInput');
+    box.value = word;
+    box.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true }));
+    await sleep(300);
+    return Array.from(frame.contentDocument.querySelectorAll('.pal-row'))
+      .map((r) => (r.textContent || '').replace(/\s+/g, ' ').trim());
+  };
+  /* Driven rather than read out of the module: what matters is that
+     somebody who types the word they half-remember gets the row, and a list
+     that contains the entry while the search cannot reach it would pass a
+     check on the list. */
+  const byCluster = await typeInto('cluster');
+  check('typing "cluster" finds it',
+        byCluster.some((r) => /open a recording from the cluster/i.test(r)),
+        byCluster.slice(0, 3).join(' | ') || '(no rows)');
+  /* And the other word for the same thing.
+
+     `score` is a subsequence matcher over one string, so a two-word query
+     only matches when both words appear IN ORDER in the same haystack --
+     "vacc open" scores zero against "Open a recording from the cluster /
+     read one off VACC", which is a fact about the matcher and not about
+     this entry. What a person types is one word. Presence is what is
+     asserted, not rank: the repository has thirty scripts with VACC in
+     their path and several of them are shorter strings, which the scorer
+     prefers on purpose. */
+  const byVacc = await typeInto('vacc');
+  check('and so does typing VACC',
+        byVacc.some((r) => /open a recording from the cluster/i.test(r)),
+        byVacc.length + ' rows, none of them it: '
+        + byVacc.slice(0, 3).join(' | '));
+  /* And it lands somewhere. A palette row that runs and leaves you where
+     you were is worse than no row. */
+  const row = Array.from(frame.contentDocument.querySelectorAll('.pal-row'))
+    .find((r) => /open a recording from the cluster/i.test(r.textContent || ''));
+  if (row) {
+    row.click();
+    await sleep(1200);
+    check('and running it lands on the cluster catalogue',
+          ev('BARRY.state.view') === 'sessions'
+          && !frame.contentDocument.getElementById('vaccBody')
+                  .classList.contains('hidden'),
+          'view=' + ev('BARRY.state.view'));
+  } else {
+    skip('running the palette row lands on the cluster catalogue',
+         'the row was not offered');
+  }
+  await ev('BARRY.palette.hide()');
+  await sleep(200);
+
+  say('');
+  say('=== opening one writes nothing down ===');
+  /* THE check on this page.
+
+     `REG.ensure` files every path a recording is opened from. A cluster path
+     filed as if it were a local path reads back as `local-only`, so the
+     recording would report that VACC cannot reach it BECAUSE it was read off
+     VACC -- quietly, and in a shard that travels to everybody.
+
+     Counted before and after, and the paths are read too: a count that
+     happens not to change would hide a path added to a record that already
+     existed, which is exactly the shape of this bug. */
+  const countPaths = async () => {
+    const all = await flat();
+    return { n: all.length,
+             cluster: all.filter((s) => (s.paths || []).some(
+               (p) => /^\/(gpfs|users|netfiles|scratch)/i.test(String(p)))).length };
+  };
+  const before = await countPaths();
+  say('    before: ' + JSON.stringify(before), 'note');
+
+  const target = firstDrawn('native') || firstDrawn('staged')
+    || 'sZZZZnotreal';
+  const opened = await json(
+    'fetch("/api/csc/open", { method: "POST",'
+    + ' headers: { "Content-Type": "application/json" },'
+    + ' body: JSON.stringify({ path: "vacc:' + target + '" }) })'
+    + '.then(r => r.text())');
+  say('    open vacc:' + target + ' -> '
+      + (opened.ok ? 'ok, ' + (opened.channels || []).length + ' channels'
+                   : 'refused: ' + String(opened.error).slice(0, 140)), 'note');
+
+  const after = await countPaths();
+  check('no recording was created by opening one off the cluster',
+        after.n === before.n, before.n + ' -> ' + after.n);
+  check('and no cluster path was filed as a path on this machine',
+        after.cluster === before.cluster,
+        before.cluster + ' -> ' + after.cluster);
+
+  say('');
+  say('=== a refusal is a sentence ===');
+  /* Not a stack trace and not a 500. The cluster being unreachable is the
+     ordinary state of this machine, and what somebody gets in that state has
+     to be a thing they can act on. */
+  const nope = await json(
+    'fetch("/api/csc/open", { method: "POST",'
+    + ' headers: { "Content-Type": "application/json" },'
+    + ' body: JSON.stringify({ path: "vacc:sZZZZnotreal" }) })'
+    + '.then(r => r.text())');
+  check('a recording the cluster has no place for is refused, not crashed',
+        nope.ok === false && typeof nope.error === 'string',
+        JSON.stringify(nope).slice(0, 160));
+  check('and the refusal says why in words',
+        /cannot reach|no place|no path|not set up|no ssh/i.test(
+          String(nope.error || '')),
+        String(nope.error || '').slice(0, 160));
+  check('and it reports the id it was asked for, not a mangled file path',
+        !/[A-Za-z]:\\|\/Users\//.test(String(nope.path || '')),
+        String(nope.path || '(none)'));
+
+  say('');
+  if (opened.ok) {
+    say('=== and it is a real recording ===');
+    check('it came back with channels',
+          (opened.channels || []).length > 0,
+          (opened.channels || []).length + ' channels');
+    check('it says where on the cluster it was read',
+          typeof opened.remote === 'string' && opened.remote.startsWith('/'),
+          String(opened.remote));
+    check('and by which of the two ways',
+          ['native', 'staged'].indexOf(opened.remote_state) >= 0,
+          String(opened.remote_state));
+    check('its identity carries the gid it was opened by',
+          (opened.identity || {}).gid === target,
+          String((opened.identity || {}).gid));
+    check('no video is offered, because none can be served from here',
+          !((opened.media || {}).videos || []).length);
+    const lk3 = await json('fetch("/api/vacc/link").then(r=>r.text())');
+    check('the link is open now, and says what Python answered it',
+          lk3.open === true && !!(lk3.remote || {}).python,
+          JSON.stringify(lk3).slice(0, 160));
+  } else {
+    skip('reading a real recording off the cluster',
+         'the cluster did not answer: '
+         + String(opened.error).slice(0, 80));
+  }
+
+  say('');
+  say(fails ? (fails + ' FAILED') : 'all checks passed',
+      fails ? 'bad' : 'good');
+  if (skips) {
+    say(skips + ' skipped — this sweep proved less than a full one. The '
+        + 'skipped checks need the cluster reachable.', 'skip');
+  }
+  document.title = 'vaccopen: ' + (fails ? fails + ' failed'
+                                         : 'passed')
+                 + (skips ? ' (' + skips + ' skipped)' : '');
+})();
+</script></body></html>

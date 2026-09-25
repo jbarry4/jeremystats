@@ -24,9 +24,12 @@ import uuid
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
 from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
+               dspcahf,
                compose, continuity as continuitymod, csc,
                healthlog as healthlogmod,
                incisor as incisormod,
+               spark as sparkmod,
+               coupling as couplingmod,
                braces as bracesmod,
                bracesset as brsetmod,
                dspca,
@@ -48,7 +51,7 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, recipe as recipemod, store, thumbs, toolresults,
-               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccrun as vaccrunmod, video,
+               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccio as vacciomod, vaccrun as vaccrunmod, video,
                warmcache)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -94,6 +97,12 @@ continuitymod.configure(LOGS_DIR)
 # and nothing else -- no connection is made here, and none is ever made on
 # the path of a request. `vacc.loop` below keeps the answer worth reading.
 vaccmod.configure(LOGS_DIR)
+# Reading a recording that is on the cluster and not on this disk. Configured
+# here and connected to nothing: `vaccio` opens an ssh process the first time
+# somebody opens a `vacc:` recording and not before, and closes it again when
+# it has been idle for ten minutes. The resolver it is given is registered
+# further down, beside the registry it has to ask.
+vacciomod.configure(LOGS_DIR, APP_DIR)
 # When each recording was last checked for gaps, by whom, and what the answer
 # was. Kept because "which of these three hundred have a problem" is a
 # question about the archive, and a check that runs when you open one session
@@ -581,8 +590,22 @@ def _even_only_arg(body):
     return None if v is None else bool(v)
 
 
+def _scheme_path(path):
+    """Is this an id rather than a place -- `demo:` or `vacc:`.
+
+    Both name a recording that is not a file on this disk: one is a fixture
+    compiled into the app, the other is a recording on the cluster. Neither
+    survives `abspath`, which prepends the working directory to anything it
+    does not recognise as absolute and turns `vacc:s6b2088ae883b` into a
+    path under wherever the server happened to be started.
+    """
+    return isinstance(path, str) and (demomod.is_demo(path)
+                                      or vacciomod.is_vacc(path))
+
+
 def _session_for(path, even_only=None, invert=True):
-    key = "%s|%s|%s" % (os.path.abspath(path), even_only, invert)
+    key = "%s|%s|%s" % (path if _scheme_path(path) else os.path.abspath(path),
+                        even_only, invert)
     if key not in _SESSIONS:
         sess = csc.open_session(path, even_only=even_only, invert=invert)
         if not sess.get("ok"):
@@ -659,6 +682,10 @@ def api_csc_open():
             "confidence": "exact",
             "demo": True,
         }
+    elif sess.get("source") == "vacc":
+        # Read off the cluster -- see vaccio.py. The identity comes from the
+        # record its gid names rather than from the path it was read at.
+        identity = _vacc_identity(sess)
     else:
         identity = ids.identify(
             sess["path"], header_time=_header_time(sess))
@@ -667,7 +694,17 @@ def api_csc_open():
     # Not for a demo: it is not a discovery, and writing it in would leave
     # two fake sessions in every clone's registry for good.
     try:
-        if sess.get("source") != "demo":
+        # Not for a demo, and not for a cluster read.
+        #
+        # `ensure` files every path a recording is opened from. A demo is not
+        # a discovery and would leave two fake sessions in every clone's
+        # registry for good; a cluster path is worse than that -- filed as if
+        # it were a local path, `/gpfs2/scratch/...` comes back out of
+        # `vacc.resolve_path` as `local-only`, so the recording would report
+        # that the cluster cannot reach it on the strength of having just
+        # been read off the cluster. A live read lays eyes on nothing that is
+        # on this machine, and says so by writing nothing.
+        if sess.get("source") not in ("demo", "vacc"):
             REG.ensure(identity)
     except Exception as exc:                               # noqa: BLE001
         STORE.record_error("registry/ensure", str(exc), None, {"path": path})
@@ -705,9 +742,27 @@ def api_csc_open():
     out["stored"] = stored
     out["stored_match"] = how
     out["bad_channels"] = (stored or {}).get("bad_channels", [])
-    folder = sess["path"] if os.path.isdir(sess["path"]) else os.path.dirname(sess["path"])
-    out["media"] = video.find_media(folder)
-    out["nev"] = _find_nev(folder)
+    if sess.get("source") == "vacc":
+        # Where it is, and by which of the two ways, so the viewer can say
+        # so. A scratch copy is not the recording -- VACC purges scratch
+        # without notice -- and somebody reading traces off one is owed that
+        # sentence before they trust what they see.
+        out["remote"] = sess.get("remote")
+        out["remote_state"] = sess.get("remote_state")
+        out["remote_why"] = sess.get("remote_why")
+        # No video. A tracking file beside a recording on the cluster is
+        # real, but the browser plays video off a URL this server serves off
+        # this disk, and there is no disk. Reported as none rather than as a
+        # list of things that will not play.
+        out["media"] = {"videos": [], "tracking": []}
+        # The .nev files ARE offered: `/api/events/nev` reads one through the
+        # same link, so Cheetah's own events arrive the way they do for a
+        # recording on a drive.
+        out["nev"] = sess.get("nev") or []
+    else:
+        folder = sess["path"] if os.path.isdir(sess["path"]) else os.path.dirname(sess["path"])
+        out["media"] = video.find_media(folder)
+        out["nev"] = _find_nev(folder)
     out["view_state"] = (stored or {}).get("view_state") or {}
     out["probe"] = _probe_for(stored)
     out["probe_source"] = (stored or {}).get("probe_source") or (
@@ -4299,6 +4354,96 @@ def _dspca_layers(gid):
         return {}
 
 
+def _dspca_power(gid, p, res):
+    """The HF number per event, lined up with the fit's own event order.
+
+    Keyed on the READ, so it survives every drag of the box -- but the
+    box decides which contacts it is averaged over, so the value does
+    move with the box even though the file does not.
+    """
+    try:
+        hf = _dspca_hf_load(gid, _dspca_hf_hash(p))
+    except Exception:                                    # noqa: BLE001
+        hf = None
+    if not hf:
+        return {"have": False, "values": [], "band": list(dspcahf.HF_BAND),
+                "unit": "dB re baseline"}
+    nums = list(hf.get("nums") or [])
+    want = [int(n) for n in res["nums_sel"]]
+    sel = [nums.index(n) for n in want if n in nums]
+    vals = dspcahf.per_event(hf, sel)
+    return {
+        "have": True,
+        "values": vals,
+        "band": list(hf.get("band") or dspcahf.HF_BAND),
+        "unit": "dB re baseline",
+        "over": len(sel),
+        "win_ms": hf.get("win_ms"),
+        "base_off_ms": hf.get("base_off_ms"),
+        "missed": len(hf.get("missed") or []),
+    }
+
+
+def _dspca_hf_hash(p):
+    """What makes two HF passes the same question.
+
+    The READ keys plus the band and the windows: a pass at a different
+    rate, or over a different band, is a different measurement and must
+    not be served out of the same file. The FIT keys are deliberately
+    absent -- moving the box does not change one microvolt of what was
+    read, and re-reading the recording because somebody dragged a
+    rectangle would be minutes for nothing.
+    """
+    keys = tuple(dspca.Params.READ_KEYS) + tuple(sorted(dspcahf.hf_keys()))
+    return toolresults.params_hash(
+        dict(p.read_params(), **dspcahf.hf_keys()), keys)
+
+
+def _dspca_hf_npz(gid, hh):
+    return DSPCA.cached_path(gid, hh, ".hf.npz")
+
+
+def _dspca_hf_save(gid, hh, got):
+    import numpy as _np
+    path = _dspca_hf_npz(gid, hh)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    _np.savez_compressed(
+        path, db=got["db"], abs=got["abs"],
+        nums=_np.asarray(got["nums"], dtype=int),
+        best=_np.asarray(got["best"], dtype=int),
+        meta=_np.asarray([json.dumps({
+            k: got[k] for k in ("fs", "missed", "band", "win_ms",
+                                "base_off_ms", "base_win_ms")})]))
+    return path
+
+
+def _dspca_hf_load(gid, hh):
+    """The HF arrays, or None. Never raises: no HF is a normal state."""
+    import numpy as _np
+    key = "dspcahf:%s:%s" % (gid, hh)
+    hit = cfcmod.cache_get(key)
+    if hit is not None:
+        return hit
+    path = _dspca_hf_npz(gid, hh)
+    if not os.path.exists(path):
+        return None
+    try:
+        with _np.load(path, allow_pickle=False) as z:
+            meta = json.loads(str(z["meta"][0]))
+            got = dict(meta)
+            got["db"] = z["db"]
+            got["abs"] = z["abs"]
+            got["nums"] = [int(n) for n in z["nums"]]
+            got["best"] = [int(b) for b in z["best"]]
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("dspca/hf-load",
+                           "The HF file could not be read: %s" % exc, None,
+                           {"gid": gid})
+        return None
+    cfcmod.cache_put(key, got)
+    return got
+
+
 def _dspca_save(gid, ph, got):
     return dspca.save_read(_dspca_npz(gid, ph), got)
 
@@ -4912,6 +5057,14 @@ def api_dspca_fit():
         # The sink gap: what two of the three are built on, and what the
         # depth panels mark. Per event, plus the two settings that shape
         # it.
+        # HIGH-FREQUENCY POWER, when the second read has been done.
+        #
+        # One number per event: 500-1000 Hz power in dB against the same
+        # contact's own baseline 150 ms earlier, averaged over the
+        # contacts the box covers. Null throughout when the pass has not
+        # been run, which is a state the panel says out loud rather than
+        # drawing an axis of nothing.
+        "power": _dspca_power(gid, p, res),
         "gap": {
             "values": [float(v) for v in (res.get("gap") or [])],
             "contacts": [int(v) for v in (res.get("gap_contacts") or [])],
@@ -5265,6 +5418,66 @@ def api_dspca_raster():
         return fail("dspca/raster", exc, 400, {"gid": gid, "what": what})
     except Exception as exc:                             # noqa: BLE001
         return fail("dspca/raster", exc, 500, {"gid": gid, "what": what})
+
+
+@app.route("/api/dspca/hf", methods=["POST"])
+def api_dspca_hf():
+    """Read the recording again at 5 kHz and measure 500-1000 Hz power.
+
+    A SECOND READ, and it has to be. X-ray reads at 1000 Hz, so its
+    Nyquist is 500 and the band this measures is entirely at or above it
+    -- and already removed by the anti-alias filter the decimation
+    applies. A number computed for that band out of the 1 kHz cache
+    would not be high-frequency power; it would be whatever survived.
+    See the module docstring in `dspcahf.py`.
+
+    Minutes, once, cached on the question. Answered as a job for the
+    same reason the first read is.
+    """
+    body = request.get_json(force=True) or {}
+    try:
+        rec = _dspca_entry(body.get("entry_id"))
+        sess, _row = _braces_session(rec)
+        stored = _stored_for(sess)
+        p = _dspca_params(body, sess, stored)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/hf", exc, 400, {"entry_id": body.get("entry_id")})
+
+    src_v = body.get("from_version")
+    try:
+        stamps, _n_all = _dspca_stamps(rec, src_v)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("dspca/hf", exc, 400, {"from_version": src_v})
+    if not stamps:
+        return jsonify({"ok": False,
+                        "error": "Nothing in this set is a dentate "
+                                 "spike."}), 400
+
+    gid = rec.get("gid")
+    hh = _dspca_hf_hash(p)
+    if _dspca_hf_load(gid, hh) is not None and not body.get("force"):
+        return jsonify({"ok": True, "cached": True, "hf": hh,
+                        "n": len(stamps)})
+
+    chans = _braces_channels(sess)
+    marked = {int(c["number"]): "marked bad on this recording"
+              for c in chans if c.get("bad")}
+
+    def work(job):
+        got = dspcahf.measure(sess, chans, stamps, p, bad=marked,
+                              stop=job.check, job=job)
+        _dspca_hf_save(gid, hh, got)
+        return {"hf": hh, "n": len(stamps),
+                "missed": len(got.get("missed") or [])}
+
+    steps = [("ds pca hf", len(stamps))]
+    job = cfcmod.start({}, steps, work, max(0.001, float(len(stamps))))
+    STORE.record_activity([{
+        "action": "dspca.hf",
+        "detail": {"entry": rec["id"], "n": len(stamps), "hf": hh},
+    }])
+    return jsonify({"ok": True, "job": job.snapshot(), "hf": hh,
+                    "n": len(stamps)})
 
 
 @app.route("/api/dspca/underhood", methods=["POST"])
@@ -6870,6 +7083,22 @@ def api_events_nev():
     """Read a .nev, resolving times against the recording's own clock."""
     body = request.get_json(force=True) or {}
     path = body.get("path", "")
+    # A recording read off the cluster carries cluster paths for its .nev
+    # files, and `os.path.isfile` on this machine is the wrong question about
+    # every one of them. Read through the same link instead -- same
+    # `nlx.nev_events`, same resolution against the recording's own clock,
+    # run where the file is.
+    if vacciomod.is_vacc(body.get("session_path") or ""):
+        sess, err = _session_for(body["session_path"])
+        if err:
+            return jsonify(err), 400
+        try:
+            got = vacciomod.nev(sess, path,
+                                t_start_us=body.get("t_start_us"))
+        except Exception as exc:                         # noqa: BLE001
+            return fail("events/nev vacc", exc, 400, {"path": path})
+        return jsonify(got) if got.get("ok") else (jsonify(got), 400)
+
     if not os.path.isfile(path):
         return jsonify({"ok": False, "error": "Not found: " + str(path)}), 404
 
@@ -9637,6 +9866,568 @@ def _bad_channel_args():
         "date_from": a.get("from") or None,
         "date_to": a.get("to") or None,
     }
+
+
+# --------------------------------------------------------------------------
+# The Arc, step one: Spark
+# --------------------------------------------------------------------------
+#: What The Arc is working on, until it is working on everything.
+#:
+#: The bundle is being built against the preconditioning sessions -- those
+#: are the ones that hold cue pairs, and the four of them per animal are the
+#: question in front of us. Everything else is deliberately out of scope for
+#: now rather than absent: `phase_max=0` widens it, and every step reads the
+#: same scope so they cannot disagree about which recordings are in play.
+ARC_SCOPE = {"project": "DEWEY", "phase": "Precon", "run": "SPC",
+             "phase_max": 4}
+
+
+def _spark_recordings(project="DEWEY", phase=None, run="SPC", phase_max=0):
+    """The recordings Spark can run on, in animal then session order.
+
+    Scoped rather than free: cue pairs live in the cued run of a
+    preconditioning session, and offering every recording in the registry
+    would mostly be offering the ones that cannot have any.
+    """
+    out = []
+    for rec in REG.all():
+        if rec.get("retired"):
+            continue
+        if project and (rec.get("project") or "") != project:
+            continue
+        if run and (rec.get("run") or "") != run:
+            continue
+        if phase and (rec.get("phase") or "") != phase:
+            continue
+        if phase_max:
+            n = rec.get("phase_n")
+            if not isinstance(n, int) or n > phase_max:
+                continue
+        sm = REG.summary(rec)
+        here = sm.get("here") or []
+        out.append({
+            "gid": sm.get("gid"), "label": sm.get("label"),
+            "mouse": sm.get("mouse"), "session": sm.get("session"),
+            "phase": sm.get("phase"), "phase_n": sm.get("phase_n"),
+            "run": sm.get("run"), "date": sm.get("date"),
+            "reachable": bool(here),
+            "duration_s": sm.get("duration_s"),
+            "n_channels": sm.get("n_channels"),
+        })
+    out.sort(key=lambda r: (r.get("mouse") or 0, r.get("session") or 0))
+    return out
+
+
+@app.route("/api/arc/spark/recordings")
+def api_arc_spark_recordings():
+    """The recordings in scope, and what is already filed for them.
+
+    Defaults to `ARC_SCOPE`. `all=1` widens it to the whole project, which
+    is the switch to throw when the preconditioning sessions are done.
+    """
+    wide = request.args.get("all") in ("1", "true", "yes")
+    phase = (request.args.get("phase") or "").strip() or None
+    run = request.args.get("run")
+    scope = dict(ARC_SCOPE)
+    if wide:
+        scope.update(phase=None, run=None, phase_max=0)
+    if phase is not None:
+        scope["phase"] = phase
+    if run is not None:
+        scope["run"] = run.strip() or None
+    rows = _spark_recordings(project=scope["project"], phase=scope["phase"],
+                             run=scope["run"], phase_max=scope["phase_max"])
+    return jsonify({"ok": True, "rows": rows, "banked": _spark_banked(),
+                    "scope": scope, "default_scope": ARC_SCOPE})
+
+
+def _spark_banked():
+    """Which recordings already have a Spark entry, and at what version."""
+    out = {}
+    for e in BANK.summaries():
+        src = (e.get("source") or {})
+        if not str(src.get("pipeline") or "").startswith(SPARK_PIPELINE):
+            continue
+        gid = e.get("gid")
+        if not gid:
+            continue
+        out[gid] = {"id": e.get("id"), "n": e.get("n"),
+                    "version": e.get("version"),
+                    "versions": len(e.get("versions") or []),
+                    "added": e.get("added"), "name": e.get("name")}
+    return out
+
+
+SPARK_PIPELINE = "The Arc \u00b7 Spark"
+
+
+def _spark_read(gid):
+    """Read one recording, or say plainly why it cannot be read."""
+    rec = REG.by_gid(gid)
+    if not rec:
+        raise SparkRouteError("No recording %s" % gid, 404)
+    sm = REG.summary(rec)
+    here = sm.get("here") or []
+    if not here:
+        raise SparkRouteError(
+            "None of this recording\u2019s paths are reachable from this "
+            "machine, so there is nothing to look at.", 409)
+    folder = here[0]
+    nev = os.path.join(folder, "Events.nev")
+    if not os.path.exists(nev):
+        raise SparkRouteError(
+            "This recording has no Events.nev, so it has no TTL pulses to "
+            "read. Cue pairs come from that file and nowhere else.", 409)
+    t0 = nlx.recording_start_us(folder)
+    got = sparkmod.read(nev, t0)
+    got["gid"] = gid
+    got["label"] = sm.get("label")
+    got["path"] = folder
+    got["t_origin"] = "recording" if t0 is not None else "first event"
+    got["summary"]["phase"] = sm.get("phase")
+    got["summary"]["run"] = sm.get("run")
+    got["summary"]["n_channels"] = sm.get("n_channels")
+    return sm, got
+
+
+class SparkRouteError(Exception):
+    def __init__(self, msg, code=400):
+        super().__init__(msg)
+        self.code = code
+
+
+@app.route("/api/arc/spark/<gid>")
+def api_arc_spark(gid):
+    try:
+        _sm, got = _spark_read(gid)
+    except SparkRouteError as e:
+        return jsonify({"ok": False, "error": str(e)}), e.code
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/spark", exc, 400, {"gid": gid})
+    # The events list is long and nothing on screen reads all of it; the
+    # pairs and the summary are what the panel draws.
+    got["events"] = got["events"][:400]
+    return jsonify(dict({"ok": True}, **got))
+
+
+#: Clipping readings, held for the life of the process.
+#:
+#: The scan memory-maps every channel and slices out each pair's window --
+#: about twelve seconds on a 64-channel DEWEY recording, and most of that is
+#: disk. Nobody should wait for it twice for the same recording, and it
+#: cannot go in the registry because it is derived from the pairs and would
+#: be wrong the moment the pairing rule changed.
+_ARC_CLIP = {}
+
+
+@app.route("/api/arc/spark/<gid>/clipping", methods=["POST"])
+def api_arc_spark_clipping(gid):
+    """Which channels saturated during each cue pair.
+
+    A deliberate action rather than part of the read: it touches every
+    channel file, and a panel that did it on open would take ten seconds to
+    show a table that is useful without it.
+    """
+    body = request.get_json(silent=True) or {}
+    try:
+        sm, got = _spark_read(gid)
+    except SparkRouteError as e:
+        return jsonify({"ok": False, "error": str(e)}), e.code
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/spark/clipping", exc, 400, {"gid": gid})
+
+    pairs = got["pairs"]
+    if not pairs:
+        return jsonify({"ok": False, "error":
+                        "There are no cue pairs here to check."}), 409
+
+    cached = _ARC_CLIP.get(gid)
+    if cached and not body.get("again") and cached.get("n") == len(pairs):
+        return jsonify(dict({"ok": True, "cached": True}, **cached))
+
+    try:
+        per_pair, per_chan = sparkmod.clipping_for(got["path"], pairs)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/spark/clipping", exc, 400, {"gid": gid})
+
+    out = {
+        "n": len(pairs),
+        "by_pair": {str(k): v for k, v in per_pair.items()},
+        "channels": sparkmod.clip_summary(per_pair, len(pairs)),
+        "fraction": sparkmod.CLIP_FRACTION,
+        "min_run": sparkmod.CLIP_MIN_RUN,
+    }
+    _ARC_CLIP[gid] = out
+    STORE.record_activity([{
+        "action": "arc.spark.clipping",
+        "detail": {"gid": gid, "pairs": len(pairs),
+                   "channels": len(out["channels"])},
+    }])
+    return jsonify(dict({"ok": True, "cached": False}, **out))
+
+
+@app.route("/api/arc/spark/<gid>/bank", methods=["POST"])
+def api_arc_spark_bank(gid):
+    """File this recording\u2019s cue pairs, or a new version of them.
+
+    Re-banking the same recording keeps the entry id, so it becomes another
+    version of one set rather than a second set -- which is what makes "the
+    pairs changed when we tightened the gap" a thing you can look at rather
+    than two entries somebody has to tell apart.
+    """
+    body = request.get_json(force=True) or {}
+    try:
+        sm, got = _spark_read(gid)
+    except SparkRouteError as e:
+        return jsonify({"ok": False, "error": str(e)}), e.code
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/spark/bank", exc, 400, {"gid": gid})
+
+    pairs = got["pairs"]
+    if not pairs:
+        return jsonify({"ok": False, "error":
+                        "There are no cue pairs in this recording to file. "
+                        "Only preconditioning sessions hold them."}), 409
+
+    # What each pair is not valid for, carried onto the events themselves.
+    #
+    # Measured clipping if it has been measured -- the reading is held per
+    # process, so this is whatever the panel last found -- plus anything
+    # somebody invalidated by hand in the request. Both travel with the
+    # event, because the step that correlates these windows has no other
+    # way to know a channel was at the rail through one of them.
+    clip = (_ARC_CLIP.get(gid) or {}).get("by_pair") or {}
+    by_hand = body.get("excluded") or {}
+    events = sparkmod.bank_events(pairs)
+    # `hit`, not `got` -- `got` is the reading this whole route is built
+    # from, and shadowing it here made `got["path"]` forty lines later a
+    # KeyError on a per-pair clipping dict.
+    for ev, pr in zip(events, pairs):
+        hit = clip.get(str(pr["pair_id"])) or {}
+        if hit:
+            # Per WINDOW, because that is how it was measured and how it
+            # is analysed. A channel ruined in the baseline is perfectly
+            # good in both cues, and banking one flat list per event threw
+            # those away with it.
+            per = {}
+            for csc, d in hit.items():
+                for wname in (d.get("windows") or []):
+                    per.setdefault(wname, []).append(int(csc))
+            if per:
+                ev["clipped"] = {k: sorted(v) for k, v in per.items()}
+        said = by_hand.get(str(pr["pair_id"])) or by_hand.get(pr["pair_id"])
+        if said:
+            # The same two shapes the bank takes: a dict of windows when
+            # somebody decided window by window, a list when they dropped
+            # a whole channel.
+            if isinstance(said, dict):
+                per = {}
+                for wname, chans in said.items():
+                    nums = sorted({int(c) for c in (chans or [])})
+                    if nums:
+                        per[str(wname)] = nums
+                if per:
+                    ev["excluded"] = per
+            else:
+                ev["excluded"] = sorted(int(c) for c in said)
+    existing = _spark_banked().get(gid) or {}
+    name = (body.get("name") or "").strip() or (
+        "%s \u2014 cue pairs" % (sm.get("label") or gid))
+
+    entry = {
+        "gid": gid,
+        "project": sm.get("project"),
+        "mouse": sm.get("mouse"),
+        "session": sm.get("session"),
+        "session_key": sm.get("key"),
+        "session_loose_key": sm.get("loose_key"),
+        "session_label": sm.get("label"),
+        "session_path": got["path"],
+        "recording_start": sm.get("start"),
+        "duration_s": sm.get("duration_s"),
+        "type": "ttl",
+        "type_name": "Cue pair",
+        "name": name,
+        "events": events,
+        "by_label": sparkmod.label_tally(pairs),
+        # `specified` is the bank's claim that somebody has said what these
+        # events ARE, as opposed to a detector having proposed some times.
+        # It is computed from `curated`, not passed -- so this is the field
+        # that sets it, and passing `specified` directly does nothing.
+        #
+        # These qualify. Every pair carries the two cues it is made of, and
+        # it only exists because two named cue pulses landed ten seconds
+        # apart: the label is not a guess that somebody still has to
+        # confirm, it is read off the rig.
+        "curated": True,
+        "curation_label": "The Arc: cue pairs",
+        "pipeline": SPARK_PIPELINE,
+        "detector": "spark.pair_events",
+        "parameters": {
+            "expected_gap_s": sparkmod.EXPECTED_GAP_S,
+            "gap_tolerance_s": sparkmod.GAP_TOLERANCE_S,
+            "debounce_ms": sparkmod.DEBOUNCE_MS,
+            "cues": list(sparkmod.CUES),
+            "t_origin": got["t_origin"],
+            "clip_fraction": sparkmod.CLIP_FRACTION,
+            "clip_min_run": sparkmod.CLIP_MIN_RUN,
+            "clip_measured": bool(clip),
+        },
+        # `_source_for` reads `source_file`; `file` is a different key and
+        # was landing as null in every entry.
+        "source_file": os.path.join(got["path"], "Events.nev"),
+        "note": body.get("note") or "",
+    }
+    if existing.get("id"):
+        entry["id"] = existing["id"]
+
+    try:
+        made = BANK.add(entry)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/spark/bank", exc, 400, {"gid": gid})
+
+    STORE.record_activity([{
+        "action": "arc.spark.bank",
+        "detail": {"gid": gid, "n": len(events),
+                   "version": made.get("version")},
+        "session": {"key": sm.get("key"), "label": sm.get("label")},
+    }])
+    return jsonify({"ok": True, "entry": made,
+                    "n": len(events), "summary": got["summary"]})
+
+
+# --------------------------------------------------------------------------
+# The Arc, step two: Coupling
+# --------------------------------------------------------------------------
+# Coupling works from the BANK, never from a .nev.
+#
+# That is the whole point of Spark filing its pairs: by the time a pair is
+# banked somebody has looked at it, the clipping has been measured, and the
+# channels it is not valid on travel with it. Re-reading the event file here
+# would throw all of that away and quietly correlate a window somebody had
+# already decided against.
+def _coupling_entry(gid):
+    """The Spark entry banked against this recording, or None."""
+    for e in BANK.for_session({"gid": gid}):
+        src = (e.get("source") or {})
+        if str(src.get("pipeline") or "").startswith(SPARK_PIPELINE):
+            return BANK.get(e.get("id")) or e
+    return None
+
+
+def _coupling_pair(ev, n):
+    """A banked event back into the pair shape the analysis wants.
+
+    A pair is stored as one event: `start` is cue 1, `end` is cue 2, and
+    the end of cue 2 is `end + (end - start)` -- derived at the point of
+    use rather than stored, so it cannot drift out of agreement with the
+    two times it comes from.
+    """
+    start = float(ev.get("start"))
+    end = float(ev.get("end") if ev.get("end") is not None else start)
+    labels = str(ev.get("label") or "").split("\u2192")
+    return {
+        "pair_id": n,
+        "opener_t": start,
+        "closer_t": end,
+        "offset_t": end + (end - start),
+        "gap_s": end - start,
+        "opener_label": labels[0].strip() if labels else "",
+        "closer_label": labels[1].strip() if len(labels) > 1 else "",
+        "label": ev.get("label") or "",
+    }
+
+
+@app.route("/api/arc/coupling/recordings")
+def api_arc_coupling_recordings():
+    """Recordings whose cue pairs are banked, which is the only kind this
+    step can run on. A recording that has been read but not filed is listed
+    with the reason, rather than left out -- "Spark found these and nobody
+    filed them" is a thing somebody needs to be told."""
+    wide = request.args.get("all") in ("1", "true", "yes")
+    scope = dict(ARC_SCOPE)
+    if wide:
+        scope.update(phase=None, run=None, phase_max=0)
+    rows = _spark_recordings(project=scope["project"], phase=scope["phase"],
+                             run=scope["run"], phase_max=scope["phase_max"])
+    banked = _spark_banked()
+    out = []
+    for r in rows:
+        got = banked.get(r["gid"])
+        out.append(dict(r, banked=bool(got),
+                        n_pairs=(got or {}).get("n"),
+                        entry_id=(got or {}).get("id"),
+                        version=(got or {}).get("version"),
+                        why=None if got else
+                        "Spark has not filed this recording\u2019s pairs yet."))
+    return jsonify({"ok": True, "rows": out, "scope": scope})
+
+
+@app.route("/api/arc/coupling/<gid>")
+def api_arc_coupling(gid):
+    """The banked pairs, and what each one is not valid for."""
+    entry = _coupling_entry(gid)
+    if not entry:
+        return jsonify({"ok": False, "error":
+                        "No cue pairs are banked for this recording. Run "
+                        "Spark on it first."}), 409
+    rec = REG.by_gid(gid)
+    sm = REG.summary(rec) if rec else {}
+    here = (sm.get("here") or [None])[0]
+
+    pairs = []
+    for i, ev in enumerate(entry.get("events") or [], start=1):
+        p = _coupling_pair(ev, i)
+        drop = couplingmod.excluded_for(ev)
+        p["excluded"] = sorted(drop)
+        p["clipped"] = sorted(int(c) for c in (ev.get("clipped") or []))
+        p["by_hand"] = sorted(int(c) for c in (ev.get("excluded") or []))
+        pairs.append(p)
+
+    return jsonify({
+        "ok": True, "gid": gid, "label": sm.get("label"),
+        "path": here, "reachable": bool(here),
+        "entry": {"id": entry.get("id"), "name": entry.get("name"),
+                  "version": entry.get("version"),
+                  "versions": len(entry.get("versions") or []),
+                  "added": entry.get("added"),
+                  "specified": entry.get("specified")},
+        "pairs": pairs,
+        "regions": couplingmod.dewey_map(),
+        "probe": sm.get("probe"),
+    })
+
+
+@app.route("/api/arc/coupling/<gid>/run", methods=["POST"])
+def api_arc_coupling_run(gid):
+    """Run the three correlations over one banked cue pair."""
+    body = request.get_json(force=True) or {}
+    entry = _coupling_entry(gid)
+    if not entry:
+        return jsonify({"ok": False, "error":
+                        "No cue pairs are banked for this recording."}), 409
+    rec = REG.by_gid(gid)
+    sm = REG.summary(rec) if rec else {}
+    here = (sm.get("here") or [None])[0]
+    if not here:
+        return jsonify({"ok": False, "error":
+                        "None of this recording\u2019s paths are reachable "
+                        "from this machine, so there is nothing to "
+                        "read."}), 409
+
+    events = entry.get("events") or []
+    try:
+        want = int(body.get("pair_id") or 1)
+    except (TypeError, ValueError):
+        want = 1
+    if want < 1 or want > len(events):
+        return jsonify({"ok": False, "error":
+                        "This recording has %d banked pairs; there is no "
+                        "pair %d." % (len(events), want)}), 400
+
+    ev = events[want - 1]
+    pair = _coupling_pair(ev, want)
+    drop = couplingmod.excluded_for(ev)
+
+    try:
+        out = couplingmod.pair_connectivity(
+            here, pair,
+            exclude_by_channel=drop,
+            notch_hz=(None if body.get("notch") is False else 60.0),
+            curves=bool(body.get("curves")))
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/coupling/run", exc, 400, {"gid": gid, "pair": want})
+
+    STORE.record_activity([{
+        "action": "arc.coupling.run",
+        "detail": {"gid": gid, "pair": want, "excluded": len(drop)},
+        "session": {"key": sm.get("key"), "label": sm.get("label")},
+    }])
+    return jsonify(dict({"ok": True, "gid": gid, "label": sm.get("label"),
+                         "entry_id": entry.get("id")}, **out))
+
+
+def _coupling_csv(out, label, entry_id):
+    """One row per window, region pair and method -- the shape the cluster
+    pipeline's `summary_<session>.csv` used, so a file made here and a file
+    made there can be read by the same script."""
+    import csv as _csv
+    import io as _io
+    buf = _io.StringIO()
+    w = _csv.writer(buf, lineterminator="\n")
+    w.writerow(["session_label", "entry_id", "pair_id", "pair_label",
+                "window", "t0_s", "t1_s", "region_a", "region_b",
+                "channels_a", "channels_b", "method", "summary_label",
+                "summary_value", "summary_x", "summary_x_unit",
+                "n_samples", "fs_used_hz", "notch_hz", "excluded_channels"])
+    notch = (out.get("notch") or {})
+    lines = ";".join(str(x) for x in (notch.get("lines_hz") or []))
+    excl = ";".join(str(c) for c in (out.get("excluded") or []))
+    for win in out.get("windows") or []:
+        for pr in win.get("pairs") or []:
+            for method in ("coherence", "raw_cc", "amp_cc"):
+                got = pr.get(method) or {}
+                # Two shapes, and the CSV has to read both. With curves
+                # asked for, a method is {"summary": {...}, "curve": {...}};
+                # without, the summary IS the method -- there is nothing to
+                # nest it under. Reading only the nested one wrote a file
+                # with a header and no rows, which is the worst possible
+                # failure for an export: it looks like an answer.
+                s = got.get("summary") if isinstance(got.get("summary"), dict)                     else got
+                if not isinstance(s, dict) or s.get("value") is None:
+                    continue
+                w.writerow([
+                    label, entry_id, out.get("pair_id"), out.get("label"),
+                    win.get("window"), win.get("t0"), win.get("t1"),
+                    pr.get("a"), pr.get("b"),
+                    ";".join(str(c) for c in (pr.get("a_channels") or [])),
+                    ";".join(str(c) for c in (pr.get("b_channels") or [])),
+                    method, s.get("what"), s.get("value"), s.get("x"),
+                    s.get("x_unit"), win.get("n_samples"), win.get("fs"),
+                    lines, excl,
+                ])
+    return buf.getvalue()
+
+
+@app.route("/api/arc/coupling/<gid>/save", methods=["POST"])
+def api_arc_coupling_save(gid):
+    """File a run into Results, as a CSV anybody can open without Jarvis."""
+    body = request.get_json(force=True) or {}
+    out = body.get("result")
+    if not out or not out.get("windows"):
+        return jsonify({"ok": False, "error":
+                        "There is no run to save. Run the analysis "
+                        "first."}), 400
+    rec = REG.by_gid(gid)
+    sm = REG.summary(rec) if rec else {}
+    label = sm.get("label") or gid
+    stem = "%s pair %s" % (label, out.get("pair_id"))
+    blob = _coupling_csv(out, label, body.get("entry_id"))
+    try:
+        saved = save_output(blob.encode("utf-8"), stem + ".csv",
+                            subdir="Coupling", lane="exhibit")
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/coupling/save", exc, 400, {"gid": gid})
+
+    # Recorded as a run so the Results catalogue shows it beside the file,
+    # which is what makes a result citable rather than merely present.
+    try:
+        STORE.record_run({
+            "script": "The Arc · Coupling",
+            "label": stem,
+            "status": "ok",
+            "output": saved,
+            "session": {"key": sm.get("key"), "label": label, "gid": gid},
+        })
+    except Exception as exc:                                 # noqa: BLE001
+        STORE.record_error("arc/coupling/save", str(exc), None, {"gid": gid})
+    STORE.record_activity([{
+        "action": "arc.coupling.save",
+        "detail": {"gid": gid, "pair": out.get("pair_id"),
+                   "rel": (saved or {}).get("rel")},
+    }])
+    return jsonify({"ok": True, "saved": saved,
+                    "rel": (saved or {}).get("rel")})
 
 
 @app.route("/api/toolkit/scopes")
@@ -13751,6 +14542,88 @@ def _vacc_remote_for(sess):
     raise RuntimeError("VACC cannot reach this recording: " + why)
 
 
+def _vacc_place_for_gid(gid):
+    """Where one recording is on the cluster, by its permanent id.
+
+    The resolver `vaccio` is handed, and the reason it is a callback rather
+    than an import: answering needs the merged registry and the staged
+    inventory, and both of those live here. A module that shells out to ssh
+    has no business reaching up into the one that serves requests.
+
+    `REG.all()` once and a single pass, NOT `REG.by_gid`. That re-stats every
+    shard on the disk per call -- about 0.7 s -- and this is on the path of
+    opening a recording.
+
+    Raises with a sentence somebody can act on. "VACC cannot reach this" is
+    not an error message; "the share it maps onto is mounted and this account
+    cannot read it" is a mail to vacchelp.
+    """
+    rec = REG.by_gid(gid) or {}
+    paths = [p for p in (rec.get("paths") or []) if isinstance(p, str)]
+
+    cfg = vaccmod.load_config(LOGS_DIR)
+    # `wait=True` here, unlike `/api/vacc/knows`. That one renders a view and
+    # a late chip is better than a late view; this one is somebody having
+    # clicked Open, and answering "no" from an inventory that has not finished
+    # walking would refuse a recording that is sitting right there.
+    try:
+        staged, _unknown = _vacc_staged()
+    except Exception:                                    # noqa: BLE001
+        staged = {}
+    got = vaccmod.resolve_gid(gid, paths, cfg, staged=staged)
+    if got.get("state") in (vaccmod.NATIVE, vaccmod.STAGED) and got.get("remote"):
+        return got
+
+    denied = vaccmod.status().get("denied_roots") or []
+    why = got.get("why") or "the cluster has no copy of it"
+    if denied:
+        why += ("; and the share it maps onto (%s) is mounted but this "
+                "account cannot read it" % ", ".join(denied))
+    raise RuntimeError("VACC cannot reach this recording: " + why)
+
+
+vacciomod.set_resolver(_vacc_place_for_gid)
+
+
+def _vacc_identity(sess):
+    """Who a recording read off the cluster is.
+
+    From the RECORD, not from the path. Every other opener parses the folder
+    it found -- `ids.identify` reads the mouse and the session out of the
+    path, because the path is the only thing it has. Here it is not: the
+    recording was opened BY its permanent id, so the row that answers is the
+    row that id names, and re-deriving a label from a cluster path would be a
+    second answer to a question that is already settled -- and a worse one,
+    since a staged copy sits under a scratch folder whose name says nothing
+    about which animal it came from.
+
+    The path is still parsed, as the floor. A recording staged on the cluster
+    that this machine's shards have not caught up with yet has no row, and a
+    tab reading "unidentified" is worse than one reading what the folder name
+    says.
+
+    `path` stays the `vacc:` id. Everything downstream treats it as the thing
+    to ask for again, and asking this server for `/gpfs2/...` opens nothing.
+    """
+    gid = sess.get("gid")
+    ident = ids.identify(sess.get("remote") or "")
+    rec = REG.by_gid(gid) or {}
+    for k in ("key", "loose_key", "label", "mouse", "session", "group",
+              "start", "project"):
+        if rec.get(k) is not None:
+            ident[k] = rec[k]
+    ident["gid"] = gid
+    ident["path"] = sess.get("path")
+    ident["remote"] = sess.get("remote")
+    ident["remote_state"] = sess.get("remote_state")
+    # Exact when a record answered: the gid was not guessed at, it was
+    # clicked. `ids.identify`'s own verdict stands when nothing answered,
+    # because then the folder name really is all there is.
+    if rec:
+        ident["confidence"] = "exact"
+    return ident
+
+
 def _vacc_run_for(tool, sess, spec, plan, report, tool_steps):
     """A `VaccRun` for one recording, and the `where` its rates belong to.
 
@@ -14085,6 +14958,24 @@ def _vacc_knows_body():
             "counts": vaccmod.histogram(got),
             "n_rules": len(cfg.get("path_map") or []),
             "drives": vaccmod.drive_map()}
+
+
+@app.route("/api/vacc/link")
+def api_vacc_link():
+    """Whether a live read is open, and to what.
+
+    Read-only and offline, the same discipline `/api/vacc/status` follows:
+    this is what decides whether to SAY that a recording is being read off
+    the cluster, and opening a connection to find out would put a handshake
+    in front of a chip.
+
+    `?close=1` puts it down. Offered because a link is a process on a shared
+    login node, and somebody who is finished should be able to say so rather
+    than wait out the idle timer.
+    """
+    if request.args.get("close"):
+        vacciomod.close("asked")
+    return jsonify(vacciomod.status())
 
 
 @app.route("/api/vacc/signin/state")

@@ -1,0 +1,98 @@
+{
+  "_at": {
+    "created": "2026-09-24T19:38:32.485764+00:00",
+    "duration_s": "2026-09-24T19:38:32.525726+00:00",
+    "first_seen_by": "2026-09-24T19:38:32.485764+00:00",
+    "fs": "2026-09-24T19:38:32.525726+00:00",
+    "gid": "2026-09-24T19:38:32.485764+00:00",
+    "group": "2026-09-24T19:38:32.485764+00:00",
+    "key": "2026-09-24T16:34:21-04:00",
+    "label": "2026-09-24T16:34:21-04:00",
+    "loose_key": "2026-09-24T16:34:21-04:00",
+    "mouse": "2026-09-24T19:38:32.485764+00:00",
+    "n_channels": "2026-09-24T19:38:32.525726+00:00",
+    "phase": "2026-09-24T19:38:32.485764+00:00",
+    "phase_n": "2026-09-24T19:38:32.485764+00:00",
+    "probe": "2026-09-24T19:44:36.413076+00:00",
+    "probe_source": "2026-09-24T19:44:36.413076+00:00",
+    "project": "2026-09-24T19:38:32.485764+00:00",
+    "project_source": "2026-09-24T19:38:32.485764+00:00",
+    "retired": "2026-09-24T19:41:04.073428+00:00",
+    "run": "2026-09-24T19:38:32.485764+00:00",
+    "schema": "2026-09-24T19:38:32.485764+00:00",
+    "session": "2026-09-24T19:38:32.485764+00:00",
+    "start": "2026-09-24T19:38:32.485764+00:00",
+    "updated": "2026-09-25T16:45:08.967902+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J4\\Cond4\\J4_Cond4_SPC\\2026-07-29_10-55-29": [
+        "set",
+        "2026-09-24T19:38:32.485764+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-25T16:45:08.967902+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T16:45:08.967902+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.24.8",
+    "at": "2026-09-24T15:38:32-04:00",
+    "commit": "0fc4943",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 5434.288,
+  "first_seen_by": "opened",
+  "fs": 32000.0,
+  "gid": "s1ddc2e4caa8e",
+  "group": "DEWEY",
+  "key": "r004_s014_2026-07-29_10-55-29",
+  "label": "DEWEY r4 s14 Con4 SPC 2026-07-29",
+  "loose_key": "r004_s014",
+  "mouse": 4,
+  "n_channels": 32,
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J4\\Cond4\\J4_Cond4_SPC\\2026-07-29_10-55-29"
+  ],
+  "phase": "Con",
+  "phase_n": 4,
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "run": "SPC",
+  "schema": 2,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-25T12:45:08-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "E:\\Joe Multisite 2026 data\\J4\\Cond4\\J4_Cond4_SPC\\2026-07-29_10-55-29",
+      "root": "E:/Joe Multisite 2026 data",
+      "scan": "scan_175198d703"
+    }
+  },
+  "session": 14,
+  "start": "2026-07-29T10:55:29",
+  "updated": {
+    "app_version": "2026.09.24.8",
+    "at": "2026-09-25T12:45:08-04:00",
+    "commit": "0fc4943",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

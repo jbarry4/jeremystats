@@ -1,0 +1,100 @@
+{
+  "_at": {
+    "created": "2026-09-24T19:39:54.814825+00:00",
+    "duration_s": "2026-09-24T19:39:54.846691+00:00",
+    "first_seen_by": "2026-09-24T19:39:54.814825+00:00",
+    "fs": "2026-09-24T19:39:54.846691+00:00",
+    "gid": "2026-09-24T19:39:54.814825+00:00",
+    "group": "2026-09-24T19:39:54.814825+00:00",
+    "has_video": "2026-09-24T19:39:54.846691+00:00",
+    "key": "2026-09-24T16:34:21-04:00",
+    "label": "2026-09-24T16:34:21-04:00",
+    "loose_key": "2026-09-24T16:34:21-04:00",
+    "mouse": "2026-09-24T19:39:54.814825+00:00",
+    "n_channels": "2026-09-24T19:39:54.846691+00:00",
+    "phase": "2026-09-24T19:39:54.814825+00:00",
+    "phase_n": "2026-09-24T19:39:54.814825+00:00",
+    "probe": "2026-09-24T19:44:40.689931+00:00",
+    "probe_source": "2026-09-24T19:44:40.689931+00:00",
+    "project": "2026-09-24T19:39:54.814825+00:00",
+    "project_source": "2026-09-24T19:39:54.814825+00:00",
+    "retired": "2026-09-24T19:40:25.863466+00:00",
+    "run": "2026-09-24T19:39:54.814825+00:00",
+    "schema": "2026-09-24T19:39:54.814825+00:00",
+    "session": "2026-09-24T19:39:54.814825+00:00",
+    "start": "2026-09-24T19:39:54.814825+00:00",
+    "updated": "2026-09-25T16:45:15.729033+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J9\\J9_Con1\\J9_Con1_FP2\\2026-08-16_14-18-59": [
+        "set",
+        "2026-09-24T19:39:54.814825+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-25T16:45:15.729033+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T16:45:15.729033+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.24.8",
+    "at": "2026-09-24T15:39:54-04:00",
+    "commit": "0fc4943",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 302.016,
+  "first_seen_by": "opened",
+  "fs": 32000.0,
+  "gid": "s878f9898b298",
+  "group": "DEWEY",
+  "has_video": true,
+  "key": "r009_s011_2026-08-16_14-18-59",
+  "label": "DEWEY r9 s11 Con1 FP2 2026-08-16",
+  "loose_key": "r009_s011",
+  "mouse": 9,
+  "n_channels": 32,
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J9\\J9_Con1\\J9_Con1_FP2\\2026-08-16_14-18-59"
+  ],
+  "phase": "Con",
+  "phase_n": 1,
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "run": "FP2",
+  "schema": 2,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-25T12:45:15-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "E:\\Joe Multisite 2026 data\\J9\\J9_Con1\\J9_Con1_FP2\\2026-08-16_14-18-59",
+      "root": "E:/Joe Multisite 2026 data",
+      "scan": "scan_175198d703"
+    }
+  },
+  "session": 11,
+  "start": "2026-08-16T14:18:59",
+  "updated": {
+    "app_version": "2026.09.24.8",
+    "at": "2026-09-25T12:45:15-04:00",
+    "commit": "0fc4943",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}
