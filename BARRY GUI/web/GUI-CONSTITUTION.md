@@ -328,15 +328,50 @@ const DENTIST = [
 ```
 
 Each step is `[id, name, what it does in three words]`, in the order you do
-them.
+them. Register the bundle in `BUNDLES` with an `id`, a `name` and the `icon`
+of the tool whose glyph stands for the whole thing.
 
 **A bundle must remove its members from the flat tool list below it.** This is
 the rule with the longest comment in `toolkit.js` and it is worth reading:
 a bundle that does not is "a menu that describes one thing twice and makes
-the reader work out that it is one thing."
+the reader work out that it is one thing." `BUNDLED` does this for you, so
+the only thing a new bundle has to do is be in `BUNDLES`.
 
 Every step gets a `stepHeader` with its `step` set (§6). The header is where
 somebody arriving at step 3 learns there are four.
+
+**A step that is not built yet is shown and disabled, with the reason on it.**
+Leaving it out says the step does not exist. Somebody arriving at Coupling
+needs to know both that it is the third of four and that the two before it
+come first.
+
+#### Bundles fold
+
+A bundle is a heading with a list under it, and **every bundle folds**. Three
+bundles of three and four steps is eleven rows before the flat list even
+starts, and somebody working in one of them has no use for the other seven.
+
+`bundleCard` already does this; a new bundle gets it by being in `BUNDLES`.
+What matters is the four rules it follows, because they are what make folding
+safe rather than merely possible:
+
+1. **The head is a `button`.** It was a `div`, which nothing can tab to and
+   nothing can announce. Full width, left-aligned, `aria-expanded` — the
+   target is the whole row, not the chevron.
+2. **Open by default; only folds are remembered.** Stored as the *folded*
+   ids in `barry.tkFolded`, so a bundle added later arrives open and is seen
+   rather than arriving folded and never being found.
+3. **Folding never costs you your place.** A folded bundle holding the tool
+   you are in keeps its accent border, and its head names *that step* in
+   place of the count. "Where am I" stays answered by a menu you have tidied.
+4. **The fold is a preference, so it persists.** Same reason the rail
+   remembers its width. A fold you have to redo every morning is not a
+   preference.
+
+The same shape applies to anything else that is a heading over a list — the
+Explorer's tree sections and the Errors view's groups already work this way,
+with the same `.caret` and the same `.open` class on the parent. Copy that,
+not a new one.
 
 ### An Xplorefinder mode
 
@@ -467,6 +502,129 @@ anything long runs — Panorama does this and it is the pattern to copy.
 - [ ] Writes only this machine's shard
 - [ ] A `_dev/` harness, listed in `_dev/README.md`
 
+## 6c. Two views of one thing
+
+Three views in Sessions show the same recordings: **Scan a drive**,
+**Everything Jarvis knows** and **Everything VACC knows**. They are not three
+lists. They are one catalogue asked three questions — what has this computer
+met, what has the lab met, what can the cluster read — and the cluster view
+answers its question in *both* of the other two's shapes.
+
+That only stays true if nobody writes a second copy of anything. This section
+is what "nobody" means in practice.
+
+### One renderer per shape, chosen by scope
+
+| the thing | the one renderer | drawn by |
+|---|---|---|
+| a recording as a **card** | `sessionCard` — sessions.js | Scan a drive · VACC ▸ Recordings |
+| a recording as a **row** | `sessionRow` — housekeeping.js | Everything Jarvis knows · VACC ▸ Catalogue |
+| the project → mouse **tree** | `housekeeping.catalogue(scope)` | both catalogues |
+| the **probe** chip | `BARRY.hk.probeChip` | card, row, drive scan |
+| the **cluster** mark | `BARRY.vacc.mark` | card, Xplorefinder tab |
+
+So a change to a session card lands in the drive view and the cluster view at
+once, because there is one function. **A card change does not land on a tree
+row, and must not be made to.** A card carries a duration, a sample rate and
+four quality buttons; a row carries attachment counts in a dense line. They
+are different shapes answering different questions, and forcing one to follow
+the other is how a view ends up with furniture nobody asked for.
+
+What crosses between them is the **vocabulary** — the chips — never the
+layout.
+
+### Getting one renderer into two places
+
+Two techniques, both in the tree already. Prefer the first.
+
+**Parameterise the host.** `housekeeping.catalogue(scope)` keeps a `SCOPES`
+table of `{ host, detail }` ids and draws into whichever it is handed. This is
+the default answer and needs no comment beyond the table.
+
+**Move the nodes.** `parkList()` / `listInto()` in sessions.js move the one
+`#sessFilters` and the one `#sessTree` between pads, because that markup is
+fixed in `index.html` and `.pad` is `flex: 1` — two visible pads split the
+height, so the list cannot simply be shown in both. Moving a node keeps its
+listeners, so the search box being typed into is the one wired at boot, with
+the one `query` behind it.
+
+Only when the markup cannot be parameterised, and then:
+
+- Park the nodes **before** anything clears the pad they are in.
+  `innerHTML = ''` on a host holding them does not move them, it destroys
+  them, and the symptom is a view that silently has no list.
+- Anything that positions itself relative to them must reposition on every
+  render, not only when it is built — the pick bar was inserted once and
+  stayed behind in the pad the cards had left.
+
+### One module owns the fact; each surface owns the consequence
+
+`native` and `staged` mean something, and four surfaces say so: the card in
+Sessions, the detail panel in Housekeeping, the tab in Xplorefinder, and the
+toast when a recording opens. Each of them wrote its own sentence, and the
+predicate behind them — `state === 'native' || state === 'staged'` — was
+written out five times in three files.
+
+The split that fixes it:
+
+- **The fact** lives in the module that owns the subject. `BARRY.vacc.words`
+  is a table of what each state *is*; `BARRY.vacc.mark` is the chip; and
+  `canRead` is defined as *"there are words for it"*, so the set that opens
+  and the set that gets a mark cannot come apart.
+- **The consequence** belongs to the surface, because it is about the thing
+  that surface is offering. "Opening it from here reads the same files the
+  rig wrote" is the detail panel's sentence and belongs nowhere else.
+
+Restating the fact is the fault. Adding a consequence is not.
+
+The same rule made `probeChip` shared: three places drew it, and three copies
+of "is this confirmed" would have ended up disagreeing about what green
+means.
+
+### Absent is not negative, in every view at once
+
+The cluster has four states and only two are affirmative. `BARRY.vacc.of`
+returns **null** for a recording nobody has established an answer for — which
+is most of a fresh scan, because exact ids are minted when headers are read.
+Every view has to read that the same way: **no mark, no Open, and no
+refusal either.** A view that reads a missing answer as "the cluster cannot
+reach this" is claiming something nobody checked.
+
+This has been got wrong twice in this codebase — `canOpen` in sessions.js,
+where a missing field read as "not on this machine" hid every recording that
+was certainly openable, and the first VACC chips. Both have comments; read
+them before writing a fifth reader of a four-state field.
+
+### A count has to describe the list underneath it
+
+Whatever narrows a view narrows the numbers above it. The cohort pills
+counted the whole catalogue whatever the mode was, so the cluster view
+offered **"PTEN (381)" above a list of 109** — and the fix has to be one
+predicate, not two that agree today: `modeAllows` is read by the filter and
+by the counts, for the same reason `inLocal` was extracted after the view
+said "188 of 185".
+
+Zero is an answer. A cohort with nothing in this view reads `(0)` and is
+dimmed, not dropped — a pill that vanishes when you change mode is one you
+cannot change back with.
+
+### Adding a fourth view
+
+1. It is a **question about the same catalogue**, so it is a mode on the
+   existing switch — not a rail slot (§1) and not a new list.
+2. Write the narrowing as one predicate and give it to the list *and* the
+   counts.
+3. Draw the existing card, the existing row and the existing chips. If you
+   need a new chip, put it in the module that owns what it means and let the
+   other views draw it too.
+4. Say in the line above the list which of the questions it is answering, and
+   leave out the clauses that are about a different one.
+5. An empty view says what fills it (§5) — for the cluster view that is
+   "scan a folder under Directories", not "nothing matches those filters",
+   which sends somebody looking for a filter that does not exist.
+
+---
+
 ## 7. Breaking a rule
 
 Contextual overrides are allowed. The difference between a good one and a bad
@@ -533,6 +691,8 @@ rather than merely published.
 | `python tools/check_classes.py` | a class the markup applies that no rule matches — and it separates the ones something *selects* on, since removing those is a behaviour change |
 | `python tools/ui_baseline.py` | every control's measured shape, every composition's structure, container gaps, grid column counts and overflow, at three widths and one short window. A change that was meant to change nothing must produce an empty diff |
 | `python tools/harness_run.py` | the ~60 behaviour harnesses in `_dev/` |
+| `_dev/vaccopen.html` | that the cluster's meaning is single-sourced (§6c): that `words` and `canRead` cannot come apart, and that every mark drawn on screen is a word the module actually keeps — a view that built its own chip fails here |
+| `_dev/vacccat.html` | that two views of one list are one list (§6c): one `#sessTree` and one `#sessFilters`, not two, and that leaving a view hands them back rather than destroying them |
 | `_dev/uiaudit.html` | the same measurements live, plus the claims that need two classes on a real element — which is how `.btn.small` is caught, since `small` resolves on its own and the pair matches nothing |
 
 Run all of them from **PowerShell**, never bash: under bash Edge's
@@ -550,5 +710,9 @@ checks and the whole suite reads as a clean sweep.
 - [ ] Errors through `reportClientError` (§5)
 - [ ] A Ctrl+K palette entry; a deep-link param if it has shareable state
 - [ ] `onHide` if it starts a poll or a heartbeat
+- [ ] If two views show it, **one** renderer and **one** predicate (§6c) —
+      and the counts above the list read the same predicate as the list
+- [ ] A fact about the subject lives in the subject's module; only the
+      consequence for this surface is written here (§6c)
 - [ ] `check_classes.py` clean; `ui_baseline.py` diff is only what you meant
 - [ ] A `_dev/` harness, listed in `_dev/README.md`

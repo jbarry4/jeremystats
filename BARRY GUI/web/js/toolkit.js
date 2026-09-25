@@ -130,6 +130,13 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'strata') { await loadStrata(); return; }
     if (q.tool === 'incisor') { await loadIncisor(); return; }
     if (q.tool === 'braces') { BARRY.braces.paint(); return; }
+    if (q.tool === 'doppler') { await loadDoppler(); return; }
+    if (q.tool === 'eye') { BARRY.eye.paint(); return; }
+    /* Spotter has no panel of its own: it is a MODE, and the step is the
+       way in rather than the thing itself. It still needs a branch here,
+       or it falls through to the bad-channel query below -- which is the
+       fault Kilosort's comment below is about. */
+    if (q.tool === 'spotter') { renderResult(); return; }
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
     if (q.tool === 'panorama') { await loadPanorama(); return; }
@@ -245,7 +252,12 @@ BARRY.views.toolkit = (function () {
           // Every step of The Arc picks its own recordings -- by project,
           // by rat, by phase -- so the bad-channel scope card would be
           // answering a question none of them asked.
-          || ARC.some(([id]) => id === q.tool))
+          || ARC.some(([id]) => id === q.tool)
+          // Every step of The Storm picks its own recording or its own
+          // banked set, so the bad-channel scope card would be describing
+          // something else -- and Doppler has a channel editor of its own
+          // that writes to the same record.
+          || STORM.some(([id]) => id === q.tool))
            ? [el('div', { class: 'tk-result', id: 'tkResult' })]
            : [scopeCard(),
               el('div', { class: 'tk-result', id: 'tkResult' })]),
@@ -295,6 +307,24 @@ BARRY.views.toolkit = (function () {
      + 'matrices. Phase 7.'],
   ];
 
+  /* The Storm -- interictal discharges, from the cluster to a set
+     somebody has confirmed.
+
+     Named for what it is: radar sweeps the whole recording and says where
+     the cells are, a spotter drives out and confirms by eye what radar saw,
+     and the eye of the storm is its centre. That is detect, curate, align,
+     and it is also the split between the cluster and this computer --
+     Doppler is the only one of the three that runs anywhere else.
+
+     The order is a real dependency, the same way The Dentist's is. Spotter
+     has nothing to show until Doppler has banked candidates, and Eye has
+     nothing to move until Spotter has said which of them are discharges. */
+  const STORM = [
+    ['doppler', 'Doppler', 'find them'],
+    ['spotter', 'Spotter', 'confirm them'],
+    ['eye', 'Eye', 'line them up'],
+  ];
+
   /* Every bundle in the ToolKit, in the order they are offered.
 
      This used to be one array and one hard-coded card, which was right
@@ -303,6 +333,7 @@ BARRY.views.toolkit = (function () {
   const BUNDLES = [
     { id: 'dentist', name: 'The Dentist', icon: 'incisor', steps: DENTIST },
     { id: 'arc', name: 'The Arc', icon: 'circuit', steps: ARC },
+    { id: 'storm', name: 'The Storm', icon: 'doppler', steps: STORM },
   ];
 
   /* Every tool that belongs to a bundle, so nothing has to list them twice
@@ -310,16 +341,60 @@ BARRY.views.toolkit = (function () {
   const BUNDLED = BUNDLES.reduce(
     (acc, b) => acc.concat(b.steps.map(([id]) => id)), []);
 
+  /* Which bundles are folded away.
+
+     Remembered, because which parts of a menu you care about is a standing
+     preference and not a thing to re-state every morning -- the same reason
+     the rail remembers its width. Stored as the FOLDED ids rather than the
+     open ones, so a bundle added later arrives open and is seen, instead of
+     arriving folded and never being found.
+
+     Three bundles of three and four steps is eleven rows before the flat
+     list starts, and somebody working in one of them has no use for the
+     other seven. */
+  const FOLD_KEY = 'barry.tkFolded';
+  let folded = (() => {
+    try { return new Set(JSON.parse(localStorage.getItem(FOLD_KEY) || '[]')); }
+    catch (e) { return new Set(); }     // private mode
+  })();
+
+  function setFolded(id, off) {
+    if (off) folded.add(id); else folded.delete(id);
+    try { localStorage.setItem(FOLD_KEY, JSON.stringify([...folded])); }
+    catch (e) { /* private mode: it just will not be remembered */ }
+  }
+
   function bundleCard(bundle) {
     const steps = bundle.steps;
-    const on = steps.some(([id]) => id === q.tool);
-    const box = el('div', { class: 'tk-bundle' + (on ? ' on' : '') });
-    box.appendChild(el('div', { class: 'tk-bundle-hd' }, [
+    const here = steps.find(([id]) => id === q.tool);
+    const on = !!here;
+    const open = !folded.has(bundle.id);
+    const box = el('div', {
+      class: 'tk-bundle' + (on ? ' on' : '') + (open ? ' open' : ''),
+    });
+    /* The head is the control, so it is a button -- it was a div, and a div
+       you have to click is one nothing can tab to and nothing can announce.
+
+       A folded bundle that holds the tool you are in says WHICH step that is
+       instead of how many there are. Folding is then safe: the accent border
+       says the tool you are in is in here, and the head says where in here,
+       so putting the list away never costs you your place. */
+    box.appendChild(el('button', {
+      class: 'tk-bundle-hd',
+      'aria-expanded': open ? 'true' : 'false',
+      title: open ? 'Fold ' + bundle.name + ' away'
+                  : 'Show the ' + steps.length + ' steps of ' + bundle.name,
+      onclick: () => { setFolded(bundle.id, open); render(); },
+    }, [
+      el('span', { class: 'caret',
+                   html: '<svg viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>' }),
       toolIcon(bundle.icon),
       el('strong', { text: bundle.name }),
       el('span', { class: 'tk-bundle-c',
-                   text: steps.length + ' tools' }),
+                   text: (!open && here) ? here[1]
+                                         : steps.length + ' tools' }),
     ]));
+    if (!open) return box;
     box.appendChild(el('div', { class: 'tk-steps' },
       steps.map(([id, name, does, soon], i) => {
         /* A step that is not built yet is SHOWN and disabled, with the
@@ -372,6 +447,15 @@ BARRY.views.toolkit = (function () {
     braces: 'M4.2 2.6c1.7-1.3 5.9-1.3 7.6 0 1.1.9 1.1 2.6.7 4.1l-1.3 5.2c-.3 '
             + '1-1.4 1-1.7 0L8.6 8.2c-.2-.7-1-.7-1.2 0l-.9 3.7c-.3 1-1.4 1-'
             + '1.7 0L3.5 6.7C3.1 5.2 3.1 3.5 4.2 2.6zM1.5 6.2h13',
+    // A radar sweep: an arc of coverage with the beam through it.
+    doppler: 'M8 14a6 6 0 0 1 0-12M8 14a6 6 0 0 0 0-12M2 8h12M8 8l4.5-4.5',
+    // An eye, for the one who confirms by looking.
+    spotter: 'M1 8s2.6-4.2 7-4.2S15 8 15 8s-2.6 4.2-7 4.2S1 8 1 8z'
+             + 'M8 6.2A1.8 1.8 0 1 0 8 9.8a1.8 1.8 0 0 0 0-3.6z',
+    // A target: the thing lined up on.
+    eye: 'M8 1.6v2.2M8 12.2v2.2M1.6 8h2.2M12.2 8h2.2'
+         + 'M8 3.6a4.4 4.4 0 1 0 0 8.8 4.4 4.4 0 0 0 0-8.8z'
+         + 'M8 6.9a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z',
     // Two waves braided through one another.
     cfc: 'M1 5.5c3 0 3 5 6 5s3-5 6-5M1 10.5c3 0 3-5 6-5s3 5 6 5',
     // A wide frame with a horizon in it.
@@ -441,7 +525,7 @@ BARRY.views.toolkit = (function () {
 
      Listed rather than assumed, because a tool that cannot be offloaded and
      is marked as though it can is worse than one with no mark at all. */
-  const VACC_TOOLS = ['incisor'];
+  const VACC_TOOLS = ['incisor', 'doppler'];
 
   function vaccMark(id) {
     if (VACC_TOOLS.indexOf(id) < 0) return null;
@@ -2409,6 +2493,84 @@ BARRY.views.toolkit = (function () {
      estimating once a recording is chosen. The rows come from the same
      sixty-second cache every other tool uses, because reading the registry
      takes eight seconds on this lab's data. */
+  /* Doppler warms the same registry cache Incisor does before painting:
+     its recording picker reads it, and a picker that is empty for the first
+     six seconds reads as "there are no recordings". */
+  async function loadDoppler() {
+    const host = document.getElementById('tkResult');
+    if (host) host.style.opacity = '1';
+    try {
+      await registry();
+    } catch (e) { /* the panel says so itself */ }
+    // The tool may have changed while the registry was being read; painting
+    // then would put Doppler's panel over whatever was opened instead.
+    if (q.tool !== 'doppler') return;
+    BARRY.doppler.paint();
+  }
+
+  /* Spotter is a mode, not a panel. This is the way in: pick a set of IEDs
+     somebody banked, and enter. Sets rather than recordings, because "which
+     of the runs on this recording" is the question -- the recording alone
+     does not say which list you mean. */
+  function renderSpotter() {
+    const host = document.getElementById('tkResult');
+    if (!host) return;
+    host.innerHTML = '';
+    host.appendChild(BARRY.ui.stepHeader({
+      title: 'Spotter',
+      step: 'step 2 of The Storm',
+      blurb: 'Confirm what the radar found, one discharge at a time: solid, '
+           + 'sputter, or neither.',
+    }));
+    const box = el('div', { class: 'card' }, [
+      el('div', { class: 'section-label', text: 'Which set' }),
+    ]);
+    host.appendChild(box);
+    BARRY.skeleton.into(box, 'row', 3);
+    api('/api/curation?kind=ied').then((got) => {
+      box.innerHTML = '';
+      box.appendChild(el('div', { class: 'section-label',
+        text: 'Which set' }));
+      /* Harness leftovers are not work anybody is doing, and a list of real
+         sets with "curate harness" in the middle of it reads as a list of
+         things to do. Hidden, and counted underneath, so it is never a
+         mystery where they went. */
+      const isTest = (st) => /harness/i.test((st.name || '') + ' '
+                                              + (st.assignee || ''));
+      const every = (got.sets || []).filter((st) => st.kind === 'ied');
+      const sets = every.filter((st) => !isTest(st));
+      const tests = every.length - sets.length;
+      if (!sets.length) {
+        box.appendChild(el('div', { class: 'empty-state',
+          text: 'Nothing to confirm yet. Run Doppler on a recording and '
+              + 'bank what it finds \u2014 that is what makes a set for '
+              + 'this step to walk.' }));
+      }
+      for (const st of sets) {
+        const p = st.progress || {};
+        box.appendChild(el('button', {
+          class: 'dop-review',
+          onclick: () => BARRY.spotter.enter(st.gid),
+        }, [
+          el('strong', { text: st.name || st.session_label || st.gid }),
+          el('span', { text: (p.specified || 0) + ' of ' + (p.total || 0)
+                           + ' decided' }),
+          st.open ? BARRY.ui.chip('on the bench', { kind: 'ok' }) : null,
+          st.assignee ? BARRY.ui.chip(st.assignee) : null,
+        ].filter(Boolean)));
+      }
+      if (tests) {
+        box.appendChild(el('p', { class: 'hint quiet',
+          text: tests + ' set' + (tests === 1 ? '' : 's')
+              + ' left behind by test harnesses '
+              + (tests === 1 ? 'is' : 'are') + ' not shown.' }));
+      }
+    }).catch((e) => {
+      box.innerHTML = '';
+      box.appendChild(el('div', { class: 'empty-state', text: e.message }));
+    });
+  }
+
   async function loadIncisor() {
     const host = document.getElementById('tkResult');
     if (host) host.style.opacity = '1';
@@ -2898,6 +3060,9 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'strata') { renderStrata(); return; }
     if (q.tool === 'incisor') { BARRY.incisor.paint(); return; }
     if (q.tool === 'braces') { BARRY.braces.paint(); return; }
+    if (q.tool === 'doppler') { BARRY.doppler.paint(); return; }
+    if (q.tool === 'spotter') { renderSpotter(); return; }
+    if (q.tool === 'eye') { BARRY.eye.paint(); return; }
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { renderCFC(); return; }
     if (q.tool === 'panorama') { BARRY.panorama.paint(); return; }
@@ -3093,6 +3258,11 @@ BARRY.views.toolkit = (function () {
     /* Which tools are steps of a bundle, and of which. `_dev/arc.html`
        checks the bundle renders its steps and keeps them out of the flat
        list; nothing else should need this. */
+    // Which tools claim they can run on the cluster. Exported so
+    // `_dev/storm.html` can assert the claim is true of exactly the ones
+    // that can -- a tool marked as offloadable that is not is worse than
+    // one with no mark at all.
+    _vaccTools: () => VACC_TOOLS.slice(),
     bundles: () => BUNDLES.map((b) => ({
       id: b.id, name: b.name,
       steps: b.steps.map(([id, name, does, soon]) =>

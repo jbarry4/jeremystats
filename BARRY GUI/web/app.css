@@ -8876,9 +8876,26 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   display: flex; flex-direction: column; gap: 9px;
 }
 .tk-bundle.on { border-color: var(--accent); }
-.tk-bundle-hd { display: flex; align-items: center; gap: 7px; }
+/* A folded bundle is a head and nothing else, so it stops reserving the
+   9px it would have put between the head and the steps. */
+.tk-bundle:not(.open) { padding-bottom: 10px; gap: 0; }
+/* The head is the fold control, so it is a button and carries the reset a
+   button needs. Full width and left-aligned: the target is the whole row,
+   not the eleven pixels of chevron. */
+.tk-bundle-hd {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%; padding: 0; text-align: left;
+  border: 0; background: transparent; color: inherit;
+  font: inherit; cursor: pointer;
+}
 .tk-bundle-hd strong { font-size: var(--fs-125); }
 .tk-bundle-hd .tk-ico { color: var(--accent); }
+.tk-bundle-hd .caret { color: var(--text-3); }
+.tk-bundle.open .tk-bundle-hd .caret { transform: rotate(90deg); }
+/* Folded, the count is replaced by the step you are in -- so it is the
+   accent, like the step itself would be, rather than the quiet grey a
+   count gets. */
+.tk-bundle.on:not(.open) .tk-bundle-c { color: var(--accent); }
 .tk-bundle-c {
   margin-left: auto; font-size: var(--fs-105); color: var(--text-3);
   font-variant-numeric: tabular-nums;
@@ -10347,3 +10364,14 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dp-spacer { display: none; }
 .dp-pca { display: flex; flex-direction: column; gap: var(--sp-8); }
 .dp-pca .dp-canvas { flex: 1 1 auto; }
+
+/* Eye's wait: the step loader, then a bar and a way out, set apart from the
+   settings above so it reads as something happening rather than a form. */
+.eye-wait {
+  margin-top: var(--sp-12);
+  padding: var(--sp-12);
+  background: var(--bg-2);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-8);
+}
+.eye-wait .comod-total { margin-top: var(--sp-10); }
