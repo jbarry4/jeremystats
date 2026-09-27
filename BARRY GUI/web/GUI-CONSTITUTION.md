@@ -11,11 +11,12 @@ somebody can read it *before* writing the next tool rather than after.
 Every rule cites the code that proves it. Where a rule exists because
 something broke, the counter-example is named — those are the useful half.
 
-> **Status.** All in force. §6 covers the shared compositions that exist
-> today (`analysisRun` is still to come and says so); **§6b is the one to read
-> before building a new tool, bundle or Xplorefinder mode** — it is about the
-> machinery rather than the look, and most of it is there because getting it
-> wrong loses somebody's work quietly.
+> **Status.** All in force as rules. §6 covers the shared compositions that
+> exist today; **§6b is the one to read before building a new tool, bundle or
+> Xplorefinder mode**; **§6d** (running — here or on VACC, one or many) and
+> **§6e** (choosing a recording, versions, banking) are the workflow every
+> tool shares. Where a section names a shared component that is still being
+> built, it says so in italics and names the tool to copy until it lands.
 
 ---
 
@@ -340,6 +341,14 @@ the only thing a new bundle has to do is be in `BUNDLES`.
 Every step gets a `stepHeader` with its `step` set (§6). The header is where
 somebody arriving at step 3 learns there are four.
 
+**The step number is derived, never typed.** Each tool used to write its own
+"step 4 of The Dentist". When Root Canal was inserted between Braces and
+X-ray, X-ray's header had to be edited by hand from 4 to 5 — it was, this
+time. Use `stepOf(toolId)`, which reads the position out of `BUNDLES`, so
+inserting a step renumbers every header after it. *(Being built; The Arc
+already derives its own.)* Incisor and Checkup have no `stepHeader` at all
+and are being brought in.
+
 **A step that is not built yet is shown and disabled, with the reason on it.**
 Leaving it out says the step does not exist. Somebody arriving at Coupling
 needs to know both that it is the third of four and that the two before it
@@ -367,6 +376,10 @@ safe rather than merely possible:
 4. **The fold is a preference, so it persists.** Same reason the rail
    remembers its width. A fold you have to redo every morning is not a
    preference.
+5. **It animates, and says so to reduced motion.** The steps ease their
+   height and opacity closed rather than vanishing, because a list that
+   snaps shut reads as something having broken. Under
+   `prefers-reduced-motion` it snaps (§4). *(Being built.)*
 
 The same shape applies to anything else that is a heading over a list — the
 Explorer's tree sections and the Errors view's groups already work this way,
@@ -385,15 +398,35 @@ BARRY.yours.rebind(sess) //  a reopen replaces the session object
 BARRY.yours.state        //  what a pop-out or a deep link needs
 ```
 
-**One mode at a time, and `enter` is responsible for that.** Both modes take
-over the panes, the keyboard and the aid window. Entering one on top of the
-other left two toolbars stacked, two sets of key handlers fighting over the
-same presses, and an aid window belonging to whichever got there first. So:
+**One mode at a time — and no mode is responsible for that on its own.**
+Every mode takes over the panes, the keyboard and the aid window. Entering one
+on top of another leaves two toolbars stacked, two sets of key handlers
+fighting over the same presses, and an aid window belonging to whichever got
+there first.
+
+This section used to say each mode should exit the others itself, and show
+Checkup being exited by name. That held while there were two modes. There are
+five now — Checkup, StrataScope, Spotter, Braid and The Arc — and a check
+found that **none of them exits all the others**:
+
+| entering | exits |
+|---|---|
+| Checkup | StrataScope only |
+| StrataScope | Checkup only |
+| Spotter | Checkup, StrataScope |
+| Braid | Checkup, StrataScope |
+
+So entering Checkup with Spotter open leaves both live. Five modes that each
+list the other four is twenty pairs kept in step by hand, and the sixth mode
+breaks them all again. The rule is therefore a registry, not a habit:
 
 ```js
-if (BARRY.curate && BARRY.curate.active) BARRY.curate.exit();
-if (mine) exit();          // re-entering: start clean
+BARRY.modes.register('yours', BARRY.yours);   // once, at load
+BARRY.modes.enter('yours', gid);              // exits whatever is active first
 ```
+
+*`BARRY.modes` is being built (round 2, see the plan). Until it lands, a new
+mode must exit every mode listed above, and the table is the list.*
 
 **Resolve the recording, do not assume a path.** Registry rows carry `here`,
 a list of paths reachable from *this* machine — not `path`. Ask for `here[0]`
@@ -625,6 +658,245 @@ cannot change back with.
 
 ---
 
+## 6d. Running a tool — here or on the cluster, one or many
+
+Every tool does the same job in the same order: **pick what to run on, set
+the parameters, run it, get the result back, keep it.** Until now each tool
+drew that differently — Braces and X-ray with a *One set at a time | Many
+sets at once* switch, Incisor with tabs that made "VACC" mean "many at once",
+Doppler with two ghost buttons and no primary. This section is the one shape.
+
+*The shared pieces named here (`runBar`, the VACC health panel, upload) are
+being built in round 2. Until they land, Braces is the reference for
+everything local and this section is the spec.*
+
+### Four modes, on two independent axes
+
+| | one | many |
+|---|---|---|
+| **this computer** | local run | local batch |
+| **VACC** | VACC run | VACC batch |
+
+*Where it runs* and *how many* are separate questions and never fused into
+one control. A tool **declares** which of the four it supports, and the
+interface offers only those:
+
+```js
+modes: { local: ['one', 'many'], vacc: ['one', 'many'] }   // Incisor
+modes: { vacc: ['one', 'many'] }                           // Doppler
+modes: { vacc: ['one'] }                                   // Drift
+```
+
+Which a tool gets is decided by the work, not by what is easy to build:
+
+- **Simple and quick** → local run only (Spotter, Kilosort, StrataScope).
+- **Repetitive** → local run and local batch (Checkup, Braces, Root Canal,
+  X-ray, Eye).
+- **Heavy and done often** → VACC run and VACC batch, and no local mode at
+  all where running it here would only teach people to wait (Doppler,
+  Circuit).
+- **Heavy and done once** → VACC run only (Drift).
+
+| tool | here · one | here · many | VACC · one | VACC · many |
+|---|---|---|---|---|
+| Incisor | ✓ | ✓ | ✓ | ✓ |
+| Checkup, Braces, Root Canal, X-ray, Eye | ✓ | ✓ | | |
+| Doppler, Circuit | | | ✓ | ✓ |
+| Panorama | ✓ | | ✓ | |
+| Spotter, Kilosort, StrataScope | ✓ | | | |
+| Drift | | | ✓ | |
+
+A tool that gains a mode changes its declaration, not its layout.
+
+### The run bar
+
+One component, `BARRY.ui.runBar`, at the top of the tool under its
+`stepHeader`:
+
+```
+ Where    [ This computer | VACC ]        (hidden if only one)
+ How many [ One | Many ]                  (hidden if only one)
+```
+
+- An axis with a single option is **hidden**, not shown disabled. A choice
+  that cannot be made is not a choice.
+- VACC is offered only while VACC Mode is on and an account is signed in —
+  and never as the *only* way to reach a tool that can also run here.
+- The **primary action is last and names what it will do**: *Run on this
+  recording*, *Read 12 sets*, *Submit 40 to VACC*. Never "Go", never "Run
+  the batch" as a ghost button (§2).
+- **Say the cost before it is spent**: how long, how many, on which
+  partition. Panorama already does this and it is the pattern.
+
+### Parameters
+
+- In the tool's own panel, below the run bar, as `ui.field`s — never in a
+  popover somebody has to find.
+- Every parameter has a **default that is stated**, and the result records
+  the parameters it was made with, verbatim. A result whose parameters are
+  lost cannot be defended.
+- One set of parameters applies to a whole batch. A batch that silently used
+  different settings per recording is not a batch.
+
+### Waiting
+
+§5 applies, plus:
+
+- **Local run** — `loader` or `stepLoader` in the result area.
+- **Batch** — one row per recording with its own state (*queued · reading ·
+  done · failed · skipped*), a bar that never goes backwards, and a **Stop**
+  that stops. A batch skips what is already done and says so; re-running a
+  finished batch does nothing.
+- **VACC** — the job's own state (*uploading · submitting · queued ·
+  running · fetching · done*), with the Slurm job id visible. Queued is not
+  an error and is never drawn like one.
+
+### Results
+
+- A run leaves a **result**; a batch leaves **one proposal per recording**.
+  **Nothing is banked by a batch.** Each proposal is reviewed and banked
+  through the bank dialog (§6e) — the review is the point of the tool, and a
+  batch that skipped it would bank work nobody looked at.
+- A result is cached per tool and per recording (`GUI_logs/<tool>/results`)
+  and **re-opens instead of re-running**. Say when a shown result is cached,
+  and offer to re-run.
+- A VACC result is pulled back and stamped `computed_on: {kind: 'vacc',
+  netid, slurm_id}`, so a result says where it was made.
+
+### VACC
+
+**One account runs the lab's jobs.** Others sign in with their own netid to
+reach the shared space.
+
+- **Data lives in `Jarvis Data`**, under `/gpfs2/scratch/sakhava1`, mirrored
+  as `<project>/<mouse>/<recording>/`. It is **processing space**: critical
+  data is kept elsewhere, and scratch may be purged. The local copy is never
+  touched and stays the source of truth.
+- **Uploading** is part of *Scan a drive*: select recordings, *Upload to
+  VACC*. A file already there at the same size is skipped, so re-uploading
+  is cheap and resumes where it stopped. An uploaded recording is runnable at
+  once.
+- **Say "uploaded", not "staged".** "Staged" implied Jarvis had copied
+  something when it had not.
+- **A cluster path never enters the registry.** A recording on the cluster is
+  known by its identity, the same way it is on a second machine.
+- **Access is checked, and a refusal is specific.** When the shared space
+  cannot be read, say *what* was refused, link the folder in OnDemand
+  (`ondemand.vacc.uvm.edu`), and say **ask Shahriar to add you**. Never a
+  bare "permission denied".
+- **Jobs outlive the window.** A background check runs `squeue --me`,
+  reattaches to every job this account owns — including ones started before
+  Jarvis last restarted — and pulls back whatever finished. The VACC health
+  panel shows queued, running, recent failures and access.
+
+---
+
+## 6e. Choosing, keeping and naming
+
+### Choosing a recording
+
+Braces is the reference (`braces.js`), and `ui.pickRecording` is its rules
+made shared. *(Being built; until then, copy Braces.)*
+
+- The label is **Recording**. Not "1. Which recording", not "Session".
+- One placeholder: *Which recording? Type a mouse, session or date…*
+- **Usable first, everything on request.** List the recordings this tool can
+  do something with; a *show all recordings* toggle lists the rest. Picking a
+  recording and being told "nothing here" reads as the tool being broken, not
+  as the recording being the wrong one.
+- **Open on something workable** — whatever is already chosen, else the first
+  usable one. Never on nothing.
+- **Changing the recording resets everything downstream** — the entry, the
+  channels, the version. A panel still describing the last recording's set is
+  describing something no longer on offer.
+- A second choice under it (*Which banked entry*) is a list, not a select,
+  and an entry that cannot be used is **shown and disabled with the reason**,
+  not left out.
+
+The same rows feed the batch picker, so *one* and *many* choose from the same
+list.
+
+### Versions: the model
+
+`backend/versions.py` is the rule, and it is a good one.
+
+- **Picking up a version starts a new one from it.** The tip continues the
+  line: v3 → **v4**. Anything with work after it branches: v1, with v2 and
+  v3 after it → **v1.1**. Applied again it keeps working: v1.1 → v1.2, and
+  v1.1 once v1.2 exists → v1.1.1.
+- Going back is not a mistake to prevent; destroying what came after is.
+  v1.1 is *visibly a second line*, with v2 and v3 untouched beside it.
+- **v0 is always the detector's list** — the thing curation is done *to*.
+- `"1.10"` sorts after `"1.9"`. Compare through `versions.key`, never as text.
+- The stored `v` is a plain integer (the sync key); the **name** — `v4.1` —
+  is *derived* from lineage (`from_v` / `from_id`). Never store a name, never
+  display `v` in place of it.
+- The **id is the identity**, not the number. Two machines both mint the next
+  number, so numbers repeat.
+
+**Render every version through one `versionLabel(v)`.** About thirty places
+build `'v' + (name || v)` by hand, which is how one version comes to read as
+two different numbers in two panels.
+
+**What the data showed, and how it is repaired.** Of 948 stored versions,
+155 had no id, and 42 numbers were duplicated in a way no id could resolve —
+each one pass recorded twice, the same person in the same minute, one copy
+from before ids existed. They sit in several machines' files, and a machine
+may only write its own. So the repair is **on read, never a rewrite**: a twin
+collapses into its id-bearing copy **only when the snapshots match exactly**
+(`snap_sha`), and an id-less version gets an id every machine derives the
+same way. No file changes, so nothing can be lost. *(Being built, with a
+check that proves every event survives.)*
+
+### Versions: choosing one
+
+**One control for every version choice: `ui.versionTree`.** The data is a
+tree, and six different controls showed it as a list — Braces' select,
+X-ray's *Read from*, Checkup's *Pick it up from*, the Event Bank's chips and
+rows, Root Canal's radios, Eye's own formatter — which is why a branch name
+like v4.1 looked arbitrary. *(Being built.)*
+
+Vertical lanes, like a git graph: the trunk down the left, each branch in a
+lane to its right, one row per version.
+
+```
+  o  v6    Rain     2d   1,204   newest
+  |
+  o  v5    Rain     3d   1,198
+  |  o  v3.2  Jeremy   1d   1,187
+  |  |
+  |  o  v3.1  Jeremy   5d   1,190
+  | /
+  o  v3    Rain    12d   1,211   aligned
+  |
+  o  v0    Incisor  import  1,306
+```
+
+Every row: **name, who, when, count, state** (*newest · aligned · archived ·
+not on this machine*). A version that cannot be read here is shown and
+disabled, with the reason — never dropped from the tree.
+
+### Banking: one dialog, every time
+
+There are two acts, and they are different on purpose:
+
+| | a new **entry** | a new **version** |
+|---|---|---|
+| from | Incisor, Doppler — a detector's output | Checkup, Braces, Root Canal, X-ray — work done *to* an entry |
+| asks for | a **name**, pre-filled from `bankName.suggest`, never empty | a **note** — the entry already has a name, shown read-only |
+| states | where it will be filed | **continues v5 → v6**, or **branches from v3 → v3.1** |
+
+Both go through **one** `ui.bankDialog`, in the same place, every time.
+*(Being built.)* Until now it was a dialog in Incisor, an inline card in
+Doppler, a note-only dialog in Root Canal, and a one-off "Who is banking
+these?" prompt in Checkup.
+
+- **Who** comes from the profile. Never ask it in a prompt.
+- **Nothing banks silently.** Banking is the one act that is evidence, so it
+  always shows what is about to be written and where.
+- A batch banks nothing (§6d). Its proposals come through this dialog one at
+  a time.
+
 ## 7. Breaking a rule
 
 Contextual overrides are allowed. The difference between a good one and a bad
@@ -672,6 +944,9 @@ per object.
 | **this computer** | local, here | the machine in front of you — 25 strings say it this way and none says "local" |
 | **the cluster** | remote, the server | the VACC as a place work runs |
 | **VACC** | the cluster | where it is the proper noun — *VACC account*, *VACC mounts*, a path |
+| **uploaded** | staged | a recording Jarvis has copied to `Jarvis Data`. "Staged" implied a copy that had never been made |
+| **Recording** | Session, 1. Which recording | the label over the recording picker, in every tool |
+| **v4.1** | 4.1, version 4.1, v7 | a version, always by its derived name through `versionLabel` — never the stored integer |
 
 Placeholders describe what you can type, not what the box is:
 *"Type a mouse, session or date…"*, not *"Search sessions"*.
