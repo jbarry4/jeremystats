@@ -9224,7 +9224,16 @@ def api_outputs_file():
     full = os.path.abspath(os.path.join(d, rel.replace("/", os.sep)))
     if not full.startswith(d) or not os.path.isfile(full):
         return jsonify({"ok": False, "error": "No such output file."}), 404
-    return send_file(full, conditional=True)
+    # `thumb=1` is the Misc grid, and the same reasoning as /api/results/thumb:
+    # its cards drew full-size exports as postage stamps, 14.6 MB for one
+    # visit. Falls through to the original when no thumbnail can be made.
+    small = None
+    if request.args.get("thumb"):
+        small = thumbs.thumb_for(full, os.path.join(LOGS_DIR, ".cache", "thumbs"))
+    # No max-age: this URL is the file's name, and a figure re-exported under
+    # the same name must not show yesterday's picture. The ETag makes a
+    # repeat visit a 304 anyway.
+    return send_file(small or full, conditional=True)
 
 
 _GH_CACHE = {}
