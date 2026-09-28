@@ -11817,3 +11817,72 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
 .hz-set .ui-field + .ui-field { margin-top: var(--sp-12); }
 .hz-run .hint.bad, .hz-save .hint.bad { color: var(--err); }
 .hz-wait .hz-preview { margin-top: var(--sp-8); }
+
+/* ==========================================================================
+   Round 2 components (ui.js): run bar, recording picker, version tree,
+   bank dialog. Constitution §6d and §6e.
+   ========================================================================== */
+
+/* The run bar: Where and How many, then the cost and the primary. */
+.run-bar {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-8) var(--sp-16);
+}
+.run-bar .ui-field.inline { flex: none; }
+.run-bar-go {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8);
+  flex: 1 1 260px; min-width: 0;
+}
+.run-bar-go .spacer { flex: 1; }
+.run-bar-go .hint { margin: 0; }
+.run-bar-why { color: var(--warn); }
+
+/* Choosing a recording. */
+.pick-rec .pick-rec-slot { min-width: 0; }
+.pick-rec .pick-rec-why { color: var(--warn); margin: var(--sp-4) 0 0; }
+.pick-rec .pick-rec-empty { margin: var(--sp-4) 0 0; }
+.pick-rec .pick-rec-all { margin-top: var(--sp-4); }
+
+/* The version tree. The graph is drawn in the gutter over the rows, from
+   where the rows actually are (versionTree measures them). */
+.vtree {
+  position: relative; display: flex; flex-direction: column; gap: 1px;
+}
+.vtree-g { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.vtree-row {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 2px var(--sp-10);
+  padding: 5px 8px 5px calc(var(--vt-gutter, 22px) + 4px);
+  min-height: 28px; width: 100%;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-2); font: inherit;
+  font-size: var(--fs-12); text-align: left; cursor: pointer;
+}
+.vtree-row:hover { background: var(--bg-hover); }
+.vtree-row.on { border-color: var(--accent-line); background: var(--accent-soft); color: var(--text); }
+.vtree-row.off { cursor: default; opacity: 0.55; }
+.vtree-row.off:hover { background: transparent; }
+.vtree-n { font-family: var(--mono); font-size: var(--fs-12); color: var(--text); min-width: 4ch; }
+.vtree-who { color: var(--text-2); }
+.vtree-when, .vtree-count { font-family: var(--mono); font-size: var(--fs-11); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.vtree-state { font-size: var(--fs-11); color: var(--accent); }
+.vtree-why { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-3); }
+.vt-edge { stroke-width: 1.6; fill: none; }
+.vt-node { stroke-width: 1.6; fill: var(--bg); }
+.vt-node.on { fill: currentColor; }
+.vt-node.off { stroke-dasharray: 2 2; }
+.vt-l0 { stroke: var(--c1); color: var(--c1); }
+.vt-l1 { stroke: var(--c2); color: var(--c2); }
+.vt-l2 { stroke: var(--c3); color: var(--c3); }
+.vt-l3 { stroke: var(--c4); color: var(--c4); }
+.vt-l4 { stroke: var(--c5); color: var(--c5); }
+
+/* The bank dialog. */
+.bank-dlg { display: flex; flex-direction: column; gap: var(--sp-12); }
+.bank-dlg-what { margin: 0; color: var(--text); }
+.bank-dlg-name, .bank-dlg-note { width: 100%; }
+.bank-dlg-entry { color: var(--text); font-weight: 600; }
+.bank-dlg-line {
+  margin: 0; font-family: var(--mono); font-size: var(--fs-12); color: var(--accent);
+}
+.bank-dlg-nowho { color: var(--warn); }

@@ -354,7 +354,516 @@ BARRY.ui = (function () {
      ]).filter(Boolean));
   }
 
+  /* ==================================================================
+     Round 2: running, choosing, keeping (constitution §6d, §6e)
+     ================================================================== */
+
+  /* ---------- how much time has passed ---------- */
+
+  /* "3d", "5h", "just now". Short because it sits in a row beside a name
+     and a count; the full stamp goes in the title. */
+  function when(at) {
+    const t = Date.parse(at || '');
+    if (!isFinite(t)) return '';
+    const s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 90) return 'just now';
+    if (s < 3600) return Math.round(s / 60) + 'm';
+    if (s < 86400) return Math.round(s / 3600) + 'h';
+    if (s < 86400 * 60) return Math.round(s / 86400) + 'd';
+    return new Date(t).toISOString().slice(0, 10);
+  }
+
+  /* ---------- a version's name ---------- */
+
+  /* About thirty places built `'v' + (name || v)` by hand, which is how one
+     version came to read as two numbers in two panels. The name is DERIVED
+     from lineage (backend/versions.py) and arrives as `label`; the stored
+     `v` is only the sync key and is shown when there is nothing else. */
+  function versionLabel(v) {
+    if (v === null || v === undefined || v === '') return 'v?';
+    const raw = typeof v === 'object'
+      ? (v.label !== undefined && v.label !== null ? v.label
+         : v.name !== undefined && v.name !== null ? v.name : v.v)
+      : v;
+    return 'v' + String(raw === undefined || raw === null ? '?' : raw)
+      .replace(/^v/i, '');
+  }
+
+  /* The rule in versions.py, in the words the page needs: what picking up
+     `from` would produce, among `labels`. Kept in step with key/is_tip/
+     next_after there -- the server names the version when it is written,
+     and this is only the page saying beforehand what that name will be. */
+  function vkey(label) {
+    const out = [];
+    for (const part of String(label === undefined || label === null
+                              ? '' : label).replace(/^v/i, '').split('.')) {
+      if (!part.trim()) continue;
+      const n = parseInt(part, 10);
+      if (!isFinite(n) || String(n) !== part.trim()) return [1e9];
+      out.push(n);
+    }
+    return out;
+  }
+  const vfmt = (k) => k.join('.') || '0';
+  function vcmp(a, b) {
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      if (a[i] === undefined) return -1;
+      if (b[i] === undefined) return 1;
+      if (a[i] !== b[i]) return a[i] - b[i];
+    }
+    return 0;
+  }
+  function versionNext(from, labels) {
+    const k = vkey(from);
+    const have = (labels || []).map(vkey);
+    const k0 = k.length ? k : [0];
+    const sibs = have.filter((o) => o.length === k0.length
+      && vfmt(o.slice(0, -1)) === vfmt(k0.slice(0, -1)));
+    const tip = !sibs.some((o) => o[o.length - 1] > k0[k0.length - 1]);
+    if (tip) {
+      const top = Math.max(k0[k0.length - 1],
+                           ...sibs.map((o) => o[o.length - 1]));
+      return { name: vfmt(k0.slice(0, -1).concat([top + 1])), branch: false };
+    }
+    const kids = have.filter((o) => o.length === k0.length + 1
+      && vfmt(o.slice(0, k0.length)) === vfmt(k0));
+    const top = Math.max(0, ...kids.map((o) => o[o.length - 1]));
+    return { name: vfmt(k0.concat([top + 1])), branch: true };
+  }
+
+  /* ---------- the run bar ---------- */
+
+  /* Where it runs and how many, as two questions (§6d). A tool DECLARES
+     which of the four modes it supports and this offers only those:
+
+       modes: { local: ['one', 'many'], vacc: ['one', 'many'] }
+
+     An axis with one option is hidden, not shown disabled. VACC is offered
+     only while VACC Mode is on and an account is set up -- except for a tool
+     that runs nowhere else, which says why it cannot run rather than
+     vanishing. `onChange(where, count)` is called on a change; the caller
+     re-renders. `action` is the primary, placed last; `cost` is what it will
+     spend, said before it is spent. */
+  const WHERE = [['local', 'This computer'], ['vacc', 'VACC']];
+  const COUNT = [['one', 'One'], ['many', 'Many']];
+
+  function vaccReady() {
+    const st = (BARRY.vacc && BARRY.vacc.last) || {};
+    return !!(BARRY.state && BARRY.state.vacc && st.configured);
+  }
+
+  function runPlan(modes, where, count) {
+    const m = modes || { local: ['one'] };
+    let wheres = WHERE.map((w) => w[0]).filter((w) => (m[w] || []).length);
+    const onlyVacc = wheres.length === 1 && wheres[0] === 'vacc';
+    if (!onlyVacc && !vaccReady()) wheres = wheres.filter((w) => w !== 'vacc');
+    const w = wheres.includes(where) ? where : wheres[0];
+    const counts = COUNT.map((c) => c[0]).filter((c) => (m[w] || []).includes(c));
+    const c = counts.includes(count) ? count : counts[0];
+    return { wheres, counts, where: w, count: c,
+             blocked: w === 'vacc' && !vaccReady()
+               ? 'This runs on the VACC, and VACC Mode is off or no account '
+                 + 'is set up on this machine. Turn it on from the rail.'
+               : null };
+  }
+
+  function runBar(o) {
+    const opt = o || {};
+    const plan = runPlan(opt.modes, opt.where, opt.count);
+    const pick = (w, c) => {
+      if (typeof opt.onChange === 'function') opt.onChange(w, c);
+    };
+    const act = opt.action;
+    const bar = el('div', { class: 'run-bar' + (opt.extra ? ' ' + opt.extra : '') }, [
+      plan.wheres.length > 1 ? field({
+        label: 'Where', inline: true,
+        control: seg(WHERE.filter((x) => plan.wheres.includes(x[0])),
+                     plan.where, (w) => pick(w, plan.count)),
+      }) : null,
+      plan.counts.length > 1 ? field({
+        label: 'How many', inline: true,
+        control: seg(COUNT.filter((x) => plan.counts.includes(x[0])),
+                     plan.count, (c) => pick(plan.where, c)),
+      }) : null,
+      (act || opt.cost || plan.blocked) ? el('div', { class: 'run-bar-go' }, [
+        plan.blocked ? el('span', { class: 'hint run-bar-why', text: plan.blocked })
+          : opt.cost ? (typeof opt.cost === 'string'
+                          ? el('span', { class: 'hint run-bar-cost', text: opt.cost })
+                          : opt.cost)
+          : null,
+        el('div', { class: 'spacer' }),
+        act ? button({
+          kind: 'primary', text: act.text, title: act.title || null,
+          disabled: act.disabled || !!plan.blocked,
+          onclick: act.onclick,
+        }) : null,
+      ].filter(Boolean)) : null,
+    ].filter(Boolean));
+    /* What the bar settled on, which is not always what was asked for: a
+       tool asked for VACC on a machine with no account runs here. */
+    bar.where = plan.where;
+    bar.count = plan.count;
+    return bar;
+  }
+
+  /* ---------- choosing a recording ---------- */
+
+  /* Braces' rules, shared (§6e). `usable(row)` answers true, or a string
+     saying why this tool can do nothing with that recording. The picker
+     lists the usable ones; "show all" lists the rest, and picking one of
+     those says why it will not work rather than failing later.
+
+     It never picks for you from inside: `openOn(rows, usable, value)` is
+     what to open on -- the current choice if it is usable, else the first
+     that is -- and the caller sets its state from that BEFORE building, so
+     nothing calls back into a render that is still in progress. */
+  const usableOf = (usable, r) => {
+    if (typeof usable !== 'function') return true;
+    const u = usable(r);
+    return u === undefined || u === null || u === true;
+  };
+
+  function openOn(rows, usable, value) {
+    const ok = (rows || []).filter((r) => usableOf(usable, r));
+    if (value && ok.some((r) => r.gid === value)) return value;
+    return ok.length ? ok[0].gid : (value || null);
+  }
+
+  function pickRecording(o) {
+    const opt = o || {};
+    const rows = opt.rows || [];
+    const ok = rows.filter((r) => usableOf(opt.usable, r));
+    const rest = rows.length - ok.length;
+    let all = !!opt.showAll;
+    const slot = el('div', { class: 'pick-rec-slot' });
+    const why = el('p', { class: 'hint pick-rec-why hidden' });
+    const toggle = rest ? el('button', { class: 'linkish pick-rec-all' }) : null;
+
+    const sayWhy = (r) => {
+      const u = r && typeof opt.usable === 'function' ? opt.usable(r) : true;
+      const reason = typeof u === 'string' ? u : (u === false
+        ? 'This tool has nothing to work on in this recording.' : '');
+      why.textContent = reason;
+      why.classList.toggle('hidden', !reason);
+    };
+
+    function draw() {
+      slot.innerHTML = '';
+      const list = all ? rows : ok;
+      slot.appendChild(BARRY.pickSession({
+        rows: list,
+        value: opt.value,
+        placeholder: opt.placeholder
+          || 'Which recording? Type a mouse, session or date…',
+        onpick: (r) => {
+          sayWhy(r);
+          if (typeof opt.onpick === 'function') opt.onpick(r);
+        },
+      }));
+      if (toggle) {
+        toggle.textContent = all
+          ? 'Only the recordings this tool can use (' + ok.length + ')'
+          : 'Show all recordings (' + rest + ' more)';
+      }
+    }
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        all = !all; draw();
+        if (typeof opt.onShowAll === 'function') opt.onShowAll(all);
+      });
+    }
+    draw();
+    sayWhy(rows.find((r) => r.gid === opt.value));
+
+    const node = field({
+      label: 'Recording', extra: 'pick-rec',
+      control: el('div', {}, [
+        slot,
+        !ok.length ? el('p', { class: 'hint pick-rec-empty',
+          text: opt.emptyText || 'None of the recordings Jarvis knows about '
+                + 'has anything this tool can work on yet.' }) : null,
+        why,
+        toggle,
+      ].filter(Boolean)),
+    });
+    node.pickerValue = () => {
+      const p = slot.firstChild;
+      return p && p.pickerValue ? p.pickerValue() : null;
+    };
+    return node;
+  }
+
+  /* ---------- the version tree ---------- */
+
+  /* One control for every version choice (§6e): the lineage drawn as
+     vertical lanes, newest at the top, the trunk down the left and each
+     branch in a lane beside it, joined to the version it came from.
+
+     Rows first, then the graph drawn over them from where the rows actually
+     are. The rows are allowed to wrap on a narrow panel -- nothing here is
+     ever cut short -- so the node positions are measured, not assumed, and
+     re-measured when the panel is resized.
+
+       versions   an entry's versions as the bank sends them
+       value      the id (or name) that is chosen
+       onpick     called with the version
+       disabled   (v) => reason | null; by default a version whose snapshot
+                  is not on this machine is shown and cannot be picked */
+  const LANE = 14, PAD = 8;
+
+  function versionTree(o) {
+    const opt = o || {};
+    const vs = (opt.versions || []).map((v) => ({
+      v, name: versionLabel(v).slice(1), k: vkey(versionLabel(v).slice(1)),
+    }));
+    vs.sort((a, b) => vcmp(b.k, a.k));
+    const byName = new Map(vs.map((x, i) => [x.name, i]));
+    const newest = vs.length ? vs[0].name : null;
+    const idOf = (v) => (v && (v.id || v.label || v.v));
+    const chosen = opt.value === undefined || opt.value === null ? null
+      : String(opt.value).replace(/^v/i, '');
+
+    /* Lines: every version of one line shares its name minus the last
+       part. Each line gets a lane; the trunk is lane 0, and a branch takes
+       the lowest lane free over the rows from its top to where it forks. */
+    const lineOf = (x) => (x.k.length > 1 ? vfmt(x.k.slice(0, -1)) : '');
+    const lines = new Map();
+    vs.forEach((x, i) => {
+      const id = lineOf(x);
+      if (!lines.has(id)) lines.set(id, { id, rows: [] });
+      lines.get(id).rows.push(i);
+    });
+    const busy = [];                   // lane -> [[top, bottom], ...]
+    const free = (lane, a, b) => !(busy[lane] || [])
+      .some(([x, y]) => !(b < x || a > y));
+    const order = Array.from(lines.values())
+      .sort((a, b) => (a.id === '' ? -1 : b.id === '' ? 1 : a.rows[0] - b.rows[0]));
+    for (const ln of order) {
+      const top = ln.rows[0];
+      const bottom = ln.rows[ln.rows.length - 1];
+      ln.origin = ln.id === '' ? null : (byName.has(ln.id) ? byName.get(ln.id) : null);
+      const end = ln.origin === null ? bottom : ln.origin - 1;
+      let lane = ln.id === '' ? 0 : 1;
+      while (!free(lane, top, Math.max(end, bottom))) lane += 1;
+      (busy[lane] = busy[lane] || []).push([top, Math.max(end, bottom)]);
+      ln.lane = lane;
+    }
+    const laneOfRow = [];
+    lines.forEach((ln) => ln.rows.forEach((i) => { laneOfRow[i] = ln.lane; }));
+    const nLanes = Math.max(1, busy.length);
+    const gutter = PAD * 2 + (nLanes - 1) * LANE;
+
+    const defaultWhy = (v) => (v.has_snap === false || v.snap_elsewhere
+      ? (v.snap_elsewhere
+          ? 'Recorded on another machine; its snapshot has not synced here yet.'
+          : 'No snapshot was kept for this version, so it cannot be read back.')
+      : null);
+    const whyOf = typeof opt.disabled === 'function' ? opt.disabled : defaultWhy;
+
+    const svg = el('svg', { class: 'vtree-g', 'aria-hidden': 'true' });
+    const host = el('div', {
+      class: 'vtree', role: 'radiogroup',
+      style: '--vt-gutter:' + gutter + 'px',
+    }, [svg]);
+    const rowEls = vs.map((x, i) => {
+      const v = x.v;
+      const why = whyOf(v);
+      const states = [];
+      if (x.name === newest) states.push('newest');
+      if (v.aligned) states.push('aligned');
+      if (v.archived) states.push('archived');
+      if (v.snap_elsewhere) states.push('not on this machine');
+      if (typeof opt.state === 'function') states.push(...(opt.state(v) || []));
+      const on = chosen !== null && (String(idOf(v)) === chosen || x.name === chosen);
+      return el('button', {
+        class: 'vtree-row' + (on ? ' on' : '') + (why ? ' off' : ''),
+        role: 'radio', 'aria-checked': on ? 'true' : 'false',
+        'data-v': x.name,
+        disabled: why ? 'disabled' : null,
+        title: (v.at ? new Date(v.at).toLocaleString() : '')
+               + (v.note ? '  ·  ' + v.note : '')
+               + (why ? '\n' + why : ''),
+        onclick: why ? null : () => {
+          rowEls.forEach((r) => {
+            r.classList.remove('on'); r.setAttribute('aria-checked', 'false');
+          });
+          rowEls[i].classList.add('on');
+          rowEls[i].setAttribute('aria-checked', 'true');
+          draw();
+          if (typeof opt.onpick === 'function') opt.onpick(v);
+        },
+        onkeydown: (e) => {
+          if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+          e.preventDefault();
+          const step = e.key === 'ArrowDown' ? 1 : -1;
+          for (let j = i + step; j >= 0 && j < rowEls.length; j += step) {
+            if (!rowEls[j].disabled) { rowEls[j].focus(); break; }
+          }
+        },
+      }, [
+        el('strong', { class: 'vtree-n', text: 'v' + x.name }),
+        el('span', { class: 'vtree-who', text: v.by || '' }),
+        el('span', { class: 'vtree-when', text: when(v.at) }),
+        el('span', { class: 'vtree-count',
+                     text: v.n === undefined || v.n === null ? ''
+                           : Number(v.n).toLocaleString() }),
+        states.length ? el('span', { class: 'vtree-state',
+                                     text: states.join(' · ') }) : null,
+        why ? el('span', { class: 'vtree-why', text: why }) : null,
+      ].filter(Boolean));
+    });
+    rowEls.forEach((r) => host.appendChild(r));
+    if (!vs.length) {
+      host.appendChild(el('p', { class: 'hint', text: 'Nothing banked yet.' }));
+    }
+
+    const NS = 'http://www.w3.org/2000/svg';
+    const mk = (tag, attrs) => {
+      const n = document.createElementNS(NS, tag);
+      for (const k in attrs) n.setAttribute(k, attrs[k]);
+      return n;
+    };
+    function draw() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      if (!rowEls.length) return;
+      const y = rowEls.map((r) => r.offsetTop + r.offsetHeight / 2);
+      const x = (lane) => PAD + lane * LANE;
+      svg.setAttribute('width', String(gutter));
+      svg.setAttribute('height', String(host.scrollHeight));
+      lines.forEach((ln) => {
+        const cls = 'vt-l' + (ln.lane % 5);
+        const top = ln.rows[0], bottom = ln.rows[ln.rows.length - 1];
+        if (bottom > top) {
+          svg.appendChild(mk('line', { class: 'vt-edge ' + cls,
+            x1: x(ln.lane), y1: y[top], x2: x(ln.lane), y2: y[bottom] }));
+        }
+        if (ln.origin !== null && ln.origin !== undefined) {
+          const ox = x(laneOfRow[ln.origin]), oy = y[ln.origin];
+          const bx = x(ln.lane), by = y[bottom];
+          const mid = Math.max(by, oy - 12);
+          svg.appendChild(mk('path', { class: 'vt-edge ' + cls, fill: 'none',
+            d: 'M' + bx + ' ' + by + ' L' + bx + ' ' + mid
+               + ' Q' + bx + ' ' + oy + ' ' + ox + ' ' + oy }));
+        }
+      });
+      rowEls.forEach((r, i) => {
+        svg.appendChild(mk('circle', {
+          class: 'vt-node vt-l' + (laneOfRow[i] % 5)
+                 + (r.classList.contains('on') ? ' on' : '')
+                 + (r.disabled ? ' off' : ''),
+          cx: x(laneOfRow[i]), cy: y[i], r: r.classList.contains('on') ? 5 : 4,
+        }));
+      });
+    }
+    /* Drawn once it is on the page and again whenever its width changes,
+       because a row that wraps moves every node below it. */
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(() => draw()).observe(host);
+    } else {
+      requestAnimationFrame(draw);
+    }
+    host.redraw = draw;
+    host.value = () => {
+      const i = rowEls.findIndex((r) => r.classList.contains('on'));
+      return i >= 0 ? vs[i].v : null;
+    };
+    return host;
+  }
+
+  /* ---------- the bank dialog ---------- */
+
+  /* One dialog, every time (§6e). Two acts:
+
+       kind 'entry'    a detector's output becomes a new entry. Asks a NAME,
+                       pre-filled, never left empty.
+       kind 'version'  work done to an entry becomes its next version. The
+                       entry's name is shown, not asked; asks a NOTE; and
+                       says what will be written -- "continues v5 -> v6" or
+                       "branches from v3 -> v3.1".
+
+     Who comes from the profile and is never asked here. Nothing banks
+     silently: what is written, and where, is on the dialog. `onBank` does
+     the writing and is awaited inside it, so a refusal is shown in the
+     dialog rather than after it has gone. Resolves true once banked. */
+  function bankDialog(o) {
+    const opt = o || {};
+    const who = (BARRY.profile && BARRY.profile.who && BARRY.profile.who()) || '';
+    const isEntry = opt.kind !== 'version';
+    const suggestion = opt.name || '';
+    const nameBox = isEntry ? el('input', {
+      type: 'text', class: 'bank-dlg-name', value: suggestion,
+    }) : null;
+    const noteBox = el('textarea', {
+      class: 'bank-dlg-note', rows: '2',
+      placeholder: isEntry ? 'Anything worth knowing about this set (optional)'
+                           : 'What changed in this pass (optional)',
+      value: opt.note || '',
+    });
+
+    let line = null;
+    if (!isEntry) {
+      const e = opt.entry || {};
+      const names = (e.versions || []).map((v) => versionLabel(v).slice(1));
+      let from = opt.from === undefined || opt.from === null ? null
+        : String(opt.from).replace(/^v/i, '');
+      const hit = (e.versions || []).find((v) => from !== null
+        && (String(v.id) === from || versionLabel(v).slice(1) === from));
+      if (hit) from = versionLabel(hit).slice(1);
+      if (from === null) {
+        from = names.slice().sort((a, b) => vcmp(vkey(b), vkey(a)))[0] || '0';
+      }
+      const nx = versionNext(from, names);
+      line = nx.branch
+        ? 'branches from v' + from + ' → v' + nx.name
+        : 'continues v' + from + ' → v' + nx.name;
+    }
+
+    const body = el('div', { class: 'bank-dlg' }, [
+      opt.what ? el('p', { class: 'bank-dlg-what', text: opt.what }) : null,
+      isEntry
+        ? field({ label: 'Name', control: nameBox,
+                  hint: 'What the Event Bank lists it under. It can be '
+                        + 'changed later.' })
+        : field({ label: 'Entry',
+                  control: el('div', { class: 'bank-dlg-entry',
+                                       text: (opt.entry || {}).name || '' }) }),
+      line ? el('p', { class: 'bank-dlg-line', text: line }) : null,
+      field({ label: 'Note', control: noteBox }),
+      el('ul', { class: 'fix-steps' }, [
+        opt.where ? el('li', { text: opt.where }) : null,
+        el('li', { class: who ? '' : 'bank-dlg-nowho',
+                   text: who ? 'Banked by ' + who + ', from your profile.'
+                             : 'Nobody is set as who you are, so this would '
+                               + 'be credited to the machine. Set it from '
+                               + 'the name at the top right first.' }),
+      ].concat((opt.facts || []).map((f) => el('li', { text: f })))
+       .filter(Boolean)),
+    ].filter(Boolean));
+
+    return BARRY.confirm(
+      opt.title || (isEntry ? 'Bank this as a new entry' : 'Bank a new version'),
+      body,
+      opt.okText || 'Bank it',
+      false,
+      async () => {
+        if (!who) throw new Error('Set who you are first, from the name at '
+                                  + 'the top right.');
+        const name = isEntry ? ((nameBox.value || '').trim() || suggestion) : null;
+        if (isEntry && !name) throw new Error('A banked entry needs a name.');
+        await opt.onBank({ name, note: (noteBox.value || '').trim(), who });
+      });
+  }
+
   return {
+    when: when,
+    versionLabel: versionLabel,
+    versionNext: versionNext,
+    runBar: runBar,
+    runPlan: runPlan,
+    openOn: openOn,
+    pickRecording: pickRecording,
+    versionTree: versionTree,
+    bankDialog: bankDialog,
     stepOf: stepOf,
     stepHeader: stepHeader,
     field: field,

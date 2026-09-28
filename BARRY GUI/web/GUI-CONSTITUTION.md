@@ -671,9 +671,10 @@ drew that differently — Braces and X-ray with a *One set at a time | Many
 sets at once* switch, Incisor with tabs that made "VACC" mean "many at once",
 Doppler with two ghost buttons and no primary. This section is the one shape.
 
-*The shared pieces named here (`runBar`, the VACC health panel, upload) are
-being built in round 2. Until they land, Braces is the reference for
-everything local and this section is the spec.*
+*`BARRY.ui.runBar` exists (ui.js, checked by `_dev/uiparts.html`); tools
+move onto it one at a time. The VACC health panel and upload are still being
+built. Until a tool has moved, Braces is the reference for everything local
+and this section is the spec.*
 
 ### Four modes, on two independent axes
 
@@ -813,7 +814,9 @@ reach the shared space.
 ### Choosing a recording
 
 Braces is the reference (`braces.js`), and `ui.pickRecording` is its rules
-made shared. *(Being built; until then, copy Braces.)*
+made shared. It exists; `ui.openOn(rows, usable, value)` is what to open
+on, set by the caller before it builds, so the picker never calls back into
+a render still in progress.
 
 - The label is **Recording**. Not "1. Which recording", not "Session".
 - One placeholder: *Which recording? Type a mouse, session or date…*
@@ -862,8 +865,9 @@ from before ids existed. They sit in several machines' files, and a machine
 may only write its own. So the repair is **on read, never a rewrite**: a twin
 collapses into its id-bearing copy **only when the snapshots match exactly**
 (`snap_sha`), and an id-less version gets an id every machine derives the
-same way. No file changes, so nothing can be lost. *(Being built, with a
-check that proves every event survives.)*
+same way. No file changes, so nothing can be lost. Done: `versions.repair`,
+applied as the bank is read, and `tools/check_versions.py`, which proves
+every event survives.
 
 ### Versions: choosing one
 
@@ -871,7 +875,9 @@ check that proves every event survives.)*
 tree, and six different controls showed it as a list — Braces' select,
 X-ray's *Read from*, Checkup's *Pick it up from*, the Event Bank's chips and
 rows, Root Canal's radios, Eye's own formatter — which is why a branch name
-like v4.1 looked arbitrary. *(Being built.)*
+like v4.1 looked arbitrary. It exists; the six controls move onto it one
+tool at a time. The rows may wrap on a narrow panel, so the graph is drawn
+from where the rows actually are and redrawn on resize.
 
 Vertical lanes, like a git graph: the trunk down the left, each branch in a
 lane to its right, one row per version.
@@ -904,7 +910,9 @@ There are two acts, and they are different on purpose:
 | states | where it will be filed | **continues v5 → v6**, or **branches from v3 → v3.1** |
 
 Both go through **one** `ui.bankDialog`, in the same place, every time.
-*(Being built.)* Until now it was a dialog in Incisor, an inline card in
+It exists, on `BARRY.confirm`: `onBank` is awaited inside the dialog, so a
+refusal is shown there rather than after it has closed. Until now it was a
+dialog in Incisor, an inline card in
 Doppler, a note-only dialog in Root Canal, and a one-off "Who is banking
 these?" prompt in Checkup.
 
