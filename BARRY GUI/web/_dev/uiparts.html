@@ -83,21 +83,67 @@ async function untilN(fn, tries = 200, gap = 100) {
           L({ label: '3.1', v: 4 }) === 'v3.1', L({ label: '3.1', v: 4 }));
     check('the number when there is nothing else', L({ v: 2 }) === 'v2');
     check('a bare name or number', L('v5') === 'v5' && L(7) === 'v7');
-    const N = B.ui.versionNext;
-    const trunk = ['0', '1', '2', '3', '4', '5'];
-    const cases = [
-      ['5', trunk, '6', false],
-      ['3', trunk, '3.1', true],
-      ['3.1', trunk.concat(['3.1']), '3.2', false],
-      ['3.1', trunk.concat(['3.1', '3.2']), '3.1.1', true],
-      ['1.9', ['0', '1', '1.9'], '1.10', false],
-    ];
-    for (const [from, have, want, br] of cases) {
-      const got = N(from, have);
-      check('from v' + from + ' among ' + have.length + ' -> v' + want
-            + (br ? ' (branch)' : ' (continues)'),
-            got.name === want && got.branch === br, JSON.stringify(got));
+    /* The page names versions with BARRY.vers.labelRows, its one copy of
+       versions.label_rows. The strongest check there is: every entry in
+       the bank, named on the page, against the names the server sent. */
+    const bank = await (await W().fetch('/api/bank')).json();
+    let nEnt = 0, nVer = 0;
+    const off = [];
+    for (const e of (bank.entries || [])) {
+      const vs0 = e.versions || [];
+      if (!vs0.length) continue;
+      nEnt += 1; nVer += vs0.length;
+      for (const x of B.vers.labelRows(vs0)) {
+        if (String(x.name) !== String(x.row.label)) {
+          off.push(e.id + ' v' + x.row.v + ': page ' + x.name
+                   + ', server ' + x.row.label);
+        }
+      }
     }
+    check('the page names every banked version as the server does ('
+          + nVer + ' versions, ' + nEnt + ' entries)',
+          nVer > 0 && off.length === 0, off.slice(0, 3).join(' | '));
+
+    /* What banking next would be called: the bank's rule, simulated. */
+    const T0 = Date.now();
+    const at = (i) => new Date(T0 - (100 - i) * 3600e3).toISOString();
+    const chain = (n) => Array.from({ length: n }, (_, i) => ({
+      id: 'c' + i, v: i, from_v: i ? i - 1 : null, from_id: i ? 'c' + (i - 1) : null,
+      at: at(i) }));
+    const named = (rows) => {
+      for (const x of B.vers.labelRows(rows)) x.row.label = x.name;
+      return rows;
+    };
+    const N = (rows, v) => B.ui.versionNext(rows, rows.find((r) => r.v === v));
+    const c6 = named(chain(6));
+    let nx = N(c6, 5);
+    check('from the tip, v5, it continues as v6',
+          nx.name === '6' && !nx.branch, JSON.stringify(nx));
+    nx = N(c6, 3);
+    check('from v3, with v4 and v5 after it, it branches as v3.1',
+          nx.name === '3.1' && nx.branch, JSON.stringify(nx));
+    /* The case a shortcut on the names gets wrong: a history whose
+       versions never recorded what they came from. Picking up v1 continues
+       the trunk -- at v5, because 2, 3 and 4 are spoken for -- which is
+       what the bank will actually write. */
+    const bare = named([0, 1, 2, 3, 4].map((i) => ({ id: 'b' + i, v: i, at: at(i) })));
+    nx = N(bare, 1);
+    check('on a history with no lineage, picking up v1 continues at v5',
+          nx.name === '5' && !nx.branch, JSON.stringify(nx));
+    /* Two machines both minted 3. The parent's id says which. */
+    const twin = named([
+      { id: 'a', v: 0, at: at(0) },
+      { id: 'b', v: 1, from_v: 0, from_id: 'a', at: at(1) },
+      { id: 'c', v: 2, from_v: 1, from_id: 'b', at: at(2) },
+      { id: 'd', v: 3, from_v: 2, from_id: 'c', at: at(3) },
+      { id: 'e', v: 3, from_v: 1, from_id: 'b', at: at(4) },
+    ]);
+    check('the second v3, built on v1 after v2 existed, is named v1.1',
+          twin.find((r) => r.id === 'e').label === '1.1',
+          twin.map((r) => r.id + '=' + r.label).join(' '));
+    nx = B.ui.versionNext(twin, twin.find((r) => r.id === 'd'));
+    check('and picking up the first v3, by identity, continues as v4',
+          nx.name === '4' && !nx.branch && nx.from === '3', JSON.stringify(nx));
 
     head('runBar');
     vacc(false);
@@ -290,7 +336,9 @@ async function untilN(fn, tries = 200, gap = 100) {
     const btn = (label) => Array.from(modal().querySelectorAll('.mf button'))
       .find((b) => b.textContent === label);
     const entry = { name: 'zz m1 s1 · Incisor CSC4',
-                    versions: trunk.map((l) => ({ id: 'e-' + l, label: l })) };
+                    versions: named(chain(6).map((r) => Object.assign(r, {
+                      id: 'e-' + r.v,
+                      from_id: r.v ? 'e-' + (r.v - 1) : null }))) };
 
     let wrote = null;
     let p = B.ui.bankDialog({ kind: 'version', entry, from: '3',
@@ -322,25 +370,21 @@ async function untilN(fn, tries = 200, gap = 100) {
        highest stored number, the last version carrying it. Here the stored
        numbers collide (two machines both minted 3), which is the case the
        name exists for. */
-    const clash = { name: 'zz clash', versions: [
-      { id: 'a', v: 0, label: '0', at: T(50) },
-      { id: 'b', v: 1, label: '1', at: T(40) },
-      { id: 'c', v: 2, label: '2', at: T(30) },
-      { id: 'd', v: 3, label: '3', at: T(20) },
-      { id: 'e', v: 3, label: '2.1', at: T(10) },
-    ] };
+    /* The twin history from above: v0, v1, v2, v3 and a second v3 built
+       on v1, named v1.1. */
+    const clash = { name: 'zz clash', versions: twin };
     p = B.ui.bankDialog({ kind: 'version', entry: clash, fromV: 1,
                           onBank: () => {} });
     await sleep(50);
-    check('fromV names the stored number: v1, with v2 after it, branches',
-          /branches from v1 → v1\.1/.test(txt(modal())), txt(modal()));
+    check('fromV names the stored number: v1, already built on twice, branches',
+          /branches from v1 → v1\.2/.test(txt(modal())), txt(modal()));
     btn('Cancel').click(); await p;
     p = B.ui.bankDialog({ kind: 'version', entry: clash, onBank: () => {} });
     await sleep(50);
-    check('with nothing recorded, the newest stored: the last v3, named v2.1',
-          /continues v2\.1 → v2\.2/.test(txt(modal())), txt(modal()));
+    check('with nothing recorded, the newest stored: the last v3, named v1.1',
+          /continues v1\.1 → v1\.2/.test(txt(modal())), txt(modal()));
     check('and the title names the version it will write',
-          /Bank this as v2\.2/.test(txt(modal().querySelector('h3'))));
+          /Bank this as v1\.2/.test(txt(modal().querySelector('h3'))));
     btn('Cancel').click(); await p;
     p = B.ui.bankDialog({ kind: 'version', entry: { name: 'zz new', versions: [] },
                           onBank: () => {} });

@@ -1222,8 +1222,7 @@ BARRY.rootcanal = (function () {
     const vs = (c && c.versions) || [];
     if (!vs.length) return null;
     const from = versionOf(c, q.from_version) || vs[vs.length - 1];
-    return BARRY.ui.versionNext(BARRY.ui.versionLabel(from).slice(1),
-                                vs.map((v) => BARRY.ui.versionLabel(v).slice(1))).name;
+    return BARRY.ui.versionNext(vs, from).name;
   }
 
   function bankLabel() {

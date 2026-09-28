@@ -146,9 +146,16 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
        share a stored number and none of them share a name. */
     say('note', '  ' + named.map((x) => '#' + x.row.v + '→v' + x.name)
         .join('  '));
-    check('it has more versions than it has distinct numbers',
-          new Set(vs.map((v) => v.v)).size < vs.length,
-          'numbers are unique after all');
+    /* It HAD more versions than distinct numbers. Its duplicates were
+       pre-id twins -- one pass recorded twice, identical snapshots -- and
+       the bank now folds those as it is read (versions.repair; nothing on
+       disk changes, and tools/check_versions.py proves no event is lost).
+       So what reaches the page has one version per stored number. Two
+       genuinely different versions sharing a number are still named apart:
+       uiparts.html checks that on a history built to have them. */
+    check('its pre-id twins arrive folded: one version per stored number',
+          new Set(vs.map((v) => v.v)).size === vs.length,
+          vs.map((v) => v.v).join(','));
     check('and every one of them still gets its own name',
           new Set(names).size === vs.length,
           names.join(','));

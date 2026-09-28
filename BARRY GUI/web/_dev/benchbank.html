@@ -65,10 +65,12 @@ async function untilN(fn, tries = 200, gap = 100) {
   const history = [
     { id: 'a', v: 0, name: '0', at: T(50), by: 'Incisor', n: 12,
       note: 'Imported from the detector.', imported: true },
-    { id: 'b', v: 1, name: '1', at: T(40), by: 'zz one', n: 12, note: 'first pass' },
-    { id: 'c', v: 2, name: '2', at: T(30), by: 'zz one', n: 12, note: 'second pass' },
-    { id: 'd', v: 2, name: '1.1', at: T(20), by: 'zz two', n: 12,
-      note: 'back to v1 on another machine' },
+    { id: 'b', v: 1, name: '1', from_v: 0, from_id: 'a', at: T(40), by: 'zz one',
+      n: 12, note: 'first pass' },
+    { id: 'c', v: 2, name: '2', from_v: 1, from_id: 'b', at: T(30), by: 'zz one',
+      n: 12, note: 'second pass' },
+    { id: 'd', v: 2, name: '1.1', from_v: 1, from_id: 'b', at: T(20), by: 'zz two',
+      n: 12, note: 'back to v1 on another machine' },
   ];
   const realApi = W().api;
   const realWho = B.profile.who;

@@ -664,6 +664,8 @@ class EventBank:
             based_on = entry.get("based_on")
             if based_on is None and not first_import:
                 based_on = versionsmod.based_on_default(versions)
+            _par = None if first_import else versionsmod.parent_ref(
+                rec.get("id") or entry.get("id"), versions, based_on)
             fresh = {
                 # Highest so far plus one, not the count -- the import sits
                 # at zero and would otherwise make the numbering skip.
@@ -672,8 +674,13 @@ class EventBank:
                 # A stable key, so two machines' histories union instead
                 # of one replacing the other.
                 "id": uuid.uuid4().hex[:12],
-                # The version this one was worked from, by stored id.
-                "from_v": (None if first_import else based_on),
+                # The version this one was worked from: its number, and --
+                # where the caller named it by ref -- its id as well, which
+                # is exact where the number is not. See `parent_ref`.
+                "from_v": (None if first_import
+                           else (_par["v"] if _par else based_on)),
+                "from_id": (None if first_import or not _par
+                            else _par.get("id")),
                 "at": _now(),
                 "by": who,
                 "note": (entry.get("version_note") or "").strip(),

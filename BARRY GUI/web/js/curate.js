@@ -1729,7 +1729,13 @@ BARRY.vers = (function () {
       const x = String(a.at || ''), y = String(b.at || '');
       return x < y ? -1 : x > y ? 1 : 0;
     });
-    const name = {}, kids = {}, used = new Set();
+    /* Kept in step with versions.label_rows, which names what the server
+       sends: `from_id` first where it resolves, because it names one
+       version and only one; children counted per parent NAME, not per
+       parent number, because two parents can share a number. This copy
+       had neither, so on a history that needed them it named a version
+       differently from the bank. */
+    const name = {}, kids = {}, used = new Set(), byUid = {};
 
     /* The name, or the next one along if something already holds it. Two
        versions with one name is worse than an ugly name -- the history gets
@@ -1743,12 +1749,24 @@ BARRY.vers = (function () {
       return got_;
     };
 
+    // Nothing built on the parent yet means continue its line; something
+    // already built on it means branch. That is the whole rule.
+    const childOf = (parName) => {
+      const seen = kids[parName] || 0;
+      kids[parName] = seen + 1;
+      const base = key(parName);
+      return take(seen === 0 ? fmt(bump(base)) : fmt(base.concat([seen])));
+    };
+
     let trunk = 0;
     const out = [];
     for (const r of got) {
       let nm;
       const par = r.from_v;
-      if (par === null || par === undefined || !(par in name)) {
+      const parUid = r.from_id;
+      if (parUid !== null && parUid !== undefined && parUid in byUid) {
+        nm = childOf(byUid[parUid]);
+      } else if (par === null || par === undefined || !(par in name)) {
         // A root. The detector's import is 0 and the first pass is 1; a
         // version whose parent this machine has never seen is treated as one
         // rather than dropped, because a branch can arrive from the cloud
@@ -1756,14 +1774,12 @@ BARRY.vers = (function () {
         nm = take(String(trunk));
         trunk = key(nm)[key(nm).length - 1] + 1;
       } else {
-        const seen = kids[par] || 0;
-        kids[par] = seen + 1;
-        const base = key(name[par]);
-        // Nothing built on the parent yet means continue its line; something
-        // already built on it means branch. That is the whole rule.
-        nm = take(seen === 0 ? fmt(bump(base)) : fmt(base.concat([seen])));
+        // The LAST version with that number, as in label_rows: a branch
+        // made off "v3" means the v3 that was there when it was made.
+        nm = childOf(name[par]);
       }
       name[r.v] = nm;
+      if (r.id !== null && r.id !== undefined) byUid[r.id] = nm;
       out.push({ row: r, name: nm });
     }
     return out;
@@ -1780,7 +1796,10 @@ BARRY.vers = (function () {
   function nextFor(rows, row) {
     const all = rows || [];
     const top = all.reduce((hi, r) => Math.max(hi, num(r.v)), -1);
-    const probe = { v: top + 1, from_v: row.v, at: '9999', _probe: true };
+    /* With the parent's id, which is what the bank records now that
+       eventbank.add resolves the version it was based on (parent_ref). */
+    const probe = { v: top + 1, from_v: row.v, from_id: row.id,
+                    at: '9999', _probe: true };
     const named = labelRows(all.concat([probe]));
     const mine = named.find((x) => x.row._probe);
     const was = named.find((x) => x.row === row);

@@ -389,10 +389,10 @@ BARRY.ui = (function () {
       .replace(/^v/i, '');
   }
 
-  /* The rule in versions.py, in the words the page needs: what picking up
-     `from` would produce, among `labels`. Kept in step with key/is_tip/
-     next_after there -- the server names the version when it is written,
-     and this is only the page saying beforehand what that name will be. */
+  /* A version name as a sort key: "1.10" after "1.9". For drawing the
+     tree. What a NEW version will be called is not worked out here: that
+     is BARRY.vers.nextFor (curate.js), the page's one copy of
+     versions.label_rows, which simulates the bank naming it. */
   function vkey(label) {
     const out = [];
     for (const part of String(label === undefined || label === null
@@ -413,22 +413,12 @@ BARRY.ui = (function () {
     }
     return 0;
   }
-  function versionNext(from, labels) {
-    const k = vkey(from);
-    const have = (labels || []).map(vkey);
-    const k0 = k.length ? k : [0];
-    const sibs = have.filter((o) => o.length === k0.length
-      && vfmt(o.slice(0, -1)) === vfmt(k0.slice(0, -1)));
-    const tip = !sibs.some((o) => o[o.length - 1] > k0[k0.length - 1]);
-    if (tip) {
-      const top = Math.max(k0[k0.length - 1],
-                           ...sibs.map((o) => o[o.length - 1]));
-      return { name: vfmt(k0.slice(0, -1).concat([top + 1])), branch: false };
-    }
-    const kids = have.filter((o) => o.length === k0.length + 1
-      && vfmt(o.slice(0, k0.length)) === vfmt(k0));
-    const top = Math.max(0, ...kids.map((o) => o[o.length - 1]));
-    return { name: vfmt(k0.concat([top + 1])), branch: true };
+  /* What banking after picking up `row` (one of `rows`) would be called,
+     and whether that continues its line or branches off it. The bank's own
+     rule, simulated -- see BARRY.vers.nextFor. */
+  function versionNext(rows, row) {
+    const n = BARRY.vers.nextFor(rows || [], row);
+    return { from: n.from, name: n.to, branch: !!n.branches };
   }
 
   /* ---------- the run bar ---------- */
@@ -817,7 +807,6 @@ BARRY.ui = (function () {
     let line = null, nextName = null;
     if (!isEntry) {
       const vs = (opt.entry || {}).versions || [];
-      const names = vs.map((v) => versionLabel(v).slice(1));
       const byTime = vs.slice().sort((a, b) =>
         String(a.at || '').localeCompare(String(b.at || '')));
       const lastWith = (num) => byTime.filter((v) => v.v === num).pop();
@@ -840,7 +829,7 @@ BARRY.ui = (function () {
         line = 'the first version of this entry, v1';
       } else {
         const from = versionLabel(hit).slice(1);
-        const nx = versionNext(from, names);
+        const nx = versionNext(vs, hit);
         nextName = nx.name;
         line = nx.branch
           ? 'branches from v' + from + ' → v' + nx.name
