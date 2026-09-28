@@ -1,0 +1,175 @@
+{
+  "_at": {
+    "added": "2026-09-28T17:37:48.014222+00:00",
+    "deleted": "2026-09-28T17:37:48.014222+00:00",
+    "id": "2026-09-28T17:37:48.014222+00:00",
+    "kind": "2026-09-28T17:37:48.014222+00:00",
+    "name": "2026-09-28T17:37:48.014222+00:00",
+    "nickname": "2026-09-28T17:37:48.014222+00:00",
+    "schema": "2026-09-28T17:37:48.014222+00:00",
+    "subject": "2026-09-28T17:37:48.014222+00:00",
+    "subject_key": "2026-09-28T17:37:48.014222+00:00",
+    "version": "2026-09-28T17:37:48.014222+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "6e3b580c491e": [
+        "set",
+        "2026-09-28T17:37:48.014222+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-28T17:37:48.014222+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-28T13:37:47-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "4ea16e2f6bec",
+  "kind": "circuit",
+  "name": "DEWEY r7 s1 Precon1 SPC \u00b7 Click \u2192 High tone \u00b7 state",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "cue_label": "Click \u2192 High tone",
+    "cue_type": "Click_HighTone",
+    "gid": "harness-drift-page-1a0e9181bb7-l2",
+    "mouse": 7,
+    "phase": "Precon",
+    "phase_n": 1,
+    "project": "DEWEY",
+    "run": "SPC",
+    "session": 1,
+    "session_label": "HARNESS harness-drift-page-1a0e9181bb7-l2",
+    "window_kind": "state"
+  },
+  "subject_key": "circuit|harness-drift-page-1a0e9181bb7-l2|Click_HighTone|state",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.28.1",
+      "at": "2026-09-28T13:37:47-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "70ce0f4",
+      "digest": "074cd09dd5b1",
+      "id": "6e3b580c491e",
+      "inputs": [
+        {
+          "entry": "harness",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "by_window": {
+          "cue1": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 2
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 2
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 2
+            }
+          },
+          "cue2": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          },
+          "post": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 21
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 21
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 21
+            }
+          },
+          "pre": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          }
+        },
+        "cells_possible": 36,
+        "cue_type": "Click_HighTone",
+        "grey": [
+          "Right POR",
+          "Left POR",
+          "Left PER"
+        ],
+        "kind": "state",
+        "n_absent": 0,
+        "n_cells": 432,
+        "n_grey": 3,
+        "n_pairs": 8,
+        "n_regions": 12,
+        "n_warn": 69,
+        "of": 8
+      },
+      "note": null,
+      "params": {
+        "after_s": null,
+        "analysis_fs": 1000,
+        "before_s": null,
+        "channel_rule": "lowest-numbered usable wire",
+        "high": 12,
+        "kind": "state",
+        "low": 4,
+        "max_lag_ms": 500,
+        "notch_hz": 60,
+        "pad_s": 10,
+        "summary_hz": 8
+      },
+      "params_hash": "cc26e24647b4",
+      "v": 1
+    }
+  ]
+}

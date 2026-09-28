@@ -684,7 +684,7 @@ interface offers only those:
 ```js
 modes: { local: ['one', 'many'], vacc: ['one', 'many'] }   // Incisor
 modes: { vacc: ['one', 'many'] }                           // Doppler
-modes: { vacc: ['one'] }                                   // Drift
+modes: { local: ['one'], vacc: ['one'] }                   // Drift
 ```
 
 Which a tool gets is decided by the work, not by what is easy to build:
@@ -693,18 +693,24 @@ Which a tool gets is decided by the work, not by what is easy to build:
 - **Repetitive** → local run and local batch (Checkup, Braces, Root Canal,
   X-ray, Eye).
 - **Heavy and done often** → VACC run and VACC batch, and no local mode at
-  all where running it here would only teach people to wait (Doppler,
-  Circuit).
-- **Heavy and done once** → VACC run only (Drift).
+  all where running it here would only teach people to wait (Doppler).
+- **Heavy and done once** → VACC run (Drift), with a local run as well
+  where the work is small enough to be worth doing here.
+
+Circuit and Drift were decided by the user (2026-09-27) rather than by the
+rule above: one recording's circuit is about a minute here, so Circuit runs
+here and on the VACC, one or many; Drift combines numbers already computed,
+so it runs here in seconds and can run on the VACC, never as a batch.
 
 | tool | here · one | here · many | VACC · one | VACC · many |
 |---|---|---|---|---|
 | Incisor | ✓ | ✓ | ✓ | ✓ |
+| Circuit | ✓ | ✓ | ✓ | ✓ |
 | Checkup, Braces, Root Canal, X-ray, Eye | ✓ | ✓ | | |
-| Doppler, Circuit | | | ✓ | ✓ |
+| Doppler | | | ✓ | ✓ |
 | Panorama | ✓ | | ✓ | |
 | Spotter, Kilosort, StrataScope | ✓ | | | |
-| Drift | | | ✓ | |
+| Drift | ✓ | | ✓ | |
 
 A tool that gains a mode changes its declaration, not its layout.
 

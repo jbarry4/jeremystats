@@ -267,6 +267,12 @@ def drop_profile():
         shutil.rmtree(PROFILE, ignore_errors=True)
     except Exception:                                    # noqa: BLE001
         pass
+    # And this run's dump, which is per process too now.
+    try:
+        os.remove(os.path.join(tempfile.gettempdir(),
+                               "jarvis-harness-dump-%d.html" % os.getpid()))
+    except OSError:
+        pass
 
 
 def main():
@@ -302,8 +308,15 @@ def main():
             # 6871. Every harness therefore reported "0 checks", which is
             # indistinguishable from what a shot-taker reports, so a suite
             # of real checks read as a suite of probes and passed.
+            # Per process, like PROFILE. One fixed name for every runner
+            # meant that two suites running at once -- two Claude sessions
+            # in this tree do exactly that -- deleted each other's dump
+            # before every page, and whichever page was still being written
+            # came back as "NO OUTPUT". The longest pages lost most often:
+            # web/_dev/drift.html passed run directly and failed three times
+            # in a row through the suite (2026-09-28).
             dump = os.path.join(tempfile.gettempdir(),
-                                "jarvis-harness-dump.html")
+                                "jarvis-harness-dump-%d.html" % os.getpid())
             try:
                 os.remove(dump)
             except OSError:

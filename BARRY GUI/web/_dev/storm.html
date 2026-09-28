@@ -1,0 +1,443 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>storm: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* The Storm: the bundle's construction, Doppler's panel and its report, and
+   the contract every one of the three has to keep.
+
+   IT DOES NOT RUN A DETECTION. Doppler runs on the cluster and takes
+   minutes; what is checkable here is everything around that -- the bundle,
+   the channel preload, the refusals, the report's drawing, and the mode
+   contracts. The detector's own arithmetic is checked against the MATLAB by
+   `tools/check_doppler_parity.py`, which is where that belongs.
+
+   IT READS THE RECORDING'S BAD CHANNELS AND PUTS THEM BACK, in a `finally`.
+   The first version of `incisorsel.html` established a known starting point
+   by clearing them; it reported twenty-six passing checks and had deleted a
+   real one. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+const post = (u, b) => fetch(u, { method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b) }).then((r) => r.json());
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  // MUST be eval: core.js declares BARRY with `const`, a lexical global
+  // that is not a property of `window`.
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+
+  let target = null, restoreBad = null;
+  try {
+
+  /* ---------------------------------------------------------------- */
+  head('the bundle');
+
+  const bundles = ev('JSON.stringify(BARRY.views.toolkit.bundles())');
+  const bs = JSON.parse(bundles || '[]');
+  const storm = bs.find((b) => b.id === 'storm');
+  check('The Storm is a bundle', !!storm,
+        storm ? '' : 'ids: ' + bs.map((b) => b.id).join(','));
+  if (storm) {
+    check('three steps, in the order they happen',
+          (storm.steps || []).map((s) => s[0] || s.id).join(',')
+          === 'doppler,spotter,eye',
+          JSON.stringify(storm.steps));
+  }
+
+  ev("setView('toolkit')");
+  await until(() => $('.tk-tool, .tk-step'));
+
+  /* A bundle must remove its members from the flat list below it. The rule
+     with the longest comment in toolkit.js: a bundle that does not is "a
+     menu that describes one thing twice". */
+  const flat = $$('.tk-tool').map((b) => b.textContent);
+  for (const name of ['Doppler', 'Spotter', 'Eye']) {
+    check(name + ' is not also in the flat tool list',
+          !flat.some((t) => new RegExp('^\\s*' + name).test(t)));
+  }
+  const stepTexts = $$('.tk-step').map((b) => b.textContent).join(' | ');
+  for (const name of ['Doppler', 'Spotter', 'Eye']) {
+    check(name + ' is a step of a bundle', stepTexts.indexOf(name) >= 0);
+  }
+
+  /* Only Doppler is marked as offloadable. A tool marked as though it can
+     run on the cluster and cannot is worse than one with no mark at all. */
+  const vaccTools = ev('JSON.stringify(BARRY.views.toolkit._vaccTools '
+                       + '? BARRY.views.toolkit._vaccTools() : null)');
+  if (vaccTools && vaccTools !== 'null') {
+    const vt = JSON.parse(vaccTools);
+    check('doppler is in VACC_TOOLS', vt.indexOf('doppler') >= 0);
+    check('spotter and eye are NOT',
+          vt.indexOf('spotter') < 0 && vt.indexOf('eye') < 0);
+  } else {
+    say('  note  toolkit does not export _vaccTools; skipped', 'note');
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('every step paints a header saying which of three it is');
+
+  for (const [id, name] of [['doppler', 'Doppler'], ['spotter', 'Spotter'],
+                            ['eye', 'Eye']]) {
+    ev("BARRY.views.toolkit.pick('" + id + "')");
+    const ok = await until(() => {
+      const h = $('#tkResult .step-head strong');
+      return h && h.textContent.trim() === name;
+    }, 15000);
+    check(name + ' paints its own step header', ok,
+          ok ? '' : ($('#tkResult .step-head strong') || {}).textContent);
+    if (ok) {
+      const n = $('#tkResult .step-head .step-n');
+      check(name + ' says it is a step of The Storm',
+            !!n && /The Storm/.test(n.textContent),
+            n ? n.textContent : 'no .step-n');
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('Doppler runs on the cluster and says so');
+
+  ev("BARRY.views.toolkit.pick('doppler')");
+  await until(() => $('#tkResult .step-head'));
+
+  /* No local-run button. Doppler reads every channel of a whole recording
+     at native rate -- the lab's own .sbat asks for 800 GB -- so a "run it
+     here" button is one that fails on every real recording. */
+  const tabs = $$('#tkResult .seg button').map((b) => b.textContent);
+  check('no "this computer" tab',
+        !tabs.some((t) => /this computer/i.test(t)), tabs.join(','));
+  /* Before a recording is picked there is no run button at all, so this
+     asks the question that is true either way: nothing offers to run it
+     on this computer. */
+  const btns = $$('#tkResult button').map((b) => b.textContent);
+  check('nothing offers to run it on this computer',
+        !btns.some((t) => /^\s*Scan\s*$/.test(t)
+                          || /this computer/i.test(t)), btns.join(' | '));
+
+  /* ---------------------------------------------------------------- */
+  head('the bad-channel preload');
+
+  const reg = await (await fetch('/api/registry?backfill=1')).json();
+  const rows = (reg.tree || []).flatMap((p) => p.mice.flatMap((m) => m.sessions));
+  target = rows.find((s) => s.reachable && (s.here || []).length);
+  if (!target) {
+    say('  note  no reachable recording on this machine; the rest is '
+        + 'skipped', 'note');
+  } else {
+    const path = target.here[0];
+    /* READ FIRST, so they can be put back whatever happens below. There is
+       no GET for them -- `/api/session/bad` is a POST -- so they are read
+       off the estimate, which returns every channel marked and the set it
+       honoured. */
+    const est = await post('/api/doppler/estimate', { path });
+    restoreBad = { path,
+                   bad: (est.spec && est.spec.bad_channels) || null };
+    check('estimate answers for a real recording', !!est.ok,
+          est.error || '');
+    if (est.ok) {
+      check('every channel comes back marked, not only the kept ones',
+            (est.channels || []).length >= (est.plan || {}).n_channels,
+            (est.channels || []).length + ' vs '
+            + (est.plan || {}).n_channels);
+      check('the plan says it reads twice',
+            (est.plan || {}).passes === 2, String((est.plan || {}).passes));
+      check('no filtering by default',
+            est.spec.notch_hz == null && est.spec.band == null,
+            JSON.stringify([est.spec.notch_hz, est.spec.band]));
+      check('the detector’s own defaults',
+            est.spec.llw_s === 0.04 && est.spec.prc === 99.9,
+            JSON.stringify([est.spec.llw_s, est.spec.prc]));
+
+      /* Marking one bad has to drop it from the plan. A channel that is
+         merely down-weighted still starts events in this detector, which
+         is the bug the whole rewrite is about. */
+      const ch = (est.channels || []).find((c) => !c.bad);
+      if (ch) {
+        const now = (est.channels || []).filter((c) => c.bad)
+          .map((c) => Number(c.number));
+        await post('/api/session/bad-for-path',
+                   { path, bad_channels: now.concat([Number(ch.number)]) });
+        const after = await post('/api/doppler/estimate', { path });
+        check('marking one bad drops it from the plan',
+              after.plan.n_channels === est.plan.n_channels - 1,
+              after.plan.n_channels + ' vs ' + est.plan.n_channels);
+        check('and it is carried as excluded rather than silently missing',
+              (after.spec.excluded || []).some(
+                (c) => Number(c.number) === Number(ch.number)),
+              JSON.stringify(after.spec.excluded));
+        check('a different channel set is a different question',
+              (await post('/api/doppler/estimate', { path })).spec
+                .bad_channels.length === now.length + 1);
+      }
+    }
+
+    /* LEAVING CHANNELS OUT OF ONE RUN is not marking them bad. It narrows
+       the plan, says which were left out, and writes nothing to the
+       recording -- checked by asking again with no channel list and
+       getting the whole set back. */
+    if (est.ok) {
+      const fresh = await post('/api/doppler/estimate', { path });
+      const all = (fresh.channels || []);
+      const evens = all.filter((c) => Number(c.number) % 2 === 0 && !c.bad);
+      const odds = all.filter((c) => Number(c.number) % 2 === 1 && !c.bad);
+      if (evens.length && odds.length) {
+        const only = await post('/api/doppler/estimate', {
+          path, channels: evens.map((c) => c.index), preset: 'even',
+          left_out: odds.map((c) => c.number) });
+        check('leaving the odds out reads only the evens',
+              only.plan.n_channels === evens.length,
+              only.plan.n_channels + ' vs ' + evens.length);
+        check('the odds are named as left out, not as bad',
+              (only.spec.left_out || []).length === odds.length
+              && (only.spec.excluded || []).length
+                 === all.filter((c) => c.bad).length,
+              (only.spec.left_out || []).length + ' left out, '
+              + (only.spec.excluded || []).length + ' bad');
+        check('the preset travels with the run', only.spec.preset === 'even',
+              String(only.spec.preset));
+        const after = await post('/api/doppler/estimate', { path });
+        check('and the recording is unchanged afterwards',
+              after.plan.n_channels === fresh.plan.n_channels
+              && (after.spec.left_out || []).length === 0,
+              after.plan.n_channels + ' vs ' + fresh.plan.n_channels);
+      } else {
+        say('  note  this recording is one parity only; the evens/odds '
+            + 'check is skipped', 'note');
+      }
+      /* The panel's presets: halves by channel number, and a preset that
+         would leave nothing is disabled rather than offered. */
+      ev("BARRY.views.toolkit.pick('doppler')");
+    }
+
+    /* A recording in more than one piece refuses rather than half-reads. */
+    if (est.ok) {
+      check('split recordings are reported before anything is submitted',
+            est.split === null || typeof est.split === 'string',
+            JSON.stringify(est.split));
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('the report draws what it says it draws');
+
+  /* Driven off a made-up result rather than a real run: what is being
+     checked is the drawing and the reading, and waiting forty minutes for
+     the cluster to prove a canvas has ink on it is not a test. */
+  const fake = {
+    ok: true, n: 3, duration_s: 100,
+    events: [
+      { start: 10, end: 10.1, peak_uv: 400, peak_channel: 2,
+        n_channels: 2, channels: [2, 4], near_stitch: false },
+      { start: 50, end: 50.1, peak_uv: 300, peak_channel: 4,
+        n_channels: 1, channels: [4], near_stitch: false },
+      { start: 90, end: 90.1, peak_uv: 500, peak_channel: 2,
+        n_channels: 2, channels: [2, 4], near_stitch: false },
+    ],
+    per_channel: [
+      { index: 0, number: 2, label: 'CSC2', n: 2, rate_hz: 0.02 },
+      { index: 1, number: 4, label: 'CSC4', n: 3, rate_hz: 0.03 },
+    ],
+    profile: { n: 3, ms: [-2, -1, 0, 1, 2],
+               channels: [2, 4],
+               mean: [[0, 5, 40, 5, 0], [0, 3, 20, 3, 0]],
+               sem: [[1, 1, 4, 1, 1], [1, 1, 2, 1, 1]] },
+    snippets: { idx: [], data: [] },
+    warnings: ['CSC4 took part in 100% of events, which is what a broken '
+               + 'channel looks like rather than a busy one.'],
+    params: { detector: 'LLspikedetector (line length)', llw_s: 0.04,
+              prc: 99.9, threshold: 12.5, notch_hz: null, band: null,
+              fs: 30000, channels: [2, 4], bad_channels: [6],
+              excluded: [{ index: 2, number: 6, label: 'CSC6' }],
+              stamp: 'peak', merge_s: 0.3, min_event_s: 0.025,
+              gap_map_sha: 'abc123def456' },
+  };
+  ev('BARRY.doppler._state().gid = "harness";');
+  ev('BARRY.doppler._state().path = "harness";');
+  ev('window.__stormFake = ' + JSON.stringify(fake) + ';');
+  ev('BARRY.doppler._adopt ? BARRY.doppler._adopt(window.__stormFake) : 0;');
+  const adopted = ev('!!BARRY.doppler._res()');
+  if (!adopted) {
+    say('  note  doppler exposes no _adopt; the report checks are skipped',
+        'note');
+  } else {
+    ev('BARRY.doppler.paint()');
+    await until(() => $('#dopRaster'));
+    await sleep(400);
+
+    for (const id of ['dopProfile', 'dopPerCh', 'dopRaster']) {
+      const cv = D().getElementById(id);
+      check(id + ' exists and has a size', !!cv && cv.width > 10 && cv.height > 10,
+            cv ? (cv.width + 'x' + cv.height) : 'missing');
+      if (cv) {
+        const g = cv.getContext('2d');
+        const px = g.getImageData(0, 0, cv.width, cv.height).data;
+        let ink = 0;
+        for (let i = 3; i < px.length; i += 4) if (px[i] > 8) ink++;
+        check(id + ' has ink on it', ink > 40, String(ink));
+      }
+    }
+
+    /* The excluded channel keeps a row and says so. A missing row and a
+       silent row are different facts, and a gap cannot tell them apart. */
+    const txt = $('#tkResult').textContent;
+    check('the parameters are quotable', /99\.9/.test(txt) && /40 ms/.test(txt),
+          '');
+    check('no filtering is SAID, not left to be inferred',
+          /no band-pass/.test(txt) && /no notch/.test(txt));
+    check('the warning is on the report',
+          /broken channel looks like/.test(txt));
+    check('the excluded channel is named',
+          /CSC6/.test(txt), '');
+    check('the counts describe the list underneath them',
+          /3 IEDs/.test(txt), '');
+
+    /* Clicking a tick opens the recording there. Checked through the
+       hit-test rather than by clicking, because opening a recording in this
+       iframe would take the rest of the harness with it. */
+    const at = ev('(function(){var cv=document.getElementById("dopRaster");'
+                  + 'var r=cv.getBoundingClientRect();'
+                  + 'return BARRY.doppler._rasterAt({clientX:r.left+52+'
+                  + '(r.width-60)*0.5, clientY:r.top+20});})()');
+    check('the middle tick is found by the hit-test', at === 1,
+          'got ' + at);
+    const miss = ev('(function(){var cv=document.getElementById("dopRaster");'
+                    + 'var r=cv.getBoundingClientRect();'
+                    + 'return BARRY.doppler._rasterAt({clientX:r.left+52+'
+                    + '(r.width-60)*0.25, clientY:r.top+20});})()');
+    check('a click that is not on a tick finds nothing', miss === null,
+          'got ' + miss);
+
+    /* The note that goes to the bank has to state what produced these and
+       how, or the bank refuses it. */
+    const note = ev('BARRY.doppler._bankNote()');
+    check('the bank note names the detector',
+          /LLspikedetector/.test(note));
+    check('the bank note says the bad channels were not read at all',
+          /not read at all/.test(note));
+    check('the bank note says times are recording seconds',
+          /seconds from the start of the recording/.test(note));
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('the mode contract');
+
+  check('spotter.active is a GETTER, not a method',
+        ev('typeof BARRY.spotter.active') === 'boolean',
+        ev('typeof BARRY.spotter.active'));
+  check('spotter is not active before anybody enters it',
+        ev('BARRY.spotter.active') === false);
+  for (const fn of ['enter', 'exit', 'draw', 'rebind']) {
+    check('spotter exports ' + fn,
+          ev('typeof BARRY.spotter.' + fn) === 'function');
+  }
+  check('spotter.state is null while inactive',
+        ev('BARRY.spotter.state') === null);
+  /* draw() must survive being called with nothing loaded: the same file
+     runs in the aid window, which never entered the mode. */
+  const drew = ev('(function(){try{BARRY.spotter.draw('
+                  + 'document.createElement("canvas").getContext("2d"),'
+                  + '{},{t0:0,t1:1},0,10,0,10,{});return "ok";}'
+                  + 'catch(e){return e.message;}})()');
+  check('draw() tolerates an empty session, as the aid window has',
+        drew === 'ok', drew);
+
+  check('doppler and eye both have an onHide',
+        ev('typeof BARRY.doppler.onHide') === 'function'
+        && ev('typeof BARRY.eye.onHide') === 'function');
+
+  /* ---------------------------------------------------------------- */
+  head('the vocabulary');
+
+  const kinds = await (await fetch('/api/curation/kinds')).json();
+  const ied = (kinds.kinds || []).find((k) => k.id === 'ied');
+  check('there is an IED vocabulary', !!ied);
+  if (ied) {
+    const ids = ied.labels.map((l) => l.id).join(',');
+    check('solid, sputter, garbage, flag',
+          ids === 'solid,sputter,garbage,flag', ids);
+    check('every label a person assigns has a key',
+          ied.labels.filter((l) => !l.computed)
+            .every((l) => (l.keys || []).length > 0));
+    /* The mockup's numbering IS the vocabulary's. If these ever stop being
+       the first key, Spotter's buttons and its keyboard come apart. */
+    const firsts = ied.labels.map((l) => (l.keys || [])[0]).join(',');
+    check('1 2 3 4 are the first keys, as the mockup has them',
+          firsts === '1,2,3,4', firsts);
+    const reserved = ['n', 'p', 'u', 'escape', 'backspace',
+                      'arrowleft', 'arrowright'];
+    check('the vocabulary takes none of the navigation keys',
+          ied.labels.every((l) => (l.keys || []).every(
+            (k) => reserved.indexOf(String(k).toLowerCase()) < 0)));
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('Eye offers all three measures');
+
+  const ms = await (await fetch('/api/braces/measures')).json();
+  const mids = (ms.measures || []).map((m) => m.id).join(',');
+  check('csd, voltage and slope', mids === 'csd,voltage,slope', mids);
+  check('each one says what it means, from the module that owns it',
+        (ms.measures || []).every((m) => (m.why || '').length > 20));
+
+  const cands = await (await fetch('/api/braces/candidates?type=ied')).json();
+  check('the alignment candidate list can be asked about IEDs', !!cands.ok,
+        cands.error || '');
+  const dsCands = await (await fetch('/api/braces/candidates')).json();
+  check('and still defaults to dentate spikes for everyone else',
+        !!dsCands.ok);
+
+  } catch (e) {
+    say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+    fails++;
+  } finally {
+    /* PUT THEM BACK. Read, work, restore -- whatever happened above. */
+    if (restoreBad && restoreBad.bad) {
+      try {
+        await post('/api/session/bad-for-path',
+                   { path: restoreBad.path, bad_channels: restoreBad.bad });
+        say('  note  bad channels restored: ['
+            + restoreBad.bad.join(',') + ']', 'note');
+      } catch (e) {
+        say('  FAIL could not restore bad channels: ' + e.message, 'bad');
+        fails++;
+      }
+    }
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'storm: ' + fails + ' FAILED' : 'storm: passed';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'storm CRASH';
+});
+</script></body></html>

@@ -1,6 +1,6 @@
 {
   "_at": {
-    "bad_channels": "2026-09-24T19:51:20.326574+00:00",
+    "bad_channels": "2026-09-25T18:46:40.714010+00:00",
     "created": "2026-09-24T19:37:54.105755+00:00",
     "duration_s": "2026-09-24T19:37:54.138715+00:00",
     "first_seen_by": "2026-09-24T19:37:54.105755+00:00",
@@ -15,7 +15,7 @@
     "n_channels": "2026-09-24T19:37:54.138715+00:00",
     "phase": "2026-09-24T19:37:54.105755+00:00",
     "phase_n": "2026-09-24T19:37:54.105755+00:00",
-    "probe": "2026-09-25T16:50:42.049762+00:00",
+    "probe": "2026-09-25T18:54:27.957476+00:00",
     "probe_source": "2026-09-24T19:49:33.823592+00:00",
     "project": "2026-09-24T19:37:54.105755+00:00",
     "project_source": "2026-09-24T19:37:54.105755+00:00",
@@ -25,11 +25,19 @@
     "schema": "2026-09-24T19:37:54.105755+00:00",
     "session": "2026-09-24T19:37:54.105755+00:00",
     "start": "2026-09-24T19:37:54.105755+00:00",
-    "updated": "2026-09-25T16:52:25.979477+00:00",
-    "view_state": "2026-09-25T16:52:25.979477+00:00"
+    "updated": "2026-09-25T20:23:09.898697+00:00",
+    "view_state": "2026-09-25T19:23:39.149231+00:00"
   },
   "_keys": {
     "paths": {
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 1\\J3_precon_1_FP1\\2026-04-04_13-03-30": [
+        "set",
+        "2026-09-25T18:32:23.524923+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 1\\J3_precon_1_FP2\\2026-04-04_15-46-15": [
+        "set",
+        "2026-09-25T18:32:23.524923+00:00"
+      ],
       "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 1\\J3_precon_1_precon\\2026-04-04_14-13-54": [
         "set",
         "2026-09-24T19:37:54.105755+00:00"
@@ -38,12 +46,12 @@
     "seen": {
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-25T16:49:54.148403+00:00"
+        "2026-09-25T20:23:09.898697+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T16:52:25.979477+00:00",
+    "at": "2026-09-25T20:23:09.898697+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -101,11 +109,13 @@
   "mouse": 3,
   "n_channels": 64,
   "paths": [
-    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 1\\J3_precon_1_precon\\2026-04-04_14-13-54"
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 1\\J3_precon_1_precon\\2026-04-04_14-13-54",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 1\\J3_precon_1_FP1\\2026-04-04_13-03-30",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 1\\J3_precon_1_FP2\\2026-04-04_15-46-15"
   ],
   "phase": "Precon",
   "phase_n": 1,
-  "probe": "dewey32",
+  "probe": "h3",
   "probe_source": "manual",
   "project": "DEWEY",
   "project_source": "guessed",
@@ -115,20 +125,20 @@
   "schema": 2,
   "seen": {
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-25T12:49:54-04:00",
+      "at": "2026-09-25T16:23:09-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 1\\J3_precon_1_precon\\2026-04-04_14-13-54",
-      "root": null,
-      "scan": null
+      "root": "E:/Joe Multisite 2026 data",
+      "scan": "scan_f60458f16f"
     }
   },
   "session": 1,
   "start": "2026-04-04T14:13:54",
   "updated": {
-    "app_version": "2026.09.24.8",
-    "at": "2026-09-25T12:52:25-04:00",
-    "commit": "0fc4943",
+    "app_version": "2026.09.25.3",
+    "at": "2026-09-25T16:23:09-04:00",
+    "commit": "4f8e8ca",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -181,11 +191,11 @@
     "marks_view": "show",
     "normalize": "shared",
     "notch": 60,
-    "probe": "dewey32",
+    "probe": "h3",
     "spacing": 50,
-    "span": 43.998249999999985,
+    "span": 43.99809399999958,
     "stft_mode": null,
-    "t0": 313.3946304540495,
-    "ylim": 549.2323472243454
+    "t0": 2247.688234,
+    "ylim": 1004.8909545492297
   }
 }

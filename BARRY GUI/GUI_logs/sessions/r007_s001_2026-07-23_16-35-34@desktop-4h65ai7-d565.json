@@ -22,32 +22,32 @@
     "schema": "2026-09-24T19:39:04.372941+00:00",
     "session": "2026-09-24T19:39:04.372941+00:00",
     "start": "2026-09-24T19:39:04.372941+00:00",
-    "updated": "2026-09-25T16:45:11.668381+00:00"
+    "updated": "2026-09-25T20:23:14.962693+00:00"
   },
   "_keys": {
     "paths": {
       "E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_14-39-16": [
-        "gone",
-        "2026-09-24T19:50:01.475832+00:00"
+        "set",
+        "2026-09-25T18:33:52.115690+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP2\\2026-07-23_16-35-34": [
         "set",
         "2026-09-24T19:39:04.372941+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_SPC\\2026-07-23_15-01-47": [
-        "gone",
-        "2026-09-24T19:50:01.475832+00:00"
+        "set",
+        "2026-09-25T18:33:52.115690+00:00"
       ]
     },
     "seen": {
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-25T16:45:11.668381+00:00"
+        "2026-09-25T20:23:14.962693+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T16:45:11.668381+00:00",
+    "at": "2026-09-25T20:23:14.962693+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -70,7 +70,9 @@
   "mouse": 7,
   "n_channels": 32,
   "paths": [
-    "E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP2\\2026-07-23_16-35-34"
+    "E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP2\\2026-07-23_16-35-34",
+    "E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP1\\2026-07-23_14-39-16",
+    "E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_SPC\\2026-07-23_15-01-47"
   ],
   "phase": "Precon",
   "phase_n": 1,
@@ -83,20 +85,20 @@
   "schema": 2,
   "seen": {
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-25T12:45:11-04:00",
+      "at": "2026-09-25T16:23:14-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "E:\\Joe Multisite 2026 data\\J7\\Precon1\\J7_Precon1_FP2\\2026-07-23_16-35-34",
       "root": "E:/Joe Multisite 2026 data",
-      "scan": "scan_175198d703"
+      "scan": "scan_f60458f16f"
     }
   },
   "session": 1,
   "start": "2026-07-23T16:35:34",
   "updated": {
-    "app_version": "2026.09.24.8",
-    "at": "2026-09-25T12:45:11-04:00",
-    "commit": "0fc4943",
+    "app_version": "2026.09.25.3",
+    "at": "2026-09-25T16:23:14-04:00",
+    "commit": "4f8e8ca",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

@@ -16,6 +16,9 @@ Output/**/_videocache/
 # records it is compiled from.
 GUI_logs/.cache/
 GUI_logs/index.json
+# VACC runs in flight, written at submit so a restart can re-attach to them.
+# Machine-local: a record names a job THIS machine's process was driving.
+GUI_logs/vacc_runs/
 
 # The Supabase secret key. Never committed -- tools/cloud_setup.py refuses to
 # write it unless git is already ignoring this path. If one does get pushed,
@@ -50,3 +53,11 @@ Data Bank/
 # Still written and still findable -- `save_output(lane="scratch")` puts them
 # here, the catalogue skips the folder, and git no longer carries them.
 Results/_scratch/
+
+# The shrunk copies of the histology slides. 126 JPEGs derived from 30.5 GB
+# of TIFFs on E:, regenerable in minutes by whichever machine has the drive,
+# and keyed on the source size:mtime so a re-run rebuilds exactly what has
+# changed. They travel by Supabase like the errors and the activity above --
+# a machine without E: fetches the copy it needs rather than carrying all 70
+# MB of them in the history of a repo that holds recordings and decisions.
+GUI_logs/histo_cache/

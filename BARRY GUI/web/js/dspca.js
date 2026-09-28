@@ -1,5 +1,5 @@
 /* ==========================================================================
-   dspca.js -- X-ray, step four of The Dentist.
+   dspca.js -- X-ray, step five of The Dentist.
 
    An X-ray is how a dentist tells one kind of tooth from another. This tells
    DS1 from DS2: Incisor found the spikes, Checkup said which are real,
@@ -44,6 +44,10 @@ BARRY.dspca = (function () {
   const q = {
     entry: null,          // the chosen bank entry id
     from_version: null,   // null means "the events as they are now"
+    /* Whether `from_version` is the panel's own default rather than a
+       version somebody clicked. Only a default is moved onto Root Canal's
+       output when the plan shows there is one; a click is left alone. */
+    from_auto: true,
     gid: null,
     read: null,           // the read hash, once there is one
     refine: 'off',        // Braces has already done this; see dspca.py
@@ -286,6 +290,15 @@ BARRY.dspca = (function () {
     return (cands || []).find((s) => s.id === (id == null ? q.entry : id));
   }
 
+  /* The newest version Root Canal wrote that can be read here, or null.
+     Newest is last: both the candidates' list and the plan's are in
+     lineage order. */
+  function rootcanalDefault(vers) {
+    const vs = (vers || []).filter((v) => v && v.tag === 'rootcanal'
+                                          && v.usable !== false);
+    return vs.length ? vs[vs.length - 1] : null;
+  }
+
   function pickSet(id) {
     q.entry = id;
     const s = setOf(id);
@@ -297,6 +310,17 @@ BARRY.dspca = (function () {
        readable version rather than to the newest, because a version whose
        snapshot never reached this machine has a name, a count and no times. */
     q.from_version = s ? (s.newest_aligned_name || s.newest_usable_name) : null;
+    /* ROOT CANAL'S OUTPUT FIRST, where there is one.
+
+       Step four takes the interictal discharges out and banks what is left
+       as a version tagged `rootcanal`. That version is the set this step
+       was meant to split: splitting the one before it would put the hidden
+       IEDs back in, and they are the loudest, sharpest events in the set --
+       exactly what a PCA puts on an axis of its own. Older versions stay
+       pickable; this only changes which one is ticked when nobody has said. */
+    const rc = rootcanalDefault(s && s.versions);
+    if (rc) q.from_version = rc.ref != null ? rc.ref : rc.name;
+    q.from_auto = true;
     q.read = null;
     fit = null;
     picked = null;
@@ -327,6 +351,20 @@ BARRY.dspca = (function () {
        same impossible request on every refresh from here on. */
     if (plan && plan.ok && plan.version_note) {
       q.from_version = plan.read_version || null;
+    }
+    /* The plan's own version list is the authority -- the candidate list
+       can be a render behind a commit made a moment ago. If it names a
+       Root Canal version the default is not already on, move there and ask
+       again, once: `from_auto` is cleared on the way so this cannot loop. */
+    if (plan && plan.ok && q.from_auto) {
+      const rc2 = rootcanalDefault(plan.versions);
+      const want = rc2 ? (rc2.ref != null ? rc2.ref : rc2.name) : null;
+      if (want != null && String(want) !== String(q.from_version)) {
+        q.from_version = want;
+        q.from_auto = false;
+        refreshPlan();
+        return;
+      }
     }
     if (plan && plan.ok) {
       q.gid = plan.entry.gid;
@@ -928,7 +966,7 @@ BARRY.dspca = (function () {
   function intro() {
     return BARRY.ui.stepHeader({
       title: 'X-ray',
-      step: 'step 4 of The Dentist',
+      step: 'step 5 of The Dentist',
       blurb: 'Which kind of dentate spike each one is — drag a box on the '
            + 'CSD to choose the depth and time the features come from.',
     });
@@ -1070,7 +1108,8 @@ BARRY.dspca = (function () {
       box.appendChild(el('p', { class: 'confirm-msg', text:
         'Nothing curated is banked against this recording, so there is '
         + 'nothing to classify. Incisor finds the candidates, Checkup goes '
-        + 'through them and Braces times them; this is step four.' }));
+        + 'through them, Braces times them and Root Canal takes the IEDs '
+        + 'out; this is step five.' }));
       return box;
     }
 
@@ -1161,6 +1200,7 @@ BARRY.dspca = (function () {
           type: 'radio', name: 'dpVer', checked: nowOn ? 'checked' : null,
           onchange: () => {
             q.from_version = null;
+            q.from_auto = false;
             q.read = null;
             fit = null;
             refreshPlan();
@@ -1184,6 +1224,7 @@ BARRY.dspca = (function () {
             checked: on ? 'checked' : null,
             onchange: () => {
               q.from_version = v.ref;
+              q.from_auto = false;
               q.read = null;
               fit = null;
               refreshPlan();
@@ -1191,6 +1232,12 @@ BARRY.dspca = (function () {
           }),
           el('span', { class: 'mk-name', text: 'v' + v.name }),
           el('span', { class: 'flagchip', text: v.n + ' stamps' }),
+          v.tag === 'rootcanal'
+            ? el('span', { class: 'flagchip', text: 'IEDs out (Root Canal)',
+                           title: 'Root Canal took the hidden IEDs out of '
+                                + 'this version. It is the default when '
+                                + 'there is one.' })
+            : null,
           el('span', { class: 'person-what', text:
             (v.aligned ? 'aligned' : 'not aligned')
             + (v.by ? '  ' + v.by : '')
@@ -4812,6 +4859,7 @@ BARRY.dspca = (function () {
       : null),
     _fitBody: () => fitBody({}),
     _pickedClass: pickedClass,
+    _rcDefault: rootcanalDefault,
     _hood: openHood,
     _hoodData: () => hood,
     _compare: refitCompare,

@@ -91,16 +91,36 @@ async function untilN(fn, tries = 250, gap = 100) {
   /* ---------------------------------------------------------------- */
   head('the bundle card');
   run('setView("toolkit")');
-  await untilN(() => doc().querySelectorAll('.tk-bundle').length >= 2);
+  /* Four since The Lookout joined -- Horizon, Panorama and Braid, the
+     frequency tools.
+
+     NAMED rather than counted. A bare count caught both of the things worth
+     catching -- a bundle that stops rendering, and one nobody meant to ship
+     -- but it could not say which had happened, and the number had to be
+     edited by hand every time a bundle landed. This still catches both, and
+     the failure says which bundle is missing or unexpected. */
+  const WANT = ['The Dentist', 'The Arc', 'The Storm', 'The Lookout'];
+  await untilN(() => doc().querySelectorAll('.tk-bundle').length >= WANT.length);
   const cards = Array.from(doc().querySelectorAll('.tk-bundle'));
-  check('two bundles render', cards.length === 2, 'got ' + cards.length);
+  /* `found`, not `seen` -- `seen` is the visibility helper declared at the
+     top of this harness, and redeclaring it here is a SyntaxError that
+     stops the whole page before a single check runs. It reports as "0
+     checks", which the runner prints as a shot-taker rather than as a
+     failure. */
+  const found = cards.map((c) => WANT.find((w) => txt(c).indexOf(w) >= 0)
+                               || ('unexpected: ' + txt(c).slice(0, 24)));
+  check('every bundle renders, and only those',
+        cards.length === WANT.length
+          && WANT.every((w) => found.indexOf(w) >= 0),
+        'got ' + cards.length + ': ' + found.join(' | '));
 
   const arcCard = cards.find((c) => /The Arc/.test(txt(c)));
   check('one of them is The Arc', !!arcCard);
   const dentCard = cards.find((c) => /The Dentist/.test(txt(c)));
   check('the other is still The Dentist', !!dentCard);
-  check('The Dentist still has its four steps',
-        dentCard && dentCard.querySelectorAll('.tk-step').length === 4,
+  /* Five since Root Canal went in between Braces and X-ray. */
+  check('The Dentist still has its five steps',
+        dentCard && dentCard.querySelectorAll('.tk-step').length === 5,
         dentCard ? dentCard.querySelectorAll('.tk-step').length : 'no card');
 
   const arcSteps = arcCard
@@ -121,26 +141,23 @@ async function untilN(fn, tries = 250, gap = 100) {
         flat.filter((n) => NAMES.indexOf(n) >= 0).join(','));
 
   /* ---------------------------------------------------------------- */
-  head('the four that are not built say so');
+  head('all four are built');
   const offs = arcSteps.filter((s) => s.classList.contains('off'));
-  /* Two now: Circuit and Drift. Spark and Coupling are built. The count
-     is asserted rather than the names, so opening the next step fails
-     this line loudly instead of silently weakening the check. */
-  check('two steps are marked off', offs.length === 2, 'got ' + offs.length);
-  check('and both are really disabled', offs.every((s) => s.disabled));
-  check('each carries its reason in the title',
-        offs.every((s) => /Phase \d/.test(s.title || '')));
-  check('Spark and Coupling are the ones that are not off',
-        arcSteps[0] && !arcSteps[0].classList.contains('off')
-        && arcSteps[1] && !arcSteps[1].classList.contains('off'));
+  /* None now: Drift went in on 2026-09-28, the last of the four. Asserted
+     as a count, so a step that quietly went back to a construction card
+     fails here rather than weakening the checks below. */
+  check('no step is marked off', offs.length === 0, 'got ' + offs.length);
+  check('and none is disabled', arcSteps.every((s) => !s.disabled));
 
-  /* A disabled step that opens anyway is the failure this guards. */
-  const before = val('BARRY.views.toolkit.tool()');
-  offs[0].click();
-  await sleep(250);
-  check('clicking a disabled step changes nothing',
-        val('BARRY.views.toolkit.tool()') === before,
-        before + ' -> ' + val('BARRY.views.toolkit.tool()'));
+  /* The last step, Drift, is the one that was a construction card longest:
+     it has to open its own panel now, not a "coming soon". */
+  arcSteps[3].click();
+  await sleep(350);
+  check('clicking Drift opens Drift',
+        val('BARRY.views.toolkit.tool()') === 'drift',
+        val('BARRY.views.toolkit.tool()'));
+  check('  and paints its panel, not a construction card',
+        !!doc().querySelector('#tkResult #drGroups'));
 
   /* ---------------------------------------------------------------- */
   head('every step paints, and says which of four it is');
@@ -376,6 +393,347 @@ async function untilN(fn, tries = 250, gap = 100) {
         }
       }
     }
+  }
+
+  /* ------------------------------------------------------------------
+     Spark: many recordings at once.
+
+     Everything here runs against the real registry, the real .nev files
+     and the real Event Bank, and NOTHING here banks anything. That is not
+     a compromise, it is the point: the run is driven over the TEST
+     recordings, not one of which holds a cue pair, so the loop reads a
+     real file, finds real nothing, and takes the tick off by itself --
+     which is the behaviour being checked. A harness that banked an entry
+     to prove banking works would leave evidence in the bank that nobody
+     decided, and the run that deleted it afterwards would be one crash
+     away from not deleting it.
+
+     The two predicates are driven as functions, against real readings
+     fetched from the same server the app is talking to. A harness that
+     re-derives what it is checking checks nothing.
+     ------------------------------------------------------------------ */
+  head('Spark: many recordings at once');
+  val('BARRY.views.toolkit.pick("spark")');
+  const gotPick = await untilN(
+    () => doc().querySelectorAll('#arcPick .arc-row').length > 0, 150);
+  if (gotPick < 0) {
+    say('note', 'no DEWEY recordings in this registry, batch mode skipped');
+  } else {
+    const modeSeg = () =>
+      Array.from(doc().querySelectorAll('#tkResult .arc-mode .seg button'));
+    check('the panel offers one recording or many', modeSeg().length === 2,
+          modeSeg().map(txt).join(' | '));
+    check('  it starts on one at a time',
+          txt(doc().querySelector('.arc-mode .seg .active'))
+            === 'One recording at a time',
+          txt(doc().querySelector('.arc-mode .seg .active')));
+    const nPick = doc().querySelectorAll('#arcPick .arc-row').length;
+
+    /* What the panel's own decisions come to now, so the run can be shown
+       not to have touched them. `excluded`, `kept` and `spans_` are keyed
+       by pair id, and a pair id restarts at 1 in every recording -- a
+       batch writing into them would have every recording claiming pair 1. */
+    const tallyBefore = val('BARRY.arc.clean.tally().n');
+
+    modeSeg().find((b) => /Many/.test(txt(b))).click();
+    const drew = await untilN(
+      () => doc().querySelectorAll('#arcBatch .arc-batch-row').length > 0, 150);
+    check('many draws a table', drew >= 0);
+    const bRows = () =>
+      Array.from(doc().querySelectorAll('#arcBatch .arc-batch-row'));
+    check('  one row per recording in the same scope',
+          bRows().length === nPick, bRows().length + ' vs ' + nPick);
+    check('  the scope control is on this surface too',
+          doc().querySelectorAll('#arcBatch .seg button').length === 3);
+    check('  and the one-at-a-time panel is not also on screen',
+          !doc().getElementById('arcPick') && !doc().getElementById('arcRead'));
+    check('  nothing is ticked to start',
+          val('BARRY.arc.batch.want().length') === 0);
+
+    const barBtns = () => Array.from(
+      doc().querySelectorAll('#arcBatch .arc-batch-bar button'));
+    const last = () => barBtns()[barBtns().length - 1];
+    check('the primary action is last', /^Read and file/.test(txt(last())),
+          txt(last()));
+    check('  and it is the only primary on the surface',
+          barBtns().filter((b) => b.className.trim() === 'btn').length === 1,
+          barBtns().map((b) => b.className).join(' | '));
+    check('  with nothing ticked it is not offered', last().disabled);
+
+    /* §6b: the cost and the step size, before anything long runs. */
+    barBtns().find((b) => /Every readable/.test(txt(b))).click();
+    await sleep(200);
+    const reach = val('BARRY.arc.batch.rows()'
+                      + '.filter(function (r) { return r.reachable; }).length');
+    check('every readable recording ticks',
+          val('BARRY.arc.batch.want().length') === reach,
+          val('BARRY.arc.batch.want().length') + ' of ' + reach);
+    const costEl = doc().querySelector('#arcBatch .arc-batch-cost strong');
+    check('the cost is stated before anything runs',
+          /^about \d+ (seconds|minutes?)$/.test(txt(costEl)), txt(costEl));
+    const saySome = txt(doc().querySelector('#arcBatch .arc-batch-say'));
+    check('  and the step size with it', /one at a time/.test(saySome),
+          saySome.slice(0, 90));
+    check('  and that stopping keeps what is already filed',
+          /stays filed/.test(saySome));
+    const countEl = doc().querySelector('#arcBatch .arc-batch-count');
+    check('the count describes the list under it',
+          txt(countEl).indexOf(reach + ' of ' + bRows().length + ' ticked')
+            === 0, txt(countEl));
+
+    barBtns().find((b) => txt(b) === 'Clear').click();
+    await sleep(150);
+    check('Clear empties the selection',
+          val('BARRY.arc.batch.want().length') === 0);
+
+    /* One tick, by hand, the way somebody does it. The table must not be
+       rebuilt under them: thirty-three rows in a scrolling box, and a
+       rebuild sends them back to the top on every third tick. */
+    const keep = bRows()[1];
+    bRows()[0].querySelector('input').click();
+    await sleep(150);
+    check('ticking one row ticks one recording',
+          val('BARRY.arc.batch.want().length') === 1,
+          val('BARRY.arc.batch.want().length') + ' ticked');
+    check('  the count above follows it',
+          txt(doc().querySelector('#arcBatch .arc-batch-count')).indexOf('1 of ')
+            === 0, txt(doc().querySelector('#arcBatch .arc-batch-count')));
+    check('  and so does the primary',
+          txt(last()) === 'Read and file 1 recording', txt(last()));
+    check('  and the rest of the table is not rebuilt under it',
+          bRows()[1] === keep);
+    bRows()[0].querySelector('input').click();
+    await sleep(150);
+    check('  unticking puts it back',
+          val('BARRY.arc.batch.want().length') === 0);
+
+    /* Only the ones nobody has filed. The bank column is the evidence. */
+    const freshBtn = barBtns().find((b) => /never filed/.test(txt(b)));
+    check('there is a shortcut for the ones never filed', !!freshBtn);
+    if (freshBtn && !freshBtn.disabled) {
+      freshBtn.click();
+      await sleep(150);
+      const on = bRows().filter((r) => r.classList.contains('on'));
+      check('  it ticks only rows with nothing in the bank',
+            on.length > 0
+            && on.every((r) => txt(r.querySelector('.bk')) === '—'),
+            on.length + ' ticked');
+      barBtns().find((b) => txt(b) === 'Clear').click();
+      await sleep(120);
+    }
+
+    /* ---------------------------------------------------------------- */
+    head('  what comes off the selection by itself');
+    /* Real readings, from the same server the app is talking to. They are
+       handed to the predicate as objects rather than re-derived from the
+       screen, so what is checked is the function the run actually calls. */
+    const jget = async (p) => (await fetch(p)).json();
+    const pre = await jget('/api/arc/spark/recordings?phase=Precon');
+    const con = await jget('/api/arc/spark/recordings?phase=Con');
+    const preRows = pre.rows || [];
+    const preBank = pre.banked || {};
+    /* The clipping section above measured the first reachable
+       preconditioning recording, so the server holds a reading for it and
+       this panel knows -- which is a reason to file it again. It is
+       therefore no use for the "already filed" case. */
+    const measured = (preRows.find((r) => r.reachable) || {}).gid;
+    const conRow = (con.rows || []).find((r) => r.reachable);
+    const filedGid = Object.keys(preBank).find(
+      (g) => g !== measured && preRows.some((r) => r.gid === g));
+    const freshGid = (preRows.find(
+      (r) => r.reachable && !preBank[r.gid]) || {}).gid;
+
+    run('BARRY.arc.batch.clipping(false)');
+
+    if (!conRow) { say('note', 'no reachable conditioning recording here'); }
+    else {
+      win().__arcCon = await jget('/api/arc/spark/' + conRow.gid);
+      const why = val('BARRY.arc.batch.skipReason("' + conRow.gid
+                      + '", window.__arcCon)');
+      check('a recording with no cue pairs comes off the selection',
+            /no cue pairs/.test(why), why || '(it stayed on)');
+    }
+
+    if (!filedGid) {
+      say('note', 'no second banked recording here, "already filed" skipped');
+    } else {
+      win().__arcFiled = await jget('/api/arc/spark/' + filedGid);
+      const same = val('window.__arcFiled.summary.n_pairs')
+                   === preBank[filedGid].n;
+      check('the banked count and the read agree, so the case is live',
+            same, preBank[filedGid].n + ' banked vs '
+                  + val('window.__arcFiled.summary.n_pairs') + ' read');
+      const why = val('BARRY.arc.batch.skipReason("' + filedGid
+                      + '", window.__arcFiled)');
+      check('one already filed at the same pairs comes off too',
+            /already filed/.test(why), why || '(it stayed on)');
+      /* With a clipping reading the run HAS something to add, so it files.
+         The bank's summary cannot say whether an entry was filed with a
+         clipping judgement, so this is the honest limit of the rule. */
+      run('BARRY.arc.batch.clipping(true)');
+      check('  but with clipping on it is filed again',
+            val('BARRY.arc.batch.skipReason("' + filedGid
+                + '", window.__arcFiled)') === '');
+      run('BARRY.arc.batch.clipping(false)');
+    }
+
+    if (!freshGid) { say('note', 'everything here is filed already'); }
+    else {
+      win().__arcFresh = await jget('/api/arc/spark/' + freshGid);
+      check('one with pairs and nothing banked stays on the selection',
+            val('BARRY.arc.batch.skipReason("' + freshGid
+                + '", window.__arcFresh)') === '');
+    }
+
+    /* ---------------------------------------------------------------- */
+    head('  the exclusion the run files');
+    if (!measured) { say('note', 'nothing reachable here, skipped'); }
+    else {
+      win().__arcRead = await jget('/api/arc/spark/' + measured);
+      check('with no clipping reading, nothing is excluded',
+            val('Object.keys(BARRY.arc.batch.exclusionFrom('
+                + 'window.__arcRead.pairs, null)).length') === 0);
+      /* Already measured by the section above, so the server answers from
+         its own cache and this costs nothing. */
+      win().__arcClip = await (await fetch(
+        '/api/arc/spark/' + measured + '/clipping',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: '{}' })).json();
+      const nflag = val('BARRY.arc.clean.flagged(1).length');
+      if (!nflag) {
+        say('note', 'nothing clipped on pair 1 of this recording');
+      } else {
+        check('it is keyed by pair, then by window',
+              val('BARRY.arc.batch.exclusionFrom(window.__arcRead.pairs,'
+                  + ' window.__arcClip)["1"] !== undefined')
+              && val('BARRY.arc.clean.names().some(function (w) {'
+                     + ' return BARRY.arc.batch.exclusionFrom('
+                     + 'window.__arcRead.pairs, window.__arcClip)["1"][w]'
+                     + ' !== undefined; })') === true);
+        /* The drift check: what a batch files and what the panel would
+           file with nobody overruling anything have to be one list, or a
+           recording read by hand and the same one read in a batch end up
+           in the bank saying different things about the same channels. */
+        check('every block it excludes is one the measurement lost',
+              val('(function () { var e = BARRY.arc.batch.exclusionFrom('
+                  + 'window.__arcRead.pairs, window.__arcClip)["1"] || {};'
+                  + ' return Object.keys(e).every(function (w) {'
+                  + ' return e[w].every(function (c) {'
+                  + ' return BARRY.arc.clean.lost(1, c).indexOf(w) >= 0;'
+                  + ' }); }); })()') === true);
+        check('  and every block the measurement lost is excluded',
+              val('(function () { var e = BARRY.arc.batch.exclusionFrom('
+                  + 'window.__arcRead.pairs, window.__arcClip)["1"] || {};'
+                  + ' var n = 0; Object.keys(e).forEach(function (w) {'
+                  + ' n += e[w].length; });'
+                  + ' var m = BARRY.arc.clean.flagged(1).reduce('
+                  + 'function (t, c) { return t'
+                  + ' + BARRY.arc.clean.lost(1, c).length; }, 0);'
+                  + ' return n === m; })()') === true);
+      }
+    }
+
+    /* ---------------------------------------------------------------- */
+    head('  a real run, one recording at a time');
+    /* Test sessions present single cues, so not one of them holds a pair.
+       A run over them exercises the whole loop -- read, judge, untick,
+       draw what it found -- and cannot write to the bank. */
+    const segBtns = () =>
+      Array.from(doc().querySelectorAll('#arcBatch .seg button'));
+    segBtns().find((b) => txt(b) === 'Test').click();
+    const swapped = await untilN(
+      () => bRows().length > 0
+         && /Test/.test(txt(bRows()[0].querySelector('.ss'))), 150);
+    check('the scope switches under the table', swapped >= 0,
+          bRows().length ? txt(bRows()[0].querySelector('.ss')) : 'no rows');
+    if (swapped < 0) {
+      say('note', 'no test recordings here, the run is skipped');
+    } else {
+      run('BARRY.arc.batch.clipping(false)');
+      barBtns().find((b) => /Every readable/.test(txt(b))).click();
+      await sleep(150);
+      const queued = val('BARRY.arc.batch.want().length');
+      check('they tick', queued > 0, queued + ' ticked');
+      const bankedBefore = bRows().filter(
+        (r) => txt(r.querySelector('.bk')) !== '—').length;
+
+      // Started, not awaited: the point is what it looks like midway.
+      run('BARRY.arc.batch.run()');
+      const caught = await untilN(() => {
+        const fin = doc().querySelectorAll(
+          '#arcBatch .arc-batch-row.skipped, #arcBatch .arc-batch-row.done');
+        const togo = doc().querySelectorAll(
+          '#arcBatch .arc-batch-row.queued, #arcBatch .arc-batch-row.going');
+        return fin.length > 0 && togo.length > 0;
+      }, 600, 20);
+      check('a finished recording is inspectable while the rest still run',
+            caught >= 0);
+      check('  and it carries its own disclosure at that moment',
+            !!doc().querySelector('#arcBatch .arc-batch-row.skipped '
+                                  + 'details.arc-batch-found'));
+
+      run('BARRY.arc.batch.stop()');
+      const ended = await untilN(
+        () => val('BARRY.arc.batch.running') === false, 600);
+      check('it stops when asked', ended >= 0);
+      const finished = doc().querySelectorAll(
+        '#arcBatch .arc-batch-row.skipped').length;
+      check('  and the ones that finished stayed finished', finished > 0,
+            finished + ' finished');
+      check('  the ones it never started are still ticked',
+            val('BARRY.arc.batch.want().length') > 0,
+            val('BARRY.arc.batch.want().length') + ' left');
+
+      const off = JSON.parse(
+        val('JSON.stringify(BARRY.arc.batch.off())'));
+      const offKeys = Object.keys(off);
+      check('every recording with nothing to do came off by itself',
+            offKeys.length === finished, offKeys.length + ' vs ' + finished);
+      check('  and each of them says why',
+            offKeys.length > 0
+            && offKeys.every((k) => /no cue pairs/.test(off[k])),
+            offKeys.map((k) => off[k]).join(' | ').slice(0, 90));
+      check('  and the table says so above the rows',
+            /came off by/.test(
+              txt(doc().querySelector('#arcBatch .arc-batch-off'))));
+
+      const det = doc().querySelector('#arcBatch .arc-batch-row.skipped '
+                                      + 'details.arc-batch-found');
+      const facts = txt(det);
+      for (const word of ['pairs', 'pairings', 'gap', 'clipping',
+                          'excluded', 'filed']) {
+        check('  the disclosure reports ' + word,
+              facts.indexOf(word) >= 0, facts.slice(0, 100));
+      }
+      check('  and says plainly that nothing was filed',
+            /nothing was filed/.test(facts), facts.slice(0, 120));
+      /* Measured, not eyeballed. The disclosure is a child of a CSS grid
+         and has to span it: without `grid-column: 1 / -1` it lands in the
+         checkbox column, 22 px wide, and every line in it wraps to one
+         word. */
+      const detW = det.getBoundingClientRect().width;
+      const rowW = det.parentNode.getBoundingClientRect().width;
+      check('  the disclosure spans the row rather than one column',
+            detW > rowW * 0.7, Math.round(detW) + ' of ' + Math.round(rowW));
+      const tbl = doc().querySelector('#arcBatch .arc-batch-rows');
+      check('  and no row runs off the right edge',
+            tbl.scrollWidth <= tbl.clientWidth + 2,
+            tbl.scrollWidth + ' > ' + tbl.clientWidth);
+      check('nothing reached the bank', bRows().filter(
+              (r) => txt(r.querySelector('.bk')) !== '—').length
+            === bankedBefore);
+      check('the panel’s own decisions were not touched',
+            val('BARRY.arc.clean.tally().n') === tallyBefore,
+            tallyBefore + ' -> ' + val('BARRY.arc.clean.tally().n'));
+    }
+
+    /* Left as it was found: no ticks, back on the recording picker. */
+    run('BARRY.arc.batch.clear()');
+    modeSeg().find((b) => /One recording/.test(txt(b))).click();
+    const back = await untilN(() => !!doc().getElementById('arcPick'), 150);
+    check('switching back brings the one-at-a-time panel', back >= 0);
+    check('  and takes the table away',
+          !doc().getElementById('arcBatch'));
   }
 
   /* ---------------------------------------------------------------- */

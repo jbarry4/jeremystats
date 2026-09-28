@@ -70,16 +70,20 @@ async function until(fn, ms, what) {
   head('THE RAIL');
   ev('setView("toolkit")');
   await until(() => D().querySelector('.tk-bundle'), 9000, 'the bundle card');
-  const bundle = D().querySelector('.tk-bundle');
-  ok('the ToolKit rail carries a bundle', !!bundle);
-  const steps = [...D().querySelectorAll('.tk-step')];
-  eq('with four numbered steps', steps.length, 4);
+  /* THE DENTIST'S card, not the first card and not every step on the
+     page. There are three bundles now, and counting `.tk-step` across all
+     of them read The Arc's and The Storm's steps as Braces having eleven. */
+  const bundle = [...D().querySelectorAll('.tk-bundle')]
+    .find((b) => /The Dentist/.test(b.textContent));
+  ok('the ToolKit rail carries The Dentist', !!bundle);
+  const steps = bundle ? [...bundle.querySelectorAll('.tk-step')] : [];
+  eq('with five numbered steps', steps.length, 5);
   eq('named in the order they happen',
      steps.map((s) => s.querySelector('.tk-step-n').textContent),
-     ['Incisor', 'Checkup', 'Braces', 'X-ray']);
+     ['Incisor', 'Checkup', 'Braces', 'Root Canal', 'X-ray']);
   ok('and numbered, because the order is a real dependency',
      steps.map((s) => s.querySelector('.tk-step-i').textContent)
-       .join('') === '1234');
+       .join('') === '12345');
 
   /* Pressing step 3 must open Braces, not merely highlight the step. */
   steps[2].click();

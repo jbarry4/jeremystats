@@ -7,7 +7,7 @@
     "gid": "2026-09-18T16:53:27.010683+00:00",
     "group": "2026-09-18T16:53:27.010683+00:00",
     "has_video": "2026-09-18T16:53:27.010683+00:00",
-    "key": "2026-09-24T20:02:58.111307+00:00",
+    "key": "2026-09-25T18:33:11.802228+00:00",
     "label": "2026-09-18T17:07:31.007879+00:00",
     "loose_key": "2026-09-18T16:53:27.010683+00:00",
     "mouse": "2026-09-18T16:53:27.010683+00:00",
@@ -18,13 +18,13 @@
     "schema": "2026-09-18T17:07:31.007879+00:00",
     "session": "2026-09-18T16:53:27.010683+00:00",
     "start": "2026-09-18T17:07:31.007879+00:00",
-    "updated": "2026-09-24T20:02:58.111307+00:00"
+    "updated": "2026-09-25T18:33:11.802228+00:00"
   },
   "_keys": {
     "paths": {
       "E:\\Joe Multisite 2026 data\\J4\\Precon1\\J4_Precon1_SPC\\2026-07-22_10-48-48": [
-        "gone",
-        "2026-09-24T20:02:57.505063+00:00"
+        "set",
+        "2026-09-25T18:33:11.802228+00:00"
       ]
     },
     "seen": {
@@ -35,7 +35,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-24T20:02:58.111307+00:00",
+    "at": "2026-09-25T18:33:11.802228+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -60,7 +60,9 @@
   "loose_key": null,
   "mouse": null,
   "n_channels": 32,
-  "paths": [],
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J4\\Precon1\\J4_Precon1_SPC\\2026-07-22_10-48-48"
+  ],
   "project": "Unfiled",
   "project_source": "guessed",
   "retired": true,
@@ -78,11 +80,13 @@
   "session": null,
   "start": "2026-07-22T14:48:48+00:00",
   "updated": {
-    "app_version": "2026.09.24.8",
-    "at": "2026-09-24T16:02:58-04:00",
-    "commit": "0fc4943",
-    "machine": "DESKTOP-4H65AI7",
+    "app_version": "2026.09.25.2",
+    "at": "2026-09-25T14:33:11-04:00",
+    "commit": "4f8e8ca",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "theexaminedexistence@gmail.com"
+    "user": "Shahriar Tafti"
   }
 }

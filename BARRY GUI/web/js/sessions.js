@@ -922,7 +922,7 @@ BARRY.views.sessions = (function () {
     if (flags.has('onvacc') || flags.has('notvacc')) {
       const v = (BARRY.vacc && BARRY.vacc.of(s)) || null;
       const st = v && v.state;
-      const reachable = st === 'native' || st === 'staged';
+      const reachable = !!(BARRY.vacc && BARRY.vacc.canRead(s));
       if (flags.has('onvacc') && !reachable) return false;
       if (flags.has('notvacc') && (!st || st === 'unknown' || reachable)) {
         return false;
@@ -1660,23 +1660,13 @@ BARRY.views.sessions = (function () {
     });
   }
 
+  /* The chip lives in `vacc.js` now, with the rest of what the cluster
+     means. It was written out here, and the words were written out again in
+     Housekeeping's detail panel and a third time on an Xplorefinder tab --
+     so rewording one left three views disagreeing about what amber meant.
+     Kept as a name because the card reads better for it. */
   function vaccChip(s) {
-    if (!BARRY.vacc) return null;
-    const got = BARRY.vacc.of(s);
-    if (!got) return null;
-    if (got.state !== 'native' && got.state !== 'staged') return null;
-    const native = got.state === 'native';
-    return el('span', {
-      class: 'flagchip vacc ' + got.state,
-      text: native ? 'VACC' : 'VACC copy',
-      title: native
-        ? 'The cluster reads this one where it already is — ' + got.remote
-          + '\n\nNothing to upload: it is on a share VACC mounts.'
-        : 'A copy of this recording is in cluster scratch.\n\n'
-          + 'Scratch is not storage — VACC may clear it without notice, so '
-          + 'this is a cache and never the only copy. If it goes, the next '
-          + 'run puts it back.',
-    });
+    return BARRY.vacc ? BARRY.vacc.mark(s) : null;
   }
 
   function concatChip(s) {

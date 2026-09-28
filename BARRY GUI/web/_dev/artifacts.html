@@ -1,0 +1,394 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Jarvis Artifacts: running</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 40vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 58vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/"></iframe>
+<script>
+/* Jarvis Artifacts, end to end: the store through its real routes, and the
+ * Results view drawn from them.
+ *
+ * It makes its OWN artifacts -- two circuits and a drift, on a harness gid,
+ * through /api/artifacts/_test/make, which runs the real store and refuses
+ * anything that is not about a harness recording -- and erases exactly those
+ * in a `finally`. It never lists-and-deletes: a harness that "cleans up" by
+ * pattern is one bad pattern away from deleting somebody's circuit.
+ *
+ * The registry is exercised with a dummy viewer and a dummy action, because
+ * Circuit and Drift register theirs later and the registry has to work
+ * before anybody uses it. Both are removed afterwards.
+ */
+const out = document.getElementById('out');
+let bad = 0, good = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d);
+                        if (c === 'bad') bad += 1; if (c === 'ok') good += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, n = 80, ms = 150) {
+  for (let i = 0; i < n; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(ms);
+  }
+  return null;
+}
+const post = async (url, body) => {
+  const r = await fetch(url, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}) });
+  let j = {}; try { j = await r.json(); } catch (e) { /* not JSON */ }
+  return Object.assign({ _status: r.status }, j);
+};
+const getj = async (url) => {
+  const r = await fetch(url);
+  let j = {}; try { j = await r.json(); } catch (e) { /* not JSON */ }
+  return Object.assign({ _status: r.status }, j);
+};
+
+const TAG = Math.random().toString(16).slice(2, 8);
+const GID_A = 'harness-art-' + TAG + '-a';
+const GID_B = 'harness-art-' + TAG + '-b';
+const made = [];               // every id this page created, and only those
+
+function circuit(scale) {
+  return {
+    schema: 'arc.circuit/1', kind: 'state', cue_type: 'HighTone_LowTone',
+    cue_label: 'High tone → Low Tone',
+    windows: ['pre', 'cue1', 'cue2', 'post'], methods: ['coherence'],
+    region_order: ['Left PER', 'Left POR'], n_pairs: 2,
+    cells: { pre: { coherence: { 'Left PER|Left POR': {
+      n: 2, mean: 0.3 * scale, sd: 0.02, of: 2, warn: null,
+      values: [{ pair_id: 1, v: 0.28 * scale }, { pair_id: 2, v: 0.32 * scale }] } } } },
+    grey: [], computed_on: { kind: 'local' },
+  };
+}
+const subj = (gid, mouse) => ({ gid, project: 'HARNESS', mouse, session: 1,
+  phase: 'Precon', phase_n: 1, run: 'SPC', cue_type: 'HighTone_LowTone',
+  window_kind: 'state' });
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = frame.contentWindow;
+  const D = frame.contentDocument;
+  const errors = [];
+  W.addEventListener('error', (e) => errors.push(e.message));
+  const ev = (src) => W.eval(src);
+  await until(() => ev('typeof BARRY !== "undefined" && BARRY.artifacts'
+                       + ' && BARRY.views && BARRY.views.results'));
+  let modeBefore = null;
+  try {
+    modeBefore = ev('BARRY.views.results.mode()');
+
+    head('1. The store, through the real routes');
+    const mk = (body) => post('/api/artifacts/_test/make', body);
+    let a = await mk({ kind: 'circuit', subject: subj(GID_A, 901),
+                       payload: circuit(1), params: { low: 4, high: 12 },
+                       inputs: [{ kind: 'bank', entry: 'harness-entry', version: 2 }] });
+    check('a test circuit is made', a.ok, a.error);
+    const A = a.artifact || {};
+    if (A.id) made.push(A.id);
+    check('its automatic name comes from the metadata',
+          A.name === 'HARNESS r901 s1 Precon1 SPC · High tone → Low Tone · state',
+          A.name);
+    const again = await mk({ kind: 'circuit', subject: subj(GID_A, 901), payload: circuit(1) });
+    check('the same answer again is a confirmation, not a version',
+          again.ok && again.artifact.id === A.id && again.artifact.n_versions === 1
+          && (again.artifact.versions[0].confirmed || []).length === 1,
+          JSON.stringify((again.artifact || {}).n_versions));
+    const v2 = await mk({ kind: 'circuit', subject: subj(GID_A, 901), payload: circuit(2),
+                          note: 'harness rerun' });
+    check('a different answer is v2 of the same artifact',
+          v2.ok && v2.artifact.id === A.id && v2.artifact.version === 2,
+          JSON.stringify((v2.artifact || {}).version));
+    const b = await mk({ kind: 'circuit', subject: subj(GID_B, 902), payload: circuit(3) });
+    const B = b.artifact || {};
+    if (B.id) made.push(B.id);
+    const d = await mk({ kind: 'drift',
+      subject: { left: [{ id: A.id, gid: GID_A }], right: [{ id: B.id, gid: GID_B }],
+                 cue_type: 'HighTone_LowTone', window_kind: 'state',
+                 left_label: 'Harness left', right_label: 'Harness right' },
+      payload: { schema: 'arc.drift/1', cells: {} },
+      inputs: [{ kind: 'artifact', id: A.id, version: 2, side: 'left' },
+               { kind: 'artifact', id: B.id, version: 1, side: 'right' }],
+      nickname: 'Harness drift ' + TAG,
+      cite: [{ id: A.id, version: 2 }, { id: B.id, version: 1 }] });
+    check('a drift citing both is made', d.ok, d.error);
+    const DR = d.artifact || {};
+    if (DR.id) made.push(DR.id);
+
+    const refused = await post('/api/artifacts/_test/make',
+      { kind: 'circuit', subject: subj('real-looking-gid', 1), payload: circuit(1) });
+    check('the test route refuses a subject that is not a harness recording',
+          refused._status === 400, String(refused._status));
+
+    const lst = await getj('/api/artifacts');
+    const ids = (lst.artifacts || []).map((r) => r.id);
+    check('GET /api/artifacts lists all three',
+          [A.id, B.id, DR.id].every((x) => ids.includes(x)), ids.length + ' listed');
+    const byKind = await getj('/api/artifacts?kind=drift');
+    check('?kind= narrows it', (byKind.artifacts || []).every((r) => r.kind === 'drift')
+          && (byKind.artifacts || []).some((r) => r.id === DR.id));
+    const byGid = await getj('/api/artifacts?gid=' + encodeURIComponent(GID_B));
+    check('?gid= finds the circuit and the drift that has it as a member',
+          (byGid.artifacts || []).map((r) => r.id).sort().join()
+          === [B.id, DR.id].sort().join(),
+          (byGid.artifacts || []).map((r) => r.kind).join());
+    const one = await getj('/api/artifacts/' + A.id);
+    check('GET /api/artifacts/<id> returns the record', one.ok && one.artifact.id === A.id);
+    check('and who cites it', (one.cited_by || []).some((c) => c.by_id === DR.id));
+    const p1 = await getj('/api/artifacts/' + A.id + '/payload?v=1');
+    const p2 = await getj('/api/artifacts/' + A.id + '/payload');
+    check('the payload route serves v1 and the current v2',
+          p1.ok && p2.ok && p1.version === 1 && p2.version === 2
+          && p1.payload.cells.pre.coherence['Left PER|Left POR'].mean === 0.3
+          && p2.payload.cells.pre.coherence['Left PER|Left POR'].mean === 0.6,
+          p1.version + ' / ' + p2.version);
+    check('each with its own digest', p1.digest && p2.digest && p1.digest !== p2.digest);
+    const del = await post('/api/artifacts/' + A.id + '/delete');
+    check('deleting a cited circuit is refused with 409', del._status === 409,
+          String(del._status));
+    check('and the sentence names the drift that cites it',
+          String(del.error || '').includes('Harness drift ' + TAG), del.error);
+
+    head('2. Results draws them');
+    ev("setView('results')");
+    await until(() => D.querySelector('#resultsBody .res-mode'));
+    check('Results has a Files / Artifacts switch',
+          !!D.querySelector('#resultsBody .res-mode [data-mode="artifacts"]'));
+    D.querySelector('#resultsBody .res-mode [data-mode="artifacts"]').click();
+    const rowA = await until(() => D.querySelector('.art-row[data-id="' + A.id + '"]'));
+    check('the artifact list shows the test circuit', !!rowA);
+    const rowD = D.querySelector('.art-row[data-id="' + DR.id + '"]');
+    check('a nicknamed artifact shows the nickname first and the name under it',
+          rowD && rowD.querySelector('.art-nick').textContent === 'Harness drift ' + TAG
+          && rowD.querySelector('.art-name')
+          && rowD.querySelector('.art-name').textContent === DR.name,
+          rowD && rowD.textContent);
+    check('a row states its version count', rowA
+          && /2 versions/.test(rowA.textContent), rowA && rowA.textContent);
+    check('and its current version’s provenance (who, machine, commit)',
+          rowA && rowA.querySelector('.art-prov')
+          && /by /.test(rowA.querySelector('.art-prov').textContent)
+          && (!A.current || !A.current.machine
+              || rowA.querySelector('.art-prov').textContent.includes(A.current.machine)),
+          rowA && rowA.querySelector('.art-prov').textContent);
+    const kinds = Array.from(D.querySelectorAll('.art-kind')).map((x) => x.textContent);
+    check('grouped by kind, circuits first', /^Circuits/.test(kinds[0] || '')
+          && kinds.some((k) => /^Drifts/.test(k)), kinds.join(' | '));
+    check('circuits grouped by project, rat and session',
+          Array.from(D.querySelectorAll('.art-group')).some((g) =>
+            g.textContent === 'HARNESS r901 s1'));
+
+    head('3. The detail pane');
+    /* Circuit registers a real viewer for circuits and Drift adds "Use in
+       Drift" to them, and this section tests the store's own fall-backs:
+       the JSON view when no viewer is registered, and Download as the
+       primary when no action is. Set both aside, in this page only -- every
+       harness is its own page load, so nothing outside it is touched, and
+       each registers once and stops retrying, so neither comes back
+       mid-test. */
+    ev("BARRY.artifacts.unregister('circuit')");
+    ev("BARRY.artifacts.unaction('circuit', 'use-in-drift')");
+    check('the real circuit viewer and action are set aside for this test',
+          ev("BARRY.artifacts.viewers().indexOf('circuit')") < 0
+          && ev("BARRY.artifacts.actionsFor('circuit').length") === 0);
+    rowA.click();
+    const pills = await until(() => {
+      const p = D.querySelectorAll('#artDetail .art-versions .pill');
+      return p.length ? p : null;
+    });
+    check('both versions are listed', pills && pills.length === 2,
+          pills ? String(pills.length) : 'none');
+    const view = await until(() => D.querySelector('#artDetail .art-view[data-viewer]'));
+    check('with no viewer registered, the payload is a JSON view, not "No preview"',
+          view && view.getAttribute('data-viewer') === 'json'
+          && view.querySelector('.art-json details')
+          && !/no preview/i.test(view.textContent));
+    check('and the JSON view is collapsible',
+          view && view.querySelectorAll('.art-json details').length > 0);
+    const citeLink = D.querySelector('#artDetail .art-refs a[data-ref="' + DR.id + '"]');
+    check('v2 is "cited by" the drift, as a link', !!citeLink);
+    const v1pill = Array.from(pills || []).find((p) => /^v1/.test(p.textContent));
+    if (v1pill) v1pill.click();
+    await until(() => /Where v1 came from/.test(D.querySelector('#artDetail').textContent));
+    check('selecting v1 shows v1', /Where v1 came from/.test(
+      D.querySelector('#artDetail').textContent));
+    check('and nothing cites v1', /Nothing cites v1/.test(
+      D.querySelector('#artDetail').textContent));
+    check('its settings are a table', D.querySelectorAll('#artDetail .art-params tr').length === 2);
+    check('and it says what it was made from (the bank entry)',
+          /Event Bank entry harness-entry v2/.test(D.querySelector('#artDetail').textContent));
+    const prov = D.querySelector('#artDetail dl.kv');
+    check('provenance names who, when, where and which code',
+          prov && ['Made by', 'When', 'On', 'Digest'].every((k) => prov.textContent.includes(k)),
+          prov && prov.textContent.slice(0, 120));
+    check('the repeat run shows as a reproduction',
+          /Reproduced1 time/.test((prov || {}).textContent || ''));
+
+    // Clicking the citation opens the drift, and its inputs open the circuit.
+    ev('BARRY.artifacts.open(' + JSON.stringify(A.id) + ')');
+    await until(() => D.querySelector('#artDetail .art-refs a[data-ref="' + DR.id + '"]'));
+    D.querySelector('#artDetail .art-refs a[data-ref="' + DR.id + '"]').click();
+    await until(() => ev('BARRY.artifacts.selected().id') === DR.id
+                && D.querySelector('#artDetail .art-refs a[data-ref="' + A.id + '"]'));
+    check('"cited by" opens the drift', ev('BARRY.artifacts.selected().id') === DR.id);
+    const inA = D.querySelector('#artDetail .art-refs a[data-ref="' + A.id + '"]');
+    check('the drift lists its pinned circuit versions as links',
+          inA && /v2/.test(inA.textContent)
+          && !!D.querySelector('#artDetail .art-refs a[data-ref="' + B.id + '"]'));
+    if (inA) inA.click();
+    await until(() => ev('BARRY.artifacts.selected().id') === A.id);
+    check('and one of them opens that circuit', ev('BARRY.artifacts.selected().id') === A.id);
+
+    head('4. The registry');
+    ev("BARRY.artifacts.register('circuit', { title: 'Circuits', "
+       + "summary: function (r) { return 'dummy summary ' + r.n_versions; }, "
+       + "render: function (host, rec, payload, ver) { host.appendChild(el('div', "
+       + "{ class: 'harness-viewer', text: 'dummy viewer ' + rec.id + ' v' + ver.v "
+       + "+ ' n_pairs ' + payload.n_pairs })); } })");
+    ev("BARRY.artifacts.action('circuit', { id: 'harness-act', label: 'Harness action', "
+       + "run: function (rec, ver) { window.__artActed = rec.id + ':' + ver.v; } })");
+    ev('BARRY.artifacts.open(' + JSON.stringify(A.id) + ')');
+    const dv = await until(() => D.querySelector('#artDetail .harness-viewer'));
+    check('a registered viewer renders the selected version’s payload',
+          dv && dv.textContent === 'dummy viewer ' + A.id + ' v2 n_pairs 2',
+          dv && dv.textContent);
+    check('the slot says it used the registered viewer',
+          D.querySelector('#artDetail .art-view').getAttribute('data-viewer') === 'registered');
+    const rowSum = D.querySelector('.art-row[data-id="' + A.id + '"] .art-extra');
+    check('the viewer’s summary() appears on the list row',
+          rowSum && rowSum.textContent === 'dummy summary 2', rowSum && rowSum.textContent);
+    const bar = D.querySelector('#artDetail .art-actions');
+    const btns = bar ? Array.from(bar.querySelectorAll('button')) : [];
+    const prim = btns.filter((x) => x.classList.contains('btn') && !x.classList.contains('ghost'));
+    check('a registered action adds a button', btns.some((x) => x.dataset.action === 'harness-act'));
+    check('one primary on the pane, and it is the last button',
+          prim.length === 1 && prim[0] === btns[btns.length - 1],
+          prim.length + ' primary; last is ' + (btns[btns.length - 1] || {}).textContent);
+    check('delete is not the primary', !prim.some((x) => x.classList.contains('danger')));
+    const act = btns.find((x) => x.dataset.action === 'harness-act');
+    if (act) act.click();
+    check('and runs with the record and the selected version',
+          W.__artActed === A.id + ':2', String(W.__artActed));
+    ev("BARRY.artifacts.unaction('circuit', 'harness-act')");
+    ev("BARRY.artifacts.unregister('circuit')");
+    ev('BARRY.artifacts.open(' + JSON.stringify(A.id) + ')');
+    await until(() => D.querySelector('#artDetail .art-view[data-viewer="json"]'));
+    const bar2 = D.querySelector('#artDetail .art-actions');
+    const prim2 = Array.from(bar2.querySelectorAll('button')).filter((x) =>
+      x.classList.contains('btn') && !x.classList.contains('ghost'));
+    check('with no actions, Download is the one primary, last',
+          prim2.length === 1 && /Download/.test(prim2[0].textContent)
+          && prim2[0] === bar2.lastElementChild, prim2.map((x) => x.textContent).join());
+
+    head('5. Nickname, download, delete');
+    const input = D.querySelector('#artDetail .art-nickfield input');
+    input.value = 'Harness circuit ' + TAG;
+    Array.from(D.querySelectorAll('#artDetail .art-nickfield button'))
+      .find((x) => /Save nickname/.test(x.textContent)).click();
+    await sleep(800);
+    const afterNick = await getj('/api/artifacts/' + A.id);
+    check('the nickname is saved through the route',
+          afterNick.artifact && afterNick.artifact.nickname === 'Harness circuit ' + TAG,
+          afterNick.artifact && afterNick.artifact.nickname);
+    const shown = await until(() => {
+      const r = D.querySelector('.art-row[data-id="' + A.id + '"] .art-nick');
+      return r && r.textContent === 'Harness circuit ' + TAG ? r : null;
+    });
+    check('and the list shows it first, the name under it', !!shown
+          && D.querySelector('.art-row[data-id="' + A.id + '"] .art-name').textContent === A.name);
+    const got = await ev('BARRY.artifacts.payload(' + JSON.stringify(A.id) + ', null)');
+    check('the payload the download writes is the stored one',
+          got && got.digest === p2.digest && got.version === 2);
+
+    const delBtn = D.querySelector('#artDetail .art-actions .danger');
+    delBtn.click();
+    const okBtn = await until(() => Array.from(D.querySelectorAll('#bigModal .btn.danger'))
+      .find((x) => /Delete/.test(x.textContent)));
+    if (okBtn) okBtn.click();
+    const why = await until(() => {
+      const e = D.querySelector('#bigModal .confirm-err:not(.hidden)');
+      return e && e.textContent ? e : null;
+    });
+    check('deleting it in the interface is refused, with the drift named',
+          why && why.textContent.includes('Harness drift ' + TAG), why && why.textContent);
+    ev('closeModal()');
+    const still = await getj('/api/artifacts/' + A.id);
+    check('and it is still there, not deleted', still.ok && !still.artifact.deleted);
+
+    const dd = await post('/api/artifacts/' + DR.id + '/delete');
+    check('the drift itself can be deleted', dd.ok, dd.error);
+    const da = await post('/api/artifacts/' + A.id + '/delete');
+    check('after which the circuit can be too', da.ok, da.error);
+    const gone = await getj('/api/artifacts');
+    check('and deleted ones leave the list',
+          !(gone.artifacts || []).some((r) => r.id === A.id || r.id === DR.id));
+
+    head('6. Waiting and empty');
+    ev('BARRY.artifacts.reload()');
+    const sk = await until(() => D.querySelector('.art-list .sk-wrap')
+                             || D.querySelector('.art-row'), 40, 5);
+    check('the list shows a skeleton (or is already filled) while it reads', !!sk);
+    await until(() => D.querySelector('.art-row'));
+    const search = D.querySelector('.art-list input[type="search"]');
+    if (search) {
+      search.value = 'zzzz-nothing-' + TAG;
+      search.dispatchEvent(new W.Event('input', { bubbles: true }));
+    }
+    const empty = await until(() => D.querySelector('.art-list .empty-state'));
+    check('a search that matches nothing says what to do next',
+          empty && /Clear the search/.test(empty.textContent), empty && empty.textContent);
+
+    head('7. Results fixes on the real catalogue');
+    const cat = await getj('/api/results?refresh=1');
+    const rows = cat.results || [];
+    const liar = rows.filter((r) => r.kind === 'figure' && r.type !== 'image');
+    check('no non-image result is called a figure (so none is offered figure Rebuild)',
+          liar.length === 0, liar.length + ', e.g. ' + (liar[0] || {}).rel);
+    const csvRun = rows.filter((r) => r.run_id && r.type === 'table');
+    say('note', '  ' + csvRun.length + ' table(s) carry a run link');
+
+    head('8. Anything thrown?');
+    check('no uncaught errors in the app', errors.length === 0, errors.slice(0, 2).join(' | '));
+  } catch (e) {
+    say('bad', 'THREW: ' + (e && e.message ? e.message : e));
+  } finally {
+    // Exactly what this page made, and nothing else.
+    try {
+      ev("BARRY.artifacts.unaction('circuit', 'harness-act')");
+      ev("BARRY.artifacts.unregister('circuit')");
+    } catch (e) { /* frame gone */ }
+    const er = await post('/api/artifacts/_test/erase', { ids: made });
+    const left = [];
+    for (const id of made) {
+      const r = await getj('/api/artifacts/' + id);
+      if (r._status !== 404) left.push(id);
+    }
+    check('the finally erased exactly what this page made (' + made.length + ')',
+          er.ok && left.length === 0 && (er.erased || []).length === made.length,
+          'left ' + left.join(', ') + ' / ' + JSON.stringify(er));
+    try {
+      if (modeBefore) ev('BARRY.views.results.mode(' + JSON.stringify(modeBefore) + ')');
+    } catch (e) { /* frame gone */ }
+    say('note', '');
+    say(bad ? 'bad' : 'ok', bad ? (bad + ' check(s) failed') : 'all checks passed');
+    document.title = 'Harness — Jarvis Artifacts: ' + good + ' pass, ' + bad + ' fail';
+  }
+})();
+</script>

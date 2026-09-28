@@ -146,11 +146,8 @@ class Results:
         items = {}
 
         # 1. Anything exported through Jarvis, which carries real provenance.
-        for rec in self.store.all_runs():
-            out = rec.get("output") or {}
+        for rec, out in self._run_files():
             path = out.get("path")
-            if not path:
-                continue
             full = os.path.abspath(path)
             if not self._inside(full):
                 continue        # an older record from before the move
@@ -209,6 +206,30 @@ class Results:
         self._cache = {"at": time.time(), "items": out}
         return out
 
+    def _run_files(self):
+        """(run, output dict) for EVERY file a run says it wrote.
+
+        A run records `output` (the first file) and, when it wrote several,
+        `outputs` (all of them). The catalogue used to read `output` alone,
+        so the three CSVs beside a Panorama figure had no run link at all --
+        and a move rewrote `outputs` alone, so a moved figure lost the one it
+        had. Both halves read this now, and a string entry (a bare path) is
+        taken as well as a dict.
+        """
+        for rec in self.store.all_runs():
+            seen = set()
+            outs = [rec.get("output")] + list(rec.get("outputs") or [])
+            for o in outs:
+                if isinstance(o, str):
+                    o = {"path": o}
+                if not isinstance(o, dict) or not o.get("path"):
+                    continue
+                key = os.path.normcase(os.path.abspath(o["path"]))
+                if key in seen:
+                    continue
+                seen.add(key)
+                yield rec, o
+
     def _in_scratch(self, path):
         """Is this in the by-product lane? Cased and separator-normalised,
         because on Windows the same file arrives spelled both ways."""
@@ -261,7 +282,11 @@ class Results:
         base.update({
             "run_id": rec.get("id"),
             "title": rec.get("label") or base["name"],
-            "kind": rec.get("kind") or "figure",
+            # What the run said it was, and otherwise what the FILE is --
+            # "table", "image", "pdf", "file". This defaulted to "figure", so
+            # a Coupling CSV (a run with no kind) was offered the figure
+            # Rebuild dialog, which could only fail.
+            "kind": rec.get("kind") or base["type"],
             "format": rec.get("format") or base["ext"].lstrip("."),
             "author": prov.get("user"),
             "machine": prov.get("machine"),
@@ -659,6 +684,15 @@ class Results:
         if store is None:
             return
         for run in store.all_runs():
+            # `output` first: it is the one the catalogue has always read, and
+            # rewriting only `outputs` is how a moved file lost its run.
+            one = run.get("output")
+            if isinstance(one, dict) and (
+                    one.get("rel") == old_rel or (
+                        one.get("path") and os.path.abspath(one["path"])
+                        == os.path.abspath(src))):
+                store.update_run(run["id"],
+                                 {"output": dict(one, path=dest, rel=new_rel)})
             outs = run.get("outputs") or []
             if not outs:
                 continue

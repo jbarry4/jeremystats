@@ -135,11 +135,13 @@ BARRY.views.toolkit = (function () {
     /* Spotter has no panel of its own: it is a MODE, and the step is the
        way in rather than the thing itself. It still needs a branch here,
        or it falls through to the bad-channel query below -- which is the
-       fault Kilosort's comment below is about. */
+       fault Kilosort's comment above is about. */
     if (q.tool === 'spotter') { renderResult(); return; }
+    if (q.tool === 'rootcanal') { BARRY.rootcanal.paint(); return; }
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
     if (q.tool === 'panorama') { await loadPanorama(); return; }
+    if (q.tool === 'horizon') { await loadHorizon(); return; }
     /* The Arc paints from what it is given; nothing it shows comes
        from the bad-channel query below. */
     if (ARC.some(function (st) { return st[0] === q.tool; })) {
@@ -198,15 +200,11 @@ BARRY.views.toolkit = (function () {
         toolButton('bad', 'Bad channels',
                    'Export which channels were marked bad, by session, mouse, '
                    + 'project or date range.'),
-        /* Incisor and Checkup are NOT here.
-
-           They are steps one and two of The Dentist above, and listing them
-           again underneath put the same tool on screen twice with two
-           different names for it -- "Incisor / find them" in the bundle and
-           "Incisor / Dentate spike detection..." in the flat list, both
-           opening the same panel. A bundle that does not remove its members
-           from the list below is a menu that describes one thing twice and
-           makes the reader work out that it is one thing. */
+        /* Every tool below may name itself freely: `toolButton` drops the
+           ones a bundle above already lists, so a tool moving into a bundle
+           is one edit to BUNDLES and nothing here. Braid and Panorama were
+           the last two hand-kept entries and are now steps of The Lookout;
+           they still appear here in source and correctly do not render. */
         toolButton('strata', 'StrataScope',
                    'Say which anatomical layer each channel is in, against '
                    + 'the live rasters rather than a cropped screenshot.'),
@@ -243,12 +241,17 @@ BARRY.views.toolkit = (function () {
           || q.tool === 'incisor'
           // Braces picks a banked set, which carries its own recording.
           || q.tool === 'braces'
-          // X-ray picks a banked set too, and owns all three of its columns.
+          // Root Canal and X-ray pick a banked set too, and own the pane.
+          || q.tool === 'rootcanal'
           || q.tool === 'dspca'
           // Panorama picks its own recording and its own channel, so
           // the bad-channel scope card above would be describing
           // something else.
           || q.tool === 'panorama'
+          // Horizon picks its own recording and reads every good channel of
+          // it, so the bad-channel scope card above would be asking a
+          // question it has already answered for itself.
+          || q.tool === 'horizon'
           // Every step of The Arc picks its own recordings -- by project,
           // by rat, by phase -- so the bad-channel scope card would be
           // answering a question none of them asked.
@@ -280,6 +283,11 @@ BARRY.views.toolkit = (function () {
     ['incisor', 'Incisor', 'find them'],
     ['curate', 'Checkup', 'clean them'],
     ['braces', 'Braces', 'line them up'],
+    /* Between Braces and X-ray because it needs the first and serves the
+       second: it measures at the stamp, so the stamps have to be lined up,
+       and X-ray should split dentate spikes, not dentate spikes with the
+       interictal discharges Incisor let through still in them. */
+    ['rootcanal', 'Root Canal', 'take the IEDs out'],
     ['dspca', 'X-ray', 'tell them apart'],
   ];
 
@@ -300,11 +308,8 @@ BARRY.views.toolkit = (function () {
   const ARC = [
     ['spark', 'Spark', 'find and file them', null],
     ['coupling', 'Coupling', 'correlate them', null],
-    ['circuit', 'Circuit', 'map them',
-     'Waiting on Coupling: a matrix is made of correlations. Phase 6.'],
-    ['drift', 'Drift', 'tell them apart',
-     'Waiting on Circuit: there is nothing to compare until there are two '
-     + 'matrices. Phase 7.'],
+    ['circuit', 'Circuit', 'map them', null],
+    ['drift', 'Drift', 'tell them apart', null],
   ];
 
   /* The Storm -- interictal discharges, from the cluster to a set
@@ -325,6 +330,26 @@ BARRY.views.toolkit = (function () {
     ['eye', 'Eye', 'line them up'],
   ];
 
+  /* The Lookout -- the frequency tools, widest view first.
+
+     Named for the place you stand to see a long way. The order is a real
+     dependency, the way The Dentist's is, and it inverts what the ToolKit
+     used to ask of somebody: Panorama needs a channel named before it can
+     say anything, and until now nothing answered that except somebody's
+     memory of which CSC was in the cell layer last time. Horizon answers
+     it, so it goes first -- find where the rhythm lives, then what it is
+     doing there, then how it couples.
+
+     Braid keeps its name rather than lending it to the bundle. Every other
+     bundle here is named for its theme and none for one of its own steps,
+     because a heading repeating a row underneath it is the same "menu that
+     describes one thing twice" the flat list was fixed to stop being. */
+  const LOOKOUT = [
+    ['horizon', 'Horizon', 'every channel, by depth'],
+    ['panorama', 'Panorama', 'one channel, end to end'],
+    ['cfc', 'Braid', 'how the bands couple'],
+  ];
+
   /* Every bundle in the ToolKit, in the order they are offered.
 
      This used to be one array and one hard-coded card, which was right
@@ -334,12 +359,31 @@ BARRY.views.toolkit = (function () {
     { id: 'dentist', name: 'The Dentist', icon: 'incisor', steps: DENTIST },
     { id: 'arc', name: 'The Arc', icon: 'circuit', steps: ARC },
     { id: 'storm', name: 'The Storm', icon: 'doppler', steps: STORM },
+    { id: 'lookout', name: 'The Lookout', icon: 'horizon', steps: LOOKOUT },
   ];
 
   /* Every tool that belongs to a bundle, so nothing has to list them twice
      to keep them out of the flat list below. */
   const BUNDLED = BUNDLES.reduce(
     (acc, b) => acc.concat(b.steps.map(([id]) => id)), []);
+
+  /* "step 2 of The Lookout", worked out rather than typed.
+
+     GUI-CONSTITUTION.md 6b asks for this by name, and says why: every tool
+     used to write its own chip, so when Root Canal was inserted between
+     Braces and X-ray somebody had to edit X-ray's header by hand from 4 to
+     5. It was done that time. Reading the position out of BUNDLES means
+     inserting a step renumbers every header after it, and a tool that is
+     not in a bundle gets null and draws no chip at all. */
+  function stepOf(toolId) {
+    for (const b of BUNDLES) {
+      const i = b.steps.findIndex(([id]) => id === toolId);
+      if (i >= 0) {
+        return 'step ' + (i + 1) + ' of ' + b.name;
+      }
+    }
+    return null;
+  }
 
   /* Which bundles are folded away.
 
@@ -449,7 +493,7 @@ BARRY.views.toolkit = (function () {
             + '1.7 0L3.5 6.7C3.1 5.2 3.1 3.5 4.2 2.6zM1.5 6.2h13',
     // A radar sweep: an arc of coverage with the beam through it.
     doppler: 'M8 14a6 6 0 0 1 0-12M8 14a6 6 0 0 0 0-12M2 8h12M8 8l4.5-4.5',
-    // An eye, for the one who confirms by looking.
+    // An eye, for the centre of the storm.
     spotter: 'M1 8s2.6-4.2 7-4.2S15 8 15 8s-2.6 4.2-7 4.2S1 8 1 8z'
              + 'M8 6.2A1.8 1.8 0 1 0 8 9.8a1.8 1.8 0 0 0 0-3.6z',
     // A target: the thing lined up on.
@@ -458,6 +502,8 @@ BARRY.views.toolkit = (function () {
          + 'M8 6.9a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z',
     // Two waves braided through one another.
     cfc: 'M1 5.5c3 0 3 5 6 5s3-5 6-5M1 10.5c3 0 3-5 6-5s3 5 6 5',
+    // A grid of cells, which is what the map is: depth down, time across.
+    horizon: 'M1.5 4h13v8h-13zM1.5 6.7h13M1.5 9.3h13M6 4v8M10.5 4v8',
     // A wide frame with a horizon in it.
     panorama: 'M1.5 3.5h13v9h-13zM2.5 10.5l3-3 2.5 2.5 3-3.5 2.5 3',
     // Units sorted into ordered bars.
@@ -503,6 +549,16 @@ BARRY.views.toolkit = (function () {
   }
 
   function toolButton(id, name, blurb) {
+    /* A tool that belongs to a bundle is not also a row in the flat list.
+
+       GUI-CONSTITUTION.md 6b states this as the rule with the longest
+       comment in this file behind it -- "a menu that describes one thing
+       twice and makes the reader work out that it is one thing" -- and says
+       BUNDLED does it for you. It did not: the omissions were hand-written
+       below, which is why they came with a paragraph explaining that
+       Incisor and Checkup were deliberately missing. Now the rule is the
+       code, so adding a bundle is one edit and cannot half-land. */
+    if (BUNDLED.indexOf(id) >= 0) return null;
     return el('button', {
       class: 'tk-tool' + (q.tool === id ? ' on' : ''),
       onclick: () => pickTool(id),
@@ -525,7 +581,10 @@ BARRY.views.toolkit = (function () {
 
      Listed rather than assumed, because a tool that cannot be offloaded and
      is marked as though it can is worse than one with no mark at all. */
-  const VACC_TOOLS = ['incisor', 'doppler'];
+  /* Circuit joined 2026-09-28, once real `tool=circuit` jobs had landed from
+     the cluster (a single run and an array). Drift has a VACC branch but no
+     cluster run has come back yet, so it is not listed. */
+  const VACC_TOOLS = ['incisor', 'doppler', 'circuit'];
 
   function vaccMark(id) {
     if (VACC_TOOLS.indexOf(id) < 0) return null;
@@ -2508,9 +2567,11 @@ BARRY.views.toolkit = (function () {
     BARRY.doppler.paint();
   }
 
-  /* Spotter is a mode, not a panel. This is the way in: pick a set of IEDs
-     somebody banked, and enter. Sets rather than recordings, because "which
-     of the runs on this recording" is the question -- the recording alone
+  /* Spotter is a mode, not a panel. This is the way in: pick a recording
+     that has a banked set of IEDs on it, and enter.
+
+     It draws the sets rather than a recording picker, because "which of the
+     three runs on this recording" is the question -- the recording alone
      does not say which list you mean. */
   function renderSpotter() {
     const host = document.getElementById('tkResult');
@@ -2531,20 +2592,13 @@ BARRY.views.toolkit = (function () {
       box.innerHTML = '';
       box.appendChild(el('div', { class: 'section-label',
         text: 'Which set' }));
-      /* Harness leftovers are not work anybody is doing, and a list of real
-         sets with "curate harness" in the middle of it reads as a list of
-         things to do. Hidden, and counted underneath, so it is never a
-         mystery where they went. */
-      const isTest = (st) => /harness/i.test((st.name || '') + ' '
-                                              + (st.assignee || ''));
-      const every = (got.sets || []).filter((st) => st.kind === 'ied');
-      const sets = every.filter((st) => !isTest(st));
-      const tests = every.length - sets.length;
+      const sets = (got.sets || []).filter((s) => s.kind === 'ied');
       if (!sets.length) {
         box.appendChild(el('div', { class: 'empty-state',
           text: 'Nothing to confirm yet. Run Doppler on a recording and '
-              + 'bank what it finds \u2014 that is what makes a set for '
+              + 'bank what it finds — that is what makes a set for '
               + 'this step to walk.' }));
+        return;
       }
       for (const st of sets) {
         const p = st.progress || {};
@@ -2558,12 +2612,6 @@ BARRY.views.toolkit = (function () {
           st.open ? BARRY.ui.chip('on the bench', { kind: 'ok' }) : null,
           st.assignee ? BARRY.ui.chip(st.assignee) : null,
         ].filter(Boolean)));
-      }
-      if (tests) {
-        box.appendChild(el('p', { class: 'hint quiet',
-          text: tests + ' set' + (tests === 1 ? '' : 's')
-              + ' left behind by test harnesses '
-              + (tests === 1 ? 'is' : 'are') + ' not shown.' }));
       }
     }).catch((e) => {
       box.innerHTML = '';
@@ -2592,6 +2640,18 @@ BARRY.views.toolkit = (function () {
     } catch (e) { /* the panel says so itself */ }
     if (q.tool !== 'panorama') return;
     BARRY.panorama.paint();
+  }
+
+  /* Horizon needs the registry for its recording picker and nothing else,
+     the same way Panorama does -- it reads a recording rather than a bank. */
+  async function loadHorizon() {
+    const host = document.getElementById('tkResult');
+    if (host) host.style.opacity = '1';
+    try {
+      await registry();
+    } catch (e) { /* the panel says so itself */ }
+    if (q.tool !== 'horizon') return;
+    BARRY.horizon.paint();
   }
 
   async function loadCFC() {
@@ -3063,9 +3123,11 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'doppler') { BARRY.doppler.paint(); return; }
     if (q.tool === 'spotter') { renderSpotter(); return; }
     if (q.tool === 'eye') { BARRY.eye.paint(); return; }
+    if (q.tool === 'rootcanal') { BARRY.rootcanal.paint(); return; }
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { renderCFC(); return; }
     if (q.tool === 'panorama') { BARRY.panorama.paint(); return; }
+    if (q.tool === 'horizon') { BARRY.horizon.paint(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }
     if (ARC.some(function (st) { return st[0] === q.tool; })) {
       BARRY.arc.paint(); return;
@@ -3263,6 +3325,8 @@ BARRY.views.toolkit = (function () {
     // that can -- a tool marked as offloadable that is not is worse than
     // one with no mark at all.
     _vaccTools: () => VACC_TOOLS.slice(),
+    /* The step chip, for any tool that is in a bundle. See `stepOf`. */
+    stepOf,
     bundles: () => BUNDLES.map((b) => ({
       id: b.id, name: b.name,
       steps: b.steps.map(([id, name, does, soon]) =>

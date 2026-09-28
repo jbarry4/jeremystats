@@ -2352,6 +2352,21 @@ body.strip-resizing canvas { pointer-events: none; }
 .flagchip.video { background: var(--accent-soft); color: var(--accent); }
 .flagchip.bad { background: var(--warn-soft); color: var(--warn); }
 .flagchip.mat { background: var(--ok-soft); color: var(--ok); }
+/* A step below `.bad`, which is the filled amber chip. `warn` had no rule
+   of its own -- only `.flagchip.warn.project-q`, which needs both classes --
+   so every chip that asked for it fell through to the grey base and came out
+   quieter than a chip with no class at all. That put The Arc's severity
+   ladder backwards: "partial event loss" and "major event loss" grey,
+   "event lost" amber; and in Coupling's pair note "N channel(s) excluded"
+   was grey beside a green "every channel usable", so the reassuring state
+   was the only one with any colour on it.
+
+   Amber TEXT on the neutral ground rather than a second amber fill, so the
+   ladder stays three distinct steps -- grey, amber on grey, amber on amber
+   -- and `.bad` is unambiguously the stronger of the two. Measured on
+   `--bg-3` in all ten themes: 3.79 (light) to 12.98 (jirai), and better
+   than the `--text-3` it replaces in every one of them. */
+.flagchip.warn { color: var(--warn); }
 /* A question about filing, not a fault. Same button reset as `.concat`
    below, and `--warn` rather than `--bad` on purpose: the recording is
    fine, it is only filed somewhere a path disagrees with. */
@@ -4131,9 +4146,76 @@ button.tag:hover { filter: brightness(1.25); }
 .dup-kept { color: var(--text); font-weight: 600; }
 .dup-mixes { display: flex; flex-direction: column; gap: 5px; margin: 4px 0 2px; }
 .dup-mixes > div { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+/* --- what a banked cue pair excludes, and why ----------------------------
+
+   One row per window and one per channel, and the bar is the point of both:
+   "48 of 48 blocks" and "1 of 48 blocks" are the same sentence at a glance
+   and the same shape on the page without it, which is the confusion between
+   a channel and a block that this panel replaces.
+
+   Nothing here moves. The bars are drawn at their width rather than
+   transitioning to it, so there is no animation for a prefers-reduced-motion
+   block to stop -- and a bar that grows on every repaint of the detail pane
+   would animate each time somebody opened a version. */
+.excl-sum {
+  margin: var(--sp-8) 0 var(--sp-12); padding: var(--sp-10);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2);
+}
+.excl-head { display: flex; flex-direction: column; gap: var(--sp-2); }
+.excl-head strong { font-size: var(--fs-125); color: var(--text); }
+.excl-head span { font-size: var(--fs-11); color: var(--text-2); }
+.excl-sum .section-label { margin-top: var(--sp-10); }
+.excl-why-list { margin: var(--sp-6) 0 0; }
+.excl-note {
+  margin: var(--sp-2) 0 var(--sp-6); font-size: var(--fs-105);
+  color: var(--text-3); line-height: 1.5;
+}
+.excl-wins, .excl-chans {
+  display: flex; flex-direction: column; gap: var(--sp-4);
+}
+.excl-win, .excl-chan {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-8);
+  font-size: var(--fs-11); color: var(--text-2);
+}
+/* Fixed, not `auto`: each row is its own flex line, so a shared column
+   width is the only thing that makes the numbers read down the page. */
+.excl-w-name, .excl-ch-name {
+  flex: none; width: 58px; font-family: var(--mono);
+  font-size: var(--fs-105); color: var(--text);
+}
+/* The two windows the coupling is actually computed in. Marked rather than
+   reordered -- the four are in the order they happen, and shuffling the cues
+   to the top would lose that. */
+.excl-win.cue .excl-w-name { color: var(--accent); }
+.excl-bar {
+  flex: 1 1 90px; min-width: 60px; height: 6px; overflow: hidden;
+  border-radius: var(--r-pill); background: var(--bg-3);
+}
+.excl-bar i { display: block; height: 100%; background: var(--warn); }
+.excl-bar.gone i { background: var(--err); }
+.excl-n {
+  flex: none; width: 116px; text-align: right;
+  font-family: var(--mono); font-size: var(--fs-105); color: var(--text-2);
+}
+.excl-why { flex: none; display: flex; align-items: center; gap: var(--sp-4); }
+.excl-meas, .excl-dec {
+  font-family: var(--mono); font-size: var(--fs-9); white-space: nowrap;
+  padding: 1px 6px; border-radius: var(--r-pill);
+}
+/* A measurement of a fault is a warning; a person's judgement is not, so it
+   takes the second accent rather than the warning orange. Colouring them the
+   same would be the merge this panel refuses to make, in paint. */
+.excl-meas { background: var(--warn-soft); color: var(--warn); }
+.excl-dec { background: var(--accent-2-soft); color: var(--accent-2); }
+.excl-both { font-size: var(--fs-9); color: var(--text-3); white-space: nowrap; }
+.excl-in { flex: none; font-size: var(--fs-105); color: var(--text-3); }
 @media (max-width: 1100px) {
   .bank-split { grid-template-columns: minmax(0, 1fr); }
   .bank-tree { max-height: 40vh; }
+  /* Narrow, the numbers give up their column and sit under the bar rather
+     than squeezing it to nothing. */
+  .excl-n { width: auto; text-align: left; }
 }
 /* ==========================================================================
    Debug trace
@@ -9202,6 +9284,11 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .arc-verdict-who { color: var(--err); }
 .arc-verdict.none .arc-verdict-who { color: var(--ok); }
 .arc-verdict-kept { color: var(--ok); }
+/* Channels that are out for reasons this mode did not decide -- marked bad
+ * for the whole recording, so never measured for clipping at all. Said in
+ * the same breath as the verdict because "nothing is excluded" over a
+ * recording missing half its wires is worse than saying nothing. */
+.arc-verdict-bad { color: var(--text-3); }
 .arc-chan-box, .arc-spans, .arc-nothing {
   padding: var(--sp-8) var(--sp-12);
 }
@@ -9400,6 +9487,839 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
     var(--bg) 0 3px, var(--bg-2) 3px 6px);
 }
 .arc-mx-cell.self { background: var(--bg-3); }
+
+/* ---- following a cell back to its two names -------------------------------
+ * Left along the row, up the column, stopping at the two headers. See
+ * `crosshair` in arc.js for why those two directions and no others.
+ *
+ * `box-shadow: inset` rather than a border or an outline: a border changes
+ * the cell's size and shunts the whole grid sideways by a pixel as the
+ * pointer moves, and an outline draws OUTSIDE the box, so it lands under
+ * the neighbouring cell and the trail comes out with gaps in it. */
+.arc-mx-cell.lit {
+  box-shadow: inset 0 0 0 1px var(--accent);
+  position: relative; z-index: 1;
+}
+.arc-mx-head.lit-head {
+  background: var(--accent-soft); color: var(--accent);
+  font-weight: 600;
+}
+/* The trail is the only thing here that moves, and it moves with the
+ * pointer, so it is exactly the kind of thing that makes a grid feel like
+ * it is twitching. Short, and gone entirely when the machine has been
+ * asked for less of it. */
+.arc-mx-cell, .arc-mx-head { transition: box-shadow .08s, background .08s; }
+@media (prefers-reduced-motion: reduce) {
+  .arc-mx-cell, .arc-mx-head { transition: none; }
+}
+
+/* ---- a pair with no wire to measure it ------------------------------------
+ * Distinct from `.none`, which is "nobody asked". This is "somebody asked
+ * and every channel in one of these two regions was clipped, bad, or in
+ * the wrong part of the brain" -- a measurement that was attempted and
+ * refused, which is a finding. Solid rather than hatched so the two read
+ * apart at a glance, and dimmer than a real value so it never competes
+ * with the data. */
+.arc-mx-cell.blocked {
+  background: var(--bg-2);
+  cursor: help;
+}
+.arc-mx-cell.blocked::after {
+  content: ''; width: 7px; height: 1px; background: var(--text-3);
+  opacity: .7;
+}
+
+/* ---- a region that is not where the probe was aimed -----------------------
+ * The histology found this probe somewhere else. The number is real and
+ * the label is not the one on the map, so it is marked on the axis and on
+ * every cell it contributes to -- a corner flag rather than a colour,
+ * because colour on a heat map already means the value. */
+.arc-mx-head.moved { color: var(--warn); }
+.arc-mx-head.moved::before { content: '\2022'; margin-right: 2px; }
+.arc-mx-head.unsure { color: var(--text-2); font-style: italic; }
+.arc-mx-head.blocked { color: var(--text-3); text-decoration: line-through; }
+/* Hatched rather than cornered: a corner triangle was too quiet to see
+ * across a 12x12. A background-IMAGE over the value colour, which is set
+ * inline as background-COLOR precisely so this can sit on top of it --
+ * an inline `background` shorthand would reset the image and wipe the
+ * hatching off every cell it was meant for. Thin stripes and wide gaps,
+ * so the number and its colour still read through. */
+.arc-mx-cell.moved {
+  background-image: repeating-linear-gradient(
+    -45deg, var(--warn) 0 1px, transparent 1px 5px);
+}
+
+/* ---- what the marks above mean -------------------------------------------
+ * Four conventions are in play and a convention nobody is told is a
+ * decoration. One line under the grid, naming the regions rather than
+ * counting them, because "2 regions are not where the probe was aimed" is
+ * not something anybody can act on without knowing which two. */
+.arc-mx-keys {
+  display: flex; flex-wrap: wrap; gap: var(--sp-6);
+  margin-top: var(--sp-6); font-size: var(--fs-10); color: var(--text-3);
+}
+.arc-mx-key { display: inline-flex; align-items: center; gap: 4px;
+              cursor: help; }
+.arc-mx-key::before {
+  content: ''; width: 8px; height: 8px; border-radius: 2px;
+  background: var(--text-3); flex: none;
+}
+.arc-mx-key.moved { color: var(--warn); }
+.arc-mx-key.moved::before { background: var(--warn); }
+.arc-mx-key.unsure::before { background: var(--text-2); }
+.arc-mx-key.blocked::before { background: var(--bg-3);
+                              box-shadow: inset 0 0 0 1px var(--line); }
+.arc-mx-key.ok { color: var(--ok); }
+.arc-mx-key.ok::before { background: var(--ok); }
+
+/* ---- Coupling: before running -------------------------------------------
+ * What will be computed, from what, and why -- parameters, where each
+ * probe is, which wire each region uses -- on screen at the moment the
+ * Run button is. Three folding sections, each with a summary that stays
+ * visible when folded, so a person who has read them once can put them
+ * away without losing the one line that says whether anything changed. */
+.arc-ov { display: flex; flex-direction: column; gap: var(--sp-6);
+          margin: var(--sp-8) 0; }
+.arc-ov-err { padding: var(--sp-8); border: 1px dashed var(--line);
+              border-radius: var(--r-4); }
+.arc-ov-sec {
+  border: 1px solid var(--line-soft); border-radius: var(--r-4);
+  background: var(--bg-2);
+}
+.arc-ov-sec > summary {
+  display: flex; align-items: baseline; gap: var(--sp-8);
+  padding: var(--sp-6) var(--sp-8); cursor: pointer;
+  list-style: none;
+}
+.arc-ov-sec > summary::-webkit-details-marker { display: none; }
+.arc-ov-sec > summary::before {
+  content: '\25b8'; color: var(--text-3); width: 10px; flex: none;
+}
+.arc-ov-sec[open] > summary::before { content: '\25be'; }
+.arc-ov-sec > summary strong { font-size: var(--fs-11); flex: none; }
+.arc-ov-sum { font-size: var(--fs-10); color: var(--text-3);
+              font-family: var(--mono); }
+.arc-ov-body { padding: 0 var(--sp-8) var(--sp-8); }
+/* A refusal from the server, where the fields are. Amber, not red: it is
+ * a value to change, not a fault. */
+.arc-ov-refused {
+  margin: 0 0 var(--sp-6); padding: var(--sp-6) var(--sp-8);
+  border-left: 3px solid var(--warn); background: var(--warn-soft);
+  color: var(--text); font-size: var(--fs-10); border-radius: var(--r-2);
+}
+
+/* parameters */
+.arc-ov-params {
+  display: grid; gap: var(--sp-8);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  margin-bottom: var(--sp-6);
+}
+.arc-ov-field .hint { font-size: var(--fs-9); }
+.arc-ov-field.changed .section-label { color: var(--accent); }
+.arc-ov-num { display: flex; align-items: center; gap: var(--sp-4); }
+.arc-ov-num input { width: 96px; }
+.arc-ov-unit { font-size: var(--fs-10); color: var(--text-3); }
+.arc-ov-fixed {
+  font-family: var(--mono); font-size: var(--fs-11); color: var(--text-2);
+  padding: 3px 0;
+}
+.arc-ov-field.fixed .section-label::after {
+  content: ' \00b7 fixed'; color: var(--text-3); text-transform: none;
+}
+
+/* where each probe is */
+.arc-pr-list { display: flex; flex-direction: column; gap: 2px;
+               margin-bottom: var(--sp-6); }
+.arc-pr {
+  display: grid; grid-template-columns: 84px minmax(0, 1fr) auto;
+  gap: var(--sp-8); align-items: center;
+  padding: var(--sp-4) var(--sp-6); border-radius: var(--r-2);
+  background: var(--bg);
+}
+.arc-pr.missed, .arc-pr.unscored { opacity: .72; }
+.arc-pr-name { display: flex; flex-wrap: wrap; align-items: baseline;
+               gap: var(--sp-6); min-width: 0; }
+.arc-pr-name strong { font-size: var(--fs-11); }
+.arc-pr-aim { font-size: var(--fs-10); color: var(--warn); }
+.arc-pr-ch { font-size: var(--fs-9); color: var(--text-3);
+             font-family: var(--mono); }
+/* The five outcomes are five different claims, not a severity scale, so
+ * each gets its own mark rather than a place on a ladder. */
+.arc-pr-v {
+  font-size: var(--fs-9); font-family: var(--mono);
+  padding: 1px 6px; border-radius: var(--r-pill); text-align: center;
+  background: var(--bg-3); color: var(--text-3);
+}
+.arc-pr-v.intended { background: var(--ok-soft); color: var(--ok); }
+.arc-pr-v.uncertain { color: var(--text-2);
+                      box-shadow: inset 0 0 0 1px var(--line); }
+.arc-pr-v.relocated { background: var(--warn-soft); color: var(--warn); }
+.arc-pr-v.missed { background: var(--err-soft); color: var(--err); }
+.arc-pr-v.unscored { color: var(--text-3);
+                     box-shadow: inset 0 0 0 1px var(--line-soft); }
+.arc-pr-slides { display: flex; gap: var(--sp-4); flex-wrap: wrap;
+                 justify-content: flex-end; }
+.arc-thumb {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 2px; border: 1px solid var(--line-soft);
+  border-radius: var(--r-2); background: var(--bg-2); cursor: zoom-in;
+}
+.arc-thumb:hover { border-color: var(--accent); }
+.arc-thumb img { height: 44px; width: auto; display: block;
+                 border-radius: var(--r-2); background: var(--bg-3); }
+.arc-thumb-w { font-size: var(--fs-9); color: var(--warn);
+               max-width: 96px; text-align: center; line-height: 1.2; }
+
+/* one slide, big */
+.arc-slide .mb { display: flex; flex-direction: column; gap: var(--sp-6); }
+.arc-slide-meta { display: flex; flex-wrap: wrap; align-items: baseline;
+                  gap: var(--sp-8); font-size: var(--fs-11); }
+.arc-slide-file { color: var(--warn); }
+.arc-slide-stage {
+  position: relative; overflow: hidden; height: 68vh; min-height: 320px;
+  background: var(--bg-3); border-radius: var(--r-4); cursor: grab;
+  touch-action: none; user-select: none;
+}
+.arc-slide-stage.dragging { cursor: grabbing; }
+.arc-slide-img {
+  position: absolute; left: 0; top: 0; transform-origin: 0 0;
+  max-width: none; will-change: transform;
+}
+.arc-slide-stage .loader, .arc-slide-stage .empty-state {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center;
+}
+
+/* which wire, per cue pair */
+.arc-cs-nav { display: flex; align-items: center; gap: var(--sp-8);
+              margin-bottom: var(--sp-6); }
+.arc-cs-at { font-size: var(--fs-10); color: var(--text-2);
+             font-family: var(--mono); }
+.arc-cs {
+  display: flex; flex-direction: column; gap: 1px;
+  background: var(--line-soft); border: 1px solid var(--line-soft);
+  border-radius: var(--r-4); overflow: hidden; margin-bottom: var(--sp-6);
+  font-variant-numeric: tabular-nums;
+}
+.arc-cs-row {
+  display: grid; gap: 1px;
+  grid-template-columns: minmax(0, 1fr) repeat(4, 72px);
+}
+.arc-cs-row > span {
+  background: var(--bg); padding: 3px var(--sp-6);
+  font-size: var(--fs-10); font-family: var(--mono);
+}
+.arc-cs-row.head > span, .arc-cs-row.foot > span {
+  background: var(--bg-2); color: var(--text-3); font-size: var(--fs-9);
+}
+.arc-cs-reg { overflow: hidden; }
+.arc-cs-reg.relocated { color: var(--warn); }
+.arc-cs-reg.missed, .arc-cs-reg.unscored { color: var(--text-3);
+                                            text-decoration: line-through; }
+.arc-cs-w, .arc-cs-c { text-align: center; }
+.arc-cs-w.cue { color: var(--text-2); font-weight: 600; }
+.arc-cs-c { cursor: help; }
+.arc-cs-c.ok { color: var(--text); }
+.arc-cs-c.gone { background: var(--err-soft); color: var(--err); }
+.arc-cs-c.hist { background: var(--bg-2); color: var(--text-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .arc-slide-img { will-change: auto; }
+}
+
+/* ---- Spark: many recordings at once ---------------------------------------
+ * Braces already has this surface and these are its shapes, in Spark's own
+ * prefix: a segmented switch over the two jobs, a bar of selection shortcuts
+ * with one primary at the end, a dense row per recording, and a status column
+ * that takes the slack because it is the one whose length varies. Somebody
+ * who has run a batch in Braces has already learnt this one.
+ *
+ * Two things here are deliberately NOT copied from `.br-bulk-*`. Its done and
+ * failed columns are literal colours (`#5cc98d`, `#ED8B33`), which are a
+ * surface that will be wrong in nine themes out of ten; these read `--ok` and
+ * `--err`, which is what those literals were reaching for. And the status
+ * column has a fifth state, `skipped`, because a recording with nothing to do
+ * is neither a success nor a failure and colouring it as either would be a
+ * claim about it.
+ * ------------------------------------------------------------------------- */
+.arc-mode { display: flex; align-items: center; gap: var(--sp-12); }
+/* The switch carries a sentence about what the other half of it does, so its
+ * hint sits on the line beside it rather than under it as a paragraph. */
+.arc-mode .hint {
+  margin: 0; font-size: var(--fs-115); color: var(--text-3);
+}
+.arc-batch-host { min-width: 0; }
+.arc-batch-cost {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8);
+  margin: var(--sp-10) 0 var(--sp-2);
+}
+.arc-batch-cost strong { font-size: var(--fs-125); color: var(--text); }
+/* The sentence takes its own line under the number and the toggle: it is what
+ * the number MEANS, and reading it should not depend on the window being wide
+ * enough for both. */
+.arc-batch-say {
+  flex: 1 1 100%; margin: 0; font-size: var(--fs-115); color: var(--text-3);
+}
+.arc-batch-warn { color: var(--warn); }
+.arc-batch-bar {
+  display: flex; align-items: center; gap: var(--sp-8); flex-wrap: wrap;
+  padding: var(--sp-8) 0 var(--sp-10);
+}
+.arc-batch-bar .spacer { flex: 1; }
+.arc-batch-count { color: var(--text-3); font-size: var(--fs-115); margin: 0; }
+.arc-batch-off {
+  color: var(--text-3); font-size: var(--fs-115);
+  margin: 0 0 var(--sp-8); line-height: 1.5;
+}
+.arc-batch-rows {
+  max-height: 52vh; overflow-y: auto;
+  border-top: 1px solid var(--line-soft);
+}
+/* Checkbox, animal, session, date, what is already banked, status. */
+.arc-batch-row {
+  display: grid;
+  grid-template-columns: 22px minmax(48px, .4fr) minmax(70px, .6fr)
+                         minmax(78px, .7fr) 92px minmax(160px, 2fr);
+  gap: var(--sp-8); align-items: center;
+  padding: var(--sp-4); border-bottom: 1px solid var(--line-soft);
+  font-size: var(--fs-115);
+}
+.arc-batch-row.on { background: var(--accent-soft); }
+.arc-batch-row.away { opacity: .55; }
+.arc-batch-row input { accent-color: var(--accent); margin: 0; }
+.arc-batch-row .nm { font-weight: 600; }
+.arc-batch-row .ss, .arc-batch-row .dt { color: var(--text-2); }
+.arc-batch-row .bk {
+  color: var(--text-3); font-variant-numeric: tabular-nums; text-align: right;
+}
+.arc-batch-row .st { color: var(--text-3); }
+.arc-batch-row.going .st { color: var(--accent); }
+.arc-batch-row.done .st { color: var(--ok); }
+.arc-batch-row.skipped .st { color: var(--text-3); font-style: italic; }
+.arc-batch-row.failed .st { color: var(--err); }
+/* A row mid-read is worth finding without reading the column. */
+.arc-batch-row.going { background: var(--accent-soft); }
+/* The disclosure, spanning the row it belongs to. The 30px indent is a
+ * measurement, not a style: it is the checkbox column plus the grid gap, so
+ * the summary lines up with the animal's name above it. */
+.arc-batch-found {
+  grid-column: 1 / -1; margin: var(--sp-2) 0 var(--sp-2) 30px;
+}
+.arc-batch-found > summary {
+  cursor: pointer; font-size: var(--fs-11); color: var(--text-2);
+  display: flex; align-items: center; gap: var(--sp-8); padding: var(--sp-2) 0;
+}
+.arc-batch-found > summary::marker { color: var(--text-3); }
+.arc-batch-found[open] > summary { margin-bottom: var(--sp-4); }
+.arc-batch-tag {
+  font-size: var(--fs-95); text-transform: uppercase; letter-spacing: .04em;
+  padding: 1px 6px; border-radius: var(--r-pill);
+  border: 1px solid var(--line); color: var(--text-3);
+}
+.arc-batch-facts {
+  display: grid; grid-template-columns: 78px 1fr;
+  gap: var(--sp-2) var(--sp-8); padding: 0 0 var(--sp-6);
+}
+.arc-batch-fact-k {
+  color: var(--text-3); font-size: var(--fs-105); text-align: right;
+}
+.arc-batch-fact-v { color: var(--text); font-size: var(--fs-11); }
+@media (max-width: 900px) {
+  .arc-batch-row {
+    grid-template-columns: 22px 1fr 92px;
+    grid-auto-rows: auto; row-gap: var(--sp-2);
+  }
+  .arc-batch-row .ss, .arc-batch-row .dt { grid-column: 2 / -1; }
+  .arc-batch-row .st { grid-column: 2 / -1; }
+}
+
+/* ---- The Arc: transition windows (Spark, Clean, Coupling) -----------------
+ * Three windows around each cue pair's boundaries -- cue 1 starting, cue 1
+ * giving way to cue 2, cue 2 ending -- beside the four state windows. The
+ * shapes are the ones the state windows already use; this section only
+ * adds what a second kind of window needs: the lengths before the check,
+ * the second step of its answer, the three-column versions of the block
+ * row and the wire grid, the switch between the two views, and the mark
+ * for a region a spare wire rescued.
+ * ------------------------------------------------------------------------- */
+/* The lengths, editable before the clipping check runs. */
+.arc-tlen {
+  display: inline-flex; align-items: center; flex-wrap: wrap;
+  gap: var(--sp-6); font-size: var(--fs-11); color: var(--text-2);
+}
+.arc-tlen-k { color: var(--text-3); }
+.arc-tlen-f { display: inline-flex; align-items: center; gap: var(--sp-4); }
+.arc-tlen-f input { width: 64px; }
+.arc-clipbar .hint { flex: 1 1 260px; margin: 0; }
+.arc-clip-again { padding-top: var(--sp-4); }
+/* One read, two answers: each answer is its own step, stated. */
+.arc-clip-step {
+  padding: var(--sp-6) var(--sp-8); margin: var(--sp-6) 0;
+  border-radius: var(--r-4); border: 1px solid var(--line-soft);
+  background: var(--bg);
+}
+.arc-clip-step-h {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-8);
+  margin-bottom: var(--sp-4);
+}
+.arc-clip-step-h strong { font-size: var(--fs-12); color: var(--text); }
+.arc-clip-step-h .hint { margin: 0; }
+.arc-clip-step-why { color: var(--warn); margin: var(--sp-4) 0; }
+.arc-clip-grades { margin: var(--sp-2) 0 var(--sp-4); }
+.arc-lost .arc-lost-t { white-space: nowrap; }
+/* The block row and the wire grid, at three windows. */
+.arc-blks.arc-blks-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.arc-cs.arc-cs-n3 .arc-cs-row {
+  grid-template-columns: minmax(0, 1fr) repeat(3, 72px);
+}
+/* A region measured on a spare wire because its lowest one is out here:
+ * computed, but on a different wire from the window beside it, and worth
+ * seeing as such. Outlined rather than filled, so it cannot be read as the
+ * red of a region with nothing left. */
+.arc-cs-c.rescued {
+  color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn);
+}
+.arc-wires { padding: var(--sp-8) var(--sp-12); }
+.arc-wires .arc-cs { max-width: 560px; }
+/* Clean's switch between the two views, on the bar. */
+.arc-bar .arc-view-seg { flex: none; }
+/* The view not on screen, said in the verdict strip in a quieter voice. */
+.arc-verdict-other { color: var(--text-3); font-size: var(--fs-11); }
+.arc-verdict.unmeasured { background: var(--warn-soft); }
+.arc-verdict.unmeasured strong { color: var(--warn); }
+/* Coupling's switch, above everything it changes. */
+.arc-cp-kind {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-12);
+  margin: var(--sp-4) 0 var(--sp-8);
+}
+.arc-cp-kind .hint { margin: 0; font-size: var(--fs-115); }
+/* The Event Bank's exclusion card: blocks KEPT against the measurement, the
+ * third list Clean banks. The chip is shaped like its two neighbours
+ * (measured, decided) and green, because these blocks go INTO the analysis;
+ * the sentence under the headline says so in words as well. */
+.excl-kept {
+  font-family: var(--mono); font-size: var(--fs-9); white-space: nowrap;
+  padding: 1px 6px; border-radius: var(--r-pill);
+  background: var(--ok-soft); color: var(--ok);
+}
+.excl-kept-say { color: var(--ok); font-size: var(--fs-11); }
+
+/* ==========================================================================
+   Circuit -- step 3 of The Arc (web/js/circuit.js)
+   ==========================================================================
+   One recording x one cue pairing x one kind, as a matrix and as the
+   cluster's network ring. The matrix is Coupling's (`.arc-mx`, its
+   crosshair and its colour ramps); what is here is only what a circuit adds
+   to it: n in every cell, a warn mark, blank-not-zero, and grey regions that
+   were never computed. The pre-run overview reuses `.arc-ov-*`, the run card
+   `.comod-*` (Doppler's), and the where-tabs `.inc-tab` (Incisor's) -- one
+   shape each, not a second copy.
+
+   Every colour is a token. The ring's node colours are the atlas
+   (probes.DEWEY_REGION_COLORS, served by /api/probes) and are set on the
+   SVG from script, never written here. */
+.cir-missing, .cir-plan .empty-state, .cir-choose .empty-state,
+.cir-shown .empty-state, .cir-batch .empty-state {
+  height: auto; align-items: flex-start; text-align: left; gap: var(--sp-4);
+}
+.cir-missing p { max-width: none; margin: 0; }
+.cir-choose, .cir-plan, .cir-run, .cir-shown { margin-bottom: var(--sp-12); }
+.cir-choose .ui-field + .ui-field { margin-top: var(--sp-10); }
+.cir-cues button { display: inline-flex; align-items: baseline; gap: var(--sp-6); }
+.cir-cue-n {
+  font-family: var(--mono); font-size: var(--fs-10); color: var(--text-3);
+}
+.cir-cues button.active .cir-cue-n { color: inherit; }
+.cir-haves { display: flex; flex-wrap: wrap; gap: var(--sp-6); }
+.cir-have {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: var(--sp-2); text-align: left; font: inherit; cursor: pointer;
+  padding: var(--sp-6) var(--sp-10); border-radius: var(--r-4);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
+  max-width: 100%;
+}
+.cir-have:hover { background: var(--bg-hover); }
+.cir-have.on { border-color: var(--accent-line); background: var(--accent-soft); }
+.cir-have strong { font-size: var(--fs-12); overflow-wrap: anywhere; }
+.cir-have-name { font-size: var(--fs-105); color: var(--text-3);
+                 overflow-wrap: anywhere; }
+.cir-have-v { font-size: var(--fs-10); color: var(--text-3);
+              font-family: var(--mono); }
+
+/* before it runs */
+.cir-pairs { display: flex; flex-wrap: wrap; gap: var(--sp-4);
+             margin-bottom: var(--sp-6); }
+.cir-pair {
+  display: inline-flex; align-items: baseline; gap: var(--sp-4);
+  padding: 2px var(--sp-6); border-radius: var(--r-4);
+  border: 1px solid var(--line); background: var(--bg);
+  font-size: var(--fs-105); color: var(--text-2); cursor: help;
+  font-variant-numeric: tabular-nums;
+}
+.cir-pair strong { font-family: var(--mono); color: var(--text); }
+.cir-pair.cached { border-color: var(--ok); background: var(--ok-soft); }
+.cir-pair-c { font-size: var(--fs-9); color: var(--ok); text-transform: uppercase;
+              letter-spacing: .04em; }
+.cir-pr-out { font-size: var(--fs-10); color: var(--text-3); }
+.arc-pr.cir-grey { background: var(--bg-2); }
+.arc-pr.cir-grey .cir-pr-out { color: var(--warn); }
+.cir-wheres { margin: var(--sp-10) 0 var(--sp-4); }
+.cir-vacc-why { margin: 0 0 var(--sp-8); }
+.cir-cost {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  margin: var(--sp-8) 0 var(--sp-10);
+}
+.cir-cost strong { font-size: var(--fs-125); color: var(--text); }
+.cir-cost .hint { margin: 0; }
+.cir-nick, .cir-nick-edit { width: min(420px, 100%); }
+.cir-runbar { margin-top: var(--sp-10); gap: var(--sp-10); flex-wrap: wrap; }
+.cir-runbar .spacer { flex: 1; }
+.cir-runbar .hint { margin: 0; flex: 1 1 280px; }
+
+/* while it runs: the pairs, as they land */
+.cir-run .comod-run-head .spacer { flex: 1; }
+.cir-members {
+  display: flex; flex-direction: column; gap: 1px;
+  max-height: 40vh; overflow-y: auto; margin-bottom: var(--sp-8);
+  border-top: 1px solid var(--line-soft);
+}
+.cir-m {
+  padding: var(--sp-4) var(--sp-6); border-bottom: 1px solid var(--line-soft);
+  font-size: var(--fs-115);
+}
+div.cir-m, .cir-m > summary {
+  display: flex; align-items: baseline; gap: var(--sp-10); flex-wrap: wrap;
+}
+.cir-m > summary { cursor: pointer; }
+.cir-m > summary::marker { color: var(--text-3); }
+.cir-m[open] > summary { margin-bottom: var(--sp-4); }
+.cir-m-id { font-weight: 600; color: var(--text); }
+.cir-m-st { color: var(--text-3); overflow-wrap: anywhere; }
+.cir-m-st.running { color: var(--accent); }
+.cir-m-st.done, .cir-m-st.cached { color: var(--ok); }
+.cir-m-st.failed { color: var(--err); }
+.cir-m-st.skipped { font-style: italic; }
+.cir-m.running { background: var(--accent-soft); }
+.cir-m-view { padding: var(--sp-6) 0; }
+.cir-partial { margin-bottom: var(--sp-8); }
+
+/* ---- a circuit: the head, the controls, matrix beside ring ---- */
+.cir-view { container-type: inline-size; display: flex; flex-direction: column;
+            gap: var(--sp-8); min-width: 0; }
+.cir-head {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-10);
+}
+.cir-titles { display: flex; flex-direction: column; gap: var(--sp-2);
+              flex: 1 1 320px; min-width: 0; }
+.cir-nick-t { font-size: var(--fs-15); color: var(--text);
+              overflow-wrap: anywhere; }
+.cir-name-t { font-size: var(--fs-11); color: var(--text-2);
+              overflow-wrap: anywhere; }
+.cir-facts { font-size: var(--fs-105); color: var(--text-3);
+             font-family: var(--mono); overflow-wrap: anywhere; }
+.cir-titles .flagchip { align-self: flex-start; }
+.cir-headacts { flex-wrap: wrap; gap: var(--sp-6); align-items: center; }
+.cir-controls { margin-bottom: 0; }
+.cir-body { display: grid; grid-template-columns: minmax(0, 1fr);
+            gap: var(--sp-16); align-items: start; }
+@container (min-width: 1000px) {
+  .cir-body:not(.compact) {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+}
+.cir-left, .cir-right { min-width: 0; }
+
+/* The matrix cell carries the mean and, under it, n. Stacked rather than
+   cornered: at twelve columns a cell is about thirty pixels wide, and a
+   corner number sits on top of the value. */
+.cir-mx .arc-mx-cell { min-height: 30px; }
+.cir-mx .cir-val {
+  flex-direction: column; gap: 1px; line-height: 1.05; cursor: pointer;
+  position: relative;
+}
+.cir-mx-n { font-size: var(--fs-9); color: var(--text-3); }
+/* Usable in fewer than half the pairs: kept, and marked with a corner in
+   the warning colour -- a corner rather than a fill, because the fill is
+   already the value. */
+.cir-mx .cir-val.warn::after {
+  content: ''; position: absolute; top: 0; right: 0;
+  border-style: solid; border-width: 0 7px 7px 0;
+  border-color: transparent var(--warn) transparent transparent;
+}
+.cir-mx .cir-val.sel { box-shadow: inset 0 0 0 2px var(--text); z-index: 2; }
+/* No pair had both regions usable: blank. Not hatched -- hatching is
+   Coupling's "nobody asked" -- and never a colour, because a colour here
+   would read as zero. */
+.cir-mx .cir-absent { background: var(--bg); cursor: help; }
+/* A grey region was never computed, so its row and column are grey and
+   empty, and the reason is on every one of them. */
+.cir-mx .cir-grey { background: var(--bg-3); cursor: help; }
+.cir-mx .arc-mx-head.grey { color: var(--text-3); font-style: italic;
+                            background: var(--bg-3); }
+.cir-key-warn::before { background: var(--warn); }
+.cir-key-absent::before { background: var(--bg);
+                          box-shadow: inset 0 0 0 1px var(--line); }
+.cir-key-val::before { background: var(--ok); }
+
+/* ---- the ring ---- */
+.cir-ring-box { display: flex; flex-direction: column; gap: var(--sp-6); }
+.cir-ring {
+  display: block; width: 100%; height: auto; max-width: 620px;
+  align-self: center; border-radius: var(--r-4);
+  border: 1px solid var(--line-soft);
+}
+.cir-ring .cir-hit { cursor: pointer; }
+/* The backdrop and the caption are for the downloaded file; on screen they
+   must not take the pointer from the edges under them. */
+.cir-ring .cir-ring-bg, .cir-ring .cir-ring-cap { pointer-events: none; }
+.cir-ring .cir-nodes { isolation: isolate; }
+.cir-ring .cir-node-c { vector-effect: non-scaling-stroke; }
+.cir-mx-v { font-weight: 600; }
+.cir-host, .cir-detail { min-width: 0; }
+.cir-ring .cir-node { cursor: help; }
+.cir-ring .cir-edge.sel { stroke: var(--text); stroke-opacity: 1; }
+.cir-ring .cir-edge-g { transition: opacity .12s ease; }
+/* Hovering a node brings its own edges forward and lets the rest recede. */
+.cir-ring.focus .cir-edge-g:not(.on) { opacity: .12; }
+.cir-thr-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8);
+}
+.cir-thr-row .section-label { margin: 0; }
+.cir-thr { flex: 1 1 160px; accent-color: var(--accent); }
+.cir-thr-v { font-family: var(--mono); font-size: var(--fs-11);
+             color: var(--text); min-width: 5ch; }
+.cir-thr-say { margin: 0; }
+.cir-read { margin: 0; min-height: 3em; }
+.cir-dl { gap: var(--sp-6); flex-wrap: wrap; }
+.cir-dl .spacer { flex: 1; }
+
+/* ---- what a cell is made of ---- */
+.cir-detail-in {
+  border: 1px solid var(--line-soft); border-radius: var(--r-4);
+  background: var(--bg-2); padding: var(--sp-8) var(--sp-10);
+  display: flex; flex-direction: column; gap: var(--sp-6);
+}
+.cir-detail-head { display: flex; align-items: center; gap: var(--sp-8);
+                   flex-wrap: wrap; }
+.cir-detail-head .spacer { flex: 1; }
+.cir-detail-head .hint { margin: 0; }
+.cir-detail-say { margin: 0; font-family: var(--mono); font-size: var(--fs-11);
+                  color: var(--text); overflow-wrap: anywhere; }
+.cir-strip { display: block; width: 100%; max-width: 480px; height: auto; }
+.cir-strip-axis { stroke: var(--line); stroke-width: 1; }
+.cir-strip-zero { stroke: var(--text-3); stroke-width: 1;
+                  stroke-dasharray: 2 2; }
+.cir-strip-mean { stroke: var(--accent); stroke-width: 2; }
+.cir-strip-dot { fill: var(--text-2); stroke: var(--bg); stroke-width: 1; }
+.cir-dvs {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--sp-2) var(--sp-12);
+}
+.cir-dv { display: grid; grid-template-columns: 56px 64px 1fr; gap: var(--sp-6);
+          font-size: var(--fs-11); font-variant-numeric: tabular-nums; }
+.cir-dv-id { color: var(--text-2); }
+.cir-dv-t { color: var(--text-3); font-family: var(--mono); font-size: var(--fs-10); }
+.cir-dv-v { font-family: var(--mono); color: var(--text); }
+.cir-dv.none .cir-dv-v { color: var(--text-3); font-family: inherit;
+                         font-style: italic; }
+
+/* ---- many at once ---- */
+.cir-batch-opts { display: flex; flex-wrap: wrap; gap: var(--sp-16);
+                  margin: var(--sp-6) 0 var(--sp-4); }
+.cir-batch-opts .ui-field { flex: 1 1 260px; min-width: 0; }
+.cir-cuepick { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+.cir-bplan-grid {
+  flex: 1 1 100%; display: grid; grid-template-columns: 96px 1fr;
+  gap: var(--sp-2) var(--sp-8);
+}
+.cir-bp-k { color: var(--text-3); font-size: var(--fs-105); text-align: right; }
+.cir-bp-v { color: var(--text); font-size: var(--fs-11); overflow-wrap: anywhere; }
+.cir-bjob { margin-top: var(--sp-12); }
+.cir-brow .st { overflow-wrap: anywhere; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cir-ring .cir-edge-g { transition: none; }
+}
+
+/* ==========================================================================
+   Drift -- step 4 of The Arc (web/js/drift.js)
+
+   Two groups of circuits, each pooled with recordings as the unit, and the
+   difference between them. The matrix, the ring and the detail pane are
+   Circuit's own (`cir-*`, `arc-mx-*`); what is here is only what Drift adds:
+   the two columns a person fills, the picker that fills them, the check
+   stated before anything runs, and how significance is marked on a delta.
+   ========================================================================== */
+/* `align-items: stretch` is load-bearing. The panel also wears
+   `.arc-spark`, whose `align-items: start` made every child shrink to fit
+   its content -- and the result view is `container-type: inline-size`, which
+   has NO intrinsic width, so it collapsed to the card's padding: the ring's
+   caption one word per line in a 34 px column (reported 2026-09-28, measured
+   in web/_dev/drift.html "it lays out"). */
+.dr-panel { display: flex; flex-direction: column; gap: var(--sp-12);
+            align-items: stretch; }
+.dr-panel > .card { margin: 0; }
+
+/* ---- the two groups ---- */
+.dr-cols {
+  display: grid; gap: var(--sp-10);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin-top: var(--sp-8);
+}
+.dr-col {
+  display: flex; flex-direction: column; gap: var(--sp-6); min-width: 0;
+  padding: var(--sp-10); border: 1px solid var(--line-soft);
+  border-radius: var(--r-4); background: var(--bg);
+  transition: border-color .12s, background .12s;
+}
+/* Where a dragged circuit will land. The whole column, not a thin line,
+   because the target is "this group", not a position in it. */
+.dr-col.drop { border-color: var(--accent); background: var(--accent-soft); }
+.dr-col-head { display: flex; align-items: center; gap: var(--sp-8); }
+.dr-side {
+  flex: none; font-size: var(--fs-10); font-family: var(--mono);
+  text-transform: uppercase; letter-spacing: .04em; color: var(--text-3);
+}
+.dr-label { flex: 1 1 auto; min-width: 0; }
+.dr-col-n { margin: 0; }
+.dr-k1 { margin: 0; color: var(--warn); }
+.dr-empty { margin: 0; padding: var(--sp-10); }
+.dr-empty p { margin: 0; max-width: none; }
+.dr-mem {
+  display: flex; align-items: flex-start; gap: var(--sp-8);
+  padding: var(--sp-6) var(--sp-8); border-radius: var(--r-2);
+  background: var(--bg-2); cursor: grab;
+}
+.dr-mem:active { cursor: grabbing; }
+.dr-mem-t { display: flex; flex-direction: column; gap: var(--sp-2);
+            flex: 1 1 auto; min-width: 0; }
+.dr-mem-t strong { font-size: var(--fs-12); overflow-wrap: anywhere; }
+.dr-mem-name, .dr-mem-v { font-size: var(--fs-10); color: var(--text-3);
+                          overflow-wrap: anywhere; }
+.dr-mem-acts { display: flex; flex-wrap: wrap; gap: var(--sp-4);
+               justify-content: flex-end; flex: none; }
+
+/* ---- the picker ---- */
+.dr-filters { display: flex; flex-wrap: wrap; align-items: center;
+              gap: var(--sp-8); margin-bottom: var(--sp-6); }
+.dr-filters .ui-search, .dr-filters input[type="search"] { flex: 1 1 220px; }
+.dr-filter { min-width: 0; }
+.dr-count { margin: 0 0 var(--sp-6); }
+.dr-list { display: flex; flex-direction: column; gap: 2px;
+           max-height: 440px; overflow-y: auto; }
+.dr-group { margin-top: var(--sp-6); }
+.dr-row {
+  display: flex; align-items: center; gap: var(--sp-8);
+  padding: var(--sp-4) var(--sp-8); border-radius: var(--r-2);
+  cursor: grab;
+}
+.dr-row:hover { background: var(--bg-hover); }
+.dr-row.on { background: var(--accent-soft); }
+/* Does not fit what is already chosen. Still listed, still addable, and
+   the reason is on the row -- a row that silently vanished would read as a
+   circuit that does not exist. */
+.dr-row.off { opacity: .66; }
+.dr-row-t { display: flex; flex-direction: column; gap: var(--sp-2);
+            flex: 1 1 auto; min-width: 0; }
+.dr-row-t strong { font-size: var(--fs-11); overflow-wrap: anywhere; }
+.dr-row-name, .dr-row-v { font-size: var(--fs-10); color: var(--text-3);
+                          overflow-wrap: anywhere; }
+.dr-row-why { font-size: var(--fs-10); color: var(--warn);
+              overflow-wrap: anywhere; }
+.dr-row-why.cue { color: var(--accent); }
+.dr-row-acts { display: flex; align-items: center; gap: var(--sp-4); flex: none; }
+.dr-ver { max-width: 220px; }
+
+/* ---- before it runs ---- */
+.dr-pre-empty, .dr-missing { margin: 0; padding: var(--sp-10); }
+.dr-pre-empty p, .dr-missing p { margin: 0 0 var(--sp-6); max-width: none; }
+.dr-verdict { margin: var(--sp-4) 0; font-size: var(--fs-12); }
+.dr-verdict.ok { color: var(--ok); }
+.dr-verdict.bad { color: var(--err); }
+.dr-reasons { margin: 0 0 var(--sp-8); padding-left: var(--sp-16);
+              font-size: var(--fs-11); color: var(--text-2); }
+.dr-reasons li { margin: var(--sp-2) 0; overflow-wrap: anywhere; }
+/* The one choice Jarvis will not make for anybody. Set apart, and marked
+   once taken, because it changes what the result claims. */
+.dr-equiv {
+  display: flex; flex-direction: column; gap: var(--sp-6);
+  margin: var(--sp-8) 0; padding: var(--sp-8) var(--sp-10);
+  border: 1px dashed var(--warn); border-radius: var(--r-4);
+}
+.dr-equiv.on { border-style: solid; border-color: var(--accent);
+               background: var(--accent-soft); }
+.dr-equiv-say { margin: 0; font-size: var(--fs-11); color: var(--text-2); }
+.dr-warn { margin: var(--sp-2) 0; color: var(--warn); }
+.dr-cost { margin-top: var(--sp-6); }
+.dr-runbar { margin-top: var(--sp-10); gap: var(--sp-10); flex-wrap: wrap; }
+.dr-runbar .spacer { flex: 1; }
+.dr-runbar .hint { margin: 0; flex: 1 1 280px; }
+.dr-nick { width: min(420px, 100%); }
+
+/* ---- the result ---- */
+.dr-shown { margin: 0; }
+.dr-sides-mem {
+  display: grid; gap: var(--sp-10); margin-top: var(--sp-8);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.dr-side-mem { min-width: 0; }
+.dr-side-h { display: block; font-size: var(--fs-10); color: var(--text-3);
+             margin-bottom: var(--sp-2); }
+.dr-refs { list-style: none; margin: 0; padding: 0;
+           font-size: var(--fs-105); }
+.dr-refs li { margin: var(--sp-2) 0; overflow-wrap: anywhere; }
+.dr-notes { display: flex; flex-direction: column; gap: var(--sp-4);
+            margin-top: var(--sp-8); }
+.dr-note { margin: 0; font-size: var(--fs-105); color: var(--text-2); }
+.dr-note.warn { color: var(--warn); }
+.dr-eqnote { color: var(--accent); }
+.dr-method { margin: 0; }
+
+/* Significance on the delta, as an outline rather than a mark in the cell:
+   the fill already carries the size and sign of the difference, and a star
+   would sit on the number. Three weights for q < .05, .01, .001. */
+.dr-mx .dr-val[data-sig="1"] { box-shadow: inset 0 0 0 1px var(--text); }
+.dr-mx .dr-val[data-sig="2"] { box-shadow: inset 0 0 0 2px var(--text); }
+.dr-mx .dr-val[data-sig="3"] { box-shadow: inset 0 0 0 3px var(--text); }
+.dr-mx .dr-val.sel { box-shadow: inset 0 0 0 2px var(--accent); z-index: 2; }
+/* Shown, not tested: a value with no SE on one side. Faded so it cannot be
+   read as a result of the same standing as the tested cells beside it. */
+.dr-mx .dr-val.untested { opacity: .55; }
+.dr-mx .dr-val { position: relative; cursor: pointer; }
+.dr-mx .dr-val.warned::after {
+  content: ''; position: absolute; top: 0; right: 0;
+  border-top: 6px solid var(--warn); border-left: 6px solid transparent;
+}
+/* A region grey in SOME recordings: pooled over the others, and said so. */
+.dr-mx .arc-mx-head.part { color: var(--text-2); font-style: italic; }
+.dr-keys { margin-top: var(--sp-6); }
+.dr-key-sig::before { background: transparent;
+                      box-shadow: inset 0 0 0 2px var(--text); }
+.dr-key-nt::before { background: var(--text-3); opacity: .55; }
+.dr-key-ramp::before {
+  background: linear-gradient(90deg, var(--accent), var(--bg-3), var(--err));
+}
+.cir-key-grey::before { background: var(--bg-3); }
+.dr-thr-row .seg { flex: none; }
+.dr-edge-mode button { font-family: var(--mono); }
+
+/* ---- what a delta cell is made of ---- */
+.dr-dsides { display: grid; gap: var(--sp-10);
+             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.dr-dside { min-width: 0; }
+.dr-dside strong { display: block; font-size: var(--fs-11);
+                   margin-bottom: var(--sp-4); overflow-wrap: anywhere; }
+.dr-members td, .dr-members th { font-variant-numeric: tabular-nums; }
+.dr-members tr.none td { color: var(--text-3); font-style: italic; }
+.dr-cwarn { margin: var(--sp-8) 0 0; padding-left: var(--sp-16);
+            color: var(--warn); font-size: var(--fs-105); }
+
+/* ---- "Use in Drift", from Results ---- */
+.dr-use .mb .seg { margin-top: var(--sp-4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dr-col { transition: none; }
+}
 
 /* ==========================================================================
    Braces
@@ -10365,13 +11285,529 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dp-pca { display: flex; flex-direction: column; gap: var(--sp-8); }
 .dp-pca .dp-canvas { flex: 1 1 auto; }
 
-/* Eye's wait: the step loader, then a bar and a way out, set apart from the
-   settings above so it reads as something happening rather than a form. */
-.eye-wait {
-  margin-top: var(--sp-12);
-  padding: var(--sp-12);
-  background: var(--bg-2);
-  border: 1px solid var(--accent-line);
-  border-radius: var(--r-8);
+/* ==========================================================================
+   The Storm -- Doppler's report, Spotter's raster, Eye's comparison.
+
+   Only the shapes that are genuinely new are here. Doppler's progress card
+   is Incisor's (`.comod-*`), its channel editor is Incisor's
+   (`.inc-chan-*`), its batch rows are Incisor's (`.inc-batch-*`), and
+   Spotter's toolbar is Checkup's (`.cur-*`) -- the two detectors do the same
+   thing on the same cluster and the two curation modes are the same gesture,
+   so somebody who has learnt one should not have to learn the other.
+   ========================================================================== */
+
+/* Doppler's report: the average and the per-channel bars side by side, and
+   the raster full width under them because it is about the whole recording
+   rather than about one number. */
+.dop-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-16);
+  margin: var(--sp-12) 0;
 }
-.eye-wait .comod-total { margin-top: var(--sp-10); }
+/* One column on a narrow window. A waveform 140px wide is not a waveform. */
+@media (max-width: 900px) {
+  .dop-two { grid-template-columns: 1fr; }
+}
+.dop-two canvas,
+#dopRaster {
+  width: 100%;
+  display: block;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-6);
+}
+#dopRaster { cursor: pointer; margin-bottom: var(--sp-6); }
+
+.dop-params > summary {
+  cursor: pointer;
+  font-size: var(--fs-115);
+  color: var(--text-2);
+  padding: var(--sp-6) 0;
+}
+
+/* Runs that have landed. A row, not a card: what you want off it is which
+   recording and whether it is banked yet, and a card's worth of furniture
+   for two facts is furniture. */
+.dop-reviews { display: flex; flex-direction: column; gap: var(--sp-4); }
+.dop-review {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-8) var(--sp-10);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-6);
+  color: var(--text);
+  font-size: var(--fs-115);
+}
+.dop-review:hover { background: var(--bg-hover); border-color: var(--accent-line); }
+.dop-review strong { flex: 1 1 auto; font-weight: 600; }
+.dop-review > span { color: var(--text-2); font-size: var(--fs-11); }
+
+/* Spotter: the whole recording under the panes, one line per channel.
+
+   Fixed above the toolbar rather than scrolling with it -- it is the thing
+   you glance at between decisions, and a glance that costs a scroll is one
+   nobody takes. */
+.spot-raster {
+  display: block;
+  width: 100%;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+
+/* Eye: the three measures, side by side, because the comparison IS the
+   step. Stacked on a narrow window -- three histograms 90px wide would be
+   three pictures nobody can read rather than a comparison. */
+.eye-three {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-10);
+  margin: var(--sp-8) 0;
+}
+@media (max-width: 1000px) {
+  .eye-three { grid-template-columns: 1fr; }
+}
+.eye-one {
+  padding: var(--sp-10);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-8);
+  cursor: pointer;
+}
+.eye-one:hover { border-color: var(--accent-line); }
+.eye-one.on { border-color: var(--accent); background: var(--accent-soft); }
+.eye-one strong { display: block; margin-bottom: var(--sp-4); }
+.eye-one .hint { margin-top: var(--sp-6); }
+.eye-hist {
+  display: block;
+  width: 100%;
+  margin: var(--sp-8) 0 var(--sp-4);
+  background: var(--bg);
+  border-radius: var(--r-4);
+}
+
+/* Eye's set picker: filter pills and a search box above, then one group
+   per recording with its sets as full-width buttons. Two lines each -- what
+   it is and where it came from, then what is in it -- because a set is
+   picked by those, not by its name. */
+.eye-filter { display: flex; flex-wrap: wrap; gap: var(--sp-6);
+              margin-bottom: var(--sp-8); }
+.eye-filter .pill.dim { opacity: .5; }
+.eye-search { margin-bottom: var(--sp-10); max-width: 420px; }
+.eye-group { margin-bottom: var(--sp-12); }
+.eye-group-head {
+  display: flex; align-items: baseline; gap: var(--sp-8);
+  padding: var(--sp-4) 0; margin-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-12);
+}
+.eye-set {
+  display: flex; flex-direction: column; gap: var(--sp-4);
+  width: 100%; text-align: left;
+  padding: var(--sp-8) var(--sp-10); margin-bottom: var(--sp-4);
+  background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--r-6);
+  cursor: pointer;
+}
+.eye-set:hover { background: var(--bg-hover); border-color: var(--accent-line); }
+.eye-set.on { border-color: var(--accent); background: var(--accent-soft); }
+.eye-set-top, .eye-set-bot {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-6);
+}
+.eye-set-name { font-weight: 600; font-size: var(--fs-115); margin-right: var(--sp-4); }
+.eye-set-n { color: var(--text-2); font-size: var(--fs-11); margin-right: var(--sp-4); }
+.eye-set .chip-row { margin: 0; }
+
+/* The node's last few lines under Doppler's progress bar. Monospace and
+   capped, because it is a log and not prose, and a traceback must not push
+   the Cancel button off the card. */
+.dop-log {
+  margin: var(--sp-8) 0 0;
+  padding: var(--sp-6) var(--sp-8);
+  max-height: 9em;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-4);
+  color: var(--text-3);
+  font: var(--fs-105)/1.45 var(--mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Doppler's run-only exclusions: a second block under the bad-channel
+   editor, deliberately set apart from it, because one changes the
+   recording for every tool and the other changes one run. */
+.dop-exclude {
+  margin-top: var(--sp-12);
+  padding-top: var(--sp-10);
+  border-top: 1px dashed var(--border);
+}
+.dop-presets { margin: var(--sp-6) 0 var(--sp-8); }
+/* Left out is not bad: struck through rather than dimmed like a bad one. */
+.dop-exclude .inc-chan.off span { text-decoration: line-through; opacity: .6; }
+
+/* ==========================================================================
+   Root Canal -- step 4 of The Dentist (web/js/rootcanal.js).
+
+   X-ray's shapes where they are the same thing (the cards, the bar, the
+   mode chip, the busy line), under a prefix of its own so neither can wear
+   the other's spacing by accident -- the `.fb-actions` lesson in the
+   constitution, section 7.
+
+   EVERY CONTROL IS ABOVE THE PICTURES. The fit settings, the naming line
+   with Bank, and the picked event's bar sit in that order at the top; the
+   space and the flat views come after them. Nothing you press is under
+   the fold on a laptop.
+
+   THE CHILDREN DO NOT SHRINK. `.tk-result` is a flex column, and a flex
+   column shrinks its children to fit whenever something upstream gives it a
+   definite height -- which is how X-ray's under-the-hood panel was crushed
+   to headings and slivers. Every block in the workbench is `flex: none`.
+   ========================================================================== */
+.rc-work {
+  display: flex; flex-direction: column; gap: var(--sp-10);
+  min-width: 0; container-type: inline-size; container-name: rc;
+}
+.rc-work > *, .rc-choose, .rc-mode, .rc-read, .rc-job, .rc-load, .rc-none,
+.rc-bulk-card { flex: none; }
+.rc-work .spacer, .rc-folded .spacer, .rc-pickbar .spacer,
+.rc-controls .spacer { flex: 1 1 0; min-width: 0; }
+
+.rc-load { display: flex; align-items: center; gap: var(--sp-10); }
+.rc-none .empty-state { padding: var(--sp-16) 0; }
+.rc-mode { display: flex; flex-wrap: wrap; align-items: center;
+           gap: var(--sp-10); }
+.rc-mode .hint { flex: 1 1 260px; min-width: 0; margin: 0; }
+.rc-bulk-note { color: var(--accent); }
+
+/* The chooser, and the one line it folds to once there is a read. */
+.rc-choose { display: flex; flex-direction: column; gap: var(--sp-4); }
+.rc-folded { flex-direction: row; flex-wrap: wrap; align-items: baseline;
+             gap: var(--sp-8); }
+.rc-folded .hint { margin: 0; min-width: 0; }
+.rc-list .flagchip { flex: none; }
+.flagchip.rc-done { color: var(--accent); border-color: var(--accent-line); }
+.rc-warn { color: var(--warn); }
+
+.rc-read { display: flex; flex-direction: column; gap: var(--sp-8); }
+.rc-read > .hint { margin: 0; max-width: 90ch; }
+.rc-job { display: flex; flex-direction: column; gap: var(--sp-6); }
+.rc-bar {
+  height: 6px; background: var(--bg-3); border-radius: var(--r-3);
+  overflow: hidden; margin: var(--sp-4) 0;
+}
+.rc-bar > i {
+  display: block; height: 100%; background: var(--accent);
+  transition: width .2s var(--ease-out, ease);
+}
+.rc-err strong { color: var(--err); }
+
+/* Empty when idle, so it can be swapped in place without a rebuild. */
+.rc-busy { min-height: 0; }
+.rc-busy.on {
+  display: flex; align-items: center; gap: var(--sp-8);
+  padding: var(--sp-6) var(--sp-10);
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+/* The settings the picture was computed with, beside its title. Stale
+   when the fields say something else: the picture is the old answer. */
+.rc-chip {
+  font-size: var(--fs-105); color: var(--text-2); background: var(--bg-3);
+  border: 1px solid var(--line-soft); border-radius: var(--radius);
+  padding: 1px var(--sp-8);
+}
+.rc-chip.rc-chip-stale { color: var(--warn); border-color: var(--warn); }
+
+/* ---- the fit settings: one compact row that wraps, never scrolls ---- */
+.rc-controls {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-6) var(--sp-16); padding: var(--sp-8) var(--sp-12);
+}
+.rc-group { display: flex; flex-wrap: wrap; align-items: center;
+            gap: var(--sp-4) var(--sp-6); min-width: 0; }
+.rc-group-l {
+  font-size: var(--fs-95); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3); font-weight: 600; flex: none;
+}
+.rc-num { display: inline-flex; align-items: center; gap: var(--sp-4);
+          flex: none; }
+.rc-num-l, .rc-num-u { font-size: var(--fs-11); color: var(--text-3); }
+.rc-in {
+  width: 64px; padding: var(--sp-2) var(--sp-6);
+  font-family: var(--mono); font-size: var(--fs-115);
+  border: 1px solid var(--line); border-radius: var(--r-4);
+  background: var(--bg); color: var(--text);
+}
+.rc-in:focus { outline: none; border-color: var(--accent-line); }
+.rc-pend { font-size: var(--fs-105); margin: 0; min-width: 0; }
+.rc-pend.on { color: var(--warn); }
+.rc-acts { flex: 0 1 auto; }
+
+/* ---- why, and Bank -------------------------------------------------- */
+.rc-why {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-8) var(--sp-16); padding: var(--sp-8) var(--sp-12);
+}
+.rc-why-t { flex: 1 1 360px; min-width: 0; display: flex;
+            flex-direction: column; gap: var(--sp-4); }
+.rc-rule { margin: 0; font-size: var(--fs-12); color: var(--text); }
+.rc-cls-chip { display: inline-flex; align-items: center; gap: var(--sp-6); }
+.rc-swatch { width: 9px; height: 9px; border-radius: var(--r-pill);
+             display: inline-block; flex: none; }
+/* A button that says what it will write reads long. It wraps rather than
+   being cut: "…13 IED as a new" with the end missing is a bank nobody can
+   check before pressing. */
+.rc-bank { white-space: normal; text-align: left; max-width: 100%; }
+
+/* ---- the picked event --------------------------------------------- */
+.rc-pickbar {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-6) var(--sp-10); padding: var(--sp-6) var(--sp-12);
+}
+.rc-pickbar .hint { margin: 0; min-width: 0; }
+.rc-toggle { flex: none; }
+
+/* ---- the pictures ---------------------------------------------------
+   The space and the flat views side by side, the flat views stacked; the
+   event's four pictures under both. Measured against the width the panel
+   actually has (a container query), not the window's: the ToolKit's tool
+   list takes a quarter of the window, and a media query would be asking
+   the wrong box. */
+.rc-main {
+  display: grid; gap: var(--sp-12); align-items: stretch;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+}
+.rc-event { grid-column: 1 / -1; }
+.rc-pane {
+  display: flex; flex-direction: column; gap: var(--sp-8); min-width: 0;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: var(--sp-10);
+}
+.rc-pane > * { flex: none; }
+.rc-pane-head { display: flex; flex-wrap: wrap; align-items: baseline;
+                gap: var(--sp-8); }
+.rc-pane-head .hint { margin: 0; min-width: 0; }
+.rc-canvas {
+  width: 100%; display: block; background: var(--bg);
+  border: 1px solid var(--line); border-radius: var(--r-4);
+}
+/* The one picture that stretches: its column's spare height goes into it,
+   and `sized` measures what it got rather than imposing what it asked. */
+.rc-space-pane > .rc-space { flex: 1 1 auto; min-height: 360px;
+                             cursor: grab; touch-action: none; }
+.rc-space:active { cursor: grabbing; }
+.rc-flats { display: grid; grid-template-columns: minmax(0, 1fr);
+            gap: var(--sp-8); }
+.rc-flat { cursor: pointer; touch-action: none; }
+
+.rc-ev-grid {
+  display: grid; gap: var(--sp-10);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.rc-ev-cell { display: flex; flex-direction: column; gap: var(--sp-4);
+              min-width: 0; }
+.rc-ev-t { display: flex; flex-wrap: wrap; align-items: baseline;
+           gap: var(--sp-6); }
+.rc-ev-t strong { font-size: var(--fs-12); }
+.rc-ev-t .hint { margin: 0; min-width: 0; }
+.rc-event-empty { padding: var(--sp-16) 0; }
+
+/* Narrow: one column, and the flat views side by side under the space. */
+@container rc (max-width: 760px) {
+  .rc-main { grid-template-columns: minmax(0, 1fr); }
+  .rc-flats { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+}
+/* Wide enough for all of it at once: the event beside the flat views. */
+@container rc (min-width: 1500px) {
+  .rc-main { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr)
+                                    minmax(0, 1.1fr); }
+  .rc-event { grid-column: auto; }
+  .rc-ev-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---- the marks, named once --------------------------------------------
+   The same shapes the canvases draw, so the legend is a key to them and not
+   a description. Class colours are the semantic tokens the drawing uses;
+   the shapes that are not about class are drawn in the neutral ink. */
+.rc-legend { display: flex; flex-wrap: wrap; align-items: center;
+             gap: var(--sp-4) var(--sp-12); padding: 0 var(--sp-4); }
+.rc-lg { display: inline-flex; align-items: center; gap: var(--sp-6);
+         font-size: var(--fs-105); color: var(--text-2); }
+.rc-lg-m { width: 9px; height: 9px; display: inline-block; flex: none;
+           box-sizing: border-box; border-radius: var(--r-pill);
+           background: var(--text-3); }
+.rc-lg-m.rc-lg-ds { background: var(--ok); }
+.rc-lg-m.rc-lg-ied { background: var(--err); }
+.rc-lg-m.rc-lg-square { border-radius: 0; background: var(--text-2);
+                        border: 1px solid var(--text); }
+.rc-lg-m.rc-lg-wide { outline: 1px dashed var(--text); outline-offset: 1px; }
+.rc-lg-m.rc-lg-flip { outline: 1.5px solid var(--warn); outline-offset: 1px; }
+.rc-lg-m.rc-lg-hollow { background: transparent;
+                        border: 1.5px solid var(--text-3); }
+.rc-lg-m.rc-lg-centre { border-radius: 0; transform: rotate(45deg);
+                        background: var(--text-2);
+                        border: 1px solid var(--text); }
+.rc-ev-why { margin: 0; font-size: var(--fs-12); color: var(--warn);
+             max-width: 100ch; }
+.rc-in.rc-in-cross { width: 64px; }
+/* The two flagged counts in the why-line: facts about the answer, kept
+   whole on their line. */
+.stat-chip.rc-count-partial, .stat-chip.rc-count-wide { flex: none; }
+
+/* ---- the bank dialog, and the batch -------------------------------- */
+.rc-ask { display: flex; flex-direction: column; gap: var(--sp-8); }
+.rc-ask > p, .rc-ask > ul { margin: 0; max-width: 78ch; }
+.rc-ask li { font-size: var(--fs-125); color: var(--text-2);
+             margin: var(--sp-2) 0; }
+.rc-note {
+  width: 100%; padding: var(--sp-6) var(--sp-8); font-size: var(--fs-12);
+  border: 1px solid var(--line); border-radius: var(--r-5);
+  background: var(--bg); color: var(--text);
+}
+.rc-note:focus { outline: none; border-color: var(--accent-line); }
+.rc-bulk-card { display: flex; flex-direction: column; gap: var(--sp-8); }
+.rc-bulk { width: 100%; }
+.rc-bulk td, .rc-bulk th { font-size: var(--fs-115);
+                           padding: var(--sp-2) var(--sp-6); }
+.rc-bulk tr.bad td { color: var(--err); }
+.rc-bulk tr.ready td:first-child { font-weight: 600; }
+.rc-bulk td.dim { color: var(--text-3); }
+.rc-done-list { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+
+/* Nothing here animates except the loader, which carries its own
+   reduced-motion rule; the bar's width transition is stopped here. */
+@media (prefers-reduced-motion: reduce) {
+  .rc-bar > i { transition: none; }
+}
+
+/* ==========================================================================
+   Jarvis Artifacts in Results (artifacts.js). Prefix `art-` is this
+   feature's alone; `.res-mode` is the Files / Artifacts switch above it.
+   A list on the left, the one you picked on the right; stacked when the
+   window is too narrow for both. Nothing here animates.
+   ========================================================================== */
+.res-mode { align-self: flex-start; margin-bottom: var(--sp-12); }
+.art-wrap { display: grid; grid-template-columns: minmax(260px, 340px) 1fr;
+            gap: var(--sp-16); align-items: start; }
+@media (max-width: 900px) { .art-wrap { grid-template-columns: 1fr; } }
+.art-list { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+.art-count { margin: var(--sp-4) 0; }
+.art-kind { display: flex; align-items: center; gap: var(--sp-6);
+            margin-top: var(--sp-12); }
+.art-n { color: var(--text-3); font-weight: 400; }
+.art-group { font-size: var(--fs-11); color: var(--text-2);
+             margin: var(--sp-8) 0 var(--sp-2); }
+.art-row { display: flex; flex-direction: column; align-items: flex-start;
+           gap: var(--sp-2); text-align: left; width: 100%;
+           padding: var(--sp-8) var(--sp-10); border: 1px solid var(--line-soft);
+           border-radius: var(--radius-sm); background: var(--bg-2);
+           color: var(--text); cursor: pointer; }
+.art-row:hover { background: var(--bg-hover); }
+.art-row.active { border-color: var(--accent-line); background: var(--accent-soft); }
+/* Nickname first, the automatic name under it -- both wrap rather than
+   being cut, because the name IS the metadata. */
+.art-nick { font-size: var(--fs-125); font-weight: 600; overflow-wrap: anywhere; }
+h3.art-nick { font-size: var(--fs-15); margin: 0; }
+.art-name { font-size: var(--fs-11); color: var(--text-2); overflow-wrap: anywhere; }
+.art-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6);
+            font-size: var(--fs-105); color: var(--text-3); }
+.art-vn { font-size: var(--fs-105); padding: 1px var(--sp-6); border-radius: var(--r-pill);
+          background: var(--bg-3); color: var(--text-2); white-space: nowrap; }
+.art-vn.cited { background: var(--warn-soft); color: var(--warn); }
+.art-prov, .art-extra { overflow-wrap: anywhere; }
+.art-extra { font-size: var(--fs-105); color: var(--text-2); }
+.art-detail { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-6); }
+.art-head { display: flex; align-items: flex-start; gap: var(--sp-10);
+            justify-content: space-between; }
+.art-titles { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.art-inline { display: flex; gap: var(--sp-8); align-items: center; flex-wrap: wrap; }
+.art-inline input { flex: 1; min-width: 180px; }
+.art-versions { display: flex; flex-wrap: wrap; gap: var(--sp-6); }
+.art-versions .pill { display: inline-flex; gap: var(--sp-6); align-items: baseline; }
+.art-vdate { font-size: var(--fs-10); color: var(--text-3); }
+.art-params { border-collapse: collapse; font-size: var(--fs-115); }
+.art-params td { padding: var(--sp-2) var(--sp-10) var(--sp-2) 0; vertical-align: top;
+                 font-family: var(--mono); overflow-wrap: anywhere; }
+.art-params td:first-child { color: var(--text-3); white-space: nowrap; }
+.art-refs { margin: 0; padding-left: var(--sp-16); font-size: var(--fs-12);
+            display: flex; flex-direction: column; gap: var(--sp-2); }
+.art-refs li { overflow-wrap: anywhere; }
+.art-refs .art-vn { margin-right: var(--sp-6); }
+.art-link { color: var(--accent); }
+.art-view { border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+            padding: var(--sp-10); background: var(--bg-2); min-height: 60px;
+            overflow: auto; max-height: 60vh; }
+.art-actions { display: flex; align-items: center; gap: var(--sp-8);
+               justify-content: flex-end; margin-top: var(--sp-8); flex-wrap: wrap; }
+.art-actions .spacer { flex: 1; }
+/* The JSON view: what a kind with no viewer of its own shows. */
+.art-json { font-family: var(--mono); font-size: var(--fs-115); line-height: 1.5; }
+.art-json .j-kids { padding-left: var(--sp-16); border-left: 1px solid var(--line-soft); }
+.art-json summary { cursor: pointer; }
+.art-json .j-row, .art-json summary { overflow-wrap: anywhere; }
+.art-json .j-key { color: var(--text-2); }
+.art-json .j-meta { color: var(--text-3); }
+.art-json .j-str { color: var(--ok); }
+.art-json .j-num { color: var(--accent); }
+.art-json .j-bool, .art-json .j-null { color: var(--warn); }
+.art-json .j-node { margin: 0; }
+.art-host { min-width: 0; }
+.art-nickfield { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+/* ==========================================================================
+   Horizon -- the map of which frequency was on top, by depth and by time.
+
+   The picture is an <img> with a canvas over it for the axes, the same way
+   Panorama draws its spectrogram: axes drawn by the browser stay crisp,
+   follow the theme, and never end up baked into an export.
+   ========================================================================== */
+.hz-with-bar {
+  display: flex; align-items: stretch; gap: var(--sp-8); min-width: 0;
+}
+.hz-stack {
+  position: relative; line-height: 0; flex: 1; min-width: 0;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.hz-img {
+  display: block; width: 100%; height: 300px;
+  object-fit: fill;
+  /* Deliberately not smoothed. One pixel is one channel for one window, and
+     interpolating between two channels invents a depth that was not
+     recorded -- which is the one reading this picture exists to support. */
+  image-rendering: pixelated;
+  /* The checkerboard shows through where a cell is transparent, which means
+     nothing was read there -- an acquisition gap, or a channel that could
+     not be. A colour there could be mistaken for a measurement. */
+  background-color: var(--bg-2);
+  background-image:
+    linear-gradient(45deg, var(--line) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--line) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--line) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--line) 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+}
+.hz-axes { position: absolute; inset: 0; pointer-events: none; }
+.hz-bar { display: block; width: 74px; flex: 0 0 74px; }
+.hz-agree { display: block; width: 100%; }
+.hz-preview {
+  display: block; width: 100%; height: 220px; object-fit: fill;
+  image-rendering: pixelated;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background-color: var(--bg-2);
+}
+.hz-notes { margin: var(--sp-6) 0 0; padding-left: 1.1em; }
+.hz-notes li { margin: 2px 0; }
+.hz-pick .chip-row, .hz-map .chip-row { margin-top: var(--sp-8); }
+.hz-set .ui-field + .ui-field { margin-top: var(--sp-12); }
+.hz-run .hint.bad, .hz-save .hint.bad { color: var(--err); }
+.hz-wait .hz-preview { margin-top: var(--sp-8); }

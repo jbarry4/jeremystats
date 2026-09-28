@@ -800,6 +800,28 @@ DEPTH_BAND = 16
 DEPTH_SAMPLE = 60
 
 
+# What a stamp can be aligned TO, and what each one means.
+#
+# The fact lives here, in the module that owns the subject, so a panel
+# offering the choice does not also invent the words for it. Adding a
+# fourth measure means adding a branch in `span_csd` and a row here, and
+# every surface that offers the choice follows.
+MEASURES = [
+    {"id": "csd", "name": "Current source density",
+     "why": "The mean of |CSD| across depth. The part that cannot be "
+            "volume-conducted, so it peaks where the event is rather than "
+            "where the biggest wire is."},
+    {"id": "voltage", "name": "Voltage",
+     "why": "The mean of |V| across depth. Louder and steadier than the "
+            "CSD, and the thing an IED is usually described by -- but it "
+            "sees anything large anywhere near the probe."},
+    {"id": "slope", "name": "Steepest slope",
+     "why": "The mean of |dV/dt| across depth. Peaks on the sharpest part "
+            "of the discharge, which is what a line-length detector was "
+            "measuring when it found it."},
+]
+
+
 def span_csd(session, channels, spec, t0, t1, bad=None):
     """The signed CSD across depth over one stretch, padding trimmed.
 
@@ -816,8 +838,24 @@ def span_csd(session, channels, spec, t0, t1, bad=None):
         return None
     stack, anchor, fs_out = got
     stack = repair(stack, channels, bad)
-    if (spec.get("measure") or "csd") == "voltage":
+    measure = spec.get("measure") or "csd"
+    if measure == "voltage":
         vals = np.asarray(stack, dtype=np.float64)
+        off = 0
+    elif measure == "slope":
+        # The rate of change, not the value. Sharpness is what a line-length
+        # detector measures in the first place, so aligning an IED on its
+        # steepest edge aligns it on the thing that found it -- which is a
+        # different claim from aligning it on its largest excursion, and on
+        # a discharge with a slow after-going wave the two are tens of
+        # milliseconds apart.
+        #
+        # `np.gradient` rather than `diff` so the result is the same length
+        # as the input and stays on the same sample grid: a `diff` here
+        # shifts every peak half a sample, which is 17 us at 30 kHz and
+        # would be a systematic bias in one direction rather than noise.
+        v = np.asarray(stack, dtype=np.float64)
+        vals = np.gradient(v, axis=1) * float(fs_out)
         off = 0
     else:
         vals = csd_of(stack, spec)

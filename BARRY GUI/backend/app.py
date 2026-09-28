@@ -27,16 +27,19 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                dspcahf,
                compose, continuity as continuitymod, csc,
                healthlog as healthlogmod,
+               doppler as dopplermod,
                incisor as incisormod,
                spark as sparkmod,
                coupling as couplingmod,
                braces as bracesmod,
                bracesset as brsetmod,
                dspca,
+               rootcanal,
                guides as guidesmod,
                versions as versionsmod,
                panorama as panoramamod,
                panoramaset as pnsetmod,
+               horizon as horizonmod,
                retime as retimemod,
                spectrum as spectrummod,
                device as devicemod,
@@ -86,6 +89,10 @@ FEEDBACK = feedbackmod.Feedback(LOGS_DIR)
 # How fast this machine is at each stage of a comodulogram, remembered between
 # runs so the progress estimate is right on the rig as well as here. A cache of
 # timings, nothing more -- deleting the file costs one wrong estimate.
+# Root Canal's own job stages, declared before the rates file is read so
+# what this machine has learned about them survives a restart. See
+# `rootcanal.register_stages`.
+rootcanal.register_stages(cfcmod)
 cfcmod.configure(LOGS_DIR)
 # Whether a recording is one continuous block or several, keyed on the
 # reference file's size and mtime. A clean folder is decided by two records
@@ -1925,6 +1932,371 @@ def api_panorama_save():
 
 
 # ==========================================================================
+# Horizon -- every channel of the probe, by depth, across the whole session
+#
+# The same three-call contract as Panorama and the spectrum: estimate what it
+# will cost, start it, poll it on /api/cfc/job/<id>. It reuses Panorama's
+# reading and fitting wholesale (see horizon.py) so there is one spectral
+# engine in the app and not two.
+#
+# The one thing only the app knows, and the reason `for-recording` exists:
+# what is already true of this recording before anybody commits to an hour --
+# how many channels it has, how many are marked bad, which probe template
+# applies and whether anybody confirmed it, and whether there is a layer
+# sheet to name the bands with.
+# ==========================================================================
+def _horizon_spec(body, sess):
+    """What the run is being asked for, with the defaults filled in.
+
+    An empty window means the whole recording, for the same reason it does
+    in Panorama: "which frequency was in charge, and where" is not a
+    question about a ten-second look.
+
+    An empty channel list means every channel NOT marked bad -- the opposite
+    of Panorama's default of one, and deliberately so. A Horizon of one row
+    is not what the tool is; and taking all of them regardless of what was
+    marked would put a known-dead wire in the picture, where it would draw
+    as a horizontal band of pure noise sitting at whatever the argmax of a
+    slope happens to be.
+    """
+    dur = float(sess.get("duration_s") or 0.0)
+    t0 = float(body.get("t0") or 0.0)
+    t1 = float(body.get("t1") or 0.0)
+    if t1 <= t0:
+        t0, t1 = 0.0, dur
+    chans = body.get("channels")
+    if not chans:
+        chans = [c["index"] for c in (sess.get("channels") or [])
+                 if not c.get("bad")]
+    spec = {
+        "path": sess.get("path"),
+        "channels": [int(c) for c in chans],
+        "t0": t0, "t1": t1,
+        "f_lo": float(body.get("f_lo") or horizonmod.DEFAULT_FLO),
+        "f_hi": float(body.get("f_hi") or horizonmod.DEFAULT_FHI),
+        "fit_lo": float(body.get("fit_lo") or horizonmod.DEFAULT_FIT_LO),
+        "fit_hi": float(body.get("fit_hi") or horizonmod.DEFAULT_FIT_HI),
+        "sub_s": float(body.get("sub_s") or horizonmod.DEFAULT_SUB_S),
+        "win_s": float(body.get("win_s") or horizonmod.DEFAULT_WIN_S),
+        "step_s": float(body.get("step_s") or horizonmod.DEFAULT_STEP_S),
+        "every": int(body.get("every") or horizonmod.DEFAULT_EVERY),
+        "fidelity": str(body.get("fidelity") or "survey").lower(),
+        "sep_hz": float(body.get("sep_hz") or horizonmod.DEFAULT_SEP_HZ),
+        "agree_tol_hz": float(body.get("agree_tol_hz")
+                              or horizonmod.DEFAULT_AGREE_TOL_HZ),
+        "bin_hz": float(body.get("bin_hz") or horizonmod.DEFAULT_BIN_HZ),
+        "cmap": body.get("cmap") or horizonmod.DEFAULT_CMAP,
+        "colour_mode": body.get("colour_mode") or "absolute",
+        "probe": body.get("probe"),
+        "line_hz": body.get("line_hz"),
+    }
+    return spec
+
+
+def _horizon_context(sess, body=None):
+    """The recording's gid, its registry row and its layer sheet.
+
+    Three things the compute module deliberately does not reach for: it
+    would be a second place that knows where GUI_logs lives, and a third
+    that knows how a gid is resolved.
+    """
+    gid = sess.get("gid") or _gid_for_path(sess.get("path"))
+    rec = _session_by_gid(gid) if gid else None
+    sheet = None
+    if gid:
+        try:
+            sheet = LAYERS.get(gid)
+        except Exception:                                # noqa: BLE001
+            sheet = None
+    return gid, rec, sheet
+
+
+@app.route("/api/horizon/for-recording/<gid>", methods=["GET"])
+def api_horizon_for_recording(gid):
+    """What is already true of this recording, said before anything is run.
+
+    The shape is the New curation set wizard's, which asks the same question
+    of a gid the moment one is picked and answers it above the button --
+    "already has a ... set, 0 of 10 decided". Everything knowable before a
+    run belongs before it, not thirty seconds into one.
+    """
+    rec = _session_by_gid(gid)
+    if not rec:
+        return jsonify({"ok": False, "error": "No such recording."}), 404
+
+    here = (rec.get("here") or [None])[0]
+    probe = probebook.state_of(rec)
+    out = {
+        "ok": True, "gid": gid,
+        "label": rec.get("label") or rec.get("key") or gid,
+        "reachable": bool(here),
+        "probe": probe,
+        "n_channels_registry": rec.get("n_channels"),
+        "duration_s": rec.get("duration_s"),
+    }
+
+    if not here:
+        # Named rather than implied: a recording that is simply on another
+        # machine is not a broken one, and the two read identically if the
+        # difference is not said.
+        out["blocked"] = ("None of this recording's paths are reachable from "
+                          "this machine, so there is nothing to read.")
+        return jsonify(out)
+
+    sess, err = _session_for(here, None, True)
+    if err:
+        out["blocked"] = (err.get("error")
+                          if isinstance(err, dict) else str(err))
+        return jsonify(out)
+
+    channels = sess.get("channels") or []
+    bad = [c for c in channels if c.get("bad")]
+    out["n_channels"] = len(channels)
+    out["n_bad"] = len(bad)
+    out["bad"] = [c.get("number") for c in bad]
+    out["n_usable"] = len(channels) - len(bad)
+    out["fs"] = sess.get("fs")
+    out["duration_s"] = sess.get("duration_s") or out.get("duration_s")
+
+    # How the depth axis will be laid out, before it is laid out. A dual
+    # implant saying "two stacks" here is the difference between a reader
+    # expecting one picture and getting two, and a reader being told.
+    try:
+        spec = {"channels": [c["index"] for c in channels
+                             if not c.get("bad")]}
+        panes, rows = horizonmod.rows_for(sess, spec, rec, LAYERS.get(gid))
+        out["panes"] = [{"id": p["id"], "label": p["label"], "n": p["n"]}
+                        for p in panes]
+        out["n_rows"] = len(rows)
+        out["n_named"] = sum(1 for r in rows if r.get("region"))
+    except Exception as exc:                             # noqa: BLE001
+        out["panes"] = []
+        out["blocked"] = str(exc)
+
+    sheet = LAYERS.get(gid) or {}
+    labelled = len((sheet or {}).get("labels") or {})
+    out["layers"] = {
+        "have": bool(labelled),
+        "n_labelled": labelled,
+        # Not an error and not a blocker: the map draws perfectly well
+        # without anatomy, it just cannot name the band it shows.
+        "note": ("%d channels are labelled, so the bands can be named."
+                 % labelled) if labelled else
+                ("No layer sheet for this recording, so the depth axis will "
+                 "be channels rather than anatomy. StrataScope makes one."),
+    }
+    return jsonify(out)
+
+
+@app.route("/api/horizon/estimate", methods=["POST"])
+def api_horizon_estimate():
+    """Cost, the channel list and the colormaps, in one round trip.
+
+    One call rather than three, for the reason Panorama's does it: the form
+    needs all of it before it can draw itself, and three requests to fill in
+    one card is three chances to be half-drawn.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        gid, rec, sheet = _horizon_context(sess, body)
+        spec = _horizon_spec(body, sess)
+        got = horizonmod.estimate(sess, spec, rec, sheet)
+    except horizonmod.HorizonError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("horizon/estimate", exc, 400, {"path": body.get("path")})
+
+    got["channels"] = [
+        {"index": c["index"], "number": c["number"], "label": c["label"],
+         "bad": bool(c.get("bad"))} for c in (sess.get("channels") or [])]
+    got["colormaps"] = analysis.COLORMAPS
+    got["gid"] = gid
+    got["cached"] = horizonmod.cache_get(horizonmod.cache_key(spec)) is not None
+    got["have_fooof"] = bool(panoramamod.HAVE_FOOOF)
+    return jsonify(got)
+
+
+@app.route("/api/horizon/run", methods=["POST"])
+def api_horizon_run():
+    """Start one. Poll it on /api/cfc/job/<id>, which is not cfc-specific."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        gid, rec, sheet = _horizon_context(sess, body)
+        spec = _horizon_spec(body, sess)
+        plan = horizonmod.plan_for(sess, spec, rec, sheet)
+    except horizonmod.HorizonError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("horizon/run", exc, 400, {"path": body.get("path")})
+
+    if plan["fidelity"] == "full" and not panoramamod.HAVE_FOOOF:
+        return jsonify({
+            "ok": False,
+            "error": "Full fidelity needs the `fooof` package, which is not "
+                     "installed here. Run `pip install -r requirements.txt` "
+                     "in the BARRY GUI folder, or use survey fidelity, "
+                     "which does not need it.",
+        }), 501
+
+    key = horizonmod.cache_key(spec)
+    hit = horizonmod.cache_get(key)
+    if hit is not None and not body.get("force"):
+        return jsonify({"ok": True, "cached": True, "result": hit})
+
+    n_ch = plan["n_channels"]
+    # One stage, named by the module so the name the run ticks and the name
+    # the estimate reads its rate from cannot come apart -- they did, and the
+    # fitting half of every estimate was silently zero.
+    steps = [(horizonmod.stage_name(plan), int(plan["span_s"] * n_ch))]
+
+    def work(job):
+        state = {}
+
+        def on_preview(drawn, done, total):
+            # Throttled here rather than in the module: how often a picture
+            # is worth re-encoding is a question about the screen watching
+            # it, not about the arithmetic. Every row is re-encoded at the
+            # start, because the first few are what tell somebody whether
+            # the run is worth the other sixty.
+            now = time.time()
+            gap = 0.0 if done <= 4 else 1.5
+            if now - state.get("at", 0) < gap:
+                return
+            state["at"] = now
+            job.set_preview(drawn.get("png"))
+
+        out = horizonmod.run(sess, spec, job, on_preview=on_preview,
+                             rec=rec, sheet=sheet)
+        horizonmod.cache_put(key, out)
+        return out
+
+    job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    STORE.record_activity([{
+        "action": "horizon.run",
+        "detail": {"t0": round(spec["t0"], 2), "t1": round(spec["t1"], 2),
+                   "channels": n_ch, "panes": len(plan["panes"]),
+                   "fidelity": plan["fidelity"],
+                   "f_lo": spec["f_lo"], "f_hi": spec["f_hi"],
+                   "windows": plan["n_windows"]},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": horizonmod._plan_public(plan),
+                    "notes": horizonmod.notes_for(plan)})
+
+
+@app.route("/api/horizon/recolor", methods=["POST"])
+def api_horizon_recolor():
+    """Re-draw a finished map. Nothing is read and nothing is re-measured.
+
+    The colormap, the step of the bar and absolute-against-relative are how
+    the answer is shown rather than what it is, which is why they are not in
+    the cache key -- the same split Panorama makes.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _horizon_spec(body, sess)
+        key = horizonmod.cache_key(spec)
+        out = horizonmod.cache_get(key)
+        mats = horizonmod.mats_get(key)
+        if out is None or mats is None:
+            return jsonify({
+                "ok": False,
+                "error": "The numbers behind that map are no longer held, "
+                         "so it cannot be re-coloured without running it "
+                         "again.",
+            }), 409
+        out = horizonmod.recolor(out, mats,
+                                 cmap=body.get("cmap"),
+                                 colour_mode=body.get("colour_mode"),
+                                 bin_hz=body.get("bin_hz"))
+        horizonmod.cache_put(key, out)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("horizon/recolor", exc, 400, {"path": body.get("path")})
+    return jsonify({"ok": True, "map": out["map"], "plan": out["plan"]})
+
+
+@app.route("/api/horizon/save", methods=["POST"])
+def api_horizon_save():
+    """The figure, the two tables and every setting that produced them."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        spec = _horizon_spec(body, sess)
+        out = horizonmod.cache_get(horizonmod.cache_key(spec))
+        if out is None:
+            return jsonify({"ok": False,
+                            "error": "Nothing to save -- run it first."}), 409
+        gid, rec, _sheet = _horizon_context(sess, body)
+        label = (rec or {}).get("label") or (rec or {}).get("key")             or "recording"
+        # The same stem Panorama builds, and for the same reason: a filename
+        # somebody has to find again a month later.
+        stamp = time.strftime("%Y%m%d_%H%M%S")
+        stem = "".join(c if (c.isalnum() or c in " -_.") else "-"
+                       for c in label).strip().replace(" ", "_")[:70]
+        stem = "Horizon_%s_%s" % (stem or "recording", stamp)
+
+        plan = out.get("plan") or {}
+        head = ("# Jarvis Horizon -- %s -- %s -- %g-%g Hz -- %s channels -- "
+                "%s fidelity\n"
+                % (label, gid or "", plan.get("f_lo"), plan.get("f_hi"),
+                   plan.get("n_channels"), out.get("fidelity")))
+
+        written, errors = [], []
+        try:
+            written.append(save_output(horizonmod.figure(out, title=label),
+                                       stem + ".png", subdir="Horizon"))
+        except Exception as exc:                         # noqa: BLE001
+            errors.append("figure: %s" % exc)
+
+        tbl = horizonmod.tables(out)
+        for name, rows in (("_profile.csv", tbl["profile"]),
+                           ("_trend.csv", tbl["trend"])):
+            try:
+                blob = head + "\n".join(
+                    ",".join("" if v is None else str(v) for v in row)
+                    for row in rows)
+                written.append(save_output(blob.encode("utf-8"), stem + name,
+                                           subdir="Horizon"))
+            except Exception as exc:                     # noqa: BLE001
+                errors.append("%s: %s" % (name, exc))
+
+        try:
+            meta = {"tool": "horizon", "gid": gid, "label": label,
+                    "plan": plan, "engine": out.get("engine"),
+                    "fidelity": out.get("fidelity"),
+                    "column_agreement": out.get("column_agreement"),
+                    "panes": out.get("panes"),
+                    "saved": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+            written.append(save_output(
+                json.dumps(meta, indent=2, default=str).encode("utf-8"),
+                stem + "_params.json", subdir="Horizon"))
+        except Exception as exc:                         # noqa: BLE001
+            errors.append("params: %s" % exc)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("horizon/save", exc, 400, {"path": body.get("path")})
+
+    STORE.record_activity([{
+        "action": "horizon.save",
+        "detail": {"label": label, "files": len(written)},
+    }])
+    return jsonify({"ok": True, "folder": "Results/Horizon",
+                    "files": [w["rel"] for w in written],
+                    "saved": written, "errors": errors})
+
+
+
+# ==========================================================================
 # Panorama over many recordings
 #
 # The tool asks one question of every recording in a set, one at a time, and
@@ -1950,6 +2322,13 @@ PNSETS = pnsetmod.Sets(LOGS_DIR, STORE)
 # channel event lists are megabytes and regenerable from the recording, so
 # they go to .cache, which git ignores.
 INCISOR_VAULT = toolresults.ToolResults(LOGS_DIR, "incisor", STORE)
+
+# Doppler's, split the same way and for the same reason. The durable
+# half is the counts, the per-channel participation and the average
+# waveform -- small, and the whole point of a summary somebody else can
+# read without re-running it. The event list and the snippets are
+# megabytes and regenerable, so they go to .cache, which git ignores.
+DOPPLER_VAULT = toolresults.ToolResults(LOGS_DIR, "doppler", STORE)
 
 
 def _incisor_remember(sess, spec, key, out):
@@ -3189,7 +3568,7 @@ def api_incisor_batch():
 
         done = 0
         if tasks:
-            done, failed = _incisor_run_array(job, tasks, failed, concurrency)
+            done, failed = _vacc_run_array(job, tasks, failed, concurrency)
         return {"n": len(members), "done": done, "failed": failed,
                 "skipped": skipped, "submitted": len(tasks)}
 
@@ -3242,8 +3621,17 @@ def _incisor_prepare(member, body, force):
     }
 
 
-def _incisor_run_array(job, tasks, failed, concurrency=None):
+def _vacc_run_array(job, tasks, failed, concurrency=None,
+                    tool="incisor", adopt=None, runlog=None, record=None,
+                    deadline_s=None):
     """Submit every task at once and collect answers as they land.
+
+    `tool` and `adopt` are here because The Storm runs the same way: one
+    array, one sacct per poll, answers taken as they land. Everything
+    below is about SLURM and about not holding every recording's events
+    at once, neither of which is a fact about which detector ran -- so a
+    second copy of it would be a second place for the memory bug in the
+    comment below to come back.
 
     One `sbatch --array`, so the cluster runs them in parallel instead of
     this process running them one at a time; one `sacct` per poll for all of
@@ -3252,70 +3640,48 @@ def _incisor_run_array(job, tasks, failed, concurrency=None):
     Answers are fetched the moment each task's `result_<i>.json` appears
     rather than at the end, so the queue fills up while the rest are still
     running and a batch that is cancelled halfway keeps what it has.
+
+    The polling loop itself is `vaccrun.collect` (reliability fixes 2 and
+    3): an ssh error on a poll is retried rather than escaping with the
+    array still running, a batch that really fails cancels its array, a
+    task that COMPLETED without an answer or never appears in sacct is
+    failed with a sentence after a grace period, and there is an overall
+    deadline. `runlog`/`record` opt a caller into surviving a restart
+    (fix 4) -- Circuit does; Incisor and Doppler pass neither and behave as
+    before. A task's member row is `t["member"]` when it has one (Circuit:
+    one row per recording AND cue type), else its gid.
     """
     cfg = vaccmod.load_config(LOGS_DIR)
-    arr = vaccrunmod.VaccArray(cfg, "incisor", tasks,
+    arr = vaccrunmod.VaccArray(cfg, tool, tasks,
                                concurrency=concurrency)
+    arr.runlog = runlog
+    arr.record = dict(record or {})
     worst = max([t["seconds"] for t in tasks] or [60.0])
     msamp = max([t["megasamples"] for t in tasks] or [1.0])
     arr.submit(seconds=worst, megasamples=msamp)
     for t in tasks:
-        job.member(t["gid"], step="queued on " + str(arr.array_id))
+        job.member(t.get("member") or t["gid"],
+                   step="queued on " + str(arr.array_id))
 
-    done, taken = 0, set()
-    try:
-        while True:
-            job.check()
-            states, ready = arr.poll()
-            for i in sorted(ready - taken):
-                taken.add(i)
-                t = tasks[i]
-                try:
-                    out = arr.fetch(i)
-                    incisormod.cache_put(t["key"], out)
-                    _incisor_remember(t["sess"], t["spec_local"], t["key"], out)
-                    done += 1
-                    job.member(t["gid"], status="done", step=None)
-                    # Let the answer go as soon as it is written down.
-                    #
-                    # A scan of sixty-four channels carries every event on
-                    # every one of them in `_rows`, and a batch of
-                    # twenty-eight holding all of those at once is what
-                    # killed the server the first time this ran in parallel:
-                    # no traceback, no error, the process simply gone. The
-                    # durable copy is on disk and the recent ones are in
-                    # incisor's own bounded cache; this reference is the
-                    # only unbounded one.
-                    out = None
-                    t["sess"] = None
-                    t["report"] = None
-                except Exception as exc:                 # noqa: BLE001
-                    failed += 1
-                    job.member(t["gid"], status="failed", step=None,
-                               error=str(exc)[:200])
-            for i, t in enumerate(tasks):
-                if i in taken:
-                    continue
-                st = states.get(i)
-                job.member(t["gid"],
-                           status="running" if st == "RUNNING" else "queued",
-                           step=(st or "waiting").lower())
-                out = vaccmod.outcome_for(st) if st else None
-                if out and out[0] != "done":
-                    taken.add(i)
-                    failed += 1
-                    job.member(t["gid"], status="failed", step=None,
-                               error=out[1] or out[0])
-            if len(taken) >= len(tasks):
-                break
-            # Every task is finished as far as slurm knows, but a result has
-            # not appeared: the accounting database lags the filesystem, so
-            # this waits rather than calling them lost.
-            time.sleep(vaccrunmod.POLL["running"])
-    except cfcmod.Canceled:
-        arr.cancel()
-        raise
-    return done, failed
+    def on_result(i, t, out):
+        if adopt:
+            adopt(t, out)
+        else:
+            incisormod.cache_put(t["key"], out)
+            _incisor_remember(t["sess"], t["spec_local"], t["key"], out)
+        # Let the answer go as soon as it is written down.
+        #
+        # A scan of sixty-four channels carries every event on every one of
+        # them in `_rows`, and a batch of twenty-eight holding all of those
+        # at once is what killed the server the first time this ran in
+        # parallel: no traceback, no error, the process simply gone. The
+        # durable copy is on disk and the recent ones are in incisor's own
+        # bounded cache; this reference is the only unbounded one.
+        t["sess"] = None
+        t["report"] = None
+
+    return vaccrunmod.collect(job, arr, tasks, on_result, failed,
+                              deadline_s=deadline_s)
 
 
 class _MemberJob:
@@ -3469,17 +3835,62 @@ def _braces_channels(sess):
     return out
 
 
-def _braces_spec(body, sess):
+def _kind_band(kind):
+    """The filter band for a kind of event, from the preset of that name.
+
+    The built-in filter presets are keyed by the same ids as the curation
+    kinds -- `ds` is 5-100 Hz with a 60 Hz notch, `ied` is 1-70 Hz with one
+    -- so the band an event is looked at through and the band it is aligned
+    through come from ONE place, and editing the preset moves both.
+
+    None for a kind with no preset, or no store to read it from.
+    """
+    if not kind:
+        return None
+    try:
+        for pr in (STORE.get_presets("filters") or []):
+            if pr.get("id") == kind:
+                return (float(pr.get("highpass") or 0.0),
+                        float(pr.get("lowpass") or 0.0),
+                        float(pr.get("notch") or 0.0))
+    except Exception:                                    # noqa: BLE001
+        return None
+    return None
+
+
+def _braces_spec(body, sess, kind=None):
     """Incisor's spec, narrowed to the one channel and given Braces' own
     two numbers. Built from `_incisor_spec` so the band, the decimation and
-    the threshold cannot drift from the detector's."""
+    the threshold cannot drift from the detector's.
+
+    `kind` is the bank entry's type. For anything that is not a dentate
+    spike the band comes from that kind's own filter preset rather than from
+    `incisor.DS_BAND`: aligning an IED through a 5-100 Hz dentate-spike
+    filter removes the slow wave that is half of what an IED is, and moves
+    the peak it is aligned to. DS keeps the detector's own band exactly as
+    before -- that is what `_incisor_spec` exists to guarantee.
+    """
+    if kind and kind != "ds" and body.get("band") is None:
+        kb = _kind_band(kind)
+        if kb:
+            lo, hi, notch = kb
+            body = dict(body, band=[lo if lo > 0 else 0.5,
+                                    hi if hi > 0 else 300.0])
+            if body.get("line_hz") is None:
+                body["line_hz"] = notch
     spec = _incisor_spec(dict(body, channels=None), sess)
     # What the magnitude is taken of. CSD by default -- the part of the
     # signal that cannot be volume-conducted -- with the voltage the
     # detectors themselves ran on one setting away, so the two can be
     # compared on the same set rather than argued about.
-    spec["measure"] = ("voltage" if body.get("measure") == "voltage"
-                       else "csd")
+    #
+    # Any id `braces.MEASURES` lists, and CSD for anything else. This used to
+    # read `"voltage" if ... else "csd"`, which quietly turned Eye's "slope"
+    # run into a second CSD run -- three histograms, two of them identical,
+    # and nothing anywhere saying so.
+    known = {m["id"] for m in bracesmod.MEASURES}
+    spec["measure"] = (body.get("measure")
+                       if body.get("measure") in known else "csd")
     # The mains, and how long a moving average to run over the trace.
     # Both are settings because both change the number: a notch that is not
     # taken out leaves 60 Hz inside a 5-100 Hz band, and smoothing merges
@@ -3496,6 +3907,569 @@ def _braces_spec(body, sess):
     return spec
 
 
+# ==========================================================================
+# Doppler -- interictal discharges by line length. Step 1 of The Storm.
+#
+# Shaped like Incisor throughout, because it is the same job: read every
+# chosen channel of a whole recording, detect on it, and hand back something
+# small enough to draw. What differs is the detector and that this one has
+# no local branch -- see `api_doppler_scan`.
+# ==========================================================================
+
+def _doppler_public(out):
+    """The answer without the snippets.
+
+    They are a few megabytes of raw signal and the panel asks for them once,
+    when it draws the report. Sending them with every poll of a batch is how
+    a 200 arrives truncated and will not parse.
+    """
+    return {k: v for k, v in (out or {}).items()
+            if k != "snippets" and not k.startswith("_")}
+
+
+def _doppler_remember(sess, spec, key, out):
+    """File a finished run: the summary durably, the bulk as cache."""
+    gid = (sess or {}).get("gid")
+    if not gid:
+        return False
+    try:
+        with open(DOPPLER_VAULT.cached_path(gid, key, ".json"),
+                  "w", encoding="utf-8") as fh:
+            json.dump(out, fh)
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("doppler.cache", exc, None, {"gid": gid})
+    try:
+        rec = {k: v for k, v in (out or {}).items()
+               if k not in ("snippets", "events")}
+        rec.update({
+            "gid": gid,
+            "params_hash": key,
+            "session_label": (sess.get("identity") or {}).get("label"),
+            "path_used": sess.get("path"),
+            "n_events": int((out or {}).get("n") or 0),
+            "spec": {k: v for k, v in (spec or {}).items() if k != "channels"},
+            "n_channels": len((spec or {}).get("channels") or []),
+            "computed": STORE.provenance(),
+        })
+        DOPPLER_VAULT.put(rec)
+        return True
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("doppler.remember", exc, None, {"gid": gid})
+        return False
+
+
+def _doppler_recall(sess, key):
+    """The full run back, from disk, when memory has forgotten it."""
+    gid = (sess or {}).get("gid")
+    if not gid:
+        return None
+    path = DOPPLER_VAULT.cached_path(gid, key, ".json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            out = json.load(fh)
+    except Exception:                                    # noqa: BLE001
+        return None
+    dopplermod.cache_put(key, out)
+    return out
+
+
+def _doppler_spec(body, sess):
+    """What the run is being asked for, with the defaults filled in.
+
+    Bad channels are dropped rather than masked, and the difference matters
+    more here than it does for Incisor. The original detector zeroes them out
+    of the participation matrix AFTER the event list has been built from
+    `any channel over threshold`, so a bad channel still decides where events
+    begin and end and is only invisible in the answer. A channel that is not
+    read cannot do that.
+
+    `None` means the caller did not say, so the recording's own record
+    decides; an explicit list -- including an empty one -- overrides it,
+    which is how the panel offers "run it with this one put back".
+    """
+    stored = _stored_for(sess)
+    if body.get("bad_channels") is None:
+        bad = {int(b) for b in (stored.get("bad_channels") or [])}
+    else:
+        bad = {int(b) for b in body["bad_channels"]}
+
+    all_ch = sess.get("channels") or []
+    by_index = {int(c["index"]): c for c in all_ch}
+    chans = body.get("channels") or [c["index"] for c in all_ch]
+    chans = [int(c) for c in chans if int(c) in by_index]
+    kept = [i for i in chans if int(by_index[i]["number"]) not in bad]
+    # EVERY bad channel on the recording, not only the ones that were asked
+    # for. A run over the evens still has to say that CSC59 is bad: left out
+    # of the question and bad are two different reasons it was not read,
+    # and a channel that fits neither list is one the report cannot explain.
+    dropped = [int(c["index"]) for c in all_ch if int(c["number"]) in bad]
+    # Left out of THIS RUN by choice -- every channel the caller did not ask
+    # for that is not already bad. Recorded so the answer can say so: a run
+    # over the odd channels alone that does not say it was is a run whose
+    # rate will be compared against a whole-probe one by somebody who does
+    # not know the difference.
+    asked = set(chans)
+    left_out = [c for c in all_ch
+                if int(c["index"]) not in asked
+                and int(c["number"]) not in bad]
+    if not kept:
+        raise ValueError(
+            "Nothing is left to read: every channel asked for is marked bad "
+            "on this recording. Put one back, or choose a different set to "
+            "leave out.")
+
+    probe_id = _probe_for(stored)
+    probe = probebook.get(probe_id) or {}
+    spec = {
+        "path": sess.get("path"),
+        "channels": kept,
+        "invert": bool(sess.get("invert", True)),
+        "even_only": bool(sess.get("even_only")),
+        "bad_channels": sorted(bad),
+        "excluded": [{"index": i, "number": int(by_index[i]["number"]),
+                      "label": by_index[i].get("label")} for i in dropped],
+        "left_out": [{"index": int(c["index"]), "number": int(c["number"]),
+                      "label": c.get("label")} for c in left_out],
+        "preset": (body.get("preset") if left_out else None),
+        "probe": probe_id,
+        "probe_name": probe.get("name") or probe_id,
+    }
+    for key, default in (("llw_s", dopplermod.LLW_S),
+                         ("prc", dopplermod.PRC)):
+        v = body.get(key)
+        spec[key] = float(default if v is None else v)
+
+    # BOTH FILTERS OFF UNLESS ASKED FOR. A first run reproduces the numbers
+    # the lab's MATLAB produces, so a difference from them is always
+    # something somebody chose rather than something this rewrite did.
+    notch = body.get("notch_hz")
+    spec["notch_hz"] = float(notch) if notch else None
+    band = body.get("band")
+    spec["band"] = [float(band[0]), float(band[1])] if band else None
+    return spec
+
+
+@app.route("/api/doppler/estimate", methods=["POST"])
+def api_doppler_estimate():
+    """What a run would do, and what it would cost on the cluster."""
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _doppler_spec(body, sess)
+        plan = dopplermod.estimate(sess, spec, rep)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/estimate", exc, 400, {"path": body.get("path")})
+    key = dopplermod.cache_key(spec, rep)
+    # Said before anything is submitted rather than discovered in a stack
+    # trace forty minutes later: reading only the first piece of a split
+    # recording would report a rate for part of it and look healthy.
+    split = dopplermod.check_parts(sess.get("path"))
+    return jsonify({
+        "ok": True, "plan": plan, "spec": spec, "split": split,
+        "cached": (dopplermod.cache_get(key) is not None
+                   or _doppler_recall(sess, key) is not None),
+        "vacc": _vacc_estimate(sess, spec, plan),
+        "continuity": {
+            "n_segments": rep.get("n_segments"),
+            "seconds_lost": rep.get("seconds_lost"),
+            "true_duration_s": rep.get("true_duration_s"),
+            "residual_sd_us": rep.get("map_residual_sd_us"),
+            "mismatches": rep.get("mismatches"),
+        },
+        "channels": [{"index": int(c["index"]), "number": int(c["number"]),
+                      "label": c.get("label"),
+                      "bad": int(c["number"]) in set(spec["bad_channels"])}
+                     for c in (sess.get("channels") or [])],
+    })
+
+
+@app.route("/api/doppler/snippets", methods=["POST"])
+def api_doppler_snippets():
+    """The sample of raw event waveforms from the run already done.
+
+    Out of the cache, separately from the summary, because the summary is
+    polled and these are asked for once.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _doppler_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/snippets", exc, 400, {"path": body.get("path")})
+    key = dopplermod.cache_key(spec, rep)
+    hit = dopplermod.cache_get(key) or _doppler_recall(sess, key)
+    if hit is None:
+        return jsonify({"ok": False,
+                        "error": "That run is not on this machine. "
+                                 "Run it again."}), 409
+    return jsonify({"ok": True, "snippets": hit.get("snippets") or {}})
+
+
+@app.route("/api/doppler/participation", methods=["POST"])
+def api_doppler_participation():
+    """Which channels each event was found on, for one recording.
+
+    An event in the Event Bank has a `channel`, not a list of them -- the
+    whitelist in `eventbank.add` is deliberate and a `channels` field would
+    be dropped on the way in and would not survive a version restore. But an
+    IED is a cross-channel thing and which channels fired is most of the
+    judgement, so Spotter reads the participation back out of Doppler's own
+    vault and matches it to the banked stamps by time.
+
+    A best-effort answer: a recording whose run is not on this machine gets
+    an empty list and Spotter lights the peak channel alone, which is
+    carried on the banked event itself.
+    """
+    body = request.get_json(force=True) or {}
+    gid = body.get("gid")
+    if not gid:
+        return jsonify({"ok": False, "error": "Which recording?"}), 400
+    want = body.get("params_hash")
+    try:
+        rows = [r for r in (DOPPLER_VAULT.all() or []) if r.get("gid") == gid]
+        if want:
+            rows = [r for r in rows if r.get("params_hash") == want] or rows
+        rows.sort(key=lambda r: str((r.get("computed") or {}).get("at") or ""),
+                  reverse=True)
+        if not rows:
+            return jsonify({"ok": True, "n": 0, "events": []})
+        path = DOPPLER_VAULT.cached_path(gid, rows[0]["params_hash"], ".json")
+        if not os.path.exists(path):
+            return jsonify({"ok": True, "n": 0, "events": []})
+        with open(path, "r", encoding="utf-8") as fh:
+            out = json.load(fh)
+        evs = [{"start": e.get("start"), "channels": e.get("channels") or [],
+                "peak_channel": e.get("peak_channel"),
+                "peak_uv": e.get("peak_uv")}
+               for e in (out.get("events") or [])]
+        return jsonify({"ok": True, "n": len(evs), "events": evs,
+                        "per_channel": out.get("per_channel") or [],
+                        "duration_s": out.get("duration_s"),
+                        "params_hash": rows[0].get("params_hash")})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/participation", exc, 500, {"gid": gid})
+
+
+@app.route("/api/doppler/scan", methods=["POST"])
+def api_doppler_scan():
+    """Detect interictal discharges on every chosen channel, on the cluster.
+
+    THERE IS NO LOCAL BRANCH, and that is the one way this differs from
+    Incisor's shape. The transform is taken over every kept channel of a
+    whole recording at its native rate -- the lab's own .sbat files ask for
+    800 GB to do it -- so a "run it here" button would be one that fails on
+    every real recording and works on the demo. The panel says so in a
+    sentence instead. `doppler.run` is still an ordinary function and the
+    parity harness calls it directly.
+
+    Poll it on /api/cfc/job/<id>, which is not cfc-specific.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _doppler_spec(body, sess)
+        plan = dopplermod.plan_for(sess, spec, rep)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/scan", exc, 400, {"path": body.get("path")})
+
+    split = dopplermod.check_parts(sess.get("path"))
+    if split:
+        return jsonify({"ok": False, "error": split}), 400
+
+    key = dopplermod.cache_key(spec, rep)
+    hit = dopplermod.cache_get(key)
+    if hit is None and not body.get("force"):
+        hit = _doppler_recall(sess, key)
+    if hit is not None and not body.get("force"):
+        return jsonify({"ok": True, "cached": True,
+                        "result": _doppler_public(hit)})
+
+    # Twice the span: the threshold is a percentile over every kept channel
+    # and is not knowable until all of them have been transformed once.
+    steps = [("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
+             ("ied detect", plan["n_channels"])]
+
+    def finish(out):
+        dopplermod.cache_put(key, out)
+        _doppler_remember(sess, spec, key, out)
+        return _doppler_public(out)
+
+    try:
+        run, where = _vacc_run_for("doppler", sess, spec, plan, rep, steps)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/scan-vacc", exc, 400, {"path": body.get("path")})
+
+    def work(job, _run=run):
+        return finish(_run.work(job))
+
+    job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
+                       max(0.001, plan["megasamples"]), where)
+    STORE.record_activity([{
+        "action": "doppler.scan",
+        "detail": {"channels": len(spec["channels"]), "where": where,
+                   "prc": spec["prc"], "llw_s": spec["llw_s"],
+                   "notch_hz": spec["notch_hz"], "band": spec["band"],
+                   "remote": run.spec_remote.get("path")},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": plan, "where": where,
+                    "remote": run.spec_remote.get("path")})
+
+
+@app.route("/api/doppler/reviews")
+def api_doppler_reviews():
+    """Every finished run waiting to be looked at.
+
+    Out of the vault rather than out of memory, so a batch that ran overnight
+    is here in the morning. Banked ones are marked rather than hidden: "I
+    already did that one" is the first thing somebody wants to know coming
+    back to a list of thirty.
+    """
+    try:
+        by_gid = {}
+        for r2 in (REG.all() or []):
+            if r2.get("gid"):
+                by_gid[r2["gid"]] = r2
+        rows = []
+        for rec in (DOPPLER_VAULT.all() or []):
+            gid = rec.get("gid")
+            if not gid:
+                continue
+            banked = []
+            try:
+                for e in (BANK.for_session({"gid": gid}) or []):
+                    if (e.get("type") or "") == "ied":
+                        banked.append({"id": e.get("id"),
+                                       "name": e.get("name"),
+                                       "n": e.get("n")})
+            except Exception:                            # noqa: BLE001
+                pass
+            row = by_gid.get(gid) or {}
+            local = None
+            for p in (row.get("paths") or []):
+                if os.path.isdir(p):
+                    local = p
+                    break
+            rows.append({
+                "gid": gid,
+                "label": rec.get("session_label") or row.get("label"),
+                "n": rec.get("n_events"),
+                "params_hash": rec.get("params_hash"),
+                "spec": rec.get("spec"),
+                "params": rec.get("params"),
+                "warnings": rec.get("warnings") or [],
+                "computed": rec.get("computed"),
+                "local": local,
+                "row": row or None,
+                "banked": banked,
+            })
+        rows.sort(key=lambda r: str((r.get("computed") or {}).get("at") or ""),
+                  reverse=True)
+        return jsonify({"ok": True, "n": len(rows), "reviews": rows})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/reviews", exc, 500)
+
+
+def _doppler_prepare(member, body, force):
+    """Everything one member of a batch needs. None if already answered.
+
+    All the local work up front, before a single task is submitted -- the
+    same reason Incisor's does it: opening the recording, reading its
+    continuity and computing the cache key are this machine's job, and doing
+    them while the cluster waits is what made that one take forty minutes.
+    """
+    local = member.get("local")
+    if not local:
+        raise RuntimeError("this machine cannot open the recording to read "
+                           "its channel list")
+    sess, err = _session_for(local, None, True)
+    if err:
+        raise RuntimeError((err or {}).get("error") or "could not open it")
+    if not sess.get("gid"):
+        sess["gid"] = member["gid"]
+
+    split = dopplermod.check_parts(local)
+    if split:
+        raise RuntimeError(split)
+
+    rep = _incisor_report(local)
+    spec = _doppler_spec(dict(body, path=local), sess)
+    key = dopplermod.cache_key(spec, rep)
+    if not force and (dopplermod.cache_get(key) is not None
+                      or _doppler_recall(sess, key) is not None):
+        return None
+
+    plan = dopplermod.plan_for(sess, spec, rep)
+    return {
+        "gid": member["gid"], "label": member["label"],
+        "sess": sess, "spec_local": spec, "report": rep, "key": key,
+        "plan": plan,
+        "spec_remote": dict(spec, path=member["remote"]),
+        "tool_steps": [
+            ("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
+            ("ied detect", plan["n_channels"])],
+        "seconds": float((dopplermod.estimate(sess, spec, rep) or {})
+                         .get("seconds") or 0),
+        "megasamples": max(0.001, plan.get("megasamples") or 1.0),
+    }
+
+
+def _doppler_members(wanted):
+    """The recordings a batch could run on, and the ones it cannot.
+
+    A recording the cluster cannot reach, or one that two cluster folders
+    both claim to be, is left out here with its reason rather than failing
+    as a task forty minutes in.
+    """
+    staged, _unknown = _vacc_staged()
+    members, blocked = [], []
+    for rec in (REG.all() or []):
+        gid = rec.get("gid")
+        row = staged.get(gid) if gid else None
+        if wanted and gid not in wanted:
+            continue
+        label = rec.get("label") or gid
+        if not row:
+            continue
+        if row.get("conflict"):
+            blocked.append({"gid": gid, "label": label,
+                            "why": "more than one folder on the cluster "
+                                   "claims to be this recording"})
+            continue
+        local = None
+        for p in (rec.get("paths") or []):
+            if os.path.isdir(p):
+                local = p
+                break
+        if not local:
+            blocked.append({"gid": gid, "label": label,
+                            "why": "this computer cannot open it, so its "
+                                   "channel list cannot be read"})
+            continue
+        # `path`, not `remote`: a staged row is a `vacc.inventory` row, and
+        # those carry the cluster folder as `path` (as Incisor's batch reads
+        # it). `row.get("remote")` was None for every member, so every
+        # Doppler batch task was sent `"path": null` and failed on the node
+        # with "the recording is not readable here: None".
+        members.append({"gid": gid, "label": label, "local": local,
+                        "remote": row.get("path")})
+    return members, blocked
+
+
+@app.route("/api/doppler/batch/plan", methods=["GET", "POST"])
+def api_doppler_batch_plan():
+    """Which recordings a batch would do, and why the rest are left out."""
+    body = (request.get_json(force=True) or {}) if request.method == "POST" \
+        else {}
+    force = bool(body.get("force"))
+    try:
+        members, blocked = _doppler_members(body.get("gids"))
+        todo, done = [], []
+        for m in members:
+            try:
+                got = _doppler_prepare(m, body, force)
+            except Exception as exc:                     # noqa: BLE001
+                blocked.append({"gid": m["gid"], "label": m["label"],
+                                "why": str(exc)[:200]})
+                continue
+            if got is None:
+                done.append({"gid": m["gid"], "label": m["label"]})
+                continue
+            todo.append({"gid": m["gid"], "label": m["label"],
+                         "seconds": got["seconds"],
+                         "n_channels": got["plan"]["n_channels"],
+                         "span_s": got["plan"]["span_s"]})
+            got["sess"] = None
+            got["report"] = None
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/batch-plan", exc, 400)
+    cfg = vaccmod.load_config(LOGS_DIR)
+    return jsonify({"ok": True, "n": len(todo), "todo": todo,
+                    "already": done, "blocked": blocked,
+                    "partition": cfg.get("partition")})
+
+
+@app.route("/api/doppler/batch", methods=["POST"])
+def api_doppler_batch():
+    """Run Doppler on every reachable recording, on the cluster, at once.
+
+    One `cfc.Job` with members and one `sbatch --array`, so the tasks run in
+    parallel on the cluster rather than this process running them one at a
+    time. Resume is free and is not implemented: a recording already answered
+    under this question's `params_hash` is skipped in milliseconds, because
+    that is what the vault IS.
+    """
+    body = request.get_json(force=True) or {}
+    force = bool(body.get("force"))
+    try:
+        cfg = vaccmod.load_config(LOGS_DIR)
+        vaccmod.push_code(cfg, APP_DIR)
+        members, blocked = _doppler_members(body.get("gids"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/batch", exc, 400)
+    if not members:
+        return jsonify({"ok": False,
+                        "error": "Nothing on the cluster to run."}), 400
+
+    concurrency = body.get("concurrency")
+
+    def work(job):
+        job.members_init([{"id": m["gid"], "label": m["label"]}
+                          for m in members])
+        tasks, skipped, failed = [], 0, 0
+        for m in members:
+            job.check()
+            gid = m["gid"]
+            try:
+                prep = _doppler_prepare(m, body, force)
+            except Exception as exc:                     # noqa: BLE001
+                failed += 1
+                job.member(gid, status="failed", step=None,
+                           error=str(exc)[:200])
+                continue
+            if prep is None:
+                skipped += 1
+                job.member(gid, status="done", cached=True,
+                           step="already answered")
+                continue
+            job.member(gid, status="queued", step="waiting for the cluster")
+            tasks.append(prep)
+
+        def adopt(t, out):
+            dopplermod.cache_put(t["key"], out)
+            _doppler_remember(t["sess"], t["spec_local"], t["key"], out)
+
+        done = 0
+        if tasks:
+            done, failed = _vacc_run_array(job, tasks, failed, concurrency,
+                                           tool="doppler", adopt=adopt)
+        return {"n": len(members), "done": done, "failed": failed,
+                "skipped": skipped, "submitted": len(tasks)}
+
+    # Counted in recordings. The offload stages belong to each member rather
+    # than to the batch, so the batch's own stage is the list it is walking.
+    steps = [("panorama pool", len(members))]
+    job = cfcmod.start({"path": members[0].get("local") or ""}, steps, work,
+                       1.0, "vacc:scratch")
+    STORE.record_activity([{"action": "doppler.batch",
+                            "detail": {"n": len(members),
+                                       "blocked": len(blocked)}}])
+    return jsonify({"ok": True, "job": job.snapshot(), "n": len(members),
+                    "blocked": blocked})
+
+
+
 @app.route("/api/braces/plan", methods=["POST"])
 def api_braces_plan():
     """What a run would read, and from which version -- before it reads it.
@@ -3509,7 +4483,7 @@ def api_braces_plan():
     try:
         rec = _braces_entry(body.get("entry_id"))
         sess, row = _braces_session(rec)
-        spec = _braces_spec(body, sess)
+        spec = _braces_spec(body, sess, kind=rec.get("type"))
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/plan", exc, 400,
                     {"entry_id": body.get("entry_id")})
@@ -3597,7 +4571,7 @@ def api_braces_run():
     try:
         rec = _braces_entry(body.get("entry_id"))
         sess, row = _braces_session(rec)
-        spec = _braces_spec(body, sess)
+        spec = _braces_spec(body, sess, kind=rec.get("type"))
         report = _incisor_report(sess["path"])
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/run", exc, 400,
@@ -3659,10 +4633,12 @@ def api_braces_run():
     if not n_good:
         return jsonify({
             "ok": False,
-            "error": "Nothing in this set is a dentate spike: all %d "
-                     "candidate(s) were rejected or are still undecided. "
-                     "There is nothing to align, so nothing was read."
-                     % len(events)}), 400
+            "error": "Nothing in this set is %s: all %d candidate(s) "
+                     "were rejected or are still undecided. There is "
+                     "nothing to align, so nothing was read."
+                     % ("an interictal discharge"
+                        if rec.get("type") == "ied" else "a dentate spike",
+                        len(events))}), 400
 
     # Which channels go into the profile.
     #
@@ -3729,12 +4705,17 @@ def api_braces_run():
         # top and bottom rows -- the two the band was chosen
         # for. The extra pair is read and then thrown away by
         # `compute_csd` itself.
+        #
+        # CSD ONLY. Voltage and slope keep every row they are given, so the
+        # extra pair was not thrown away for them -- it went into the trace,
+        # and a band chosen as sixteen contacts was measured on eighteen.
         want_set = set(band_nums)
+        pad_rows = spec.get("measure", "csd") == "csd"
         on = []
         for i, c in enumerate(use_chans):
             if int(c["number"]) in want_set:
                 on.append(c)
-            elif ((i + 1 < len(use_chans)
+            elif pad_rows and ((i + 1 < len(use_chans)
                    and int(use_chans[i + 1]["number"]) in want_set)
                   or (i and int(use_chans[i - 1]["number"]) in want_set)):
                 on.append(c)
@@ -4023,7 +5004,12 @@ def api_braces_profile(set_id):
         sess, _row = _braces_session(entry)
         report = _incisor_report(sess["path"])
         pr = rec.get("params") or {}
-        spec = _braces_spec(dict(body, band=pr.get("band")), sess)
+        # The set's own measure unless the caller names one: the bench
+        # sends none, and a slope proposal drawn as a CSD trace is a bench
+        # showing a curve the decision was not made on.
+        spec = _braces_spec(dict(body, band=pr.get("band"),
+                                 measure=(body.get("measure")
+                                          or pr.get("measure"))), sess)
         want = {int(x) for x in (pr.get("channels") or [])}
         chans = [c for c in _braces_channels(sess)
                  if int(c["number"]) in want] or _braces_channels(sess)
@@ -4223,9 +5209,24 @@ def api_bank_sync():
     })
 
 
+@app.route("/api/braces/measures")
+def api_braces_measures():
+    """What a stamp can be aligned to, and what each one means.
+
+    Served from `braces.MEASURES` so a panel offering the choice does not
+    also invent the words for it. The fact belongs to the module that owns
+    the subject; only the consequence for a surface belongs to the surface.
+    """
+    return jsonify({"ok": True, "measures": bracesmod.MEASURES})
+
+
 @app.route("/api/braces/candidates")
 def api_braces_candidates():
-    """Dentate spike sets that could be aligned, newest first.
+    """Curated sets that could be aligned, newest first.
+
+    `?type=` picks the kind -- `ds` for dentate spikes, `ied` for
+    interictal discharges. It defaults to `ds` so every existing
+    caller keeps the answer it had.
 
     Curated sets only. An uncurated import is a list of candidates rather
     than a list of events, and moving those before anybody has said which
@@ -4233,9 +5234,17 @@ def api_braces_candidates():
     thrown away an hour later.
     """
     gid = request.args.get("gid")
+    # WHICH KIND of event, so Eye can ask the same question about IEDs.
+    #
+    # One route rather than two, because everything below -- curated only,
+    # something left to align, the version history in lineage order -- is
+    # about what makes a set alignable and none of it is about dentate
+    # spikes. `_n_good` and the run route already read the vocabulary by
+    # `rec["type"]`, so this was the only place that named one outright.
+    want_type = (request.args.get("type") or "ds").strip() or "ds"
     out = []
     for rec in BANK.all():
-        if (rec.get("type") or "") != "ds":
+        if (rec.get("type") or "") != want_type:
             continue
         if gid and rec.get("gid") != gid:
             continue
@@ -4305,6 +5314,11 @@ def api_braces_candidates():
             "newest_usable_name": _tip_usable(vers),
             "aligned": rec.get("aligned"),
             "added": rec.get("added"),
+            # What made it, so a picker can tell a detector run from an
+            # imported hand-sort from a harness's throwaway -- three things
+            # that otherwise all arrive called "IED spikes (something)".
+            "pipeline": (rec.get("source") or {}).get("pipeline"),
+            "recording_start": rec.get("recording_start"),
         })
     out.sort(key=lambda r: ((r.get("added") or {}).get("at") or ""),
              reverse=True)
@@ -4627,6 +5641,9 @@ def api_dspca_candidates():
                  "note": ver.get("note"),
                  "aligned": bool(ver.get("aligned")),
                  "usable": bool(ver.get("snap")),
+                 # Which step minted it -- "rootcanal" for a set Root
+                 # Canal cleaned, which is what the picker defaults to.
+                 "tag": ver.get("tag"),
                  "newest": name == _tip_usable(vers)}
                 for ver, name in named],
             "newest_name": versionsmod.tip_next(vers)[0],
@@ -4769,6 +5786,7 @@ def api_dspca_plan():
     named = versionsmod.label_rows(rec.get("versions") or [])
     versions = [{"v": ver.get("v") or 0, "name": name,
                  "ref": BANK.version_key(ver), "at": ver.get("at"),
+                 "tag": ver.get("tag"),
                  "by": ver.get("by"), "n": ver.get("n"),
                  "note": ver.get("note"),
                  "aligned": bool(ver.get("aligned")),
@@ -5919,6 +6937,1010 @@ def _dspca_fit_params(body, got):
         # The hand-placed threshold, and the contacts taken out by hand.
         delta_cut=body.get("delta_cut"),
         manual_bad=body.get("manual_bad"))
+
+
+# ==========================================================================
+# Root Canal -- taking the hidden IEDs out of a dentate spike set
+# ==========================================================================
+# Step four of The Dentist; X-ray is now step five. Braces hands over an
+# aligned DS set, and this measures three things per event -- the max-amp
+# contact's amplitude and half-width, and the best contact's HF power
+# against its own baseline -- clusters them in two, calls the higher-power
+# cluster IED, and on commit banks the DS set without them (as the next
+# version of the same entry) and the IEDs as a candidate IED set Checkup can
+# curate. The method is in backend/rootcanal.py's docstring, and every
+# choice in it was made with the user.
+#
+# THE SAME TWO HALVES AS X-RAY, AND THE SAME REASON FOR THEM.
+#
+#   /api/rootcanal/read   minutes, a cfc job. Every event's snippet and
+#                         spectra, cached to an .npz keyed on what was READ.
+#   /api/rootcanal/fit    fast. Filter, measure, band, z-score, k-means,
+#                         naming and the hand overrides, from those arrays.
+#
+# ONE DIFFERENCE IN HOW A FIT FINDS ITS READ. X-ray's fit is handed the read
+# hash by the panel. Root Canal's contract hands it the entry and the version,
+# so the read is found by asking the bank for that version's stamps and
+# hashing them -- which also means a fit never has to open the recording, and
+# works on a machine that has the cache and not the drive.
+
+
+def _rootcanal_events(rec, src_v):
+    """A version's events with every field the live set knows about them.
+
+    `events_at` rebuilds a version from its snapshot, and a snapshot is only
+    a time and a label: `end`, `channel`, `amplitude` and Braces' `from_t`
+    are not in it. Banking the DS set back from that would strip them from
+    every event it kept. So the snapshot says WHICH events and WHAT they were
+    called, and the live set supplies the rest, matched at curation's own
+    resolution -- a field is only taken from an event at the same time.
+    """
+    if src_v is None:
+        return [dict(ev) for ev in (rec.get("events") or [])]
+    events, _dropped = BANK.events_at(rec, src_v)
+    live = {curation._tkey(ev.get("start")): ev
+            for ev in (rec.get("events") or [])}
+    out = []
+    for ev in events:
+        item = dict(ev)
+        have = live.get(curation._tkey(ev.get("start")))
+        if have:
+            for k in ("end", "channel", "amplitude", "from_t", "align_flag",
+                      "clipped", "excluded", "kept"):
+                if have.get(k) is not None and k not in item:
+                    item[k] = have[k]
+        out.append(item)
+    return out
+
+
+def _rootcanal_params(body, rec, stamps, sess=None, stored=None):
+    """One Root Canal question, from a request body.
+
+    The read half is fixed by the entry and its stamps -- there is nothing
+    about a read the panel chooses -- and the fit half is the six controls
+    plus the two overrides, straight off the body.
+    """
+    probe = None
+    if sess is not None:
+        stored = _stored_for(sess) if stored is None else stored
+        probe = _probe_for(stored)
+    return rootcanal.Params(
+        entry_id=rec["id"], from_version=body.get("from_version"),
+        stamps_hash=rootcanal.stamps_hash(stamps),
+        invert=bool((sess or {}).get("invert", True)),
+        probe=probe,
+        spacing=(dspca.spacing_for(probe) if probe else None),
+        lo_hz=body.get("lo_hz"), hi_hz=body.get("hi_hz"),
+        order=body.get("order"), win_ms=body.get("win_ms"),
+        band_lo=body.get("band_lo"), band_hi=body.get("band_hi"),
+        cross_ms=body.get("cross_ms"), flank_ms=body.get("flank_ms"),
+        seed=body.get("seed"), n_init=body.get("n_init"),
+        flips=body.get("flips"), centres=body.get("centres"))
+
+
+def _rootcanal_npz(gid, rh):
+    return ROOTCANAL.cached_path(gid, rh, ".npz")
+
+
+def _rootcanal_save(gid, rh, got):
+    return rootcanal.save_read(_rootcanal_npz(gid, rh), got)
+
+
+def _rootcanal_load(gid, rh):
+    """One read's arrays, from memory where they still are.
+
+    The LRU is what makes the controls cheap: every Recompute and every
+    click is a fit or an event view, and each would otherwise begin by
+    decompressing tens of megabytes. The loaded dict also carries the
+    fit's memo of measurements per filter, so it has to be the SAME dict
+    from one request to the next, not a fresh load.
+    """
+    key = "rootcanal:%s:%s" % (gid, rh)
+    hit = cfcmod.cache_get(key)
+    if hit is not None:
+        return hit
+    got = rootcanal.load_read(_rootcanal_npz(gid, rh))
+    cfcmod.cache_put(key, got)
+    return got
+
+
+def _rootcanal_setup(body):
+    """Entry, question, read hash and arrays for a fit-shaped request.
+
+    Raises with a sentence when the set has not been read at these
+    settings, rather than reading it: a fit that quietly started minutes of
+    disk work would make Recompute the slowest control in the panel.
+    """
+    rec = _dspca_entry(body.get("entry_id"))
+    src_v = body.get("from_version")
+    stamps, _n_all = _dspca_stamps(rec, src_v)
+    if not stamps:
+        raise rootcanal.RootCanalError(
+            "Nothing in that version is a dentate spike, so there is "
+            "nothing to measure.")
+    p = _rootcanal_params(body, rec, stamps)
+    gid = rec.get("gid")
+    rh = body.get("read") or p.read_hash()
+    if ROOTCANAL.has_cached(gid, rh, ".npz"):
+        got = _rootcanal_load(gid, rh)
+    else:
+        got = _rootcanal_covering(gid, rh, stamps)
+    if got is None:
+        raise rootcanal.RootCanalError(
+            "This set has not been read at these settings on this machine "
+            "yet. Read it first -- it takes a few minutes, once, and every "
+            "change after that is instant.")
+    n_read = len(got["t"]) if got.get("t") is not None else 0
+    if n_read != len(stamps):
+        raise rootcanal.RootCanalError(
+            "The read on file holds %d events and this version has %d, so "
+            "they are not the same set. Read it again."
+            % (n_read, len(stamps)))
+    return rec, p, got, rh, stamps
+
+
+def _rootcanal_covering(gid, rh, stamps):
+    """A read of the same recording that holds every one of these stamps,
+    cut down to them -- or None.
+
+    What makes a set Root Canal has just cleaned openable at once: its
+    stamps are a subset of the read it was cleaned from, so the rows are
+    already on disk. Any read of the same recording will do, whichever
+    entry asked for it, because the rows are a fact about the recording at
+    those times and the read settings are fixed. The cut is kept in memory
+    under the subset's own name, so the next fit finds it without looking.
+    """
+    key = "rootcanal:%s:%s" % (gid, rh)
+    hit = cfcmod.cache_get(key)
+    if hit is not None:
+        return hit
+    stem = shards.safe_base(gid) + "__"
+    try:
+        names = sorted(os.listdir(ROOTCANAL.cache))
+    except OSError:
+        return None
+    times = [e["t"] for e in stamps]
+    for name in names:
+        if not (name.startswith(stem) and name.endswith(".npz")) \
+                or name.endswith(".part.npz"):
+            continue
+        other = name[len(stem):-len(".npz")]
+        try:
+            full = _rootcanal_load(gid, other)
+        except Exception:                                # noqa: BLE001
+            continue
+        got = rootcanal.subset(full, times)
+        if got is not None:
+            got["subset_of"] = other
+            cfcmod.cache_put(key, got)
+            return got
+    return None
+
+
+def _rootcanal_source_tag(rec, src_v):
+    """The tag on the version a request reads from, or None.
+
+    The live set is the newest version, so asked with no version this is
+    the tip's tag.
+    """
+    vers = rec.get("versions") or []
+    if src_v is not None:
+        try:
+            return (BANK.version_at(rec, src_v) or {}).get("tag")
+        except Exception:                                # noqa: BLE001
+            return None
+    tip = versionsmod.tip_next(vers)[0]
+    for ver, name in versionsmod.label_rows(vers):
+        if name == tip:
+            return ver.get("tag")
+    return None
+
+
+def _rootcanal_ied_for(entry_id):
+    """The IED entry an earlier Root Canal commit made from this DS entry.
+
+    Found by the link it was banked with -- `source.parameters.from_entry`,
+    which `EventBank.add` writes once, when the entry is created, and keeps
+    for good -- so a second commit adds a version to that entry instead of
+    filing a second set of the same IEDs beside it.
+    """
+    best = None
+    for rec in BANK.all():
+        if (rec.get("type") or "") != "ied":
+            continue
+        src = rec.get("source") or {}
+        par = src.get("parameters") or {}
+        if par.get("from_entry") != entry_id:
+            continue
+        if not str(src.get("pipeline") or "").startswith("Root Canal"):
+            continue
+        at = (rec.get("added") or {}).get("at") or ""
+        if best is None or at > best[0]:
+            best = (at, rec)
+    return best[1] if best else None
+
+
+def _rootcanal_state(rec, ied_by):
+    """What Root Canal has already done to this set, for the picker."""
+    rows = versionsmod.label_rows(rec.get("versions") or [])
+    mine = [name for ver, name in rows if ver.get("tag") == "rootcanal"]
+    ied = ied_by.get(rec["id"])
+    return {"done": bool(mine),
+            "ied_entry": (ied or {}).get("id"),
+            "version": versionsmod.newest(mine) if mine else None}
+
+
+def _rootcanal_reachable(out):
+    """Whether each candidate's recording can be read here. Mutates `out`.
+
+    The same three cheap tiers X-ray's picker asks, and the same single
+    registry read for all of them -- see the long note in
+    `api_dspca_candidates` for why it is only the gids that have sets, and
+    why it stops short of opening the folder.
+    """
+    want = {r.get("gid") for r in out if r.get("gid")}
+    known = {}
+    if want:
+        try:
+            for row in demomod.registry_rows():
+                if row.get("gid") in want:
+                    known[row["gid"]] = row
+            for rec_ in (REG.all() or []):
+                g = rec_.get("gid")
+                if g in want and g not in known:
+                    known[g] = REG.summary(rec_) or {}
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error(
+                "rootcanal/candidates",
+                "Could not index the registry, so no set could be told "
+                "apart from one that cannot be read: %s" % exc, None)
+            known = None
+    for row in out:
+        g = row.get("gid")
+        if not row.get("aligned"):
+            # First, because it is the reason a person can act on: the
+            # recording may well be here, and the step before this one has
+            # not been run.
+            row["readable"] = False
+            row["why_not"] = "Braces hasn't aligned this set yet"
+        elif known is None:
+            row["readable"], row["why_not"] = True, None
+        elif not g:
+            row["readable"] = False
+            row["why_not"] = ("not attached to a recording -- it carries a "
+                              "label, which is a name, but no registry id, "
+                              "which is what finds the folder")
+        elif g not in known:
+            row["readable"] = False
+            row["why_not"] = ("its recording is not in the registry on this "
+                              "machine")
+        elif not ((known[g] or {}).get("here") or row.get("session_path")):
+            row["readable"] = False
+            row["why_not"] = "its recording is not on this machine"
+        else:
+            row["readable"], row["why_not"] = True, None
+    return out
+
+
+@app.route("/api/rootcanal/candidates")
+def api_rootcanal_candidates():
+    """Dentate spike sets Root Canal could clean, newest first.
+
+    Every curated DS set with spikes left in it is listed, and only the ones
+    Braces has aligned are offered: all three measurements are taken at the
+    stamp, and a stamp a few milliseconds off its peak measures the slope of
+    the event rather than its top. The others come back with `readable`
+    false and the reason, so the picker can say why rather than just not
+    showing them.
+    """
+    gid = request.args.get("gid")
+    ied_by = {}
+    for rec in BANK.all():
+        if (rec.get("type") or "") == "ied":
+            src = rec.get("source") or {}
+            fe = (src.get("parameters") or {}).get("from_entry")
+            if fe and str(src.get("pipeline") or "").startswith("Root Canal"):
+                ied_by.setdefault(fe, rec)
+    out = []
+    for rec in BANK.all():
+        if (rec.get("type") or "") != "ds":
+            continue
+        if gid and rec.get("gid") != gid:
+            continue
+        if not rec.get("specified") or not _n_good(rec):
+            continue
+        vers = rec.get("versions") or []
+        named = named_versions(vers)
+        for row in named:
+            # Additive beside what `named_versions` carries: whether this
+            # machine holds the version's stamps. A version without them
+            # cannot be read from, and the picker has to be able to say so.
+            row["usable"] = bool(any(
+                v.get("snap") for v in vers
+                if BANK.version_key(v) == BANK.version_key(row)))
+            row["ref"] = BANK.version_key(row)
+            row["aligned"] = bool(row.get("aligned"))
+        aligned_names = [r["name"] for r in named
+                         if r.get("usable") and r.get("aligned")]
+        out.append({
+            "entry_id": rec["id"], "name": rec.get("name"),
+            "session_label": rec.get("session_label"),
+            "gid": rec.get("gid"), "project": rec.get("project"),
+            "mouse": rec.get("mouse"), "session": rec.get("session"),
+            "session_path": rec.get("session_path"),
+            "n": _n_good(rec), "n_all": rec.get("n"),
+            "aligned": bool(rec.get("aligned")),
+            "versions": named,
+            "newest_usable_name": _tip_usable(vers),
+            "newest_aligned_name": (versionsmod.newest(aligned_names)
+                                    if aligned_names else None),
+            "rootcanal": _rootcanal_state(rec, ied_by),
+            "added": rec.get("added"),
+        })
+    out.sort(key=lambda r: ((r.get("added") or {}).get("at") or ""),
+             reverse=True)
+    _rootcanal_reachable(out)
+    return jsonify({"ok": True, "sets": out, "n": len(out)})
+
+
+def _rootcanal_prepare(rec, src_v):
+    """Everything a read needs that is not the read: the recording, the
+    channels, the stamps, the question and its hash. Shared by the single
+    read and the batch so the two cannot key the same set differently."""
+    if not rec.get("aligned"):
+        raise rootcanal.RootCanalError(
+            "Braces hasn't aligned this set yet. Every measurement here is "
+            "taken at the stamp, so align it in Braces first.")
+    stamps, n_all = _dspca_stamps(rec, src_v)
+    if not stamps:
+        raise rootcanal.RootCanalError(
+            "Nothing in this set is a dentate spike: all %d candidate(s) "
+            "were rejected or are still undecided, so there is nothing to "
+            "measure and nothing was read." % n_all)
+    sess, _row = _braces_session(rec)
+    stored = _stored_for(sess)
+    chans = _braces_channels(sess)
+    p = _rootcanal_params({"from_version": src_v}, rec, stamps, sess, stored)
+    marked = {int(c["number"]): "marked bad on this recording"
+              for c in chans if c.get("bad")}
+    return sess, chans, stamps, p, marked
+
+
+def _rootcanal_is_read(gid, rh, marked, stamps=None):
+    """Whether this read is on file and still honours the bad contacts.
+
+    The marked-bad list is not in the read's name -- a fit has to find the
+    read without opening the recording, and that list lives with the
+    recording -- so it is checked here instead, against the record the read
+    was filed with. A contact marked bad since is a read that would pick a
+    wire somebody has said not to trust, and is read again.
+    """
+    if not ROOTCANAL.has_cached(gid, rh, ".npz"):
+        # Not under its own name -- but a set Root Canal has cleaned is a
+        # subset of the read it was cleaned from, and that is as good as
+        # read. See `_rootcanal_covering`.
+        return (stamps is not None
+                and _rootcanal_covering(gid, rh, stamps) is not None)
+    done = ROOTCANAL.get(gid, rh)
+    if done and sorted(done.get("marked") or []) != sorted(marked):
+        return False
+    return True
+
+
+def _rootcanal_do_read(sess, chans, stamps, p, marked, rec, src_v,
+                       job=None, stop=None, progress=None):
+    """Screen, read, file. The body of both the single read and the batch."""
+    bad = dict(marked)
+    spec = {"band": dspca.T_DS_FREQ, "line_hz": bracesmod.LINE_HZ,
+            "line_q": bracesmod.LINE_Q, "lfp_fs": dspca.T_LFP_FS,
+            "spacing_um": p.spacing, "csd_smooth": True}
+    bad.update(bracesmod.screen(sess, chans, spec, [e["t"] for e in stamps]))
+    (stop or (job.check if job else (lambda: None)))()
+    t0 = time.time()
+    got = rootcanal.read(sess, chans, stamps, p, bad, job=job, stop=stop,
+                         progress=progress)
+    gid = rec.get("gid")
+    rh = p.read_hash()
+    _rootcanal_save(gid, rh, got)
+    cfcmod.cache_put("rootcanal:%s:%s" % (gid, rh), got)
+    screened = {str(k): v for k, v in (got["bad"] or {}).items()}
+    ROOTCANAL.put({
+        "gid": gid, "params_hash": rh, "kind": "read",
+        "entry_id": rec["id"], "from_version": src_v,
+        "session_label": rec.get("session_label"),
+        "params": p.read_params(),
+        "marked": sorted(marked),
+        "screened": screened,
+        "n_events": len(stamps),
+        "missed": got["missed"],
+        "seconds": round(time.time() - t0, 1),
+        "probe": got.get("probe"),
+    })
+    return got, rh, screened
+
+
+@app.route("/api/rootcanal/read", methods=["POST"])
+def api_rootcanal_read():
+    """The expensive half: every event's snippet and spectra, on every
+    contact. A job, polled on /api/cfc/job/<id>.
+
+    Nothing is measured or banked here. What comes out is an .npz and a
+    record of what was read, and `cached` says whether it was already there
+    -- in which case there is no job and the panel can fit at once.
+    """
+    body = request.get_json(force=True) or {}
+    src_v = body.get("from_version")
+    try:
+        rec = _dspca_entry(body.get("entry_id"))
+        sess, chans, stamps, p, marked = _rootcanal_prepare(rec, src_v)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/read", exc, 400,
+                    {"entry_id": body.get("entry_id"),
+                     "from_version": src_v})
+    gid = rec.get("gid")
+    rh = p.read_hash()
+    if _rootcanal_is_read(gid, rh, marked, stamps) and not body.get("force"):
+        return jsonify({"ok": True, "cached": True, "job": None, "read": rh,
+                        "n": len(stamps)})
+
+    def work(job):
+        got, rh_, screened = _rootcanal_do_read(
+            sess, chans, stamps, p, marked, rec, src_v, job=job)
+        return {"read": rh_, "n": len(stamps), "missed": got["missed"],
+                "screened": screened}
+
+    steps = [(rootcanal.STAGE_READ, len(chans))]
+    span_s = len(stamps) * 2 * (p.snip_ms / 1000.0 + p.pad_s)
+    msamples = max(0.001, span_s * float(sess.get("fs") or 30000.0)
+                   * len(chans) / 1e6)
+    job = cfcmod.start({"tool": "rootcanal", "path": sess.get("path"),
+                        "entry_id": rec["id"], "read": rh},
+                       steps, work, msamples)
+    STORE.record_activity([{
+        "action": "rootcanal.read",
+        "detail": {"entry": rec["id"], "n": len(stamps),
+                   "from_version": src_v, "read": rh},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "read": rh, "n": len(stamps)})
+
+
+@app.route("/api/rootcanal/fit", methods=["POST"])
+def api_rootcanal_fit():
+    """The cheap half: the three numbers, the two clusters, the naming.
+
+    What Recompute, a flip and a dragged centre all call. Every event of the
+    read comes back, measured or not, with its three raw values, its z
+    values, its cluster and its class, so the panel draws from one answer.
+    """
+    body = request.get_json(force=True) or {}
+    try:
+        rec, p, got, rh, _stamps = _rootcanal_setup(body)
+        res = rootcanal.fit(got, p)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/fit", exc, 400,
+                    {"entry_id": body.get("entry_id"),
+                     "from_version": body.get("from_version")})
+    res["params"] = dict(res["params"], read=rh)
+    # Whether the version being fitted is itself Root Canal's output. The
+    # panel should say so: see the guard in `api_rootcanal_commit`.
+    res["source_tag"] = _rootcanal_source_tag(rec, body.get("from_version"))
+    res["subset_of"] = got.get("subset_of")
+    return jsonify(dict(res, ok=True, entry_id=rec["id"], read=rh))
+
+
+@app.route("/api/rootcanal/event", methods=["POST"])
+def api_rootcanal_event():
+    """One event, for the click panel: its max-amp trace with the numbers
+    drawn on it, its spectrum against its baseline, the stack and the CSD.
+    Arrays only; the browser draws."""
+    body = request.get_json(force=True) or {}
+    try:
+        _rec, p, got, _rh, _stamps = _rootcanal_setup(body)
+        if body.get("i") is None:
+            raise rootcanal.RootCanalError("Say which event (i).")
+        view = rootcanal.event_view(got, p, int(body.get("i")))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/event", exc, 400,
+                    {"entry_id": body.get("entry_id"), "i": body.get("i")})
+    return jsonify(dict(view, ok=True))
+
+
+def _rootcanal_figures(body, rec, p, answer_hash, src_v):
+    """File the browser's pictures, before anything is banked.
+
+    Before, for X-ray's reason: the version can then carry where they went,
+    and a figure filed for a commit that then fails is an orphan in Results
+    rather than a version pointing at pictures that do not exist. Gated by
+    `_png_bytes`, so only a real PNG becomes a file.
+    """
+    filed = []
+    pngs = body.get("pngs") or {}
+    for what in ("space", "flat"):
+        blob = _png_bytes(pngs.get(what))
+        if not blob:
+            continue
+        label = "Root Canal %s — %s" % (
+            what, rec.get("session_label") or rec.get("name") or rec["id"])
+        try:
+            run = STORE.record_run({
+                "kind": "figure", "script": "Root Canal (rootcanal)",
+                "label": label, "status": "done", "format": "png",
+                "parameters": {
+                    "panel": what, "entry_id": rec["id"],
+                    "filter_hz": [p.lo_hz, p.hi_hz], "win_ms": p.win_ms,
+                    "band_hz": [p.band_lo, p.band_hi],
+                    "flips": len(p.flips),
+                    "centres": "by hand" if p.centres else "k-means",
+                },
+                "recipe": {"tool": "rootcanal", "params": p.as_dict(),
+                           "entry_id": rec["id"], "gid": rec.get("gid"),
+                           "from_version": src_v,
+                           "params_hash": answer_hash},
+                "session": {"gid": rec.get("gid"),
+                            "label": rec.get("session_label"),
+                            "key": rec.get("session_key"),
+                            "path": rec.get("session_path")},
+            })
+            saved = save_output(
+                blob, "rootcanal_%s_%s_%s.png" % (
+                    _safe_name(rec.get("session_label") or rec["id"]),
+                    what, answer_hash[:8]),
+                subdir=rec.get("session_label"), lane="exhibit")
+            STORE.update_run(run["id"], {"output": saved})
+            filed.append({"panel": what, "run": run["id"],
+                          "rel": (saved or {}).get("rel")})
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("rootcanal/figure",
+                               "Could not file the %s panel: %s" % (what, exc),
+                               None, {"entry_id": rec["id"]})
+    return filed
+
+
+@app.route("/api/rootcanal/commit", methods=["POST"])
+def api_rootcanal_commit():
+    """Bank the answer: the DS set without its IEDs, and the IEDs.
+
+    Two writes and a record, in this order:
+
+      1. the IEDs, as a candidate IED entry -- `curated: False`, because a
+         classifier said this and a person has not, so they arrive as
+         candidates for Checkup's `ied` kind. A second commit from the same
+         DS entry adds a version to that entry rather than a second one.
+      2. the DS set as the next version of the SAME entry, holding every
+         event it held except the ones called IED, each with every field it
+         had. Tagged `rootcanal`, so X-ray can read from it by default.
+      3. the numbers and the figures, filed in the results bank under the
+         question they answer, and named in the version's note.
+
+    NOTHING MOVES A STAMP. Events are matched to classes by time, at
+    curation's resolution, the way X-ray's commit matches types -- never by
+    position, because a read that dropped one would shift every class after
+    it onto the wrong event. Rejected and undecided candidates were not
+    read, are not classified, and are carried exactly as they were.
+
+    Pressing it twice on the same answer writes nothing the second time:
+    `EventBank.add` mints a version only when something changed, and says
+    so. `written` reports which of the two writes happened.
+    """
+    body = request.get_json(force=True) or {}
+    src_v = body.get("from_version")
+    try:
+        rec, p, got, rh, _stamps = _rootcanal_setup(body)
+        res = rootcanal.fit(got, p)
+        events = _rootcanal_events(rec, src_v)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/commit", exc, 400,
+                    {"entry_id": body.get("entry_id"),
+                     "from_version": src_v})
+    if not events:
+        return jsonify({"ok": False,
+                        "error": "That version holds no events."}), 400
+    # NOT ON ITS OWN OUTPUT, unless asked twice. K-means with two classes
+    # always finds two classes: run on a set it has already cleaned, it
+    # splits the dentate spikes that are left and takes out another share
+    # of them, and again the time after. Committing from the live set right
+    # after a commit is exactly that, and is the easy mistake to make, so it
+    # is refused with the way out rather than done.
+    if (_rootcanal_source_tag(rec, src_v) == "rootcanal"
+            and not body.get("again")):
+        return jsonify({
+            "ok": False,
+            "error": "That version is already Root Canal's output. Two "
+                     "clusters are always found, so cleaning it again would "
+                     "take out another share of real dentate spikes. Read "
+                     "from the version before it -- or, if a second pass "
+                     "really is meant, send it again with again: true."}), 400
+
+    cls_at = {curation._tkey(e["t"]): e for e in res["events"]}
+    ds_out, ied_src = [], []
+    for ev in events:
+        hit = cls_at.get(curation._tkey(ev.get("start")))
+        if hit is not None and hit.get("cls") == "ied":
+            ied_src.append((ev, hit))
+        else:
+            ds_out.append(ev)
+    counts = res["counts"]
+    if len(ied_src) != counts["ied"]:
+        return jsonify({
+            "ok": False,
+            "error": "The IED calls could not all be matched onto the set's "
+                     "stamps by time (%d of %d), so nothing was written. "
+                     "This is a bug, not a setting."
+                     % (len(ied_src), counts["ied"])}), 500
+    removed = len(ied_src)
+    kept = counts["ds"] + counts["unmeasured"]
+    who = (body.get("by") or "").strip() or None
+    answer_hash = ROOTCANAL.hash_of(p.as_dict())
+    user_note = (body.get("note") or "").strip()
+    where = ("v%s" % src_v) if src_v is not None else "the live set"
+    filed = _rootcanal_figures(body, rec, p, answer_hash, src_v)
+    # Where both sets live. The IED entry is filed against the same
+    # recording, by the same registry id, as the set it came out of.
+    shared = {
+        "gid": rec.get("gid"),
+        "project": rec.get("project"), "mouse": rec.get("mouse"),
+        "session": rec.get("session"),
+        "session_key": rec.get("session_key"),
+        "session_loose_key": rec.get("session_loose_key"),
+        "session_label": rec.get("session_label"),
+        "session_path": rec.get("session_path"),
+        "recording_start": rec.get("recording_start"),
+        "duration_s": rec.get("duration_s"),
+    }
+    link = "Numbers and figures: results bank rootcanal/%s__%s." % (
+        rec.get("gid"), answer_hash)
+    method = ("filter %s–%s Hz, amplitude window ±%s ms, half-width "
+              "search ±%s ms, %s"
+              % (rootcanal._g(p.lo_hz), rootcanal._g(p.hi_hz),
+                 rootcanal._g(p.win_ms), rootcanal._g(p.cross_ms),
+                 p.band_label()))
+    # WHICH EVENTS WERE PLACED ON LESS THAN THE FULL QUESTION. The event
+    # whitelist in `EventBank.add` has no field for it -- an unknown key is
+    # dropped on the way in -- so the flags travel as times: in both notes,
+    # in the IED entry's parameters and in the results record, each beside
+    # the search setting that produced them.
+    flags = rootcanal.flag_times(res)
+    flag_note = " ".join(
+        x for x in (
+            ("Assigned on 2 of 3 axes: t = %s s."
+             % ", ".join("%.3f" % t for t in flags["partial_t"]))
+            if flags["partial_t"] else "",
+            ("Half-width found only with the search widened to %s ms: "
+             "t = %s s." % (rootcanal._g(p.cross_ms),
+                            ", ".join("%.3f" % t for t in flags["wide_t"])))
+            if flags["wide_t"] else "") if x)
+
+    # -- 1. the IEDs ------------------------------------------------------
+    ied_made, ied_entry, ied_version = None, None, None
+    ied_written = False
+    if ied_src:
+        prior_ied = _rootcanal_ied_for(rec["id"])
+        # A person may have curated these in Checkup since the last commit.
+        # Their calls are carried onto the same times rather than wiped, and
+        # the entry stays as curated as they left it.
+        was = {}
+        if prior_ied:
+            was = {curation._tkey(e.get("start")): e
+                   for e in (prior_ied.get("events") or [])}
+        ied_events = []
+        for ev, hit in ied_src:
+            item = {"start": ev.get("start")}
+            for k in ("end", "channel", "amplitude"):
+                if ev.get(k) is not None:
+                    item[k] = ev[k]
+            old = was.get(curation._tkey(ev.get("start")))
+            if old:
+                for k in ("label", "label_id"):
+                    if old.get(k) is not None:
+                        item[k] = old[k]
+            ied_events.append(item)
+        ied_note = (
+            "Root Canal: %d event(s) called IED in %s (entry %s, read from "
+            "%s)%s. %s %s %s %s"
+            % (removed, rec.get("session_label") or rec.get("name"),
+               rec["id"], where,
+               (", %d flipped by hand" % sum(1 for _e, h in ied_src
+                                              if h.get("flipped")))
+               if any(h.get("flipped") for _e, h in ied_src) else "",
+               res["rule"], method + ".", flag_note, link)).strip()
+        if user_note:
+            ied_note += " " + user_note
+        try:
+            ied_made = BANK.add(dict(
+                shared,
+                id=(prior_ied or {}).get("id"),
+                type="ied", type_name="IED",
+                name="Hidden IEDs (Root Canal)",
+                note=("Taken out of the dentate spike set %s by Root "
+                      "Canal. A classifier's call, not a person's: these "
+                      "are candidates for Checkup." % rec["id"]),
+                events=ied_events,
+                curated=bool((prior_ied or {}).get("specified")),
+                curation_label=(prior_ied or {}).get("curation_label"),
+                pipeline="Root Canal",
+                added_by=who,
+                parameters=dict(
+                    p.as_dict(), tool="rootcanal",
+                    from_entry=rec["id"], from_version=src_v,
+                    read_hash=rh, params_hash=answer_hash,
+                    flipped=[h["i"] for _e, h in ied_src
+                             if h.get("flipped")],
+                    **flags),
+                version_note=ied_note,
+                version_tag="rootcanal"))
+        except Exception as exc:                         # noqa: BLE001
+            return fail("rootcanal/commit", exc, 400,
+                        {"entry_id": rec["id"], "step": "ied entry"})
+        ied_entry = ied_made.get("id")
+        ied_written = bool(ied_made.get("new_version")
+                           or not ied_made.get("replaced"))
+        ied_version = versionsmod.tip_next(ied_made.get("versions") or [])[0]
+
+    # -- 2. the DS set, without them ---------------------------------------
+    names = rec.get("label_names") or {
+        l["id"]: l["name"] for l in curation.KINDS["ds"]["labels"]}
+    tally = {}
+    for ev in ds_out:
+        k = ev.get("label_id") or ev.get("label") or "unspecified"
+        tally[k] = tally.get(k, 0) + 1
+    ds_note = (
+        "Root Canal: %d hidden IED(s) taken out of %d dentate spikes read "
+        "from %s%s; %d kept as DS%s. %s %s%s %s %s"
+        % (removed, res["n"], where,
+           (" (%d flipped by hand)" % len(p.flips)) if p.flips else "",
+           counts["ds"],
+           (" and %d not measured, kept" % counts["unmeasured"])
+           if counts["unmeasured"] else "",
+           res["rule"], method + ".",
+           (" IEDs banked to entry %s." % ied_entry) if ied_entry else "",
+           flag_note, link)).strip()
+    if user_note:
+        ds_note += " " + user_note
+    if not ds_out:
+        return jsonify({
+            "ok": False,
+            "error": "Every event in this set was called IED, so the DS set "
+                     "would be empty and was not written. That is almost "
+                     "certainly the clusters and not the recording -- check "
+                     "the centres."}), 400
+    try:
+        made = BANK.add(dict(
+            shared,
+            id=rec["id"],
+            type="ds", type_name=rec.get("type_name") or "Dentate spike",
+            name=rec.get("name"),
+            events=ds_out,
+            by_label=tally,
+            label_names=names,
+            # Still curated, and still aligned: this takes events out and
+            # moves none of the ones it keeps, so neither fact about the set
+            # has changed. See the same note in X-ray's commit.
+            curated=True,
+            curation_label=rec.get("curation_label") or "*",
+            aligned=rec.get("aligned"),
+            based_on=src_v if src_v is not None else rec.get("based_on"),
+            pipeline="Root Canal (hidden IEDs out)",
+            added_by=who,
+            parameters=dict(p.as_dict(), tool="rootcanal",
+                            read_hash=rh, params_hash=answer_hash,
+                            ied_entry=ied_entry, figures=filed, **flags),
+            version_note=ds_note,
+            version_tag="rootcanal"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/commit", exc, 400,
+                    {"entry_id": rec["id"], "step": "ds version"})
+    ds_version = versionsmod.tip_next(made.get("versions") or [])[0]
+    ds_written = bool(made.get("new_version"))
+
+    # -- 3. the numbers ------------------------------------------------------
+    try:
+        ROOTCANAL.put({
+            "gid": rec.get("gid"), "params_hash": answer_hash,
+            "kind": "classification",
+            "entry_id": rec["id"], "entry_name": rec.get("name"),
+            "session_label": rec.get("session_label"),
+            "from_version": src_v, "read": rh,
+            "ds_version": ds_version, "ied_entry": ied_entry,
+            "ied_version": ied_version,
+            "params": p.as_dict(),
+            "n": res["n"], "n_used": res["n_used"],
+            "counts": counts, "removed": removed, "kept": kept,
+            "rule": res["rule"], "centres": res["centres"],
+            "scale": res["scale"], "axes": res["axes"],
+            # The per-event numbers ARE the result here -- they are what
+            # the clusters were made of -- so, unlike X-ray's labels, they
+            # are kept: [i, t, amp_uV, hw_ms, hf_db, class, flipped,
+            # contact]. A few tens of kilobytes a recording.
+            "columns": ["i", "t", "amp_uV", "hw_ms", "hf_db", "cls",
+                        "flipped", "contact", "axes", "partial", "wide"],
+            "rows": [[e["i"], e["t"], e["amp_uV"], e["hw_ms"], e["hf_db"],
+                      e["cls"], e["flipped"], e["contact"], e["axes"],
+                      e["partial"], e["wide"]]
+                     for e in res["events"]],
+            "partial_t": flags["partial_t"], "wide_t": flags["wide_t"],
+            "cross_ms": flags["cross_ms"],
+            "figures": filed,
+        })
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("rootcanal/result",
+                           "The sets were banked but the result record was "
+                           "not filed: %s" % exc, None,
+                           {"entry_id": rec["id"]})
+    STORE.record_activity([{
+        "action": "rootcanal.commit",
+        "detail": {"entry": rec["id"], "from_version": src_v,
+                   "ds_version": ds_version, "ied_entry": ied_entry,
+                   "removed": removed, "kept": kept, "read": rh},
+    }])
+    out = {"ok": True, "ds_entry": rec["id"], "ds_version": ds_version,
+           "ied_entry": ied_entry, "ied_version": ied_version,
+           "removed": removed, "kept": kept,
+           "unmeasured": counts["unmeasured"],
+           "partial": counts["partial"], "wide": counts["wide"],
+           "written": {"ds": ds_written, "ied": ied_written},
+           "figures": filed, "params_hash": answer_hash}
+    if not ds_written and not ied_written:
+        out["already"] = ("This answer is already banked, so nothing was "
+                          "written. Version %s still holds it." % ds_version)
+    return jsonify(out)
+
+
+@app.route("/api/rootcanal/batch/plan", methods=["GET", "POST"])
+def api_rootcanal_batch_plan():
+    """Which sets a batch would read, which are read already, and why the
+    rest are left out. X-ray's shape and X-ray's reasons -- see
+    `api_dspca_batch_plan` -- with one more: a set Braces has not aligned
+    is not ready for this step."""
+    body = request.get_json(force=True, silent=True) or {}
+    if request.method == "GET":
+        body = dict(request.args)
+    try:
+        todo, done, blocked = [], [], []
+        for rec in BANK.all():
+            if (rec.get("type") or "") != "ds":
+                continue
+            label = (rec.get("session_label") or rec.get("name")
+                     or rec.get("id"))
+            row = {"entry_id": rec["id"], "gid": rec.get("gid"),
+                   "label": label, "n_good": _n_good(rec),
+                   "project": rec.get("project"), "mouse": rec.get("mouse"),
+                   "session": rec.get("session")}
+            if not rec.get("specified"):
+                blocked.append(dict(row, why="nobody has been through this "
+                                             "one in Checkup yet"))
+                continue
+            if not row["n_good"]:
+                blocked.append(dict(row, why="every candidate was rejected, "
+                                             "so there is nothing to measure"))
+                continue
+            if not rec.get("aligned"):
+                blocked.append(dict(row, why="Braces hasn't aligned this set "
+                                             "yet"))
+                continue
+            # ALREADY CLEANED. The batch reads the live set, and once Root
+            # Canal has banked, the live set IS its output. k-means always
+            # finds two groups, so reading that and committing again would
+            # take a second share of real dentate spikes out -- which is
+            # why commit refuses it. Offering it here would be a batch that
+            # spends minutes per set building answers it cannot bank.
+            vs = rec.get("versions") or []
+            last = (max(vs, key=lambda v: (v.get("v") or 0,
+                                           str(v.get("at") or "")))
+                    if vs else None)
+            if last and last.get("tag") == "rootcanal":
+                blocked.append(dict(row, why=(
+                    "Root Canal has already taken the IEDs out of this "
+                    "one; cleaning its own output again would take real "
+                    "dentate spikes out with them")))
+                continue
+            try:
+                sess, chans, stamps, p, marked = _rootcanal_prepare(
+                    rec, body.get("from_version"))
+            except Exception as exc:                     # noqa: BLE001
+                blocked.append(dict(row, why=str(exc)))
+                continue
+            rh = p.read_hash()
+            row["read"] = rh
+            row["probe"] = p.probe
+            row["path"] = sess.get("path")
+            if _rootcanal_is_read(rec.get("gid"), rh, marked, stamps):
+                done.append(dict(row, cached=True))
+            else:
+                todo.append(row)
+        key = lambda r: (str(r.get("project") or ""), str(r.get("mouse") or ""),
+                         str(r.get("session") or ""))
+        todo.sort(key=key)
+        done.sort(key=key)
+        blocked.sort(key=key)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/batch-plan", exc, 400)
+    return jsonify({"ok": True, "todo": todo, "done": done,
+                    "blocked": blocked, "n": len(todo),
+                    "n_done": len(done), "n_blocked": len(blocked)})
+
+
+@app.route("/api/rootcanal/batch", methods=["POST"])
+def api_rootcanal_batch():
+    """Read every chosen set, one at a time, in the background.
+
+    One at a time for X-ray's reason: two reads at once over one disk are
+    slower than two in sequence. Nothing is classified or banked -- that is
+    a decision with a person's name on it -- but each set is openable in the
+    panel the moment its row turns done, because its read is on file.
+
+    STOP LANDS MID-RECORDING. The read is handed `stop=job.check`, asked
+    before every span of every channel, and a `Canceled` is re-raised rather
+    than filed as a failed set -- see the note in `api_dspca_batch`.
+    """
+    body = request.get_json(force=True) or {}
+    want = body.get("entries") or []
+    force = bool(body.get("force"))
+    if not want:
+        return jsonify({"ok": False,
+                        "error": "Nothing was chosen to read."}), 400
+    items, skipped = [], []
+    for eid in want:
+        rec = BANK.get(eid)
+        if not rec:
+            skipped.append({"entry_id": eid, "why": "no such entry"})
+            continue
+        items.append({"id": eid,
+                      "label": (rec.get("session_label") or rec.get("name")
+                                or eid)})
+    if not items:
+        return jsonify({"ok": False, "error": "None of those exist.",
+                        "skipped": skipped}), 400
+
+    def work(job):
+        job.members_init(items)
+        job.begin(rootcanal.STAGE_SETS, of=len(items), unit="recordings")
+        out = {"read": [], "cached": [], "failed": []}
+        for k, it in enumerate(items):
+            eid = it["id"]
+            job.check()
+            job.tick(rootcanal.STAGE_SETS, k)
+            job.member(eid, status="running")
+            try:
+                rec = BANK.get(eid)
+                src_v = body.get("from_version")
+                sess, chans, stamps, p, marked = _rootcanal_prepare(rec, src_v)
+                gid = rec.get("gid")
+                rh = p.read_hash()
+                if _rootcanal_is_read(gid, rh, marked, stamps) and not force:
+                    job.member(eid, status="done", cached=True, read=rh)
+                    out["cached"].append({"entry_id": eid, "read": rh})
+                    continue
+                job.member(eid, done=0, of=len(chans), step="reading")
+
+                def progress(done, of, _eid=eid):
+                    job.member(_eid, done=int(done), of=int(of))
+
+                got, rh, _screened = _rootcanal_do_read(
+                    sess, chans, stamps, p, marked, rec, src_v,
+                    job=None, stop=job.check, progress=progress)
+                job.member(eid, status="done", done=len(chans),
+                           of=len(chans), read=rh, n=len(stamps))
+                out["read"].append({"entry_id": eid, "read": rh,
+                                    "n": len(stamps)})
+            except cfcmod.Canceled:
+                job.member(eid, status="stopped")
+                raise
+            except Exception as exc:                     # noqa: BLE001
+                job.member(eid, status="error", error=str(exc))
+                out["failed"].append({"entry_id": eid, "why": str(exc)})
+        out["skipped"] = skipped
+        return out
+
+    steps = [(rootcanal.STAGE_SETS, len(items))]
+    job = cfcmod.start({"tool": "rootcanal"}, steps, work,
+                       max(0.001, float(len(items))))
+    STORE.record_activity([{
+        "action": "rootcanal.batch",
+        "detail": {"n": len(items), "force": force},
+    }])
+    return jsonify({"ok": True, "job": job.snapshot(), "n": len(items),
+                    "skipped": skipped})
 
 
 @app.route("/api/cfc/cache")
@@ -10041,14 +12063,43 @@ def api_arc_spark_clipping(gid):
         return jsonify({"ok": False, "error":
                         "There are no cue pairs here to check."}), 409
 
+    # The transition windows' lengths, as the panel sent them. Refused with
+    # a sentence, never clamped -- see `spark.transition_lengths`.
+    try:
+        t_before, t_after = sparkmod.transition_lengths(
+            body.get("before_s"), body.get("after_s"))
+    except sparkmod.SparkError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
     cached = _ARC_CLIP.get(gid)
-    if cached and not body.get("again") and cached.get("n") == len(pairs):
+    ct = (cached or {}).get("transition") or {}
+    if (cached and not body.get("again") and cached.get("n") == len(pairs)
+            and ct.get("measured")
+            and ct.get("before_s") == t_before
+            and ct.get("after_s") == t_after):
         return jsonify(dict({"ok": True, "cached": True}, **cached))
 
+    # What is already out, and what is not there at all. Both are reasons
+    # a channel is absent from the analysis that have nothing to do with
+    # clipping, and a panel that did not say so read "nothing is excluded"
+    # over a recording missing half its wires.
+    bad = sorted(int(c) for c in (sm.get("bad_channels") or []))
+    present = sorted(int(n) for n, _p in nlx.list_csc_files(got["path"],
+                                                            even_only=False))
+    # ONE read of every channel, two answers: the state windows and the
+    # transition windows are cut from the same slice of each file.
+    read_stats = {}
+    t_read = time.time()
     try:
-        per_pair, per_chan = sparkmod.clipping_for(got["path"], pairs)
+        both = sparkmod.clipping_both(got["path"], pairs,
+                                      before_s=t_before, after_s=t_after,
+                                      skip=bad, stats=read_stats)
     except Exception as exc:                                 # noqa: BLE001
         return fail("arc/spark/clipping", exc, 400, {"gid": gid})
+    t_read = time.time() - t_read
+    per_pair = both["state"]["by_pair"]
+    tr = both["transition"]
+    t_pairs = tr.get("by_pair") or {}
 
     out = {
         "n": len(pairs),
@@ -10056,6 +12107,30 @@ def api_arc_spark_clipping(gid):
         "channels": sparkmod.clip_summary(per_pair, len(pairs)),
         "fraction": sparkmod.CLIP_FRACTION,
         "min_run": sparkmod.CLIP_MIN_RUN,
+        "bad": bad,
+        "present": present,
+        "n_channels": sm.get("n_channels"),
+        "windows": list(sparkmod.CLIP_WINDOWS),
+        "state_measured": True,
+        # The second answer from the same read. Its own summary, graded on
+        # three windows, and its own rule: 50 ms at the rail, in time.
+        "transition": {
+            "measured": bool(tr.get("measured")),
+            "why": tr.get("why"),
+            "windows": list(sparkmod.TRANSITION_WINDOWS),
+            "before_s": t_before, "after_s": t_after,
+            "lost_ms": sparkmod.TRANSITION_LOST_MS,
+            "by_pair": {str(k): v for k, v in t_pairs.items()},
+            "channels": sparkmod.clip_summary(
+                t_pairs, len(pairs), len(sparkmod.TRANSITION_WINDOWS)),
+            "unmeasured": {str(k): {str(c): w for c, w in v.items()}
+                           for k, v in (tr.get("unmeasured") or {}).items()},
+        },
+        # How the file was read, so "once" is a number on the response.
+        "read": {"slices": read_stats.get("reads"),
+                 "channels": read_stats.get("channels"),
+                 "bytes": read_stats.get("bytes"),
+                 "seconds": round(t_read, 3)},
     }
     _ARC_CLIP[gid] = out
     STORE.record_activity([{
@@ -10097,6 +12172,13 @@ def api_arc_spark_bank(gid):
     # event, because the step that correlates these windows has no other
     # way to know a channel was at the rail through one of them.
     clip = (_ARC_CLIP.get(gid) or {}).get("by_pair") or {}
+    # The transition windows' clipping, from the same read. Only when it
+    # was actually measured: a reading that did not include them says
+    # nothing about them, and banking nothing under `onset` would read
+    # downstream as "clean at every boundary".
+    t_clip = (_ARC_CLIP.get(gid) or {}).get("transition") or {}
+    t_measured = bool(t_clip.get("measured"))
+    t_by_pair = (t_clip.get("by_pair") or {}) if t_measured else {}
     by_hand = body.get("excluded") or {}
     events = sparkmod.bank_events(pairs)
     # `hit`, not `got` -- `got` is the reading this whole route is built
@@ -10104,15 +12186,22 @@ def api_arc_spark_bank(gid):
     # KeyError on a per-pair clipping dict.
     for ev, pr in zip(events, pairs):
         hit = clip.get(str(pr["pair_id"])) or {}
-        if hit:
+        t_hit = t_by_pair.get(str(pr["pair_id"])) or {}
+        if hit or t_hit:
             # Per WINDOW, because that is how it was measured and how it
             # is analysed. A channel ruined in the baseline is perfectly
             # good in both cues, and banking one flat list per event threw
             # those away with it.
+            #
+            # The transition windows go into the SAME dict under their own
+            # names -- onset, switch, offset -- which never collide with
+            # the state ones, so one event says which wires are gone in
+            # all seven windows.
             per = {}
-            for csc, d in hit.items():
-                for wname in (d.get("windows") or []):
-                    per.setdefault(wname, []).append(int(csc))
+            for got_ in (hit, t_hit):
+                for csc, d in got_.items():
+                    for wname in (d.get("windows") or []):
+                        per.setdefault(wname, []).append(int(csc))
             if per:
                 ev["clipped"] = {k: sorted(v) for k, v in per.items()}
         said = by_hand.get(str(pr["pair_id"])) or by_hand.get(pr["pair_id"])
@@ -10130,6 +12219,25 @@ def api_arc_spark_bank(gid):
                     ev["excluded"] = per
             else:
                 ev["excluded"] = sorted(int(c) for c in said)
+        # Blocks put back in against the measurement. Only where the
+        # measurement actually took them out: a "kept" on a block nothing
+        # removed would be a claim about an overrule that never happened.
+        held = (body.get("kept") or {})
+        held = held.get(str(pr["pair_id"])) or held.get(pr["pair_id"])
+        if held:
+            meas = ev.get("clipped") if isinstance(ev.get("clipped"),
+                                                   dict) else {}
+            if isinstance(held, dict):
+                per = {}
+                for wname, chans in held.items():
+                    nums = sorted({int(c) for c in (chans or [])}
+                                  & set(meas.get(str(wname)) or []))
+                    if nums:
+                        per[str(wname)] = nums
+                if per:
+                    ev["kept"] = per
+            else:
+                ev["kept"] = sorted(int(c) for c in held)
     existing = _spark_banked().get(gid) or {}
     name = (body.get("name") or "").strip() or (
         "%s \u2014 cue pairs" % (sm.get("label") or gid))
@@ -10172,6 +12280,25 @@ def api_arc_spark_bank(gid):
             "clip_fraction": sparkmod.CLIP_FRACTION,
             "clip_min_run": sparkmod.CLIP_MIN_RUN,
             "clip_measured": bool(clip),
+            # The baseline either side the clipping was measured over.
+            # Coupling may analyse a shorter one and never a longer: past
+            # this, nobody has looked at whether the amplifier railed.
+            "clip_pad_s": sparkmod.CLIP_PAD_S,
+            # The two answers of the one read, each said separately.
+            # `state_measured` is `clip_measured` under the name the
+            # contract uses. An entry banked before these existed has no
+            # `transition_measured`, and that means nobody looked -- never
+            # that the boundaries were clean. The lengths are recorded only
+            # when they were measured: a length on an unmeasured entry
+            # would be a claim about windows nobody cut.
+            "state_measured": bool(clip),
+            "transition_measured": t_measured,
+            "transition_before_s": (t_clip.get("before_s") if t_measured
+                                    else None),
+            "transition_after_s": (t_clip.get("after_s") if t_measured
+                                   else None),
+            "transition_lost_ms": (sparkmod.TRANSITION_LOST_MS
+                                   if t_measured else None),
         },
         # `_source_for` reads `source_file`; `file` is a different key and
         # was landing as null in every entry.
@@ -10194,6 +12321,48 @@ def api_arc_spark_bank(gid):
     }])
     return jsonify({"ok": True, "entry": made,
                     "n": len(events), "summary": got["summary"]})
+
+
+@app.route("/api/arc/spark/<gid>/regions")
+def api_arc_spark_regions(gid):
+    """The twelve regions, their wires, and where each probe really is.
+
+    For Clean, which has to say -- while somebody is deciding which blocks
+    to remove -- when a region's spare wire still rescues it and when a
+    missed probe ruins it whatever its wires do. That needs the montage and
+    the histology and nothing that opens a file, so it is cheap and separate
+    from the clipping read.
+
+    `probe` is null when the rat has no histology row at all (absent is not
+    negative: "nobody scored it", never "in target").
+    """
+    rec = REG.by_gid(gid)
+    if not rec:
+        return jsonify({"ok": False, "error": "No recording %s" % gid}), 404
+    sm = REG.summary(rec)
+    try:
+        rat, probe = _coupling_probe(sm)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/spark/regions", exc, 400, {"gid": gid})
+    regions = probebook.regions_for(
+        "dewey32", [{"number": n} for n in range(1, 33)])
+    by_slot = {p.get("slot"): p for p in (probe or [])}
+    return jsonify({
+        "ok": True, "gid": gid, "rat": rat,
+        "bad": sorted(int(c) for c in (sm.get("bad_channels") or [])),
+        "regions": [{
+            "slot": r.get("id"), "region": r.get("region"),
+            "label": (by_slot.get(r.get("id")) or {}).get("label")
+                     or r.get("region"),
+            "csc": sorted(int(c) for c in (r.get("csc") or [])),
+            "histology": (by_slot.get(r.get("id")) or {}).get("verdict"),
+            "usable": (by_slot.get(r.get("id")) or {}).get("usable"),
+            "why": (by_slot.get(r.get("id")) or {}).get("why"),
+        } for r in regions],
+        "probe": probe,
+        "rule": "one wire per region per window: the lowest-numbered one "
+                "that is not bad and not excluded there",
+    })
 
 
 # --------------------------------------------------------------------------
@@ -10263,6 +12432,259 @@ def api_arc_coupling_recordings():
     return jsonify({"ok": True, "rows": out, "scope": scope})
 
 
+def _csc_union(got):
+    """The CSC numbers in either shape an exclusion arrives in.
+
+    A flat list is "not valid for this event at all"; a dict keyed by
+    window name -- pre, cue1, cue2, post -- is per window, which is what
+    the clipping measurement produces. Both are real and both are banked.
+
+    Iterating a dict yields its KEYS, so `int(c) for c in got` on a
+    per-window entry asked for int("cue1") and the panel came up with
+    "invalid literal for int() with base 10: 'cue1'" instead of a
+    recording. It only started happening when clipping was measured across
+    every rat: until then these fields were empty or flat, and the flat
+    path was the only one anything had exercised.
+
+    The quieter half of the same bug did not raise at all. `sorted(dict)`
+    is a sorted list of window names, so the pair summary would have
+    reported four excluded channels called cue1, cue2, post and pre --
+    a plausible-looking count of the wrong thing.
+    """
+    if isinstance(got, dict):
+        out = set()
+        for chans in got.values():
+            for c in (chans or []):
+                try:
+                    out.add(int(c))
+                except (TypeError, ValueError):
+                    continue
+        return sorted(out)
+    out = set()
+    for c in (got or []):
+        try:
+            out.add(int(c))
+        except (TypeError, ValueError):
+            continue
+    return sorted(out)
+
+
+def _csc_by_window(got):
+    """The same thing kept per window, or None when there is no per-window
+    answer. Null rather than an empty dict: "this entry predates the
+    windows" and "this entry lost nothing in any window" are different."""
+    if not isinstance(got, dict):
+        return None
+    out = {}
+    for name, chans in got.items():
+        nums = sorted({int(c) for c in (chans or [])
+                       if str(c).lstrip("-").isdigit()})
+        if nums:
+            out[str(name)] = nums
+    return out
+
+
+def _coupling_measured_pad(entry):
+    """The baseline this entry's clipping was measured over, in seconds.
+
+    Entries banked before the field existed fall back to CLIP_PAD_S, and
+    that is not a guess: the clipping route has only ever been called with
+    the default, so every such entry was measured at exactly that.
+    """
+    params = ((entry or {}).get("source") or {}).get("parameters") or {}
+    got = params.get("clip_pad_s")
+    try:
+        return float(got) if got is not None else float(sparkmod.CLIP_PAD_S)
+    except (TypeError, ValueError):
+        return float(sparkmod.CLIP_PAD_S)
+
+
+def _coupling_measured_transition(entry):
+    """(measured, before_s, after_s) for this entry's transition clipping.
+
+    Unlike the baseline there is NO fallback. Every entry banked before
+    transition windows existed was banked without measuring them, so a
+    missing `transition_measured` means nobody looked -- and a transition
+    run on it would correlate boundaries whose railed stretches nobody has
+    seen. (False, None, None) for those.
+    """
+    params = ((entry or {}).get("source") or {}).get("parameters") or {}
+    if params.get("transition_measured") is not True:
+        return False, None, None
+    try:
+        return (True, float(params.get("transition_before_s")),
+                float(params.get("transition_after_s")))
+    except (TypeError, ValueError):
+        return False, None, None
+
+
+#: The sentence a transition run on an unmeasured entry is refused with.
+_COUPLING_NO_TRANSITION = (
+    "This recording's transition windows have never been checked for "
+    "clipping: its cue pairs were filed before Spark measured them. Run the "
+    "clipping check on it in Spark -- one read answers both the state and "
+    "the transition windows -- and file it again. Until then a railed "
+    "stretch at a boundary would go into the analysis unseen.")
+
+
+def _coupling_probe(sm):
+    """Histology for this recording's rat, or None when there is no rat.
+
+    The registry's `mouse` is the rat number for DEWEY -- J4 is 4 -- which
+    is what `histo.HISTO_RAW` is keyed by.
+    """
+    from . import histo as _histo
+    rat = sm.get("mouse")
+    if rat is None:
+        return None, None
+    regions = probebook.regions_for(
+        "dewey32", [{"number": n} for n in range(1, 33)])
+    return rat, _histo.probe_sanity(rat, regions)
+
+
+def _coupling_blocked(probe):
+    """{region display name: sentence} for every probe histology rules out."""
+    return {r["intended"]: r["why"] for r in (probe or [])
+            if not r.get("usable")}
+
+
+def _coupling_drop(ev, bad):
+    """This event's exclusion with the recording's bad channels folded in,
+    per window when the event is per window."""
+    drop = couplingmod.excluded_for(ev)
+    if not bad:
+        return drop
+    if isinstance(drop, dict):
+        drop = {w: sorted(set(v) | set(bad)) for w, v in drop.items()}
+        for w in couplingmod.CLIP_WINDOW_NAMES:
+            drop.setdefault(w, list(bad))
+        # A bad channel is bad at the boundaries too.
+        for w in couplingmod.TRANSITION_WINDOW_NAMES:
+            drop.setdefault(w, list(bad))
+        return drop
+    return sorted(set(drop) | set(bad))
+
+
+@app.route("/api/arc/coupling/<gid>/overview")
+def api_arc_coupling_overview(gid):
+    """Everything to look at before a run, and nothing that needs a file.
+
+    The parameters as they will be used, with their limits; where each
+    probe actually is, with the slide photographs that say so; and, for
+    every banked cue pair, which wire each region will be measured on in
+    each window and why. Read from the bank, the registry and the
+    histology workbook -- no .ncs is opened, so it answers at once.
+
+    The wire picks here are a PREDICTION of what the run will do. The run
+    reports what it actually did, and the matrix draws that.
+    """
+    from . import histo as _histo
+    entry = _coupling_entry(gid)
+    if not entry:
+        return jsonify({"ok": False, "error":
+                        "No cue pairs are banked for this recording. Run "
+                        "Spark on it first."}), 409
+    rec = REG.by_gid(gid)
+    sm = REG.summary(rec) if rec else {}
+    bad = sorted(int(c) for c in (sm.get("bad_channels") or []))
+    rat, probe = _coupling_probe(sm)
+    regions = probebook.regions_for(
+        "dewey32", [{"number": n} for n in range(1, 33)])
+
+    # Slides. Absent is not negative: a machine with neither the drive nor
+    # the cloud answers null, never an empty list that reads as "this rat
+    # was never photographed".
+    slides, slides_why = None, None
+    try:
+        idx = histoimgmod.index(CLOUD.cloud)
+        mine = next((x for x in (idx.get("rats") or [])
+                     if x.get("rat") == "J%s" % rat), None)
+        if mine is not None:
+            slides = _histo.slides_for(probe or [], mine.get("files") or [])
+        else:
+            slides = {r["slot"]: [] for r in (probe or [])}
+            slides_why = ("No slide photographs for J%s were found on the "
+                          "drive or in the cloud." % rat)
+    except Exception as exc:                                 # noqa: BLE001
+        slides_why = "The slide index could not be read: %s" % exc
+
+    # State or transition. The grid, the windows and the length fields all
+    # follow it; everything else on the overview is about the recording and
+    # is the same for both.
+    kind = (request.args.get("kind") or "state").strip()
+    try:
+        win_names = list(couplingmod.windows_of(kind))
+    except couplingmod.CouplingError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    t_measured, t_before, t_after = _coupling_measured_transition(entry)
+
+    measured = _coupling_measured_pad(entry)
+    params = []
+    for p in couplingmod.params_for(kind):
+        q = dict(p)
+        if q["id"] == "pad_s":
+            q["max"] = min(float(q.get("max") or measured), measured)
+        # Bounded by what the transition clipping was measured with,
+        # exactly as the baseline is bounded by what it was measured over.
+        if q["id"] == "before_s" and t_measured:
+            q["max"] = min(float(q["max"]), t_before)
+        if q["id"] == "after_s" and t_measured:
+            q["max"] = min(float(q["max"]), t_after)
+        params.append(q)
+
+    refused = None
+    if kind == "transition" and not t_measured:
+        # No grid rather than a grid of guesses: with nothing measured at
+        # the boundaries every wire would look usable, and that is the
+        # prediction of a run that must not happen.
+        refused = _COUPLING_NO_TRANSITION
+
+    events = []
+    for i, ev in enumerate(entry.get("events") or [], start=1):
+        if refused:
+            break
+        pair = _coupling_pair(ev, i)
+        drop = _coupling_drop(ev, bad)
+        sanity = couplingmod.channel_sanity(
+            regions, bad=bad, clipped_by_window=couplingmod.excluded_for(ev),
+            windows=win_names, probe=probe)
+        events.append({
+            "pair_id": i,
+            "label": pair.get("label"),
+            "opener_t": pair.get("opener_t"),
+            "regions": [{
+                "slot": r["slot"], "region": r["region"], "label": r["label"],
+                "histology": r["histology"],
+                "windows": {w: {"channel": v["channel"],
+                                "blocked": v["blocked"],
+                                "why": v["why"]}
+                            for w, v in r["windows"].items()},
+            } for r in sanity],
+            "blocked": {w: len(couplingmod.blocked_pairs(sanity, w))
+                        for w in win_names},
+            "excluded": _csc_union(drop),
+        })
+
+    return jsonify({
+        "ok": True, "gid": gid, "label": sm.get("label"), "rat": rat,
+        "params": params,
+        "defaults": couplingmod.default_params(),
+        "measured_pad_s": measured,
+        "kind": kind,
+        "transition_measured": t_measured,
+        "measured_before_s": t_before,
+        "measured_after_s": t_after,
+        "refused": refused,
+        "probe": probe,
+        "probe_summary": _histo.summary(probe) if probe else None,
+        "histology_file": _histo.SHEET_FILE,
+        "slides": slides, "slides_why": slides_why,
+        "bad_channels": bad,
+        "windows": win_names,
+        "events": events,
+    })
+
+
 @app.route("/api/arc/coupling/<gid>")
 def api_arc_coupling(gid):
     """The banked pairs, and what each one is not valid for."""
@@ -10279,9 +12701,15 @@ def api_arc_coupling(gid):
     for i, ev in enumerate(entry.get("events") or [], start=1):
         p = _coupling_pair(ev, i)
         drop = couplingmod.excluded_for(ev)
-        p["excluded"] = sorted(drop)
-        p["clipped"] = sorted(int(c) for c in (ev.get("clipped") or []))
-        p["by_hand"] = sorted(int(c) for c in (ev.get("excluded") or []))
+        p["excluded"] = _csc_union(drop)
+        # Per window as well as unioned. The union is what a one-line
+        # summary needs; the split is what the matrix needs, because a
+        # channel ruined in cue1 and fine in the other three is three
+        # quarters of a usable wire and the union throws that away.
+        p["excluded_by_window"] = _csc_by_window(drop)
+        p["clipped"] = _csc_union(ev.get("clipped"))
+        p["clipped_by_window"] = _csc_by_window(ev.get("clipped"))
+        p["by_hand"] = _csc_union(ev.get("excluded"))
         pairs.append(p)
 
     return jsonify({
@@ -10327,24 +12755,86 @@ def api_arc_coupling_run(gid):
 
     ev = events[want - 1]
     pair = _coupling_pair(ev, want)
-    drop = couplingmod.excluded_for(ev)
+
+    # Bad channels are not in the banked exclusion, and must not be.
+    #
+    # The clipping measurement skips them, so they never appear in
+    # `clipped` -- which is right, a bad channel is bad for the whole
+    # recording and not for this cue pair. But that means the banked event
+    # cannot be the only thing this reads, or a bad wire could be picked as
+    # a region's one wire as though it were measuring something.
+    bad = sorted(int(c) for c in (sm.get("bad_channels") or []))
+    drop = _coupling_drop(ev, bad)
+
+    # State or transition. A transition run on an entry whose transition
+    # windows nobody checked is refused rather than run on the assumption
+    # that they are clean -- absent is not negative.
+    kind = (body.get("kind") or "state").strip()
+    try:
+        couplingmod.windows_of(kind)
+    except couplingmod.CouplingError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    t_measured, t_before, t_after = _coupling_measured_transition(entry)
+    if kind == "transition" and not t_measured:
+        return jsonify({"ok": False, "error": _COUPLING_NO_TRANSITION,
+                        "transition_measured": False}), 409
+
+    # The parameters as the panel showed them. Refused, never clamped: a
+    # run made at different corners from the ones on screen is the fault
+    # putting them on screen exists to prevent.
+    try:
+        params = couplingmod.read_params(
+            body.get("params") or {},
+            measured_pad_s=_coupling_measured_pad(entry),
+            kind=kind,
+            measured_transition=((t_before, t_after) if t_measured
+                                 else None))
+    except couplingmod.CouplingError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    rat, probe = _coupling_probe(sm)
+    blocked = _coupling_blocked(probe)
 
     try:
         out = couplingmod.pair_connectivity(
             here, pair,
             exclude_by_channel=drop,
-            notch_hz=(None if body.get("notch") is False else 60.0),
-            curves=bool(body.get("curves")))
+            notch_hz=params["notch_hz"],
+            low=params["low"], high=params["high"],
+            max_lag_s=params["max_lag_ms"] / 1000.0,
+            pad_s=params["pad_s"],
+            summary_hz=params["summary_hz"],
+            blocked_regions=blocked,
+            curves=bool(body.get("curves")),
+            kind=kind,
+            before_s=params["before_s"], after_s=params["after_s"])
     except Exception as exc:                                 # noqa: BLE001
         return fail("arc/coupling/run", exc, 400, {"gid": gid, "pair": want})
 
+    # What the matrix labels its axes and blocked cells with, taken from
+    # what the engine actually did rather than from the preview.
+    sanity = couplingmod.sanity_from_run(out, probe)
+
     STORE.record_activity([{
         "action": "arc.coupling.run",
-        "detail": {"gid": gid, "pair": want, "excluded": len(drop)},
+        # A count of CHANNELS. `len(drop)` on a per-window exclusion is the
+        # number of windows, which is always four and looked like a
+        # plausible channel count in every line of the activity log.
+        "detail": {"gid": gid, "pair": want,
+                   "excluded": len(_csc_union(drop)),
+                   "blocked_by_histology": sorted(blocked),
+                   "params": {k: params[k] for k in ("low", "high",
+                                                     "summary_hz",
+                                                     "max_lag_ms",
+                                                     "notch_hz", "pad_s",
+                                                     "kind", "before_s",
+                                                     "after_s")}},
         "session": {"key": sm.get("key"), "label": sm.get("label")},
     }])
     return jsonify(dict({"ok": True, "gid": gid, "label": sm.get("label"),
-                         "entry_id": entry.get("id")}, **out))
+                         "entry_id": entry.get("id"), "rat": rat,
+                         "bad_channels": bad, "run_params": params,
+                         "sanity": sanity}, **out))
 
 
 def _coupling_csv(out, label, entry_id):
@@ -10359,11 +12849,28 @@ def _coupling_csv(out, label, entry_id):
                 "window", "t0_s", "t1_s", "region_a", "region_b",
                 "channels_a", "channels_b", "method", "summary_label",
                 "summary_value", "summary_x", "summary_x_unit",
-                "n_samples", "fs_used_hz", "notch_hz", "excluded_channels"])
+                "n_samples", "fs_used_hz", "notch_hz", "excluded_channels",
+                "band_low_hz", "band_high_hz", "max_lag_ms",
+                "baseline_s", "channel_rule",
+                # Appended, never inserted, so a script reading the old
+                # columns by position still reads them.
+                "window_kind", "transition_before_s", "transition_after_s"])
     notch = (out.get("notch") or {})
     lines = ";".join(str(x) for x in (notch.get("lines_hz") or []))
-    excl = ";".join(str(c) for c in (out.get("excluded") or []))
+    # Per window. `excluded` is a dict keyed by window name once an event
+    # carries per-window clipping, and joining the dict itself wrote
+    # "cue1;cue2;post;pre" into this column on every row -- window names
+    # where channel numbers belong, in a file meant to be read without
+    # Jarvis, by somebody with no way to know.
+    raw_ex = out.get("excluded") or []
+    per_ex = raw_ex if isinstance(raw_ex, dict) else None
+    flat_ex = _csc_union(raw_ex)
+    prm = out.get("params") or {}
     for win in out.get("windows") or []:
+        wname = win.get("window")
+        excl = ";".join(str(c) for c in (
+            _csc_union(per_ex.get(wname) or []) if per_ex is not None
+            else flat_ex))
         for pr in win.get("pairs") or []:
             for method in ("coherence", "raw_cc", "amp_cc"):
                 got = pr.get(method) or {}
@@ -10385,6 +12892,16 @@ def _coupling_csv(out, label, entry_id):
                     method, s.get("what"), s.get("value"), s.get("x"),
                     s.get("x_unit"), win.get("n_samples"), win.get("fs"),
                     lines, excl,
+                    prm.get("low"), prm.get("high"),
+                    (None if prm.get("max_lag_s") is None
+                     else round(float(prm["max_lag_s"]) * 1000.0, 3)),
+                    # A baseline length on a transition row would be a
+                    # length of a window that row was never cut from.
+                    (None if prm.get("kind") == "transition"
+                     else prm.get("pad_s")),
+                    "lowest-numbered usable wire",
+                    prm.get("kind") or "state",
+                    prm.get("before_s"), prm.get("after_s"),
                 ])
     return buf.getvalue()
 
@@ -10402,6 +12919,9 @@ def api_arc_coupling_save(gid):
     sm = REG.summary(rec) if rec else {}
     label = sm.get("label") or gid
     stem = "%s pair %s" % (label, out.get("pair_id"))
+    if (out.get("params") or {}).get("kind") == "transition":
+        # Two files for one pair, one per kind, must not share a name.
+        stem += " transition"
     blob = _coupling_csv(out, label, body.get("entry_id"))
     try:
         saved = save_output(blob.encode("utf-8"), stem + ".csv",
@@ -10428,6 +12948,214 @@ def api_arc_coupling_save(gid):
     }])
     return jsonify({"ok": True, "saved": saved,
                     "rel": (saved or {}).get("rel")})
+
+
+# ==========================================================================
+# The Arc, step three: Circuit  (arc_contracts.md section 6)
+# ==========================================================================
+# One recording x one cue type x one kind, every cue pair kept, filed as a
+# versioned artifact. The orchestration -- plan, per-pair cache, local run,
+# VACC run, VACC batch, re-attaching after a restart -- is in
+# backend/circuitrun.py; these routes are thin. The helpers it is handed are
+# Coupling's own (`_coupling_entry`, `_coupling_pair`, `_coupling_drop`,
+# `_coupling_probe`, `_coupling_blocked`, ...) and the VACC layer's
+# (`_vacc_run_for`, `_vacc_run_array`, `_vacc_staged`), so there is one
+# definition of which wire, and one of where a recording is on the cluster.
+from . import circuitrun as circuitrunmod                    # noqa: E402
+
+circuitrunmod.configure(LOGS_DIR)
+
+
+def _circuit_summary(gid):
+    """REG.summary plus every path on record (the VACC lookup matches a
+    recording by any of them, reachable here or not)."""
+    rec = REG.by_gid(gid)
+    if not rec:
+        return {}
+    return dict(REG.summary(rec),
+                paths=[p for p in (rec.get("paths") or [])
+                       if isinstance(p, str)])
+
+
+def _circuit_vacc_states(gids, wait=True):
+    """{gid: vacc.resolve_gid(...)} -- where each recording is on the
+    cluster. With wait=False and no listing in hand, {} (unknown), and a
+    listing is started: absent is not negative."""
+    cfg = vaccmod.load_config(LOGS_DIR)
+    if not cfg.get("netid"):
+        return {}
+    root = cfg.get("scratch_root") or os.path.dirname(cfg.get("scratch") or "")
+    if not wait and not vaccmod.inventory_ready(cfg, root):
+        _vacc_staged(wait=False)
+        return {}
+    staged, _unknown = _vacc_staged(wait=wait)
+    want = set(gids or [])
+    rows = [{"gid": r.get("gid"),
+             "paths": [p for p in (r.get("paths") or []) if isinstance(p, str)]}
+            for r in (REG.all() or []) if r.get("gid") in want]
+    return vaccmod.resolve_many(rows, cfg, staged=staged)
+
+
+def _circuit_recordings(wide):
+    scope = dict(ARC_SCOPE)
+    if wide:
+        scope.update(phase=None, run=None, phase_max=0)
+    return _spark_recordings(project=scope["project"], phase=scope["phase"],
+                             run=scope["run"], phase_max=scope["phase_max"])
+
+
+CIRCUIT_HOST = circuitrunmod.Host(
+    entry=lambda gid: _coupling_entry(gid),
+    summary=_circuit_summary,
+    pair=lambda ev, n: _coupling_pair(ev, n),
+    drop=lambda ev, bad: _coupling_drop(ev, bad),
+    probe=lambda sm: _coupling_probe(sm),
+    blocked=lambda probe: _coupling_blocked(probe),
+    measured_pad=lambda e: _coupling_measured_pad(e),
+    measured_transition=lambda e: _coupling_measured_transition(e),
+    no_transition=_COUPLING_NO_TRANSITION,
+    artifacts=None,                       # set below, once ARTIFACTS exists
+    recordings=_circuit_recordings,
+    vacc_status=lambda: vaccmod.status(),
+    vacc_states=_circuit_vacc_states,
+    vacc_run_for=lambda sess, spec, plan, steps: _vacc_run_for(
+        "circuit", sess, spec, plan, None, steps),
+    vacc_run_array=lambda job, tasks, failed, concurrency, tool, adopt,
+    runlog, record: _vacc_run_array(job, tasks, failed, concurrency,
+                                    tool=tool, adopt=adopt, runlog=runlog,
+                                    record=record),
+    vacc_cfg=lambda: vaccmod.load_config(LOGS_DIR),
+    push_code=lambda: vaccmod.push_code(vaccmod.load_config(LOGS_DIR),
+                                        APP_DIR),
+    provenance=lambda: STORE.provenance(),
+    activity=lambda rows: STORE.record_activity(rows),
+)
+
+
+def _circuit_host():
+    if CIRCUIT_HOST.artifacts is None:
+        CIRCUIT_HOST.artifacts = ARTIFACTS
+    # Runs a previous process submitted to the VACC and never filed are
+    # picked up again on the first Circuit request (in the background).
+    circuitrunmod.resume_once(CIRCUIT_HOST)
+    return CIRCUIT_HOST
+
+
+def _circuit_refused(exc):
+    return jsonify(dict({"ok": False, "error": str(exc)},
+                        **(exc.extra or {}))), exc.code
+
+
+@app.route("/api/arc/circuit/recordings")
+def api_arc_circuit_recordings():
+    """Every recording in scope: banked or not, reachable here, on the
+    cluster, its actual cue pairings, and the circuits already filed."""
+    wide = request.args.get("all") in ("1", "true", "yes")
+    try:
+        host = _circuit_host()
+        rows = circuitrunmod.recordings(host, wide)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/circuit/recordings", exc, 400)
+    return jsonify({"ok": True, "rows": rows,
+                    "running": circuitrunmod.running()})
+
+
+@app.route("/api/arc/circuit/<gid>/plan", methods=["GET", "POST"])
+def api_arc_circuit_plan(gid):
+    """What a run would do, before it does it: the pairs and which are
+    cached, the parameters with their limits, the grey regions, the cost
+    and the artifact it would add a version to. Opens no channel file."""
+    body = (request.get_json(silent=True) or {}) if request.method == "POST" \
+        else {}
+    cue_type = body.get("cue_type") or request.args.get("cue_type")
+    kind = body.get("kind") or request.args.get("kind") or "state"
+    params = body.get("params")
+    if params is None and request.args.get("params"):
+        try:
+            params = json.loads(request.args.get("params"))
+        except ValueError:
+            return jsonify({"ok": False, "error":
+                            "params is not JSON."}), 400
+    try:
+        got = circuitrunmod.plan(_circuit_host(), gid, cue_type, kind, params)
+    except circuitrunmod.CircuitRunError as exc:
+        return _circuit_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/circuit/plan", exc, 400, {"gid": gid})
+    return jsonify(dict({"ok": True}, **got))
+
+
+@app.route("/api/arc/circuit/<gid>/run", methods=["POST"])
+def api_arc_circuit_run(gid):
+    """Run one circuit here or on the VACC. Poll /api/cfc/job/<id>; the
+    result (/api/cfc/result/<id>) is the filed artifact and its payload."""
+    body = request.get_json(force=True, silent=True) or {}
+    where = "vacc" if str(body.get("where") or "").startswith("vacc") \
+        else "local"
+    try:
+        host = _circuit_host()
+        prep = circuitrunmod.prepare(host, gid, body.get("cue_type"),
+                                     body.get("kind") or "state",
+                                     body.get("params") or {})
+        if where == "vacc":
+            job = circuitrunmod.start_vacc(host, prep, body.get("nickname"))
+        else:
+            job = circuitrunmod.start_local(host, prep, body.get("nickname"))
+    except circuitrunmod.CircuitRunError as exc:
+        return _circuit_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/circuit/run", exc, 400, {"gid": gid})
+    STORE.record_activity([{
+        "action": "arc.circuit.run",
+        "detail": {"gid": gid, "cue_type": prep["cue_type"],
+                   "kind": prep["kind"], "where": where,
+                   "pairs": prep["n_pairs"], "cached": prep["n_cached"]},
+    }])
+    return jsonify({"ok": True, "job": job.id, "where": where,
+                    "n_pairs": prep["n_pairs"], "n_cached": prep["n_cached"]})
+
+
+@app.route("/api/arc/circuit/batch/plan", methods=["POST"])
+def api_arc_circuit_batch_plan():
+    """Which circuits a batch would make, which are already made at these
+    settings, which cannot be made and why, and the total cost."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        got = circuitrunmod.batch_plan(
+            _circuit_host(), body.get("gids") or [],
+            body.get("cue_types") or "all", body.get("kind") or "state",
+            body.get("params") or {}, body.get("where") or "vacc")
+    except circuitrunmod.CircuitRunError as exc:
+        return _circuit_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/circuit/batch-plan", exc, 400)
+    return jsonify(dict({"ok": True}, **got))
+
+
+@app.route("/api/arc/circuit/batch/run", methods=["POST"])
+def api_arc_circuit_batch_run():
+    """The batch: one job, a member row per (recording, cue type), each
+    filing its artifact as it lands."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        job, got = circuitrunmod.start_batch(
+            _circuit_host(), body.get("gids") or [],
+            body.get("cue_types") or "all", body.get("kind") or "state",
+            body.get("params") or {}, body.get("where") or "vacc",
+            body.get("concurrency"))
+    except circuitrunmod.CircuitRunError as exc:
+        return _circuit_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/circuit/batch", exc, 400)
+    STORE.record_activity([{
+        "action": "arc.circuit.batch",
+        "detail": {"n": len(got["todo"]), "already": len(got["already"]),
+                   "blocked": len(got["blocked"]), "where": got["where"]},
+    }])
+    return jsonify({"ok": True, "job": job.id, "where": got["where"],
+                    "todo": len(got["todo"]), "already": len(got["already"]),
+                    "blocked": got["blocked"], "sentence": got["sentence"]})
+# ============================ end of Circuit ==============================
 
 
 @app.route("/api/toolkit/scopes")
@@ -13209,6 +15937,13 @@ GUIDES = guidesmod.Guides(LOGS_DIR, STORE)
 DSPCA = toolresults.ToolResults(
     LOGS_DIR, "dspca", STORE,
     keys=tuple(dspca.Params.READ_KEYS) + tuple(dspca.Params.FIT_KEYS))
+# Root Canal's vault, split the same way. The read's .npz is named by the
+# read keys alone (`Params.read_hash`), so no fit setting can cost a re-read;
+# a committed answer is filed under every key, read and fit, because that is
+# what makes two answers different ones.
+ROOTCANAL = toolresults.ToolResults(
+    LOGS_DIR, "rootcanal", STORE,
+    keys=tuple(rootcanal.Params.READ_KEYS) + tuple(rootcanal.Params.FIT_KEYS))
 MICE = micebook.MouseBook(LOGS_DIR, STORE)
 # Compiled from what everything else already records, so it cannot
 # drift out of step with the attribution on the data.
@@ -13220,6 +15955,249 @@ PEOPLE.tombs = RESULTS.tombs
 # The version, read from the one place it is written: the newest
 # heading in CHANGELOG.md.
 NOTES = notesmod.Notes(APP_DIR, REPO_ROOT)
+
+
+# ==========================================================================
+# Jarvis Artifacts -- the versioned things a stage makes and a later stage
+# reads (Circuit, Drift). See backend/artifacts.py and arc_contracts.md s2.
+#
+# There is no generic create route, on purpose: an artifact is made by the
+# tool that computed it (Circuit's and Drift's own routes call
+# ARTIFACTS.create / add_version / put). These routes list, read, rename and
+# delete -- and a delete of anything a Drift cites is refused with a 409 and
+# a sentence naming the Drift.
+# ==========================================================================
+from . import artifacts as artifactsmod                     # noqa: E402
+
+ARTIFACTS = artifactsmod.Artifacts(LOGS_DIR, STORE)
+
+
+@app.route("/api/artifacts")
+def api_artifacts():
+    kind = request.args.get("kind") or None
+    gid = request.args.get("gid") or None
+    try:
+        rows = ARTIFACTS.list(kind=kind, gid=gid)
+    except artifactsmod.ArtifactError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "artifacts": rows,
+                    "kinds": sorted(artifactsmod.KINDS)})
+
+
+@app.route("/api/artifacts/<aid>")
+def api_artifact_one(aid):
+    rec = ARTIFACTS.summary(aid)
+    if not rec:
+        return jsonify({"ok": False,
+                        "error": "There is no artifact %s." % aid}), 404
+    return jsonify({"ok": True, "artifact": rec,
+                    "cited_by": ARTIFACTS.cited_by(aid)})
+
+
+@app.route("/api/artifacts/<aid>/payload")
+def api_artifact_payload(aid):
+    want = request.args.get("v") or None
+    try:
+        rec, row = ARTIFACTS.payload_version(aid, want)
+        if not rec:
+            return jsonify({"ok": False,
+                            "error": "There is no artifact %s." % aid}), 404
+        got = ARTIFACTS.payload(aid, row["id"])
+    except artifactsmod.ArtifactError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 409
+    if got is None:
+        # Absent, not empty: the version is known here and its payload has
+        # not arrived yet. Saying which machine made it says where it is.
+        return jsonify({"ok": False, "error":
+                        "v%s was made on %s and its payload has not reached "
+                        "this machine yet. It arrives with the next sync or "
+                        "git pull." % (row.get("v"), row.get("machine")
+                                       or "another machine")}), 404
+    return jsonify({"ok": True, "artifact_id": aid, "version": row["v"],
+                    "version_id": row["id"], "digest": row["digest"],
+                    "payload": got})
+
+
+@app.route("/api/artifacts/<aid>/nickname", methods=["POST"])
+def api_artifact_nickname(aid):
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        rec = ARTIFACTS.set_nickname(aid, body.get("nickname"))
+    except artifactsmod.ArtifactError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "artifact.nickname",
+                            "detail": {"id": aid,
+                                       "nickname": rec.get("nickname")}}])
+    return jsonify({"ok": True, "artifact": ARTIFACTS.summary(aid)})
+
+
+@app.route("/api/artifacts/<aid>/delete", methods=["POST"])
+def api_artifact_delete(aid):
+    try:
+        rec = ARTIFACTS.delete(aid)
+    except artifactsmod.ArtifactError as exc:
+        return jsonify({"ok": False, "error": str(exc),
+                        "cited_by": ARTIFACTS.cited_by(aid)}), 409
+    STORE.record_activity([{"action": "artifact.delete",
+                            "detail": {"id": aid, "name": rec.get("name")}}])
+    return jsonify({"ok": True, "artifact": rec})
+
+
+# Harness only. A test artifact must be ABOUT a harness recording -- a gid
+# under this prefix, on every member -- so neither route below can make or
+# erase anything real.
+_ART_TEST_GID = "harness-"
+
+
+def _art_is_test(subject):
+    subject = subject or {}
+    gids = []
+    if subject.get("gid"):
+        gids.append(subject["gid"])
+    for side in ("left", "right"):
+        for r in subject.get(side) or []:
+            gids.append((r or {}).get("gid") if isinstance(r, dict) else None)
+    return bool(gids) and all(str(g or "").startswith(_ART_TEST_GID)
+                              for g in gids)
+
+
+@app.route("/api/artifacts/_test/make", methods=["POST"])
+def api_artifact_test_make():
+    """Make (or re-version, via `put`) an artifact for web/_dev/artifacts.html,
+    through the real store, and optionally cite others from it."""
+    body = request.get_json(force=True, silent=True) or {}
+    if not _art_is_test(body.get("subject")):
+        return jsonify({"ok": False, "error": "Test artifacts only, on gids "
+                        "under " + _ART_TEST_GID}), 400
+    try:
+        rec = ARTIFACTS.put(body.get("kind") or "circuit", body["subject"],
+                            body.get("payload") or {},
+                            params=body.get("params"),
+                            inputs=body.get("inputs"), note=body.get("note"),
+                            nickname=body.get("nickname"))
+        for c in body.get("cite") or []:
+            ARTIFACTS.cite(c["id"], c.get("version"), rec["id"],
+                           rec["version"])
+    except (artifactsmod.ArtifactError, KeyError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, "artifact": ARTIFACTS.summary(rec["id"])})
+
+
+@app.route("/api/artifacts/_test/erase", methods=["POST"])
+def api_artifact_test_erase():
+    body = request.get_json(force=True, silent=True) or {}
+    gone, refused = [], []
+    for aid in body.get("ids") or []:
+        rec = ARTIFACTS.get(aid)
+        if rec and not _art_is_test(rec.get("subject")):
+            refused.append(aid)
+            continue
+        if ARTIFACTS.erase(aid):
+            gone.append(aid)
+    return jsonify({"ok": not refused, "erased": gone, "refused": refused})
+
+
+# ==========================================================================
+# The Arc, step four: Drift  (arc_contracts.md sections 0a, 0b, 4)
+# ==========================================================================
+# A LEFT group and a RIGHT group of circuit artifacts, each pooled (recordings
+# are the unit, DerSimonian-Laird), the delta tested per cell and BH-corrected
+# per panel, filed as a Drift artifact that pins -- and CITES -- the exact
+# circuit versions it read. The arithmetic is backend/drift.py; making one
+# from the artifact store is backend/driftrun.py. These routes are thin.
+#
+#   GET  /api/arc/drift/circuits?kind=&cue_type=&with=<id>[@<vid>],...
+#   POST /api/arc/drift/check   {left, right, cue_equivalence?}
+#   POST /api/arc/drift/run     {left, right, labels, cue_equivalence?,
+#                                where: "local"|"vacc", nickname?}
+#        -> {ok, job}; poll /api/cfc/job/<id>, the result on /api/cfc/result
+from . import driftrun as driftrunmod                        # noqa: E402
+
+
+def _drift_vacc_run(spec, seconds, steps):
+    """A VaccRun for a drift. No recording: the circuits travel in the spec,
+    so there is no remote path and nothing to stage."""
+    return vaccrunmod.VaccRun(vaccmod.load_config(LOGS_DIR), "drift", spec,
+                              None, plan={"seconds": seconds},
+                              megasamples=1.0, tool_steps=list(steps))
+
+
+DRIFT_HOST = driftrunmod.Host(
+    artifacts=ARTIFACTS,
+    provenance=lambda: STORE.provenance(),
+    activity=lambda rows: STORE.record_activity(rows),
+    vacc_status=lambda: vaccmod.status(),
+    vacc_cfg=lambda: vaccmod.load_config(LOGS_DIR),
+    push_code=lambda: vaccmod.push_code(vaccmod.load_config(LOGS_DIR),
+                                        APP_DIR),
+    vacc_run=_drift_vacc_run,
+)
+
+
+def _drift_refused(exc):
+    return jsonify(dict({"ok": False, "error": str(exc)},
+                        **(exc.extra or {}))), exc.code
+
+
+@app.route("/api/arc/drift/circuits")
+def api_arc_drift_circuits():
+    """Every circuit a side can take (current and older versions), grouped
+    by rat and phase, and -- given `with` -- whether each fits that set."""
+    chosen = [c for c in (request.args.get("with") or "").split(",") if c]
+    try:
+        got = driftrunmod.members(DRIFT_HOST,
+                                  kind=request.args.get("kind") or None,
+                                  cue_type=request.args.get("cue_type")
+                                  or None, chosen=chosen)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/drift/circuits", exc, 400)
+    return jsonify(dict({"ok": True}, **got))
+
+
+@app.route("/api/arc/drift/check", methods=["POST"])
+def api_arc_drift_check():
+    """The pre-flight, before anything is computed: compatible or not, the
+    reasons in words, whether an explicit cue equivalence is the only way
+    through, and the cost."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        got = driftrunmod.check(DRIFT_HOST, body)
+    except driftrunmod.DriftRunError as exc:
+        return _drift_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/drift/check", exc, 400)
+    return jsonify(dict({"ok": True}, **got))
+
+
+@app.route("/api/arc/drift/run", methods=["POST"])
+def api_arc_drift_run():
+    """Compare the two groups here or on the VACC. Refused with 409 and the
+    reasons when they cannot be compared. The job's result is the filed
+    drift: {artifact_id, version, version_id, digest, name, nickname,
+    new_version, cited, payload}."""
+    body = request.get_json(force=True, silent=True) or {}
+    where = "vacc" if str(body.get("where") or "").startswith("vacc") \
+        else "local"
+    try:
+        prep = driftrunmod.prepare(DRIFT_HOST, body)
+        if where == "vacc":
+            job = driftrunmod.start_vacc(DRIFT_HOST, prep, body.get("nickname"))
+        else:
+            job = driftrunmod.start_local(DRIFT_HOST, prep,
+                                          body.get("nickname"))
+    except driftrunmod.DriftRunError as exc:
+        return _drift_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/drift/run", exc, 400)
+    STORE.record_activity([{
+        "action": "arc.drift.run",
+        "detail": {"where": where, "left": len(prep["left"]),
+                   "right": len(prep["right"]),
+                   "equivalence": len(prep["cue_equivalence"])},
+    }])
+    return jsonify({"ok": True, "job": job.id, "where": where,
+                    "cells": prep["n_cells"]})
+# ============================= end of Drift ===============================
 
 
 # ==========================================================================
@@ -13939,6 +16917,10 @@ CLOUD = cloudsync.Sync(
     # own; Incisor's is the one that stops "run the scan again" being the
     # answer to a restart.
     vaults={"panorama": PNSETS.vault, "incisor": INCISOR_VAULT})
+# Artifacts travel too: records as rows, payloads add-only. Set as an
+# attribute rather than a constructor argument so this line is the whole of
+# the wiring (see cloudsync.Sync.rows_artifacts).
+CLOUD.artifacts = ARTIFACTS
 
 # Who is curating what, right now. Cloud-only by design -- see
 # backend/presence.py: a presence row that survives a restart is a lie.
@@ -15325,6 +18307,199 @@ def api_cloud_config():
     cloudmod.save_config(LOGS_DIR, **patch)
     CLOUD.cloud.reload()
     return jsonify({"ok": True, "config": CLOUD.cloud.cfg})
+
+
+# ==========================================================================
+# Histology slide photographs
+# ==========================================================================
+# The whole of this block belongs to backend/histoimg.py -- the 63 section
+# photographs on E:\Joebot Multisite 2026, 30.5 GB of them. Four routes:
+# what is there, what deriving it would cost, doing it, and showing one.
+#
+# The module is imported here rather than in the import block at the top of
+# the file so that this feature is one contiguous edit. app.py already does
+# the same for `logging` further down.
+#
+# Why derived copies exist at all: no browser will render a TIFF, so the
+# original is unviewable in the GUI whatever its size -- see the module
+# docstring. The original is never uploaded and never moved; E: is read only.
+from . import histoimg as histoimgmod
+
+histoimgmod.configure(LOGS_DIR)
+
+# Where a running derive has got to. A plain dict read by a poll, exactly
+# like _sync_step above: the alternative to a cheap poll is a spinner that
+# lies.
+_histoimg_step = {"at": None, "phase": "idle", "rat": None, "file": None,
+                  "done": 0, "of": 0, "running": False, "cost": None,
+                  "result": None, "error": None}
+_histoimg_lock = threading.Lock()
+
+
+def _histoimg_note(phase, rat=None, name=None, done=None, of=None, **rest):
+    _histoimg_step.update({"at": cloudmod.now(), "phase": phase,
+                           "rat": rat, "file": name,
+                           "running": phase not in ("idle", "done",
+                                                    "failed")})
+    if done is not None:
+        _histoimg_step["done"] = done
+    if of is not None:
+        _histoimg_step["of"] = of
+    _histoimg_step.update(rest)
+
+
+def _histoimg_safe(rat, name):
+    """A rat folder and a filename, or None.
+
+    Both arrive from a query string and are joined onto a path, so a
+    separator or a `..` in either is refused outright rather than normalised
+    -- these name a folder on a drive, and there is no legitimate slide
+    called `../../.cloud.json`.
+    """
+    for part in (rat, name):
+        if not part or os.path.basename(part) != part or part in (".", ".."):
+            return None
+    return (rat, name)
+
+
+@app.route("/api/histoimg/index")
+def api_histoimg_index():
+    """What is on the drive, what each filename claims, and what is derived.
+
+    Opens no image -- one scandir per rat and one small sidecar read per
+    slide -- so it is cheap enough for the panel to call on every paint.
+    """
+    try:
+        idx = histoimgmod.index(CLOUD.cloud)
+    except Exception as exc:                               # noqa: BLE001
+        return fail("histoimg/index", exc, 500)
+    idx["ok"] = True
+    idx["cost"] = histoimgmod.estimate(idx=idx)
+    idx["step"] = dict(_histoimg_step)
+    idx["bucket"] = {"bucket": histoimgmod.BUCKET,
+                     "prefix": histoimgmod.PREFIX}
+    return jsonify(idx)
+
+
+@app.route("/api/histoimg/estimate")
+def api_histoimg_estimate():
+    """What a derive would cost, on its own, before anybody commits to it."""
+    force = request.args.get("force") in ("1", "true", "yes")
+    try:
+        return jsonify({"ok": True,
+                        "cost": histoimgmod.estimate(force=force)})
+    except Exception as exc:                               # noqa: BLE001
+        return fail("histoimg/estimate", exc, 500)
+
+
+@app.route("/api/histoimg/derive", methods=["POST"])
+def api_histoimg_derive():
+    """Derive the web copies, and optionally send them up.
+
+    **The cost is stated before it is spent** (constitution sec 6b). Called
+    without `confirm` this does nothing at all and answers with the number of
+    images, the gigabytes to be read, the megabytes that would go up and the
+    measured seconds -- the same body the caller gets back when it does
+    confirm, so the panel shows one number and then watches it happen rather
+    than quoting one figure and running against another.
+
+    Runs on a thread and returns at once. Reading 30 GB off a spinning drive
+    is minutes, and a request held open for minutes is a request that dies to
+    somebody's proxy halfway through with nothing written down.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    force = bool(body.get("force"))
+    upload = body.get("upload", True)
+    try:
+        cost = histoimgmod.estimate(force=force)
+    except Exception as exc:                               # noqa: BLE001
+        return fail("histoimg/derive", exc, 500)
+    if not histoimgmod.have_drive():
+        return jsonify({
+            "ok": False, "cost": cost,
+            "error": ("%s is not on this machine, so there is nothing to "
+                      "derive here. A machine with the drive derives them "
+                      "and the copies travel; this one can still show "
+                      "whatever has been uploaded."
+                      % histoimgmod.root())}), 400
+    if not body.get("confirm"):
+        # Nothing has been spent. This is the sentence the button shows.
+        return jsonify({"ok": True, "confirmed": False, "cost": cost,
+                        "step": dict(_histoimg_step)})
+
+    with _histoimg_lock:
+        if _histoimg_step.get("running"):
+            return jsonify({"ok": False, "error": "Already running.",
+                            "step": dict(_histoimg_step)}), 409
+        _histoimg_note("starting", done=0, of=cost["images"], cost=cost,
+                       result=None, error=None)
+
+    def go():
+        try:
+            def note(rat, name, i, n):
+                _histoimg_note("deriving", rat, name, done=i, of=n)
+
+            res = histoimgmod.derive_all(on_progress=note, force=force)
+            if upload and CLOUD.cloud.configured:
+                _histoimg_note("uploading", done=0, of=0)
+
+                def up_note(key, done):
+                    _histoimg_note("uploading", name=key, done=done)
+
+                res["upload"] = histoimgmod.upload_all(
+                    CLOUD.cloud, on_progress=up_note, force=force)
+            elif upload:
+                res["upload"] = {"skipped": "the cloud is not configured"}
+            _histoimg_note("done", done=_histoimg_step.get("of"), result=res)
+        except Exception as exc:                           # noqa: BLE001
+            STORE.record_error("histoimg/derive", str(exc),
+                               traceback.format_exc(limit=8), None)
+            _histoimg_note("failed", error=str(exc)[:300])
+
+    threading.Thread(target=go, daemon=True,
+                     name="barry-histoimg").start()
+    return jsonify({"ok": True, "confirmed": True, "cost": cost,
+                    "step": dict(_histoimg_step)})
+
+
+@app.route("/api/histoimg/progress")
+def api_histoimg_progress():
+    """Where a running derive has got to. Reads a dict; costs nothing."""
+    return jsonify({"ok": True, "step": dict(_histoimg_step)})
+
+
+@app.route("/api/histoimg/file")
+def api_histoimg_file():
+    """One derived image, from wherever this machine can get it.
+
+    The cache first, then the drive if it is here, then the bucket -- which
+    is the case the upload exists for: a laptop that has never seen E: still
+    shows the slide, because the 2400px copy went up precisely so it could.
+
+    Never the original. It is a 679 MB TIFF no browser will render.
+    """
+    safe = _histoimg_safe(request.args.get("rat"), request.args.get("file"))
+    if not safe:
+        return jsonify({"ok": False,
+                        "error": "Give a rat folder and a filename."}), 400
+    rat, name = safe
+    kind = request.args.get("kind") or "web"
+    if kind not in ("web", "thumb"):
+        # Said as a refusal rather than a 404: "original" is the obvious
+        # thing to ask for and the answer is that it is not servable, not
+        # that it is missing.
+        return jsonify({"ok": False, "error": (
+            "There are two derived sizes, `web` and `thumb`. The original "
+            "is a half-gigabyte TIFF no browser will render, so it is "
+            "opened from the drive rather than served.")}), 400
+    try:
+        path, err = histoimgmod.local_copy(rat, name, kind, CLOUD.cloud)
+    except Exception as exc:                               # noqa: BLE001
+        return fail("histoimg/file", exc, 500,
+                    {"rat": rat, "file": name, "kind": kind})
+    if not path:
+        return jsonify({"ok": False, "error": err or "No copy of that."}), 404
+    return send_file(path, mimetype="image/jpeg", conditional=True)
 
 
 # ==========================================================================

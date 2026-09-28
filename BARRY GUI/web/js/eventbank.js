@@ -1298,6 +1298,13 @@ BARRY.views.eventbank = (function () {
     });
     const strip = dupStrip(whole || row || {}, scan);
     if (strip) host.appendChild(strip);
+    /* What this entry is not valid on, and who said so. Built from the
+       events that have just arrived rather than from the listing, because
+       the listing carries counts and these lists live on the events
+       themselves. Returns null for everything that has no windows, which
+       is most of the bank. */
+    const excl = exclusionSummary(whole || row || {}, evs);
+    if (excl) host.appendChild(exclusionCard(excl));
     /* And at the top, where somebody who never scrolls to the events will
        still meet it. The events are not loaded when the header is built, so
        this goes in when they arrive rather than being drawn with it. */
@@ -1338,6 +1345,399 @@ BARRY.views.eventbank = (function () {
         text: 'Showing the first 300 of ' + evs.length + '. Export the CSV '
             + 'for all of them.' }));
     }
+  }
+
+  /* ======================================================================
+     What an entry excludes, and why
+
+     Step one of The Arc banks one event per cue pair, and each of those
+     events carries the channels it is not valid on. Two lists, kept apart:
+     `clipped` is MEASURED -- the amplifier sat at its rail somewhere in
+     that window -- and `excluded` is DECIDED -- somebody looked and said
+     not this one. backend/eventbank.py whitelists them separately and says
+     why: a measurement and a judgement are different claims. They are
+     counted separately here for the same reason. The union is what the
+     coupling step actually drops (`coupling.excluded_for`), and it is
+     still two facts, not one number.
+
+     THE UNIT IS A BLOCK: one event, in one window, on one channel. Not a
+     channel. A channel that lost the baseline of one pair out of twelve
+     and a channel that is at the rail through all four windows of all
+     twelve are both "an excluded channel", and reading those as the same
+     thing is the mistake this panel exists to replace -- one loses 1 block
+     of 48 and the other loses 48. So the counts say blocks, and the bar
+     beside each row is there to stop the two ever looking alike.
+
+     All of it is computed here from the events the detail pane already
+     fetched. No route was added: the server has already sent every number
+     this needs, and a second read of the same record would be a request
+     spent on arithmetic.
+     ====================================================================== */
+
+  /* The four windows a cue pair is analysed in, in the order they happen:
+     ten seconds of baseline, cue 1, cue 2, ten seconds after cue 2 ends.
+     The same tuple as spark.CLIP_WINDOWS, in the same order arc.js draws
+     them, so a window named `cue1` here is the one that was measured. */
+  const EXCL_WINDOWS = ['pre', 'cue1', 'cue2', 'post'];
+
+  /* The two the coupling is computed in. Losing a baseline costs the
+     comparison; losing a cue costs the measurement itself. That is the
+     whole reason the windows are shown at all rather than folded into a
+     per-channel total -- eight blocks gone from `post` and eight gone from
+     `cue1` are the same number and not the same loss. */
+  const EXCL_CUE = { cue1: true, cue2: true };
+
+  /* How many channel rows open before the rest are asked for. */
+  const EXCL_ROWS = 16;
+
+  /* One event's channels, per window.
+
+     Two shapes arrive and they mean different things. A DICT is per window
+     -- a channel can be ruined in the baseline and perfectly good in both
+     cues, which is why the bank stopped flattening these. A LIST is an
+     older entry, banked before the windows were kept apart, and it means
+     "not valid for this event at all". Spread over every window here,
+     which is exactly how `coupling.excluded_for` reads one, so the panel
+     and the analysis cannot come to different totals for one entry. */
+  function exclPerWindow(got, names) {
+    const out = {};
+    if (!got) return out;
+    const nums = (list) => (list || []).map(Number)
+      .filter((c) => isFinite(c));
+    if (Array.isArray(got)) {
+      const flat = nums(got);
+      if (flat.length) names.forEach((w) => { out[w] = flat; });
+      return out;
+    }
+    Object.keys(got).forEach((w) => {
+      const here = nums(got[w]);
+      if (here.length) out[w] = here;
+    });
+    return out;
+  }
+
+  /* Everything the card below says, worked out once.
+
+     Returns null when there is nothing to say, and that is the common
+     case: most of the bank is dentate spikes, which have no cue pair, no
+     windows and no clipping measurement. An extra card on ninety entries
+     explaining that they have no windows is a card people learn to scroll
+     past, and then miss on the twelve that do. */
+  function exclusionSummary(e, evs) {
+    const events = evs || [];
+    if (!events.length) return null;
+    const params = (e.source || {}).parameters || {};
+    /* Spark's own entries qualify even with nothing excluded, because
+       "nothing was found" and "nobody looked" are different answers and
+       `clip_measured` is the only field that tells them apart. Anything
+       else has to actually carry a list. */
+    const fromSpark = String((e.source || {}).pipeline || '')
+      .indexOf('The Arc · Spark') === 0;
+
+    /* Which windows this entry speaks, read off the events rather than
+       assumed. An entry carrying three is not one that lost nothing in a
+       fourth it never had. */
+    const seen = {};
+    let anyFlat = false, anyPerWindow = false, anyList = false;
+    events.forEach((ev) => {
+      ['clipped', 'excluded'].forEach((key) => {
+        const got = ev[key];
+        if (!got) return;
+        if (Array.isArray(got)) {
+          if (got.length) { anyFlat = true; anyList = true; }
+          return;
+        }
+        Object.keys(got).forEach((w) => {
+          if ((got[w] || []).length) {
+            seen[w] = true; anyPerWindow = true; anyList = true;
+          }
+        });
+      });
+    });
+    if (!anyList && !fromSpark) return null;
+
+    /* Canonical order first, then anything else this entry happens to
+       name. A flat list brings all four back, because that is what it
+       means. */
+    let windows = EXCL_WINDOWS.filter((w) => seen[w] || anyFlat)
+      .concat(Object.keys(seen).filter(
+        (w) => EXCL_WINDOWS.indexOf(w) < 0).sort());
+    if (!windows.length) windows = EXCL_WINDOWS.slice();
+
+    const chan = {};                 // csc -> one row of the channel table
+    const win = {};                  // window name -> one row of the other
+    windows.forEach((w) => {
+      win[w] = { name: w, blocks: 0, chans: {}, events: 0, cue: !!EXCL_CUE[w] };
+    });
+    let affected = 0, blocks = 0, keptBlocks = 0;
+    const rowOf = (c) => chan[c] || (chan[c] = {
+      channel: c, lost: 0, measured: 0, decided: 0, both: 0, kept: 0,
+      events: 0 });
+
+    events.forEach((ev) => {
+      const meas = exclPerWindow(ev.clipped, windows);
+      const said = exclPerWindow(ev.excluded, windows);
+      /* The third list: blocks somebody put BACK in against the
+         measurement. They are subtracted from the loss exactly as
+         `coupling.excluded_for` subtracts them -- (clipped + excluded) -
+         kept -- and shown as their own category, because "the amplifier
+         touched its rail here and a person said it does not matter" is a
+         claim that has to stay visible, not vanish into "clean". */
+      const held = exclPerWindow(ev.kept, windows);
+      const here = {};
+      windows.forEach((w) => {
+        const isM = {}, isD = {}, isK = {};
+        (meas[w] || []).forEach((c) => { isM[c] = true; });
+        (said[w] || []).forEach((c) => { isD[c] = true; });
+        (held[w] || []).forEach((c) => { isK[c] = true; });
+        Object.keys(isK).forEach((key) => {
+          if (!isM[key] && !isD[key]) return;
+          rowOf(Number(key)).kept += 1;
+          keptBlocks += 1;
+          if (win[w]) win[w].kept = (win[w].kept || 0) + 1;
+        });
+        const all = Object.keys(isM).concat(
+          Object.keys(isD).filter((c) => !isM[c]))
+          .filter((c) => !isK[c]);
+        if (!all.length) return;
+        win[w].blocks += all.length;
+        win[w].events += 1;
+        all.forEach((key) => {
+          const c = Number(key);
+          win[w].chans[c] = true;
+          here[c] = true;
+          const row = rowOf(c);
+          row.lost += 1;
+          if (isM[c]) row.measured += 1;
+          if (isD[c]) row.decided += 1;
+          /* Counted, and kept out of the other two, because a block that
+             was measured AND decided would otherwise read as two blocks
+             once somebody adds the columns up. */
+          if (isM[c] && isD[c]) row.both += 1;
+          blocks += 1;
+        });
+      });
+      const mine = Object.keys(here);
+      if (mine.length) affected += 1;
+      mine.forEach((c) => { chan[c].events += 1; });
+    });
+
+    const rows = Object.keys(chan).map((k) => chan[k]);
+    /* Worst first, and on ties the lower CSC number, so the order is the
+       same every time the panel is opened. `clip_summary` sorts its own
+       rows the same way for the same reason. */
+    rows.sort((a, b) => (b.lost - a.lost) || (b.kept - a.kept)
+                        || (a.channel - b.channel));
+
+    return {
+      events: events.length,
+      affected: affected,
+      clean: events.length - affected,
+      blocks: blocks,
+      /* Blocks kept against the measurement: NOT lost, and not counted in
+         `blocks` or in any channel's `lost`. */
+      kept: keptBlocks,
+      /* Per channel this is exact: every event has every window, whether
+         or not anything was lost in it. There is deliberately no total
+         across the whole entry -- that would need the number of channels
+         on the probe, which a banked entry does not carry, and a
+         denominator worked out from the channels that happen to appear
+         would be a guess dressed as a measurement. */
+      possible: events.length * windows.length,
+      windows: windows,
+      channels: rows,
+      byWindow: windows.map((w) => ({
+        name: win[w].name, blocks: win[w].blocks, cue: win[w].cue,
+        kept: win[w].kept || 0,
+        channels: Object.keys(win[w].chans).length, events: win[w].events,
+      })),
+      perWindow: anyPerWindow,
+      flat: anyFlat,
+      /* Absent is not negative. `clip_measured` false means the clipping
+         check was never run before this was banked, so an empty measured
+         column is nobody having looked -- not a clean amplifier. */
+      knowsMeasured: params.clip_measured !== undefined,
+      measured: params.clip_measured === true,
+      fraction: params.clip_fraction,
+      minRun: params.clip_min_run,
+    };
+  }
+
+  /* A bar wide enough to see for one block out of sixty-four.
+     1/64 is 1.6%, so a 1.5% floor makes a single lost block visible
+     without inflating anything above it. */
+  function exclWidth(n, d) {
+    if (!(d > 0) || !(n > 0)) return 0;
+    return Math.round(Math.max(1.5, (n / d) * 100) * 10) / 10;
+  }
+
+  const exclPlural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
+
+  /* Where each block came from, per channel: the measurement, the person,
+     or both. Two chips rather than one total, because merging them is the
+     thing this panel is not allowed to do. */
+  function exclWhy(c) {
+    const kids = [];
+    if (c.measured) {
+      kids.push(el('span', { class: 'excl-meas',
+        title: 'Measured: the amplifier was at its rail in '
+             + exclPlural(c.measured, 'block') + '.',
+        text: 'measured ' + c.measured }));
+    }
+    if (c.decided) {
+      kids.push(el('span', { class: 'excl-dec',
+        title: 'Decided: somebody looked at '
+             + exclPlural(c.decided, 'block') + ' and said not this one.',
+        text: 'decided ' + c.decided }));
+    }
+    if (c.both) {
+      kids.push(el('span', { class: 'excl-both',
+        title: 'Blocks that are on both lists. They are one block, not '
+             + 'two, so the two counts beside this overlap by '
+             + c.both + '.',
+        text: c.both + ' of them both' }));
+    }
+    if (c.kept) {
+      kids.push(el('span', { class: 'excl-kept',
+        title: 'Kept against the measurement: the amplifier touched its '
+             + 'rail in ' + exclPlural(c.kept, 'block') + ' and somebody '
+             + 'looked and put ' + (c.kept === 1 ? 'it' : 'them') + ' back '
+             + 'in. Not counted as lost; the analysis uses them.',
+        text: 'kept ' + c.kept + ' against the measurement' }));
+    }
+    return el('span', { class: 'excl-why' }, kids);
+  }
+
+  /* How the measurement was made, so the numbers can be defended. */
+  function exclParams(s) {
+    const lines = [];
+    if (s.knowsMeasured && !s.measured) {
+      lines.push('Clipping was never measured before this was banked, so '
+               + 'nothing here is a claim that the amplifier stayed off its '
+               + 'rail — only that nobody looked. Run "Check for '
+               + 'clipping" in Spark and bank it again to find out.');
+    } else if (s.fraction != null) {
+      lines.push('Measured: a window counted as lost where the amplifier '
+               + 'sat within '
+               + (Math.round((1 - s.fraction) * 1000) / 10)
+               + '% of its rail for ' + s.minRun + ' samples or more '
+               + '(clip_fraction ' + s.fraction + ', clip_min_run '
+               + s.minRun + ').');
+    }
+    if (s.flat) {
+      lines.push('Some of these lists name channels and not windows — '
+               + 'this entry predates the windows being kept apart. Those '
+               + 'count against all ' + s.windows.length
+               + ' windows, which is what they meant and how the coupling '
+               + 'step reads them.');
+    }
+    if (!lines.length) return null;
+    return el('ul', { class: 'fix-steps excl-why-list' },
+              lines.map((t) => el('li', { text: t })));
+  }
+
+  function exclusionCard(s) {
+    const box = el('div', { class: 'excl-sum' });
+
+    box.appendChild(el('div', { class: 'excl-head' }, [
+      el('strong', { text: s.affected + ' of '
+                         + exclPlural(s.events, 'event')
+                         + ' lose at least one block  ·  ' + s.clean
+                         + ' completely clean' }),
+      /* The unit, named where the numbers are rather than left for
+         somebody to infer. "31 channels excluded" is the sentence this is
+         instead of, and it is the one that cannot be acted on: it is
+         equally true of a channel that lost one baseline and of a channel
+         that is gone entirely. Spark's own mode bar was caught saying
+         exactly that -- "56 channel(s) clipped" over a clipping card
+         listing nine (see `flaggedOf`, arc.js) -- so a count of channels
+         is not a claim this panel makes anywhere. */
+      el('span', { text: s.blocks
+        ? exclPlural(s.blocks, 'block') + ' lost across '
+          + exclPlural(s.channels.length, 'channel')
+          + '.  A block is one event, in one window, on one channel — '
+          + s.windows.length + ' windows × ' + s.events
+          + ' events, so ' + s.possible + ' blocks per channel.'
+        : 'No channel is excluded from any window of any event here.' }),
+      s.kept
+        ? el('span', { class: 'excl-kept-say',
+            text: exclPlural(s.kept, 'block') + ' kept against the '
+                  + 'measurement — the amplifier touched its rail there and '
+                  + 'somebody put ' + (s.kept === 1 ? 'it' : 'them')
+                  + ' back in. Not counted as lost.' })
+        : null,
+    ].filter(Boolean)));
+
+    const why = exclParams(s);
+    if (why) box.appendChild(why);
+
+    if (!s.blocks && !s.kept) return box;
+
+    /* By window first, because it is the shorter answer and the one that
+       changes what the loss costs. */
+    box.appendChild(el('div', { class: 'section-label', text: 'By window' }));
+    box.appendChild(el('p', { class: 'excl-note',
+      text: 'cue1 and cue2 are the windows the coupling is computed in; '
+          + 'pre and post are the ten seconds of baseline either side. The '
+          + 'bars compare the windows with each other — how many '
+          + 'channels a recording has is not banked, so there is no honest '
+          + 'denominator for a whole window.' }));
+    const worst = s.byWindow.reduce((n, w) => Math.max(n, w.blocks), 0);
+    box.appendChild(el('div', { class: 'excl-wins' }, s.byWindow.map((w) =>
+      el('div', { class: 'excl-win' + (w.cue ? ' cue' : '') }, [
+        el('span', { class: 'excl-w-name', text: w.name }),
+        el('span', { class: 'excl-bar' }, [
+          el('i', { style: 'width:' + exclWidth(w.blocks, worst) + '%' }),
+        ]),
+        el('span', { class: 'excl-n', text: exclPlural(w.blocks, 'block') }),
+        el('span', { class: 'excl-in',
+          text: exclPlural(w.channels, 'channel') + '  ·  in '
+              + w.events + ' of ' + s.events + ' events'
+              + (w.kept ? '  ·  ' + w.kept + ' kept against the measurement'
+                        : '') }),
+      ]))));
+
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'By channel  ·  worst first' }));
+    const rows = el('div', { class: 'excl-chans' });
+    const more = el('button', { class: 'linkish' });
+    /* Held on the closure rather than on the module: the whole detail pane
+       is rebuilt whenever a selection or a version moves, and a module-level
+       flag would arrive at the next entry still open. */
+    let all = false;
+    const paint = () => {
+      rows.innerHTML = '';
+      const show = all ? s.channels : s.channels.slice(0, EXCL_ROWS);
+      show.forEach((c) => {
+        rows.appendChild(el('div', { class: 'excl-chan' }, [
+          el('strong', { class: 'excl-ch-name', text: 'CSC' + c.channel }),
+          el('span', {
+            /* Everything gone, on every window of every event, is the one
+               state worth a colour of its own -- it is the channel that
+               contributes nothing at all rather than one with a hole in
+               it. Same distinction spark.loss_grade draws as "event
+               lost". */
+            class: 'excl-bar' + (c.lost >= s.possible ? ' gone' : ''),
+          }, [
+            el('i', { style: 'width:' + exclWidth(c.lost, s.possible) + '%' }),
+          ]),
+          el('span', { class: 'excl-n',
+            text: c.lost + ' of ' + s.possible + ' blocks' }),
+          exclWhy(c),
+          el('span', { class: 'excl-in',
+            text: 'in ' + c.events + ' of ' + s.events + ' events' }),
+        ]));
+      });
+      more.textContent = all
+        ? 'show the worst ' + EXCL_ROWS + ' only'
+        : (s.channels.length - EXCL_ROWS) + ' more — show all '
+          + s.channels.length;
+    };
+    more.onclick = () => { all = !all; paint(); };
+    paint();
+    box.appendChild(rows);
+    if (s.channels.length > EXCL_ROWS) box.appendChild(more);
+    return box;
   }
 
   /* ======================================================================

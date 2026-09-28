@@ -93,6 +93,36 @@ async function until(fn, ms) {
         ev('BARRY.vacc.canRead({ gid: "sZZZZnotreal" })') === false);
 
   say('');
+  say('=== the cluster means one thing, said in one place ===');
+  /* Four surfaces say what `native` and `staged` mean -- the card in
+     Sessions, the detail panel in Housekeeping, the tab in Xplorefinder and
+     the toast when one opens -- and they each said it in their own words
+     until this. The one that drifts is the one somebody reads before
+     trusting a trace, so the words live in `BARRY.vacc.words` and every
+     surface draws `BARRY.vacc.mark`. */
+  check('BARRY.vacc.words exists', ev('typeof BARRY.vacc.words') === 'function');
+  check('BARRY.vacc.mark exists', ev('typeof BARRY.vacc.mark') === 'function');
+  const wordsOf = (st) => JSON.parse(ev(
+    'JSON.stringify(BARRY.vacc.words(' + JSON.stringify(st) + ') || null)'));
+  const nat = wordsOf('native'), stg = wordsOf('staged');
+  check('the two affirmative states each have words',
+        !!(nat && nat.word && nat.note) && !!(stg && stg.word && stg.note),
+        JSON.stringify([nat, stg]));
+  check('and they do not say the same thing',
+        nat.note !== stg.note, nat.note + ' / ' + stg.note);
+  check('the two that are not affirmative have none',
+        wordsOf('local-only') === null && wordsOf('unknown') === null);
+  /* The predicate and the vocabulary cannot come apart: `canRead` is
+     defined as "there are words for it", so a state that opens and a state
+     that gets a mark are the same set by construction rather than by two
+     lists that happen to agree today. */
+  for (const [st, want] of [['native', true], ['staged', true],
+                            ['local-only', false], ['unknown', false]]) {
+    check('canRead and the vocabulary agree about ' + st,
+          ev('!!BARRY.vacc.words(' + JSON.stringify(st) + ')') === want);
+  }
+
+  say('');
   say('=== the two affirmative states open, the other two do not ===');
   const kn = await json('fetch("/api/vacc/knows").then(r=>r.text())');
   check('/api/vacc/knows answers with the cluster down', kn.ok === true);
@@ -174,6 +204,24 @@ async function until(fn, ms) {
           (frame.contentDocument.querySelector(
             '#vaccBody .vacc-seg button.active') || {}).textContent
           === 'Recordings');
+
+    /* Every cluster mark on screen came out of that one table. A view
+       that built its own chip would put a word here that `words` never
+       produced, which is exactly what the tab in Xplorefinder was doing.
+
+       Read off the CARDS. The tree rows carry no mark and should not: in a
+       view where every row is on the cluster, a mark on every row says
+       nothing. */
+    await until(() => frame.contentDocument
+      .querySelector('#vaccBody .flagchip.vacc'), 40000);
+    const marks = Array.from(frame.contentDocument
+      .querySelectorAll('#vaccBody .flagchip.vacc'))
+      .map((node) => (node.textContent || '').trim());
+    const allowed = [nat.word, nat.short, stg.word, stg.short];
+    check('every cluster mark drawn is one of the words the module keeps',
+          marks.length > 0 && marks.every((t) => allowed.indexOf(t) >= 0),
+          marks.length + ' marks; odd ones: '
+          + marks.filter((t) => allowed.indexOf(t) < 0).slice(0, 3).join(', '));
 
     /* And a card is a way in. The cards are the surface somebody lands on,
        so the Open has to be reachable from one -- a recording that is only

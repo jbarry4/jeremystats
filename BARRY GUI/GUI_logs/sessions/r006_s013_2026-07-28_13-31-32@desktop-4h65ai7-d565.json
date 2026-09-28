@@ -22,7 +22,7 @@
     "schema": "2026-09-24T19:24:14.873845+00:00",
     "session": "2026-09-24T19:24:14.873845+00:00",
     "start": "2026-09-24T19:24:14.873845+00:00",
-    "updated": "2026-09-25T16:45:10.701070+00:00"
+    "updated": "2026-09-25T20:23:14.187277+00:00"
   },
   "_keys": {
     "paths": {
@@ -31,23 +31,23 @@
         "2026-09-24T19:24:14.873845+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J6\\Cond3\\J6_Cond3_FP2\\2026-07-28_15-37-51": [
-        "gone",
-        "2026-09-24T19:38:54.372064+00:00"
+        "set",
+        "2026-09-25T18:31:04.569474+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J6\\Cond3\\J6_Cond3_SPC\\2026-07-28_14-03-57": [
-        "gone",
-        "2026-09-24T19:38:53.800204+00:00"
+        "set",
+        "2026-09-25T18:31:04.569474+00:00"
       ]
     },
     "seen": {
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-25T16:45:10.701070+00:00"
+        "2026-09-25T20:23:14.187277+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T16:45:10.701070+00:00",
+    "at": "2026-09-25T20:23:14.187277+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -72,7 +72,9 @@
   "mouse": 6,
   "n_channels": 32,
   "paths": [
-    "E:\\Joe Multisite 2026 data\\J6\\Cond3\\J6_Cond3_FP1\\2026-07-28_13-31-32"
+    "E:\\Joe Multisite 2026 data\\J6\\Cond3\\J6_Cond3_FP1\\2026-07-28_13-31-32",
+    "E:\\Joe Multisite 2026 data\\J6\\Cond3\\J6_Cond3_FP2\\2026-07-28_15-37-51",
+    "E:\\Joe Multisite 2026 data\\J6\\Cond3\\J6_Cond3_SPC\\2026-07-28_14-03-57"
   ],
   "phase": "Con",
   "phase_n": 3,
@@ -85,20 +87,20 @@
   "schema": 2,
   "seen": {
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-25T12:45:10-04:00",
+      "at": "2026-09-25T16:23:14-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "E:\\Joe Multisite 2026 data\\J6\\Cond3\\J6_Cond3_FP1\\2026-07-28_13-31-32",
       "root": "E:/Joe Multisite 2026 data",
-      "scan": "scan_175198d703"
+      "scan": "scan_f60458f16f"
     }
   },
   "session": 13,
   "start": "2026-07-28T13:31:32",
   "updated": {
-    "app_version": "2026.09.24.8",
-    "at": "2026-09-25T12:45:10-04:00",
-    "commit": "0fc4943",
+    "app_version": "2026.09.25.3",
+    "at": "2026-09-25T16:23:14-04:00",
+    "commit": "4f8e8ca",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

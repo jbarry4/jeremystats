@@ -68,8 +68,11 @@ ORDER = [
     # references it, and both directions: the whole point is that a
     # colleague's scan answers your question without being re-run.
     "tool_results",
+    # Jarvis Artifacts (migration 18): the record, then its payloads, which
+    # reference it. Last, because nothing else references either.
+    "artifacts", "artifact_snapshots",
 ]
-PUSH_ONLY = ["runs", "activity", "errors", "error_marks"]
+PUSH_ONLY =["runs", "activity", "errors", "error_marks"]
 
 
 # For a record that has never been edited and so carries no timestamp: a
@@ -254,6 +257,13 @@ class Sync:
         # being run again. Optional: a Sync built without them simply sends
         # no vault rows, which is what every caller that predates them does.
         self.vaults = vaults or {}
+        # artifacts.Artifacts, set by app.py after construction. None means
+        # no artifact rows are sent or taken. The two signatures are what
+        # let a quiet push skip the artifact tables without a request: see
+        # rows_artifacts.
+        self.artifacts = None
+        self._art_sent_sig = None
+        self._art_pending_sig = None
         self.repo_root = repo_root
         self.cloud = cloud.Cloud(self.logs, store)
         self.machine = shards.machine_id()
@@ -527,6 +537,113 @@ class Sync:
                 "updated_at": cloud.ts(at) or UNSTAMPED,
             })
         return {"bank_snapshots": out}
+
+    # -- Jarvis Artifacts ------------------------------------------------
+    @staticmethod
+    def _art_local_only(rec):
+        """Demo and harness artifacts stay on this machine, as demo bank
+        entries do."""
+        subj = rec.get("subject") or {}
+        gids = [subj.get("gid")] + [
+            (r or {}).get("gid") for side in ("left", "right")
+            for r in (subj.get(side) or []) if isinstance(r, dict)]
+        return any(str(g or "").startswith(("demo-", "harness-"))
+                   for g in gids)
+
+    def rows_artifacts(self):
+        """Artifact records as rows, and their payloads add-only.
+
+        Content-addressed rather than time-filtered, which is why both tables
+        are in NO_INCREMENTAL. The cloud row carries `fp`, a fingerprint of
+        what it knows (version ids and their confirmations, citation ids,
+        nickname, deleted); a record is sent when its fingerprint differs
+        from the cloud's. A timestamp comparison would lose the case that
+        matters: two machines each holding a version the other has not
+        seen, where the later push overwrites the earlier one's row. Here
+        the machine that is ahead keeps sending until the cloud agrees, and
+        the pull merges by id, so both versions end up everywhere.
+
+        Payloads go up once, keyed (artifact_id, version_id) -- a version id
+        is minted once, so the same key is the same bytes -- and the table
+        refuses updates outright (migration 18), so a payload is never
+        overwritten there either.
+
+        Egress: two requests, and only when this machine's artifacts have
+        changed since the last successful push (or a pull found the cloud
+        behind). A quiet push costs nothing.
+        """
+        empty = {"artifacts": [], "artifact_snapshots": []}
+        store = self.artifacts
+        if store is None:
+            return empty
+        sig = store.signature()
+        if sig == self._art_sent_sig and not store.cloud_dirty:
+            self._art_pending_sig = sig
+            return empty
+        recs = [(r, st) for r, st in store.records_for_cloud()
+                if not self._art_local_only(r)]
+        if not recs:
+            self._art_pending_sig = sig
+            return empty
+        try:
+            there = {str(r.get("id")): r.get("fp") for r in
+                     self.cloud.select_all("artifacts", query="select=id,fp")}
+            have = {(str(r.get("artifact_id")), str(r.get("version_id")))
+                    for r in self.cloud.select_all(
+                        "artifact_snapshots",
+                        query="select=artifact_id,version_id")}
+        except Exception as exc:                         # noqa: BLE001
+            # Migration 18 not run: nothing to send to, and no reason to ask
+            # again until something here changes. Anything else -- no
+            # answer -- sends nothing and asks again next time.
+            if _absent(exc):
+                self._art_pending_sig = sig
+            return empty
+
+        now = cloud.now()
+        rows, live = [], set()
+        for rec, nick_at in recs:
+            live.add(rec["id"])
+            fp = self.artifacts.cloud_fingerprint(rec)
+            if there.get(rec["id"]) == fp:
+                continue
+            added = rec.get("added") or {}
+            deleted = rec.get("deleted") or None
+            rows.append({
+                "id": rec["id"], "kind": rec.get("kind"),
+                "schema": rec.get("schema"),
+                "subject": rec.get("subject") or {},
+                "subject_key": rec.get("subject_key"),
+                "name": rec.get("name"), "nickname": rec.get("nickname"),
+                "nickname_at": cloud.ts(nick_at) if nick_at else None,
+                "version": _int(rec.get("version")),
+                "versions": rec.get("versions") or [],
+                "cited": rec.get("cited") or [],
+                "added": added,
+                "added_at": cloud.ts(added.get("at")),
+                "deleted": deleted,
+                "deleted_at": cloud.ts((deleted or {}).get("at")),
+                "fp": fp,
+                # When it was SENT. Record rows are compared by `fp`, not by
+                # time, and a pull asks for rows newer than its last one --
+                # so the stamp has to be the moment the row reached the
+                # cloud, or a late push from a laptop that was offline would
+                # sit behind every other machine's cursor for ever.
+                "updated_at": now,
+                "updated_by": added.get("by") or self.machine,
+            })
+        snaps = []
+        for aid, ver, payload in store.snapshots():
+            if aid not in live or (aid, str(ver.get("id"))) in have:
+                continue
+            snaps.append({
+                "artifact_id": aid, "version_id": ver.get("id"),
+                "v": _int(ver.get("v")), "digest": ver.get("digest"),
+                "payload": payload, "machine": ver.get("machine"),
+                "updated_at": now,
+            })
+        self._art_pending_sig = sig
+        return {"artifacts": rows, "artifact_snapshots": snaps}
 
     def rows_curation(self):
         sets, events, reviews = [], [], []
@@ -1004,6 +1121,7 @@ class Sync:
         # sent nothing at all against a hundred and fifty-eight local
         # snapshots. One missing line, invisible from either end.
         rows.update(self.rows_tool_results())
+        rows.update(self.rows_artifacts())
         if include_history:
             rows.update(self.rows_runs())
             rows.update(self.rows_activity())
@@ -1016,7 +1134,7 @@ class Sync:
     # out what is missing by asking the database -- filtering that answer by
     # those stamps would drop every snapshot older than the last push, which
     # is all of them.
-    NO_INCREMENTAL = {"bank_snapshots"}
+    NO_INCREMENTAL = {"bank_snapshots", "artifacts", "artifact_snapshots"}
 
     ON_CONFLICT = {
         # Keyed on the permanent id, and stated rather than left to the
@@ -1039,6 +1157,8 @@ class Sync:
         "curation_reviews": "set_id,event_id,reviewer",
         "layer_labels": "gid,channel",
         "presets": "kind,id",
+        "artifacts": "id",
+        "artifact_snapshots": "artifact_id,version_id",
     }
 
     def push(self, include_history=True, on_progress=None, dry_run=False,
@@ -1123,6 +1243,11 @@ class Sync:
             # The time the push *started*: anything written while it ran must
             # be caught next time rather than skipped.
             self.cloud.save_state({"last_push": started})
+            # Only now, with every table sent, is the artifact store's
+            # state the one the cloud has.
+            self._art_sent_sig = self._art_pending_sig
+            if self.artifacts is not None:
+                self.artifacts.cloud_dirty = False
         out = {"sent": sent, "tables": report, "dry_run": dry_run,
                "since": since, "full": bool(full)}
         if orphans:
@@ -1396,6 +1521,11 @@ class Sync:
             fetch("health_checks"))
         applied["errors"] = self._apply_errors(fetch("errors"))
         applied["error_marks"] = self._apply_error_marks(fetch("error_marks"))
+        if self.artifacts is not None:
+            # The record before its payloads, as for the bank.
+            applied["artifacts"] = self._apply_artifacts(fetch("artifacts"))
+            applied["artifact_snapshots"] = self._apply_artifact_snapshots(
+                fetch("artifact_snapshots"))
         if on_progress:
             on_progress(applied)
 
@@ -1888,6 +2018,58 @@ class Sync:
             # caller puts it in the result, and the result is on screen.
             self.snapshot_conflicts = clashes
         return added
+
+    def _art_clash(self, text):
+        self.snapshot_conflicts = list(
+            getattr(self, "snapshot_conflicts", None) or []) + [text]
+
+    def _apply_artifacts(self, rows):
+        """Other machines' artifact records, merged by id -- versions and
+        citations only ever added, the nickname by the newer stamp, and a
+        deletion refused while something here still cites it (reported)."""
+        store = self.artifacts
+        if store is None:
+            return 0
+        n = 0
+        for r in rows:
+            try:
+                got = store.absorb_record(dict(r))
+            except Exception as exc:                     # noqa: BLE001
+                self._art_clash("artifact %s: %s" % (r.get("id"), exc))
+                continue
+            if got in ("added", "merged"):
+                n += 1
+            elif isinstance(got, str) and got.startswith("conflict"):
+                self._art_clash(got)
+            # This machine knows something the cloud row does not: send it
+            # next push even if nothing here was written.
+            mine = store.get(r.get("id"))
+            if mine and store.cloud_fingerprint(mine) != r.get("fp"):
+                store.cloud_dirty = True
+        return n
+
+    def _apply_artifact_snapshots(self, rows):
+        """Fill in payloads this machine is missing. Never overwrites; a
+        payload that disagrees with its version's digest is a conflict,
+        reported and not filed."""
+        store = self.artifacts
+        if store is None:
+            return 0
+        n = 0
+        for r in rows:
+            try:
+                got = store.absorb_snapshot(
+                    r.get("artifact_id"), r.get("version_id"), r.get("v"),
+                    r.get("digest"), r.get("payload"))
+            except Exception as exc:                     # noqa: BLE001
+                self._art_clash("artifact %s %s: %s" % (
+                    r.get("artifact_id"), r.get("version_id"), exc))
+                continue
+            if got == "added":
+                n += 1
+            elif isinstance(got, str) and got.startswith("conflict"):
+                self._art_clash(got)
+        return n
 
     def _apply_bank(self, rows):
         if not self.bank:

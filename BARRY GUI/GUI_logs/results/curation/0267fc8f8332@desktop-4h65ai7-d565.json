@@ -1,22 +1,23 @@
 {
   "_at": {
-    "key": "2026-09-24T19:51:38.664673+00:00",
-    "rel": "2026-09-24T19:51:38.664673+00:00",
-    "starred": "2026-09-24T19:51:38.664673+00:00",
-    "updated": "2026-09-24T19:51:38.664673+00:00"
+    "key": "2026-09-28T16:11:36.789503+00:00",
+    "rel": "2026-09-28T16:11:36.789503+00:00",
+    "starred": "2026-09-28T16:11:36.789503+00:00",
+    "updated": "2026-09-28T16:11:36.789503+00:00"
   },
   "_shard": {
-    "at": "2026-09-24T19:51:38.664673+00:00",
+    "at": "2026-09-28T16:11:36.789503+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "key": "dewey precon spc recordings.xlsx",
   "rel": "DEWEY Precon SPC recordings.xlsx",
   "starred": false,
+  "tags": [],
   "updated": {
-    "app_version": "2026.09.24.8",
-    "at": "2026-09-24T15:51:38-04:00",
-    "commit": "0fc4943",
+    "app_version": "2026.09.27.1",
+    "at": "2026-09-28T12:11:36-04:00",
+    "commit": "030bb0c",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

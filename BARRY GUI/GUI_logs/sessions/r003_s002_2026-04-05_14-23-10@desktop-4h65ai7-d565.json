@@ -26,18 +26,18 @@
     "schema": "2026-09-24T19:37:56.044957+00:00",
     "session": "2026-09-24T19:37:56.044957+00:00",
     "start": "2026-09-24T19:37:56.044957+00:00",
-    "updated": "2026-09-25T16:45:05.325614+00:00",
-    "view_state": "2026-09-24T19:58:02.548174+00:00"
+    "updated": "2026-09-25T20:23:10.036130+00:00",
+    "view_state": "2026-09-25T19:26:57.177533+00:00"
   },
   "_keys": {
     "paths": {
       "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 2\\J3_precon_2_FP1\\2026-04-05_13-42-49": [
-        "gone",
-        "2026-09-24T20:02:25.500798+00:00"
+        "set",
+        "2026-09-25T18:31:35.449967+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 2\\J3_precon_2_FP2\\2026-04-05_15-59-19": [
-        "gone",
-        "2026-09-24T20:02:25.500798+00:00"
+        "set",
+        "2026-09-25T18:31:35.449967+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 2\\J3_precon_2_SP\\2026-04-05_14-23-10": [
         "set",
@@ -47,12 +47,12 @@
     "seen": {
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-25T16:45:05.325614+00:00"
+        "2026-09-25T20:23:10.036130+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T16:45:05.325614+00:00",
+    "at": "2026-09-25T20:23:10.036130+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -111,7 +111,9 @@
   "n_channels": 64,
   "note": "Acquisition wrote 64 CSC files; 33-64 are dead. The montage is the same 32-channel DEWEY map.",
   "paths": [
-    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 2\\J3_precon_2_SP\\2026-04-05_14-23-10"
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 2\\J3_precon_2_SP\\2026-04-05_14-23-10",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 2\\J3_precon_2_FP1\\2026-04-05_13-42-49",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 2\\J3_precon_2_FP2\\2026-04-05_15-59-19"
   ],
   "phase": "Precon",
   "phase_n": 2,
@@ -125,20 +127,20 @@
   "schema": 2,
   "seen": {
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-25T12:45:05-04:00",
+      "at": "2026-09-25T16:23:10-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 2\\J3_precon_2_SP\\2026-04-05_14-23-10",
       "root": "E:/Joe Multisite 2026 data",
-      "scan": "scan_175198d703"
+      "scan": "scan_f60458f16f"
     }
   },
   "session": 2,
   "start": "2026-04-05T14:23:10",
   "updated": {
-    "app_version": "2026.09.24.8",
-    "at": "2026-09-25T12:45:05-04:00",
-    "commit": "0fc4943",
+    "app_version": "2026.09.25.3",
+    "at": "2026-09-25T16:23:10-04:00",
+    "commit": "4f8e8ca",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -193,9 +195,9 @@
     "notch": 60,
     "probe": "dewey32",
     "spacing": 50,
-    "span": 300,
+    "span": 43.998999999999796,
     "stft_mode": null,
-    "t0": 3944.549530635838,
+    "t0": 5145.62139,
     "ylim": 1784.7552852500082
   }
 }

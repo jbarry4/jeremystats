@@ -233,20 +233,35 @@ def get_cmap(cmap_id):
         return matplotlib.colormaps["viridis"]
 
 
-def _encode_image(matrix, cmap_id, clim, upsample=1):
+def _encode_image(matrix, cmap_id, clim, upsample=1, alpha=None, floor=0.0):
     """Color-map a 2-D array straight to a base64 PNG data URI.
 
     Encoding the array itself rather than a matplotlib figure keeps the image
     pixel-exact and small: axes, ticks and labels are drawn by the browser (or
     by the exporter), never baked into the data.
+
+    `alpha` is an optional array the same shape as `matrix`, in 0..1, which
+    becomes the per-pixel opacity instead of the flat 255. It exists because
+    a value and the confidence in that value are two facts about one cell,
+    and a panel that draws only the first says a coin toss and a certainty
+    in the same colour. Horizon drives it from how far the winning peak beat
+    its runner-up. `floor` keeps the least confident cell faintly visible
+    rather than gone, so an absence of colour still reads as "measured, and
+    it was a toss-up" rather than as "nothing was read here" -- which is what
+    a fully transparent cell already means, and that meaning is taken.
     """
     lo, hi = clim
     if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
         lo, hi = -1.0, 1.0
 
     m = np.asarray(matrix, dtype=np.float64)
+    a = None if alpha is None else np.asarray(alpha, dtype=np.float64)
     if upsample and upsample > 1:
         m = _interp2(m, upsample)
+        # The opacity rides the same upsample, or it would no longer line up
+        # with the colour it is meant to be qualifying.
+        if a is not None:
+            a = _interp2(a, upsample)
 
     norm = mcolors.Normalize(vmin=lo, vmax=hi, clip=True)
     with warnings.catch_warnings():
@@ -254,7 +269,14 @@ def _encode_image(matrix, cmap_id, clim, upsample=1):
         rgba = get_cmap(cmap_id)(norm(m), bytes=True)
     # NaN (bad or missing channels) becomes transparent rather than a color
     # that could be mistaken for data.
-    rgba[..., 3] = np.where(np.isfinite(m), 255, 0).astype(np.uint8)
+    have = np.isfinite(m)
+    if a is None:
+        rgba[..., 3] = np.where(have, 255, 0).astype(np.uint8)
+    else:
+        f = float(min(max(floor, 0.0), 1.0))
+        op = np.clip(np.nan_to_num(a, nan=0.0), 0.0, 1.0)
+        op = f + (1.0 - f) * op
+        rgba[..., 3] = np.where(have, np.round(op * 255.0), 0).astype(np.uint8)
 
     from matplotlib.image import imsave
     buf = io.BytesIO()

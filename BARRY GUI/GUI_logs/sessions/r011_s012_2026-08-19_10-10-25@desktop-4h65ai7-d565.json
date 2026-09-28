@@ -6,7 +6,7 @@
     "gid": "2026-09-24T20:00:44.011120+00:00",
     "group": "2026-09-24T20:00:44.011120+00:00",
     "key": "2026-09-24T16:34:21-04:00",
-    "label": "2026-09-24T16:34:21-04:00",
+    "label": "2026-09-25T18:30:16.854596+00:00",
     "loose_key": "2026-09-24T16:34:21-04:00",
     "mouse": "2026-09-24T20:00:44.011120+00:00",
     "n_channels": "2026-09-24T20:00:44.047719+00:00",
@@ -16,12 +16,14 @@
     "probe_source": "2026-09-24T20:00:44.047719+00:00",
     "project": "2026-09-24T20:00:44.011120+00:00",
     "project_source": "2026-09-24T20:00:44.011120+00:00",
-    "retired": "2026-09-24T20:08:27.535058+00:00",
+    "retired": "2026-09-25T21:04:00.783632+00:00",
+    "retired_at": "2026-09-25T21:04:07.943101+00:00",
+    "retired_reason": "2026-09-25T21:04:00.783632+00:00",
     "run": "2026-09-24T20:00:44.011120+00:00",
     "schema": "2026-09-24T20:00:44.011120+00:00",
     "session": "2026-09-24T20:00:44.011120+00:00",
     "start": "2026-09-24T20:00:44.011120+00:00",
-    "updated": "2026-09-24T20:08:27.535058+00:00"
+    "updated": "2026-09-25T21:04:07.943101+00:00"
   },
   "_keys": {
     "paths": {
@@ -33,12 +35,12 @@
     "seen": {
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-24T20:00:44.011120+00:00"
+        "2026-09-25T21:04:03.573678+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-24T20:08:27.535058+00:00",
+    "at": "2026-09-25T21:04:07.943101+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -55,7 +57,7 @@
   "gid": "s444c7b668133",
   "group": "DEWEY",
   "key": "r011_s012_2026-08-19_10-10-25",
-  "label": "DEWEY r11 s12 Con2 FP2 2026-08-19",
+  "label": "DEWEY m11 s12 Con2 FP2 2026-08-19",
   "loose_key": "r011_s012",
   "mouse": 11,
   "n_channels": 32,
@@ -68,25 +70,27 @@
   "probe_source": "manual",
   "project": "DEWEY",
   "project_source": "guessed",
-  "retired": false,
+  "retired": true,
+  "retired_at": "2026-09-25T21:04:07.877552+00:00",
+  "retired_reason": "no data in the folder",
   "run": "FP2",
   "schema": 2,
   "seen": {
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-24T16:00:43-04:00",
-      "by": "theexaminedexistence@gmail.com",
-      "machine": "DESKTOP-4H65AI7",
+      "at": "2026-09-25T17:04:03-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
       "path": "E:\\Joe Multisite 2026 data\\J11\\J11_Con2\\J11_Con2_FP2\\2026-08-19_10-10-25",
-      "root": null,
-      "scan": null
+      "root": "E:\\Joe Multisite 2026 data\\J11\\J11_Con2\\J11_Con2_FP2\\2026-08-19_10-10-25",
+      "scan": "accepted"
     }
   },
   "session": 12,
   "start": "2026-08-19T10:10:25",
   "updated": {
-    "app_version": "2026.09.24.8",
-    "at": "2026-09-24T16:08:27-04:00",
-    "commit": "0fc4943",
+    "app_version": "2026.09.25.3",
+    "at": "2026-09-25T17:04:07-04:00",
+    "commit": "4f8e8ca",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

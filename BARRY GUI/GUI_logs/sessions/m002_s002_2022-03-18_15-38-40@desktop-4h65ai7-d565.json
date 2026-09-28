@@ -23,8 +23,8 @@
     "schema": "2026-09-18T15:46:01.061556+00:00",
     "session": "2026-09-18T15:46:01.061556+00:00",
     "start": "2026-09-18T15:46:01.061556+00:00",
-    "updated": "2026-09-25T15:03:46.640588+00:00",
-    "view_state": "2026-09-25T15:03:46.640588+00:00"
+    "updated": "2026-09-28T17:11:20.218258+00:00",
+    "view_state": "2026-09-28T17:11:20.218258+00:00"
   },
   "_keys": {
     "channel_banks": {
@@ -38,6 +38,10 @@
       ]
     },
     "paths": {
+      "/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M2s2/2022-03-18_15-38-40": [
+        "set",
+        "2026-09-25T18:31:26.341386+00:00"
+      ],
       "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S2_03182022\\2022-03-18_15-38-40": [
         "set",
         "2026-09-18T15:51:38.568131+00:00"
@@ -50,12 +54,12 @@
     "seen": {
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-25T15:00:02.862850+00:00"
+        "2026-09-28T17:11:11.229338+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T15:03:46.640588+00:00",
+    "at": "2026-09-28T17:11:20.218258+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -105,7 +109,8 @@
   "n_channels": 128,
   "note": "",
   "paths": [
-    "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S2_03182022\\2022-03-18_15-38-40"
+    "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S2_03182022\\2022-03-18_15-38-40",
+    "/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA_NEW/Kcnt1_M2s2/2022-03-18_15-38-40"
   ],
   "probe": "dual",
   "probe_source": "manual",
@@ -115,7 +120,7 @@
   "schema": 1,
   "seen": {
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-25T11:00:02-04:00",
+      "at": "2026-09-28T13:11:10-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\KCNT1\\urethane\\hom\\KCNTM2_homRQ\\KCNTM2_S2_03182022\\2022-03-18_15-38-40",
@@ -126,9 +131,9 @@
   "session": 2,
   "start": "2022-03-18T19:38:40+00:00",
   "updated": {
-    "app_version": "2026.09.24.8",
-    "at": "2026-09-25T11:03:46-04:00",
-    "commit": "0fc4943",
+    "app_version": "2026.09.28.1",
+    "at": "2026-09-28T13:11:20-04:00",
+    "commit": "030bb0c",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -279,9 +284,9 @@
     "notch": 60,
     "probe": "dual",
     "spacing": 50,
-    "span": 8.196721311475411,
+    "span": 1,
     "stft_mode": null,
-    "t0": 1231.9854064744075,
+    "t0": 1841.8047,
     "ylim": 119.50814019939224
   }
 }

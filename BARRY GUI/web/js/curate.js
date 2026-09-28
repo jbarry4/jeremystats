@@ -1501,6 +1501,23 @@ BARRY.curate = (function () {
         return t;
       })(), left: left() },
     };
+    return bankAt(at);
+  }
+
+  /* Banking a curation set, given the set rather than reading it off this
+     module -- so Spotter banks through exactly this dialog and exactly this
+     route instead of a second copy of both.
+
+     `at` is `{gid, kind, name, labels, progress: {by_label, left}}`. The
+     dialog below already falls back to `at.progress` whenever Checkup has
+     no set open, which is always true while Spotter is the mode -- that
+     fallback is what lets it be shared at all. */
+  async function bankAt(at) {
+    if (!at || !at.gid) return;
+    if (banking) {
+      toast('Already opening the banking dialog\u2026', null, 2500);
+      return;
+    }
     /* Who is in the profile. Asking again every time was a field to retype
        and a chance to type it differently. */
     banking = true;
@@ -1633,6 +1650,8 @@ BARRY.curate = (function () {
 
   return {
     enter, exit, draw, receipt,
+    // Spotter banks through this, not through a copy of it.
+    bankAt,
     // Diagnostics for the marker: what the last paint saw and drew.
     lastDraw: () => lastDraw,
     at: () => index,
