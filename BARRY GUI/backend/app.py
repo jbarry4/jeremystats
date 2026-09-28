@@ -16409,7 +16409,8 @@ def api_bank_entry(entry_id):
     rec = BANK.get(entry_id)
     if not rec:
         return jsonify({"ok": False, "error": "No such entry."}), 404
-    return jsonify({"ok": True, "entry": rec})
+    # Repaired on the way out; see EventBank.repaired.
+    return jsonify({"ok": True, "entry": BANK.repaired(rec)})
 
 
 @app.route("/api/bank/add", methods=["POST"])

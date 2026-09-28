@@ -220,7 +220,8 @@ class EventBank:
             return self._summaries
         out = []
         for rec in self.all():
-            row = {k: v for k, v in rec.items() if k != "events"}
+            row = {k: v for k, v in self.repaired(rec).items()
+                   if k != "events"}
             if row.get("versions"):
                 # The name each version is known by, worked out from what
                 # each was based on. Computed here rather than stored: a
@@ -239,6 +240,29 @@ class EventBank:
         self._summaries = out
         self._sum_stamp = stamp
         return out
+
+    @staticmethod
+    def repaired(rec):
+        """A record as a person should SEE it: its history repaired.
+
+        The merge unions a history by id, so a version recorded before ids
+        existed survives beside its own id-bearing copy -- the same pass
+        twice. `versions.repair` folds those twins (only when they agree on
+        everything, snapshot included) and gives every id-less version a
+        derived id, so each version can be asked for exactly.
+
+        A copy, and only ever used on the way OUT -- the listing and the
+        entry the browser is sent. Every write path loads through `get()`
+        and saves the whole record, so repairing inside `all()` would write
+        the repair back into this machine's shard; the decision was that the
+        repair happens on read and nothing on disk changes. A derived id the
+        browser sends back is resolved by `version_at`.
+        """
+        vers = rec.get("versions")
+        if not vers:
+            return rec
+        fixed, _report = versionsmod.repair(rec.get("id"), vers)
+        return dict(rec, versions=fixed)
 
     def get(self, entry_id):
         """One entry by id.
@@ -1115,6 +1139,14 @@ class EventBank:
                 return ver
         for ver in vers:
             if EventBank.version_key(ver) == want:
+                return ver
+        # A derived id: what `repaired()` gave an id-less version on its way
+        # to the browser, coming back. Recomputed from the stored version --
+        # `stable_id` is deterministic -- so it resolves to the real record,
+        # never to the repaired copy.
+        for ver in vers:
+            if not ver.get("id") and \
+                    versionsmod.stable_id(rec.get("id"), ver) == want:
                 return ver
         try:
             n = int(want)
