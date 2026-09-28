@@ -1108,6 +1108,10 @@ def api_sync_status():
     body["started_at"] = _STARTED_AT
     body["conflicts"] = conflict_audit()
     body["warm"] = WARM.marker("sync_status", how)
+    # The page polls this for a count and a git state. The full index is
+    # ~470 kB of it and nothing on screen reads more than its counts.
+    if request.args.get("head"):
+        body["index"] = {"counts": (body.get("index") or {}).get("counts")}
     return jsonify(body)
 
 
@@ -10328,8 +10332,17 @@ def api_notes():
     Read from CHANGELOG.md on every request, but only re-parsed when the
     file has actually changed -- so editing the notes shows up without a
     restart, which is the whole point of them living in a file.
+
+    `?head=1` is the version and the running commit and nothing else. The
+    rail's version chip is painted at boot and needs about a hundred bytes;
+    the full notes are 450 kB and were being sent at every start, before the
+    first screen had settled, to paint that chip. The notes come when the
+    chip is clicked.
     """
-    return jsonify(NOTES.read())
+    body = NOTES.read()
+    if request.args.get("head"):
+        body = {k: body.get(k) for k in ("ok", "version", "running")}
+    return jsonify(body)
 
 
 @app.route("/api/people")

@@ -975,7 +975,7 @@ BARRY.sync = { git: null, root: null, index: null };
 
 BARRY.refreshSync = async function refreshSync() {
   let data;
-  try { data = await api('/api/sync/status'); } catch (e) { return; }
+  try { data = await api('/api/sync/status?head=1'); } catch (e) { return; }
   BARRY.sync = data;
   /* Source files written since this server started. The 404-based check
      cannot see this case: the route is still there, it just does something
@@ -1357,9 +1357,13 @@ function showSync() {
 BARRY.notes = (function () {
   let data = null;
 
-  async function load() {
+  /* Two sizes of one answer. Boot asks only for what the chip shows --
+     `head=1` is about a hundred bytes -- because the full notes are 450 kB
+     and were arriving before the first screen had settled, to paint a chip.
+     `open` asks for the rest when somebody actually wants to read them. */
+  async function load(full) {
     try {
-      data = await api('/api/notes');
+      data = await api(full ? '/api/notes' : '/api/notes?head=1');
     } catch (e) {
       data = null;
     }
@@ -1388,7 +1392,12 @@ BARRY.notes = (function () {
   }
 
   function open() {
-    if (!data) { load().then((d) => { if (d) open(); }); return; }
+    // A failed read comes back `ok: false` with no entries, and has to reach
+    // the error toast below rather than doing nothing.
+    if (!data || (data.ok && !data.entries)) {
+      load(true).then((d) => { if (d && (d.entries || !d.ok)) open(); });
+      return;
+    }
     if (!data.ok) {
       toast(data.error || 'There are no patch notes to show.', 'err', 8000);
       return;
