@@ -83,9 +83,19 @@ BARRY.toolfeed = (function () {
     paintHead();
     list.appendChild(el('div', { class: 'tf-empty', text: 'Reading…' }));
     pull(true);
-    live.timer = setInterval(() => pull(false), o.every || EVERY_MS);
+    /* Not while the window is in the background (constitution §10): the
+       rows could not be seen, and a minimised Jarvis would otherwise ask
+       twenty times a minute all afternoon. Coming back catches up at once,
+       so nothing is missed -- `since` is taken from the newest row held, not
+       from the time of the last poll, however long the window was away. */
+    live.timer = setInterval(() => { if (!document.hidden) pull(false); },
+                             o.every || EVERY_MS);
     return box;
   }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && live && !live.stopped) pull(false);
+  });
 
   function stop() {
     if (live && live.timer) clearInterval(live.timer);
