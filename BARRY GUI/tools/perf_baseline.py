@@ -3,6 +3,7 @@
 
     python tools/perf_baseline.py            measure and compare to the stored run
     python tools/perf_baseline.py --save     measure and store this run as the baseline
+    python tools/perf_baseline.py --runs 5   the median of five runs (default three)
 
 Drives `web/_dev/perf.html` in headless Edge IN REAL TIME and prints what it
 found. That is the whole reason this is not just another harness: the harness
@@ -168,10 +169,73 @@ def show(rep):
                      ("%s %dms" % (slow["url"], slow["ms"])) if slow else ""))
 
 
+def median_of(reps):
+    """One report whose every number is the median of the runs.
+
+    A single run was too noisy to judge a view by -- the same view measured
+    twice moved by more than the thresholds below. Rows are matched by label;
+    a number missing from a run is left out of that one's median rather
+    than counted as zero.
+    """
+    import copy
+    import statistics
+
+    def med(vals):
+        vals = [v for v in vals if isinstance(v, (int, float))]
+        return statistics.median(vals) if vals else None
+
+    out = copy.deepcopy(reps[0])
+    for part in ("boot", "server"):
+        for k, v in (out.get(part) or {}).items():
+            if isinstance(v, (int, float)):
+                out[part][k] = med([(r.get(part) or {}).get(k) for r in reps])
+    for group in ("views", "warm", "tools"):
+        for row in out.get(group) or []:
+            same = [x for r in reps for x in (r.get(group) or [])
+                    if x.get("label") == row.get("label")]
+            for k, v in row.items():
+                if isinstance(v, (int, float)) and not isinstance(v, bool):
+                    row[k] = med([x.get(k) for x in same])
+    out["runs"] = len(reps)
+    return out
+
+
+def run_many(n):
+    """`n` runs, each in its own process, and their median.
+
+    Its own process because a second run in this one would measure nothing
+    true: the server's imports are already paid, and Flask refuses to add
+    the report route to an app that has served a request.
+    """
+    reps = []
+    for i in range(n):
+        print("  run %d of %d..." % (i + 1, n), flush=True)
+        fd, tmp = tempfile.mkstemp(suffix=".json")
+        os.close(fd)
+        try:
+            res = subprocess.run([sys.executable, os.path.abspath(__file__),
+                                  "--once", tmp])
+            if res.returncode != 0:
+                raise SystemExit("run %d failed; nothing compared." % (i + 1))
+            with open(tmp, encoding="utf-8") as fh:
+                reps.append(json.load(fh))
+        finally:
+            os.remove(tmp)
+    return median_of(reps)
+
+
 def main():
-    save = "--save" in sys.argv[1:]
-    print("measuring in real time; this takes a few minutes...", flush=True)
-    rep = run_once()
+    args = sys.argv[1:]
+    if "--once" in args:
+        rep = run_once()
+        with open(args[args.index("--once") + 1], "w", encoding="utf-8") as fh:
+            json.dump(rep, fh)
+        return 0
+    save = "--save" in args
+    n = int(args[args.index("--runs") + 1]) if "--runs" in args else 3
+    print("measuring in real time, median of %d runs; this takes a few "
+          "minutes each..." % n, flush=True)
+    rep = run_many(n)
     show(rep)
 
     if save or not os.path.exists(BASELINE):
