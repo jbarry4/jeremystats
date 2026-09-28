@@ -1847,8 +1847,6 @@ BARRY.incisor = (function () {
   }
 
   async function bank(row) {
-    const who = await BARRY.profile.who();
-    if (!who) return;
     /* Fetched now rather than carried since the scan: out of the same cache
        the scan filled, so this costs a small request and no reading.
 
@@ -1877,66 +1875,67 @@ BARRY.incisor = (function () {
        silently. It used to go in as "Incisor CSC61", which is plenty while
        you are looking at the recording and says nothing at all in a list of
        forty-five — so the name is offered, with the session already in it,
-       at the one moment somebody knows what this set is for. */
-    const nameBox = el('input', {
-      type: 'text', class: 'inc-name',
-      value: BARRY.bankName.suggest(q.row || {}, 'Incisor ' + row.label),
+       at the one moment somebody knows what this set is for.
+
+       Through the one bank dialog (constitution §6e): a new entry asks its
+       name, never lets it go empty, says who it is credited to, and keeps
+       a refusal on screen. Who used to be checked here and, when nobody was
+       set, Bank simply did nothing. */
+    const r = q.row || {};
+    const suggestion = BARRY.bankName.suggest(r, 'Incisor ' + row.label);
+    let id = null;
+    const ok = await BARRY.ui.bankDialog({
+      kind: 'entry',
+      title: 'Bank ' + evs.length + ' candidate(s) from ' + row.label + '?',
+      name: suggestion,
+      what: 'They go in as a detector’s output, not as a curated set — '
+          + 'nothing is decided, and the next step is vetting them in DS '
+          + 'curation.',
+      where: 'Filed under ' + [r.project || 'Unfiled',
+                               r.mouse != null ? 'm' + r.mouse : null,
+                               r.session != null ? 's' + r.session : null]
+        .filter(Boolean).join(' / ') + ' in the Event Bank.',
+      facts: [
+        'Times are on the recording’s own clock, so this set never needs '
+          + 'the concatenation correction.',
+        'Every detection parameter is recorded with them, so the set can '
+          + 'say how it was made.',
+        'Re-running the detector later reuses the ids of candidates at the '
+          + 'same times, so decisions survive.',
+      ],
+      okText: 'Bank them',
+      onBank: async ({ name, note, who }) => {
+        const added = await apiPost('/api/bank/add', {
+          gid: q.gid,
+          // Who this belongs to. Without it the entry is filed under
+          // "Unfiled / m / s" and cannot be found by the animal it came from.
+          project: r.project,
+          mouse: r.mouse,
+          session: r.session,
+          session_key: r.key,
+          session_loose_key: r.loose_key,
+          session_label: r.label,
+          duration_s: r.duration_s,
+          type: 'ds',
+          type_name: 'Dentate spike',
+          name,
+          note: note || undefined,
+          pipeline: 'Incisor (dentate spike)',
+          added_by: who,
+          session_path: q.path,
+          parameters: Object.assign({}, res.params, {
+            channel: row.number, channel_label: row.label,
+          }),
+          events: evs.map((e) => ({
+            start: e.start, channel: e.channel, amplitude: e.amp,
+          })),
+        });
+        id = (added.entry || {}).id || added.id;
+      },
     });
-    const ok = await BARRY.confirm(
-      'Bank ' + evs.length + ' candidate(s) from ' + row.label + '?',
-      el('div', { class: 'fix-facts' }, [
-        el('div', { class: 'field' }, [
-          el('label', { text: 'Call this set' }),
-          nameBox,
-          el('span', { class: 'hint', text:
-            'The session is in it already. Anything you type here is what '
-            + 'the Event Bank lists it under, and it can be changed later.' }),
-        ]),
-        el('p', { text: 'They go in as a detector’s output, not as a '
-            + 'curated set — nothing is decided, and the next step is '
-            + 'vetting them in DS curation.' }),
-        el('ul', { class: 'fix-steps' }, [
-          el('li', { text: 'Times are on the recording’s own clock, so '
-              + 'this set never needs the concatenation correction.' }),
-          el('li', { text: 'Every detection parameter is recorded with them, '
-              + 'so the set can say how it was made.' }),
-          el('li', { text: 'Re-running the detector later reuses the ids of '
-              + 'candidates at the same times, so decisions survive.' }),
-        ]),
-      ]), 'Bank them');
     if (!ok) return;
     banking = true; paint();
     try {
-      const r = q.row || {};
-      const added = await apiPost('/api/bank/add', {
-        gid: q.gid,
-        // Who this belongs to. Without it the entry is filed under
-        // "Unfiled / m / s" and cannot be found by the animal it came from.
-        project: r.project,
-        mouse: r.mouse,
-        session: r.session,
-        session_key: r.key,
-        session_loose_key: r.loose_key,
-        session_label: r.label,
-        duration_s: r.duration_s,
-        type: 'ds',
-        type_name: 'Dentate spike',
-        // What the dialog was left showing. Blank falls back to the
-        // suggestion rather than to nothing: an entry with no name at all
-        // is the one thing worse than a vague one.
-        name: (nameBox.value || '').trim()
-              || BARRY.bankName.suggest(q.row || {}, 'Incisor ' + row.label),
-        pipeline: 'Incisor (dentate spike)',
-        added_by: who,
-        session_path: q.path,
-        parameters: Object.assign({}, res.params, {
-          channel: row.number, channel_label: row.label,
-        }),
-        events: evs.map((e) => ({
-          start: e.start, channel: e.channel, amplitude: e.amp,
-        })),
-      });
-      const id = (added.entry || {}).id || added.id;
       toast(evs.length + ' candidate(s) banked.', 'ok');
 
       /* `entry`, not `entry_id` -- and `replace` said out loud.
@@ -1974,7 +1973,10 @@ BARRY.incisor = (function () {
       });
       await BARRY.curate.enter(q.gid, 'ds');
     } catch (e) {
-      toast('Not banked: ' + e.message, 'err', 9000);
+      // The banking itself happened inside the dialog, which showed any
+      // refusal there. What can fail here is opening the set to vet.
+      toast('Banked, but the curation set could not be opened: '
+            + e.message, 'err', 9000);
     }
     banking = false; paint();
   }
@@ -1999,6 +2001,10 @@ BARRY.incisor = (function () {
     _plotAxis: plotAxis,
     _channelAtX: channelAtX,
     _drawPlots: drawPlots,
+    /* Banking one channel of a given scan, for web/_dev/incbank.html: a
+       real scan does not fit the suite's time, and what is being checked
+       is the dialog and what it sends, not the detector. */
+    _bank: (row, result) => { if (result) res = result; return bank(row); },
     _choose: (key, number) => {
       chosen[key] = number == null ? null : Number(number);
       pushLines(); paint();
