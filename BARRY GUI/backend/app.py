@@ -11061,6 +11061,11 @@ def api_curation_banked(gid, kind):
         "split": [{"id": e["id"], "name": e.get("name"), "n": e.get("n"),
                    "label": e.get("curation_label")}
                   for e in found if e.get("curation_label") != "*"],
+        # Which stored version this pass was picked up from, so the dialog
+        # can say "continues v5 -> v6" or "branches from v3 -> v3.1" about
+        # the version the bank route will actually write. None means the
+        # route will take the newest, as `based_on_default` does.
+        "based_on": (CURATE.get(gid, kind) or {}).get("based_on"),
     })
 
 

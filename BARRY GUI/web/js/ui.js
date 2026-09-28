@@ -608,7 +608,10 @@ BARRY.ui = (function () {
        value      the id (or name) that is chosen
        onpick     called with the version
        disabled   (v) => reason | null; by default a version whose snapshot
-                  is not on this machine is shown and cannot be picked */
+                  is not on this machine is shown and cannot be picked
+       readonly   a history to read rather than a choice: rows are not
+                  buttons and nothing is dimmed
+       notes      each version's note on its row, not only in its title */
   const LANE = 14, PAD = 8;
 
   function versionTree(o) {
@@ -658,11 +661,13 @@ BARRY.ui = (function () {
           ? 'Recorded on another machine; its snapshot has not synced here yet.'
           : 'No snapshot was kept for this version, so it cannot be read back.')
       : null);
-    const whyOf = typeof opt.disabled === 'function' ? opt.disabled : defaultWhy;
+    const whyOf = opt.readonly ? () => null
+      : typeof opt.disabled === 'function' ? opt.disabled : defaultWhy;
 
     const svg = el('svg', { class: 'vtree-g', 'aria-hidden': 'true' });
     const host = el('div', {
-      class: 'vtree', role: 'radiogroup',
+      class: 'vtree' + (opt.readonly ? ' ro' : ''),
+      role: opt.readonly ? 'list' : 'radiogroup',
       style: '--vt-gutter:' + gutter + 'px',
     }, [svg]);
     const rowEls = vs.map((x, i) => {
@@ -675,15 +680,16 @@ BARRY.ui = (function () {
       if (v.snap_elsewhere) states.push('not on this machine');
       if (typeof opt.state === 'function') states.push(...(opt.state(v) || []));
       const on = chosen !== null && (String(idOf(v)) === chosen || x.name === chosen);
-      return el('button', {
+      return el(opt.readonly ? 'div' : 'button', {
         class: 'vtree-row' + (on ? ' on' : '') + (why ? ' off' : ''),
-        role: 'radio', 'aria-checked': on ? 'true' : 'false',
+        role: opt.readonly ? 'listitem' : 'radio',
+        'aria-checked': opt.readonly ? null : (on ? 'true' : 'false'),
         'data-v': x.name,
         disabled: why ? 'disabled' : null,
         title: (v.at ? new Date(v.at).toLocaleString() : '')
                + (v.note ? '  ·  ' + v.note : '')
                + (why ? '\n' + why : ''),
-        onclick: why ? null : () => {
+        onclick: (why || opt.readonly) ? null : () => {
           rowEls.forEach((r) => {
             r.classList.remove('on'); r.setAttribute('aria-checked', 'false');
           });
@@ -692,7 +698,7 @@ BARRY.ui = (function () {
           draw();
           if (typeof opt.onpick === 'function') opt.onpick(v);
         },
-        onkeydown: (e) => {
+        onkeydown: opt.readonly ? null : (e) => {
           if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
           e.preventDefault();
           const step = e.key === 'ArrowDown' ? 1 : -1;
@@ -710,6 +716,8 @@ BARRY.ui = (function () {
         states.length ? el('span', { class: 'vtree-state',
                                      text: states.join(' · ') }) : null,
         why ? el('span', { class: 'vtree-why', text: why }) : null,
+        opt.notes && v.note ? el('span', { class: 'vtree-note', text: v.note })
+                            : null,
       ].filter(Boolean));
     });
     rowEls.forEach((r) => host.appendChild(r));
@@ -800,26 +808,49 @@ BARRY.ui = (function () {
       value: opt.note || '',
     });
 
-    let line = null;
+    /* Which version the new one is built on, and so what it will be
+       called. `from` is an id or a name; `fromV` is the stored number, as a
+       curation set records it, and resolves the way the bank does -- the
+       last version carrying that number. With neither, the bank takes the
+       highest stored number (versions.based_on_default), so this does too:
+       the newest thing anybody banked, not the highest name. */
+    let line = null, nextName = null;
     if (!isEntry) {
-      const e = opt.entry || {};
-      const names = (e.versions || []).map((v) => versionLabel(v).slice(1));
-      let from = opt.from === undefined || opt.from === null ? null
-        : String(opt.from).replace(/^v/i, '');
-      const hit = (e.versions || []).find((v) => from !== null
-        && (String(v.id) === from || versionLabel(v).slice(1) === from));
-      if (hit) from = versionLabel(hit).slice(1);
-      if (from === null) {
-        from = names.slice().sort((a, b) => vcmp(vkey(b), vkey(a)))[0] || '0';
+      const vs = (opt.entry || {}).versions || [];
+      const names = vs.map((v) => versionLabel(v).slice(1));
+      const byTime = vs.slice().sort((a, b) =>
+        String(a.at || '').localeCompare(String(b.at || '')));
+      const lastWith = (num) => byTime.filter((v) => v.v === num).pop();
+      let hit = null;
+      if (opt.from !== undefined && opt.from !== null) {
+        const want = String(opt.from).replace(/^v/i, '');
+        hit = vs.find((v) => String(v.id) === want
+                             || versionLabel(v).slice(1) === want) || null;
+      } else if (opt.fromV !== undefined && opt.fromV !== null) {
+        hit = lastWith(Number(opt.fromV)) || null;
       }
-      const nx = versionNext(from, names);
-      line = nx.branch
-        ? 'branches from v' + from + ' → v' + nx.name
-        : 'continues v' + from + ' → v' + nx.name;
+      if (!hit && vs.length) {
+        const top = Math.max(...vs.map((v) => (typeof v.v === 'number' ? v.v : -1)));
+        hit = top >= 0 ? lastWith(top)
+          : vs.slice().sort((a, b) => vcmp(vkey(versionLabel(b).slice(1)),
+                                           vkey(versionLabel(a).slice(1))))[0];
+      }
+      if (!vs.length) {
+        nextName = '1';
+        line = 'the first version of this entry, v1';
+      } else {
+        const from = versionLabel(hit).slice(1);
+        const nx = versionNext(from, names);
+        nextName = nx.name;
+        line = nx.branch
+          ? 'branches from v' + from + ' → v' + nx.name
+          : 'continues v' + from + ' → v' + nx.name;
+      }
     }
 
     const body = el('div', { class: 'bank-dlg' }, [
-      opt.what ? el('p', { class: 'bank-dlg-what', text: opt.what }) : null,
+      !opt.what ? null : typeof opt.what === 'string'
+        ? el('p', { class: 'bank-dlg-what', text: opt.what }) : opt.what,
       isEntry
         ? field({ label: 'Name', control: nameBox,
                   hint: 'What the Event Bank lists it under. It can be '
@@ -828,6 +859,7 @@ BARRY.ui = (function () {
                   control: el('div', { class: 'bank-dlg-entry',
                                        text: (opt.entry || {}).name || '' }) }),
       line ? el('p', { class: 'bank-dlg-line', text: line }) : null,
+      opt.extra || null,
       field({ label: 'Note', control: noteBox }),
       el('ul', { class: 'fix-steps' }, [
         opt.where ? el('li', { text: opt.where }) : null,
@@ -840,10 +872,17 @@ BARRY.ui = (function () {
        .filter(Boolean)),
     ].filter(Boolean));
 
+    /* Where the typing goes, as the dialogs this replaced did. After the
+       modal is up, which BARRY.confirm does synchronously. */
+    setTimeout(() => {
+      try { (nameBox || noteBox).focus(); } catch (e) { /* closed */ }
+    }, 30);
     return BARRY.confirm(
-      opt.title || (isEntry ? 'Bank this as a new entry' : 'Bank a new version'),
+      opt.title || (isEntry ? 'Bank this as a new entry'
+        : (((opt.entry || {}).versions || []).length
+            ? 'Bank this as v' + nextName : 'Bank this set')),
       body,
-      opt.okText || 'Bank it',
+      opt.okText || (nextName ? 'Bank as v' + nextName : 'Bank it'),
       false,
       async () => {
         if (!who) throw new Error('Set who you are first, from the name at '

@@ -2305,28 +2305,19 @@ BARRY.views.toolkit = (function () {
      Resolves to the full entry, or null if cancelled. */
 
 
+  /* Through Checkup's own banking, which is the shared bank dialog
+     (constitution §6e) with the mix and the history on it -- the same path
+     Spotter takes. This asked "Who is banking these?" in a prompt every
+     time, then banked without showing what it was about to write or which
+     version it would become. */
   async function bankSet(st) {
-    const who = await askPath('Who is banking these?', 'your name or email',
-                              BARRY.profile && BARRY.profile.who());
-    if (!who) return;
-    try {
-      const res = await apiPost(
-        '/api/curation/' + encodeURIComponent(st.gid) + '/'
-        + encodeURIComponent(st.kind) + '/bank', { added_by: who });
-      /* One entry for the whole set, with the mix in it. `x.label`
-         was left over from the era of one entry per category and the
-         route has never returned it, so this read
-         "Banked 1 entry: undefined (416)". */
-      const it = res.entries[0] || {};
-      const names = it.label_names || {};
-      const mix = Object.keys(it.by_label || {})
-        .sort((a, b) => it.by_label[b] - it.by_label[a])
-        .map((k) => (names[k] || k) + ' ' + it.by_label[k])
-        .join(' \u00b7 ');
-      toast('Banked as version ' + (it.version || 1) + ': '
-            + (it.n || 0) + ' events \u2014 ' + mix, 'ok', 8000);
-      BARRY.refreshSync();
-    } catch (e) { toast(e.message, 'err', 8000); }
+    if (!(BARRY.curate && BARRY.curate.bankAt)) return;
+    const pr = st.progress || {};
+    await BARRY.curate.bankAt({
+      gid: st.gid, kind: st.kind, name: st.name,
+      labels: st.labels || [],
+      progress: { by_label: pr.by_label || {}, left: pr.left || 0 },
+    });
   }
 
 

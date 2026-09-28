@@ -11859,6 +11859,9 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
   font-size: var(--fs-12); text-align: left; cursor: pointer;
 }
 .vtree-row:hover { background: var(--bg-hover); }
+/* A history to read, not a choice: no hover, no pointer. */
+.vtree.ro .vtree-row { cursor: default; }
+.vtree.ro .vtree-row:hover { background: transparent; }
 .vtree-row.on { border-color: var(--accent-line); background: var(--accent-soft); color: var(--text); }
 .vtree-row.off { cursor: default; opacity: 0.55; }
 .vtree-row.off:hover { background: transparent; }
@@ -11867,6 +11870,7 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
 .vtree-when, .vtree-count { font-family: var(--mono); font-size: var(--fs-11); color: var(--text-3); font-variant-numeric: tabular-nums; }
 .vtree-state { font-size: var(--fs-11); color: var(--accent); }
 .vtree-why { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-3); }
+.vtree-note { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-2); }
 .vt-edge { stroke-width: 1.6; fill: none; }
 .vt-node { stroke-width: 1.6; fill: var(--bg); }
 .vt-node.on { fill: currentColor; }

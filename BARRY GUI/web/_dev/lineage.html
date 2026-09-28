@@ -73,16 +73,20 @@ async function untilN(fn, tries = 250, gap = 100) {
 
   async function bankThrough(note) {
     bankBtn().click();
-    const got = await untilN(() => D.querySelector('.bank-dialog'), 120);
+    /* The shared bank dialog (ui.bankDialog) since Checkup moved onto it:
+       the modal holds it, the note is `.bank-dlg-note`, the title an h3.
+       `.bank-dialog` is still Checkup's own part of it -- the mix. */
+    const got = await untilN(() => D.querySelector('#bigModalBox .bank-dlg'), 120);
     if (got < 0) return null;
     await sleep(500);
-    const dlg = D.querySelector('.bank-dialog');
-    const box = dlg.querySelector('.ver-note-input');
+    const dlg = D.getElementById('bigModalBox');
+    const box = dlg.querySelector('.bank-dlg-note');
     box.value = note;
     box.dispatchEvent(new W.Event('input', { bubbles: true }));
     const go = Array.from(dlg.querySelectorAll('.mf button'))
       .find((b) => /^Bank/.test(b.textContent));
-    const title = dlg.querySelector('h2').textContent;
+    const title = dlg.querySelector('h3').textContent
+                  + '  ' + (dlg.querySelector('.bank-dlg-line') || {}).textContent;
     go.click();
     await sleep(2200);
     return title;
@@ -119,7 +123,7 @@ async function untilN(fn, tries = 250, gap = 100) {
 
   const t2 = await bankThrough('second look: one call changed');
   check('the second bank offers a version number',
-        /version 2/i.test(t2 || ''), t2);
+        /\bv2\b/.test(t2 || ''), t2);
   const shown = D.querySelectorAll('.bank-dialog').length;
   check('and the dialog closed after banking', shown === 0,
         shown + ' still open');

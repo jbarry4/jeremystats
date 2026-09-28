@@ -287,6 +287,8 @@ async function untilN(fn, tries = 200, gap = 100) {
     const open = () => !D().getElementById('bigModal').classList.contains('hidden');
     const okBtn = () => Array.from(modal().querySelectorAll('.mf button'))
       .pop();
+    const btn = (label) => Array.from(modal().querySelectorAll('.mf button'))
+      .find((b) => b.textContent === label);
     const entry = { name: 'zz m1 s1 · Incisor CSC4',
                     versions: trunk.map((l) => ({ id: 'e-' + l, label: l })) };
 
@@ -314,6 +316,48 @@ async function untilN(fn, tries = 200, gap = 100) {
     Array.from(modal().querySelectorAll('.mf button'))
       .find((b) => b.textContent === 'Cancel').click();
     check('Cancel resolves false', (await p) === false);
+
+    /* By stored number, the way a curation set records what it was picked
+       up from -- and with nothing recorded, the bank's own default: the
+       highest stored number, the last version carrying it. Here the stored
+       numbers collide (two machines both minted 3), which is the case the
+       name exists for. */
+    const clash = { name: 'zz clash', versions: [
+      { id: 'a', v: 0, label: '0', at: T(50) },
+      { id: 'b', v: 1, label: '1', at: T(40) },
+      { id: 'c', v: 2, label: '2', at: T(30) },
+      { id: 'd', v: 3, label: '3', at: T(20) },
+      { id: 'e', v: 3, label: '2.1', at: T(10) },
+    ] };
+    p = B.ui.bankDialog({ kind: 'version', entry: clash, fromV: 1,
+                          onBank: () => {} });
+    await sleep(50);
+    check('fromV names the stored number: v1, with v2 after it, branches',
+          /branches from v1 → v1\.1/.test(txt(modal())), txt(modal()));
+    btn('Cancel').click(); await p;
+    p = B.ui.bankDialog({ kind: 'version', entry: clash, onBank: () => {} });
+    await sleep(50);
+    check('with nothing recorded, the newest stored: the last v3, named v2.1',
+          /continues v2\.1 → v2\.2/.test(txt(modal())), txt(modal()));
+    check('and the title names the version it will write',
+          /Bank this as v2\.2/.test(txt(modal().querySelector('h3'))));
+    btn('Cancel').click(); await p;
+    p = B.ui.bankDialog({ kind: 'version', entry: { name: 'zz new', versions: [] },
+                          onBank: () => {} });
+    await sleep(50);
+    check('a set never banked says it is the first version',
+          /first version of this entry, v1/.test(txt(modal()))
+          && /Bank this set/.test(txt(modal().querySelector('h3'))));
+    check('and the note box has the focus',
+          D().activeElement === modal().querySelector('.bank-dlg-note'));
+    btn('Cancel').click(); await p;
+
+    const ro = put(B.ui.versionTree({ versions: vs, readonly: true, notes: true }));
+    check('a history to read has no buttons in it',
+          ro.querySelectorAll('button').length === 0
+          && ro.querySelectorAll('.vtree-row').length === 10);
+    check('and nothing in it is dimmed as unpickable',
+          ro.querySelectorAll('.vtree-row.off').length === 0);
 
     p = B.ui.bankDialog({ kind: 'entry', name: 'zz m1 s1 · Incisor CSC4',
       what: '12 candidates from CSC4',

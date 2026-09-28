@@ -1156,138 +1156,76 @@ BARRY.curate = (function () {
     return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
   }
 
-  function bankDialog(entry, who, at) {
-    return new Promise((resolve) => {
-      const labs = (kind && kind.labels)
-        || (at && at.labels) || [];
-      const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
-                          || (id === 'unspecified' ? 'undecided' : id);
-      /* The mix, from the set if it is still open and from the last
-         progress the server reported if it is not -- leaving curation
-         empties events() and the dialog would then claim the set was
-         empty. */
-      const tally = {};
-      const live = events();
-      if (live.length) {
-        for (const e of live) {
-          if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
-        }
-      } else {
-        const by = ((at && at.progress) || {}).by_label || {};
-        for (const k in by) tally[k] = by[k];
+  /* What only Checkup knows about a bank, for the shared dialog to show
+     (BARRY.ui.bankDialog, constitution §6e): the mix this version will
+     hold, and the history it joins. The dialog, the name, the note, who,
+     and the continue/branch sentence are the shared one's.
+
+     This was a dialog of its own. It titled itself "version N" off the
+     stored number -- which is the sync key, not the name, so a branch read
+     as the wrong version -- and when the profile had no name it stopped to
+     ask "Who is banking these?" in a prompt. */
+  function bankParts(entry, at) {
+    const labs = (kind && kind.labels)
+      || (at && at.labels) || [];
+    const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
+                        || (id === 'unspecified' ? 'undecided' : id);
+    /* The mix, from the set if it is still open and from the last
+       progress the server reported if it is not -- leaving curation
+       empties events() and the dialog would then claim the set was
+       empty. */
+    const tally = {};
+    /* Only when the open set IS the one being banked. The bench banks any
+       set, and reading whatever Checkup had open would show one set's mix
+       on another's dialog. */
+    const mine = !!(set_ && at && set_.gid === at.gid && set_.kind === at.kind);
+    const live = mine ? events() : [];
+    if (live.length) {
+      for (const e of live) {
+        if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
       }
-      const stillLeft = live.length
-        ? left() : (((at && at.progress) || {}).left || 0);
-      const vs = (entry && entry.versions) || [];
-      /* Highest so far plus one, which is what the server does. The
-         count is not the same number: the detector's import sits at
-         version zero, so an entry with v0 and v1 has two versions
-         and its next one is v2. The dialog offered to write v3 and
-         the server wrote v2. */
-      const next = vs.reduce((hi, v) => Math.max(hi, v.v || 0), 0) + 1;
+    } else {
+      const by = ((at && at.progress) || {}).by_label || {};
+      for (const k in by) tally[k] = by[k];
+    }
+    const stillLeft = live.length
+      ? left() : (((at && at.progress) || {}).left || 0);
+    const vs = (entry && entry.versions) || [];
 
-      const wrap = el('div', { class: 'modal bank-dialog' });
-      wrap.appendChild(el('div', { class: 'mh' }, [
-        el('h2', { text: vs.length ? 'Bank this as version ' + next
-                                   : 'Bank this set' }),
-        el('p', { class: 'sub', text: (at && at.name) || '' }),
-      ]));
-
-      /* What is about to be written. */
-      wrap.appendChild(el('div', { class: 'section-label',
-                                   text: 'What this version will hold' }));
-      wrap.appendChild(el('div', { class: 'ver-mix' },
-        Object.keys(tally).sort((a, b) => tally[b] - tally[a]).map(
-          (k) => el('span', { class: 'ver-chip',
-                              text: nameOf(k) + ' ' + tally[k] }))
+    const what = el('div', { class: 'bank-dialog' }, [
+      el('div', { class: 'section-label', text: 'What this version will hold' }),
+      el('div', { class: 'ver-mix' },
+        Object.keys(tally).sort((x, y) => tally[y] - tally[x]).map(
+          (k) => el('span', { class: 'ver-chip', text: nameOf(k) + ' ' + tally[k] }))
         .concat(stillLeft
           ? [el('span', { class: 'ver-chip',
                           text: stillLeft + ' still undecided, not banked' })]
-          : [])));
+          : [])),
+    ]);
 
-      if (vs.length) {
-        /* "Already banked as N versions" is wrong when the history it is
-           about to join belongs to the detector's export rather than to a
-           previous bank of this set -- v0 was nobody banking anything. */
-        wrap.appendChild(el('div', { class: 'section-label',
+    let extra;
+    if (vs.length) {
+      /* "Already banked as N versions" is wrong when the history it is
+         about to join belongs to the detector's export rather than to a
+         previous bank of this set -- v0 was nobody banking anything. */
+      extra = el('div', {}, [
+        el('div', { class: 'section-label',
           text: entry && entry.adopted
             ? 'Carrying on from ' + (entry.source || 'the detector')
               + '  ·  ' + vs.length + ' version'
               + (vs.length === 1 ? '' : 's') + ' so far'
             : 'Already banked as ' + vs.length + ' version'
-              + (vs.length === 1 ? '' : 's') }));
-        const list = el('div', { class: 'ver-list compact' });
-        for (let i = vs.length - 1; i >= 0; i--) {
-          const v = vs[i];
-          list.appendChild(el('div', { class: 'ver-row' }, [
-            el('div', { class: 'ver-top' }, [
-              el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
-              v.imported ? el('span', { class: 'flagchip',
-                                        text: 'the import' }) : null,
-              el('span', { class: 'ver-when',
-                           title: BARRY.whenRaw(v.at),
-                           text: BARRY.when(v.at, 'minute') }),
-              el('span', { class: 'ver-who', text: v.by || 'unknown' }),
-              el('span', { class: 'ver-count', text: (v.n || 0) + ' events' }),
-            ]),
-            v.note ? el('div', { class: 'ver-note', text: v.note })
-                   : el('div', { class: 'ver-note none', text: 'no note' }),
-            /* What each version holds, so the history is readable as a
-               history rather than as a list of dates. */
-            v.by_label && Object.keys(v.by_label).length
-              ? el('div', { class: 'ver-mix small' },
-                  Object.keys(v.by_label)
-                    .sort((a, b) => v.by_label[b] - v.by_label[a])
-                    .map((k) => el('span', { class: 'ver-chip',
-                                             text: nameOf(k) + ' '
-                                                 + v.by_label[k] })))
-              : null,
-            v.changed
-              ? el('div', { class: 'ver-shifts' }, [
-                  el('span', { class: 'ver-since',
-                               text: v.changed + ' decision'
-                                   + (v.changed === 1 ? '' : 's')
-                                   + ' changed' })])
-              : null,
-          ].filter(Boolean)));
-        }
-        wrap.appendChild(list);
-      } else {
-        wrap.appendChild(el('p', { class: 'hint',
-          text: 'This set has not been banked before. From now on each bank '
-              + 'writes a version onto the same entry, so the entry keeps '
-              + 'its whole history rather than the bank filling up with '
-              + 'copies.' }));
-      }
-
-      const box = el('textarea', {
-        class: 'ver-note-input', rows: '3',
-        placeholder: 'What changed in this pass? (optional)',
-      });
-      wrap.appendChild(el('div', { class: 'section-label',
-                                   text: 'Note for version ' + next }));
-      wrap.appendChild(box);
-      wrap.appendChild(el('p', { class: 'hint',
-        text: 'Banking as ' + who + '.' }));
-
-      let settled = false;
-      const done = (val) => {
-        if (settled) return;
-        settled = true;
-        closeModal();
-        resolve(val);
-      };
-      wrap.appendChild(el('div', { class: 'mf' }, [
-        el('div', { style: 'flex:1' }),
-        el('button', { class: 'btn ghost', text: 'Cancel',
-                       onclick: () => done(null) }),
-        el('button', { class: 'btn', text: vs.length
-                         ? 'Bank as v' + next : 'Bank',
-                       onclick: () => done(box.value || '') }),
-      ]));
-      showModal(wrap);
-      setTimeout(() => { try { box.focus(); } catch (e) {} }, 30);
-    });
+              + (vs.length === 1 ? '' : 's') }),
+        BARRY.ui.versionTree({ versions: vs, readonly: true, notes: true }),
+      ]);
+    } else {
+      extra = el('p', { class: 'hint',
+        text: 'This set has not been banked before. From now on each bank '
+            + 'writes a version onto the same entry, so the entry keeps '
+            + 'its whole history rather than the bank filling up with '
+            + 'copies.' });
+    }
+    return { what, extra };
   }
 
   /* How the list was last looked at, kept across openings so a person who
@@ -1518,26 +1456,37 @@ BARRY.curate = (function () {
       toast('Already opening the banking dialog\u2026', null, 2500);
       return;
     }
-    /* Who is in the profile. Asking again every time was a field to retype
-       and a chance to type it differently. */
     banking = true;
     try {
-      const who = (BARRY.profile && BARRY.profile.who())
-        || await askPath('Who is banking these?', 'your name or email', '');
-      if (!who) return;
       /* What it has been banked as before, so the note is written knowing
-         what it follows rather than into a blank box. */
+         what it follows rather than into a blank box -- and which version
+         this pass was picked up from, so the dialog can say whether it
+         continues that line or branches off it. */
       let known = null;
       try {
         known = await api('/api/curation/' + encodeURIComponent(at.gid) + '/'
                           + encodeURIComponent(at.kind) + '/banked');
       } catch (e) { /* never banked, or an older server; the dialog copes */ }
-      const note = await bankDialog(known && known.entry, who, at);
-      if (note === null) return;
-      const res = await apiPost(
-        '/api/curation/' + encodeURIComponent(at.gid) + '/'
-        + encodeURIComponent(at.kind) + '/bank',
-        { added_by: who, note: note });
+      const entry = known && known.entry;
+      const parts = bankParts(entry, at);
+      /* Who comes from the profile, and only from it; the shared dialog
+         refuses to bank for nobody and says where to fix that. */
+      let res = null;
+      const ok = await BARRY.ui.bankDialog({
+        kind: 'version',
+        entry: { name: (entry && entry.name) || at.name,
+                 versions: (entry && entry.versions) || [] },
+        fromV: known ? known.based_on : null,
+        what: parts.what,
+        extra: parts.extra,
+        onBank: async ({ note, who }) => {
+          res = await apiPost(
+            '/api/curation/' + encodeURIComponent(at.gid) + '/'
+            + encodeURIComponent(at.kind) + '/bank',
+            { added_by: who, note: note });
+        },
+      });
+      if (!ok || !res) return;
       /* One entry, one version. Says which version, and what is in it, so
          the toast confirms the thing that was written rather than a count
          of records. */
