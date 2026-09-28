@@ -136,22 +136,21 @@ import numpy as np
 
 from . import braces, csc, dspca, dspcahf, incisor
 
-try:
-    from scipy.signal import butter, resample_poly, sosfiltfilt
-    HAVE_SCIPY = True
-except Exception:                                        # noqa: BLE001
+# Loaded on first use, not at start-up; see lazyimp.py for why.
+from . import lazyimp  # noqa: E402
+HAVE_SCIPY = lazyimp.have("scipy")
+if HAVE_SCIPY:
+    butter, resample_poly, sosfiltfilt = lazyimp.names(
+        "scipy.signal", "butter", "resample_poly", "sosfiltfilt")
+else:
     butter = resample_poly = sosfiltfilt = None
-    HAVE_SCIPY = False
 
 # Guarded for the reason `dspca.py` gives: `app.py` imports every backend
 # module at boot, and a machine without scikit-learn must lose one tool, not
 # the server.
-try:
-    from sklearn.cluster import KMeans
-    HAVE_SKLEARN = True
-except Exception:                                        # noqa: BLE001
-    KMeans = None
-    HAVE_SKLEARN = False
+HAVE_SKLEARN = lazyimp.have("sklearn")
+KMeans = (lazyimp.names("sklearn.cluster", "KMeans")
+          if HAVE_SKLEARN else None)
 
 
 class RootCanalError(Exception):

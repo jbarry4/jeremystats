@@ -74,10 +74,14 @@ import os
 from fractions import Fraction
 
 import numpy as np
-from scipy.signal import (butter, coherence as _welch_coherence, correlate,
-                          correlation_lags, decimate, hilbert, iirnotch,
-                          resample_poly, sosfiltfilt, filtfilt)
-from scipy.signal.windows import hann
+# Loaded on first use, not at start-up; see lazyimp.py for why.
+from . import lazyimp  # noqa: E402
+(butter, _welch_coherence, correlate, correlation_lags, decimate,
+ hilbert, iirnotch, resample_poly, sosfiltfilt, filtfilt) = lazyimp.names(
+    "scipy.signal", "butter", "coherence", "correlate",
+    "correlation_lags", "decimate", "hilbert", "iirnotch",
+    "resample_poly", "sosfiltfilt", "filtfilt")
+hann = lazyimp.names("scipy.signal.windows", "hann")
 
 from . import nlx, probes, spark
 

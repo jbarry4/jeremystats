@@ -61,12 +61,11 @@ import math
 
 import numpy as np
 
-try:
-    from scipy.optimize import curve_fit
-    HAVE_SCIPY = True
-except Exception:                                        # noqa: BLE001
-    curve_fit = None
-    HAVE_SCIPY = False
+# Loaded on first use, not at start-up; see lazyimp.py for why.
+from . import lazyimp  # noqa: E402
+HAVE_SCIPY = lazyimp.have("scipy")
+curve_fit = (lazyimp.names("scipy.optimize", "curve_fit")
+             if HAVE_SCIPY else None)
 
 
 # fooof's defaults, so a fit from here is comparable with one from there.

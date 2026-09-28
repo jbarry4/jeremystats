@@ -70,32 +70,49 @@ import numpy as np
 
 from . import analysis, cfc, csc, nlx, specparam, spectrum
 
-try:
-    from scipy import signal as _sig
-    HAVE_SCIPY = True
-except Exception:                                        # noqa: BLE001
-    _sig = None
-    HAVE_SCIPY = False
+# Loaded on first use, not at start-up; see lazyimp.py for why.
+from . import lazyimp  # noqa: E402
+HAVE_SCIPY = lazyimp.have("scipy")
+_sig = lazyimp.module("scipy.signal") if HAVE_SCIPY else None
 
+# fooof, imported the first time Panorama fits anything.
+#
+# It was imported here at start-up, and once scipy.signal stopped being
+# imported everywhere else it turned out fooof was carrying 1.3 s of the
+# server's start -- it pulls scipy in underneath. Whether it is installed,
+# and which version, are both still known at start-up without importing it:
+# the first from the import system's index, the second from the package's
+# own metadata.
+HAVE_FOOOF = lazyimp.have("fooof")
 try:
-    # `record=True`, not `simplefilter("ignore")`.
-    #
-    # The package announces its own deprecation on import -- noted, and
-    # deliberate; see the module docstring -- and it forces the filter to
-    # show it, so an "ignore" set here is overridden and the notice lands on
-    # stderr at every server start anyway. Recording captures the warning
-    # instead of filtering it, which the package cannot undo.
-    with warnings.catch_warnings(record=True):
-        from fooof import FOOOFGroup as _FOOOFGroup
-        from fooof.sim.gen import gen_aperiodic as _gen_aperiodic
-        import fooof as _fooof
-    HAVE_FOOOF = True
-    FOOOF_VERSION = getattr(_fooof, "__version__", "?")
+    from importlib.metadata import version as _dist_version
+    FOOOF_VERSION = _dist_version("fooof") if HAVE_FOOOF else None
 except Exception:                                        # noqa: BLE001
-    _FOOOFGroup = None
-    _gen_aperiodic = None
-    HAVE_FOOOF = False
-    FOOOF_VERSION = None
+    FOOOF_VERSION = "?" if HAVE_FOOOF else None
+
+
+def _from_fooof(module, name):
+    """A fooof callable, imported on first use -- quietly.
+
+    `record=True`, not `simplefilter("ignore")`. The package announces its
+    own deprecation on import -- noted, and deliberate; see the module
+    docstring -- and it forces the filter to show it, so an "ignore" set
+    here is overridden and the notice lands on stderr anyway. Recording
+    captures the warning instead of filtering it, which the package cannot
+    undo. It happens on the first fit now instead of at every server start.
+    """
+    def call(*args, **kwargs):
+        import importlib
+        with warnings.catch_warnings(record=True):
+            mod = importlib.import_module(module)
+        return getattr(mod, name)(*args, **kwargs)
+    call.__name__ = name
+    return call
+
+
+_FOOOFGroup = _from_fooof("fooof", "FOOOFGroup") if HAVE_FOOOF else None
+_gen_aperiodic = (_from_fooof("fooof.sim.gen", "gen_aperiodic")
+                  if HAVE_FOOOF else None)
 
 
 # The band this is asked about. 2 Hz because below it a 2 s transform has

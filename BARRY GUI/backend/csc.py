@@ -22,11 +22,11 @@ import numpy as np
 
 from . import demo, nlx, vaccio
 
-try:
-    from scipy.signal import butter, sosfiltfilt, iirnotch, tf2sos
-    HAVE_SCIPY = True
-except Exception:                                    # pragma: no cover
-    HAVE_SCIPY = False
+# Loaded on first use, not at start-up; see lazyimp.py for why.
+from . import lazyimp  # noqa: E402
+HAVE_SCIPY = lazyimp.have("scipy")
+butter, sosfiltfilt, iirnotch, tf2sos = lazyimp.names(
+    "scipy.signal", "butter", "sosfiltfilt", "iirnotch", "tf2sos")
 
 _MAT_CACHE = {}
 

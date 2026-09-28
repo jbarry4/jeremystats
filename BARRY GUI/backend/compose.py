@@ -22,9 +22,13 @@ import numpy as np
 
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from matplotlib.ticker import MaxNLocator
+# pyplot and the classes below load on first use, not at start-up;
+# see lazyimp.py. `use("Agg")` stays eager: it must run before pyplot
+# is imported by anything.
+from . import lazyimp  # noqa: E402
+plt = lazyimp.module("matplotlib.pyplot")
+GridSpec = lazyimp.names("matplotlib.gridspec", "GridSpec")
+MaxNLocator = lazyimp.names("matplotlib.ticker", "MaxNLocator")
 
 from . import analysis, csc, probes
 
