@@ -708,9 +708,15 @@ so it runs here in seconds and can run on the VACC, never as a batch.
 | Circuit | ✓ | ✓ | ✓ | ✓ |
 | Checkup, Braces, Root Canal, X-ray, Eye | ✓ | ✓ | | |
 | Doppler | | | ✓ | ✓ |
-| Panorama | ✓ | | ✓ | |
+| Panorama | ✓ | ✓ | ✓ | |
 | Spotter, Kilosort, StrataScope | ✓ | | | |
 | Drift | ✓ | | ✓ | |
+
+Panorama's local batch was missing from the first draft of this table. It
+already had one — *Many at once*, a set and where each recording got to — so
+the table was wrong, not the tool. Its switch is still a pair of `.pill`s
+rather than the `.seg` Braces and X-ray use; it moves to `runBar` with the
+rest.
 
 A tool that gains a mode changes its declaration, not its layout.
 
