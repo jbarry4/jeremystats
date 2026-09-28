@@ -991,3 +991,131 @@ checks and the whole suite reads as a clean sweep.
       consequence for this surface is written here (§6c)
 - [ ] `check_classes.py` clean; `ui_baseline.py` diff is only what you meant
 - [ ] A `_dev/` harness, listed in `_dev/README.md`
+
+---
+
+## 10. Speed — starting, switching, opening
+
+The data is fast; README § Speed is how. This section is about everything
+around it — start-up, switching views, opening a tool — which is what people
+mean when they call the app lethargic, and which nothing had measured until
+`tools/perf_baseline.py`.
+
+There is no lite mode. Every rule below makes the app faster on every
+machine, so it is fine on a laptop over a VPN and better on a lab computer.
+
+### Measure it, in real time
+
+```
+python tools/perf_baseline.py            compare against the stored run
+python tools/perf_baseline.py --save     store this run as the baseline
+```
+
+It drives `_dev/perf.html` on the **wall clock**. The harness runner cannot do
+this: it uses `--virtual-time-budget`, which fast-forwards timers, so any
+duration taken under it is invented. Open `_dev/perf.html` by hand on a laptop
+and the table on screen is the result.
+
+Before speeding anything up, measure it; after, measure it again. **A change
+that does not move its number is not kept.** A number counts as worse only
+when it is both 30% and 100 ms worse — timings are noisy in a way shapes are
+not.
+
+### Start-up: import what you use, when you use it
+
+Measured on the lab machine, about **3 of the 3.6 seconds** before the server
+serves are Python importing tools nobody has opened:
+
+| module | cost | for |
+|---|---|---|
+| `backend.analysis` | 1.3 s | panel rendering |
+| `backend.cfc` | 1.1 s | Braid |
+| `backend.dspca` | 0.6 s — sklearn alone 0.5 s | X-ray |
+| `backend.compose` | 0.3 s | figure export |
+
+On a laptop, where antivirus scans every compiled library the first time it
+loads, that is several times worse.
+
+- **A heavy dependency is imported inside the route or function that needs
+  it**, never at the top of `app.py` or of a module `app.py` imports. numpy is
+  cheap; scipy, matplotlib, sklearn, pandas and h5py are not.
+- Guard it the way `dspca.py` guards sklearn: a machine that lacks it loses
+  that one tool, not the whole server.
+
+*(Being moved; `app.py` is shared with other in-flight work.)*
+
+### Nothing at boot that is not on screen
+
+1.3 MB of JSON arrives before the first screen settles — `/api/notes` alone
+is 443 kB and `/api/sync/status` 405 kB, and neither is needed to draw it.
+
+- Boot asks for what the first screen shows. Everything else is fetched when
+  the view that needs it opens.
+- A list endpoint sends what the list draws. The full record comes when a row
+  is opened.
+
+### Reachability is a cached fact
+
+Every registry read used to call `isdir` on all 1,846 known paths one after
+another, then `getmtime` on the reachable ones again — two network round trips
+per netfiles path, every read.
+
+- **One `os.stat` answers both questions**, cached for 30 s
+  (`sessreg.is_here`). A drive plugged in shows up within the TTL.
+- **Ask in parallel**, never one path after another.
+- **A drive or share that is not there is asked once**, not once per path it
+  holds — with one real path tried before a share is called dead, so a share
+  that will not list its top cannot hide its recordings.
+
+Measured: every read after the first went from ~0.5 s to ~0.11 s on the lab
+LAN. The cost removed is round trips, so over a VPN the gain is larger still.
+
+**Unmapped drive letters are not the problem**, and it is worth knowing why:
+Windows fails them instantly. The cost was per-path latency on a share that
+*was* there.
+
+### A view pays for itself, and only itself
+
+A view's time is often spent on requests that belong to a different view —
+ToolKit's bad-channels poll turning up while the Event Bank is open, `/api/
+devices` (1 s) during Pipeline, `/api/toolfeed/bad` during Results.
+
+- **Every poller stops when its view is hidden** — that is what a view's
+  `onHide` is for (§6b checklist) — and when the window is in the
+  background (`document.hidden`).
+- **A cloud round trip is never on the path to drawing a view.** Presence,
+  devices and sync fill in after the view is up; the view does not wait for
+  them.
+
+### One request per question
+
+Results and Misc make **61–66 requests per visit**, one per thumbnail.
+
+- A list that needs *n* small things asks for them in one request, or asks
+  only for the ones scrolled into view.
+- Long lists draw the rows that are visible, not all of them. Sessions spends
+  about 230 ms repainting 400+ cards it could not show at once anyway.
+- A change repaints the row that changed, not the whole view.
+
+### What is still to be measured
+
+Two suspects cannot be tested on the lab machine, and are written here so
+they are not forgotten:
+
+- **GPU effects.** Six `backdrop-filter` and four `blur()` rules, and eleven
+  infinite animations, are near-free on a lab GPU and paid on every repaint on
+  a laptop's integrated one. Headless Edge draws without a GPU, so only a run
+  of `_dev/perf.html` on a real laptop can say. Until then: **no new
+  `backdrop-filter`**, and an infinite animation pauses when it is off screen.
+- **The VPN.** Every number above was taken on the lab LAN. The laptop run on
+  and off the VPN sets the budgets; they are not guessed.
+
+### When you add something
+
+- [ ] Heavy imports inside the function that uses them
+- [ ] Nothing fetched at boot that the first screen does not draw
+- [ ] Pollers stop in `onHide` and in a background window
+- [ ] No cloud call on the path to drawing the view
+- [ ] One request per question; long lists draw what is visible
+- [ ] No new `backdrop-filter`
+- [ ] `perf_baseline.py` before and after, and the number moved
