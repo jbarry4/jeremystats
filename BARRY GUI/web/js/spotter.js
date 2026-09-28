@@ -116,8 +116,7 @@ BARRY.spotter = (function () {
        of another leaves two toolbars stacked and two sets of key handlers
        fighting over the same presses. `active` is a GETTER -- calling it
        throws. */
-    if (BARRY.curate && BARRY.curate.active) BARRY.curate.exit();
-    if (BARRY.strata && BARRY.strata.active) BARRY.strata.exit();
+    BARRY.modes.leaveAllBut('spotter');   // every other mode; see core.js
     if (set_) exit();
 
     if (entryId) {
@@ -1172,3 +1171,6 @@ BARRY.spotter = (function () {
     _kindLabels: () => ((kind && kind.labels) || []).slice(),
   };
 })();
+
+// One mode at a time, kept by the registry in core.js.
+BARRY.modes.register('spotter', BARRY.spotter);

@@ -3731,3 +3731,56 @@ BARRY.init = async function init() {
     new Promise((r) => setTimeout(r, 1500)),
   ]).then(() => requestAnimationFrame(() => BARRY.boot.clear()));
 };
+
+/* ==========================================================================
+   Xplorefinder modes: one at a time, kept by a registry rather than a habit.
+
+   A mode -- Checkup, StrataScope, Spotter, Braid, the Arc's review -- takes
+   over the panes, the keyboard and the aid window. Two at once leaves two
+   toolbars stacked, two sets of key handlers fighting over the same presses,
+   and an aid window belonging to whichever got there first.
+
+   Each mode used to exit the others itself, by name, and none of them named
+   them all: Checkup left StrataScope and nothing else, StrataScope left
+   Checkup and nothing else, so entering Checkup with Spotter open left both
+   running. Five modes that each list the other four is twenty pairs kept in
+   step by hand, and the sixth breaks them all again.
+
+   So a mode registers once, at load, and its `enter` calls `leaveAllBut`
+   with its own name. Nobody has to know who else exists.
+   ========================================================================== */
+BARRY.modes = (function () {
+  const known = {};
+
+  function register(name, api) {
+    if (name && api) known[name] = api;
+  }
+
+  /* `active` is a getter on every mode, not a method -- calling it throws.
+     Read it inside a try: a mode that half-loaded must not stop another
+     from being entered. */
+  function isOn(api) {
+    try { return !!(api && api.active); } catch (e) { return false; }
+  }
+
+  function leaveAllBut(name) {
+    for (const other of Object.keys(known)) {
+      if (other === name) continue;
+      const api = known[other];
+      if (!isOn(api)) continue;
+      try {
+        api.exit();
+      } catch (err) {
+        // A mode that fails on its way out must not strand you outside the
+        // one you are entering.
+        reportClientError('modes.leave:' + other, err.message, err.stack);
+      }
+    }
+  }
+
+  function active() {
+    return Object.keys(known).filter((n) => isOn(known[n]));
+  }
+
+  return { register, leaveAllBut, active, names: () => Object.keys(known) };
+})();

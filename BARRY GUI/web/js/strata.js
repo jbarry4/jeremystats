@@ -112,7 +112,7 @@ BARRY.strata = (function () {
        toolbars stacked, two sets of key handlers fighting over the same
        presses, and an aid window belonging to whichever got there first. */
     // `active` is a getter, not a method -- calling it throws.
-    if (BARRY.curate && BARRY.curate.active) BARRY.curate.exit();
+    BARRY.modes.leaveAllBut('strata');   // every other mode; see core.js
     if (sheet) exit();                 // re-entering: start clean
     gid = gidIn;
     let info;
@@ -1124,3 +1124,6 @@ BARRY.strata = (function () {
     },
   };
 })();
+
+// One mode at a time, kept by the registry in core.js.
+BARRY.modes.register('strata', BARRY.strata);

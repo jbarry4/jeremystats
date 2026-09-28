@@ -73,7 +73,7 @@ BARRY.curate = (function () {
     // See the same note in strata.js: one mode at a time, or the two stack
     // their toolbars and their key handlers on top of each other.
     // `active` is a getter, not a method -- calling it throws.
-    if (BARRY.strata && BARRY.strata.active) BARRY.strata.exit();
+    BARRY.modes.leaveAllBut('curate');   // every other mode; see core.js
     if (set_) exit();
     let data;
     try {
@@ -2078,3 +2078,6 @@ BARRY.pickVersion = function pickVersion(history, opts) {
     ]));
   });
 };
+
+// One mode at a time, kept by the registry in core.js.
+BARRY.modes.register('curate', BARRY.curate);
