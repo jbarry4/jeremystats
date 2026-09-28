@@ -669,13 +669,16 @@ BARRY.rootcanal = (function () {
   function modeSwitch() {
     const mode = bulk.on ? 'many' : 'one';
     return el('div', { class: 'card rc-mode' }, [
-      BARRY.ui.seg([
-        ['one', 'One set at a time'],
-        ['many', 'Many sets at once'],
-      ], mode, (id) => {
-        bulk.on = id === 'many';
-        render();
-        if (bulk.on && !bulk.plan) loadBulk();
+      /* How many, through the run bar (constitution §6d): one component
+         for the choice every tool makes, rather than a seg each tool drew
+         for itself. Only local modes, so the bar shows How many alone. */
+      BARRY.ui.runBar({
+        modes: { local: ['one', 'many'] }, where: 'local', count: mode,
+        onChange: (w, c) => {
+          bulk.on = c === 'many';
+          render();
+          if (bulk.on && !bulk.plan) loadBulk();
+        },
       }),
       el('span', { class: 'hint', text: bulk.on
         ? 'Reads them one after another. Nothing is banked by the queue — '

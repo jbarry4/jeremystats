@@ -611,9 +611,13 @@ const NL = String.fromCharCode(10);
      the queue and the panel each took room from the other and neither
      was what you had come to do. The same switch Braces has. */
   const seg = D().querySelectorAll('.dp-mode .seg button');
+  /* Through the shared run bar now (constitution §6d): "How many", One or
+     Many -- the same words in every tool that offers the choice. */
   eq('the panel offers both modes',
-     Array.from(seg).map((b2) => b2.textContent),
-     ['One set at a time', 'Many sets at once']);
+     Array.from(seg).map((b2) => b2.textContent), ['One', 'Many']);
+  ok('under the run bar’s How many',
+     Array.from(D().querySelectorAll('.dp-mode .run-bar .section-label'))
+       .some((n) => n.textContent === 'How many'));
   ok('and opens on one at a time',
      seg[0] && seg[0].classList.contains('active'));
   ok('which is the mode the workbench is in',

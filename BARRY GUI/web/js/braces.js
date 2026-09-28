@@ -449,15 +449,14 @@ BARRY.braces = (function () {
        tool because the sets, the versions and the settings are the same
        in both. */
     box.appendChild(el('div', { class: 'card br-mode' }, [
-      el('div', { class: 'seg' }, [
-        ['one', 'One set at a time'],
-        ['many', 'Many sets at once'],
-      ].map(([id, label]) => el('button', {
-        class: (bulk.on ? 'many' : 'one') === id ? 'active' : '',
-        onclick: () => { if ((bulk.on ? 'many' : 'one') === id) return;
-                         bulk.on = id === 'many'; render(); },
-        text: label,
-      }))),
+      /* How many, through the run bar (constitution §6d): one component
+         for the choice every tool makes, rather than a seg each tool drew
+         for itself. Only local modes, so the bar shows How many alone. */
+      BARRY.ui.runBar({
+        modes: { local: ['one', 'many'] }, where: 'local',
+        count: bulk.on ? 'many' : 'one',
+        onChange: (w, c) => { bulk.on = c === 'many'; render(); },
+      }),
       el('span', { class: 'br-hint', text: bulk.on
         ? 'Reads them one after another and leaves a proposal for each. '
           + 'Nothing is banked — every set still has to be reviewed.'

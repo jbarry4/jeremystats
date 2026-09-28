@@ -1003,19 +1003,18 @@ BARRY.dspca = (function () {
      what you had come to do. */
   function modeSwitch() {
     return el('div', { class: 'card dp-mode' }, [
-      el('div', { class: 'seg' }, [
-        ['one', 'One set at a time'],
-        ['many', 'Many sets at once'],
-      ].map(([id, label]) => el('button', {
-        class: (bulk.on ? 'many' : 'one') === id ? 'active' : '',
-        onclick: () => {
-          if ((bulk.on ? 'many' : 'one') === id) return;
-          bulk.on = id === 'many';
+      /* How many, through the run bar (constitution §6d): one component
+         for the choice every tool makes, rather than a seg each tool drew
+         for itself. Only local modes, so the bar shows How many alone. */
+      BARRY.ui.runBar({
+        modes: { local: ['one', 'many'] }, where: 'local',
+        count: bulk.on ? 'many' : 'one',
+        onChange: (w, c) => {
+          bulk.on = c === 'many';
           render();
           if (bulk.on && !bulk.plan) loadBulk();
         },
-        text: label,
-      }))),
+      }),
       el('span', { class: 'hint', text: bulk.on
         ? 'Reads them one after another and stops there. Nothing is '
           + 'classified and nothing is banked \u2014 every set still has to '
