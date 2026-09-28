@@ -8500,7 +8500,8 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
    else. Every selector here stays inside .pn-*, for the reason given in the
    Panorama block above.
    ========================================================================== */
-.pn-modes { display: flex; gap: var(--sp-6); flex-wrap: wrap; margin-bottom: 10px; }
+.pn-modes { display: flex; gap: var(--sp-6) var(--sp-12); flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.pn-modes > .hint { margin: 0; }
 .pn-sets { display: flex; flex-direction: column; gap: var(--sp-6); margin-top: 8px; }
 .pn-set {
   display: grid; grid-template-columns: minmax(0, 1fr) auto;

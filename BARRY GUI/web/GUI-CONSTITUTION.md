@@ -720,9 +720,14 @@ so it runs here in seconds and can run on the VACC, never as a batch.
 
 Panorama's local batch was missing from the first draft of this table. It
 already had one — *Many at once*, a set and where each recording got to — so
-the table was wrong, not the tool. Its switch is still a pair of `.pill`s
-rather than the `.seg` Braces and X-ray use; it moves to `runBar` with the
-rest.
+the table was wrong, not the tool.
+
+**On the run bar so far:** Incisor, Doppler, Braces, X-ray, Root Canal and
+Panorama. **Cells in the table not built yet**, which the bar therefore does
+not offer: Incisor here · many, and Panorama on the VACC. A tool gains one
+by building it and adding it to its `modes`, not by drawing a new switch.
+The Arc's tools (Circuit, Drift, Spark) adopt the bar once their builders
+are done.
 
 A tool that gains a mode changes its declaration, not its layout.
 

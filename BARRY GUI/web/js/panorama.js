@@ -1304,26 +1304,25 @@ BARRY.panorama = (function () {
      form is about WHICH recordings and WHICH channel, and the parameters
      are settled once.
      ================================================================== */
+  /* One recording or many, through the run bar (constitution §6d) -- it
+     was a pair of pills with subtitles, the one tool whose switch was not
+     the seg the others drew. Panorama runs here only, so the bar asks How
+     many and nothing else. What each mode is for is said beside it, where
+     the pills' subtitles said it. */
   function modeBar() {
-    const wrap = el('div', { class: 'pn-modes' });
-    for (const [id, name, sub_] of [
-      ['one', 'One recording', 'the whole session, end to end'],
-      ['many', 'Many at once', 'a set, and where each one got to'],
-    ]) {
-      wrap.appendChild(el('button', {
-        class: 'pill' + (mode === id ? ' active' : ''),
-        onclick: () => {
-          if (mode === id) return;
-          mode = id;
-          if (id === 'many' && !sets) loadSets();
+    return el('div', { class: 'pn-modes' }, [
+      BARRY.ui.runBar({
+        modes: { local: ['one', 'many'] }, where: 'local', count: mode,
+        onChange: (w, c) => {
+          mode = c;
+          if (c === 'many' && !sets) loadSets();
           paint();
         },
-      }, [
-        el('span', { text: name }),
-        el('span', { class: 'tk-pill-sub', text: sub_ }),
-      ]));
-    }
-    return wrap;
+      }),
+      el('span', { class: 'hint', text: mode === 'many'
+        ? 'A set, and where each recording in it got to.'
+        : 'The whole session, end to end.' }),
+    ]);
   }
 
   async function loadSets() {

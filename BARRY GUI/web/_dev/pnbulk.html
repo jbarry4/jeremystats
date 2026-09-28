@@ -56,7 +56,7 @@ const hd = (t) => p('\n== ' + t + ' ==');
 
     hd('it offers one recording or many');
     ck('two modes are offered',
-       D().querySelectorAll('.pn-modes .pill').length === 2);
+       D().querySelectorAll('.pn-modes .run-bar .seg button').length === 2);
     ev('BARRY.panorama.setMode("many")');
     ok = await untilN(() => ev('!!BARRY.panorama.sets'), 300);
     ck('the sets loaded', ok >= 0);
