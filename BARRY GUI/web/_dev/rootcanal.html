@@ -786,7 +786,9 @@ const ENTRY = '46fd29a77cc7';
   const lab = (D().querySelector('.rc-bank') || {}).textContent || '';
   const c1 = st().fit.counts;
   ok('Bank says what it will do, in numbers',
-     new RegExp('^Bank: ' + (c1.ds + c1.unmeasured) + ' DS as (v\\d+|a new '
+     /* v[\d.]+ -- reading an older version makes the bank a branch, and a
+        branch is named v2.1, not the tip plus one. */
+     new RegExp('^Bank: ' + (c1.ds + c1.unmeasured) + ' DS as (v[\\d.]+|a new '
                 + 'version), ' + c1.ied + ' IED as ').test(lab), lab);
   const acts = D().querySelector('.rc-why .head-actions');
   ok('and it is the one primary, at the right, last',
@@ -861,6 +863,13 @@ const ENTRY = '46fd29a77cc7';
      btns.map((b) => b.textContent).join(' | '));
   ok('and says the IEDs arrive as candidates, not decisions',
      /candidates/.test((D().querySelector('#bigModal .rc-ask') || {}).textContent || ''));
+  /* The shared bank dialog's sentence, about the version this was read
+     from -- not "the tip plus one", which is wrong whenever an older
+     version was read and the bank is really a branch. */
+  const vline = (D().querySelector('#bigModal .bank-dlg-line') || {}).textContent || '';
+  ok('and which version the bank becomes, from the version read',
+     /^(continues|branches from) v[\d.]+ → v[\d.]+$/.test(vline), vline);
+  say('note', '  ' + vline);
   const cancel = btns.find((b) => /Cancel/.test(b.textContent));
   if (cancel) cancel.click();
   await until(() => D().getElementById('bigModal').classList.contains('hidden'),
@@ -894,9 +903,9 @@ const ENTRY = '46fd29a77cc7';
     ied_version: '0', removed: cB.ied, kept: cB.ds + cB.unmeasured,
     unmeasured: cB.unmeasured, written: { ds: true, ied: true } } }));
   ev(RC + '._bankDialog()');
-  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-note'), 5000,
+  await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-note'), 5000,
               'the dialog again');
-  const noteIn = D().querySelector('#bigModal .rc-note');
+  const noteIn = D().querySelector('#bigModal .bank-dlg-note');
   if (noteIn) noteIn.value = 'harness note';
   const bankIt = Array.from(D().querySelectorAll('#bigModal .mf button'))
     .find((b) => /Bank it/.test(b.textContent));

@@ -1212,11 +1212,15 @@ BARRY.rootcanal = (function () {
      the ones a person reads (`label_rows` on the server), so the tip's name
      plus one where it is a plain number, and "the next version" where it is
      a branch -- a branch's successor is the server's to name. */
+  /* What the bank will call the new version: the rule in versions.py, from
+     the version being read. It was the tip plus one, which is wrong
+     whenever an older version is read -- that bank is a branch. */
   function nextName(c) {
     const vs = (c && c.versions) || [];
-    const tip = vs.length ? String(vs[vs.length - 1].name) : null;
-    if (tip != null && /^\d+$/.test(tip)) return String(Number(tip) + 1);
-    return null;
+    if (!vs.length) return null;
+    const from = versionOf(c, q.from_version) || vs[vs.length - 1];
+    return BARRY.ui.versionNext(BARRY.ui.versionLabel(from).slice(1),
+                                vs.map((v) => BARRY.ui.versionLabel(v).slice(1))).name;
   }
 
   function bankLabel() {
@@ -1504,8 +1508,6 @@ BARRY.rootcanal = (function () {
     const c = fit.counts || {};
     const cur = setOf();
     const v = versionOf(cur, q.from_version);
-    const note = el('input', { type: 'text', class: 'rc-note',
-      placeholder: 'A note for the version, if there is anything to say' });
     const body = el('div', { class: 'rc-ask' }, [
       el('p', { text: bankLabel() + '.' }),
       el('ul', {}, [
@@ -1540,20 +1542,36 @@ BARRY.rootcanal = (function () {
                          + ' and both pictures are filed with it.' }),
       ].filter(Boolean)),
       el('p', { class: 'hint', text: fit.rule || '' }),
-      note,
     ]);
-    showModal(el('div', {}, [
-      el('div', { class: 'mh' }, [
-        el('h3', { text: 'Bank this root canal?' }),
-        el('div', { class: 'spacer' })]),
-      el('div', { class: 'mb' }, [body]),
-      BARRY.ui.modalFoot([], [
-        BARRY.ui.button({ kind: 'ghost', text: 'Cancel', onclick: closeModal }),
-        BARRY.ui.button({ kind: 'primary', text: 'Bank it',
-          onclick: () => { const t = note.value.trim(); closeModal();
-                           commit(t); } }),
-      ]),
-    ]), { replace: true });
+    /* The one bank dialog (constitution §6e), with Root Canal's account of
+       what it files as its body. The shared one adds the entry's name, the
+       note, who, and the sentence saying which version this becomes --
+       "continues v5 -> v6" or "branches from v3 -> v3.1" off the version
+       it read, which the label above used to guess as the tip plus one.
+
+       A refusal stays in the dialog, except the one that has a dialog of
+       its own: a set Root Canal has already cleaned, where cleaning again
+       is offered as a deliberate second press. */
+    let refused = null, rep = null;
+    return BARRY.ui.bankDialog({
+      kind: 'version',
+      title: 'Bank this root canal?',
+      entry: { name: (cur && cur.name) || '', versions: (cur && cur.versions) || [] },
+      from: q.from_version,
+      what: body,
+      okText: 'Bank it',
+      onBank: async ({ note }) => {
+        try {
+          rep = await send(note, false);
+        } catch (e) {
+          if (cleanedAlready(e)) { refused = { msg: e.message, note }; return; }
+          throw e;
+        }
+      },
+    }).then((ok) => {
+      if (refused) { refusedDialog(refused.msg, refused.note); return null; }
+      return ok && rep ? after(rep, fit.counts || {}) : null;
+    });
   }
 
   function refusedDialog(msg, note) {
@@ -1580,14 +1598,23 @@ BARRY.rootcanal = (function () {
     ]), { replace: true });
   }
 
+  function send(note, again) {
+    return apiPost('/api/rootcanal/commit', fitBody({
+      note: note || '', pngs: pngs(),
+      again: again ? true : undefined,
+    }));
+  }
+
+  function cleanedAlready(e) {
+    const v = versionOf(setOf(), q.from_version);
+    return (v && v.tag === 'rootcanal') || /again/i.test((e && e.message) || '');
+  }
+
   async function commit(note, again) {
     let rep;
     const expect = fit.counts || {};
     try {
-      rep = await apiPost('/api/rootcanal/commit', fitBody({
-        note: note || '', pngs: pngs(),
-        again: again ? true : undefined,
-      }));
+      rep = await send(note, again);
     } catch (e) {
       /* A SET ROOT CANAL HAS ALREADY CLEANED IS REFUSED, and says why.
 
@@ -1597,14 +1624,18 @@ BARRY.rootcanal = (function () {
          is, and cleaning again anyway is on offer only as the secondary
          action of a dialog -- a deliberate second press, never the
          default one. */
-      const v = versionOf(setOf(), q.from_version);
-      if (!again && ((v && v.tag === 'rootcanal') || /again/i.test(e.message))) {
+      if (!again && cleanedAlready(e)) {
         refusedDialog(e.message, note);
       } else {
         toast(e.message, 'err', 12000);
       }
       return null;
     }
+    return after(rep, expect);
+  }
+
+  /* What a commit that went through does next, whichever way it was sent. */
+  function after(rep, expect) {
     /* A commit that changed nothing wrote nothing, and says so -- pressing
        it twice on one answer must not read as two versions. */
     if (rep.already) {
