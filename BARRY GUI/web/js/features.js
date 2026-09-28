@@ -167,6 +167,17 @@ BARRY.palette = (function () {
        async () => { setView('xplore');
                      const p = await pickPath('folder');
                      if (p) BARRY.views.xplore.open(p); }],
+      /* The other way to open one, for a recording that is not on a drive
+         this computer has. Listed separately rather than folded into the
+         line above: somebody who cannot find a recording anywhere on this
+         machine will type "cluster" or "VACC", and a feature missing from
+         the palette reads as one that does not exist. */
+      ['Open a recording from the cluster',
+       'read one off VACC with no drive mounted here',
+       () => { setView('sessions');
+               if (BARRY.views.sessions.setMode) {
+                 BARRY.views.sessions.setMode('vacc');
+               } }],
       ['Scan a data root for sessions', 'discover recordings',
        () => { setView('sessions'); const i = $('#rootPath'); if (i) i.focus(); }],
       ['Figure builder', 'compose a multi-panel figure',
@@ -204,6 +215,33 @@ BARRY.palette = (function () {
     ];
     for (const [label, sub, run] of acts) {
       out.push({ kind: 'action', label, sub, hay: label + ' ' + sub, run });
+    }
+
+    /* The Arc's five steps, each reachable by name.
+     *
+     * By name is the point: "Coupling" and "Circuit" are what somebody will
+     * half-remember, not "ToolKit". The steps that are not built yet are
+     * listed too and say so in their subtitle -- the palette is how people
+     * find out what exists, and a step missing from it reads as one that
+     * does not.
+     *
+     * The Dentist's steps have no entries; adding them is a change to a
+     * shipped menu rather than part of this, and is left alone. */
+    if (BARRY.arc) {
+      for (const st of BARRY.arc.steps()) {
+        out.push({
+          kind: 'action',
+          label: st.name,
+          sub: (st.built ? '' : 'being built · ' + st.phase + ' · ')
+             + 'step of The Arc',
+          hay: st.name + ' arc dewey rats ' + st.blurb,
+          run: () => {
+            setView('toolkit');
+            const tk = BARRY.views.toolkit;
+            if (tk && tk.pick) tk.pick(st.id);
+          },
+        });
+      }
     }
 
     // Favourite scripts float to the top of the script block.

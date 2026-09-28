@@ -1592,6 +1592,15 @@ code { font-family: var(--mono); }
 }
 #scriptSearch:focus { outline: none; border-color: var(--accent-line); }
 .filter-row { display: flex; gap: 5px; padding: 0 12px 10px; flex-wrap: wrap; }
+/* A cohort with nothing in it in the view you are looking at.
+
+   Dimmed rather than dropped from the row. A pill that vanishes when you
+   change mode is one you cannot change back with, and "PTEN has 381
+   recordings and none of them on the cluster" is a fact worth being able to
+   read rather than an absence to infer from a gap. Scoped to the row rather
+   than added to `.pill`, which is a filter everywhere else and has no such
+   state. */
+.filter-row .pill.empty { opacity: 0.45; }
 .tree { overflow-y: auto; flex: 1; padding: 0 6px 16px; }
 .tree-section { margin-bottom: 2px; }
 .tree-head {
@@ -1991,6 +2000,14 @@ code { font-family: var(--mono); }
 .xf-tab .x { opacity: 0.5; font-size: var(--fs-13); line-height: 1; }
 .xf-tab .x:hover { opacity: 1; color: var(--err); }
 .xf-tab .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+/* The VACC chip, in a tab rather than on a session card.
+
+   Scoped to the tab, and it changes one thing: the chip must not be the
+   part that gives way. `.xf-tab` is capped at 230px and `.nm` inside it
+   already shrinks; without `flex: none` the chip shrank with it and a
+   four-letter word became two. Everything else -- the size, the colour and
+   the rule that green means "reads it in place" -- is the base chip's. */
+.xf-tab .flagchip { flex: none; }
 .xf-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 .pane-grid { flex: 1; display: grid; gap: 1px; background: var(--line-soft); overflow: hidden; }
 .pane-grid.panes-1 { grid-template-columns: 1fr; }
@@ -2015,6 +2032,41 @@ code { font-family: var(--mono); }
 .pane-grid.panes-6 .pane-chans { display: none; }
 .pane-grid.panes-6 .pane-main { grid-template-columns: 1fr; }
 .pane-grid.panes-6 .pane-timebar { display: none; }
+/* More than six, for a montage grouped by region rather than by column.
+ *
+ * The DEWEY headstage is twelve regions, and until these existed the layout
+ * silently drew the first six -- CSC 1 to 20, with no left OFC, no left ACC,
+ * neither hippocampus and neither retrosplenial, and nothing on screen
+ * saying half the brain was missing.
+ *
+ * Kept as their own rules rather than folded into `panes-6`: that one is
+ * the H10-D's layout, its rows mean "back shank" and "front shank", and
+ * `_dev/align.html` measures it. */
+.pane-grid.panes-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pane-grid.panes-5 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+.pane-grid.panes-7,
+.pane-grid.panes-8,
+.pane-grid.panes-9 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+.pane-grid.panes-10,
+.pane-grid.panes-11,
+.pane-grid.panes-12 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+/* Past six panes each one is a few centimetres tall, so the per-pane
+   furniture has to give way exactly as it does at six -- otherwise the
+   head and the timebar are most of the pane. */
+.pane-grid.panes-7 .pane-timebar, .pane-grid.panes-8 .pane-timebar,
+.pane-grid.panes-9 .pane-timebar, .pane-grid.panes-10 .pane-timebar,
+.pane-grid.panes-11 .pane-timebar, .pane-grid.panes-12 .pane-timebar {
+  display: none;
+}
 /* Which column this pane is, stated on the pane. Six near-identical rasters
    are indistinguishable without it. */
 .pane-col-tag {
@@ -2279,6 +2331,18 @@ body.strip-resizing canvas { pointer-events: none; }
 .sess-card:hover { border-color: var(--accent-line); background: var(--bg-3); color: var(--text); }
 .sess-card .sc-top { display: flex; align-items: center; gap: var(--sp-6); margin-bottom: 2px; }
 .sess-card .sc-name { font-size: var(--fs-125); font-weight: 600; color: var(--text); }
+/* The phase and run, on the recordings that have them.
+ *
+ * Reads as a continuation of the session number rather than a separate
+ * chip, because it IS the rest of the name: "s1 Precon1 SPC" is one label
+ * in three parts. The run is bold inside it because on a DEWEY card the
+ * run is the only thing distinguishing three otherwise identical rows. */
+.sess-card .sc-phase {
+  display: inline-flex; align-items: baseline; gap: var(--sp-4);
+  font-size: var(--fs-11); color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.sess-card .sc-phase b { font-weight: 600; color: var(--text-2); }
 .sess-card .sc-sub { font-family: var(--mono); font-size: var(--fs-10); color: var(--text-3); line-height: 1.45; }
 .sess-card .sc-flags { display: flex; gap: 3px; margin-top: 4px; flex-wrap: wrap; }
 .flagchip {
@@ -5030,6 +5094,20 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
 }
 .hk-path .hk-btns { display: flex; gap: var(--sp-4); align-items: center; }
 .hk-path.here { background: var(--ok-soft); }
+/* Where the cluster has it, in the detail panel.
+
+   Wrapped rather than clipped, the same argument `.hk-path code` makes just
+   above: a path is the thing you read in full or not at all, and a cluster
+   path is long enough that clipping it would leave the scratch prefix and
+   hide which recording it is. Its own class rather than reusing that rule,
+   which is scoped to a row with a dot and a button column and would drag the
+   grid along with it. */
+.hk-remote {
+  display: block; font-family: var(--mono); font-size: var(--fs-105);
+  line-height: 1.45; white-space: pre-wrap; word-break: break-all;
+  color: var(--text-2); background: var(--bg-2);
+  padding: 6px 8px; border-radius: var(--radius-sm); margin: var(--sp-4) 0;
+}
 .hk-links { display: flex; flex-wrap: wrap; gap: var(--sp-6); }
 .hk-link {
   display: flex; flex-direction: column; align-items: center; gap: 1px;
@@ -6026,8 +6104,20 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
    rail, so it takes the accent rather than a fourth colour nobody has a
    meaning for. */
 #app.mode-braces { --mode: #7FE3B0; --mode-soft: rgba(127, 227, 176, 0.13); }
+/* Coupling is a step of The Arc, which has no other mode, so it takes a
+   colour of its own rather than borrowing one that already means a step of
+   The Dentist. Violet is the only family none of the other three are in. */
+#app.mode-coupling { --mode: #C08CF0; --mode-soft: rgba(192, 140, 240, 0.13); }
+/* The Arc's two verify modes. Confirm is the gold the app already uses for
+   'look at this'; Clean is red-leaning, because what it is showing you is
+   data that is gone. */
+#app.mode-arcconfirm { --mode: #E5A823; --mode-soft: rgba(229, 168, 35, 0.13); }
+#app.mode-arcclean { --mode: #E8705A; --mode-soft: rgba(232, 112, 90, 0.13); }
 #app.mode-strata #xfBody,
 #app.mode-braces #xfBody,
+#app.mode-coupling #xfBody,
+#app.mode-arcconfirm #xfBody,
+#app.mode-arcclean #xfBody,
 #app.mode-curate #xfBody {
   box-shadow: inset 0 0 0 2px var(--mode);
   border-radius: var(--radius);
@@ -6037,6 +6127,9 @@ button.probechip { font: inherit; font-family: var(--mono); font-size: var(--fs-
 .mode-banner { display: none; }
 #app.mode-strata .mode-banner,
 #app.mode-braces .mode-banner,
+#app.mode-coupling .mode-banner,
+#app.mode-arcconfirm .mode-banner,
+#app.mode-arcclean .mode-banner,
 #app.mode-curate .mode-banner {
   display: flex; align-items: center; gap: var(--sp-10);
   padding: 4px 10px; flex: none;
@@ -8469,7 +8562,7 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
    they all pass through. Deliberately a hairline at the very top rather than
    anything that moves the page: it has to be able to appear during a mutation
    without shifting the list the person is looking at.
-   
+
    It is only added to the DOM once anything has actually been slow -- see
    BUSY in core.js -- so the usual case is that it never renders at all. */
 .net-bar {
@@ -8769,7 +8862,7 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   border: 1px solid var(--line); display: inline-block;
 }
 /* ==========================================================================
-   The Dentist -- the bundle in the ToolKit rail
+   Bundles in the ToolKit rail -- The Dentist, The Arc
    ========================================================================== */
 /* A bundle is not a tool, and must not read as one. It is a group with an
    order, so it gets an edge the flat buttons do not have and its steps are
@@ -8814,6 +8907,483 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   font-variant-numeric: tabular-nums;
 }
 .tk-step.now .tk-step-s { color: var(--accent); }
+/* A step that exists and is not built yet.
+ *
+ * Scoped to `.tk-bundle` rather than redefining `.tk-step`, because the
+ * sibling `.tk-step.done` means something quite different and a bare `.off`
+ * here would be the third meaning of the same word in this file.
+ *
+ * Shown and disabled rather than left out: a bundle is an order, and a
+ * reader arriving at step 3 has to be able to see that there are five and
+ * that two come first. The reason lives in the button's `title`. Kept
+ * hoverable-looking nowhere -- no background change, no pointer -- because
+ * a control that looks pressable and is not is a worse lie than the gap it
+ * fills. */
+.tk-bundle .tk-step.off { opacity: 0.45; cursor: default; }
+.tk-bundle .tk-step.off:hover { background: transparent; }
+/* ==========================================================================
+   The Arc -- the DEWEY RATs pipeline
+   ========================================================================== */
+/* The construction card a step paints before it is built.
+ *
+ * `.empty-state` centres its contents in the pane, which is right for "there
+ * is nothing here" and wrong for this: it is a short read with headings and
+ * a list, and centred body text is harder to get through than left-aligned.
+ * So the alignment is overridden and nothing else is -- the colour, the
+ * gap and the line height are the empty state's, because this IS one. */
+.empty-state.arc-soon {
+  align-items: flex-start; text-align: left; justify-content: flex-start;
+  height: auto; max-width: 640px; gap: var(--sp-8);
+  padding: var(--sp-16) 0 var(--sp-24);
+}
+.empty-state.arc-soon p { max-width: none; }
+.arc-soon-tag {
+  display: flex; align-items: center; gap: var(--sp-6);
+  font-size: var(--fs-105); color: var(--warn);
+  background: var(--warn-soft); border: 1px solid var(--warn);
+  border-radius: var(--r-pill); padding: 3px var(--sp-10);
+}
+.arc-soon-dot {
+  width: 6px; height: 6px; border-radius: var(--r-pill);
+  background: var(--warn); flex: none;
+}
+.arc-soon-list {
+  margin: 0; padding-left: var(--sp-16);
+  display: flex; flex-direction: column; gap: var(--sp-6);
+  font-size: var(--fs-12); color: var(--text-2); line-height: 1.6;
+}
+.arc-soon-foot { color: var(--text-3); font-size: var(--fs-11); }
+/* Spark: the recordings on the left, what one of them holds on the right.
+ * Two columns because picking and reading are one loop -- you click down the
+ * list comparing, and a layout that replaced the list with the reading would
+ * make that a navigation instead. */
+.arc-spark {
+  display: grid; grid-template-columns: 260px 1fr; gap: var(--sp-16);
+  align-items: start;
+}
+/* The two halves. Declared rather than left to the grid, because a grid
+ * child with no rule of its own cannot be given a minimum -- and without
+ * `min-width: 0` the right-hand column refuses to shrink below its widest
+ * pair row and pushes the list off the pane. */
+.arc-pick { min-width: 0; }
+.arc-read { min-width: 0; }
+.arc-rows {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  margin-top: var(--sp-8);
+  max-height: 62vh; overflow-y: auto;
+}
+.arc-row {
+  display: grid; grid-template-columns: 34px 1fr auto auto; gap: var(--sp-6);
+  align-items: baseline; text-align: left;
+  padding: 5px var(--sp-8); border-radius: var(--r-4);
+  border: 1px solid transparent; background: transparent;
+  color: var(--text-2); font: inherit; font-size: var(--fs-115);
+  cursor: pointer;
+}
+.arc-row:hover { background: var(--bg-hover); }
+.arc-row.on { background: var(--bg-3); border-color: var(--accent-line); }
+.arc-row.off { opacity: .45; cursor: not-allowed; }
+.arc-row.off:hover { background: transparent; }
+.arc-row-s { color: var(--text-3); font-size: var(--fs-105); }
+.arc-row-d, .arc-row-n {
+  color: var(--text-3); font-size: var(--fs-10);
+  font-variant-numeric: tabular-nums;
+}
+/* The pair table. Six columns, four of them numbers, so the whole thing is
+ * tabular-nums and right-aligned -- a column of times you cannot scan down
+ * is a column you have to read one row at a time. */
+.arc-pair {
+  display: grid;
+  grid-template-columns: 30px minmax(150px, 1fr) 84px 84px 74px 90px;
+  gap: var(--sp-8); align-items: baseline;
+  padding: 3px var(--sp-6); font-size: var(--fs-115);
+}
+.arc-pair .num, .arc-pair-i {
+  font-variant-numeric: tabular-nums; text-align: right;
+  font-family: var(--mono); font-size: var(--fs-11);
+}
+.arc-pair-hd {
+  font-size: var(--fs-95); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3); font-weight: 600;
+  border-bottom: 1px solid var(--line-soft); padding-bottom: 4px;
+}
+.arc-pair-hd span:nth-child(n+3) { text-align: right; }
+.arc-pairs {
+  max-height: 46vh; overflow-y: auto; margin: 2px 0 var(--sp-10);
+}
+.arc-pairs .arc-pair:nth-child(even) { background: var(--bg-2); }
+.arc-pair-i { color: var(--text-3); }
+/* A boundary that was derived rather than read off the rig's own mark. Dim
+ * rather than flagged: it is a perfectly good number, it is just a weaker
+ * claim than the one beside it. */
+.arc-derived { color: var(--text-3); font-style: italic; }
+.arc-bank { margin-top: var(--sp-8); gap: var(--sp-12); }
+/* The line view: every pulse in the recording on one line.
+ *
+ * SVG scaled by CSS rather than drawn at a fixed width, because the pane it
+ * sits in is resizable and a canvas would have to be redrawn for every
+ * width. `preserveAspectRatio: none` is deliberate -- the vertical is
+ * decoration and the horizontal is time, so stretching one and not the
+ * other is exactly right here. */
+.arc-line-wrap { margin: var(--sp-8) 0 var(--sp-12); }
+.arc-line {
+  display: block; width: 100%; height: 54px;
+  background: var(--bg-2); border: 1px solid var(--line-soft);
+  border-radius: var(--r-4);
+}
+.arc-line-axis { stroke: var(--line); stroke-width: 1; }
+/* A pair is a bar, because a pair IS an interval -- drawing it as two
+ * ticks would say the same thing as two unrelated pulses. */
+.arc-line-pair {
+  fill: var(--accent-soft); stroke: var(--accent); stroke-width: 0.6;
+  cursor: pointer;
+}
+.arc-line-pair:hover { fill: var(--accent); fill-opacity: 0.35; }
+.arc-line-pair.bad { fill: var(--warn-soft); stroke: var(--warn); }
+.arc-tick { stroke-width: 1.2; }
+.arc-tick.cue { stroke: var(--accent); stroke-width: 1.6; }
+.arc-tick.end { stroke: var(--text-3); }
+.arc-tick.mirror, .arc-tick.bounce { stroke: var(--text-3); opacity: .5; }
+.arc-tick.unknown { stroke: var(--warn); }
+.arc-line-key {
+  display: flex; align-items: center; gap: var(--sp-12);
+  margin-top: var(--sp-6); font-size: var(--fs-10); color: var(--text-3);
+}
+.arc-key-item { display: inline-flex; align-items: center; gap: var(--sp-4); }
+.arc-key-dot { width: 2px; height: 10px; display: inline-block; }
+.arc-key-dot.cue { background: var(--accent); width: 2px; }
+.arc-key-dot.end { background: var(--text-3); }
+.arc-key-dot.mirror, .arc-key-dot.bounce { background: var(--text-3); opacity: .5; }
+.arc-key-dot.unknown { background: var(--warn); }
+/* Clipping */
+.arc-clipbar {
+  display: flex; align-items: center; gap: var(--sp-12);
+  padding: var(--sp-8) 0;
+}
+.arc-clip { margin: var(--sp-8) 0 var(--sp-12); }
+.arc-clip-rows {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 24vh; overflow-y: auto;
+}
+.arc-clip-row {
+  display: grid;
+  grid-template-columns: 64px 128px 118px 88px 1fr;
+  gap: var(--sp-8); align-items: baseline;
+  font-size: var(--fs-11); padding: 2px var(--sp-6);
+}
+.arc-clip-row .num {
+  font-variant-numeric: tabular-nums; font-family: var(--mono);
+  font-size: var(--fs-10);
+}
+.arc-lost { display: inline-flex; gap: var(--sp-4); justify-content: flex-end; }
+/* Kept against the measurement, beside the chip that says what is going.
+ * Scoped to `.arc-lost` rather than redefining `.mini`, and green rather
+ * than neutral, because the two chips in that cell are opposites -- a
+ * neutral one reads as a second kind of warning. */
+.arc-lost .arc-keep { color: var(--ok); border-color: var(--ok); }
+.arc-lost .arc-keep:hover { background: var(--ok-soft); color: var(--ok); }
+/* What the clipping read means for the analysis, in the clipping card and
+ * again on the bar that files it.
+ *
+ * NOT a `.hint`. A hint is an aside you can finish reading the card
+ * without; this is the outcome, and the whole report on the old panel was
+ * that the outcome was stated nowhere. */
+.arc-drop-say {
+  display: flex; align-items: baseline; gap: var(--sp-8); flex-wrap: wrap;
+  padding: var(--sp-6) var(--sp-8); margin: var(--sp-6) 0;
+  border-radius: var(--r-4); font-size: var(--fs-11); color: var(--text-2);
+  background: var(--err-soft); border: 1px solid var(--err);
+}
+.arc-drop-say strong { color: var(--err); font-size: var(--fs-125); }
+.arc-drop-say.none {
+  background: var(--ok-soft); border-color: var(--ok); color: var(--text-3);
+}
+/* On the filing bar it shares a wrapping flex row with three buttons, and
+ * a sentence with no basis of its own shrinks to a word a line. Given a
+ * share here and nowhere else, because in the clipping card it is the only
+ * thing on its row. */
+.arc-bank .arc-drop-say { flex: 1 1 340px; margin: 0; }
+/* The row the line view pointed at, briefly. */
+.arc-pair.lit { background: var(--accent-soft); }
+/* ==========================================================================
+   Clean and Confirm -- the panel the two verify modes dock under the panes
+   ==========================================================================
+   This was one strip of text, and the report on it was "the GUI here is
+   bare bone". It was: it said which pair you were on, how many channels
+   had clipped and which keys moved you -- all true, none of it actionable,
+   and it never said the one thing that happens next, which is that those
+   channels are dropped from the connectivity analysis.
+
+   So Clean is a column now: the bar, then the sentence about what is
+   excluded, then every flagged channel as a button, then the saturated
+   stretches of whichever one is picked. Confirm still gets only the bar,
+   because it has no decision in it -- it asks whether these are the right
+   pairs, and the answer is on the traces.
+
+   Docked at the bottom like the curation bar, and for its reason: the
+   traces are the evidence, so the panel must never be the thing between
+   you and them. Capped and scrollable because a 64-channel recording can
+   flag thirty channels on one pair and the panel must not eat the pane. */
+.arc-panel {
+  flex: none; display: flex; flex-direction: column;
+  max-height: 46vh; overflow-y: auto;
+  background: var(--bg-2); border-top: 2px solid var(--mode);
+}
+.arc-bar {
+  display: flex; align-items: center; gap: var(--sp-10); flex: none;
+  padding: 5px var(--sp-12);
+  background: var(--bg-2); border-bottom: 1px solid var(--line-soft);
+  font-size: var(--fs-115);
+}
+.arc-bar strong { color: var(--mode); }
+.arc-bar-n {
+  font-variant-numeric: tabular-nums; font-family: var(--mono);
+  color: var(--text-3); font-size: var(--fs-11);
+}
+.arc-bar-pair { color: var(--text); font-weight: 600; }
+.arc-bar-why { color: var(--text-3); font-size: var(--fs-11); }
+.arc-bar-keys {
+  display: inline-flex; align-items: center; gap: var(--sp-4);
+  flex-wrap: wrap; color: var(--text-3); font-size: var(--fs-10);
+}
+/* Keys drawn as keys. The same box the curation categories use for theirs,
+ * because they are the same object and somebody who has learnt one has
+ * learnt the other. */
+.arc-bar kbd {
+  font-family: var(--mono); font-size: var(--fs-9); padding: 0 4px;
+  border-radius: var(--r-3); background: var(--bg-3); color: var(--text-2);
+  border: 1px solid var(--line);
+}
+/* `.spacer` has no rule of its own anywhere -- every use of it in the
+ * application is scoped by a parent. These five were pushing nothing,
+ * which is why the mode bar's keys sat against the pair label instead of
+ * at the right-hand end where they were meant to be. */
+.arc-bar .spacer, .arc-verdict .spacer, .arc-span .spacer,
+.arc-span-acts .spacer, .arc-drop-say .spacer,
+.arc-line-key .spacer { flex: 1; }
+.arc-clean { display: flex; flex-direction: column; }
+/* `* + .section-label` gives every section label 22px of air, which is
+ * right in a card and is a third of this dock. Scoped here and nowhere
+ * else. */
+.arc-clean * + .section-label { margin-top: 0; }
+.arc-clean .section-label { margin-bottom: var(--sp-6); }
+/* The sentence the mode exists to deliver. Full-bleed, in the colour of
+ * the outcome, and it NAMES the channels rather than counting them -- a
+ * count is something somebody then has to go and look up. */
+.arc-verdict {
+  display: flex; align-items: baseline; gap: var(--sp-8); flex-wrap: wrap;
+  padding: var(--sp-8) var(--sp-12);
+  background: var(--err-soft); border-bottom: 1px solid var(--line-soft);
+  font-size: var(--fs-12); color: var(--text-2);
+}
+.arc-verdict strong { color: var(--err); font-size: var(--fs-135); }
+.arc-verdict.none { background: var(--ok-soft); }
+.arc-verdict.none strong { color: var(--ok); }
+.arc-verdict-who, .arc-verdict-kept {
+  font-family: var(--mono); font-size: var(--fs-11);
+}
+.arc-verdict-who { color: var(--err); }
+.arc-verdict.none .arc-verdict-who { color: var(--ok); }
+.arc-verdict-kept { color: var(--ok); }
+.arc-chan-box, .arc-spans, .arc-nothing {
+  padding: var(--sp-8) var(--sp-12);
+}
+.arc-chans { display: flex; flex-wrap: wrap; gap: var(--sp-6); }
+/* One channel, four blocks.
+ *
+ * The blocks are the decision. A cue pair is four windows and a channel can
+ * be ruined in one and perfectly good in the other three -- which on this
+ * data is most of the data -- so a row that could only be kept or dropped
+ * whole threw three quarters of a usable wire away with the quarter that
+ * was bad.
+ *
+ * Fixed four columns rather than auto-fit: the windows are always the same
+ * four in the same order, and a grid that reflowed would put `post` under
+ * `pre` on a narrow pane and stop reading as a timeline. */
+.arc-chrows {
+  display: flex; flex-direction: column; gap: var(--sp-4);
+}
+.arc-chrow {
+  display: grid; grid-template-columns: 116px 1fr; gap: var(--sp-8);
+  align-items: center; padding: 2px var(--sp-6);
+  border-radius: var(--radius-sm); border: 1px solid transparent;
+}
+.arc-chrow.on { border-color: var(--mode); }
+.arc-ch-name {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  background: none; border: 0; padding: 2px var(--sp-4);
+  color: var(--text); font: inherit; font-size: var(--fs-11);
+  cursor: pointer; text-align: left; border-radius: var(--r-4);
+}
+.arc-ch-name:hover { background: var(--bg-hover); }
+.arc-ch-name strong { font-family: var(--mono); }
+.arc-blks {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+.arc-blk {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 5px var(--sp-4); border-radius: var(--r-4);
+  border: 1px solid var(--line); border-bottom: 3px solid var(--line);
+  background: var(--bg); color: var(--text-2);
+  font: inherit; font-size: var(--fs-10); cursor: pointer;
+  transition: background .12s ease, border-color .12s ease;
+}
+.arc-blk:hover { background: var(--bg-hover); }
+/* Going out of the analysis. Said in colour, in a bar, and in the word
+ * underneath -- red and green of the same shape are two states some
+ * readers cannot tell apart, and this is the state the mode is about. */
+.arc-blk.removed {
+  border-bottom-color: var(--err); background: var(--err-soft);
+}
+.arc-blk.removed .arc-blk-s { color: var(--err); }
+/* Staying, and the measurement agreed. */
+.arc-blk.clean { border-bottom-color: var(--ok); }
+.arc-blk.clean .arc-blk-s { color: var(--ok); }
+/* Staying, and the measurement did not agree -- somebody overruled it.
+ * Green would claim the measurement was happy; it was not. */
+.arc-blk.overrule {
+  border-bottom-color: var(--warn); background: var(--warn-soft);
+}
+.arc-blk.overrule .arc-blk-s { color: var(--warn); }
+.arc-blk-w { color: var(--text-3); }
+.arc-blk-s { font-weight: 600; }
+@media (prefers-reduced-motion: reduce) {
+  .arc-blk, .arc-ch-name { transition: none; }
+}
+/* One flagged channel. Red is going, green is staying, and the colour is
+ * carried on a left bar as well as a ground -- a red chip and a green chip
+ * of the same shape are two states some readers cannot tell apart, so the
+ * chip also says "will be removed" or "kept" in words. */
+.arc-ch {
+  display: flex; align-items: baseline; gap: var(--sp-6);
+  padding: 4px var(--sp-8); border-radius: var(--radius-sm);
+  border: 1px solid var(--line); border-left: 3px solid var(--line);
+  background: var(--bg); color: var(--text);
+  font: inherit; font-size: var(--fs-11); cursor: pointer;
+  transition: background .12s ease, border-color .12s ease;
+}
+.arc-ch:hover { background: var(--bg-hover); }
+/* The one the stretch list below is about, and the one the arrow keys
+ * move. Framed in the mode's colour, the same as its row on the canvas. */
+.arc-ch.on { box-shadow: 0 0 0 1px var(--mode); }
+.arc-ch.drop { border-left-color: var(--err); background: var(--err-soft); }
+.arc-ch.drop .arc-ch-say { color: var(--err); }
+.arc-ch.keep { border-left-color: var(--ok); background: var(--ok-soft); }
+.arc-ch.keep .arc-ch-say { color: var(--ok); }
+/* Touched the rail and lost no window. Never going to be dropped, so it is
+ * neither colour -- painting it green would claim a decision nobody made. */
+.arc-ch.grazed { opacity: 0.72; }
+.arc-ch.grazed .arc-ch-say { color: var(--text-3); }
+.arc-ch-n { font-family: var(--mono); font-weight: 600; }
+.arc-ch-g { color: var(--text-2); }
+.arc-ch-w {
+  color: var(--text-3); font-size: var(--fs-10);
+  font-variant-numeric: tabular-nums;
+}
+.arc-ch-say {
+  font-size: var(--fs-9); text-transform: uppercase; letter-spacing: 0.05em;
+}
+.arc-spans { border-top: 1px solid var(--line-soft); }
+.arc-span-rows {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 18vh; overflow-y: auto;
+}
+.arc-span {
+  display: flex; align-items: center; gap: var(--sp-8);
+  padding: 2px var(--sp-6); border-radius: var(--r-4);
+  border: 1px solid transparent; font-size: var(--fs-11);
+}
+.arc-span:nth-child(even) { background: var(--bg-3); }
+.arc-span .num {
+  font-family: var(--mono); font-size: var(--fs-10); color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+/* A stretch somebody drew or widened, dashed here and dashed on the canvas
+ * too, so the row and the trace make the same distinction the bank does
+ * between what was measured and what was decided. */
+.arc-span.hand { border-style: dashed; border-color: var(--accent-line); }
+.arc-span.editing {
+  border-style: solid; border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.arc-span-w {
+  font-family: var(--mono); font-size: var(--fs-10); color: var(--mode);
+}
+.arc-span-acts {
+  display: flex; align-items: center; gap: var(--sp-8);
+  margin-top: var(--sp-6);
+}
+/* `.empty-state` centres its contents and fills the height, which is right
+ * in a pane and wrong in a dock. Same override and same reason as
+ * `.arc-soon` above; nothing else about the empty state changes. */
+.empty-state.arc-nothing {
+  height: auto; align-items: flex-start; text-align: left;
+  gap: var(--sp-4);
+}
+.empty-state.arc-nothing p { max-width: none; }
+
+@media (max-width: 1100px) {
+  .arc-spark { grid-template-columns: 1fr; }
+  .arc-rows { max-height: 32vh; }
+}
+/* Reduced motion: the house pattern is to name the component and stop its
+ * animation, keeping the contrast. The channel chip's colour is the whole
+ * message, so it arrives at once rather than fading in. */
+@media (prefers-reduced-motion: reduce) {
+  .arc-ch { transition: none; }
+}
+/* The filter lock, in the Xplorefinder filter popover. Scoped by its own
+ * prefix rather than leaning on `.mini:disabled`, because the reason it is
+ * disabled is "not built yet" and not "not available here" -- and when it
+ * goes live the `.off` comes off and nothing else about it changes. */
+.arc-lock.off { opacity: 0.45; cursor: default; }
+.arc-lock.off:hover { background: none; }
+/* ---- Coupling ----------------------------------------------------- */
+.arc-cp-pairs {
+  display: flex; flex-wrap: wrap; gap: var(--sp-4);
+  margin: var(--sp-8) 0 var(--sp-6);
+}
+.arc-cp-pairs .mini.on { background: var(--accent-soft); color: var(--accent); }
+.arc-cp-pairs .mini.warn { border-color: var(--warn); }
+.arc-cp-note { margin-bottom: var(--sp-8); }
+.arc-cp-bar { margin: var(--sp-8) 0 var(--sp-12); gap: var(--sp-12); }
+.arc-cp-controls {
+  display: flex; flex-wrap: wrap; gap: var(--sp-12);
+  margin-bottom: var(--sp-10);
+}
+/* The matrix. Sixty-six values drawn as the square they are, because what
+ * somebody reads off it is which corner of the brain lit up, and a list of
+ * sixty-six rows hides exactly that. Both triangles carry the same value --
+ * these measures are symmetric, and a half-empty square reads as missing
+ * data rather than as a convention. */
+.arc-mx {
+  display: grid; gap: 1px; background: var(--line-soft);
+  border: 1px solid var(--line-soft); border-radius: var(--r-4);
+  overflow: hidden; font-variant-numeric: tabular-nums;
+}
+.arc-mx-corner { background: var(--bg-2); }
+.arc-mx-head {
+  background: var(--bg-2); color: var(--text-3);
+  font-size: var(--fs-9); font-family: var(--mono);
+  display: flex; align-items: center; justify-content: center;
+  padding: 2px; overflow: hidden; white-space: nowrap;
+}
+.arc-mx-head.row { justify-content: flex-end; padding-right: var(--sp-6); }
+.arc-mx-cell {
+  background: var(--bg); min-height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-9); font-family: var(--mono); color: var(--text);
+}
+/* A pair that could not be computed is blank, never zero. Zero is a
+ * measurement and this is the absence of one; a heatmap that paints them
+ * the same colour lies about its own coverage. */
+.arc-mx-cell.none {
+  background: repeating-linear-gradient(45deg,
+    var(--bg) 0 3px, var(--bg-2) 3px 6px);
+}
+.arc-mx-cell.self { background: var(--bg-3); }
+
 /* ==========================================================================
    Braces
    ========================================================================== */
@@ -9187,6 +9757,9 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
    every canvas below it, so it is the single biggest jump of the five. */
 #app.mode-strata .mode-banner,
 #app.mode-braces .mode-banner,
+#app.mode-coupling .mode-banner,
+#app.mode-arcconfirm .mode-banner,
+#app.mode-arcclean .mode-banner,
 #app.mode-curate .mode-banner {
   animation: modeBannerIn var(--ease-dur) var(--ease-out) both;
 }
@@ -9200,6 +9773,11 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   #app.mode-settling #xfBody { opacity: 1; transform: none; }
   #app.mode-strata .mode-banner,
   #app.mode-braces .mode-banner,
+  #app.mode-coupling .mode-banner,
+  #app.mode-arcconfirm .mode-banner,
+  #app.mode-arcclean .mode-banner,
+#app.mode-arcconfirm .mode-banner,
+#app.mode-arcclean .mode-banner,
   #app.mode-curate .mode-banner { animation: none; }
 }
 /* ---- Braces: many sets at once -------------------------------------- */

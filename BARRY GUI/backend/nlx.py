@@ -112,6 +112,33 @@ def header_start_time(hdr: dict):
     return None
 
 
+def recording_start_us(folder):
+    """When a recording's clock starts, in microseconds, from one record.
+
+    The .nev and the .ncs files share a clock, so turning an event's absolute
+    timestamp into "seconds from the start of the recording" needs this --
+    and that frame is the only one the Event Bank stores times in.
+
+    `read_ncs` also returns it, but reads the whole channel to do it: these
+    recordings run to 663 MB each, so asking it for one number is minutes of
+    disk per session. This reads the header and the first 1,044-byte record
+    and stops.
+    """
+    files = list_csc_files(folder, even_only=False)
+    if not files:
+        return None
+    _num, path = files[0]
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(HEADER_BYTES)
+            buf = fh.read(RECORD_DTYPE.itemsize)
+    except OSError:
+        return None
+    if len(buf) < RECORD_DTYPE.itemsize:
+        return None
+    return float(np.frombuffer(buf, dtype=RECORD_DTYPE, count=1)["timestamp"][0])
+
+
 def read_ncs(path: str, invert: bool = True, to_microvolts: bool = True):
     """Read one .ncs file.
 

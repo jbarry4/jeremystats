@@ -133,6 +133,11 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
     if (q.tool === 'panorama') { await loadPanorama(); return; }
+    /* The Arc paints from what it is given; nothing it shows comes
+       from the bad-channel query below. */
+    if (ARC.some(function (st) { return st[0] === q.tool; })) {
+      BARRY.arc.paint(); return;
+    }
     /* Kilosort has nothing to do with bad channels.
 
        It used to fall through to the query below, which fetched the whole
@@ -181,7 +186,7 @@ BARRY.views.toolkit = (function () {
       el('div', { class: 'tk-tools' }, [
         el('div', { class: 'section-label',
                     text: 'Bundles' }),
-        bundleCard(),
+        ...BUNDLES.map(bundleCard),
         el('div', { class: 'section-label', text: 'Tools' }),
         toolButton('bad', 'Bad channels',
                    'Export which channels were marked bad, by session, mouse, '
@@ -236,7 +241,11 @@ BARRY.views.toolkit = (function () {
           // Panorama picks its own recording and its own channel, so
           // the bad-channel scope card above would be describing
           // something else.
-          || q.tool === 'panorama')
+          || q.tool === 'panorama'
+          // Every step of The Arc picks its own recordings -- by project,
+          // by rat, by phase -- so the bad-channel scope card would be
+          // answering a question none of them asked.
+          || ARC.some(([id]) => id === q.tool))
            ? [el('div', { class: 'tk-result', id: 'tkResult' })]
            : [scopeCard(),
               el('div', { class: 'tk-result', id: 'tkResult' })]),
@@ -262,21 +271,70 @@ BARRY.views.toolkit = (function () {
     ['dspca', 'X-ray', 'tell them apart'],
   ];
 
-  function bundleCard() {
-    const on = DENTIST.some(([id]) => id === q.tool);
+  /* The Arc -- the DEWEY RATs pipeline, named after Dewey's 1896 paper
+     arguing that stimulus and response are one continuous circuit rather
+     than a chain, which is the claim a connectivity matrix makes.
+
+     Four of the five are not built yet and say so rather than being left
+     out: see `stepOff` below for why an absent step would read worse than a
+     disabled one. The fifth element of a step is the sentence explaining
+     what it is waiting for -- present means "not yet", absent means
+     "ready". */
+  /* Four steps, not five. Finding the pairs and filing them were drawn up
+     as separate steps and are one act: a pair that has been found and not
+     banked is a number on a screen, and every step after this reads the
+     bank. Splitting them would have meant a tool whose only output was
+     another tool's input. */
+  const ARC = [
+    ['spark', 'Spark', 'find and file them', null],
+    ['coupling', 'Coupling', 'correlate them', null],
+    ['circuit', 'Circuit', 'map them',
+     'Waiting on Coupling: a matrix is made of correlations. Phase 6.'],
+    ['drift', 'Drift', 'tell them apart',
+     'Waiting on Circuit: there is nothing to compare until there are two '
+     + 'matrices. Phase 7.'],
+  ];
+
+  /* Every bundle in the ToolKit, in the order they are offered.
+
+     This used to be one array and one hard-coded card, which was right
+     while there was one bundle. `icon` is the tool whose glyph stands for
+     the whole bundle. */
+  const BUNDLES = [
+    { id: 'dentist', name: 'The Dentist', icon: 'incisor', steps: DENTIST },
+    { id: 'arc', name: 'The Arc', icon: 'circuit', steps: ARC },
+  ];
+
+  /* Every tool that belongs to a bundle, so nothing has to list them twice
+     to keep them out of the flat list below. */
+  const BUNDLED = BUNDLES.reduce(
+    (acc, b) => acc.concat(b.steps.map(([id]) => id)), []);
+
+  function bundleCard(bundle) {
+    const steps = bundle.steps;
+    const on = steps.some(([id]) => id === q.tool);
     const box = el('div', { class: 'tk-bundle' + (on ? ' on' : '') });
     box.appendChild(el('div', { class: 'tk-bundle-hd' }, [
-      toolIcon('incisor'),
-      el('strong', { text: 'The Dentist' }),
+      toolIcon(bundle.icon),
+      el('strong', { text: bundle.name }),
       el('span', { class: 'tk-bundle-c',
-                   text: DENTIST.length + ' tools' }),
+                   text: steps.length + ' tools' }),
     ]));
     box.appendChild(el('div', { class: 'tk-steps' },
-      DENTIST.map(([id, name, does], i) => {
+      steps.map(([id, name, does, soon], i) => {
+        /* A step that is not built yet is SHOWN and disabled, with the
+           reason on it -- the same call the banked-set list makes for a set
+           that cannot be read here. Leaving it out instead would say the
+           step does not exist, and somebody arriving at Coupling needs to
+           know both that it is the third of five and that the two before it
+           come first. */
         return el('button', {
-          class: 'tk-step' + (q.tool === id ? ' now' : ''),
-          title: name + ' — ' + does,
-          onclick: () => pickTool(id),
+          class: 'tk-step' + (q.tool === id ? ' now' : '')
+                 + (soon ? ' off' : ''),
+          title: soon ? (name + ' — ' + does + '. ' + soon)
+                      : (name + ' — ' + does),
+          disabled: soon ? 'disabled' : null,
+          onclick: soon ? null : (() => pickTool(id)),
         }, [
           el('span', { class: 'tk-step-i', text: String(i + 1) }),
           /* `strong`, like the flat tool buttons use, because the name of a
@@ -322,6 +380,22 @@ BARRY.views.toolkit = (function () {
     kilosort: 'M2.5 13.5V9M6.5 13.5V5.5M10.5 13.5V7.5M14.5 13.5V3',
     // A stack of frames.
     snapshots: 'M5 2.5h9v9M2.5 5.5h9v9h-9zM5 11l2-2 1.5 1.5L11 8',
+
+    /* The Arc. Each one draws the thing the step is about: a spark jumping
+       a gap, a relay passing it on, two waves running together, a ring of
+       wired nodes, and two rings that no longer agree. */
+    // A gap with a spark across it.
+    spark: 'M3 8h3M10 8h3M6.8 4.5L9 7.2l-1.8 1.1L9.4 11',
+    // A coil and the contact it closes.
+    relay: 'M2 10.5h2l1-4 1.5 4 1.5-4 1.5 4 1-4h2M2.5 13.5h11',
+    // Two waves, in step.
+    coupling: 'M1.5 6c2 0 2-3 4-3s2 3 4 3 2-3 4-3M1.5 12c2 0 2-3 4-3s2 3 4 '
+              + '3 2-3 4-3',
+    // Nodes on a ring, wired across it.
+    circuit: 'M8 1.8a6.2 6.2 0 1 0 0 12.4 6.2 6.2 0 1 0 0-12.4M8 2.2L3.2 '
+             + '11M8 2.2l4.8 8.8M3.2 5.6h9.6',
+    // One ring against another that has moved.
+    drift: 'M6 2.5a5 5 0 1 0 0 10 5 5 0 1 0 0-10M10.5 4.2a5 5 0 1 1 0 9.6',
   };
 
   function toolIcon(id) {
@@ -2828,6 +2902,9 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'cfc') { renderCFC(); return; }
     if (q.tool === 'panorama') { BARRY.panorama.paint(); return; }
     if (q.tool === 'snapshots') { renderSnapshots(); return; }
+    if (ARC.some(function (st) { return st[0] === q.tool; })) {
+      BARRY.arc.paint(); return;
+    }
     const host = $('#tkResult');
     if (!host) return;
     host.style.opacity = '1';
@@ -2998,6 +3075,29 @@ BARRY.views.toolkit = (function () {
        costs one request. */
     loadRegistry: registry,
     tool: () => q.tool, onShow, refresh,
+    /* Open a tool by name, for anything outside this view that knows which
+       one it wants -- the command palette, and a deep link. The same
+       function the bundle steps and the flat buttons call, rather than a
+       second copy: two doors onto one thing is already the rule here, and
+       the third would be the one that drifts. Unknown ids are refused
+       rather than set, because `q.tool` naming a tool that does not exist
+       renders an empty pane with no way back. */
+    pick: (id) => {
+      /* Every bundle step, plus every flat tool -- which is every id with
+         an icon. Not the icon map alone: X-ray has no icon of its own and
+         would have been refused by a guard that only asked that. */
+      if (BUNDLED.indexOf(id) < 0 && !TOOL_ICONS[id]) return false;
+      pickTool(id);
+      return true;
+    },
+    /* Which tools are steps of a bundle, and of which. `_dev/arc.html`
+       checks the bundle renders its steps and keeps them out of the flat
+       list; nothing else should need this. */
+    bundles: () => BUNDLES.map((b) => ({
+      id: b.id, name: b.name,
+      steps: b.steps.map(([id, name, does, soon]) =>
+        ({ id, name, does, soon: soon || null })),
+    })),
     /* Leaving ToolKit stops what ToolKit started.
 
        Two timers ran on regardless: the presence beat above, and whatever

@@ -1630,6 +1630,28 @@ const MODES = {
     what: 'Every stamp drawn where it was and where it goes '
         + '\u00b7 n / p to step \u00b7 [ and ] to move it a millisecond',
   },
+  arcconfirm: {
+    name: 'Confirm cue pairs',
+    /* Worth a `what`: the drawing shows pulses that were DROPPED as well
+       as the ones that were kept, and somebody who did not know that would
+       count the dashed ones and think the pairing had missed them. */
+    what: 'Every pulse drawn, dropped ones dashed · the four analysis '
+        + 'windows shaded · n / p to step',
+  },
+  arcclean: {
+    name: 'Clean cue pairs',
+    what: 'Saturated stretches marked on the channels that saturated '
+        + '· nothing here is saved until you file the pairs',
+  },
+  coupling: {
+    name: 'Coupling',
+    /* Worth a `what` for the same reason Braid's is: this mode computes and
+       shows, and writes nothing. A saved connectivity matrix is Circuit's
+       job, one step later, and somebody who thought this one was banking
+       would go looking afterwards for numbers that were never kept. */
+    what: 'Looking only · nothing here is saved · pick two '
+        + 'regions and a boundary',
+  },
   curate: {
     name: 'DS curation',
     /* No `what`. It said "Y keeps, N rejects", and neither key does

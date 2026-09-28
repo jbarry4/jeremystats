@@ -35,7 +35,7 @@ SCHEMA = 1
 # attribute name is allowed, and unknown ones behave identically.
 SUGGESTED = [
     {"id": "group", "name": "Group", "note": "PTEN, CTL, ...",
-     "common": ["PTEN", "CTL", "KCNT1", "WT"]},
+     "common": ["PTEN", "CTL", "KCNT1", "WT", "DEWEY"]},
     {"id": "subgroup", "name": "Subgroup", "note": "IED+, IED-, ...",
      "common": ["IED+", "IED-", "CTL"]},
     {"id": "genotype", "name": "Genotype", "note": "", "common": []},

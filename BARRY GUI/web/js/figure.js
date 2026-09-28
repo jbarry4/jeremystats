@@ -200,16 +200,25 @@ BARRY.figure = (function () {
   function probeColumns(p) {
     const def = (XF.probes || []).find(
       (x) => x.id === (p.probe || 'h10d'));
-    const all = (def && def.columns) || [];
+    /* Columns or regions -- a montage groups its channels without having
+       any lines of contacts, and reading only `columns` made the DEWEY
+       template look like it had no groups at all. */
+    const all = (def && (def.columns || def.regions)) || [];
     if (!all.length) return el('div');
 
     /* The probe's own order, which is what an absent `probe_columns`
        means. Back shank left-to-right, then front: the order the renderer
        lays them out in, so the chips read like the picture. */
     const rank = { back: 0, front: 1 };
-    const order = all.slice().sort(
-      (a, b) => (rank[a.shank] - rank[b.shank])
-        || ((a.x_um || 0) - (b.x_um || 0)));
+    /* Regions have no shank and no x, and their declared order IS the
+       order -- the twelve are listed the way the anatomy key draws them.
+       Sorting on absent fields gave NaN, which a comparator reads as "no
+       opinion": right by luck, and only until somebody trusted it. */
+    const order = (all[0] && all[0].shank === undefined)
+      ? all.slice()
+      : all.slice().sort(
+        (a, b) => (rank[a.shank] - rank[b.shank])
+          || ((a.x_um || 0) - (b.x_um || 0)));
     const ids = order.map((c) => c.id);
     const chosen = (p.probe_columns && p.probe_columns.length)
       ? p.probe_columns.slice() : ids.slice();

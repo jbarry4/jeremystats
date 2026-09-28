@@ -22,6 +22,7 @@ Reads only. Writes nothing, starts no server, touches no data.
 import base64
 import os
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.dirname(HERE)
@@ -100,6 +101,49 @@ def main():
         hs[m] = toolresults.params_hash(dict(base, method=m), keys)
     ck("each method is its own record",
        len(set(hs.values())) == len(dspca.METHODS), hs)
+
+    print("")
+    print("STOP HAS TO BE ABLE TO LAND")
+    print("-" * 66)
+    import inspect
+    sig = inspect.signature(dspca.read)
+    ck("the read can be asked to stop without owning the progress bar",
+       "stop" in sig.parameters,
+       "read(%s)" % ", ".join(sig.parameters))
+    src = inspect.getsource(dspca.read)
+    ck("and it asks, once per window, before doing the window's work",
+       "if stop:" in src and src.index("if stop:") < src.index("_read_span"),
+       "the stop check is not in the window loop")
+
+    # The mechanism underneath it: a job whose work loop checks must end
+    # CANCELED rather than failed, and the work must see the exception.
+    from backend import cfc as cfcmod
+    seen = {}
+
+    def work(job):
+        seen["ran"] = True
+        try:
+            for _ in range(100000):
+                job.check()
+                time.sleep(0.001)
+        except cfcmod.Canceled:
+            seen["canceled"] = True
+            raise
+        return {}
+
+    job = cfcmod.start({}, [("x", 1)], work, 1.0)
+    for _ in range(200):
+        if seen.get("ran"):
+            break
+        time.sleep(0.01)
+    job.cancel()
+    for _ in range(300):
+        if job.status not in ("running", "queued", "starting"):
+            break
+        time.sleep(0.01)
+    ck("cancelling a running job reaches the work", bool(seen.get("canceled")))
+    ck("and the job ends as canceled, not as failed",
+       job.status == "canceled", str(job.status))
 
     print("")
     print("THE DEFAULT IS THE ONE THAT WAS ASKED FOR")

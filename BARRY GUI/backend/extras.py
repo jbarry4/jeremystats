@@ -18,7 +18,17 @@ import time
 
 import numpy as np
 
-from . import continuity, csc, ids, nlx, panorama, spectrum
+from . import continuity, csc, ids, nlx, spectrum, vaccio
+
+# `panorama` is imported where it is used, not here.
+#
+# It pulls in `analysis`, which imports matplotlib at module scope -- and
+# `overview` is the strip that appears the moment a recording opens, on every
+# recording, while `panorama` is reached by exactly one function in this file.
+# A module-level import meant that a Python without matplotlib could not draw
+# an amplitude strip, which is what happened the first time a recording was
+# read off the cluster: the analysis environment there has numpy, scipy and
+# fooof, and `extras` would not import at all.
 
 
 # ==========================================================================
@@ -421,6 +431,10 @@ def overview(session, channel=None, bins=OVERVIEW_BINS):
     Reads one channel at a coarse stride: a two-hour recording is summarized
     from a few megabytes, because .ncs records are seekable by index.
     """
+    # On the cluster, read on the cluster. A few megabytes of coarse stride
+    # is a few megabytes over a wire, and the answer is 900 numbers.
+    if session.get("source") == "vacc":
+        return vaccio.overview(session, channel=channel, bins=bins)
     chans = session.get("channels") or []
     if not chans:
         return {"ok": False, "error": "No channels."}
@@ -549,6 +563,8 @@ def _bandgram(session, ch, bins):
     factor = max(1, int(fs // want_fs)) if want_fs < fs else 1
     out_fs = fs / factor
 
+    from . import panorama
+
     # At least two columns per strip bin, so a bin is an average and not one
     # periodogram -- but never finer than a quarter second, and never more
     # columns than BG_MAX_COLUMNS however long the recording is.
@@ -649,6 +665,11 @@ def band_profile(session, channel=None, bins=OVERVIEW_BINS,
     `ratio` is the classic hippocampal theta index. Donoghue et al. (2020) is
     the argument for not offering only the first.
     """
+    # The expensive one: this reads the channel right through at 250 Hz, so
+    # on a cluster recording it is the one that most needs to happen there.
+    if session.get("source") == "vacc":
+        return vaccio.band_profile(session, channel=channel, bins=bins,
+                                   lo=lo, hi=hi, measure=measure)
     chans = session.get("channels") or []
     if not chans:
         return {"ok": False, "error": "No channels."}

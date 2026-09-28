@@ -183,6 +183,21 @@ BARRY.views.sessions = (function () {
       _remembered: true,
       _reachable: !!r.reachable,
       identity: {
+        /* The permanent id, and the keys derived from it.
+         *
+         * Without these the server had nothing to match a write against:
+         * `get_session` looks for a gid, then a key, then a loose key, and
+         * this identity carried none of the three -- so marking a recording
+         * "good" did not flag it, it MINTED A NEW RECORD holding nothing but
+         * the flag. Five of those existed by the time anybody noticed,
+         * because the flag appears on the card instantly (it is drawn from
+         * the local guess) and only stops existing on a refresh.
+         *
+         * Every write from this view goes through here: the quality flag,
+         * the note, the project. */
+        gid: r.gid,
+        key: r.key || null,
+        loose_key: r.loose_key || null,
         group: r.project || 'Unfiled',
         mouse: r.mouse,
         session: r.session,
@@ -190,6 +205,16 @@ BARRY.views.sessions = (function () {
         label: r.label,
         mouse_folder: '',
         confidence: 'high',
+        /* What a DEWEY recording is called out loud. The session number
+           there is a band nobody says -- Precon1 is s1, Con1 is s11 -- and
+           three recordings share it, so a card showing only "s1" showed
+           the same thing three times with no way to tell which was the
+           91-minute cued run and which were the 6-minute grounding ones.
+           Null on every other project, and the card leaves it out. */
+        phase: r.phase || null,
+        phase_n: r.phase_n != null ? r.phase_n : null,
+        run: r.run || null,
+        repeat: r.repeat || null,
       },
       channels: r.n_channels || 0,
       fs: r.fs || null,
@@ -789,10 +814,32 @@ BARRY.views.sessions = (function () {
       class: 'pill' + (groupFilter ? '' : ' active'), text: 'All cohorts',
       onclick: () => { groupFilter = ''; renderGroupFilter(); renderTree(); },
     }));
+    /* Counted over what this mode shows, not over the catalogue.
+
+       `tree` is the scan's own tally and is the right source for the ORDER
+       and for a cohort that has nothing in it here -- a cohort that
+       disappears from the row when you switch mode is one you cannot switch
+       back to. The number beside it is recounted. */
+    const here = {};
+    for (const s of sessions) {
+      if (!modeAllows(s)) continue;
+      const g = s.identity.group || 'Ungrouped';
+      here[g] = (here[g] || 0) + 1;
+    }
     for (const g of tree) {
+      /* Zero is the answer, not a missing one.
+         `here` only has a key for a cohort that has something in this
+         view, so falling back to `g.n` -- the catalogue's tally -- meant a
+         cohort with nothing on the cluster showed its FULL count. Measured:
+         the pills summed to 860 over a list of 109, which is the exact
+         fault this recount was added to fix, reintroduced by the fallback
+         meant to be careful. */
+      const n = here[g.group] || 0;
       host.appendChild(el('button', {
-        class: 'pill' + (groupFilter === g.group ? ' active' : ''),
-        text: g.group + ' (' + g.n + ')',
+        class: 'pill' + (groupFilter === g.group ? ' active' : '')
+             + (n ? '' : ' empty'),
+        title: n ? null : 'Nothing in this cohort is in this view',
+        text: g.group + ' (' + n + ')',
         onclick: () => { groupFilter = g.group; renderGroupFilter(); renderTree(); },
       }));
     }
@@ -808,6 +855,25 @@ BARRY.views.sessions = (function () {
     return !s._remembered || s._seenHere !== false;
   }
 
+  /* What the MODE alone lets through, with no filter on top.
+
+     Its own function for the reason `inLocal` above is: the list and the
+     counts above it both need it, and the last time a rule like this was
+     written out twice the view said "188 of 185".
+
+     The cohort pills are the second reader. They counted the whole
+     catalogue whatever the mode was, so the cluster view offered
+     "PTEN (381)" over a list of 109 and clicking it narrowed to a handful
+     -- a count describing something other than the list underneath it,
+     which is the complaint the scope chip in housekeeping.js already
+     answers in the same words. The drive view had the quieter half of the
+     same fault and gets the same fix. */
+  function modeAllows(s) {
+    if (mode === 'scan') return inLocal(s);
+    if (mode === 'vacc') return !!(BARRY.vacc && BARRY.vacc.canRead(s));
+    return true;
+  }
+
   function matches(s) {
     /* "Scan a drive" is this computer's own view: what it has been exposed
        to, read off the registry on disk with no database involved.
@@ -815,8 +881,14 @@ BARRY.views.sessions = (function () {
        any machine has met, which is what travels through Supabase.
 
        A recording found by the scan running now counts as met whether or
-       not a sighting has been filed yet. */
-    if (mode === 'scan' && !inLocal(s)) return false;
+       not a sighting has been filed yet.
+
+       And "Everything VACC knows" is the third question: which of them the
+       cluster can read. Narrowed, not a different list -- the same rows,
+       the same cards, the same filters on top. All three live in
+       `modeAllows`, because the cohort counts above the list have to agree
+       with it. */
+    if (!modeAllows(s)) return false;
     if (groupFilter && (s.identity.group || 'Ungrouped') !== groupFilter) return false;
     if (flags.has('video') && !s.has_video) return false;
     if (flags.has('converted') && !s.converted) return false;
@@ -1276,14 +1348,29 @@ BARRY.views.sessions = (function () {
       + (mode === 'scan' ? sessions.filter(inLocal).length : sessions.length)
       + (mode === 'scan'
           ? ' on this computer  ·  read from the registry on this disk'
-          : ' in the shared catalogue  ·  every machine, kept in step '
-            + 'through Supabase')
+          : mode === 'vacc'
+            /* Not "of 916, filtered". The rest are not hidden by something
+               you can switch off -- the cluster has no path to them. The
+               housekeeping chip says it the same way and for the same
+               complaint: a count that describes the whole catalogue, in a
+               panel promising only part of it, reads as "this is showing
+               everything". */
+            ? ' in the catalogue can be read by VACC  ·  on a share it '
+              + 'mounts, or already copied to its scratch'
+            : ' in the shared catalogue  ·  every machine, kept in step '
+              + 'through Supabase')
       /* In the shared view, how the list divides between what this scan
          just found and what was already on record. Left out of the local
          view, where it said "185 of 185 ... 479 remembered" -- the 479
          being the whole catalogue, most of which this view is
          deliberately not showing. */
-      + (mode !== 'scan' && nKnown
+      /* Only where it is the answer to something. This divides the SHARED
+         catalogue into what this scan turned up and what was already on
+         record, which is a sentence about Everything Jarvis knows. On the
+         cluster view it read "0 found by this scan, 916 remembered" beside
+         a count of 109 -- three numbers, none of which was about the list
+         underneath it. */
+      + (mode === 'housekeeping' && nKnown
           ? '  ·  ' + nFound + ' found by this scan, '
             + nKnown + ' remembered'
           : '')
@@ -1295,11 +1382,26 @@ BARRY.views.sessions = (function () {
     renderPickBar();
 
     if (!visible.length) {
+      /* Three different emptinesses, and only one of them is a filter.
+
+         The cluster one is the addition: the catalogue can be full, no
+         filter on, and this still empty -- because nothing in it has been
+         connected to a copy on the cluster yet. "Nothing matches those
+         filters" would send somebody looking for a filter to turn off that
+         does not exist, so it says the thing that actually fills this
+         list. */
+      const noneOnVacc = mode === 'vacc' && sessions.length
+        && !sessions.some((x) => BARRY.vacc && BARRY.vacc.canRead(x));
       host.appendChild(el('div', { class: 'tree-empty',
-        text: sessions.length
-          ? 'Nothing matches those filters.'
-          : 'Nothing registered yet. Scan a data root and everything under '
-            + 'it will be catalogued, whether or not you open it.' }));
+        text: noneOnVacc
+          ? 'Nothing in the catalogue has a copy on the cluster yet. Open '
+            + 'Directories, walk to a folder on VACC and scan it — that '
+            + 'tells the recordings Jarvis already knows that they also '
+            + 'live there. It creates nothing.'
+          : sessions.length
+            ? 'Nothing matches those filters.'
+            : 'Nothing registered yet. Scan a data root and everything under '
+              + 'it will be catalogued, whether or not you open it.' }));
       return;
     }
 
@@ -1353,6 +1455,29 @@ BARRY.views.sessions = (function () {
     }
   }
 
+  /* "Precon1 SPC", or nothing at all.
+   *
+   * Three DEWEY recordings share a mouse and a session number because the
+   * lab calls the whole day Precon1, so the number alone cannot tell them
+   * apart -- and the difference between them is the difference between a
+   * 91-minute cued recording and a 6-minute grounding one. The run is the
+   * half that matters most, so it is the half that is emphasised.
+   *
+   * Returns null on every recording that has no phase, which is every
+   * project but this one, and `el` drops a null child. */
+  function phaseChip(i) {
+    if (!i || !i.phase) return null;
+    const phase = i.phase + (i.phase_n != null ? i.phase_n : '')
+                + (i.repeat || '');
+    return el('span', {
+      class: 'sc-phase',
+      title: phase + (i.run ? ' · ' + i.run + ' run' : ''),
+    }, [
+      el('span', { text: phase }),
+      i.run ? el('b', { text: i.run }) : null,
+    ].filter(Boolean));
+  }
+
   function sessionCard(s) {
     const i = s.identity;
     const badN = s.stored ? (s.stored.bad_channels || []).length : 0;
@@ -1367,6 +1492,16 @@ BARRY.views.sessions = (function () {
         : s.path,
       onclick: (e) => {
         if (!s.path) {
+          /* No path here does not mean nowhere.
+             The cluster reads plenty of recordings this computer has never
+             had a mount for, and the answer to a click on one of those is
+             to open it off the cluster rather than to say that it cannot be
+             opened. `BARRY.vacc.open` is the same call the catalogue's
+             Open uses. */
+          if (BARRY.vacc && BARRY.vacc.canRead(s)) {
+            BARRY.vacc.open(s, { host: $('#sessTree') });
+            return;
+          }
           toast('None of this recording\u2019s paths are on this machine.',
                 'err', 6000);
           return;
@@ -1381,14 +1516,26 @@ BARRY.views.sessions = (function () {
         BARRY.views.xplore.open(s.path);
       },
     }, [
-      el('button', {
+      /* No selection for a recording that is only on the cluster.
+
+         The selection is keyed on a path on this machine, and everything
+         reached from it -- the health sweep, Compare, the bulk open -- reads
+         files here. A checkbox that adds a row to a queue nothing in the
+         queue can act on is worse than no checkbox. */
+      s.path ? el('button', {
         class: 'sc-pick' + (isPicked ? ' on' : ''),
         title: isPicked ? 'Remove from selection' : 'Add to selection',
         text: isPicked ? '\u2713' : '+',
         onclick: (e) => { e.stopPropagation(); togglePick(s.path); },
-      }),
+      }) : null,
       el('div', { class: 'sc-top' }, [
         el('span', { class: 'sc-name', text: 's' + (i.session != null ? i.session : '?') }),
+        /* The phase and the run, where the recording has them. Beside the
+           session number rather than instead of it: the number is what
+           every other view, the shard name and the Data Bank path use, and
+           "Precon1 SPC" is what a person says. Together they read as one
+           label and neither has to be looked up. */
+        phaseChip(i),
         el('span', { class: 'sc-sub',
                      text: i.start ? BARRY.when(i.start, 'second') : s.name }),
       ]),
@@ -2619,6 +2766,47 @@ BARRY.views.sessions = (function () {
     BARRY.activity.log('sessions.manifest', { n: rows.length });
   }
 
+  /* ==================================================================
+     The card list, wherever it is being shown
+     ==================================================================
+     ONE list, moved between pads, rather than a second set of ids.
+
+     The filters and the cards are markup in `index.html`, and `.pad` is
+     `flex: 1` -- so two visible pads split the height between them and the
+     card list cannot simply be shown alongside the cluster pad. The choice
+     was a second `#sessFilters` and a second `#sessTree` under different
+     ids, which means a second search box, a second filter bar and a
+     `renderTree` that has to know which one it is writing to -- or the same
+     two nodes, moved.
+
+     Moved. `housekeeping.catalogue(scope)` makes the same call for the tree
+     and gives the same reason: two copies of a list is two copies to keep
+     in step, and they drift. Moving a node keeps its listeners, so the
+     search box being typed into on the cluster view is the one that was
+     wired at boot, with the one `query` behind it.
+
+     `parkList` is the safety. `paintVacc` rebuilds `#vaccBody` with
+     `innerHTML = ''`, and that on a host holding these would not move them,
+     it would destroy them -- so they are put back first, every time, before
+     anything clears. */
+  function parkList() {
+    const pad = $('#sessScanPad'), f = $('#sessFilters'), t = $('#sessTree');
+    if (!pad || !f || !t) return;
+    if (f.parentNode !== pad) pad.appendChild(f);
+    if (t.parentNode !== pad) pad.appendChild(t);
+    const bar = $('#sessPickBar');
+    if (bar && bar.parentNode !== pad) pad.insertBefore(bar, t);
+  }
+
+  function listInto(host) {
+    const f = $('#sessFilters'), t = $('#sessTree');
+    if (f) host.appendChild(f);
+    if (t) host.appendChild(t);
+    // The selection bar sits above the cards and has to come along.
+    const bar = $('#sessPickBar');
+    if (bar && t) host.insertBefore(bar, t);
+  }
+
   function togglePick(path) {
     if (picked.has(path)) picked.delete(path); else picked.add(path);
     renderTree();
@@ -2627,9 +2815,14 @@ BARRY.views.sessions = (function () {
   function renderPickBar() {
     let bar = $('#sessPickBar');
     if (!picked.size) { if (bar) bar.remove(); return; }
-    if (!bar) {
-      bar = el('div', { class: 'pick-bar', id: 'sessPickBar' });
-      $('#sessTree').parentNode.insertBefore(bar, $('#sessTree'));
+    const tree = $('#sessTree');
+    if (!bar) bar = el('div', { class: 'pick-bar', id: 'sessPickBar' });
+    /* Placed every time, not only when it is built. The list moves between
+       pads -- see `parkList` -- and a bar that was only ever inserted once
+       would stay behind in the pad the cards have left, floating above
+       nothing. */
+    if (tree && bar.parentNode !== tree.parentNode) {
+      tree.parentNode.insertBefore(bar, tree);
     }
     bar.innerHTML = '';
     bar.appendChild(el('span', { class: 'stat-chip good',
@@ -2807,6 +3000,9 @@ BARRY.views.sessions = (function () {
 
   function setMode(next) {
     mode = next;
+    // The cards belong to whichever pad is about to be on screen, and
+    // `paintVacc` moves them here itself. Everything else gets them back.
+    if (mode !== 'vacc') parkList();
     const scan = $('#sessScanPad'), hk = $('#hkBody'), vc = $('#vaccBody');
     if (scan) scan.classList.toggle('hidden', mode !== 'scan');
     if (hk) hk.classList.toggle('hidden', mode !== 'housekeeping');
@@ -2822,6 +3018,12 @@ BARRY.views.sessions = (function () {
        The line above the list is written by `renderTree`, which is also
        what counts the cards. */
     if (sessions.length) {
+      /* The cohort pills too, not only the filter bar. They count what the
+         MODE shows -- see `modeAllows` -- so a mode change that redrew the
+         list and left the pills alone left "PTEN (381)" sitting above a
+         list of 109. They were built once by `loadKnown` and redrawn only
+         when one of them was clicked. */
+      renderGroupFilter();
       renderFilterBar();
       renderTree();
     }
@@ -2831,7 +3033,7 @@ BARRY.views.sessions = (function () {
     if (mode === 'housekeeping' && BARRY.views.housekeeping) {
       BARRY.views.housekeeping.onShow();
     }
-    if (mode === 'vacc') paintVacc();
+    if (mode === 'vacc') { loadKnown(); paintVacc(); }
     BARRY.activity.log('sessions.mode', { mode });
   }
 
@@ -2864,11 +3066,16 @@ BARRY.views.sessions = (function () {
      One request at a time, and the draw checks before starting another. */
   let vLoading = false;
   let vCountsLoading = false;
-  /* Which half of the cluster view is showing. The catalogue first, because
-     it is the one that answers the ordinary question -- the directory walk
-     is how a recording gets connected to its copy on the cluster, which is
-     a thing you do once. */
-  let vaccTab = 'catalogue';
+  /* Which of the three the cluster view is showing.
+
+     The cards first. It is the same list, the same cards and the same
+     filters as Scan a drive, and reading a shelf of cards is how anybody
+     actually looks for a recording -- the difference is only which question
+     narrowed it. The tree is the second view of it, for when the question
+     is about an animal rather than about a recording; the directory walk is
+     third, because connecting a recording to its copy on the cluster is a
+     thing you do once. */
+  let vaccTab = 'cards';
 
   function vaccShowMode() {
     const btn = $('#sessModeVacc');
@@ -2916,6 +3123,9 @@ BARRY.views.sessions = (function () {
   function paintVacc() {
     const host = $('#vaccBody');
     if (!host || mode !== 'vacc') return;
+    // Before the clear, always. These are the real nodes, not copies --
+    // `innerHTML = ''` on a host holding them destroys them.
+    parkList();
     host.innerHTML = '';
     const st = (BARRY.vacc && BARRY.vacc.last) || {};
 
@@ -2960,9 +3170,16 @@ BARRY.views.sessions = (function () {
        somebody has already scanned. */
     host.appendChild(el('div', { class: 'seg vacc-seg' }, [
       el('button', {
+        class: vaccTab === 'cards' ? 'active' : '',
+        text: 'Recordings',
+        title: 'Every recording the cluster can read, as cards — the same '
+             + 'list Scan a drive draws, asked a different question',
+        onclick: () => { vaccTab = 'cards'; paintVacc(); },
+      }),
+      el('button', {
         class: vaccTab === 'catalogue' ? 'active' : '',
         text: 'Catalogue',
-        title: 'Every recording the cluster can read, by project and mouse',
+        title: 'The same recordings, by project and mouse',
         onclick: () => { vaccTab = 'catalogue'; paintVacc(); },
       }),
       el('button', {
@@ -2973,6 +3190,36 @@ BARRY.views.sessions = (function () {
         onclick: () => { vaccTab = 'browse'; paintVacc(); },
       }),
     ]));
+
+    /* The cards. The same two nodes Scan a drive uses, moved here -- see
+       `parkList` for why it is a move and not a second list.
+
+       So every filter, the search box, the group pills, the probe chip, the
+       health pill and the note all work exactly as they do there, and a
+       recording that is only on the cluster opens off the cluster when it
+       is clicked. */
+    if (vaccTab === 'cards') {
+      const cards = el('div', { class: 'card' });
+      cards.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+        text: 'The same cards as Scan a drive, narrowed to the recordings '
+            + 'VACC can read. Click one to open it — off a drive if this '
+            + 'computer has one, off the cluster if it does not. A '
+            + 'recording nobody has established an answer for is in neither '
+            + 'this list nor its opposite; scan a folder under Directories '
+            + 'and it will appear here.' }));
+      host.appendChild(cards);
+      listInto(cards);
+      /* The registry, if nobody has read it yet. `loadKnown` returns
+         immediately when it has, and draws the cards itself when it has
+         not -- into `#sessTree`, which is now in this pad. */
+      loadKnown();
+      if (sessions.length) {
+        renderGroupFilter();
+        renderFilterBar();
+        renderTree();
+      }
+      return;
+    }
 
     if (vaccTab === 'catalogue') {
       const cat = el('div', { class: 'card' });
@@ -3225,12 +3472,28 @@ BARRY.views.sessions = (function () {
        getting to it through a scan and a health sweep is a test of the
        scan, and what wants looking at is the panel. */
     _showContinuity: (sess, report) => showContinuity(sess, report),
+    /* Which of the three sources is showing. Exported for the command
+       palette, which can send somebody to the cluster catalogue by name --
+       "VACC" is what a person half-remembers, not "the third segment of the
+       switch above the list". */
+    setMode: (next) => setMode(next),
     onShow: () => {
       /* The third source appears only when there is a cluster set up. The
          status is already in hand from boot, so this costs nothing; the
          mode is a view of the same catalogue, not a different one. */
       vaccShowMode();
-      if (mode === 'vacc') { paintVacc(); return; }
+      if (mode === 'vacc') {
+        /* The cluster view draws the same cards as the drive view, so it
+           needs the same two reads -- the registry, and what every
+           continuity check has found. Neither was asked for here before,
+           because this mode used to draw only a tree of its own. */
+        loadKnown();
+        loadContinuity().then(() => {
+          if (continuity && sessions.length && mode === 'vacc') renderTree();
+        });
+        paintVacc();
+        return;
+      }
       if (mode === 'housekeeping' && BARRY.views.housekeeping) {
         BARRY.views.housekeeping.onShow();
       } else {

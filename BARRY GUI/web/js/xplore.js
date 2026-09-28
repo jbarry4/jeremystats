@@ -44,6 +44,14 @@ BARRY.views.xplore = (function () {
 
   const DEFAULT_PANEL = 'traces';
 
+  /* The most panes a probe layout may open.
+   *
+   * Set by the widest montage in the lab: the DEWEY headstage's twelve
+   * regions. It was six -- an H10-D's columns -- and a twelve-region
+   * template laid out against that cap came up showing the first six and
+   * dropping the rest without a word. */
+  const MAX_PANES = 12;
+
   /* ==================================================================
      Session lifecycle
      ================================================================== */
@@ -170,6 +178,17 @@ BARRY.views.xplore = (function () {
     $('#paneGrid').classList.remove('hidden');
 
     const notes = [];
+    /* Said on the way in, not discovered from a slow scrub.
+
+       'staged' and 'native' are different promises and the weaker one is
+       named: a scratch copy is purged without notice, so a recording that
+       opened this morning can stop opening this afternoon with nothing
+       having gone wrong. */
+    if (info.source === 'vacc') {
+      notes.push(info.remote_state === 'staged'
+                 ? 'read off a copy in VACC scratch'
+                 : 'read off the cluster');
+    }
     if (sess.bad.size) notes.push(sess.bad.size + ' bad channel(s)');
     if (Object.keys(info.view_state || {}).length) notes.push('view restored');
     toast('Opened ' + (sess.identity.label || info.name)
@@ -376,10 +395,27 @@ BARRY.views.xplore = (function () {
      columns rather than a wrong mapping. */
   function probeColumns(sess) {
     const def = probeDef(sess && sess.probe);
-    if (!def || !def.columns) return null;
+    /* A template groups its channels one of two ways, and both end up here
+       as the same shape.
+     *
+     * `columns` is a line of contacts -- an H10-D's six, a dual implant's
+     * two -- and the grouping exists so a CSD runs down one line at a time.
+     *
+     * `regions` is a montage with no line at all: the DEWEY headstage puts
+     * two to four wires in each of twelve structures, and channels 4 and 5
+     * are on opposite sides of the brain. The grouping exists so a pane can
+     * be one region.
+     *
+     * They are read together because everything downstream wants the same
+     * answer -- which channel indices belong together, and what to call the
+     * group. Only asking for `columns` is what made picking the DEWEY probe
+     * fail with "that probe has no column map to lay out", which was true
+     * and not the point. */
+    const groups = (def && (def.columns || def.regions)) || null;
+    if (!groups || !groups.length) return null;
     const byNumber = new Map();
     (sess.info.channels || []).forEach((c, i) => byNumber.set(Number(c.number), i));
-    return def.columns.map((col) => {
+    return groups.map((col) => {
       const indices = [];
       const csc = [];
       col.csc.forEach((num) => {
@@ -388,6 +424,10 @@ BARRY.views.xplore = (function () {
       });
       return Object.assign({}, col, {
         indices, csc_present: csc, missing: col.csc.length - indices.length,
+        /* A region has no shank and no depth, and the layout sorts on
+           those. Naming it here keeps the sort from comparing undefined. */
+        shank: col.shank || col.hemisphere || '',
+        label: col.label || col.region || col.id,
       });
     });
   }
@@ -404,6 +444,29 @@ BARRY.views.xplore = (function () {
     if (mine(f)) return f.panel;
     const any = XF.panes.find(mine);
     return (any && any.panel) || DEFAULT_PANEL;
+  }
+
+  /* Gain belongs to the RECORDING, not to a pane.
+   *
+   * Every pane showing one recording draws the same traces at the same
+   * scale, so turning the gain up has to redraw all of them -- and it did
+   * not. `sess.gain` was set, which is right, and then a single
+   * `drawPane(index)` redrew the pane whose control had been touched. On a
+   * single-pane H3 that is every pane there is and the bug is invisible;
+   * on a probe layout it meant the gain control changed one pane of six
+   * and the other five kept a canvas drawn at the old scale until
+   * something unrelated redrew them.
+   *
+   * No refetch: gain is applied at draw time (`lane * .44 * sess.gain`),
+   * so the samples already in hand are the right samples.
+   */
+  function setGain(sess, value) {
+    if (!sess) return;
+    sess.gain = clamp(isFinite(value) ? value : 1, .02, 200);
+    XF.panes.forEach((p, i) => {
+      if (p && p.sessionId === sess.id) { drawPane(i); refreshControls(i); }
+    });
+    queueSaveState(sess);
   }
 
   function layoutProbe(sess, panel) {
@@ -429,7 +492,10 @@ BARRY.views.xplore = (function () {
     const cols = probeColumns(sess);
     const def = probeDef(sess.probe);
     if (!cols || !cols.length) {
-      toast('That probe has no column map to lay out.', 'err');
+      toast('The ' + ((def && def.name) || sess.probe) + ' template does '
+            + 'not group its channels, so there is nothing to spread '
+            + 'across panes. A single linear array is already one line.',
+            'err', 7000);
       return false;
     }
     const short = cols.filter((c) => !c.indices.length);
@@ -970,9 +1036,25 @@ BARRY.views.xplore = (function () {
     if (XF.order.length) host.appendChild(collapseArrow('tabs'));
     for (const id of XF.order) {
       const s = XF.sessions[id];
+      /* A recording read off the cluster is marked on its tab.
+
+         Because it is not a property of the recording, it is a property of
+         this window's connection to it -- the same recording opens off a
+         drive when the drive is there -- and somebody reading a trace is
+         owed the difference. A window that takes a moment to arrive is a
+         network, not a bug; a recording that stops answering when the VPN
+         drops has an explanation sitting on its tab. */
+      const remote = s.info && s.info.source === 'vacc' ? s.info : null;
       host.appendChild(el('div', {
         class: 'xf-tab' + (id === XF.active ? ' active' : ''),
-        title: s.path + '\n\nDrag onto a pane to show it there.',
+        title: (remote
+                ? ('Read off the cluster — '
+                   + (remote.remote_state === 'staged'
+                      ? 'a copy in VACC scratch'
+                      : 'a share VACC mounts')
+                   + '\n' + (remote.remote || ''))
+                : s.path)
+               + '\n\nDrag onto a pane to show it there.',
         draggable: 'true',
         ondragstart: (e) => {
           e.dataTransfer.setData('text/barry-session', id);
@@ -984,6 +1066,22 @@ BARRY.views.xplore = (function () {
       }, [
         el('span', { class: 'dot', style: 'background:' + s.color }),
         el('span', { class: 'nm', text: s.identity.label || s.info.name }),
+        remote ? el('span', {
+          /* The chip Sessions already draws, not one of this view's own.
+
+             `.flagchip.vacc` carries the rule that green is only ever
+             "reads it in place" and a scratch copy takes the warning
+             colour, and a second chip meaning the same thing would
+             eventually disagree with it about which is which.
+
+             One word where the card says two. A session card says "VACC
+             copy" because it has a row to itself; this sits in a 230px tab
+             beside a name that is already competing for the room, and the
+             longer word would take that room from the name. Which of the
+             two it is, in words, is in the tab's title. */
+          class: 'flagchip vacc ' + (remote.remote_state || 'native'),
+          text: 'VACC',
+        }) : null,
         el('span', {
           class: 'x', text: '×', title: 'Close',
           onclick: (e) => { e.stopPropagation(); closeSession(id); },
@@ -3180,13 +3278,13 @@ BARRY.views.xplore = (function () {
         el('label', { text: 'Gain' }),
         el('div', { class: 'ctl-group' }, [
           el('button', { class: 'mini', text: '−',
-                         onclick: () => { sess.gain = clamp(sess.gain / 1.5, .02, 200); drawPane(index); refreshControls(index); } }),
+                         onclick: () => setGain(sess, sess.gain / 1.5) }),
           el('input', {
             type: 'number', value: String(round(sess.gain, 3)), step: '0.1', style: 'width:56px',
-            onchange: (e) => { sess.gain = clamp(parseFloat(e.target.value) || 1, .02, 200); drawPane(index); },
+            onchange: (e) => setGain(sess, parseFloat(e.target.value) || 1),
           }),
           el('button', { class: 'mini', text: '+',
-                         onclick: () => { sess.gain = clamp(sess.gain * 1.5, .02, 200); drawPane(index); refreshControls(index); } }),
+                         onclick: () => setGain(sess, sess.gain * 1.5) }),
         ]),
       ]));
     }
@@ -3316,6 +3414,34 @@ BARRY.views.xplore = (function () {
             bump('cleared');
             closeMenu();
           },
+        }),
+      ]),
+      /* Locking a filter to a recording -- shown and disabled.
+       *
+       * The control is here now because the sentence it is going to make is
+       * the point of it: these corners stop being a view setting and become
+       * a fact about the recording, which is what lets a figure made six
+       * months from now say what it was filtered at.
+       *
+       * It is disabled rather than absent because half of this feature is
+       * worse than none. A lock the strip honours and a figure rebuild or a
+       * `?hp=` deep link quietly overrides is not a lock -- it is a lock
+       * somebody will trust. There are eight places that set these corners
+       * and a server that will render whatever it is asked for; the switch
+       * goes live when all nine refuse, not before.
+       *
+       * `arc-lock`, not `flock` or `locked`: both already mean the
+       * FREQUENCY AXIS in this file, and `LOCKED_BAND` above means a panel
+       * that fixes its own band. A third meaning of the word would be the
+       * kind of naming that makes a file unreadable. */
+      popRow('Lock to this recording', [
+        el('button', {
+          class: 'mini arc-lock off', text: 'Lock these corners',
+          disabled: 'disabled',
+          title: 'Not built yet (Phase 2). A locked filter will hold '
+               + 'against the strip, a figure rebuild, a deep link and the '
+               + 'server, so "this recording was read at these corners" is '
+               + 'something a figure can state rather than assume.',
         }),
       ]),
     ]);
@@ -8527,6 +8653,11 @@ BARRY.views.xplore = (function () {
     if (BARRY.strata && BARRY.strata.draw) {
       BARRY.strata.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
     }
+    /* The Arc's two verify modes share one drawing function -- they differ
+       in what they highlight, not in how they reach the canvas. */
+    if (BARRY.arcmode && BARRY.arcmode.draw) {
+      BARRY.arcmode.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+    }
 
     // A pinned amplitude is applied here rather than fetched. The server
     // echoes ylim back as robust_max, but the envelope it returns does not
@@ -9137,8 +9268,7 @@ BARRY.views.xplore = (function () {
       const frac = clamp((e.clientX - rect.left - PAD_TRACES_L) /
                          Math.max(1, rect.width - PAD_TRACES_L - PAD.r), 0, 1);
       if (e.shiftKey) {
-        sess.gain = clamp(sess.gain * (e.deltaY < 0 ? 1.18 : 1 / 1.18), .02, 200);
-        drawPane(index); refreshControls(index);
+        setGain(sess, sess.gain * (e.deltaY < 0 ? 1.18 : 1 / 1.18));
       } else {
         zoom(index, e.deltaY > 0 ? 1.22 : 1 / 1.22, frac);
       }
@@ -10041,11 +10171,10 @@ BARRY.views.xplore = (function () {
       const s = active();
       if (!s) return;
       const fi = XF.focused;
-      const gainBy = (f) => {
-        s.gain = clamp(s.gain * f, .02, 200);
-        refreshAll();
-        XF.panes.forEach((_p, i) => refreshControls(i));
-      };
+      // One way to change the gain, so the three doors onto it cannot
+      // drift apart. This one used to refetch every pane as well, which
+      // gain does not need: it is applied when the trace is drawn.
+      const gainBy = (f) => setGain(s, s.gain * f);
       const map = {
         ArrowLeft: () => pan(fi, e.shiftKey ? -1 : -0.25),
         ArrowRight: () => pan(fi, e.shiftKey ? 1 : 0.25),
@@ -10146,10 +10275,14 @@ BARRY.views.xplore = (function () {
         const keep = sel.value;
         sel.innerHTML = '';
         for (const p of XF.probes) {
-          const n = p.n_columns || 1;
+          /* However the template groups its channels. A montage with
+             regions has no columns and still has twelve groups, and
+             reading only `n_columns` labelled it as though it had one. */
+          const n = p.n_groups || p.n_columns || 1;
+          const kind = p.group_kind === 'regions' ? ' regions' : ' columns';
           sel.appendChild(el('option', {
             value: p.id, title: p.note || '',
-            text: p.name + (n > 1 ? '  ·  ' + n + ' columns' : ''),
+            text: p.name + (n > 1 ? '  ·  ' + n + kind : ''),
           }));
         }
         sel.value = XF.probes.some((p) => p.id === keep) ? keep : 'h3';
@@ -10358,10 +10491,18 @@ BARRY.views.xplore = (function () {
       return fBand(pane, sess);
     },
     setPanes: (specs, split) => {
-      // Six, not four: an H10-D has six probe columns and each one needs a
-      // pane of its own, because a CSD across columns is arithmetic over
-      // contacts that are not neighbours.
-      XF.nPanes = Math.max(1, Math.min(6, specs.length));
+      /* Twelve, not six.
+       *
+       * Six was an H10-D's column count, and it was the right number until
+       * a template arrived with more groups than that: the DEWEY montage
+       * has twelve regions, and capping at six silently dropped half of
+       * them -- the layout came up showing CSC 1-20 and no left OFC, left
+       * ACC, either hippocampus or either retrosplenial, with nothing
+       * anywhere saying so.
+       *
+       * A cap still exists because a pane costs a canvas and a request,
+       * and there is no montage in this lab with more groups than this. */
+      XF.nPanes = Math.max(1, Math.min(MAX_PANES, specs.length));
       XF.panes = specs.slice(0, XF.nPanes).map((p) => Object.assign(
         { sessionId: XF.active }, p));
       // Applied before the render that reads it, or the first paint uses the

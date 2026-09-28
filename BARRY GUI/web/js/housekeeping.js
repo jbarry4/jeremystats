@@ -1005,6 +1005,9 @@ BARRY.views.housekeeping = (function () {
       },
     }));
 
+    // ---- the cluster ----------------------------------------------------
+    if (!isDemo) host.appendChild(clusterSection(s));
+
     // ---- what is attached ----------------------------------------------
     host.appendChild(el('div', { class: 'section-label', text: 'Attached' }));
     const has = s.has || {};
@@ -1288,15 +1291,117 @@ BARRY.views.housekeeping = (function () {
     ]);
   }
 
+  /* ==================================================================
+     Where the cluster has it, and opening it from there
+     ==================================================================
+     Drawn in BOTH scopes, not only in Everything VACC knows. It is one
+     catalogue -- the VACC view is the same tree narrowed -- and a button
+     that exists in one view of a record and not in the other would be a
+     property of which tab you arrived through rather than of the
+     recording.
+
+     Absent draws nothing. `BARRY.vacc.of` returns null for a recording
+     nobody has established an answer for, and that is most of a fresh
+     scan: exact ids are minted when headers are read. Drawing 'the cluster
+     cannot reach this' from a missing answer is the mistake `canOpen` in
+     sessions.js carries a comment about, and it would put the wrong
+     sentence on hundreds of recordings that are sitting on the share VACC
+     mounts. */
+  function clusterSection(s) {
+    const box = el('div', {});
+    const got = (BARRY.vacc && BARRY.vacc.of(s)) || null;
+    if (!got || !got.state || got.state === 'unknown') return box;
+
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'On the cluster' }));
+    const native = got.state === 'native';
+    const readable = native || got.state === 'staged';
+    if (!readable) {
+      box.appendChild(el('p', { class: 'hint',
+        text: 'VACC cannot reach this one — ' + (got.why || 'no copy of it '
+            + 'on anything it mounts') + '. Nothing is wrong with the '
+            + 'recording; it is on a disk the cluster does not see.' }));
+      return box;
+    }
+
+    box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+      text: native
+        ? ('VACC reads this in place, on a share it mounts. Opening it from '
+           + 'here reads the same files the rig wrote — nothing is copied '
+           + 'and nothing lands on this computer.')
+        : ('What VACC has is a copy in its scratch, not the recording. '
+           + 'Scratch is purged without notice, so this can stop working '
+           + 'without anything having gone wrong — the recording itself is '
+           + 'wherever it always was.') }));
+    if (got.remote) {
+      box.appendChild(el('code', { class: 'hk-remote', text: got.remote }));
+    }
+
+    /* Said before it is spent, the way Panorama says it.
+
+       What this costs is not disk and not a download -- it is a round trip
+       per window, so the first one waits for an ssh handshake and every
+       one after that waits for the network. Somebody who expects a local
+       file's response and gets a third of a second per scrub should know
+       why before they click, not after. */
+    box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      text: 'Reading it happens on the cluster: each window is computed '
+          + 'there and the drawn line comes back, so what crosses the '
+          + 'network is the line rather than the samples — measured on a '
+          + '64-channel recording at 30 kHz, three megabytes instead of '
+          + 'thirty-nine. The first one takes a few seconds while the link '
+          + 'opens; after that a scrub costs a round trip.' }));
+
+    /* The primary is last, and the hint that qualifies it comes first.
+
+       Primary only when it is the thing to click. A recording that is also
+       on a drive this computer can reach has a faster Open a few inches
+       above, and two buttons that look equally like the answer mean
+       neither is. */
+    const localP = (s.here || [])[0];
+    const acts = el('div', { class: 'tk-actions' }, [
+      localP ? el('span', { class: 'hint quiet',
+        text: 'It is also on a drive this computer can reach, which is '
+            + 'faster — open it from Where it has been seen, above.' }) : null,
+      BARRY.ui.button({
+        kind: localP ? 'ghost' : 'primary',
+        text: 'Open from the cluster',
+        title: 'Open it in Xplorefinder, reading the samples off VACC',
+        // The wait is drawn in this row, because this is the surface the
+        // click happened on -- see BARRY.vacc.open.
+        onclick: () => BARRY.vacc.open(s, { host: acts }),
+      }),
+    ].filter(Boolean));
+    box.appendChild(acts);
+    return box;
+  }
+
+  /* Open it, from wherever it can be read.
+
+     A drive first, always: a local file answers in microseconds and the
+     cluster answers over a network, and preferring the network because it
+     was mentioned more recently would make every open slower for no reason.
+
+     The cluster second, rather than an error. This used to be the error --
+     'none of this recording's paths are reachable from this machine' --
+     which was true, and was the end of it. For a recording VACC reads
+     perfectly well that sentence was a dead end with the answer sitting one
+     function away. */
   function openIt(s) {
     const p = (s.here || [])[0];
-    if (!p) {
-      toast('None of this recording’s paths are reachable from this '
-            + 'machine.', 'err', 6000);
+    if (p) {
+      setView('xplore');
+      BARRY.views.xplore.open(p);
       return;
     }
-    setView('xplore');
-    BARRY.views.xplore.open(p);
+    if (BARRY.vacc && BARRY.vacc.canRead(s)) {
+      BARRY.vacc.open(s, {
+        host: document.getElementById(SCOPES[scope].detail),
+      });
+      return;
+    }
+    toast('None of this recording’s paths are reachable from this '
+          + 'machine, and VACC has no copy of it either.', 'err', 7000);
   }
 
   /* ==================================================================
@@ -1364,8 +1469,9 @@ BARRY.views.housekeeping = (function () {
       sel.appendChild(el('option', {
         value: p.id, title: p.note || '',
         selected: now === p.id ? 'selected' : null,
-        text: p.name + ((p.n_columns || 1) > 1
-          ? '  ·  ' + p.n_columns + ' columns' : ''),
+        text: p.name + (((p.n_groups || p.n_columns) || 1) > 1
+          ? '  ·  ' + (p.n_groups || p.n_columns)
+            + (p.group_kind === 'regions' ? ' regions' : ' columns') : ''),
       }));
     }
 

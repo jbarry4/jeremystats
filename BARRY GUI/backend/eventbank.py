@@ -366,6 +366,51 @@ class EventBank:
                     pass
             if ev.get("align_flag"):
                 item["align_flag"] = ev["align_flag"]
+            # Channels this event is not valid on, and the two different
+            # reasons it might not be.
+            #
+            # `clipped` is measured: the amplifier saturated somewhere in
+            # this event's window, so the trace there is a flat line at the
+            # rail and every number computed from it is about the rail.
+            # `excluded` is decided: somebody looked and said not this one.
+            #
+            # Whitelisted, and kept apart, for the same reason `from_t` is:
+            # the whitelist is what an event IS here, and an event that
+            # cannot say which channels it is good for is one that will be
+            # correlated on a flat line by something downstream that had no
+            # way to know. Two lists rather than one because a measurement
+            # and a judgement are different claims -- the same distinction
+            # `specified` draws for the entry as a whole.
+            #
+            # Either shape is allowed and they mean different things. A
+            # LIST is "not valid for this event at all". A DICT keyed by
+            # window name -- pre, cue1, cue2, post -- is per window, which
+            # is what the clipping measurement produces: a channel can be
+            # ruined in one window and perfectly good in the other three,
+            # and flattening that threw away three quarters of a usable
+            # channel on data this clipped.
+            for key in ("clipped", "excluded"):
+                got = ev.get(key)
+                if not got:
+                    continue
+                if isinstance(got, dict):
+                    per = {}
+                    for wname, chans in got.items():
+                        try:
+                            nums = sorted({int(c) for c in (chans or [])})
+                        except (TypeError, ValueError):
+                            continue
+                        if nums:
+                            per[str(wname)] = nums
+                    if per:
+                        item[key] = per
+                    continue
+                try:
+                    nums = sorted({int(c) for c in got})
+                except (TypeError, ValueError):
+                    continue
+                if nums:
+                    item[key] = nums
             clean.append(item)
         if not clean:
             raise BankError("None of those events had a usable time.")

@@ -1,0 +1,112 @@
+{
+  "_at": {
+    "created": "2026-09-24T19:23:25.139857+00:00",
+    "duration_s": "2026-09-24T19:49:43.522930+00:00",
+    "first_seen_by": "2026-09-24T19:23:25.139857+00:00",
+    "fs": "2026-09-24T19:23:25.139857+00:00",
+    "gid": "2026-09-24T19:23:25.139857+00:00",
+    "group": "2026-09-24T19:23:25.139857+00:00",
+    "has_video": "2026-09-24T19:23:25.139857+00:00",
+    "key": "2026-09-24T16:34:20-04:00",
+    "label": "2026-09-24T16:34:20-04:00",
+    "loose_key": "2026-09-24T16:34:20-04:00",
+    "mouse": "2026-09-24T19:23:25.139857+00:00",
+    "n_channels": "2026-09-24T19:23:25.139857+00:00",
+    "note": "2026-09-24T19:53:42.137009+00:00",
+    "phase": "2026-09-24T19:23:25.139857+00:00",
+    "phase_n": "2026-09-24T19:23:25.139857+00:00",
+    "probe": "2026-09-24T19:53:42.137009+00:00",
+    "probe_source": "2026-09-24T19:53:42.137009+00:00",
+    "project": "2026-09-24T19:23:25.139857+00:00",
+    "project_source": "2026-09-24T19:23:25.139857+00:00",
+    "retired": "2026-09-24T19:23:56.631973+00:00",
+    "run": "2026-09-24T19:23:25.139857+00:00",
+    "schema": "2026-09-24T19:23:25.139857+00:00",
+    "session": "2026-09-24T19:23:25.139857+00:00",
+    "start": "2026-09-24T19:23:25.139857+00:00",
+    "updated": "2026-09-25T16:45:06.905195+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Con 2\\J3_Con_2_FP1\\2026-04-09_13-02-07": [
+        "set",
+        "2026-09-24T19:23:25.139857+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Con 2\\J3_Con_2_FP2\\2026-04-09_15-31-23": [
+        "gone",
+        "2026-09-24T19:38:03.655574+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Con 2\\J3_Con_2_SP\\2026-04-09_13-57-03": [
+        "gone",
+        "2026-09-24T19:38:03.212245+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-25T16:45:06.905195+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T16:45:06.905195+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.24.6",
+    "at": "2026-09-24T15:23:25-04:00",
+    "commit": "0fc4943",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "duration_s": 673.52,
+  "first_seen_by": "scan",
+  "fs": 32000.0,
+  "gid": "s3a297e817d7b",
+  "group": "DEWEY",
+  "has_video": true,
+  "key": "r003_s012_2026-04-09_13-02-07",
+  "label": "DEWEY r3 s12 Con2 FP1 2026-04-09",
+  "loose_key": "r003_s012",
+  "mouse": 3,
+  "n_channels": 64,
+  "note": "Acquisition wrote 64 CSC files; 33-64 are dead. The montage is the same 32-channel DEWEY map.",
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 2\\J3_Con_2_FP1\\2026-04-09_13-02-07"
+  ],
+  "phase": "Con",
+  "phase_n": 2,
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "run": "FP1",
+  "schema": 2,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-25T12:45:06-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "E:\\Joe Multisite 2026 data\\J3\\J3 Con 2\\J3_Con_2_FP1\\2026-04-09_13-02-07",
+      "root": "E:/Joe Multisite 2026 data",
+      "scan": "scan_175198d703"
+    }
+  },
+  "session": 12,
+  "start": "2026-04-09T13:02:07",
+  "updated": {
+    "app_version": "2026.09.24.8",
+    "at": "2026-09-25T12:45:06-04:00",
+    "commit": "0fc4943",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}
