@@ -957,14 +957,17 @@ BARRY.views.toolkit = (function () {
     const open = curOpen();
 
     host.appendChild(el('div', { class: 'tk-head' }, [
-      el('div', {}, [
-        el('h2', { text: 'Event curation' }),
-        el('p', { class: 'sub',
-          text: open.length
-            ? 'What you have open. It stays here until you close it.'
-            : 'Start a set from a banked entry, or pick one up below. It '
-              + 'stays here until you close it.' }),
-      ]),
+      /* Step 2 of The Dentist, and titled with the name on the step button
+         you clicked to get here -- it said "Event curation" while the button
+         said "Checkup". The number is read from the bundle (stepOf). */
+      BARRY.ui.stepHeader({
+        title: 'Checkup',
+        step: BARRY.ui.stepOf('curate'),
+        blurb: 'Event curation. ' + (open.length
+          ? 'What you have open. It stays here until you close it.'
+          : 'Start a set from a banked entry, or pick one up below. It '
+            + 'stays here until you close it.'),
+      }),
       el('div', { class: 'spacer' }),
       open.length > 1 ? el('button', {
         class: 'btn ghost sm', text: 'Close all',
@@ -2684,12 +2687,13 @@ BARRY.views.toolkit = (function () {
     });
 
     host.appendChild(el('div', { class: 'tk-head' }, [
-      el('div', {}, [
-        el('h2', { text: 'Braid' }),
-        el('p', { class: 'sub',
-          text: 'Theta, resolved into the bands it is actually made of, and '
-              + 'phase-amplitude coupling for a window you choose.' }),
-      ]),
+      // A step of The Lookout; the number is read from the bundle.
+      BARRY.ui.stepHeader({
+        title: 'Braid',
+        step: BARRY.ui.stepOf('cfc'),
+        blurb: 'Theta, resolved into the bands it is actually made of, and '
+             + 'phase-amplitude coupling for a window you choose.',
+      }),
     ]));
 
     const card = el('div', { class: 'card' });

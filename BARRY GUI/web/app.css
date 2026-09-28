@@ -4690,6 +4690,9 @@ button.tag:hover { filter: brightness(1.25); }
 .tk-fields .hint { grid-column: 1 / -1; font-size: var(--fs-11); margin: 0; }
 .tk-result { display: flex; flex-direction: column; gap: var(--sp-12); min-width: 0; }
 .tk-head { display: flex; align-items: flex-end; gap: var(--sp-12); }
+/* A step's header inside the ToolKit head row, beside its action buttons:
+   it takes the free width and wraps, so the buttons keep their place. */
+.tk-head > .step-head { flex: 1 1 auto; min-width: 0; padding: 0; }
 .tk-head h2 { margin: 0; font-size: var(--fs-15); }
 .tk-head .sub { margin: 2px 0 0; font-size: var(--fs-115); color: var(--text-2); }
 .tk-head .spacer { flex: 1; }
