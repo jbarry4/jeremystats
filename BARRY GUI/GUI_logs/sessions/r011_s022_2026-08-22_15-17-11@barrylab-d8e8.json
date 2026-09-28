@@ -1,0 +1,78 @@
+{
+  "_at": {
+    "created": "2026-09-25T16:50:05.211309+00:00",
+    "gid": "2026-09-25T20:25:22.554077+00:00",
+    "group": "2026-09-25T16:50:05.211309+00:00",
+    "key": "2026-09-25T16:50:05.211309+00:00",
+    "label": "2026-09-25T20:25:22.554077+00:00",
+    "loose_key": "2026-09-25T16:50:05.211309+00:00",
+    "mouse": "2026-09-25T16:50:05.211309+00:00",
+    "probe": "2026-09-25T16:50:05.211309+00:00",
+    "probe_source": "2026-09-25T16:50:05.211309+00:00",
+    "project": "2026-09-25T16:50:05.211309+00:00",
+    "project_source": "2026-09-25T16:50:05.211309+00:00",
+    "retired": "2026-09-25T16:50:05.211309+00:00",
+    "schema": "2026-09-25T16:50:05.211309+00:00",
+    "session": "2026-09-25T16:50:05.211309+00:00",
+    "start": "2026-09-25T16:50:05.211309+00:00",
+    "updated": "2026-09-25T20:25:22.554077+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J11\\J11_Test2\\J11_Test2_FP1\\2026-08-22_15-09-28": [
+        "set",
+        "2026-09-25T18:41:32.616042+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J11\\J11_Test2\\J11_Test2_FP2\\2026-08-22_16-51-03": [
+        "set",
+        "2026-09-25T16:50:57.311396+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J11\\J11_Test2\\J11_Test2_SPC\\2026-08-22_15-17-11": [
+        "set",
+        "2026-09-25T18:41:32.616042+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T20:25:22.554077+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-25T12:50:05-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s50cd2aa895b1",
+  "group": null,
+  "key": "r011_s022_2026-08-22_15-17-11",
+  "label": "DEWEY r11 s22 Test2 FP2 2026-08-22",
+  "loose_key": "r011_s022",
+  "mouse": 11,
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J11\\J11_Test2\\J11_Test2_FP2\\2026-08-22_16-51-03",
+    "E:\\Joe Multisite 2026 data\\J11\\J11_Test2\\J11_Test2_FP1\\2026-08-22_15-09-28",
+    "E:\\Joe Multisite 2026 data\\J11\\J11_Test2\\J11_Test2_SPC\\2026-08-22_15-17-11"
+  ],
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 22,
+  "start": "2026-08-22T19:17:11+00:00",
+  "updated": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-25T16:25:22-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}
