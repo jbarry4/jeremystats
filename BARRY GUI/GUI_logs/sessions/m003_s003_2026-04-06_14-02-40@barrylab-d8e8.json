@@ -1,0 +1,115 @@
+{
+  "_at": {
+    "bad_channels": "2026-09-24T20:15:58.606337+00:00",
+    "created": "2026-09-24T19:29:32.614722+00:00",
+    "gid": "2026-09-24T20:10:08.889497+00:00",
+    "group": "2026-09-24T19:29:32.614722+00:00",
+    "key": "2026-09-24T19:29:32.614722+00:00",
+    "label": "2026-09-25T16:47:41.001940+00:00",
+    "loose_key": "2026-09-24T19:29:32.614722+00:00",
+    "mouse": "2026-09-24T19:29:32.614722+00:00",
+    "note": "2026-09-24T19:56:55.296359+00:00",
+    "probe": "2026-09-24T19:56:55.296359+00:00",
+    "probe_source": "2026-09-24T19:56:55.296359+00:00",
+    "project": "2026-09-24T19:29:32.614722+00:00",
+    "project_source": "2026-09-24T19:29:32.614722+00:00",
+    "retired": "2026-09-24T19:29:32.614722+00:00",
+    "schema": "2026-09-24T19:29:32.614722+00:00",
+    "session": "2026-09-24T19:29:32.614722+00:00",
+    "start": "2026-09-24T19:29:32.614722+00:00",
+    "updated": "2026-09-25T16:47:41.001940+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 3\\J3_precon_3_FP1\\2026-04-06_14-02-40": [
+        "set",
+        "2026-09-24T19:30:04.465031+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 3\\J3_precon_3_FP2\\2026-04-06_16-16-37": [
+        "set",
+        "2026-09-24T19:30:04.465031+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 3\\J3_precon_3_SP\\2026-04-06_14-42-15": [
+        "set",
+        "2026-09-24T19:30:04.465031+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T16:47:41.001940+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "bad_channels": [
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64
+  ],
+  "created": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-24T15:29:32-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s3bd9bbd56318",
+  "group": null,
+  "key": "m003_s003_2026-04-06_14-02-40",
+  "label": "DEWEY r3 s3 Precon3 SPC 2026-04-06",
+  "loose_key": "m003_s003",
+  "mouse": 3,
+  "note": "Acquisition wrote 64 CSC files; 33-64 are dead. The montage is the same 32-channel DEWEY map.",
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 3\\J3_precon_3_FP1\\2026-04-06_14-02-40",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 3\\J3_precon_3_SP\\2026-04-06_14-42-15",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Precon 3\\J3_precon_3_FP2\\2026-04-06_16-16-37"
+  ],
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 3,
+  "start": "2026-04-06T18:02:40+00:00",
+  "updated": {
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-25T12:47:41-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

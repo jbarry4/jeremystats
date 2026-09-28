@@ -1,19 +1,20 @@
 {
   "_at": {
-    "created": "2026-09-18T17:07:42.011386+00:00",
-    "gid": "2026-09-18T17:07:42.011386+00:00",
+    "created": "2026-09-18T16:55:39.888556+00:00",
+    "first_seen_by": "2026-09-18T16:55:39.888556+00:00",
+    "gid": "2026-09-18T16:55:39.888556+00:00",
     "group": "2026-09-18T17:07:42.011386+00:00",
-    "key": "2026-09-18T17:08:33.266017+00:00",
+    "key": "2026-09-24T20:10:16.660108+00:00",
     "label": "2026-09-18T17:07:42.011386+00:00",
     "loose_key": "2026-09-18T17:07:42.011386+00:00",
     "mouse": "2026-09-18T17:07:42.011386+00:00",
     "project": "2026-09-18T17:07:42.011386+00:00",
     "project_source": "2026-09-18T17:07:42.011386+00:00",
-    "retired": "2026-09-18T17:07:42.011386+00:00",
+    "retired": "2026-09-24T20:10:16.660108+00:00",
     "schema": "2026-09-18T17:07:42.011386+00:00",
     "session": "2026-09-18T17:07:42.011386+00:00",
     "start": "2026-09-18T17:07:42.011386+00:00",
-    "updated": "2026-09-18T17:08:33.266017+00:00"
+    "updated": "2026-09-24T20:10:16.660108+00:00"
   },
   "_keys": {
     "paths": {
@@ -21,22 +22,30 @@
         "set",
         "2026-09-18T17:08:33.266017+00:00"
       ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-18T16:55:39.888556+00:00"
+      ]
     }
   },
   "_shard": {
-    "at": "2026-09-18T17:08:33.266017+00:00",
+    "at": "2026-09-24T20:10:16.660108+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
   "created": {
-    "app_version": "2026.09.17.2",
-    "at": "2026-09-18T13:07:42-04:00",
-    "email": "rain.younger@uvm.edu",
-    "host": "BarryLab",
-    "machine": "Strawbarry",
+    "app_version": "2026.09.17.18",
+    "at": "2026-09-18T12:55:39-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Shahriar Tafti"
   },
+  "first_seen_by": "opened",
   "gid": "sf4bfb5276aaa",
   "group": null,
   "key": null,
@@ -48,13 +57,23 @@
   ],
   "project": "Unfiled",
   "project_source": "guessed",
-  "retired": false,
+  "retired": true,
   "schema": 1,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-18T12:55:36-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "E:\\Joe Multisite 2026 data\\J4\\Precon1\\J4_Precon1_SPC\\2026-07-22_10-48-48",
+      "root": null,
+      "scan": null
+    }
+  },
   "session": null,
   "start": "2026-07-22T14:48:48+00:00",
   "updated": {
-    "app_version": "2026.09.17.2",
-    "at": "2026-09-18T13:08:33-04:00",
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-24T16:10:16-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",

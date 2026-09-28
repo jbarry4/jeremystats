@@ -18,13 +18,15 @@
     "loose_key": "2026-09-04T15:57:01.575592+00:00",
     "mouse": "2026-09-04T15:57:01.575592+00:00",
     "n_channels": "2026-09-04T15:57:01.575592+00:00",
+    "probe": "2026-09-25T21:10:20.915033+00:00",
+    "probe_source": "2026-09-25T21:10:20.915033+00:00",
     "project": "2026-09-04T15:57:01.575592+00:00",
     "project_source": "2026-09-04T15:57:01.575592+00:00",
     "retired": "2026-09-04T15:57:01.575592+00:00",
     "schema": "2026-09-04T15:57:01.575592+00:00",
     "session": "2026-09-04T15:57:01.575592+00:00",
     "start": "2026-09-04T15:57:01.575592+00:00",
-    "updated": "2026-09-23T18:08:53.219478+00:00",
+    "updated": "2026-09-25T21:10:20.915033+00:00",
     "view_state": "2026-09-21T19:56:29.101763+00:00"
   },
   "_keys": {
@@ -73,12 +75,12 @@
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-21T16:46:55.911713+00:00"
+        "2026-09-24T13:42:59.066060+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-23T18:08:53.219478+00:00",
+    "at": "2026-09-25T21:10:20.915033+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -115,6 +117,8 @@
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M2_s8_CNO",
     "D:\\Data\\Archive\\PTEN Project\\Control\\M2_s8\\2024-01-26_17-48-00"
   ],
+  "probe": "h3",
+  "probe_source": "manual",
   "project": "PTEN",
   "project_source": "guessed",
   "retired": false,
@@ -150,19 +154,19 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-21T12:46:55-04:00",
+      "at": "2026-09-24T09:42:59-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\CTL\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
-      "root": null,
-      "scan": null
+      "root": "D:/PTEN/CTL",
+      "scan": "scan_febb6fcb03"
     }
   },
   "session": 8,
   "start": "2024-01-26T17:48:00",
   "updated": {
-    "app_version": "2026.09.23.8",
-    "at": "2026-09-23T14:08:53-04:00",
+    "app_version": "2026.09.24.2",
+    "at": "2026-09-25T17:10:20-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
