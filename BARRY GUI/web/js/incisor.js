@@ -44,6 +44,11 @@ BARRY.incisor = (function () {
     /* Which half of the tool is showing: this computer, or the cluster.
        Local until VACC Mode is on and somebody asks for the other one. */
     tab: 'local',
+    // Where and how many (constitution §6d). `tab` follows from them: the
+    // cluster panel is VACC and many; everything else is the one-recording
+    // panel, run here or there.
+    where: 'local',
+    count: 'one',
     gid: null,
     path: null,
     // The picked registry row. A banked set has to say which animal and
@@ -332,7 +337,19 @@ BARRY.incisor = (function () {
     }
     host.innerHTML = '';
     host.appendChild(head());
-    host.appendChild(tabs());
+    /* Here · one, VACC · one and VACC · many. Here · many is in the
+       constitution's matrix and not built yet, so the bar does not offer
+       it: a choice that leads nowhere is not a choice. With VACC Mode off,
+       or no account, there is only one mode and the bar draws nothing. */
+    const bar = BARRY.ui.runBar({
+      modes: { local: ['one'], vacc: ['one', 'many'] },
+      where: q.where, count: q.count,
+      onChange: (w, c) => { q.where = w; q.count = c; paint(); },
+    });
+    q.where = bar.where;
+    q.count = bar.count;
+    q.tab = (q.where === 'vacc' && q.count === 'many') ? 'vacc' : 'local';
+    if (bar.childNodes.length) host.appendChild(bar);
 
     if (q.tab === 'vacc') {
       /* The cluster half. Same detector, same plots, same bank -- the only
@@ -393,38 +410,13 @@ BARRY.incisor = (function () {
   let vaccList = null;       // what the cluster can reach, per recording
   const picked = new Set();  // gids ticked for a run
 
-  /* The two halves, and which one is showing.
-
-     A tab rather than a switch inside one panel: the local half answers
-     "scan this recording" and the cluster half answers "scan these thirty",
-     and a control that silently changed which question was being asked kept
-     producing the other one's answer.
-
-     The VACC tab is only reachable while VACC Mode is on -- which is what
-     the mode is FOR. It is never the only way to reach something, because
-     everything it does to one recording the local tab also does. */
-  function tabs() {
-    const on = vaccOn();
-    if (!on && q.tab === 'vacc') q.tab = 'local';
-    const bar = el('div', { class: 'inc-tabs' });
-    const mk = (id, label, sub, enabled) => el('button', {
-      class: 'inc-tab' + (q.tab === id ? ' on' : '')
-             + (enabled ? '' : ' locked'),
-      disabled: enabled ? null : 'disabled',
-      title: enabled ? sub
-        : 'Turn VACC Mode on in the bar at the bottom left to run these on '
-          + 'the cluster.',
-      onclick: () => { q.tab = id; paint(); },
-    }, [
-      el('strong', { text: label }),
-      el('span', { text: enabled ? sub : 'VACC Mode is off' }),
-    ]);
-    bar.appendChild(mk('local', 'This computer',
-                       'one recording at a time', true));
-    bar.appendChild(mk('vacc', 'VACC',
-                       'many at once, on the cluster', on));
-    return bar;
-  }
+  /* The two halves were tabs -- "This computer: one recording at a time"
+     and "VACC: many at once" -- which made VACC mean "many" and left no way
+     to say "this one, on the cluster" except a second button inside the
+     local half. Where and how many are two questions now, in the run bar
+     at the top of paint(). What the tabs got right is kept: the cluster
+     half is its own panel, because "run this one" and "run these thirty"
+     have different answers to "what will this cost". */
 
   /* ---------------- which recordings, on the cluster ----------------
 
@@ -787,19 +779,19 @@ BARRY.incisor = (function () {
       return box;
     }
     box.appendChild(selection());
+    /* One primary, for where the bar says this runs. */
     box.appendChild(el('div', { class: 'tk-actions' }, [
-      el('button', {
+      q.where === 'vacc' ? vaccButton() : el('button', {
         class: 'btn', text: job ? 'Scanning…' : 'Scan',
         disabled: job ? 'disabled' : null, onclick: scan,
       }),
-      vaccButton(),
       el('span', { class: 'hint quiet',
         text: est.cached ? 'Already scanned — this will be instant.'
           : 'Detects on every channel. That is not wasteful: the hilus '
             + 'estimate is computed from the per-channel counts, so there '
             + 'is no cheaper way to make it.' }),
     ]));
-    const vs = vaccSentence();
+    const vs = q.where === 'vacc' ? vaccSentence() : null;
     if (vs) box.appendChild(vs);
     box.appendChild(params());
     return box;
@@ -827,7 +819,7 @@ BARRY.incisor = (function () {
     const v = (est && est.vacc) || {};
     const busy = !!job;
     return el('button', {
-      class: 'btn ghost',
+      class: 'btn',
       text: busy ? 'Scanning…' : 'Scan on VACC',
       // Disabled with the reason ON it rather than hidden. A control that
       // vanishes teaches nothing; `canOpen` in sessions.js carries the same
