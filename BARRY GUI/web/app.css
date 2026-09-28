@@ -2306,6 +2306,9 @@ body.strip-resizing canvas { pointer-events: none; }
 .mouse-row {
   display: grid; grid-template-columns: 62px 1fr;
   gap: 4px 10px; align-items: start; margin-bottom: 6px;
+  /* Laid out only near the viewport; the height it stands in with is set
+     per row by renderTree (sessions.js). */
+  content-visibility: auto;
 }
 .mouse-label {
   font-family: var(--mono); font-size: var(--fs-11); color: var(--text-2);

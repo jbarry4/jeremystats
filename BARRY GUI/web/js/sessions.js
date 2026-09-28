@@ -1335,6 +1335,26 @@ BARRY.views.sessions = (function () {
   /* ---------- tree ---------- */
   function renderTree() {
     const host = $('#sessTree');
+    /* Rows off screen are not laid out (`content-visibility` on .mouse-row,
+       constitution §10): 519 cards were 100 ms of layout per repaint for the
+       dozen in view. What that needs from here is each row's height, so the
+       scrollbar is right and `repaintQuietly` puts the scroll back exactly
+       where it was -- the height this row had last time, or failing that
+       its card count times a card. Keyed by the count as well, so a row a
+       filter has shortened is estimated again rather than kept at its old
+       height. 83 px is a card as measured when this was written; a real
+       card is measured whenever there is one. */
+    const tall = new Map();
+    host.querySelectorAll('.mouse-row[data-k]').forEach((r) => {
+      tall.set(r.dataset.k, r.offsetHeight);
+    });
+    const card0 = host.querySelector('.sess-card');
+    const cardH = (card0 && card0.offsetHeight) || 83;
+    const perLine = Math.max(1, Math.floor((host.clientWidth - 72 + 5) / 219));
+    const guess = (n) => {
+      const lines = Math.ceil(n / perLine);
+      return lines * cardH + (lines - 1) * 5;
+    };
     host.innerHTML = '';
     const visible = sessions.filter(matches);
 
@@ -1433,7 +1453,12 @@ BARRY.views.sessions = (function () {
       for (const mk of keys) {
         const list = mice.get(mk).slice().sort(
           (a, b) => (a.identity.session || 0) - (b.identity.session || 0));
-        const row = el('div', { class: 'mouse-row' }, [
+        const k = g + '/' + mk + '#' + list.length;
+        const row = el('div', {
+          class: 'mouse-row', 'data-k': k,
+          style: 'contain-intrinsic-size: auto '
+                 + (tall.get(k) || guess(list.length)) + 'px',
+        }, [
           /* In a narrow gutter now, so it has to be short. The folder name
              is the long part and it is the part you rarely need, so it moves
              to the tooltip. */
