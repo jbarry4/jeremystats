@@ -408,6 +408,81 @@ BARRY.views.toolkit = (function () {
     catch (e) { /* private mode: it just will not be remembered */ }
   }
 
+  /* Fold or unfold, easing the steps rather than snapping them (constitution
+     §5, "a bundle", rule 5).
+
+     The rail is re-rendered on every change, so there is no element that
+     persists across the fold for a CSS transition to run on. The steps are
+     animated either side of the render instead: shrunk away before a fold,
+     grown in after an unfold. The 9px the open bundle puts between head and
+     steps goes with them, as a margin, so it does not jump, and the caret
+     turns with them (it is a new caret after each render too, so CSS could
+     not turn it). Under prefers-reduced-motion it is the plain render it
+     always was. */
+  const FOLD_MS = 220;
+  let folding = null;           // the bundle mid-fold; a second click waits
+  function foldBundle(id, off) {
+    if (folding) return;
+    const calm = window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const boxOf = () =>
+      document.querySelector('.tk-bundle[data-bundle="' + id + '"]');
+    const opts = { duration: FOLD_MS,
+                   easing: 'cubic-bezier(.22, .61, .36, 1)' };  // --ease-out
+    const turn = (b, from, to) => {
+      const c = b && b.querySelector('.tk-bundle-hd .caret');
+      if (c && c.animate) {
+        c.animate([{ transform: 'rotate(' + from + 'deg)' },
+                   { transform: 'rotate(' + to + 'deg)' }], opts);
+      }
+    };
+    const was = boxOf();
+    const steps = was && was.querySelector('.tk-steps');
+    if (off) {
+      if (calm || !steps || !steps.animate) {
+        setFolded(id, true); render(); return;
+      }
+      folding = id;
+      steps.style.overflow = 'hidden';
+      turn(was, 90, 0);
+      const a = steps.animate([
+        { height: steps.offsetHeight + 'px', opacity: 1, marginTop: '0px' },
+        { height: '0px', opacity: 0, marginTop: '-9px' },
+      ], Object.assign({ fill: 'forwards' }, opts));
+      settle(a, () => { setFolded(id, true); render(); });
+      return;
+    }
+    setFolded(id, false);
+    render();
+    const now = boxOf();
+    const grown = now && now.querySelector('.tk-steps');
+    if (calm || !grown || !grown.animate) return;
+    folding = id;
+    grown.style.overflow = 'hidden';
+    turn(now, 0, 90);
+    const a = grown.animate([
+      { height: '0px', opacity: 0, marginTop: '-9px' },
+      { height: grown.offsetHeight + 'px', opacity: 1, marginTop: '0px' },
+    ], opts);
+    settle(a, () => { grown.style.overflow = ''; });
+  }
+
+  /* An animation's end, whichever comes first: the animation saying so, or
+     the time it should have taken. A background tab throttles animations
+     and a headless one may never tick them, and a fold that waits on an
+     event that never comes leaves the rail refusing every click after. */
+  function settle(anim, then) {
+    let done = false;
+    const end = () => {
+      if (done) return;
+      done = true; folding = null;
+      try { anim.finish(); } catch (e) { /* already over */ }
+      then();
+    };
+    anim.onfinish = anim.oncancel = end;
+    setTimeout(end, FOLD_MS + 80);
+  }
+
   function bundleCard(bundle) {
     const steps = bundle.steps;
     const here = steps.find(([id]) => id === q.tool);
@@ -415,6 +490,7 @@ BARRY.views.toolkit = (function () {
     const open = !folded.has(bundle.id);
     const box = el('div', {
       class: 'tk-bundle' + (on ? ' on' : '') + (open ? ' open' : ''),
+      'data-bundle': bundle.id,
     });
     /* The head is the control, so it is a button -- it was a div, and a div
        you have to click is one nothing can tab to and nothing can announce.
@@ -428,7 +504,7 @@ BARRY.views.toolkit = (function () {
       'aria-expanded': open ? 'true' : 'false',
       title: open ? 'Fold ' + bundle.name + ' away'
                   : 'Show the ' + steps.length + ' steps of ' + bundle.name,
-      onclick: () => { setFolded(bundle.id, open); render(); },
+      onclick: () => foldBundle(bundle.id, open),
     }, [
       el('span', { class: 'caret',
                    html: '<svg viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>' }),

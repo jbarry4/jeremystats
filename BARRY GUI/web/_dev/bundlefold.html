@@ -186,6 +186,56 @@ async function untilN(fn, tries = 200, gap = 100) {
     try { end = W().localStorage.getItem(KEY); } catch (e) { /* ignore */ }
     check('and the fold is forgotten again',
           !end || end.indexOf('dentist') < 0, JSON.stringify(end));
+
+    head('it eases, and snaps for reduced motion');
+    /* Read synchronously after the click: a fold that snapped would already
+       have taken its steps away, one that eases still has them, running an
+       animation. The unfold is the mirror -- the steps are there at once,
+       and growing. */
+    const running = (b) => {
+      const s = b && b.querySelector('.tk-steps');
+      return !!(s && s.getAnimations
+                && s.getAnimations().some((a) => a.playState === 'running'));
+    };
+    named(targetName).querySelector('.tk-bundle-hd').click();
+    const mid = named(targetName);
+    check('folding keeps the steps for the length of the ease',
+          mid && mid.querySelectorAll('.tk-step').length === stepsBefore
+          && running(mid), mid ? mid.querySelectorAll('.tk-step').length
+                                 + ' steps, running=' + running(mid) : 'gone');
+    named(targetName).querySelector('.tk-bundle-hd').click();
+    check('a second click mid-fold is not taken as a second fold',
+          !!named(targetName) && named(targetName).classList.contains('open'));
+    await sleep(400);
+    check('and then folds', named(targetName)
+          && !named(targetName).classList.contains('open'));
+    named(targetName).querySelector('.tk-bundle-hd').click();
+    const growing = named(targetName);
+    check('unfolding shows the steps at once, growing in',
+          growing && growing.classList.contains('open') && running(growing),
+          growing ? growing.className + ' running=' + running(growing) : 'gone');
+    await sleep(400);
+    check('and is done growing after the ease', !running(named(targetName)));
+
+    /* Reduced motion, by standing in for the media query: the frame cannot
+       be put into the OS setting from here. */
+    const realMM = W().matchMedia;
+    W().matchMedia = (q) => (/reduced-motion/.test(q)
+      ? { matches: true, addEventListener() {}, removeEventListener() {} }
+      : realMM.call(W(), q));
+    try {
+      named(targetName).querySelector('.tk-bundle-hd').click();
+      const snapped = named(targetName);
+      check('under reduced motion the fold is immediate',
+            snapped && !snapped.classList.contains('open')
+            && snapped.querySelectorAll('.tk-step').length === 0);
+      named(targetName).querySelector('.tk-bundle-hd').click();
+      const opened = named(targetName);
+      check('and so is the unfold, with nothing animating',
+            opened && opened.classList.contains('open') && !running(opened));
+    } finally {
+      W().matchMedia = realMM;
+    }
   } finally {
     /* Put the preference back. This page is not entitled to spend one. */
     try {
@@ -195,7 +245,9 @@ async function untilN(fn, tries = 200, gap = 100) {
   }
 
   head(bad === 0 ? 'a bundle folds, and folding is safe' : bad + ' failed');
-  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+  /* The failures in the title, since that is what the runner reports. */
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(
+    out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
 } catch (e) {
   say('bad', 'harness threw: ' + e.message);
   document.title = 'FAIL';

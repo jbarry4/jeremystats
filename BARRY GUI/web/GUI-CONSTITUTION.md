@@ -379,7 +379,12 @@ safe rather than merely possible:
 5. **It animates, and says so to reduced motion.** The steps ease their
    height and opacity closed rather than vanishing, because a list that
    snaps shut reads as something having broken. Under
-   `prefers-reduced-motion` it snaps (§4). *(Being built.)*
+   `prefers-reduced-motion` it snaps (§4). The rail re-renders on every
+   change, so a CSS transition has nothing to run on: `foldBundle`
+   (toolkit.js) animates the steps either side of the render, and ends on
+   a timer as well as on `onfinish` — a background or headless tab may
+   never report the end, and a fold waiting on it refuses every click
+   after. `_dev/bundlefold.html` checks all three.
 
 The same shape applies to anything else that is a heading over a list — the
 Explorer's tree sections and the Errors view's groups already work this way,
