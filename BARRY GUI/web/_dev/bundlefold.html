@@ -1,0 +1,203 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — folding a bundle away</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 54vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 46vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Three bundles of three and four steps is eleven rows before the flat tool
+   list even starts, and somebody working in one of them has no use for the
+   other seven. So a bundle folds.
+
+   What this checks is the part that makes folding safe rather than merely
+   possible: that putting a bundle away never costs you your place. A folded
+   bundle holding the tool you are in keeps its accent border and says WHICH
+   step that is in place of the count -- so "where am I" is still answered by
+   a menu that has been tidied.
+
+   Also that the choice is remembered, because a fold you have to redo every
+   morning is not a preference, and that the head is a real button rather
+   than a div somebody has to know is clickable.
+
+   ToolKit renders twice: the panel is rebuilt after onShow. Everything here
+   waits for the host to settle and re-queries rather than holding a node
+   across a repaint, or it asserts against a detached tree that was correct
+   when it was read. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const ready = await untilN(() => typeof W().setView === 'function');
+  check('the application loads', !!ready, 'no setView after 20s');
+  if (!ready) { document.title = 'FAIL'; return; }
+
+  const KEY = 'barry.tkFolded';
+  let saved = null;
+  try { saved = W().localStorage.getItem(KEY); } catch (e) { /* ignore */ }
+
+  try {
+    /* Nothing folded to start with, so "open" is the known state. */
+    try { W().localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+    W().setView('toolkit');
+
+    /* Settle: ToolKit paints, then repaints. Wait for bundles, then for the
+       count to stop moving, and re-query after every click. */
+    const bundles = () => Array.from(D().querySelectorAll('.tk-bundle'));
+    await untilN(() => bundles().length);
+    let n = -1;
+    for (let i = 0; i < 25 && n !== bundles().length; i++) {
+      n = bundles().length;
+      await sleep(200);
+    }
+    const named = (name) => bundles().find(
+      (b) => ((b.querySelector('strong') || {}).textContent || '') === name);
+
+    head('every bundle folds');
+    check('there are bundles to fold', bundles().length >= 1,
+          bundles().length + ' found');
+    say('note', '  ' + bundles().map(
+      (b) => (b.querySelector('strong') || {}).textContent).join(' · '));
+    check('all of them start open',
+          bundles().every((b) => b.classList.contains('open')),
+          bundles().filter((b) => !b.classList.contains('open')).length
+          + ' started folded');
+    check('the head is a button, not a div somebody must guess at',
+          bundles().every((b) => {
+            const h = b.querySelector('.tk-bundle-hd');
+            return h && h.tagName === 'BUTTON';
+          }));
+    check('and says whether it is open',
+          bundles().every((b) => {
+            const h = b.querySelector('.tk-bundle-hd');
+            return h && h.getAttribute('aria-expanded') === 'true';
+          }));
+
+    head('folding one');
+    const target = named('The Dentist') || bundles()[0];
+    const targetName = (target.querySelector('strong') || {}).textContent;
+    const stepsBefore = target.querySelectorAll('.tk-step').length;
+    check('it lists its steps while open', stepsBefore > 0,
+          stepsBefore + ' steps');
+    target.querySelector('.tk-bundle-hd').click();
+    await sleep(400);
+    const folded = named(targetName);
+    check('it is still on screen once folded', !!folded, 'the card vanished');
+    check('its steps are gone',
+          folded && folded.querySelectorAll('.tk-step').length === 0,
+          folded ? folded.querySelectorAll('.tk-step').length + ' left' : '-');
+    check('and it says so',
+          folded && !folded.classList.contains('open')
+          && folded.querySelector('.tk-bundle-hd')
+               .getAttribute('aria-expanded') === 'false');
+    check('the others are untouched',
+          bundles().filter((b) => b.classList.contains('open')).length
+            === bundles().length - 1);
+
+    head('folding never costs you your place');
+    /* Pick a step inside the folded bundle from outside it -- which is what
+       a deep link or the palette does -- and the head has to answer "where
+       am I" without being unfolded. */
+    W().eval("BARRY.views.toolkit.pick && BARRY.views.toolkit.pick('braces')");
+    await sleep(600);
+    let host = named(targetName);
+    if (!host || !host.classList.contains('on')) {
+      /* No public picker: click the step with the bundle open instead. */
+      const h2 = named(targetName);
+      if (h2 && !h2.classList.contains('open')) {
+        h2.querySelector('.tk-bundle-hd').click();
+        await sleep(400);
+      }
+      const step = Array.from(named(targetName).querySelectorAll('.tk-step'))
+        .find((s) => /Braces/.test(s.textContent));
+      if (step) { step.click(); await sleep(700); }
+      const h3 = named(targetName);
+      if (h3 && h3.classList.contains('open')) {
+        h3.querySelector('.tk-bundle-hd').click();
+        await sleep(400);
+      }
+      host = named(targetName);
+    }
+    check('the folded bundle is marked as the one you are in',
+          host && host.classList.contains('on'),
+          host ? host.className : 'gone');
+    const label = host && host.querySelector('.tk-bundle-c');
+    check('and its head names the step instead of counting them',
+          label && !/tools$/.test(label.textContent.trim()),
+          label ? JSON.stringify(label.textContent) : 'no label');
+    say('note', '  head reads: "' + (label ? label.textContent.trim() : '') + '"');
+
+    head('the choice is remembered');
+    let stored = null;
+    try { stored = W().localStorage.getItem(KEY); } catch (e) { /* ignore */ }
+    check('the fold is written down', !!stored && /\w/.test(stored),
+          JSON.stringify(stored));
+    say('note', '  stored: ' + stored);
+    f.contentWindow.location.reload();
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    await untilN(() => typeof W().setView === 'function');
+    W().setView('toolkit');
+    await untilN(() => D().querySelectorAll('.tk-bundle').length);
+    await sleep(700);
+    const after = named(targetName);
+    check('and survives a reload', after && !after.classList.contains('open'),
+          after ? after.className : 'bundle gone');
+    check('the ones never folded are still open',
+          bundles().filter((b) => b.classList.contains('open')).length >= 1);
+
+    head('unfolding');
+    named(targetName).querySelector('.tk-bundle-hd').click();
+    await sleep(400);
+    const back = named(targetName);
+    check('the steps come back',
+          back && back.querySelectorAll('.tk-step').length === stepsBefore,
+          back ? back.querySelectorAll('.tk-step').length + ' of '
+                 + stepsBefore : 'gone');
+    let end = null;
+    try { end = W().localStorage.getItem(KEY); } catch (e) { /* ignore */ }
+    check('and the fold is forgotten again',
+          !end || end.indexOf('dentist') < 0, JSON.stringify(end));
+  } finally {
+    /* Put the preference back. This page is not entitled to spend one. */
+    try {
+      if (saved === null) W().localStorage.removeItem(KEY);
+      else W().localStorage.setItem(KEY, saved);
+    } catch (e) { /* ignore */ }
+  }
+
+  head(bad === 0 ? 'a bundle folds, and folding is safe' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+} catch (e) {
+  say('bad', 'harness threw: ' + e.message);
+  document.title = 'FAIL';
+} })();
+</script>

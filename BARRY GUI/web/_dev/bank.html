@@ -399,6 +399,250 @@ const post = async (p, b) => (await fetch(p, {
     await sleep(250);
   }
 
+  /* ---------------- what an entry is not valid on ----------------
+
+     The clipping measurement and the blocks somebody removed by hand both
+     travel on the banked events themselves, and for a while none of it was
+     visible once it arrived, which is the same as not having kept it.
+
+     Seeded rather than produced by Spark, for three reasons: it runs on a
+     machine with no DEWEY recording mounted, it costs no minutes reading
+     .ncs files, and it can hold the one shape Spark no longer emits -- a
+     flat list, meaning "not valid for this event at all", which older
+     entries carry and which must keep spreading over all four windows.
+
+     The arithmetic below is worked out by hand in the comments and
+     asserted against the panel. A card that renders beautifully and counts
+     wrong is the failure these are for. */
+  say('--- what an entry is not valid on ---', 'note');
+  const exSeed = await post('/api/bank/add', {
+    project: 'HARNESS', mouse: 99, session: 1,
+    session_label: 'harness exclusion', type: 'ttl',
+    name: 'seeded cue pairs', pipeline: 'The Arc \u00b7 Spark \u00b7 harness',
+    added_by: 'harness@test',
+    parameters: { clip_measured: true, clip_fraction: 0.995,
+                  clip_min_run: 16 },
+    events: [
+      /* pre: 1 and 2 measured, 2 and 3 decided -- three blocks, not four,
+         because channel 2 is one block on both lists.
+         cue1: 1 measured -- one block.                    4 blocks. */
+      { start: 10, end: 20,
+        clipped: { pre: [1, 2], cue1: [1] }, excluded: { pre: [2, 3] } },
+      /* cue2 only.                                        1 block.  */
+      { start: 30, end: 40, clipped: { cue2: [5] } },
+      /* The old flat shape, over all four windows.        4 blocks.  */
+      { start: 50, end: 60, clipped: [7] },
+    ],
+  });
+  const exId = (exSeed.entry || {}).id;
+  check('an entry carrying clipping can be seeded', !!exId,
+        exSeed.error || '');
+
+  if (exId) {
+    await B.views.eventbank.reload();
+    setView('eventbank');
+    await until(() => D().querySelector('.bank-row[data-id="' + exId + '"]'),
+                10000);
+    const exRow = $('.bank-row[data-id="' + exId + '"]');
+    check('it is listed', !!exRow);
+    if (exRow) {
+      exRow.click();
+      await until(() => $('#bankEvents .excl-sum')
+                     || $('#bankEvents .preview-table'), 10000);
+      const card = $('#bankEvents .excl-sum');
+      check('the entry says what it is not valid on', !!card);
+
+      if (card) {
+        const txt = card.textContent || '';
+        /* 4 + 1 + 4, across channels 1, 2, 3, 5 and 7. The two counts are
+           worked out from the seed above and not from the panel, so the
+           only way both agree is if the panel is right. */
+        check('  the blocks are counted, and counted right',
+              txt.indexOf('9 blocks lost across 5 channels') >= 0,
+              'expected 9 blocks / 5 channels');
+        /* The headline is a count of blocks. "31 channels excluded" is the
+           sentence this panel exists instead of -- equally true of a
+           channel that lost one baseline and one that is gone entirely. */
+        check('  every event is accounted for, lost or clean',
+              txt.indexOf('3 of 3 events') >= 0
+              && txt.indexOf('0 completely clean') >= 0);
+        check('  the denominator is stated, not left to be inferred',
+              txt.indexOf('12 blocks per channel') >= 0);
+
+        /* Per window. pre 4, cue1 2, cue2 2, post 1 -- they sum to the
+           headline, and a panel that got the split wrong while keeping the
+           total right would pass every check above. */
+        const wins = {};
+        Array.from(card.querySelectorAll('.excl-win')).forEach((w) => {
+          const n = w.querySelector('.excl-w-name');
+          const b = w.querySelector('.excl-n');
+          if (n && b) wins[n.textContent.trim()] = b.textContent.trim();
+        });
+        check('  all four windows are named, including the empty ones',
+              ['pre', 'cue1', 'cue2', 'post'].every((w) => w in wins),
+              Object.keys(wins).join(', '));
+        check('  and each carries its own count',
+              wins.pre === '4 blocks' && wins.cue1 === '2 blocks'
+              && wins.cue2 === '2 blocks' && wins.post === '1 block',
+              JSON.stringify(wins));
+        check('  the cue windows are marked apart from the baselines',
+              card.querySelectorAll('.excl-win.cue').length === 2);
+
+        /* Per channel. The flat list on the third event means channel 7
+           lost every window of it: 4 of 12. If flat lists ever stopped
+           spreading, this is the number that would fall to 1 -- and the
+           coupling step reads them the same way, so the two would then
+           disagree about one entry. */
+        const chan = {};
+        Array.from(card.querySelectorAll('.excl-chan')).forEach((r) => {
+          const n = r.querySelector('.excl-ch-name');
+          if (n) chan[n.textContent.trim()] = r;
+        });
+        check('  every excluded channel gets a row', Object.keys(chan).length === 5,
+              Object.keys(chan).join(', '));
+        const seven = chan.CSC7;
+        check('  a flat list still means all four windows',
+              !!seven && /4 of 12 blocks/.test(seven.textContent),
+              seven ? seven.textContent : 'no CSC7 row');
+        check('  and it is said out loud that the list named no window',
+              /name channels and not windows/.test(txt));
+
+        /* Channel 2 was measured AND decided on the same block. It is one
+           block, and the two columns have to overlap rather than add --
+           merging them is the one thing this panel is not allowed to do. */
+        const two = chan.CSC2;
+        const meas = two && two.querySelector('.excl-meas');
+        const dec = two && two.querySelector('.excl-dec');
+        const both = two && two.querySelector('.excl-both');
+        check('  the measurement and the judgement are kept apart',
+              !!meas && !!dec,
+              two ? two.textContent : 'no CSC2 row');
+        check('  measured says what was measured',
+              !!meas && /measured 1/.test(meas.textContent));
+        check('  decided says what somebody decided',
+              !!dec && /decided 1/.test(dec.textContent));
+        check('  and a block on both lists is called one block, not two',
+              !!both && /1 of them both/.test(both.textContent),
+              two ? two.textContent : '');
+
+        /* Worst first, every time it is opened, so two people reading the
+           same entry read the same order. */
+        const order = Array.from(card.querySelectorAll('.excl-ch-name'))
+          .map((n) => n.textContent.trim());
+        check('  the worst channel is first',
+              order[0] === 'CSC7' && order[1] === 'CSC1', order.join(' '));
+
+        check('  how the measurement was made is on the card',
+              /clip_fraction 0.995/.test(txt) && /clip_min_run 16/.test(txt));
+      }
+    }
+
+    /* The other ninety entries. A dentate-spike set has no cue pair, no
+       windows and no measurement, and a card explaining that on every one
+       of them is a card people learn to scroll past -- and then miss on
+       the twelve that matter. */
+    if (seedId) {
+      const plain = $('.bank-row[data-id="' + seedId + '"]');
+      if (plain) {
+        plain.click();
+        await until(() => $('#bankEvents .preview-table'), 8000);
+        check('an entry with no windows gets no card at all',
+              !$('#bankEvents .excl-sum'));
+      } else {
+        say('  the plain seeded entry is not listed, skipped', 'note');
+      }
+    }
+
+    await post('/api/bank/' + exId + '/delete');
+    await B.views.eventbank.reload();
+    check('the seeded entry is put back the way it was found',
+          !$('.bank-row[data-id="' + exId + '"]'));
+  }
+
+  /* ---------------- blocks kept against the measurement ----------------
+     The third list on a banked event: `kept`, the blocks somebody put back
+     in on the traces. Seeded apart from the entry above so its arithmetic
+     stays its own, and deleted at the end like it.
+
+       event 1  clipped pre [4, 6], cue1 [4]; kept pre [4]
+                -> CSC6 pre lost, CSC4 cue1 lost, CSC4 pre KEPT
+       event 2  clipped onset [4]; kept onset [4]
+                -> CSC4 onset KEPT (a transition window, same rule)
+       event 3  clipped post [8]; kept cue2 [8]
+                -> CSC8 post lost; the cue2 keep names a block nothing
+                   removed, so it is not an overrule and is not counted
+
+     So: 3 blocks lost across 3 channels, 2 kept against the measurement,
+     over 4 windows (pre, cue1, post, onset) x 3 events = 12 per channel. */
+  say('--- blocks kept against the measurement ---', 'note');
+  const kSeed = await post('/api/bank/add', {
+    project: 'HARNESS', mouse: 99, session: 2,
+    session_label: 'harness kept', type: 'ttl',
+    name: 'seeded kept blocks', pipeline: 'The Arc · Spark · harness',
+    added_by: 'harness@test',
+    parameters: { clip_measured: true, clip_fraction: 0.995,
+                  clip_min_run: 16 },
+    events: [
+      { start: 10, end: 20, clipped: { pre: [4, 6], cue1: [4] },
+        kept: { pre: [4] } },
+      { start: 30, end: 40, clipped: { onset: [4] }, kept: { onset: [4] } },
+      { start: 50, end: 60, clipped: { post: [8] }, kept: { cue2: [8] } },
+    ],
+  });
+  const kId = (kSeed.entry || {}).id;
+  check('an entry carrying kept blocks can be seeded', !!kId,
+        kSeed.error || '');
+  if (kId) {
+    try {
+      const stored = await (await fetch('/api/bank/' + kId)).json();
+      const evs = ((stored.entry || {}).events || []);
+      check('  the bank keeps `kept` on the event, per window',
+            evs[0] && JSON.stringify(evs[0].kept) === '{"pre":[4]}'
+            && evs[1] && JSON.stringify(evs[1].kept) === '{"onset":[4]}',
+            JSON.stringify(evs.map((e) => e.kept)));
+      await B.views.eventbank.reload();
+      setView('eventbank');
+      await until(() => D().querySelector('.bank-row[data-id="' + kId + '"]'),
+                  10000);
+      const kRow = $('.bank-row[data-id="' + kId + '"]');
+      if (kRow) {
+        kRow.click();
+        await until(() => $('#bankEvents .excl-sum'), 10000);
+        const card = $('#bankEvents .excl-sum');
+        const t = (card && card.textContent) || '';
+        check('  kept blocks are not counted as lost',
+              t.indexOf('3 blocks lost across 3 channels') >= 0,
+              t.slice(0, 160));
+        check('  they are their own category, counted',
+              t.indexOf('2 blocks kept against the measurement') >= 0,
+              t.slice(0, 220));
+        const rowsK = {};
+        Array.from((card || D()).querySelectorAll('.excl-chan')).forEach((r) => {
+          const n = r.querySelector('.excl-ch-name');
+          if (n) rowsK[n.textContent.trim()] = r;
+        });
+        const four = rowsK.CSC4;
+        check('  CSC4 lost one block and kept two',
+              !!four && /1 of 12 blocks/.test(four.textContent)
+              && /kept 2 against the measurement/.test(
+                (four.querySelector('.excl-kept') || {}).textContent || ''),
+              four ? four.textContent : 'no CSC4 row');
+        check('  a keep on a block nothing removed is not an overrule',
+              !!rowsK.CSC8 && !rowsK.CSC8.querySelector('.excl-kept'),
+              rowsK.CSC8 ? rowsK.CSC8.textContent : 'no CSC8 row');
+        check('  a channel with no kept block carries no kept chip',
+              !!rowsK.CSC6 && !rowsK.CSC6.querySelector('.excl-kept'));
+      } else {
+        check('  the kept entry is listed', false);
+      }
+    } finally {
+      await post('/api/bank/' + kId + '/delete');
+      await B.views.eventbank.reload();
+    }
+    check('the kept entry is put back the way it was found',
+          !$('.bank-row[data-id="' + kId + '"]'));
+  }
+
   /* ---------------- delete button colors ---------------- */
   say('--- danger button contrast ---', 'note');
   const probe = D().createElement('button');

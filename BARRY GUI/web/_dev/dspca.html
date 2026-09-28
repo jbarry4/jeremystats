@@ -6,7 +6,7 @@ iframe{flex:1;height:100vh;border:0}
 .ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
 <body><pre id="log"></pre><iframe id="app" src="/"></iframe>
 <script>
-/* X-ray, step four of The Dentist, driven through the real interface.
+/* X-ray, step five of The Dentist, driven through the real interface.
 
    IT RUNS ON THE DEMO RECORDING, and that is the point. The demo session is
    generated rather than stored, so this suite needs no drive mounted, runs
@@ -72,7 +72,7 @@ const NL = String.fromCharCode(10);
   const st = () => ev('BARRY.dspca._state()');
 
   /* ================================================================== */
-  head('THE BUNDLE NOW HAS FOUR STEPS');
+  head('THE BUNDLE NOW HAS FIVE STEPS');
 
   ev('setView("toolkit")');
   await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
@@ -81,7 +81,7 @@ const NL = String.fromCharCode(10);
      There are two now -- The Arc joined it -- and `.tk-step` matches the
      steps of both, so reading them all and comparing against four found
      nine and called it a fault. What this check is about is that this
-     tool is the fourth step of ITS bundle; how many bundles the ToolKit
+     tool is the fifth step of ITS bundle; how many bundles the ToolKit
      offers is somebody else's business. */
   const dentist = Array.from(D().querySelectorAll('.tk-bundle'))
     .find((b) => /The Dentist/.test(
@@ -89,18 +89,20 @@ const NL = String.fromCharCode(10);
   ok('the ToolKit still offers The Dentist', !!dentist);
   const steps = Array.from((dentist || D()).querySelectorAll('.tk-step'))
     .map((b) => (b.querySelector('.tk-step-n') || {}).textContent);
-  eq('and it lists all four, in order', steps,
-     ['Incisor', 'Checkup', 'Braces', 'X-ray']);
+  /* Five since Root Canal went in between Braces and X-ray, to take the
+     hidden IEDs out before anything here splits the set. */
+  eq('and it lists all five, in order', steps,
+     ['Incisor', 'Checkup', 'Braces', 'Root Canal', 'X-ray']);
   const count = ((dentist || D()).querySelector('.tk-bundle-c')
                  || {}).textContent;
-  eq('the header counts them', count, '4 tools');
+  eq('the header counts them', count, '5 tools');
 
   /* The step opens, and owns the whole pane -- the bad-channel scope card
      belongs to a different question and was being shown over three tools
      that have nothing to do with it. */
   const btn = Array.from((dentist || D()).querySelectorAll('.tk-step'))
     .find((b) => /X-ray/.test(b.textContent));
-  ok('the fourth step is clickable', !!btn);
+  ok('the fifth step is clickable', !!btn);
   if (btn) btn.click();
   /* `.step-head` is shared with Braces now, so the check is the header
      that says X-ray rather than the presence of any header. */
@@ -108,6 +110,77 @@ const NL = String.fromCharCode(10);
     .find((h) => /X-ray/.test(h.textContent));
   await until(xrayHead, 10000, 'the panel');
   ok('it opens its own panel', !!xrayHead());
+  const xrayStep = ((xrayHead() || {}).querySelector
+                    ? xrayHead().querySelector('.step-n') : null);
+  eq('and its header says which of five it is',
+     xrayStep && xrayStep.textContent, 'step 5 of The Dentist');
+
+  /* ================================================================== */
+  head('IT READS ROOT CANAL’S OUTPUT BY DEFAULT');
+
+  /* Step four banks the set without its hidden IEDs as a version tagged
+     `rootcanal`, and that is the set this step is meant to split. So when
+     there is one it is the version ticked on arrival -- the newest of
+     them that can be read here -- and when there is not, nothing changes.
+
+     The rule first, on lists built for the purpose, because the real bank
+     may or may not hold a Root Canal version on the day this runs. */
+  const rcd = (vs) => ev('JSON.stringify(BARRY.dspca._rcDefault('
+                         + JSON.stringify(vs) + '))');
+  const vset = [
+    { name: '1', ref: 'a', aligned: true, usable: true },
+    { name: '2', ref: 'b', aligned: true, usable: true, tag: 'rootcanal' },
+    { name: '3', ref: 'c', aligned: true, usable: true },
+    { name: '4', ref: 'd', aligned: true, usable: true, tag: 'rootcanal' },
+    { name: '5', ref: 'e', aligned: true, usable: false, tag: 'rootcanal' },
+  ];
+  eq('the newest READABLE Root Canal version is the default',
+     (JSON.parse(rcd(vset)) || {}).ref, 'd');
+  eq('and with none there is no Root Canal default',
+     rcd(vset.map((v) => ({ name: v.name, ref: v.ref, usable: true }))),
+     'null');
+
+  /* And through the panel: a set with Root Canal versions in it, picked,
+     lands on the newest of them rather than on the newest aligned one.
+
+     The DEMO set's row in the panel's own list lends its version list for
+     the length of the check and gets it back straight after. Nothing is
+     sent anywhere the bank can see: the plan that follows asks the demo
+     entry for version "d", which it does not have, and a plan answers that
+     with its real versions and a note rather than an error. The panel is
+     re-picked from scratch in the section below. */
+  await until(() => (st().cands || []).some(
+    (c) => c.gid === 'demo-ds-tutorial'), 15000, 'the candidates');
+  const demoRow = (st().cands || []).find((c) => c.gid === 'demo-ds-tutorial');
+  ok('the demo set is in the panel’s list to borrow', !!demoRow);
+  if (demoRow) {
+    const keepV = demoRow.versions;
+    demoRow.versions = vset;
+    try {
+      ev('BARRY.dspca._pick(' + JSON.stringify(demoRow.id) + ')');
+      eq('picking a set with Root Canal versions ticks the newest of them',
+         st().q.from_version, 'd');
+    } finally {
+      demoRow.versions = keepV;
+    }
+    await until(() => st().plan, 15000, 'that plan to settle');
+  }
+
+  /* The same thing on the real bank, where there is something to see. */
+  const realC = (await get('/api/dspca/candidates')).sets || [];
+  const withRc = realC.find((c) => (c.versions || []).some(
+    (v) => v.tag === 'rootcanal' && v.usable !== false));
+  if (withRc) {
+    const want = JSON.parse(rcd(withRc.versions));
+    ev('BARRY.dspca._pick(' + JSON.stringify(withRc.id) + ')');
+    await until(() => st().plan && st().plan.ok !== undefined, 20000,
+                'the plan');
+    eq('a real set with a Root Canal version reads from it',
+       String(st().q.from_version), String(want.ref));
+  } else {
+    say('  note: no set in this bank has a Root Canal version yet, so the '
+        + 'real-bank case was not run', 'dim');
+  }
   ok('and the bad-channel scope card is not over it',
      !D().querySelector('#tkMain .tk-scope'));
 

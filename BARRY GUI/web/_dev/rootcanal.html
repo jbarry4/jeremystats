@@ -1,0 +1,1043 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rootcanal: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre;flex:none}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Root Canal, step four of The Dentist, driven through the real interface.
+
+   IT RUNS ON A REAL RECORDING: PTEN m13 s2, bank entry 46fd29a77cc7, 296
+   aligned dentate spikes, the recording the lab's own IED scripts were
+   written against. There is no demo recording with IEDs in it, and a
+   classifier checked on data with nothing to classify checks nothing.
+
+   IT WRITES NOTHING TO THE BANK. The bank dialog is opened and cancelled;
+   the commit route is never called. Flips and moved centres are fit
+   params -- they live in the panel and the request, not on disk -- and
+   every one this suite makes is undone before it moves on.
+
+   Things that have bitten harnesses here before, each handled:
+
+   1. `BARRY` is a const inside the app's own scope, so it is reached
+      through the frame's `eval`.
+   2. The read is minutes the first time. If it is not already on file the
+      suite starts it and waits with a long timeout; under the runner's
+      virtual time that may not be long enough, and it says so rather than
+      reporting the checks after it as failures of their own.
+   3. It establishes its preconditions -- the set, the version, the default
+      settings, no flips, k-means' own centres -- rather than assuming them.
+   4. Canvas text is read by spying on `fillText`, and point positions come
+      from `_geom()`, so "the label exists in the source" is never mistaken
+      for "the label was drawn".
+   5. Run under PowerShell. Under Bash, Edge dumps nothing and the whole
+      suite reads as clean. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(70), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const eq = (name, got, want) =>
+  ok(name, JSON.stringify(got) === JSON.stringify(want),
+     'wanted ' + JSON.stringify(want) + ', got ' + JSON.stringify(got));
+const note = (s) => say('  note ' + s, 'dim');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+const NL = String.fromCharCode(10);
+const ENTRY = '46fd29a77cc7';
+
+(async () => {
+  let W = null, D = null, ev = null;
+  try {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  W = frame.contentWindow;
+  ev = (c) => W.eval(c);
+  D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+  const RC = 'BARRY.rootcanal';
+  const st = () => ev(RC + '._state()');
+  const geom = () => ev(RC + '._geom()');
+
+  /* Canvas text, as drawn: every fillText, with the canvas it went on. */
+  ev('(function(){ var C = window.CanvasRenderingContext2D.prototype;'
+     + ' if (!C.__rcOrig) { C.__rcOrig = C.fillText;'
+     + ' C.fillText = function(t, x, y) { (window.__rc = window.__rc || [])'
+     + '.push([this.canvas && this.canvas.id || "", String(t)]);'
+     + ' return C.__rcOrig.apply(this, arguments); }; }'
+     + ' window.__rc = []; })()');
+  const drawn = () => {
+    ev('window.__rc = []');
+    ev(RC + '._draw()');
+    const out = {};
+    for (const [id, t] of JSON.parse(ev('JSON.stringify(window.__rc)'))) {
+      (out[id] = out[id] || []).push(t);
+    }
+    return out;
+  };
+
+  /* A real pointer, at a point in a canvas's content box. */
+  const client = (id, x, y) => {
+    const cv = D().getElementById(id);
+    const r = cv.getBoundingClientRect();
+    return { cv, cx: r.left + cv.clientLeft + x, cy: r.top + cv.clientTop + y };
+  };
+  const pointer = (type, id, x, y) => {
+    const c = client(id, x, y);
+    c.cv.dispatchEvent(new W.PointerEvent(type, {
+      bubbles: true, cancelable: true, clientX: c.cx, clientY: c.cy,
+      button: 0, buttons: type === 'pointerup' ? 0 : 1, pointerId: 7,
+      pointerType: 'mouse' }));
+  };
+  const click = (id, x, y) => { pointer('pointerdown', id, x, y);
+                                pointer('pointerup', id, x, y); };
+
+  /* ================================================================== */
+  head('THE DENTIST HAS FIVE STEPS, AND THIS IS THE FOURTH');
+
+  ev('setView("toolkit")');
+  await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+  const dentist = Array.from(D().querySelectorAll('.tk-bundle'))
+    .find((b) => /The Dentist/.test(
+      (b.querySelector('.tk-bundle-hd') || {}).textContent || ''));
+  ok('the ToolKit offers The Dentist', !!dentist);
+  const stepEls = Array.from((dentist || D()).querySelectorAll('.tk-step'));
+  eq('with five steps, in the order they are done',
+     stepEls.map((b) => (b.querySelector('.tk-step-n') || {}).textContent),
+     ['Incisor', 'Checkup', 'Braces', 'Root Canal', 'X-ray']);
+  eq('numbered one to five',
+     stepEls.map((b) => (b.querySelector('.tk-step-i') || {}).textContent)
+       .join(''), '12345');
+  eq('and says what this one does',
+     ((stepEls[3] || {}).querySelector
+       ? (stepEls[3].querySelector('.tk-step-s') || {}).textContent : null),
+     'take the IEDs out');
+  eq('the header counts them',
+     ((dentist || D()).querySelector('.tk-bundle-c') || {}).textContent,
+     '5 tools');
+  ok('Root Canal is not in the flat tool list as well',
+     !Array.from(D().querySelectorAll('.tk-tool strong'))
+       .some((s) => /Root Canal/.test(s.textContent)));
+
+  if (stepEls[3]) stepEls[3].click();
+  const rcHead = () => Array.from(D().querySelectorAll('.step-head'))
+    .find((h) => /Root Canal/.test(h.textContent));
+  await until(rcHead, 10000, 'the panel');
+  ok('the step opens its own panel', !!rcHead());
+  eq('whose header says which of five it is',
+     rcHead() && (rcHead().querySelector('.step-n') || {}).textContent,
+     'step 4 of The Dentist');
+  ok('and the bad-channel scope card is not over it',
+     !D().querySelector('#tkMain .tk-scope'));
+
+  /* ================================================================== */
+  head('THE SERVER, DIRECTLY');
+
+  const cands = await get('/api/rootcanal/candidates');
+  ok('candidates answers', !!(cands && cands.ok),
+     JSON.stringify(cands).slice(0, 160));
+  const mine = (cands.sets || []).find((s) => s.entry_id === ENTRY);
+  ok('the PTEN m13 s2 set is offered', !!mine,
+     (cands.sets || []).map((s) => s.entry_id).join(' ').slice(0, 200));
+  if (!mine) throw new Error('entry ' + ENTRY + ' is not in the candidates, '
+                             + 'so there is nothing to drive');
+  ok('as aligned and readable here', mine.aligned && mine.readable,
+     JSON.stringify({ aligned: mine.aligned, readable: mine.readable,
+                      why_not: mine.why_not }));
+  const unaligned = (cands.sets || []).filter((s) => !s.aligned);
+  ok('a set Braces has not aligned is offered as unreadable, with the reason',
+     unaligned.every((s) => s.readable === false && /Braces/.test(s.why_not || '')),
+     JSON.stringify(unaligned.slice(0, 2).map((s) => [s.readable, s.why_not])));
+  ok('every set says what Root Canal has done to it',
+     (cands.sets || []).every((s) => s.rootcanal
+                                     && typeof s.rootcanal.done === 'boolean'));
+
+  /* ================================================================== */
+  head('WHICH VERSION IT READS');
+
+  /* The rule, on a list built for the purpose: the newest aligned version
+     Root Canal did not write itself. */
+  const dv = (vs) => ev('JSON.stringify(' + RC + '._defaultVersion('
+                        + JSON.stringify({ versions: vs }) + '))');
+  eq('the newest aligned one that is not Root Canal’s own output',
+     (JSON.parse(dv([
+       { name: '1', ref: 'a', aligned: true, usable: true },
+       { name: '2', ref: 'b', aligned: true, usable: true },
+       { name: '3', ref: 'c', aligned: true, usable: true, tag: 'rootcanal' },
+       { name: '4', ref: 'd', aligned: false, usable: true },
+     ])) || {}).ref, 'b');
+  eq('and never one whose stamps are not on this machine',
+     (JSON.parse(dv([
+       { name: '1', ref: 'a', aligned: true, usable: true },
+       { name: '2', ref: 'b', aligned: true, usable: false },
+     ])) || {}).ref, 'a');
+
+  await until(() => (st().cands || []).length, 20000, 'the panel’s list');
+  ev(RC + '._pickSet(' + JSON.stringify(ENTRY) + ')');
+  const want = JSON.parse(dv(mine.versions || [])) || null;
+  eq('picking the set ticks that version', String(st().q.from_version),
+     String(want ? (want.ref != null ? want.ref : want.name) : null));
+  const vChecked = D().querySelector('input[name="rcVer"]:checked');
+  ok('and the radio on screen agrees', !want || !!vChecked);
+
+  /* ================================================================== */
+  head('THE ACTIVITY FEED SURVIVES A READ');
+
+  /* A running read ticks every 700 ms. Rebuilding the host on a tick takes
+     the ToolKit's activity feed with it, and it remounts, says "Reading..."
+     and fetches -- X-ray's fault, and Braces' before it. Node identity, not
+     "a .tf exists": a remount leaves one too. */
+  ev(RC + '._fakeJob({ done: 1, of: 296 })');
+  await until(() => D().querySelector('#tkResult .rc-job'), 8000,
+              'the progress card');
+  ok('a running read draws the progress card, with a loader in it',
+     !!D().querySelector('#tkResult .rc-job .loader'));
+  const gotFeed = await until(() => D().querySelector('#tkResult .tf'), 10000,
+                              'the activity feed to mount');
+  ok('the activity feed is mounted under it', gotFeed);
+  const feed0 = D().querySelector('#tkResult .tf');
+  /* The tick itself updates the card where it stands. Asked around one
+     tick, synchronously: the ToolKit repaints the whole panel on its own
+     schedule, and that is a different event from a tick. */
+  const cardA = D().querySelector('#tkResult .rc-job');
+  ev(RC + '._tick({ done: 2 })');
+  ok('a tick updates the card in place rather than replacing it',
+     !!cardA && D().querySelector('#tkResult .rc-job') === cardA);
+  for (let i = 3; i <= 15; i++) {
+    ev(RC + '._tick({ done: ' + i + ' })');
+    await sleep(90);
+  }
+  ok('fourteen ticks later it is the SAME feed, not a remount',
+     !!feed0 && D().querySelector('#tkResult .tf') === feed0);
+  const jobText = (D().querySelector('#tkResult .rc-job') || {}).textContent || '';
+  ok('which says where it is up to', /15 of 296/.test(jobText),
+     jobText.slice(0, 120));
+  ok('and offers Stop', /Stop/.test(jobText));
+  ev(RC + '._endJob()');
+
+  /* ================================================================== */
+  head('THE READ');
+
+  ev(RC + '._read()');
+  /* Cached, this is one round trip. Not cached, it is minutes -- and the
+     runner's virtual clock may run out first, which is reported as what it
+     is rather than as forty failures after it. */
+  const haveRead = await until(() => st().q.read, 900000, 'the read');
+  ok('the read finishes and the panel has a hash', !!haveRead,
+     st().job ? JSON.stringify(st().job.stages || []) : 'no job either');
+  if (!haveRead) {
+    throw new Error('the read of ' + ENTRY + ' did not finish inside the '
+                    + 'budget; run the suite again once it has (it is cached '
+                    + 'after the first time)');
+  }
+  await until(() => st().fit && st().fit.ok !== undefined, 60000, 'the first fit');
+  const f0 = st().fit;
+  ok('a first fit arrives', !!(f0 && f0.ok), f0 && f0.error);
+  if (!f0 || !f0.ok) throw new Error('no fit: ' + (f0 && f0.error));
+  ok('with every event of the read in it', f0.events.length === f0.n,
+     f0.events.length + ' of ' + f0.n);
+  say('       ' + f0.n + ' events: ' + JSON.stringify(f0.counts), 'dim');
+  ok('the three counts add up to the events',
+     f0.counts.ds + f0.counts.ied + f0.counts.unmeasured === f0.n,
+     JSON.stringify(f0.counts));
+  ok('a not-measured event has no z and no class',
+     f0.events.filter((e) => e.z == null).every((e) => e.cls == null));
+  const cD = (f0.centres || []).find((c) => c.cls === 'ds');
+  const cI = (f0.centres || []).find((c) => c.cls === 'ied');
+  ok('two centres, one of each class', !!(cD && cI));
+  ok('and the IED one is the one with more HF power (the naming rule)',
+     !!(cD && cI) && cI.raw[2] > cD.raw[2],
+     JSON.stringify([cD && cD.raw, cI && cI.raw]));
+  ok('the rule is said in a sentence', /IED/.test(f0.rule || ''), f0.rule);
+  const whyText = (D().querySelector('.rc-why') || {}).textContent || '';
+  ok('and the panel says it', whyText.indexOf(f0.rule) >= 0,
+     whyText.slice(0, 160));
+  ok('the chooser folds to one line once there is a read',
+     !!D().querySelector('.rc-choose.rc-folded')
+     && !D().querySelector('input[name="rcEntry"]'));
+
+  /* ================================================================== */
+  head('EVERY AXIS IS LABELLED, AND THE HF AXIS NAMES ITS BAND');
+
+  await until(() => { const g = geom(); return g.space && g.flats.rcFlatHP; },
+              10000, 'the pictures');
+  let txt = drawn();
+  const hfSaid = '500–1000 Hz power · dB re baseline';
+  const has = (id, re) => (txt[id] || []).some((t) => re.test(t)
+                                                    || t.indexOf(re) >= 0);
+  const hasS = (id, s) => (txt[id] || []).some((t) => t.indexOf(s) >= 0);
+  ok('the space names amplitude', hasS('rcSpace', 'max amplitude · µV'),
+     JSON.stringify(txt.rcSpace || []).slice(0, 200));
+  ok('and half-width', hasS('rcSpace', 'half-width · ms'));
+  ok('and power, with its band and its reference', hasS('rcSpace', hfSaid));
+  for (const [id, a, b] of [['rcFlatAH', 'max amplitude · µV', 'half-width · ms'],
+                            ['rcFlatAP', 'max amplitude · µV', hfSaid],
+                            ['rcFlatHP', 'half-width · ms', hfSaid]]) {
+    ok(id + ' labels both of its axes', hasS(id, a) && hasS(id, b),
+       JSON.stringify(txt[id] || []).slice(0, 200));
+  }
+  const allText = [].concat(...Object.values(txt));
+  ok('nothing drawn is cut short with an ellipsis',
+     !allText.some((t) => /…|\.\.\./.test(t)),
+     JSON.stringify(allText.filter((t) => /…|\.\.\./.test(t))));
+
+  /* ================================================================== */
+  head('THE SETTINGS WAIT FOR RECOMPUTE');
+
+  const body0 = JSON.stringify(ev(RC + '._lastBody()'));
+  ev(RC + '._setParam("band_lo", 600)');
+  ev(RC + '._setParam("band_hi", 900)');
+  ok('a typed band is pending', ev(RC + '._pending()') === true);
+  ok('and the picture’s chip says it is the old answer',
+     !!D().querySelector('.rc-chip.rc-chip-stale'));
+  await sleep(300);
+  eq('nothing was refitted', JSON.stringify(ev(RC + '._lastBody()')), body0);
+  txt = drawn();
+  ok('the axis still names the band the picture was computed with',
+     hasS('rcFlatAP', hfSaid));
+  const go = D().querySelector('.rc-recompute');
+  ok('Recompute is offered', !!go && !go.disabled);
+  const read0 = st().q.read;
+  if (go) go.click();
+  await until(() => st().fit && st().fit.params && st().fit.params.band_lo === 600
+                    && !st().fitting, 30000, 'the recompute');
+  eq('pressing it refits with the band that was typed',
+     [st().fit.params.band_lo, st().fit.params.band_hi], [600, 900]);
+  ok('the chip is current again', !D().querySelector('.rc-chip.rc-chip-stale'));
+  txt = drawn();
+  ok('and the axis now says 600–900 Hz',
+     hasS('rcFlatAP', '600–900 Hz power · dB re baseline')
+     && hasS('rcSpace', '600–900 Hz power · dB re baseline'),
+     JSON.stringify(txt.rcFlatAP || []).slice(0, 160));
+  ok('it did not read the recording again', !st().job && st().q.read === read0);
+
+  // The filter is a fit param too.
+  const ampWas = st().fit.events.map((e) => e.amp_uV);
+  ev(RC + '._setParam("lo_hz", 5)');
+  ev(RC + '._setParam("hi_hz", 60)');
+  ev(RC + '._recompute()');
+  await until(() => st().fit.params.lo_hz === 5 && !st().fitting, 30000,
+              'the filter recompute');
+  ok('changing the filter changes the amplitudes',
+     st().fit.events.some((e, j) => e.amp_uV !== ampWas[j]));
+  ok('and still reads nothing from disk', !st().job && st().q.read === read0);
+
+  /* The band stops at 2000 Hz -- the decimator's anti-alias corner, not
+     the 2500 Hz Nyquist. 2400 is between the two, which is the case that
+     matters: under the Nyquist, and still not measurable. */
+  ev(RC + '._setParam("band_hi", 2400)');
+  ok('a band edge past 2000 Hz is refused, with the reason',
+     ev(RC + '._problems()').some((p) => /2000 Hz/.test(p)
+                                         && /anti-alias/.test(p)),
+     JSON.stringify(ev(RC + '._problems()')));
+  const bandIn = Array.from(D().querySelectorAll('.rc-controls input'))
+    .find((x) => x.max === '2000' && x.min === '1');
+  ok('the band field says where it stops', !!bandIn);
+  if (bandIn) {
+    bandIn.value = '2400';
+    bandIn.dispatchEvent(new W.Event('change', { bubbles: true }));
+    eq('and a value typed past it comes back to 2000', bandIn.value, '2000');
+    ev(RC + '._setParam("band_hi", 2400)');
+  }
+  ok('and Recompute will not take it',
+     !!D().querySelector('.rc-recompute') && D().querySelector('.rc-recompute').disabled);
+
+  // Back to the defaults, and waited for.
+  for (const [k, v] of [['lo_hz', 1], ['hi_hz', 100], ['band_lo', 500],
+                        ['band_hi', 1000], ['win_ms', 25]]) {
+    ev(RC + '._setParam(' + JSON.stringify(k) + ', ' + v + ')');
+  }
+  ev(RC + '._recompute()');
+  await until(() => st().fit.params.band_lo === 500 && st().fit.params.lo_hz === 1
+                    && !st().fitting, 30000, 'the defaults back');
+  eq('the settings are back at their defaults',
+     [st().fit.params.lo_hz, st().fit.params.hi_hz, st().fit.params.band_lo,
+      st().fit.params.band_hi], [1, 100, 500, 1000]);
+
+  /* ================================================================== */
+  head('WHERE THE HALF-WIDTH SEARCH STRUGGLED, EVERY EVENT IS MARKED');
+
+  /* On this recording, at v1's 50 ms search, two events never come back
+     to half amplitude: i=21 (DS) and i=246 (IED). They are placed on the
+     two axes they have. Widened to 80 ms both are found (56.6 and 59.7 ms)
+     and both are flagged as found only that way. Measured by the backend
+     agent on the same read; checked here as what the panel shows. */
+  const crossIn = D().querySelector('.rc-controls input.rc-in-cross');
+  ok('there is a half-width search control, from 10 to 200 ms',
+     !!crossIn && crossIn.min === '10' && crossIn.max === '200');
+  eq('at v1’s 50 ms by default', crossIn && crossIn.value, '50');
+  eq('and it reaches the fit', ev(RC + '._lastBody()').cross_ms, 50);
+  const f50 = st().fit;
+  eq('two events are placed on 2 of 3 axes, none by a widened search',
+     [f50.counts.partial, f50.counts.wide], [2, 0]);
+  const ev21 = f50.events.find((e) => e.i === 21) || {};
+  const ev246 = f50.events.find((e) => e.i === 246) || {};
+  ok('i=21 is a DS placed without its half-width',
+     ev21.partial && ev21.cls === 'ds' && JSON.stringify(ev21.missing)
+     === '["hw_ms"]' && ev21.z && ev21.z[1] === null, JSON.stringify(ev21));
+  ok('i=246 is an IED placed the same way', ev246.partial && ev246.cls === 'ied');
+  ok('both have a class, so the classified count includes them',
+     f50.n_placed === f50.n_used + 2, [f50.n_used, f50.n_placed].join(' / '));
+
+  await sleep(150);
+  let gp = geom();
+  const markIn = (gg, i) => [gg.space.pts.find((p) => p.i === i)]
+    .concat(['rcFlatAH', 'rcFlatAP', 'rcFlatHP']
+      .map((id) => gg.flats[id].pts.find((p) => p.i === i)));
+  ok('a partial event is a square in all four views',
+     [21, 246].every((i) => markIn(gp, i).every((p) => p && p.mark === 'square')),
+     JSON.stringify(markIn(gp, 21).map((p) => p && p.mark)));
+  ok('on the edge of the views whose axis it lacks, and in place in the other',
+     gp.flats.rcFlatAH.pts.find((p) => p.i === 21).edge
+     && gp.flats.rcFlatHP.pts.find((p) => p.i === 21).edge
+     && !gp.flats.rcFlatAP.pts.find((p) => p.i === 21).edge);
+  ok('and a complete one is still a dot',
+     gp.space.pts.filter((p) => ![21, 246].includes(p.i) && !p.hollow)
+       .every((p) => p.mark === 'dot'));
+  const lgd = Array.from(D().querySelectorAll('.rc-legend .rc-lg'))
+    .map((n2) => n2.textContent);
+  ok('the legend names the square and the dashed outline beside the others',
+     ['on 2 of 3 axes', 'half-width by the widened search', 'set by hand',
+      'not measured'].every((w2) => lgd.includes(w2)), JSON.stringify(lgd));
+  ok('the why-line counts them', /2 on 2 of 3 axes/.test(
+     (D().querySelector('.rc-why') || {}).textContent || ''));
+  ok('and says how many were classified, placed ones included',
+     new RegExp(f50.n_placed + ' of ' + f50.n + ' classified').test(
+       (D().querySelector('.rc-why') || {}).textContent || ''));
+  ok('Bank says so too', /\(2 on 2 of 3 axes\)/.test(
+     (D().querySelector('.rc-bank') || {}).textContent || ''),
+     (D().querySelector('.rc-bank') || {}).textContent);
+
+  ev(RC + '._pick(21)');
+  await until(() => st().evData && st().evData.i === 21, 20000, 'event 21');
+  await sleep(150);
+  const why21 = (D().querySelector('.rc-ev-why') || {}).textContent || '';
+  ok('the click panel says why, in words',
+     /Assigned on 2 of 3 axes/.test(why21)
+     && /never came back to half-amplitude within 50 ms/.test(why21), why21);
+  const tr21 = geom().ev.trace || {};
+  ok('the trace draws no half-width for it',
+     tr21.hasW === false && (!tr21.leftFound || !tr21.rightFound),
+     JSON.stringify(tr21));
+  txt = drawn();
+  ok('and says the crossing was not found rather than drawing the edge',
+     hasS('rcTrace', 'half-width not found'), JSON.stringify(txt.rcTrace || []));
+
+  // Widened to 80 ms, through the field and Recompute.
+  if (crossIn) {
+    crossIn.value = '80';
+    crossIn.dispatchEvent(new W.Event('input', { bubbles: true }));
+    crossIn.dispatchEvent(new W.Event('change', { bubbles: true }));
+  }
+  ok('a new search width waits for Recompute', ev(RC + '._pending()') === true);
+  const go80 = D().querySelector('.rc-recompute');
+  if (go80) go80.click();
+  await until(() => st().fit.params.cross_ms === 80 && !st().fitting, 30000,
+              'the 80 ms fit');
+  eq('80 ms reaches the fit', ev(RC + '._lastBody()').cross_ms, 80);
+  const f80 = st().fit;
+  eq('both are found now, and flagged as found only that way',
+     [f80.counts.partial, f80.counts.wide], [0, 2]);
+  await sleep(150);
+  gp = geom();
+  ok('a widened event is its class dot with the dashed outline, in all four',
+     [21, 246].every((i) => markIn(gp, i).every((p) => p && p.mark === 'dot'
+                                                       && p.wide)),
+     JSON.stringify(markIn(gp, 21)));
+  ok('the why-line and Bank count them',
+     /2 by the widened search/.test((D().querySelector('.rc-why') || {}).textContent)
+     && /\(2 by the widened search\)/.test(
+       (D().querySelector('.rc-bank') || {}).textContent || ''));
+  ev(RC + '._pick(21)');
+  await until(() => st().evData && st().evData.i === 21
+                    && (geom().ev.trace || {}).hasW, 20000, 'event 21 at 80 ms');
+  const why80 = (D().querySelector('.rc-ev-why') || {}).textContent || '';
+  ok('its panel says the search was widened, and to what',
+     /widened to 80 ms: 56\.6 ms/.test(why80), why80);
+  ok('and the trace has its half-width back', geom().ev.trace.hasW === true);
+
+  ev(RC + '._setParam("cross_ms", 50)');
+  ev(RC + '._recompute()');
+  await until(() => st().fit.params.cross_ms === 50 && !st().fitting, 30000,
+              'back to 50 ms');
+  eq('back at v1’s search', st().fit.counts.partial, 2);
+
+  /* ================================================================== */
+  head('EVERY DOT IS WHERE IT IS DRAWN, AT THE SIZE IT IS SHOWN');
+
+  await until(() => geom().space, 8000, 'the space');
+  let g = geom();
+  const n = st().fit.n;
+  eq('the space holds every event', g.space.pts.length, n);
+  ok('all of them inside the canvas',
+     g.space.pts.every((p) => p.x >= 0 && p.x <= g.space.w
+                              && p.y >= 0 && p.y <= g.space.h));
+  ok('with both centres', (g.space.centres || []).length === 2);
+  for (const id of ['rcFlatAH', 'rcFlatAP', 'rcFlatHP']) {
+    const f = g.flats[id];
+    ok(id + ' holds every event, inside its plot',
+       !!f && f.pts.length === n && f.pts.every((p) =>
+         p.x >= f.box.x0 - 0.5 && p.x <= f.box.x1 + 0.5
+         && p.y >= f.box.y0 - 0.5 && p.y <= f.box.y1 + 0.5),
+       f ? f.pts.length + ' dots' : 'missing');
+  }
+  const dpr = ev('window.devicePixelRatio || 1');
+  for (const id of ['rcSpace', 'rcFlatAH', 'rcFlatAP', 'rcFlatHP']) {
+    const cv = D().getElementById(id);
+    ok(id + ' is drawn at the size it is shown (HiDPI-sharp)',
+       !!cv && Math.abs(cv.width - Math.round(cv.clientWidth * dpr)) <= 1
+       && Math.abs(cv.height - Math.round(cv.clientHeight * dpr)) <= 1,
+       cv ? cv.clientWidth + 'x' + cv.clientHeight + ' shown, '
+            + cv.width + 'x' + cv.height + ' drawn at dpr ' + dpr : 'missing');
+  }
+  ok('and the panel says nothing is mismatched',
+     ev(RC + '._mismatched()') === false);
+
+  /* ================================================================== */
+  head('PICKING');
+
+  /* Exact on a flat view: a dot with nothing else near it, pressed with a
+     real pointer. */
+  const lonely = (pts, r) => pts.find((p) => pts.every((o) => o === p
+    || Math.hypot(o.x - p.x, o.y - p.y) > r));
+  g = geom();
+  const fp = lonely(g.flats.rcFlatAH.pts.filter((p) => !p.hollow), 8);
+  ok('there is an isolated dot on the amp × half-width view to press', !!fp);
+  if (fp) {
+    click('rcFlatAH', fp.x, fp.y);
+    await until(() => st().picked === fp.i, 4000, 'the pick');
+    eq('pressing it picks exactly that event', st().picked, fp.i);
+  }
+
+  /* In the space: the dot under the pointer, the front one winning. */
+  g = geom();
+  const sp = g.space.pts;
+  const under = (x, y) => sp.filter((p) => Math.hypot(p.x - x, p.y - y)
+                                           <= p.r + 1.5);
+  let pair = null;
+  for (const p of sp) {
+    const us = under(p.x, p.y).filter((o) => o !== p);
+    const o = us.find((q2) => Math.abs(q2.depth - p.depth) > 0.05);
+    if (o) { pair = [p, o]; break; }
+  }
+  if (pair) {
+    const [a, b] = pair;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const cands3 = under(mx, my);
+    const front = cands3.reduce((m, p) => (p.depth > m.depth ? p : m), cands3[0]);
+    click('rcSpace', mx, my);
+    await until(() => st().picked === front.i, 4000, 'the 3D pick');
+    eq('where two dots overlap in the space, the front one is picked',
+       st().picked, front.i);
+  } else {
+    note('no two dots overlap in the space at this rotation; front-wins '
+         + 'checked through _pickAt only');
+  }
+  const sp1 = lonely(sp, 10);
+  if (sp1) {
+    eq('a press 4 px off a lone dot still picks it (within 6 px)',
+       ev(RC + '._pickAt("rcSpace",' + (sp1.x + 4) + ',' + sp1.y + ')'), sp1.i);
+    eq('and 12 px off picks nothing',
+       ev(RC + '._pickAt("rcSpace",' + (sp1.x + 12) + ',' + sp1.y + ')'), null);
+  }
+
+  /* Highlighted in all four views. */
+  const target = (st().fit.events.find((e) => e.cls === 'ied')
+                  || st().fit.events.find((e) => e.cls) || {}).i;
+  ev(RC + '._pick(' + target + ')');
+  await sleep(150);
+  g = geom();
+  const inAll = [g.space.picked, g.flats.rcFlatAH.picked, g.flats.rcFlatAP.picked,
+                 g.flats.rcFlatHP.picked];
+  ok('the picked dot is marked in all four views', inAll.every(Boolean),
+     JSON.stringify(inAll));
+  const spPt = sp.find((p) => p.i === target) || {};
+  ok('at the place that dot was drawn',
+     !!g.space.picked && Math.abs(g.space.picked.x - (geom().space.pts
+       .find((p) => p.i === target) || {}).x) < 0.01, JSON.stringify(spPt));
+
+  /* ================================================================== */
+  head('TURNING, ZOOMING, RESETTING');
+
+  let v0 = ev(RC + '._view()');
+  eq('it opens turned, not head-on', [v0.yaw, v0.pitch], [v0.yaw0, v0.pitch0]);
+  ok('and the default is not zero', Math.abs(v0.yaw) > 0.2 && Math.abs(v0.pitch) > 0.2);
+  const before = geom().space.pts.slice(0, 5);
+  const pickedBefore = st().picked;
+  const cvS = D().getElementById('rcSpace');
+  const mid = { x: cvS.clientWidth / 2, y: cvS.clientHeight / 2 };
+  pointer('pointerdown', 'rcSpace', mid.x, mid.y);
+  for (let k = 1; k <= 6; k++) pointer('pointermove', 'rcSpace', mid.x + 10 * k, mid.y + 3 * k);
+  pointer('pointerup', 'rcSpace', mid.x + 60, mid.y + 18);
+  const v1 = ev(RC + '._view()');
+  ok('a drag turns it', Math.abs(v1.yaw - v0.yaw - 0.6) < 0.05
+                        && Math.abs(v1.pitch - v0.pitch - 0.18) < 0.05,
+     JSON.stringify([v0.yaw, v1.yaw, v0.pitch, v1.pitch]));
+  ok('and a drag is not a pick', st().picked === pickedBefore);
+  const after = geom().space.pts.slice(0, 5);
+  ok('the dots moved with it', after.some((p, j) => Math.abs(p.x - before[j].x) > 1));
+  eq('none were lost', geom().space.pts.length, n);
+  const s0 = geom().space.scale;
+  cvS.dispatchEvent(new W.WheelEvent('wheel', { bubbles: true, cancelable: true,
+    deltaY: -300, clientX: 10, clientY: 10 }));
+  ok('the wheel zooms in', geom().space.scale > s0 * 1.2,
+     s0 + ' -> ' + geom().space.scale);
+  cvS.dispatchEvent(new W.MouseEvent('dblclick', { bubbles: true }));
+  const v2 = ev(RC + '._view()');
+  eq('a double-click puts it back', [v2.yaw, v2.pitch, v2.zoom],
+     [v0.yaw0, v0.pitch0, 1]);
+
+  /* The projection itself, at a known view: head-on, amplitude runs to the
+     right and power runs up. */
+  ev(RC + '._rotate(0, 0)');
+  g = geom();
+  const ax = g.space.axes;
+  ok('head-on, amplitude runs across to the right',
+     ax[0].x1 > g.space.cx + 20 && Math.abs(ax[0].y1 - g.space.cy) < 0.5);
+  ok('and power runs straight up',
+     ax[2].y1 < g.space.cy - 20 && Math.abs(ax[2].x1 - g.space.cx) < 0.5);
+  ok('with half-width pointing out of the screen, a dot',
+     Math.hypot(ax[1].x1 - g.space.cx, ax[1].y1 - g.space.cy) < 0.5);
+  ev(RC + '._resetView()');
+
+  /* ================================================================== */
+  head('THE CLICK PANEL');
+
+  ev(RC + '._pick(' + target + ')');
+  await until(() => st().evData && st().evData.i === target, 20000, 'the event');
+  const ed = st().evData;
+  const pe = st().fit.events.find((e) => e.i === target);
+  ok('the event panel arrives for the picked event', !!ed && ed.ok !== false,
+     ed && ed.error);
+  ok('its trace carries a baseline, a peak and the half-amplitude level',
+     [ed.trace.baseline, ed.trace.peak_uV, ed.trace.half_uV]
+       .every((v) => typeof v === 'number'), JSON.stringify(ed.trace).slice(0, 160));
+  eq('on the max-amp contact the fit named', ed.trace.contact, pe.contact);
+  eq('the spectrum shades the fit’s band', ed.spectrum.band, [500, 1000]);
+  ok('the stack has a row per contact',
+     ed.stack.rows.length === ed.stack.nums.length);
+  await sleep(200);
+  g = geom();
+  eq('and the max contact is the one marked on it',
+     g.ev.stack && g.ev.stack.nums[g.ev.stack.maxRow], pe.contact);
+  ok('and on the CSD', !!g.ev.csd && g.ev.csd.nums[g.ev.csd.maxRow] === pe.contact,
+     JSON.stringify(g.ev.csd || {}).slice(0, 120));
+  txt = drawn();
+  ok('the trace says the half-width it measured, or that it could not',
+     hasS('rcTrace', 'half-width'), JSON.stringify(txt.rcTrace || []));
+  ok('the spectrum names the band', hasS('rcSpec', '500–1000 Hz'));
+  for (const id of ['rcTrace', 'rcSpec', 'rcStack', 'rcCsd']) {
+    const cv = D().getElementById(id);
+    ok(id + ' is on screen and a real size',
+       !!cv && cv.clientHeight >= 150 && cv.clientWidth >= 150,
+       cv ? cv.clientWidth + 'x' + cv.clientHeight : 'missing');
+  }
+
+  /* ← and →, from the keyboard. */
+  const evs = st().fit.events.map((e) => e.i);
+  const at0 = evs.indexOf(st().picked);
+  if (D().activeElement && D().activeElement.blur) D().activeElement.blur();
+  D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight',
+                                                     bubbles: true }));
+  eq('→ steps to the next event', st().picked, evs[(at0 + 1) % evs.length]);
+  D().dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowLeft',
+                                                     bubbles: true }));
+  eq('← steps back', st().picked, evs[at0]);
+
+  /* ================================================================== */
+  head('A FLIP, AND BACK');
+
+  const fl = st().fit.events.find((e) => e.i === target);
+  const was = fl.cls;
+  const cnt0 = Object.assign({}, st().fit.counts);
+  /* The toggle on screen, not the export: the seg button for the class it
+     is not. */
+  const tog = Array.from(D().querySelectorAll('.rc-toggle button'))
+    .find((b) => b.textContent.trim() === (was === 'ied' ? 'DS' : 'IED'));
+  ok('the DS/IED toggle is on the picked event’s bar', !!tog);
+  if (tog) tog.click();
+  await until(() => { const e = st().fit.events.find((x) => x.i === target);
+                      return e && e.flipped && !st().fitting; }, 20000, 'the flip');
+  const fl2 = st().fit.events.find((e) => e.i === target);
+  ok('it flips that event', fl2.flipped && fl2.cls !== was,
+     JSON.stringify([was, fl2.cls, fl2.flipped]));
+  ok('and moves exactly one between the counts',
+     st().fit.counts[was] === cnt0[was] - 1
+     && st().fit.counts[fl2.cls] === cnt0[fl2.cls] + 1,
+     JSON.stringify([cnt0, st().fit.counts]));
+  eq('the flip is a fit param: a list of indices', st().q.flips, [target]);
+  ok('it is ringed as set by hand', /set by hand/.test(
+     (D().querySelector('.rc-why') || {}).textContent || ''));
+  const clr = Array.from(D().querySelectorAll('.rc-controls button'))
+    .find((b) => /clear flips/.test(b.textContent));
+  ok('clear flips is offered', !!clr && !clr.disabled);
+  if (clr) clr.click();
+  await until(() => !st().q.flips.length && !st().fitting
+                    && !st().fit.events.find((x) => x.i === target).flipped,
+              20000, 'the flips cleared');
+  eq('clearing puts it back', st().fit.events.find((e) => e.i === target).cls, was);
+  eq('and the counts with it', st().fit.counts, cnt0);
+
+  /* ================================================================== */
+  head('A MOVED CENTRE STICKS, AND EVERY EVENT FOLLOWS THE NEAREST');
+
+  const base = st().fit.centres.map((c) => c.z.slice());
+  const k0 = st().fit.centres.findIndex((c) => c.cls === 'ds');
+  const moved = base[k0].map((v, a) => v + (a === 2 ? 0.8 : 0.3));
+  ev(RC + '._moveCentre(' + k0 + ',' + JSON.stringify(moved) + ')');
+  await until(() => !st().fitting && st().fit.centres[k0]
+                    && Math.abs(st().fit.centres[k0].z[2] - moved[2]) < 1e-6,
+              20000, 'the moved centre');
+  ok('the centre is where it was put', st().fit.centres[k0].z.every(
+     (v, a) => Math.abs(v - moved[a]) < 1e-6), JSON.stringify(st().fit.centres[k0].z));
+  ok('the other one did not move', st().fit.centres[1 - k0].z.every(
+     (v, a) => Math.abs(v - base[1 - k0][a]) < 1e-6));
+  const cz = st().fit.centres.map((c) => c.z);
+  // Complete events only: a partial one is placed on the two axes it has,
+  // and a distance over three would count its missing axis as zero.
+  const wrong = st().fit.events.filter((e) => e.z && e.z.every((v) => v != null)
+                                              && !e.flipped).filter((e) => {
+    const d = cz.map((c) => Math.hypot(e.z[0] - c[0], e.z[1] - c[1], e.z[2] - c[2]));
+    return e.cluster !== (d[0] <= d[1] ? 0 : 1);
+  });
+  ok('every measured event is in the cluster of its nearest centre',
+     wrong.length === 0, wrong.length + ' are not');
+  ok('reset centres is offered', !!Array.from(D().querySelectorAll('.rc-controls button'))
+     .find((b) => /reset centres/.test(b.textContent) && !b.disabled));
+  ev(RC + '._resetCentres()');
+  await until(() => !st().q.centres && !st().fitting
+                    && Math.abs(st().fit.centres[k0].z[2] - base[k0][2]) < 1e-6,
+              20000, 'the centres back');
+  ok('resetting gives k-means’ own centres back, exactly',
+     st().fit.centres.every((c, j) => c.z.every((v, a) =>
+       Math.abs(v - base[j][a]) < 1e-6)));
+
+  /* The same thing with a real pointer, on a flat view. */
+  await sleep(150);
+  g = geom();
+  const fAP = g.flats.rcFlatAP;
+  const gc = fAP.centres.find((c) => c.k === k0);
+  ok('the DS centre is on the amp × power view to take hold of', !!gc);
+  if (gc) {
+    pointer('pointerdown', 'rcFlatAP', gc.x, gc.y);
+    for (let k = 1; k <= 5; k++) {
+      pointer('pointermove', 'rcFlatAP', gc.x + 4 * k, gc.y - 3 * k);
+    }
+    pointer('pointerup', 'rcFlatAP', gc.x + 20, gc.y - 15);
+    /* On the ANSWER, not on the request: `q.centres` is set the instant
+       the pointer lets go, and the refit is 60 ms behind it. */
+    await until(() => st().q.centres && !st().fitting
+                      && st().fit.centres[k0].raw[2] !== cD.raw[2],
+                20000, 'the dragged centre');
+    const raw1 = st().fit.centres[k0].raw, raw0 = geom().flats.rcFlatAP.xr;
+    ok('dragging a centre sets it by hand', !!st().q.centres);
+    ok('up and to the right, in µV and dB',
+       st().fit.centres[k0].raw[0] > cD.raw[0] - 1e-9 && raw1[2] > cD.raw[2],
+       JSON.stringify([cD.raw, raw1, raw0]));
+    ok('and it did not pick a dot on the way', st().picked === target);
+    ev(RC + '._resetCentres()');
+    await until(() => !st().q.centres && !st().fitting, 20000, 'the reset');
+  }
+
+  /* ================================================================== */
+  head('NOTHING IS OUT OF REACH, NOTHING IS CUT OFF');
+
+  const box = (sel) => { const e = D().querySelector(sel);
+                         return e ? e.getBoundingClientRect() : null; };
+  const res = D().getElementById('tkResult');
+  ok('the panel does not scroll sideways',
+     !!res && res.scrollWidth <= res.clientWidth + 1,
+     res && (res.scrollWidth + ' in ' + res.clientWidth));
+  const clipped = Array.from(D().querySelectorAll('.rc-work *'))
+    .filter((e) => e.children.length === 0 && e.textContent.trim()
+                   && e.scrollWidth > e.clientWidth + 1
+                   && getComputedStyle(e).overflow !== 'visible');
+  ok('no text in the workbench is clipped',
+     clipped.length === 0, clipped.slice(0, 3).map((e) => e.textContent).join(' | '));
+  const ellip = Array.from(D().querySelectorAll('.rc-work *'))
+    .filter((e) => W.getComputedStyle(e).textOverflow === 'ellipsis');
+  ok('and nothing is set to end in an ellipsis', ellip.length === 0);
+  const shrunk = Array.from(D().querySelectorAll('.rc-work > *'))
+    .filter((e) => e.getBoundingClientRect().height < 4
+                   && !e.classList.contains('rc-busy'));
+  ok('no block of the workbench is squeezed to a sliver', shrunk.length === 0,
+     shrunk.map((e) => e.className).join(', '));
+  const lab = (D().querySelector('.rc-bank') || {}).textContent || '';
+  const c1 = st().fit.counts;
+  ok('Bank says what it will do, in numbers',
+     new RegExp('^Bank: ' + (c1.ds + c1.unmeasured) + ' DS as (v\\d+|a new '
+                + 'version), ' + c1.ied + ' IED as ').test(lab), lab);
+  const acts = D().querySelector('.rc-why .head-actions');
+  ok('and it is the one primary, at the right, last',
+     !!acts && acts.lastElementChild === D().querySelector('.rc-bank')
+     && D().querySelectorAll('.rc-work .btn:not(.ghost)').length === 1);
+  /* Reachable without scrolling: the settings, Recompute, Bank and the
+     picked event's controls all sit above the pictures. Measured from the
+     top of the tool's own panel, not the page: in a frame this narrow the
+     ToolKit puts its whole list of tools above the panel, which is the
+     ToolKit's layout and not this one's. */
+  const vh = W.innerHeight;
+  const top0 = res.getBoundingClientRect().top;
+  for (const [what, sel] of [['Recompute', '.rc-recompute'], ['Bank', '.rc-bank'],
+                             ['the DS/IED toggle', '.rc-toggle'],
+                             ['Open in Xplorefinder', '.rc-pickbar .head-actions']]) {
+    const r = box(sel);
+    const b = r ? r.bottom - top0 : null;
+    ok(what + ' is within one screen of the top of the panel',
+       !!r && b <= vh + 1, r ? b.toFixed(0) + ' px down, screen ' + vh : 'missing');
+  }
+  const pic = box('#rcSpace');
+  const lastCtl = Math.max.apply(null, ['.rc-recompute', '.rc-bank', '.rc-toggle']
+    .map((s2) => (box(s2) || { bottom: 0 }).bottom));
+  ok('and every one of them is above the pictures',
+     !!pic && lastCtl <= pic.top + 1);
+
+  /* At 900 px: the frame itself made that wide. */
+  const keepFlex = frame.style.flex, keepW = frame.style.width;
+  frame.style.flex = 'none';
+  frame.style.width = '900px';
+  await sleep(700);
+  ev(RC + '._draw()');
+  await sleep(200);
+  ok('at 900 px the panel still does not scroll sideways',
+     res.scrollWidth <= res.clientWidth + 1, res.scrollWidth + ' in ' + res.clientWidth);
+  const cvs900 = ['rcSpace', 'rcFlatAH', 'rcFlatAP', 'rcFlatHP', 'rcTrace']
+    .map((id) => { const cv = D().getElementById(id);
+                   return [id, cv ? cv.clientWidth : 0, cv ? cv.clientHeight : 0]; });
+  ok('and every picture keeps a real size',
+     cvs900.every(([, w, h]) => w >= 150 && h >= 150), JSON.stringify(cvs900));
+  ok('drawn at the size it is shown', ev(RC + '._mismatched()') === false);
+  const clip900 = Array.from(D().querySelectorAll('.rc-work *'))
+    .filter((e) => e.children.length === 0 && e.textContent.trim()
+                   && e.scrollWidth > e.clientWidth + 1
+                   && W.getComputedStyle(e).overflow !== 'visible');
+  ok('with no text clipped', clip900.length === 0,
+     clip900.slice(0, 3).map((e) => e.textContent).join(' | '));
+  txt = drawn();
+  ok('and every axis still labelled in full',
+     hasS('rcFlatAP', hfSaid) && hasS('rcSpace', hfSaid));
+  frame.style.flex = keepFlex;
+  frame.style.width = keepW;
+  await sleep(500);
+  ev(RC + '._draw()');
+
+  /* ================================================================== */
+  head('THE PICTURES FOR THE BANK, AND THE DIALOG (NOTHING IS BANKED)');
+
+  const pics = ev(RC + '._pngs()');
+  ok('the space is filed as a PNG',
+     /^data:image\/png;base64,/.test(pics.space || '') && pics.space.length > 2000);
+  ok('and the three flat views as one sheet',
+     /^data:image\/png;base64,/.test(pics.flat || '') && pics.flat.length > 2000);
+  ev(RC + '._bankDialog()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .mf'), 5000,
+              'the dialog');
+  const mf = D().querySelector('#bigModal .mf');
+  const btns = mf ? Array.from(mf.querySelectorAll('button')) : [];
+  ok('the dialog ends Cancel, then Bank it',
+     btns.length >= 2 && /Cancel/.test(btns[btns.length - 2].textContent)
+     && /Bank it/.test(btns[btns.length - 1].textContent),
+     btns.map((b) => b.textContent).join(' | '));
+  ok('and says the IEDs arrive as candidates, not decisions',
+     /candidates/.test((D().querySelector('#bigModal .rc-ask') || {}).textContent || ''));
+  const cancel = btns.find((b) => /Cancel/.test(b.textContent));
+  if (cancel) cancel.click();
+  await until(() => D().getElementById('bigModal').classList.contains('hidden'),
+              4000, 'the dialog to close');
+  ok('Cancel closes it', D().getElementById('bigModal').classList.contains('hidden'));
+
+  /* ================================================================== */
+  head('WHAT BANK WOULD SEND (INTERCEPTED; NOTHING REACHES THE BANK)');
+
+  /* The commit route is never reached. `apiPost` is a const and cannot be
+     replaced, so the frame's `fetch` is wrapped instead, for that one URL
+     only, and answers from here. The activity log is silenced while it is
+     wrapped, so no "rootcanal.commit" reaches the shared table for a commit
+     that never happened. Both are put back in the `finally` at the end. */
+  ev('(function(){ var W = window; if (W.__rcFetch) return;'
+     + ' W.__rcFetch = W.fetch; W.__rcSent = []; W.__rcReply = null;'
+     + ' W.__rcLog = BARRY.activity.log; BARRY.activity.log = function(){};'
+     + ' W.fetch = function(u, o) {'
+     + '  if (String(u).indexOf("/api/rootcanal/commit") >= 0) {'
+     + '   W.__rcSent.push(JSON.parse((o && o.body) || "{}"));'
+     + '   var r = W.__rcReply || { status: 500, body: { ok: false,'
+     + '     error: "harness: no reply set" } };'
+     + '   return Promise.resolve(new Response(JSON.stringify(r.body),'
+     + '     { status: r.status, headers: { "Content-Type":'
+     + '       "application/json" } })); }'
+     + '  return W.__rcFetch.apply(this, arguments); }; })()');
+  const sent = () => JSON.parse(ev('JSON.stringify(window.__rcSent || [])'));
+  const cB = st().fit.counts;
+  ev('window.__rcReply = ' + JSON.stringify({ status: 200, body: {
+    ok: true, ds_entry: ENTRY, ds_version: 'harness', ied_entry: 'harness-ied',
+    ied_version: '0', removed: cB.ied, kept: cB.ds + cB.unmeasured,
+    unmeasured: cB.unmeasured, written: { ds: true, ied: true } } }));
+  ev(RC + '._bankDialog()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-note'), 5000,
+              'the dialog again');
+  const noteIn = D().querySelector('#bigModal .rc-note');
+  if (noteIn) noteIn.value = 'harness note';
+  const bankIt = Array.from(D().querySelectorAll('#bigModal .mf button'))
+    .find((b) => /Bank it/.test(b.textContent));
+  ok('Bank it is there to press', !!bankIt);
+  if (bankIt) bankIt.click();
+  await until(() => sent().length >= 1, 8000, 'the intercepted commit');
+  const sb = sent()[0] || {};
+  eq('one commit would go out', sent().length, 1);
+  ok('for this set, at the version read, over this read',
+     sb.entry_id === ENTRY && String(sb.from_version) === String(st().q.from_version)
+     && sb.read === st().q.read, JSON.stringify([sb.entry_id, sb.from_version, sb.read]));
+  eq('with the settings the answer was computed with',
+     [sb.lo_hz, sb.hi_hz, sb.win_ms, sb.band_lo, sb.band_hi], [1, 100, 25, 500, 1000]);
+  ok('and the overrides, as fit params', Array.isArray(sb.flips) && sb.centres === null,
+     JSON.stringify([sb.flips, sb.centres]));
+  eq('with the note typed', sb.note, 'harness note');
+  ok('and both pictures, as PNGs',
+     /^data:image\/png/.test((sb.pngs || {}).space || '')
+     && /^data:image\/png/.test((sb.pngs || {}).flat || ''));
+  ok('not asking to clean again', !sb.again);
+
+  /* The refusal: a set that is already Root Canal output. The server's
+     sentence is shown, and cleaning again is a deliberate second press. */
+  ev('window.__rcReply = ' + JSON.stringify({ status: 400, body: { ok: false,
+    error: 'This version is already Root Canal output; send again to clean '
+         + 'it a second time.' } }));
+  ev(RC + '._commit("", false)');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-again'), 8000,
+              'the refusal');
+  const again = D().querySelector('#bigModal .rc-again');
+  ok('a refusal is shown in the server’s own words',
+     /already Root Canal output/.test(
+       (D().querySelector('#bigModal .rc-ask') || {}).textContent || ''));
+  const foot = Array.from(D().querySelectorAll('#bigModal .mf button'));
+  ok('with “clean again anyway” as the secondary action, not the primary',
+     !!again && again.classList.contains('ghost')
+     && foot[foot.length - 1] !== again,
+     foot.map((b) => b.className + ':' + b.textContent).join(' | '));
+  ev('window.__rcReply = ' + JSON.stringify({ status: 200, body: {
+    ok: true, ds_entry: ENTRY, ds_version: 'harness', ied_entry: null,
+    ied_version: null, removed: 0, kept: 1, written: { ds: false, ied: false },
+    already: 'harness: nothing written' } }));
+  if (again) again.click();
+  await until(() => sent().length >= 3, 8000, 'the second attempt');
+  ok('pressing it asks again, with again: true',
+     (sent()[2] || {}).again === true, JSON.stringify(sent().map((b) => b.again)));
+  ev('closeModal()');
+  ev('(function(){ var W = window; if (W.__rcFetch) { W.fetch = W.__rcFetch;'
+     + ' delete W.__rcFetch; } if (W.__rcLog) { BARRY.activity.log = W.__rcLog;'
+     + ' delete W.__rcLog; } })()');
+  ok('and the real fetch is back', ev('!window.__rcFetch'));
+
+  /* ================================================================== */
+  head('OPEN IN XPLOREFINDER, AND IT FOLLOWS');
+
+  ev(RC + '._pick(' + target + ')');
+  const opened = await ev(RC + '._openXplore()');
+  const xw = ev(RC + '._xWin()');
+  if (!xw) {
+    note('the pop-out did not open here (pop-ups are blocked in this browser); '
+         + 'the rest of this section needs one');
+  } else {
+    ok('the window opens and the marks land in it', opened === true);
+    const marks = () => { try { return xw.barryXplore.current().curationMarks; }
+                          catch (e) { return null; } };
+    ok('as Root Canal’s marks, one per event',
+       !!marks() && marks().kind === 'rootcanal' && marks().events.length === n,
+       JSON.stringify(marks() && { kind: marks().kind, n: marks().events.length }));
+    eq('on the picked event', marks() && marks().at,
+       st().fit.events.find((e) => e.i === target).t);
+    ev(RC + '._step(1)');
+    await until(() => marks() && marks().at !== st().fit.events
+                  .find((e) => e.i === target).t, 5000, 'the window to follow');
+    eq('stepping here moves it there',
+       marks() && marks().at, st().fit.events.find((e) => e.i === st().picked).t);
+    ev(RC + '._closeXplore()');
+  }
+  ok('the bridge is a real window property, for a pop-out to reach',
+     ev('typeof window.barryRootcanal.step') === 'function'
+     && ev('typeof window.barryRootcanal.current') === 'function');
+
+  /* ================================================================== */
+  head('MANY SETS AT ONCE');
+
+  /* A finished row, without running a batch: what the list does with it
+     is the thing checked. A real batch reads for minutes per recording. */
+  ev(RC + '._fakeBulk([{ id: ' + JSON.stringify(ENTRY) + ', label: "PTEN m13 s2",'
+     + ' status: "done", cached: true },'
+     + ' { id: "harness-other", label: "another", status: "running",'
+     + ' done: 3, of: 64 }])');
+  await until(() => D().querySelector('.rc-bulk-card'), 5000, 'the batch card');
+  const rowsB = Array.from(D().querySelectorAll('.rc-bulk-card tr'));
+  ok('a finished set is a button you can open',
+     !!rowsB[0] && !!rowsB[0].querySelector('td:first-child button.mini'));
+  ok('and bank', !!rowsB[0] && Array.from(rowsB[0].querySelectorAll('button'))
+     .some((b) => /Bank/.test(b.textContent)));
+  ok('while one still reading is neither',
+     !!rowsB[1] && !rowsB[1].querySelector('button'));
+  ok('there is a Stop', Array.from(D().querySelectorAll('.rc-bulk-card button'))
+     .some((b) => b.textContent === 'Stop'));
+  const feedB = D().querySelector('#tkResult .tf');
+  for (let k = 0; k < 6; k++) { ev(RC + '._tickBulk()'); await sleep(90); }
+  ok('ticking the batch leaves the activity feed alone',
+     !feedB || D().querySelector('#tkResult .tf') === feedB);
+  ev(RC + '._endBulk()');
+  await until(() => D().querySelector('.rc-work'), 8000, 'the workbench back');
+
+  const bp = await get('/api/rootcanal/batch/plan');
+  ok('the batch plan answers', !!(bp && bp.ok));
+  ok('and PTEN m13 s2 is already read in it',
+     (bp.done || []).some((r) => r.entry_id === ENTRY),
+     JSON.stringify((bp.done || []).map((r) => r.entry_id)).slice(0, 160));
+
+  } catch (err) {
+    /* A throw used to end a suite in silence: fewer passing checks and no
+       failures reads as a shorter suite rather than a broken one. */
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+    for (const ln of String((err && err.stack) || '').split(NL).slice(0, 5)) {
+      say('       ' + ln, 'dim');
+    }
+  } finally {
+    /* Put back what the suite changed in the panel. Nothing here was ever
+       written anywhere else. */
+    try {
+      if (ev) {
+        ev('(function(){ var W = window; if (W.__rcFetch) { W.fetch = W.__rcFetch;'
+           + ' delete W.__rcFetch; } if (W.__rcLog) { BARRY.activity.log ='
+           + ' W.__rcLog; delete W.__rcLog; } })()');
+        ev('BARRY.rootcanal._closeXplore()');
+        ev('BARRY.rootcanal._clearFlips()');
+        ev('BARRY.rootcanal._resetCentres()');
+        ev('(function(){ var C = window.CanvasRenderingContext2D.prototype;'
+           + ' if (C.__rcOrig) { C.fillText = C.__rcOrig; delete C.__rcOrig; }'
+           + ' })()');
+      }
+    } catch (e) { /* the frame may be gone */ }
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'rootcanal: ' + pass + ' ok, ' + fail + ' fail';
+})();
+</script></body></html>

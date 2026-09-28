@@ -29,6 +29,11 @@ BARRY.views.results = (function () {
      thinks by animal every time they open this. */
   let groupBy = '';           // '' | 'animal' | 'tool' | 'day' | 'run'
   let collections = [];       // saved searches, synced through preferences
+  /* Files, or Artifacts (artifacts.js). Two kinds of thing a run leaves: a
+     file to look at, and a versioned object a later stage reads. Not
+     remembered: arriving in Results means files unless somebody opened an
+     artifact to get here. */
+  let mode = 'files';         // 'files' | 'artifacts'
 
   /* Folders, which are not the same thing as tags and not the same thing as
      collections. A tag is something a result is about and it can have five;
@@ -205,6 +210,15 @@ BARRY.views.results = (function () {
   function render() {
     const host = $('#resultsBody');
     host.innerHTML = '';
+    host.appendChild(modeSwitch());
+    if (mode === 'artifacts' && BARRY.artifacts) {
+      $('#resultsSub').textContent = 'Versioned things a stage made for a '
+        + 'later one to read — circuits and drifts.';
+      const pane = el('div', { class: 'art-host' });
+      host.appendChild(pane);
+      BARRY.artifacts.paint(pane);
+      return;
+    }
     const list = visible();
 
     $('#resultsSub').textContent = list.length + ' of ' + items.length
@@ -235,6 +249,25 @@ BARRY.views.results = (function () {
 
     host.appendChild(view === 'compare' ? compareGrid(list)
                      : (view === 'grid' ? grid(list) : table(list)));
+  }
+
+  function modeSwitch() {
+    const pick = (m) => () => {
+      if (mode === m) return;
+      mode = m;
+      // Every visit to Artifacts reads them again: a circuit made in another
+      // view a minute ago has to be here without a Rescan.
+      if (m === 'artifacts' && BARRY.artifacts) BARRY.artifacts.reload();
+      render();
+    };
+    return el('div', { class: 'seg res-mode' }, [
+      el('button', { class: mode === 'files' ? 'active' : '', text: 'Files',
+                     'data-mode': 'files', onclick: pick('files') }),
+      el('button', { class: mode === 'artifacts' ? 'active' : '', text: 'Artifacts',
+                     'data-mode': 'artifacts',
+                     title: 'Circuits and drifts: versioned, citable, restorable',
+                     onclick: pick('artifacts') }),
+    ]);
   }
 
   /* ======================================================================
@@ -1310,6 +1343,13 @@ BARRY.views.results = (function () {
       return groupBy;
     },
     setView: (v) => { view = v || 'grid'; render(); return view; },
+    /* 'files' or 'artifacts'. BARRY.artifacts.open() lands here. */
+    mode: (m) => {
+      if (m === undefined) return mode;
+      mode = m === 'artifacts' ? 'artifacts' : 'files';
+      render();
+      return mode;
+    },
     selectedCount: () => selected.size,
     /* How many the current search and filters leave, as against how many
        there are. `all()` is the catalogue; this is what is on screen. */

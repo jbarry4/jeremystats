@@ -72,8 +72,11 @@ const post = (u, b) => fetch(u, { method: 'POST',
   check('projects were guessed', (reg.projects || []).length > 0,
         JSON.stringify(reg.projects));
   const known = reg.known_projects || [];
-  check('the known projects are the three the lab runs',
-        JSON.stringify(known) === '["KCNT1 Urethane","KCNT1","PTEN"]',
+  /* DEWEY joined on 2026-09-24 with The Arc. Last, because nothing else's
+     name contains it and it contains nothing else's. */
+  check('the known projects are the four the lab runs, in order',
+        JSON.stringify(known)
+          === '["KCNT1 Urethane","KCNT1","PTEN","DEWEY"]',
         JSON.stringify(known));
   /* The ORDER is load-bearing, which is why it is asserted rather than
      just the membership. `guess_project` returns the first name that

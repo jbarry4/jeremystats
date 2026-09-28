@@ -39,10 +39,191 @@ learned the number.
 from __future__ import annotations
 
 import json
+import os
 import re
+import threading
 import time
 
 from . import cfc, vacc
+
+# The clock and the sleep, as module attributes so a test can run a whole
+# thirty-minute outage in a millisecond. Looked up at call time.
+CLOCK = time.time
+SLEEP = time.sleep
+
+
+def _sleep(s):
+    SLEEP(s)
+
+
+# --------------------------------------------------------------------------
+# When the login node does not answer
+# --------------------------------------------------------------------------
+# A poll is a fresh ssh connection every few seconds for as long as a job
+# runs, and a login node shared with everybody else's interactive work drops
+# some of them: a timeout, a refused connection, a reset in the middle of a
+# handshake. None of that says anything about the JOB. Before this, one such
+# poll raised out of `wait`, the `finally` read the run as unfinished, and
+# scancelled a perfectly healthy job -- the flakiest link in the chain got to
+# kill the most expensive thing in it.
+#
+# So a poll that fails is retried, with backoff, for up to half an hour. If
+# the cluster is still silent after that the run is DETACHED, not failed: the
+# job is left running where it is, and a run that was written down
+# (`RunLog`) is picked up again on the next start. Only a run nothing points
+# at is cancelled on the way out, because a job with nothing pointing at it
+# is the one outcome that costs somebody else.
+POLL_RETRY_BASE_S = 5.0
+POLL_RETRY_CAP_S = 60.0
+POLL_RETRY_LIMIT_S = 1800.0
+# Bringing an answer home is shorter: the job is finished and the file is
+# there, so five minutes of silence is worth saying out loud.
+FETCH_RETRY_LIMIT_S = 300.0
+# Kinds that are answers, not silences. Retrying them asks the same
+# question and gets the same answer.
+NO_RETRY = ("garbled", "no-jobid", "vanished", "detached", "no-result")
+_NO_RESULT = "__JARVIS_NO_RESULT__"
+
+
+class Detached(vacc.SSHError):
+    """The cluster stopped answering and the job was left where it is."""
+
+    def __init__(self, message, stderr=""):
+        super().__init__(message, "detached", stderr)
+
+
+def retrying(call, job=None, what="the cluster", limit_s=None, note=None):
+    """`call()`, retried through ssh failures. Raises `Detached` at the limit.
+
+    Cancellation still lands between attempts: `job.check()` runs before
+    each one. Anything that is not an `SSHError` goes straight through --
+    this is for a connection that did not answer, not for a bug.
+    """
+    first, n = None, 0
+    lim = POLL_RETRY_LIMIT_S if limit_s is None else float(limit_s)
+    while True:
+        if job is not None:
+            job.check()
+        try:
+            return call()
+        except vacc.SSHError as exc:
+            if getattr(exc, "kind", None) in NO_RETRY:
+                raise
+            now = CLOCK()
+            first = first if first is not None else now
+            n += 1
+            if note is not None:
+                try:
+                    note("the cluster did not answer about %s (try %d): %s"
+                         % (what, n, exc))
+                except Exception:                        # noqa: BLE001
+                    pass
+            if now - first >= lim:
+                raise Detached(
+                    "Jarvis lost contact with the cluster while asking about "
+                    "%s: %d tries over %d s, the last saying “%s”. "
+                    "Nothing was cancelled -- the work is still on the "
+                    "cluster." % (what, n, int(now - first), exc),
+                    getattr(exc, "stderr", ""))
+            _sleep(min(POLL_RETRY_CAP_S,
+                       POLL_RETRY_BASE_S * (2 ** min(n - 1, 8))))
+
+
+def _job_note(job):
+    """A `note` for `retrying` that lands in the job's log tail."""
+    log = getattr(job, "log", None)
+    if log is None:
+        return None
+
+    def note(line):
+        log.append(line[:300])
+        del log[:-40]
+    return note
+
+
+# --------------------------------------------------------------------------
+# A run written down, so it outlives the process that submitted it
+# --------------------------------------------------------------------------
+class RunLog:
+    """`GUI_logs/vacc_runs/<rid>.json`: one file per submitted run.
+
+    Written at submit time with everything needed to pick the run up again
+    -- the run id, the slurm id or array id, the workspace, the tool, and
+    whatever the caller needs to file the answer (gids, cache keys, its own
+    plan). A Jarvis restart used to orphan every job in flight: the thread
+    polling it died with the process, and the answer sat in scratch until
+    the purge took it. Now start-up reads the open records and re-attaches.
+
+    Opt-in. A tool that passes no RunLog behaves exactly as before.
+    Machine-local and git-ignored: a record names a job THIS machine's
+    process was driving, and another clone re-attaching to it would be two
+    processes filing one answer.
+    """
+
+    OPEN = ("submitted", "running", "fetched")
+
+    def __init__(self, logs_dir):
+        self.root = os.path.join(os.path.abspath(logs_dir), "vacc_runs")
+        self._lock = threading.Lock()
+
+    def _path(self, rid):
+        vacc.check_rid(rid)
+        return os.path.join(self.root, "%s.json" % rid)
+
+    def write(self, rec):
+        rec = dict(rec)
+        rec.setdefault("status", "submitted")
+        rec.setdefault("submitted_at", CLOCK())
+        path = self._path(rec["rid"])
+        with self._lock:
+            os.makedirs(self.root, exist_ok=True)
+            tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(rec, fh, indent=1, sort_keys=True, default=str)
+            os.replace(tmp, path)
+        return rec
+
+    def get(self, rid):
+        try:
+            with open(self._path(rid), "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except (OSError, ValueError):
+            return None
+
+    def update(self, rid, **patch):
+        with self._lock:
+            rec = self.get(rid)
+        if rec is None:
+            return None
+        rec.update(patch)
+        return self.write(rec)
+
+    def close(self, rid, status, why=None):
+        return self.update(rid, status=status, why=why, closed_at=CLOCK())
+
+    def open_runs(self, tool=None):
+        """Every run still waiting for an answer, oldest first."""
+        out = []
+        try:
+            names = sorted(os.listdir(self.root))
+        except OSError:
+            return out
+        for name in names:
+            if not name.endswith(".json"):
+                continue
+            try:
+                with open(os.path.join(self.root, name), "r",
+                          encoding="utf-8") as fh:
+                    rec = json.load(fh)
+            except (OSError, ValueError):
+                continue
+            if rec.get("status") not in self.OPEN:
+                continue
+            if tool and rec.get("tool") != tool:
+                continue
+            out.append(rec)
+        out.sort(key=lambda r: r.get("submitted_at") or 0)
+        return out
 
 # How often to ask the cluster, by what the job is doing.
 #
@@ -118,6 +299,40 @@ class VaccArray:
         self._ssh = vacc._runner(cfg, ssh)
         self.ws = vacc._remote_path(cfg.get("workspace") or ".", "runs",
                                     self.rid)
+        # Opt-in persistence (fix 4). `record` is the caller's own part of
+        # the run record -- whatever it needs to file the answers after a
+        # restart; each job's `resume` is kept beside its specs.
+        self.runlog = None
+        self.record = {}
+        self.submitted_at = None
+
+    @classmethod
+    def reattach(cls, cfg, rec, ssh=None):
+        """The array a run record describes, ready to be polled again."""
+        jobs = [dict(j) for j in (rec.get("jobs") or [])]
+        arr = cls(cfg, rec.get("tool"), jobs, ssh=ssh)
+        arr.rid = vacc.check_rid(rec["rid"])
+        arr.array_id = str(rec["array_id"])
+        arr.ws = rec.get("workspace") or vacc._remote_path(
+            cfg.get("workspace") or ".", "runs", arr.rid)
+        arr.submitted_at = rec.get("submitted_at")
+        arr.record = dict(rec.get("record") or {})
+        return arr
+
+    def _write_record(self, job=None):
+        if self.runlog is None:
+            return
+        keep = ("gid", "member", "label", "spec_local", "spec_remote",
+                "tool_steps", "seconds", "megasamples", "resume")
+        self.runlog.write({
+            "rid": self.rid, "kind": "array", "tool": self.tool,
+            "array_id": self.array_id, "workspace": self.ws,
+            "submitted_at": self.submitted_at,
+            "job_id": getattr(job, "id", None) or self.record.get("job_id"),
+            "gids": sorted({j.get("gid") for j in self.jobs if j.get("gid")}),
+            "jobs": [{k: j.get(k) for k in keep if k in j} for j in self.jobs],
+            "taken": [], "record": self.record,
+        })
 
     def submit(self, seconds=600, megasamples=1.0):
         """Write every spec, then one sbatch. Returns the array job id."""
@@ -173,6 +388,11 @@ class VaccArray:
         if not self.array_id:
             raise vacc.SSHError("The cluster did not return an array job id.",
                                 "no-jobid", out)
+        self.submitted_at = CLOCK()
+        try:
+            self._write_record()
+        except Exception:                                # noqa: BLE001
+            pass            # a record that cannot be written costs a resume
         return self.array_id
 
     def poll(self):
@@ -200,12 +420,20 @@ class VaccArray:
             if half == 0:
                 bits = line.split("|")
                 jid = bits[0].split(".")[0]
+                st = vacc.read_state(bits[1] if len(bits) > 1 else "")
                 # `12345_7` -> task 7. The parent row has no underscore and
                 # is not a task.
-                if "_" in jid:
+                #
+                # `12345_[2-5%2]` is every task still PENDING, folded into
+                # one row. Read as "not in sacct" it would have every queued
+                # task of a long queue look vanished, and the grace below
+                # for a task that never appears would fail them all.
+                if "_[" in jid:
+                    for i in _task_range(jid.split("_[", 1)[1]):
+                        states.setdefault(i, st)
+                elif "_" in jid:
                     try:
-                        states[int(jid.rsplit("_", 1)[1])] = \
-                            vacc.read_state(bits[1] if len(bits) > 1 else "")
+                        states[int(jid.rsplit("_", 1)[1])] = st
                     except ValueError:
                         pass
             else:
@@ -236,6 +464,194 @@ class VaccArray:
                 vacc.cancel(self.cfg, self.array_id, self.rid, ssh=self._ssh)
             except Exception:                            # noqa: BLE001
                 pass
+
+
+def _task_range(text):
+    """`2-5%2]` or `0,3,7-9]` -> the task indices it names."""
+    body = str(text or "").rstrip("]").split("%")[0]
+    out = []
+    for part in body.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            if "-" in part:
+                a, b = part.split("-", 1)
+                out.extend(range(int(a), int(b) + 1))
+            else:
+                out.append(int(part))
+        except ValueError:
+            continue
+    return out
+
+
+# How long a batch may take, all told, before what is left is cancelled and
+# reported. A day: the general partition's cap is two, and a batch of
+# circuits that has not finished in a day is stuck rather than slow.
+BATCH_DEADLINE_S = 24 * 3600.0
+# A task slurm calls COMPLETED whose answer file has not appeared. The
+# filesystem normally leads the accounting database, so a short wait covers
+# a listing that raced the write; past it, the task finished without writing
+# an answer -- a node that died between the two, a script that exited 0 on
+# an exception -- and waiting longer only hides that.
+RESULT_GRACE_S = 180.0
+# A task sacct never mentions at all -- not as itself, not inside a pending
+# range. Given the accounting lag and then some.
+UNSEEN_GRACE_S = 900.0
+
+
+def collect(job, arr, tasks, on_result, failed=0, deadline_s=None,
+            taken=None, member_of=None):
+    """Poll an array until every task is answered, failed, or out of time.
+
+    The loop `_vacc_run_array` used to hold inline, moved here so it can be
+    driven against a fake login node, and with three things it lacked:
+
+      * an ssh error from a poll is retried (`retrying`), not raised -- it
+        used to escape the loop with the array still running and nothing
+        pointing at it;
+      * a batch that really fails cancels its array on the way out;
+      * a task that COMPLETED with no answer, or that sacct never reports,
+        is failed with a sentence after a grace period, and the whole batch
+        has a deadline -- before, either one waited for ever.
+
+    `on_result(i, task, out)` files one answer. `taken` is what a resumed
+    run already filed. Returns (done, failed).
+    """
+    mid = member_of or (lambda t: t.get("member") or t.get("gid"))
+    start = CLOCK()
+    if arr.submitted_at:
+        start = min(start, float(arr.submitted_at))
+    deadline = start + float(deadline_s or BATCH_DEADLINE_S)
+    taken = set(taken or ())
+    done = 0
+    finished_at, unseen_since = {}, {}
+    note = _job_note(job)
+
+    def mark(i):
+        taken.add(i)
+        if arr.runlog is not None:
+            try:
+                arr.runlog.update(arr.rid, taken=sorted(taken),
+                                  status="running")
+            except Exception:                            # noqa: BLE001
+                pass
+
+    try:
+        while True:
+            job.check()
+            states, ready = retrying(arr.poll, job,
+                                     "array %s" % arr.array_id, note=note)
+            now = CLOCK()
+            for i in sorted(ready - taken):
+                if i >= len(tasks):
+                    continue
+                t = tasks[i]
+                try:
+                    out = retrying(lambda i=i: arr.fetch(i), job,
+                                   "the answer of task %d" % i,
+                                   limit_s=FETCH_RETRY_LIMIT_S, note=note)
+                except (cfc.Canceled, Detached):
+                    raise
+                except Exception as exc:                 # noqa: BLE001
+                    mark(i)
+                    failed += 1
+                    job.member(mid(t), status="failed", step=None,
+                               error=str(exc)[:200], why=str(exc)[:200])
+                    continue
+                mark(i)
+                try:
+                    on_result(i, t, out)
+                    done += 1
+                    job.member(mid(t), status="done", step=None)
+                except cfc.Canceled:
+                    raise
+                except Exception as exc:                 # noqa: BLE001
+                    failed += 1
+                    job.member(mid(t), status="failed", step=None,
+                               error=str(exc)[:200], why=str(exc)[:200])
+                out = None
+            for i, t in enumerate(tasks):
+                if i in taken:
+                    continue
+                st = states.get(i)
+                if not st:
+                    unseen_since.setdefault(i, now)
+                    if (now - start > UNSEEN_GRACE_S and
+                            now - unseen_since[i] > vacc.LAG_GRACE_S):
+                        mark(i)
+                        failed += 1
+                        why = ("The cluster never reported task %d of array "
+                               "%s -- not queued, not running, not finished "
+                               "-- in %d s, and no answer arrived."
+                               % (i, arr.array_id, int(now - start)))
+                        job.member(mid(t), status="failed", step=None,
+                                   error=why[:200], why=why[:200])
+                    else:
+                        job.member(mid(t), status="queued", step="waiting")
+                    continue
+                unseen_since.pop(i, None)
+                out = vacc.outcome_for(st)
+                if out is None:
+                    job.member(mid(t),
+                               status="running" if st == "RUNNING"
+                               else "queued", step=st.lower())
+                    continue
+                if out[0] == "done":
+                    finished_at.setdefault(i, now)
+                    if now - finished_at[i] > RESULT_GRACE_S:
+                        mark(i)
+                        failed += 1
+                        why = ("Task %d finished on the cluster (COMPLETED) "
+                               "but wrote no answer in the %d s since. Its "
+                               "log is %s/%s_%d.out." % (
+                                   i, int(now - finished_at[i]), arr.ws,
+                                   arr.array_id, i))
+                        job.member(mid(t), status="failed", step=None,
+                                   error=why[:200], why=why[:200])
+                    else:
+                        job.member(mid(t), status="running",
+                                   step="fetching")
+                    continue
+                mark(i)
+                failed += 1
+                job.member(mid(t), status="failed", step=None,
+                           error=out[1] or out[0], why=out[1] or out[0])
+            if len(taken) >= len(tasks):
+                break
+            if now > deadline:
+                arr.cancel()
+                left = [i for i in range(len(tasks)) if i not in taken]
+                why = ("The batch did not finish within %d h, so what was "
+                       "left was cancelled on the cluster."
+                       % int(round((deadline - start) / 3600.0)))
+                for i in left:
+                    mark(i)
+                    failed += 1
+                    job.member(mid(tasks[i]), status="failed", step=None,
+                               error=why, why=why)
+                break
+            _sleep(POLL["running"])
+    except cfc.Canceled:
+        arr.cancel()
+        if arr.runlog is not None:
+            arr.runlog.close(arr.rid, "canceled")
+        raise
+    except Detached:
+        # Lost contact, not a failure of the work. A written-down array is
+        # left for the next start to pick up; one nothing points at is
+        # cancelled, if the cluster will take the message.
+        if arr.runlog is None:
+            arr.cancel()
+        raise
+    except Exception as exc:
+        arr.cancel()
+        if arr.runlog is not None:
+            arr.runlog.close(arr.rid, "failed", str(exc)[:300])
+        raise
+    if arr.runlog is not None:
+        arr.runlog.close(arr.rid, "done")
+    return done, failed
 
 
 class VaccRun:
@@ -276,18 +692,104 @@ class VaccRun:
         self.last_error = None
         self._ssh = vacc._runner(cfg, ssh)
         self._gone_since = None
+        # Following the node's log. `vacc_run.py` writes one JSON line per
+        # stage begin and tick to stdout, which slurm puts in the run's
+        # `.out` file -- and until this, nothing ever read it back, so a
+        # forty-minute run showed "waiting for the cluster" for forty
+        # minutes and then was done.
+        self.ws = None
+        self._log_off = 0
+        self._log_buf = ""
+        self._declared = set(n for n, _u in (tool_steps or []))
+        # Opt-in persistence (fix 4): a `RunLog` to write this run into at
+        # submit time, and the caller's own part of the record -- whatever
+        # it needs to file the answer after a restart.
+        self.runlog = None
+        self.record = {}
+        self.submitted_at = None
+        # Member ids the node may report (`{"k": "member"}` lines). Empty
+        # for every tool that does not declare any.
+        self.members = []
+
+    @classmethod
+    def reattach(cls, cfg, rec, ssh=None):
+        """The run a `RunLog` record describes, ready to `work` again.
+
+        `work` sees the slurm id and skips the submit: it goes straight to
+        polling, and fetches the answer if the job finished while nobody
+        was watching.
+        """
+        run = cls(cfg, rec.get("tool"), rec.get("spec_local") or {},
+                  rec.get("remote"), plan=rec.get("plan") or {},
+                  tool_steps=[tuple(s) for s in (rec.get("tool_steps") or [])])
+        if ssh is not None:
+            run._ssh = ssh
+        run.rid = vacc.check_rid(rec["rid"])
+        run.slurm_id = str(rec["slurm_id"])
+        run.ws = rec.get("workspace") or vacc._remote_path(
+            cfg.get("workspace") or ".", "runs", run.rid)
+        run.state = "queued"
+        run.submitted_at = rec.get("submitted_at")
+        run.record = dict(rec.get("record") or {})
+        run.members = list(rec.get("members") or [])
+        return run
+
+    def _write_record(self, job):
+        if self.runlog is None:
+            return
+        self.runlog.write({
+            "rid": self.rid, "kind": "single", "tool": self.tool,
+            "slurm_id": self.slurm_id, "workspace": self.ws,
+            "remote": self.spec_remote.get("path"),
+            "spec_local": self.spec_local, "plan": self.plan,
+            "tool_steps": [list(s) for s in self.tool_steps],
+            "members": self.members,
+            "submitted_at": self.submitted_at,
+            "job_id": getattr(job, "id", None),
+            "record": self.record,
+        })
+
+    def close_record(self, status, why=None):
+        """Say the run is over. The caller does this once the answer is
+        FILED, not merely fetched: a restart between the two re-fetches."""
+        if self.runlog is None:
+            return
+        try:
+            self.runlog.close(self.rid, status, why)
+        except Exception:                                # noqa: BLE001
+            pass
 
     # -- the thing cfc.start wants ------------------------------------------
     def work(self, job):
         """Block until the cluster has an answer. Returns it."""
+        note = _job_note(job)
         try:
             job.begin("vacc queue", of=1, unit="jobs")
-            self.submit(job)
+            if self.slurm_id is None:
+                self.submit(job)
             self.wait(job)
             job.begin("vacc fetch", of=1, unit="files")
-            out = self.fetch(job)
+            out = retrying(lambda: self.fetch(job), job, "the answer",
+                           limit_s=FETCH_RETRY_LIMIT_S, note=note)
             job.tick("vacc fetch", 1)
+            if self.runlog is not None:
+                try:
+                    self.runlog.update(self.rid, status="fetched")
+                except Exception:                        # noqa: BLE001
+                    pass
             return out
+        except Detached:
+            # Still running there, or finished and not yet fetched. Left
+            # alone; the record (if any) stays open for the next start.
+            if self.state != "done":
+                self.state = "detached"
+            raise
+        except cfc.Canceled:
+            self.close_record("canceled")
+            raise
+        except Exception as exc:
+            self.close_record("failed", str(exc)[:300])
+            raise
         finally:
             # Whatever happened -- finished, failed, or Canceled raised out of
             # a `tick` -- a job left running on a shared cluster with nothing
@@ -300,6 +802,10 @@ class VaccRun:
                     pass
 
     def _unfinished(self):
+        if self.state == "detached":
+            # Lost contact is not a failed job. Cancel it only when nothing
+            # will ever come back for it.
+            return self.runlog is None and self.slurm_id is not None
         return self.state not in ("done", "gone") and (
             self.slurm_id is not None or self.state in ("queued", "running",
                                                         "submitting"))
@@ -318,6 +824,7 @@ class VaccRun:
         self.state = "submitting"
         vacc.check_rid(self.rid)
         ws = vacc._remote_path(self.cfg.get("workspace") or ".", "runs", self.rid)
+        self.ws = ws
         req = vacc.slurm_request(self.plan.get("seconds") or 0,
                                  self.megasamples,
                                  self.cfg.get("partition"))
@@ -327,6 +834,9 @@ class VaccRun:
             # The stage vocabulary, declared once and asserted on both ends.
             "stages": [n for n, _ in self.tool_steps],
             "report": self.report,
+            # Member ids the node may report on, for a tool whose progress is
+            # per item (Circuit: per cue pair). Empty for the others.
+            "members": list(self.members),
         })
         # A real script rather than `--wrap`, for two reasons: the preamble is
         # several lines and `--wrap` is one, and a file left in the run
@@ -375,8 +885,97 @@ class VaccRun:
             raise vacc.SSHError("The cluster did not return a job id.",
                                 "no-jobid", out)
         self.state = "queued"
+        self.submitted_at = CLOCK()
+        try:
+            self._write_record(job)
+        except Exception:                                # noqa: BLE001
+            pass            # a record that cannot be written costs a resume
         job.tick("vacc queue", 0)
         return self.slurm_id
+
+    # How much of the log one poll will take. A run that prints a
+    # traceback in a loop must not become a multi-megabyte ssh every ten
+    # seconds; the rest arrives on the next poll.
+    FOLLOW_MAX = 262144
+
+    def follow(self, job):
+        """Read what the node has written since last time, and replay it.
+
+        Progress lines become `begin` and `tick` on the local job, so the
+        panel shows the reading happening on the node rather than a queue
+        stage that lasts the whole run. Replaying `begin` also CLOSES the
+        queue stage the way a local stage change would -- and the seconds
+        that stage then records are real cluster timings, which is what
+        `cfc` learns its VACC rates from.
+
+        Anything that is not a progress line is kept as the job's log tail.
+
+        Best effort, always. A log that cannot be read this poll is read on
+        the next one, and a failure here must never fail a run that is
+        working -- `job.check()` is the only exception let through, because
+        that is cancellation.
+        """
+        if not (self.ws and self.slurm_id):
+            return
+        path = "%s/%s_%s.out" % (self.ws, self.rid, self.slurm_id)
+        cmd = ("f=%s; if [ -f \"$f\" ]; then tail -c +%d \"$f\" | head -c %d; fi"
+               % (vacc.q(path), self._log_off + 1, self.FOLLOW_MAX))
+        try:
+            out = self._ssh(cmd, timeout=30) or ""
+        except Exception:                                # noqa: BLE001
+            return
+        if not out:
+            return
+        self._log_off += len(out.encode("utf-8"))
+        text = self._log_buf + out
+        lines = text.split("\n")
+        # The last piece may be half a line; keep it for next time.
+        self._log_buf = lines.pop() if not text.endswith("\n") else ""
+        log = getattr(job, "log", None)
+        for ln in lines:
+            ln = ln.rstrip("\r")
+            if not ln:
+                continue
+            msg = None
+            if ln.startswith("{"):
+                try:
+                    msg = json.loads(ln)
+                except ValueError:
+                    msg = None
+            if isinstance(msg, dict) and msg.get("k") in ("begin", "tick"):
+                name = msg.get("stage")
+                # Only stages this run declared. The node checks the same
+                # vocabulary, so a mismatch here is a bug on one end and
+                # replaying it would corrupt the other tool's learned rate.
+                if name not in self._declared:
+                    continue
+                if msg["k"] == "begin":
+                    job.begin(name, of=msg.get("of"), unit=msg.get("unit"))
+                else:
+                    job.tick(name, int(msg.get("done") or 0))
+                continue
+            if isinstance(msg, dict) and msg.get("k") == "member":
+                # Per-item progress (a cue pair computing on the node). Only
+                # ids this run declared, and only scalars -- `Job.member`
+                # refuses anything else, and a local job with no such member
+                # ignores it.
+                mid = msg.get("id")
+                if mid in self.members:
+                    patch = {k: v for k, v in msg.items()
+                             if k in ("status", "step", "done", "of")
+                             and not isinstance(v, (list, dict))}
+                    try:
+                        job.member(mid, **patch)
+                    except Exception:                    # noqa: BLE001
+                        pass
+                continue
+            if isinstance(msg, dict) and msg.get("k") == "fatal":
+                ln = "fatal: " + str(msg.get("error") or "")
+            elif isinstance(msg, dict):
+                continue            # done / result markers: not for people
+            if log is not None:
+                log.append(ln[:300])
+                del log[:-40]
 
     def _wrap(self, ws):
         """What the compute node runs.
@@ -393,24 +992,30 @@ class VaccRun:
     # -- wait ----------------------------------------------------------------
     def wait(self, job, deadline=None):
         """Poll the cluster until the job is finished, one way or another."""
+        note = _job_note(job)
         while True:
             job.check()                      # raises Canceled; see the finally
-            states = vacc.poll_states(self.cfg, [self.slurm_id],
-                                      ssh=self._ssh)
+            # Retried through ssh failures (fix 1). One dropped connection
+            # used to raise straight out of here into the `finally` of
+            # `work`, which then scancelled a job that was running fine.
+            states = retrying(
+                lambda: vacc.poll_states(self.cfg, [self.slurm_id],
+                                         ssh=self._ssh),
+                job, "job %s" % self.slurm_id, note=note)
             got = states.get(str(self.slurm_id))
 
             if got is None:
                 # Neither squeue nor sacct. Usually the accounting database
                 # catching up, NOT a vanished job -- calling this "gone"
                 # fails runs that actually succeeded.
-                now = time.time()
+                now = CLOCK()
                 self._gone_since = self._gone_since or now
                 if (now - self._gone_since) > vacc.LAG_GRACE_S:
                     self.state = "gone"
                     raise vacc.SSHError(
                         "The cluster stopped reporting this job and no result "
                         "arrived.", "vanished")
-                time.sleep(POLL["running"])
+                _sleep(POLL["running"])
                 continue
             self._gone_since = None
 
@@ -420,9 +1025,13 @@ class VaccRun:
                 self.state = "running" if state == "RUNNING" else "queued"
                 if self.state == "running":
                     job.tick("vacc queue", 1)
-                time.sleep(POLL[self.state])
+                    self.follow(job)
+                _sleep(POLL[self.state])
                 continue
 
+            # Once more at the end, for whatever arrived since the last
+            # poll -- which includes the traceback of a run that died.
+            self.follow(job)
             kind, why = outcome
             self.state = "done" if kind == "done" else kind
             self.max_rss = got.get("max_rss")
@@ -434,6 +1043,12 @@ class VaccRun:
                 # `Job.fail` branches on the exception type, and a run
                 # somebody stopped is not a run that broke.
                 raise cfc.Canceled(why)
+            # What the node itself said last, on the error. "The job
+            # failed" is not something anybody can act on; "MemoryError" is.
+            tail = [ln for ln in (getattr(job, "log", None) or [])
+                    if ln.strip()][-3:]
+            if tail:
+                why = (why or kind) + " -- the node said: " + " | ".join(tail)
             self.last_error = why
             raise vacc.SSHError(why, kind)
 
@@ -445,8 +1060,19 @@ class VaccRun:
         megabytes and regenerable in milliseconds, so it stays on the cluster
         and what crosses the wire is about thirty kilobytes a recording.
         """
-        ws = vacc._remote_path(self.cfg.get("workspace") or ".", "runs", self.rid)
-        raw = self._ssh("cat %s/result.json" % vacc.q(ws), timeout=120)
+        ws = self.ws or vacc._remote_path(self.cfg.get("workspace") or ".",
+                                          "runs", self.rid)
+        # A missing file is an answer ("it wrote nothing"), not a silence,
+        # so it is said as one rather than surfacing as a failed ssh that
+        # `retrying` would ask about again for five minutes.
+        raw = self._ssh("f=%s/result.json; if [ -f \"$f\" ]; then cat \"$f\"; "
+                        "else echo %s; fi" % (vacc.q(ws), _NO_RESULT),
+                        timeout=120)
+        if (raw or "").strip() == _NO_RESULT:
+            raise vacc.SSHError(
+                "The job finished on the cluster but wrote no answer. Its log "
+                "is %s/%s_%s.out." % (ws, self.rid, self.slurm_id),
+                "no-result")
         try:
             out = json.loads(raw)
         except ValueError:

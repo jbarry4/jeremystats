@@ -11,11 +11,12 @@ somebody can read it *before* writing the next tool rather than after.
 Every rule cites the code that proves it. Where a rule exists because
 something broke, the counter-example is named — those are the useful half.
 
-> **Status.** All in force. §6 covers the shared compositions that exist
-> today (`analysisRun` is still to come and says so); **§6b is the one to read
-> before building a new tool, bundle or Xplorefinder mode** — it is about the
-> machinery rather than the look, and most of it is there because getting it
-> wrong loses somebody's work quietly.
+> **Status.** All in force as rules. §6 covers the shared compositions that
+> exist today; **§6b is the one to read before building a new tool, bundle or
+> Xplorefinder mode**; **§6d** (running — here or on VACC, one or many) and
+> **§6e** (choosing a recording, versions, banking) are the workflow every
+> tool shares. Where a section names a shared component that is still being
+> built, it says so in italics and names the tool to copy until it lands.
 
 ---
 
@@ -328,15 +329,62 @@ const DENTIST = [
 ```
 
 Each step is `[id, name, what it does in three words]`, in the order you do
-them.
+them. Register the bundle in `BUNDLES` with an `id`, a `name` and the `icon`
+of the tool whose glyph stands for the whole thing.
 
 **A bundle must remove its members from the flat tool list below it.** This is
 the rule with the longest comment in `toolkit.js` and it is worth reading:
 a bundle that does not is "a menu that describes one thing twice and makes
-the reader work out that it is one thing."
+the reader work out that it is one thing." `BUNDLED` does this for you, so
+the only thing a new bundle has to do is be in `BUNDLES`.
 
 Every step gets a `stepHeader` with its `step` set (§6). The header is where
 somebody arriving at step 3 learns there are four.
+
+**The step number is derived, never typed.** Each tool used to write its own
+"step 4 of The Dentist". When Root Canal was inserted between Braces and
+X-ray, X-ray's header had to be edited by hand from 4 to 5 — it was, this
+time. Use `stepOf(toolId)`, which reads the position out of `BUNDLES`, so
+inserting a step renumbers every header after it. *(Being built; The Arc
+already derives its own.)* Incisor and Checkup have no `stepHeader` at all
+and are being brought in.
+
+**A step that is not built yet is shown and disabled, with the reason on it.**
+Leaving it out says the step does not exist. Somebody arriving at Coupling
+needs to know both that it is the third of four and that the two before it
+come first.
+
+#### Bundles fold
+
+A bundle is a heading with a list under it, and **every bundle folds**. Three
+bundles of three and four steps is eleven rows before the flat list even
+starts, and somebody working in one of them has no use for the other seven.
+
+`bundleCard` already does this; a new bundle gets it by being in `BUNDLES`.
+What matters is the four rules it follows, because they are what make folding
+safe rather than merely possible:
+
+1. **The head is a `button`.** It was a `div`, which nothing can tab to and
+   nothing can announce. Full width, left-aligned, `aria-expanded` — the
+   target is the whole row, not the chevron.
+2. **Open by default; only folds are remembered.** Stored as the *folded*
+   ids in `barry.tkFolded`, so a bundle added later arrives open and is seen
+   rather than arriving folded and never being found.
+3. **Folding never costs you your place.** A folded bundle holding the tool
+   you are in keeps its accent border, and its head names *that step* in
+   place of the count. "Where am I" stays answered by a menu you have tidied.
+4. **The fold is a preference, so it persists.** Same reason the rail
+   remembers its width. A fold you have to redo every morning is not a
+   preference.
+5. **It animates, and says so to reduced motion.** The steps ease their
+   height and opacity closed rather than vanishing, because a list that
+   snaps shut reads as something having broken. Under
+   `prefers-reduced-motion` it snaps (§4). *(Being built.)*
+
+The same shape applies to anything else that is a heading over a list — the
+Explorer's tree sections and the Errors view's groups already work this way,
+with the same `.caret` and the same `.open` class on the parent. Copy that,
+not a new one.
 
 ### An Xplorefinder mode
 
@@ -350,15 +398,35 @@ BARRY.yours.rebind(sess) //  a reopen replaces the session object
 BARRY.yours.state        //  what a pop-out or a deep link needs
 ```
 
-**One mode at a time, and `enter` is responsible for that.** Both modes take
-over the panes, the keyboard and the aid window. Entering one on top of the
-other left two toolbars stacked, two sets of key handlers fighting over the
-same presses, and an aid window belonging to whichever got there first. So:
+**One mode at a time — and no mode is responsible for that on its own.**
+Every mode takes over the panes, the keyboard and the aid window. Entering one
+on top of another leaves two toolbars stacked, two sets of key handlers
+fighting over the same presses, and an aid window belonging to whichever got
+there first.
+
+This section used to say each mode should exit the others itself, and show
+Checkup being exited by name. That held while there were two modes. There are
+five now — Checkup, StrataScope, Spotter, Braid and The Arc — and a check
+found that **none of them exits all the others**:
+
+| entering | exits |
+|---|---|
+| Checkup | StrataScope only |
+| StrataScope | Checkup only |
+| Spotter | Checkup, StrataScope |
+| Braid | Checkup, StrataScope |
+
+So entering Checkup with Spotter open leaves both live. Five modes that each
+list the other four is twenty pairs kept in step by hand, and the sixth mode
+breaks them all again. The rule is therefore a registry, not a habit:
 
 ```js
-if (BARRY.curate && BARRY.curate.active) BARRY.curate.exit();
-if (mine) exit();          // re-entering: start clean
+BARRY.modes.register('yours', BARRY.yours);   // once, at load
+BARRY.modes.enter('yours', gid);              // exits whatever is active first
 ```
+
+*`BARRY.modes` is being built (round 2, see the plan). Until it lands, a new
+mode must exit every mode listed above, and the table is the list.*
 
 **Resolve the recording, do not assume a path.** Registry rows carry `here`,
 a list of paths reachable from *this* machine — not `path`. Ask for `here[0]`
@@ -467,6 +535,374 @@ anything long runs — Panorama does this and it is the pattern to copy.
 - [ ] Writes only this machine's shard
 - [ ] A `_dev/` harness, listed in `_dev/README.md`
 
+## 6c. Two views of one thing
+
+Three views in Sessions show the same recordings: **Scan a drive**,
+**Everything Jarvis knows** and **Everything VACC knows**. They are not three
+lists. They are one catalogue asked three questions — what has this computer
+met, what has the lab met, what can the cluster read — and the cluster view
+answers its question in *both* of the other two's shapes.
+
+That only stays true if nobody writes a second copy of anything. This section
+is what "nobody" means in practice.
+
+### One renderer per shape, chosen by scope
+
+| the thing | the one renderer | drawn by |
+|---|---|---|
+| a recording as a **card** | `sessionCard` — sessions.js | Scan a drive · VACC ▸ Recordings |
+| a recording as a **row** | `sessionRow` — housekeeping.js | Everything Jarvis knows · VACC ▸ Catalogue |
+| the project → mouse **tree** | `housekeeping.catalogue(scope)` | both catalogues |
+| the **probe** chip | `BARRY.hk.probeChip` | card, row, drive scan |
+| the **cluster** mark | `BARRY.vacc.mark` | card, Xplorefinder tab |
+
+So a change to a session card lands in the drive view and the cluster view at
+once, because there is one function. **A card change does not land on a tree
+row, and must not be made to.** A card carries a duration, a sample rate and
+four quality buttons; a row carries attachment counts in a dense line. They
+are different shapes answering different questions, and forcing one to follow
+the other is how a view ends up with furniture nobody asked for.
+
+What crosses between them is the **vocabulary** — the chips — never the
+layout.
+
+### Getting one renderer into two places
+
+Two techniques, both in the tree already. Prefer the first.
+
+**Parameterise the host.** `housekeeping.catalogue(scope)` keeps a `SCOPES`
+table of `{ host, detail }` ids and draws into whichever it is handed. This is
+the default answer and needs no comment beyond the table.
+
+**Move the nodes.** `parkList()` / `listInto()` in sessions.js move the one
+`#sessFilters` and the one `#sessTree` between pads, because that markup is
+fixed in `index.html` and `.pad` is `flex: 1` — two visible pads split the
+height, so the list cannot simply be shown in both. Moving a node keeps its
+listeners, so the search box being typed into is the one wired at boot, with
+the one `query` behind it.
+
+Only when the markup cannot be parameterised, and then:
+
+- Park the nodes **before** anything clears the pad they are in.
+  `innerHTML = ''` on a host holding them does not move them, it destroys
+  them, and the symptom is a view that silently has no list.
+- Anything that positions itself relative to them must reposition on every
+  render, not only when it is built — the pick bar was inserted once and
+  stayed behind in the pad the cards had left.
+
+### One module owns the fact; each surface owns the consequence
+
+`native` and `staged` mean something, and four surfaces say so: the card in
+Sessions, the detail panel in Housekeeping, the tab in Xplorefinder, and the
+toast when a recording opens. Each of them wrote its own sentence, and the
+predicate behind them — `state === 'native' || state === 'staged'` — was
+written out five times in three files.
+
+The split that fixes it:
+
+- **The fact** lives in the module that owns the subject. `BARRY.vacc.words`
+  is a table of what each state *is*; `BARRY.vacc.mark` is the chip; and
+  `canRead` is defined as *"there are words for it"*, so the set that opens
+  and the set that gets a mark cannot come apart.
+- **The consequence** belongs to the surface, because it is about the thing
+  that surface is offering. "Opening it from here reads the same files the
+  rig wrote" is the detail panel's sentence and belongs nowhere else.
+
+Restating the fact is the fault. Adding a consequence is not.
+
+The same rule made `probeChip` shared: three places drew it, and three copies
+of "is this confirmed" would have ended up disagreeing about what green
+means.
+
+### Absent is not negative, in every view at once
+
+The cluster has four states and only two are affirmative. `BARRY.vacc.of`
+returns **null** for a recording nobody has established an answer for — which
+is most of a fresh scan, because exact ids are minted when headers are read.
+Every view has to read that the same way: **no mark, no Open, and no
+refusal either.** A view that reads a missing answer as "the cluster cannot
+reach this" is claiming something nobody checked.
+
+This has been got wrong twice in this codebase — `canOpen` in sessions.js,
+where a missing field read as "not on this machine" hid every recording that
+was certainly openable, and the first VACC chips. Both have comments; read
+them before writing a fifth reader of a four-state field.
+
+### A count has to describe the list underneath it
+
+Whatever narrows a view narrows the numbers above it. The cohort pills
+counted the whole catalogue whatever the mode was, so the cluster view
+offered **"PTEN (381)" above a list of 109** — and the fix has to be one
+predicate, not two that agree today: `modeAllows` is read by the filter and
+by the counts, for the same reason `inLocal` was extracted after the view
+said "188 of 185".
+
+Zero is an answer. A cohort with nothing in this view reads `(0)` and is
+dimmed, not dropped — a pill that vanishes when you change mode is one you
+cannot change back with.
+
+### Adding a fourth view
+
+1. It is a **question about the same catalogue**, so it is a mode on the
+   existing switch — not a rail slot (§1) and not a new list.
+2. Write the narrowing as one predicate and give it to the list *and* the
+   counts.
+3. Draw the existing card, the existing row and the existing chips. If you
+   need a new chip, put it in the module that owns what it means and let the
+   other views draw it too.
+4. Say in the line above the list which of the questions it is answering, and
+   leave out the clauses that are about a different one.
+5. An empty view says what fills it (§5) — for the cluster view that is
+   "scan a folder under Directories", not "nothing matches those filters",
+   which sends somebody looking for a filter that does not exist.
+
+---
+
+## 6d. Running a tool — here or on the cluster, one or many
+
+Every tool does the same job in the same order: **pick what to run on, set
+the parameters, run it, get the result back, keep it.** Until now each tool
+drew that differently — Braces and X-ray with a *One set at a time | Many
+sets at once* switch, Incisor with tabs that made "VACC" mean "many at once",
+Doppler with two ghost buttons and no primary. This section is the one shape.
+
+*The shared pieces named here (`runBar`, the VACC health panel, upload) are
+being built in round 2. Until they land, Braces is the reference for
+everything local and this section is the spec.*
+
+### Four modes, on two independent axes
+
+| | one | many |
+|---|---|---|
+| **this computer** | local run | local batch |
+| **VACC** | VACC run | VACC batch |
+
+*Where it runs* and *how many* are separate questions and never fused into
+one control. A tool **declares** which of the four it supports, and the
+interface offers only those:
+
+```js
+modes: { local: ['one', 'many'], vacc: ['one', 'many'] }   // Incisor
+modes: { vacc: ['one', 'many'] }                           // Doppler
+modes: { local: ['one'], vacc: ['one'] }                   // Drift
+```
+
+Which a tool gets is decided by the work, not by what is easy to build:
+
+- **Simple and quick** → local run only (Spotter, Kilosort, StrataScope).
+- **Repetitive** → local run and local batch (Checkup, Braces, Root Canal,
+  X-ray, Eye).
+- **Heavy and done often** → VACC run and VACC batch, and no local mode at
+  all where running it here would only teach people to wait (Doppler).
+- **Heavy and done once** → VACC run (Drift), with a local run as well
+  where the work is small enough to be worth doing here.
+
+Circuit and Drift were decided by the user (2026-09-27) rather than by the
+rule above: one recording's circuit is about a minute here, so Circuit runs
+here and on the VACC, one or many; Drift combines numbers already computed,
+so it runs here in seconds and can run on the VACC, never as a batch.
+
+| tool | here · one | here · many | VACC · one | VACC · many |
+|---|---|---|---|---|
+| Incisor | ✓ | ✓ | ✓ | ✓ |
+| Circuit | ✓ | ✓ | ✓ | ✓ |
+| Checkup, Braces, Root Canal, X-ray, Eye | ✓ | ✓ | | |
+| Doppler | | | ✓ | ✓ |
+| Panorama | ✓ | | ✓ | |
+| Spotter, Kilosort, StrataScope | ✓ | | | |
+| Drift | ✓ | | ✓ | |
+
+A tool that gains a mode changes its declaration, not its layout.
+
+### The run bar
+
+One component, `BARRY.ui.runBar`, at the top of the tool under its
+`stepHeader`:
+
+```
+ Where    [ This computer | VACC ]        (hidden if only one)
+ How many [ One | Many ]                  (hidden if only one)
+```
+
+- An axis with a single option is **hidden**, not shown disabled. A choice
+  that cannot be made is not a choice.
+- VACC is offered only while VACC Mode is on and an account is signed in —
+  and never as the *only* way to reach a tool that can also run here.
+- The **primary action is last and names what it will do**: *Run on this
+  recording*, *Read 12 sets*, *Submit 40 to VACC*. Never "Go", never "Run
+  the batch" as a ghost button (§2).
+- **Say the cost before it is spent**: how long, how many, on which
+  partition. Panorama already does this and it is the pattern.
+
+### Parameters
+
+- In the tool's own panel, below the run bar, as `ui.field`s — never in a
+  popover somebody has to find.
+- Every parameter has a **default that is stated**, and the result records
+  the parameters it was made with, verbatim. A result whose parameters are
+  lost cannot be defended.
+- One set of parameters applies to a whole batch. A batch that silently used
+  different settings per recording is not a batch.
+
+### Waiting
+
+§5 applies, plus:
+
+- **Local run** — `loader` or `stepLoader` in the result area.
+- **Batch** — one row per recording with its own state (*queued · reading ·
+  done · failed · skipped*), a bar that never goes backwards, and a **Stop**
+  that stops. A batch skips what is already done and says so; re-running a
+  finished batch does nothing.
+- **VACC** — the job's own state (*uploading · submitting · queued ·
+  running · fetching · done*), with the Slurm job id visible. Queued is not
+  an error and is never drawn like one.
+
+### Results
+
+- A run leaves a **result**; a batch leaves **one proposal per recording**.
+  **Nothing is banked by a batch.** Each proposal is reviewed and banked
+  through the bank dialog (§6e) — the review is the point of the tool, and a
+  batch that skipped it would bank work nobody looked at.
+- A result is cached per tool and per recording (`GUI_logs/<tool>/results`)
+  and **re-opens instead of re-running**. Say when a shown result is cached,
+  and offer to re-run.
+- A VACC result is pulled back and stamped `computed_on: {kind: 'vacc',
+  netid, slurm_id}`, so a result says where it was made.
+
+### VACC
+
+**One account runs the lab's jobs.** Others sign in with their own netid to
+reach the shared space.
+
+- **Data lives in `Jarvis Data`**, under `/gpfs2/scratch/sakhava1`, mirrored
+  as `<project>/<mouse>/<recording>/`. It is **processing space**: critical
+  data is kept elsewhere, and scratch may be purged. The local copy is never
+  touched and stays the source of truth.
+- **Uploading** is part of *Scan a drive*: select recordings, *Upload to
+  VACC*. A file already there at the same size is skipped, so re-uploading
+  is cheap and resumes where it stopped. An uploaded recording is runnable at
+  once.
+- **Say "uploaded", not "staged".** "Staged" implied Jarvis had copied
+  something when it had not.
+- **A cluster path never enters the registry.** A recording on the cluster is
+  known by its identity, the same way it is on a second machine.
+- **Access is checked, and a refusal is specific.** When the shared space
+  cannot be read, say *what* was refused, link the folder in OnDemand
+  (`ondemand.vacc.uvm.edu`), and say **ask Shahriar to add you**. Never a
+  bare "permission denied".
+- **Jobs outlive the window.** A background check runs `squeue --me`,
+  reattaches to every job this account owns — including ones started before
+  Jarvis last restarted — and pulls back whatever finished. The VACC health
+  panel shows queued, running, recent failures and access.
+
+---
+
+## 6e. Choosing, keeping and naming
+
+### Choosing a recording
+
+Braces is the reference (`braces.js`), and `ui.pickRecording` is its rules
+made shared. *(Being built; until then, copy Braces.)*
+
+- The label is **Recording**. Not "1. Which recording", not "Session".
+- One placeholder: *Which recording? Type a mouse, session or date…*
+- **Usable first, everything on request.** List the recordings this tool can
+  do something with; a *show all recordings* toggle lists the rest. Picking a
+  recording and being told "nothing here" reads as the tool being broken, not
+  as the recording being the wrong one.
+- **Open on something workable** — whatever is already chosen, else the first
+  usable one. Never on nothing.
+- **Changing the recording resets everything downstream** — the entry, the
+  channels, the version. A panel still describing the last recording's set is
+  describing something no longer on offer.
+- A second choice under it (*Which banked entry*) is a list, not a select,
+  and an entry that cannot be used is **shown and disabled with the reason**,
+  not left out.
+
+The same rows feed the batch picker, so *one* and *many* choose from the same
+list.
+
+### Versions: the model
+
+`backend/versions.py` is the rule, and it is a good one.
+
+- **Picking up a version starts a new one from it.** The tip continues the
+  line: v3 → **v4**. Anything with work after it branches: v1, with v2 and
+  v3 after it → **v1.1**. Applied again it keeps working: v1.1 → v1.2, and
+  v1.1 once v1.2 exists → v1.1.1.
+- Going back is not a mistake to prevent; destroying what came after is.
+  v1.1 is *visibly a second line*, with v2 and v3 untouched beside it.
+- **v0 is always the detector's list** — the thing curation is done *to*.
+- `"1.10"` sorts after `"1.9"`. Compare through `versions.key`, never as text.
+- The stored `v` is a plain integer (the sync key); the **name** — `v4.1` —
+  is *derived* from lineage (`from_v` / `from_id`). Never store a name, never
+  display `v` in place of it.
+- The **id is the identity**, not the number. Two machines both mint the next
+  number, so numbers repeat.
+
+**Render every version through one `versionLabel(v)`.** About thirty places
+build `'v' + (name || v)` by hand, which is how one version comes to read as
+two different numbers in two panels.
+
+**What the data showed, and how it is repaired.** Of 948 stored versions,
+155 had no id, and 42 numbers were duplicated in a way no id could resolve —
+each one pass recorded twice, the same person in the same minute, one copy
+from before ids existed. They sit in several machines' files, and a machine
+may only write its own. So the repair is **on read, never a rewrite**: a twin
+collapses into its id-bearing copy **only when the snapshots match exactly**
+(`snap_sha`), and an id-less version gets an id every machine derives the
+same way. No file changes, so nothing can be lost. *(Being built, with a
+check that proves every event survives.)*
+
+### Versions: choosing one
+
+**One control for every version choice: `ui.versionTree`.** The data is a
+tree, and six different controls showed it as a list — Braces' select,
+X-ray's *Read from*, Checkup's *Pick it up from*, the Event Bank's chips and
+rows, Root Canal's radios, Eye's own formatter — which is why a branch name
+like v4.1 looked arbitrary. *(Being built.)*
+
+Vertical lanes, like a git graph: the trunk down the left, each branch in a
+lane to its right, one row per version.
+
+```
+  o  v6    Rain     2d   1,204   newest
+  |
+  o  v5    Rain     3d   1,198
+  |  o  v3.2  Jeremy   1d   1,187
+  |  |
+  |  o  v3.1  Jeremy   5d   1,190
+  | /
+  o  v3    Rain    12d   1,211   aligned
+  |
+  o  v0    Incisor  import  1,306
+```
+
+Every row: **name, who, when, count, state** (*newest · aligned · archived ·
+not on this machine*). A version that cannot be read here is shown and
+disabled, with the reason — never dropped from the tree.
+
+### Banking: one dialog, every time
+
+There are two acts, and they are different on purpose:
+
+| | a new **entry** | a new **version** |
+|---|---|---|
+| from | Incisor, Doppler — a detector's output | Checkup, Braces, Root Canal, X-ray — work done *to* an entry |
+| asks for | a **name**, pre-filled from `bankName.suggest`, never empty | a **note** — the entry already has a name, shown read-only |
+| states | where it will be filed | **continues v5 → v6**, or **branches from v3 → v3.1** |
+
+Both go through **one** `ui.bankDialog`, in the same place, every time.
+*(Being built.)* Until now it was a dialog in Incisor, an inline card in
+Doppler, a note-only dialog in Root Canal, and a one-off "Who is banking
+these?" prompt in Checkup.
+
+- **Who** comes from the profile. Never ask it in a prompt.
+- **Nothing banks silently.** Banking is the one act that is evidence, so it
+  always shows what is about to be written and where.
+- A batch banks nothing (§6d). Its proposals come through this dialog one at
+  a time.
+
 ## 7. Breaking a rule
 
 Contextual overrides are allowed. The difference between a good one and a bad
@@ -514,6 +950,9 @@ per object.
 | **this computer** | local, here | the machine in front of you — 25 strings say it this way and none says "local" |
 | **the cluster** | remote, the server | the VACC as a place work runs |
 | **VACC** | the cluster | where it is the proper noun — *VACC account*, *VACC mounts*, a path |
+| **uploaded** | staged | a recording Jarvis has copied to `Jarvis Data`. "Staged" implied a copy that had never been made |
+| **Recording** | Session, 1. Which recording | the label over the recording picker, in every tool |
+| **v4.1** | 4.1, version 4.1, v7 | a version, always by its derived name through `versionLabel` — never the stored integer |
 
 Placeholders describe what you can type, not what the box is:
 *"Type a mouse, session or date…"*, not *"Search sessions"*.
@@ -533,6 +972,8 @@ rather than merely published.
 | `python tools/check_classes.py` | a class the markup applies that no rule matches — and it separates the ones something *selects* on, since removing those is a behaviour change |
 | `python tools/ui_baseline.py` | every control's measured shape, every composition's structure, container gaps, grid column counts and overflow, at three widths and one short window. A change that was meant to change nothing must produce an empty diff |
 | `python tools/harness_run.py` | the ~60 behaviour harnesses in `_dev/` |
+| `_dev/vaccopen.html` | that the cluster's meaning is single-sourced (§6c): that `words` and `canRead` cannot come apart, and that every mark drawn on screen is a word the module actually keeps — a view that built its own chip fails here |
+| `_dev/vacccat.html` | that two views of one list are one list (§6c): one `#sessTree` and one `#sessFilters`, not two, and that leaving a view hands them back rather than destroying them |
 | `_dev/uiaudit.html` | the same measurements live, plus the claims that need two classes on a real element — which is how `.btn.small` is caught, since `small` resolves on its own and the pair matches nothing |
 
 Run all of them from **PowerShell**, never bash: under bash Edge's
@@ -550,5 +991,137 @@ checks and the whole suite reads as a clean sweep.
 - [ ] Errors through `reportClientError` (§5)
 - [ ] A Ctrl+K palette entry; a deep-link param if it has shareable state
 - [ ] `onHide` if it starts a poll or a heartbeat
+- [ ] If two views show it, **one** renderer and **one** predicate (§6c) —
+      and the counts above the list read the same predicate as the list
+- [ ] A fact about the subject lives in the subject's module; only the
+      consequence for this surface is written here (§6c)
 - [ ] `check_classes.py` clean; `ui_baseline.py` diff is only what you meant
 - [ ] A `_dev/` harness, listed in `_dev/README.md`
+
+---
+
+## 10. Speed — starting, switching, opening
+
+The data is fast; README § Speed is how. This section is about everything
+around it — start-up, switching views, opening a tool — which is what people
+mean when they call the app lethargic, and which nothing had measured until
+`tools/perf_baseline.py`.
+
+There is no lite mode. Every rule below makes the app faster on every
+machine, so it is fine on a laptop over a VPN and better on a lab computer.
+
+### Measure it, in real time
+
+```
+python tools/perf_baseline.py            compare against the stored run
+python tools/perf_baseline.py --save     store this run as the baseline
+```
+
+It drives `_dev/perf.html` on the **wall clock**. The harness runner cannot do
+this: it uses `--virtual-time-budget`, which fast-forwards timers, so any
+duration taken under it is invented. Open `_dev/perf.html` by hand on a laptop
+and the table on screen is the result.
+
+Before speeding anything up, measure it; after, measure it again. **A change
+that does not move its number is not kept.** A number counts as worse only
+when it is both 30% and 100 ms worse — timings are noisy in a way shapes are
+not.
+
+### Start-up: import what you use, when you use it
+
+Measured on the lab machine, about **3 of the 3.6 seconds** before the server
+serves are Python importing tools nobody has opened:
+
+| module | cost | for |
+|---|---|---|
+| `backend.analysis` | 1.3 s | panel rendering |
+| `backend.cfc` | 1.1 s | Braid |
+| `backend.dspca` | 0.6 s — sklearn alone 0.5 s | X-ray |
+| `backend.compose` | 0.3 s | figure export |
+
+On a laptop, where antivirus scans every compiled library the first time it
+loads, that is several times worse.
+
+- **A heavy dependency is imported inside the route or function that needs
+  it**, never at the top of `app.py` or of a module `app.py` imports. numpy is
+  cheap; scipy, matplotlib, sklearn, pandas and h5py are not.
+- Guard it the way `dspca.py` guards sklearn: a machine that lacks it loses
+  that one tool, not the whole server.
+
+*(Being moved; `app.py` is shared with other in-flight work.)*
+
+### Nothing at boot that is not on screen
+
+1.3 MB of JSON arrives before the first screen settles — `/api/notes` alone
+is 443 kB and `/api/sync/status` 405 kB, and neither is needed to draw it.
+
+- Boot asks for what the first screen shows. Everything else is fetched when
+  the view that needs it opens.
+- A list endpoint sends what the list draws. The full record comes when a row
+  is opened.
+
+### Reachability is a cached fact
+
+Every registry read used to call `isdir` on all 1,846 known paths one after
+another, then `getmtime` on the reachable ones again — two network round trips
+per netfiles path, every read.
+
+- **One `os.stat` answers both questions**, cached for 30 s
+  (`sessreg.is_here`). A drive plugged in shows up within the TTL.
+- **Ask in parallel**, never one path after another.
+- **A drive or share that is not there is asked once**, not once per path it
+  holds — with one real path tried before a share is called dead, so a share
+  that will not list its top cannot hide its recordings.
+
+Measured: every read after the first went from ~0.5 s to ~0.11 s on the lab
+LAN. The cost removed is round trips, so over a VPN the gain is larger still.
+
+**Unmapped drive letters are not the problem**, and it is worth knowing why:
+Windows fails them instantly. The cost was per-path latency on a share that
+*was* there.
+
+### A view pays for itself, and only itself
+
+A view's time is often spent on requests that belong to a different view —
+ToolKit's bad-channels poll turning up while the Event Bank is open, `/api/
+devices` (1 s) during Pipeline, `/api/toolfeed/bad` during Results.
+
+- **Every poller stops when its view is hidden** — that is what a view's
+  `onHide` is for (§6b checklist) — and when the window is in the
+  background (`document.hidden`).
+- **A cloud round trip is never on the path to drawing a view.** Presence,
+  devices and sync fill in after the view is up; the view does not wait for
+  them.
+
+### One request per question
+
+Results and Misc make **61–66 requests per visit**, one per thumbnail.
+
+- A list that needs *n* small things asks for them in one request, or asks
+  only for the ones scrolled into view.
+- Long lists draw the rows that are visible, not all of them. Sessions spends
+  about 230 ms repainting 400+ cards it could not show at once anyway.
+- A change repaints the row that changed, not the whole view.
+
+### What is still to be measured
+
+Two suspects cannot be tested on the lab machine, and are written here so
+they are not forgotten:
+
+- **GPU effects.** Six `backdrop-filter` and four `blur()` rules, and eleven
+  infinite animations, are near-free on a lab GPU and paid on every repaint on
+  a laptop's integrated one. Headless Edge draws without a GPU, so only a run
+  of `_dev/perf.html` on a real laptop can say. Until then: **no new
+  `backdrop-filter`**, and an infinite animation pauses when it is off screen.
+- **The VPN.** Every number above was taken on the lab LAN. The laptop run on
+  and off the VPN sets the budgets; they are not guessed.
+
+### When you add something
+
+- [ ] Heavy imports inside the function that uses them
+- [ ] Nothing fetched at boot that the first screen does not draw
+- [ ] Pollers stop in `onHide` and in a background window
+- [ ] No cloud call on the path to drawing the view
+- [ ] One request per question; long lists draw what is visible
+- [ ] No new `backdrop-filter`
+- [ ] `perf_baseline.py` before and after, and the number moved

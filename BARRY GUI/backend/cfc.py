@@ -578,6 +578,13 @@ STAGES = [
     ("ds pca sets", "recordings"),
     ("ds read", "seconds"),
     ("ds detect", "channels"),
+    # Doppler (The Storm). Its own names for the reason given above the
+    # spectrum's -- and note "ied read" counts seconds of recording READ
+    # TWICE, because the threshold is a percentile over every kept channel
+    # and cannot be known until all of them have been transformed once. A
+    # run that declared one pass would sit at 50% and then start again.
+    ("ied read", "seconds"),
+    ("ied detect", "channels"),
     ("slow bank", "bands"),
     ("fast bank", "bands"),
     ("modulation index", "cells"),
@@ -604,6 +611,34 @@ STAGES = [
     # mixing twenty-minute and forty-minute recordings. Which session is
     # at which step is carried by `Job.members`, not by stages.
     ("panorama bulk", "seconds"),
+    # Horizon. One stage per FIDELITY, and both counted in seconds of
+    # recording times channels.
+    #
+    # One stage rather than a read and a fit, for the reason "panorama bulk"
+    # gives just above: `begin` closes whatever stage is running, so a stage
+    # may be opened once per run, and Horizon reads and fits one channel
+    # before starting the next. A declared read stage that is never ticked
+    # reads as a bar stuck at zero that then jumps.
+    #
+    # Two of them because survey and full are not the same work -- the fit
+    # is about forty-five times the read -- and one rate averaged over both
+    # would be wrong for each. Seconds of recording rather than channels so
+    # the rate holds across recordings of different lengths.
+    ("horizon survey", "seconds"),
+    ("horizon full", "seconds"),
+    # The Arc's Circuit. One unit is one CUE PAIR run through
+    # `coupling.pair_connectivity` -- every window, 66 region pairs, three
+    # methods -- which is what a circuit is made of and what its cache is
+    # keyed on. Its own name for the reason given above the spectrum's.
+    # "circuit batch" counts whole circuits in a batch and is never learned:
+    # on the cluster it includes the queue.
+    ("circuit pairs", "pairs"),
+    ("circuit batch", "circuits"),
+    # The Arc's Drift (backend/driftrun.py). One unit is one CELL -- a
+    # region pair in one window by one method -- pooled on both sides and
+    # tested. Pure arithmetic over payloads already in hand, so flat and not
+    # per volume; its own name for the reason given above the spectrum's.
+    ("drift cells", "cells"),
     # Offloaded to the VACC. These sit in FRONT of whatever the tool itself
     # does, and they have to be declared here or `Job.begin` drops them
     # without a word -- a run that works perfectly and shows no progress.
@@ -660,6 +695,24 @@ _RATES = {
     # and the fit about 65 ms a window at one window a second, so the
     # fit dominates and this is close to the two added together.
     "panorama bulk": 7.0e-2,      # per second of recording
+    # Measured here, 2026-09-27: 62 channels of the 900 s demo recording in
+    # 168 s wall, which is 3.0e-3 per channel-second. The demo GENERATES its
+    # signal rather than reading one, so this is a starting point and the
+    # first real recording replaces it.
+    "horizon survey": 3.0e-3,     # per second of recording, per channel
+    # Read plus one bounded fit per kept column. At one column in five with
+    # a one-second hop that is 0.2 windows a second at 6.5e-2 each, plus the
+    # 1.4e-3 read -- so about 1.4e-2, seeded a shade above.
+    "horizon full": 1.5e-2,       # per second of recording, per channel
+    # Measured here, 2026-09-27: J7 s2, a state run at the defaults, cold
+    # off E: -- 4.0 s and 3.8 s for two pairs called directly, and 7.4 to
+    # 7.9 s a pair over whole 8-pair circuits run as jobs (two runs of
+    # tools/check_circuitrun.py). Seeded between the two.
+    "circuit pairs": 6.0,         # per cue pair
+    "circuit batch": 0.0,         # never learned; see _NOLEARN
+    # Measured here, 2026-09-28: 3 v 3 circuits, 792 cells, 0.056 s for
+    # drift.build -- 7e-5 s a cell. Seeded a shade above.
+    "drift cells": 1e-4,          # per cell
     # Offload. Seeds only, and deliberately poor ones: what a transfer costs
     # depends on the share and what a queue costs depends on the cluster, so
     # both are replaced by measurement on the first real run. They are here
@@ -677,10 +730,17 @@ _RATES = {
 # time would make the estimate scale as the square of the window.
 _FLAT = {"draw", "spectrum read", "spectrum", "ds read", "ds detect",
          "panorama windows", "panorama pool", "panorama bulk",
+         # Already per second of recording, like the two above it.
+         "horizon survey", "horizon full",
          # Moving files and waiting in a queue do not cost more because the
          # recording is longer -- they cost what the network and the cluster
          # are doing at the time.
-         "vacc stage", "vacc queue", "vacc fetch"}
+         "vacc stage", "vacc queue", "vacc fetch",
+         # A cue pair is a cue pair: ten-second windows whatever the length
+         # of the recording they are cut from.
+         "circuit pairs", "circuit batch",
+         # A cell is a cell; no recording is read at all.
+         "drift cells"}
 _RATES_PATH = None
 _RATES_LOCK = threading.Lock()
 
@@ -697,7 +757,9 @@ _RATES_LOCK = threading.Lock()
 # be -- but a systematic one, and free to track now that the key exists. A
 # busier share at another site will be worse than this one.
 _PER_VOLUME = {"read", "decimate", "spectrum read", "ds read",
-               "panorama bulk"}
+               "panorama bulk",
+               # Mostly reading: 32 channels sliced four times per pair.
+               "circuit pairs"}
 
 
 # Stages whose rate is never learned.
@@ -711,7 +773,10 @@ _PER_VOLUME = {"read", "decimate", "spectrum read", "ds read",
 #
 # Slurm answers it properly anyway: `squeue --start` is its own estimate,
 # made from a queue it can see and this machine cannot.
-_NOLEARN = {"vacc queue"}
+_NOLEARN = {"vacc queue",
+            # A batch's circuits land when the cluster gets to them, so the
+            # seconds between them are queue as much as work.
+            "circuit batch"}
 
 
 def _is_remote(where):
@@ -957,6 +1022,10 @@ class Job:
         self.rev = 0
         self._preview = None
         self.preview_rev = 0
+        # The last lines a remote run printed that were not progress -- a
+        # `module load` message, a warning, a traceback. Empty for a local
+        # run. Kept short because it is shipped on every poll.
+        self.log = []
 
     # -- driving it ------------------------------------------------------
     def _find(self, name):
@@ -1128,6 +1197,7 @@ class Job:
                             if self.members else None),
                 "rev": self.rev,
                 "preview_rev": self.preview_rev,
+                "log": list(self.log[-12:]) if self.log else None,
             }
 
 

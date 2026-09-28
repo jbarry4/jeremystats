@@ -455,7 +455,7 @@ BARRY.incisor = (function () {
   function vaccPickCard() {
     const box = el('div', { class: 'card' });
     box.appendChild(el('div', { class: 'section-label',
-                                text: '1. Which recordings' }));
+                                text: 'Recordings' }));
     if (!vaccList) {
       box.appendChild(el('p', { class: 'hint quiet',
                                 text: 'Asking the cluster what it can read…' }));
@@ -711,29 +711,33 @@ BARRY.incisor = (function () {
     return wrap;
   }
 
+  /* The first step of The Dentist, and the one header in the bundle that was
+     still the old boxed, all-caps card -- Braces and X-ray moved to
+     `stepHeader` and left this one behind (constitution section 6). The
+     step number is read from ToolKit rather than typed. */
   function head() {
-    return el('div', { class: 'card' }, [
-      el('div', { class: 'section-label',
-                  text: 'Incisor — dentate spike detection' }),
-      el('p', { class: 'hint', style: 'max-width:78ch;line-height:1.6',
-        text: 'A port of Toothy’s detector, checked against Toothy’s '
-            + 'own code on identical input: 4430 events across twenty '
-            + 'recordings, every one at the same sample. The difference is '
-            + 'the clock — this reads the .ncs record timestamps, so a '
-            + 'set from here already accounts for acquisition gaps and never '
-            + 'needs the concatenation correction.' }),
-    ]);
+    return BARRY.ui.stepHeader({
+      title: 'Incisor',
+      step: BARRY.ui.stepOf('incisor'),
+      blurb: 'Dentate spike detection. A port of Toothy’s detector, '
+           + 'checked against Toothy’s own code on identical input: 4430 '
+           + 'events across twenty recordings, every one at the same '
+           + 'sample. The difference is the clock — this reads the .ncs '
+           + 'record timestamps, so a set from here already accounts for '
+           + 'acquisition gaps and never needs the concatenation '
+           + 'correction.',
+    });
   }
 
   function pickCard() {
     const box = el('div', { class: 'card' });
     box.appendChild(el('div', { class: 'section-label',
-                                text: '1. Which recording' }));
+                                text: 'Recording' }));
     const rows = BARRY.views.toolkit.registryRows
       ? BARRY.views.toolkit.registryRows() : [];
     box.appendChild(BARRY.pickSession({
       rows, value: q.gid,
-      placeholder: 'Type a mouse, session or date…',
+      placeholder: 'Which recording? Type a mouse, session or date…',
       onpick: (r) => {
         q.gid = r.gid;
         q.row = r;

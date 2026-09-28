@@ -389,7 +389,13 @@ class EventBank:
             # ruined in one window and perfectly good in the other three,
             # and flattening that threw away three quarters of a usable
             # channel on data this clipped.
-            for key in ("clipped", "excluded"):
+            #
+            # `kept` is the third claim, in the same two shapes: blocks a
+            # person looked at and put BACK in against the measurement --
+            # "turn it green and say it's okay". Without it the override
+            # lived only in the browser: `clipped` still named the block,
+            # and everything downstream left it out anyway.
+            for key in ("clipped", "excluded", "kept"):
                 got = ev.get(key)
                 if not got:
                     continue
@@ -659,6 +665,16 @@ class EventBank:
             # that has never been aligned is a column of noise.
             if shifted:
                 fresh["shifted"] = shifted
+            # Which step minted this version, as a short machine-readable
+            # word beside the note a person reads. The note is prose and
+            # changes wording; a later step choosing where to read from
+            # ("the newest version Root Canal cleaned") needs something it
+            # can compare with `==`. Only on a version this call actually
+            # mints -- a re-bank that changed nothing writes no version, so
+            # it has nothing to tag.
+            tag = str(entry.get("version_tag") or "").strip()[:40]
+            if tag:
+                fresh["tag"] = tag
             if len(clean) <= self.SNAP_MAX_EVENTS:
                 fresh["snap"] = [[ev.get("start"),
                                   ev.get("label_id") or ev.get("label")]

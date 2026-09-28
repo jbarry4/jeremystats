@@ -166,10 +166,11 @@ BARRY.views.housekeeping = (function () {
      on a session card follows -- absent is not negative, and it is not
      affirmative either. */
   function onVacc(s) {
-    if (!BARRY.vacc || !s.gid) return false;
-    const got = BARRY.vacc.of(s);
-    const st = got && got.state;
-    return st === 'native' || st === 'staged';
+    // One predicate for the whole application -- see `BARRY.vacc.canRead`.
+    // This was a third copy of `state === 'native' || state === 'staged'`,
+    // and a fourth is how a filter and the chip beside it come to disagree
+    // about the same recording.
+    return !!(s.gid && BARRY.vacc && BARRY.vacc.canRead(s));
   }
 
   function chanOk(s) {
@@ -1315,7 +1316,9 @@ BARRY.views.housekeeping = (function () {
     box.appendChild(el('div', { class: 'section-label',
                                 text: 'On the cluster' }));
     const native = got.state === 'native';
-    const readable = native || got.state === 'staged';
+    // The same table the chip draws from, so this panel and the mark on the
+    // card in Sessions can never come apart about what the state is.
+    const readable = !!BARRY.vacc.words(got.state);
     if (!readable) {
       box.appendChild(el('p', { class: 'hint',
         text: 'VACC cannot reach this one — ' + (got.why || 'no copy of it '
@@ -1324,15 +1327,19 @@ BARRY.views.housekeeping = (function () {
       return box;
     }
 
+    /* What the state IS comes from `vacc.js`; what it means for the button
+       underneath is this view's own sentence. That split is the rule: one
+       module owns the fact, each surface owns the consequence of the thing
+       it is offering. Restating the fact here is how the card in Sessions
+       and this panel came to describe scratch in two different words. */
     box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
-      text: native
-        ? ('VACC reads this in place, on a share it mounts. Opening it from '
-           + 'here reads the same files the rig wrote — nothing is copied '
-           + 'and nothing lands on this computer.')
-        : ('What VACC has is a copy in its scratch, not the recording. '
-           + 'Scratch is purged without notice, so this can stop working '
-           + 'without anything having gone wrong — the recording itself is '
-           + 'wherever it always was.') }));
+      text: 'VACC has this one ' + BARRY.vacc.words(got.state).note + '. '
+          + (native
+             ? 'Opening it from here reads the same files the rig wrote — '
+               + 'nothing is copied and nothing lands on this computer.'
+             : 'The copy can go without notice, so this can stop working '
+               + 'with nothing having gone wrong — the recording itself '
+               + 'is wherever it always was.') }));
     if (got.remote) {
       box.appendChild(el('code', { class: 'hk-remote', text: got.remote }));
     }

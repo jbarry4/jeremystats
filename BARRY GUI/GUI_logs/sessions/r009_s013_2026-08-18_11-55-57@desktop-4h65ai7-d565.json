@@ -24,44 +24,44 @@
     "schema": "2026-09-24T19:40:00.812124+00:00",
     "session": "2026-09-24T19:40:00.812124+00:00",
     "start": "2026-09-24T19:40:00.812124+00:00",
-    "updated": "2026-09-25T16:45:16.126590+00:00"
+    "updated": "2026-09-25T20:23:21.952828+00:00"
   },
   "_keys": {
     "paths": {
       "E:\\Joe Multisite 2026 data\\J9\\J9_Con3R\\J9_Con3_FP1\\2026-08-18_12-27-54": [
-        "gone",
-        "2026-09-24T20:00:35.646882+00:00"
+        "set",
+        "2026-09-25T18:32:47.257938+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J9\\J9_Con3R\\J9_Con3_FP2\\2026-08-18_14-08-55": [
         "set",
         "2026-09-24T19:40:03.438924+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J9\\J9_Con3R\\J9_Con3_SPC\\2026-08-18_12-35-40": [
-        "gone",
-        "2026-09-24T20:00:35.646882+00:00"
+        "set",
+        "2026-09-25T18:32:47.257938+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J9\\J9_Con3\\J9_Con3_FP1\\2026-08-18_10-14-05": [
-        "gone",
-        "2026-09-24T20:00:35.646882+00:00"
+        "set",
+        "2026-09-25T18:32:47.257938+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J9\\J9_Con3\\J9_Con3_FP2\\2026-08-18_11-55-57": [
         "set",
         "2026-09-24T20:03:33.305984+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J9\\J9_Con3\\J9_Con3_SPC\\2026-08-18_10-22-04": [
-        "gone",
-        "2026-09-24T20:00:35.646882+00:00"
+        "set",
+        "2026-09-25T18:32:47.257938+00:00"
       ]
     },
     "seen": {
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-25T16:45:16.126590+00:00"
+        "2026-09-25T20:23:21.952828+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T16:45:16.126590+00:00",
+    "at": "2026-09-25T20:23:21.952828+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -86,7 +86,11 @@
   "n_channels": 32,
   "paths": [
     "E:\\Joe Multisite 2026 data\\J9\\J9_Con3R\\J9_Con3_FP2\\2026-08-18_14-08-55",
-    "E:\\Joe Multisite 2026 data\\J9\\J9_Con3\\J9_Con3_FP2\\2026-08-18_11-55-57"
+    "E:\\Joe Multisite 2026 data\\J9\\J9_Con3\\J9_Con3_FP2\\2026-08-18_11-55-57",
+    "E:\\Joe Multisite 2026 data\\J9\\J9_Con3\\J9_Con3_FP1\\2026-08-18_10-14-05",
+    "E:\\Joe Multisite 2026 data\\J9\\J9_Con3\\J9_Con3_SPC\\2026-08-18_10-22-04",
+    "E:\\Joe Multisite 2026 data\\J9\\J9_Con3R\\J9_Con3_FP1\\2026-08-18_12-27-54",
+    "E:\\Joe Multisite 2026 data\\J9\\J9_Con3R\\J9_Con3_SPC\\2026-08-18_12-35-40"
   ],
   "phase": "Con",
   "phase_n": 3,
@@ -100,20 +104,20 @@
   "schema": 2,
   "seen": {
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-25T12:45:16-04:00",
+      "at": "2026-09-25T16:23:21-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "E:\\Joe Multisite 2026 data\\J9\\J9_Con3\\J9_Con3_FP2\\2026-08-18_11-55-57",
       "root": "E:/Joe Multisite 2026 data",
-      "scan": "scan_175198d703"
+      "scan": "scan_f60458f16f"
     }
   },
   "session": 13,
   "start": "2026-08-18T11:55:57",
   "updated": {
-    "app_version": "2026.09.24.8",
-    "at": "2026-09-25T12:45:16-04:00",
-    "commit": "0fc4943",
+    "app_version": "2026.09.25.3",
+    "at": "2026-09-25T16:23:21-04:00",
+    "commit": "4f8e8ca",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

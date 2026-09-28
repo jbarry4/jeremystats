@@ -1,0 +1,722 @@
+{
+  "_at": {
+    "added": "2026-09-25T20:36:40.117650+00:00",
+    "by_label": "2026-09-25T20:36:40.117650+00:00",
+    "curation_label": "2026-09-25T20:36:40.117650+00:00",
+    "duration_s": "2026-09-25T20:36:40.117650+00:00",
+    "events": "2026-09-25T20:36:40.117650+00:00",
+    "gid": "2026-09-25T20:36:40.117650+00:00",
+    "id": "2026-09-25T20:36:40.117650+00:00",
+    "label_names": "2026-09-25T20:36:40.117650+00:00",
+    "mouse": "2026-09-25T20:36:40.117650+00:00",
+    "n": "2026-09-25T20:36:40.117650+00:00",
+    "name": "2026-09-25T20:36:40.117650+00:00",
+    "note": "2026-09-25T20:36:40.117650+00:00",
+    "project": "2026-09-25T20:36:40.117650+00:00",
+    "recording_start": "2026-09-25T20:36:40.117650+00:00",
+    "schema": "2026-09-25T20:36:40.117650+00:00",
+    "session": "2026-09-25T20:36:40.117650+00:00",
+    "session_key": "2026-09-25T20:36:40.117650+00:00",
+    "session_label": "2026-09-25T20:36:40.117650+00:00",
+    "session_loose_key": "2026-09-25T20:36:40.117650+00:00",
+    "session_path": "2026-09-25T20:36:40.117650+00:00",
+    "source": "2026-09-25T20:36:40.117650+00:00",
+    "specified": "2026-09-25T20:36:40.117650+00:00",
+    "type": "2026-09-25T20:36:40.117650+00:00",
+    "type_name": "2026-09-25T20:36:40.117650+00:00",
+    "units": "2026-09-25T20:36:40.117650+00:00",
+    "version": "2026-09-25T20:36:40.117650+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "07f9622479cf": [
+        "set",
+        "2026-09-25T20:36:40.117650+00:00"
+      ],
+      "v0-c64e270d": [
+        "set",
+        "2026-09-25T20:36:40.117650+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T20:36:40.117650+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-25T16:36:40-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "High tone \u2192 Click": 8,
+    "Low Tone \u2192 Noise": 8
+  },
+  "curation_label": "The Arc: cue pairs",
+  "duration_s": 5434.4,
+  "events": [
+    {
+      "clipped": {
+        "cue1": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          13,
+          15,
+          16,
+          19,
+          20,
+          23,
+          25,
+          27,
+          31,
+          32
+        ],
+        "cue2": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          19,
+          25,
+          27,
+          32
+        ],
+        "post": [
+          25,
+          31
+        ],
+        "pre": [
+          19,
+          25
+        ]
+      },
+      "end": 383.75239,
+      "excluded": {
+        "cue1": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          13,
+          15,
+          16,
+          19,
+          20,
+          23,
+          25,
+          27,
+          31,
+          32
+        ],
+        "cue2": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          19,
+          25,
+          27,
+          32
+        ],
+        "post": [
+          25,
+          31
+        ],
+        "pre": [
+          19,
+          25
+        ]
+      },
+      "label": "High tone \u2192 Click",
+      "start": 373.752171
+    },
+    {
+      "clipped": {
+        "cue1": [
+          25
+        ],
+        "cue2": [
+          25
+        ],
+        "post": [
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "end": 698.279734,
+      "excluded": {
+        "cue1": [
+          25
+        ],
+        "cue2": [
+          25
+        ],
+        "post": [
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "label": "Low Tone \u2192 Noise",
+      "start": 688.280296
+    },
+    {
+      "clipped": {
+        "cue2": [
+          25
+        ],
+        "post": [
+          25
+        ]
+      },
+      "end": 1015.628234,
+      "excluded": {
+        "cue2": [
+          25
+        ],
+        "post": [
+          25
+        ]
+      },
+      "label": "Low Tone \u2192 Noise",
+      "start": 1005.628796
+    },
+    {
+      "clipped": {
+        "post": [
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "end": 1299.007546,
+      "excluded": {
+        "post": [
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "label": "High tone \u2192 Click",
+      "start": 1289.007265
+    },
+    {
+      "clipped": {
+        "post": [
+          25
+        ]
+      },
+      "end": 1634.114921,
+      "excluded": {
+        "post": [
+          25
+        ]
+      },
+      "label": "Low Tone \u2192 Noise",
+      "start": 1624.115484
+    },
+    {
+      "clipped": {
+        "cue1": [
+          25
+        ],
+        "cue2": [
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "end": 1969.744015,
+      "excluded": {
+        "cue1": [
+          25
+        ],
+        "cue2": [
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "label": "High tone \u2192 Click",
+      "start": 1959.743734
+    },
+    {
+      "end": 2292.242296,
+      "label": "High tone \u2192 Click",
+      "start": 2282.242015
+    },
+    {
+      "clipped": {
+        "cue1": [
+          19
+        ],
+        "cue2": [
+          25
+        ]
+      },
+      "end": 2606.759734,
+      "excluded": {
+        "cue1": [
+          19
+        ],
+        "cue2": [
+          25
+        ]
+      },
+      "label": "Low Tone \u2192 Noise",
+      "start": 2596.760359
+    },
+    {
+      "clipped": {
+        "post": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          29
+        ]
+      },
+      "end": 2928.478921,
+      "excluded": {
+        "post": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          29
+        ]
+      },
+      "label": "High tone \u2192 Click",
+      "start": 2918.47864
+    },
+    {
+      "end": 3257.926171,
+      "label": "Low Tone \u2192 Noise",
+      "start": 3247.926609
+    },
+    {
+      "end": 3558.294703,
+      "label": "Low Tone \u2192 Noise",
+      "start": 3548.295296
+    },
+    {
+      "clipped": {
+        "cue1": [
+          25
+        ],
+        "cue2": [
+          25
+        ],
+        "post": [
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "end": 3885.163828,
+      "excluded": {
+        "cue1": [
+          25
+        ],
+        "cue2": [
+          25
+        ],
+        "post": [
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "label": "High tone \u2192 Click",
+      "start": 3875.163484
+    },
+    {
+      "clipped": {
+        "cue1": [
+          25
+        ],
+        "cue2": [
+          25
+        ],
+        "post": [
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "end": 4251.411046,
+      "excluded": {
+        "cue1": [
+          25
+        ],
+        "cue2": [
+          25
+        ],
+        "post": [
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "label": "Low Tone \u2192 Noise",
+      "start": 4241.41164
+    },
+    {
+      "end": 4584.720171,
+      "label": "High tone \u2192 Click",
+      "start": 4574.71989
+    },
+    {
+      "clipped": {
+        "post": [
+          25
+        ]
+      },
+      "end": 4895.118234,
+      "excluded": {
+        "post": [
+          25
+        ]
+      },
+      "label": "High tone \u2192 Click",
+      "start": 4885.118265
+    },
+    {
+      "clipped": {
+        "cue1": [
+          25
+        ],
+        "cue2": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          25
+        ],
+        "post": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "end": 5194.966109,
+      "excluded": {
+        "cue1": [
+          25
+        ],
+        "cue2": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          25
+        ],
+        "post": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          25
+        ],
+        "pre": [
+          25
+        ]
+      },
+      "label": "Low Tone \u2192 Noise",
+      "start": 5184.966671
+    }
+  ],
+  "gid": "sb3ad74706f07",
+  "id": "79c1b9043b78",
+  "label_names": {},
+  "mouse": 9,
+  "n": 16,
+  "name": "DEWEY m9 s1 Precon1 SPC 2026-08-12 \u2014 cue pairs",
+  "note": "",
+  "project": "DEWEY",
+  "recording_start": "2026-08-12T13:05:30",
+  "schema": 1,
+  "session": 1,
+  "session_key": "r009_s001_2026-08-12_13-05-30",
+  "session_label": "DEWEY m9 s1 Precon1 SPC 2026-08-12",
+  "session_loose_key": "r009_s001",
+  "session_path": "E:\\Joe Multisite 2026 data\\J9\\J9_Precon1\\J9_Precon1_SPC\\2026-08-12_13-05-30",
+  "source": {
+    "detector": "spark.pair_events",
+    "file": "E:\\Joe Multisite 2026 data\\J9\\J9_Precon1\\J9_Precon1_SPC\\2026-08-12_13-05-30\\Events.nev",
+    "parameters": {
+      "clip_fraction": 0.995,
+      "clip_measured": true,
+      "clip_min_run": 16,
+      "cues": [
+        "Click",
+        "Noise",
+        "High tone",
+        "Low Tone"
+      ],
+      "debounce_ms": 150.0,
+      "expected_gap_s": 10.0,
+      "gap_tolerance_s": 0.25,
+      "t_origin": "recording"
+    },
+    "pipeline": "The Arc \u00b7 Spark",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ttl",
+  "type_name": "Cue pair",
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-09-25T16:36:40-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "unspecified": 16
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-c64e270d",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 16,
+      "note": "Imported from The Arc \u00b7 Spark. 16 candidates, none decided yet.",
+      "snap": [
+        [
+          373.752171,
+          null
+        ],
+        [
+          688.280296,
+          null
+        ],
+        [
+          1005.628796,
+          null
+        ],
+        [
+          1289.007265,
+          null
+        ],
+        [
+          1624.115484,
+          null
+        ],
+        [
+          1959.743734,
+          null
+        ],
+        [
+          2282.242015,
+          null
+        ],
+        [
+          2596.760359,
+          null
+        ],
+        [
+          2918.47864,
+          null
+        ],
+        [
+          3247.926609,
+          null
+        ],
+        [
+          3548.295296,
+          null
+        ],
+        [
+          3875.163484,
+          null
+        ],
+        [
+          4241.41164,
+          null
+        ],
+        [
+          4574.71989,
+          null
+        ],
+        [
+          4885.118265,
+          null
+        ],
+        [
+          5184.966671,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "at": "2026-09-25T16:36:40-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "High tone \u2192 Click": 8,
+        "Low Tone \u2192 Noise": 8
+      },
+      "changed": 16,
+      "from_v": 0,
+      "gained": 0,
+      "id": "07f9622479cf",
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {
+        "undecided \u2192 High tone \u2192 Click": 8,
+        "undecided \u2192 Low Tone \u2192 Noise": 8
+      },
+      "n": 16,
+      "note": "",
+      "snap": [
+        [
+          373.752171,
+          "High tone \u2192 Click"
+        ],
+        [
+          688.280296,
+          "Low Tone \u2192 Noise"
+        ],
+        [
+          1005.628796,
+          "Low Tone \u2192 Noise"
+        ],
+        [
+          1289.007265,
+          "High tone \u2192 Click"
+        ],
+        [
+          1624.115484,
+          "Low Tone \u2192 Noise"
+        ],
+        [
+          1959.743734,
+          "High tone \u2192 Click"
+        ],
+        [
+          2282.242015,
+          "High tone \u2192 Click"
+        ],
+        [
+          2596.760359,
+          "Low Tone \u2192 Noise"
+        ],
+        [
+          2918.47864,
+          "High tone \u2192 Click"
+        ],
+        [
+          3247.926609,
+          "Low Tone \u2192 Noise"
+        ],
+        [
+          3548.295296,
+          "Low Tone \u2192 Noise"
+        ],
+        [
+          3875.163484,
+          "High tone \u2192 Click"
+        ],
+        [
+          4241.41164,
+          "Low Tone \u2192 Noise"
+        ],
+        [
+          4574.71989,
+          "High tone \u2192 Click"
+        ],
+        [
+          4885.118265,
+          "High tone \u2192 Click"
+        ],
+        [
+          5184.966671,
+          "Low Tone \u2192 Noise"
+        ]
+      ],
+      "v": 1
+    }
+  ]
+}

@@ -64,10 +64,13 @@ def emit(obj):
 class JobShim:
     """`cfc.Job`'s three methods, as far as a compute node needs them."""
 
-    def __init__(self, stages):
+    def __init__(self, stages, members=None):
         # The vocabulary the other end declared. Anything outside it is a
         # mistake worth stopping for rather than a line nobody reads.
         self.stages = set(stages or [])
+        # Member ids the other end will replay (Circuit: one per cue pair).
+        # Empty for every other tool, and then `member` stays silent.
+        self.members = set(members or [])
         self._at = None
         self._t0 = time.time()
 
@@ -104,7 +107,13 @@ class JobShim:
     def members_init(self, *a, **k):
         return None
 
-    def member(self, *a, **k):
+    def member(self, mid=None, **patch):
+        if mid not in self.members:
+            return None
+        emit(dict({"k": "member", "id": mid,
+                   "t": round(time.time() - self._t0, 2)},
+                  **{k: v for k, v in patch.items()
+                     if not isinstance(v, (list, dict, tuple, set))}))
         return None
 
 
@@ -120,7 +129,7 @@ def main(argv):
     tool = bundle.get("tool")
     spec = bundle.get("spec") or {}
     out_dir = os.path.dirname(os.path.abspath(spec_path))
-    job = JobShim(bundle.get("stages"))
+    job = JobShim(bundle.get("stages"), bundle.get("members"))
 
     emit({"k": "start", "rid": rid, "tool": tool, "pid": os.getpid(),
           "host": os.uname().nodename if hasattr(os, "uname") else "?"})
@@ -156,9 +165,29 @@ def main(argv):
 
 def run_tool(tool, spec, bundle, job, csc):
     """Open the recording and call the tool's own `run`."""
+    if tool == "drift":
+        # The Arc's Drift. There is no recording: the circuit payloads (without
+        # their per-pair values, which pooling never reads) travel in the spec,
+        # and the node calls the SAME `drift.build` a local run calls, through
+        # `driftrun.run_node`. The answer is filed, pinned and cited on the
+        # machine that asked, so the node never needs the artifact store.
+        from backend import driftrun
+        return driftrun.run_node(spec, job)
+
     path = spec.get("path")
     if not path or not os.path.isdir(path):
         raise IOError("the recording is not readable here: %r" % (path,))
+
+    if tool == "circuit":
+        # The Arc's Circuit. The node runs `coupling.pair_connectivity` over
+        # the cue pairs it was sent -- the SAME call a local run makes,
+        # through the same `circuitrun.compute_pair` -- and returns the pair
+        # results. Nothing else: the payload is built and filed as an
+        # artifact on the machine that asked, so the node never needs the
+        # bank or the artifact store. It reads the channel files directly,
+        # so no session is opened.
+        from backend import circuitrun
+        return circuitrun.run_node(spec, job)
 
     session = csc.open_session(path, even_only=bool(spec.get("even_only")),
                                invert=bool(spec.get("invert", True)))
@@ -174,6 +203,17 @@ def run_tool(tool, spec, bundle, job, csc):
             from backend import continuity
             report = continuity.check(path)
         return incisor.run(session, spec, report, job)
+
+    if tool == "doppler":
+        from backend import doppler
+        # Same reason as Incisor's: the report is in the cache key, so a
+        # segmentation recomputed here rather than carried would give the
+        # answer a different name and miss the cache for ever.
+        report = bundle.get("report")
+        if report is None:
+            from backend import continuity
+            report = continuity.check(path)
+        return doppler.run(session, spec, report, job)
 
     if tool == "panorama":
         from backend import panorama

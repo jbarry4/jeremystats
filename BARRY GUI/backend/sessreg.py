@@ -29,8 +29,12 @@ known about recordings.
 """
 from __future__ import annotations
 
+import ntpath
 import os
 import re
+import stat
+import threading
+import time
 import uuid
 
 from . import ids, probes, shards
@@ -82,12 +86,62 @@ def new_gid():
 # them, and the registry is read on every visit to the Sessions view.
 _OPENS = {}
 
+# Whether a path can be reached from here -- a cached FACT, not a question
+# asked on every read.
+#
+# Measured on the lab machine with 1,846 known paths: every registry read
+# called `os.path.isdir` on all of them, one after another, and then
+# `_opens` called `getmtime` on the reachable ones -- two network round trips
+# per path on the netfiles share, every read. 1.48 s the first time and
+# about 0.5 s on EVERY read after it, warm or not, on the lab LAN at 5.4 ms a
+# path. That cost is per-path latency, so it scales with the round trip:
+# over a VPN from a laptop it is seconds per visit to Sessions.
+#
+# So one `os.stat` answers both questions (is it a folder, and what is its
+# mtime), the answer is kept for HERE_TTL seconds, and a cold read asks
+# every path at once rather than in turn. A drive plugged in shows up within
+# the TTL; a view revisited within it costs nothing.
+_HERE = {}          # path -> (checked_at, is_dir, mtime or None)
+_HERE_LOCK = threading.Lock()
+HERE_TTL = 30.0
+
+
+def _probe(path):
+    """(checked_at, is_dir, mtime) for a path, from cache when fresh."""
+    now = time.time()
+    was = _HERE.get(path)
+    if was and now - was[0] < HERE_TTL:
+        return was
+    try:
+        st = os.stat(path)
+        rec = (now, stat.S_ISDIR(st.st_mode), st.st_mtime)
+    except (OSError, ValueError):
+        rec = (now, False, None)
+    with _HERE_LOCK:
+        _HERE[path] = rec
+    return rec
+
+
+def is_here(path):
+    """Whether `path` is a folder this machine can reach, right now-ish."""
+    return bool(path) and _probe(path)[1]
+
+
+def _root_of(path):
+    """The drive or share a path lives on: `E:`, `\\\\server\\share`, `/gpfs2`."""
+    drive, _rest = ntpath.splitdrive(path or "")
+    if drive:
+        return drive
+    if (path or "").startswith("/"):
+        parts = path.split("/")
+        return "/" + parts[1] if len(parts) > 1 else "/"
+    return None
+
 
 def _opens(path):
     """True when `csc.describe_path` would accept this folder."""
-    try:
-        stamp = os.path.getmtime(path)
-    except OSError:
+    _at, is_dir, stamp = _probe(path)
+    if not is_dir or stamp is None:
         _OPENS.pop(path, None)
         return False
     was = _OPENS.get(path)
@@ -121,28 +175,82 @@ def warm_opens(paths, workers=16):
     down, not break it -- the caller is about to fall back to asking each
     path itself anyway, which is exactly what used to happen.
     """
-    todo = [p for p in dict.fromkeys(paths or []) if p and p not in _OPENS]
-    if len(todo) < 2:
-        for p in todo:
-            _opens(p)
+    uniq = [p for p in dict.fromkeys(paths or []) if p]
+    if not uniq:
         return
     try:
         from concurrent.futures import ThreadPoolExecutor
     except ImportError:
-        for p in todo:
+        for p in uniq:
             _opens(p)
         return
-    n = max(2, min(int(workers), len(todo)))
-    try:
-        with ThreadPoolExecutor(max_workers=n) as pool:
-            list(pool.map(_opens, todo))
-    except Exception:                                    # noqa: BLE001
-        # A pool that will not start is not a reason to fail a read.
-        for p in todo:
-            try:
-                _opens(p)
-            except Exception:                            # noqa: BLE001
-                pass
+
+    def pool_map(fn, items):
+        if len(items) < 2:
+            for it in items:
+                fn(it)
+            return
+        n = max(2, min(int(workers), len(items)))
+        try:
+            with ThreadPoolExecutor(max_workers=n) as pool:
+                list(pool.map(fn, items))
+        except Exception:                                # noqa: BLE001
+            # A pool that will not start is not a reason to fail a read.
+            for it in items:
+                try:
+                    fn(it)
+                except Exception:                        # noqa: BLE001
+                    pass
+
+    # One probe per drive or share before any path on it.
+    #
+    # A share that is not there at all -- netfiles with no VPN, a lab drive
+    # letter on a laptop -- would otherwise be asked once per path it holds,
+    # and a dead network server can make each of those wait. Asked once, it
+    # answers for all of them: its paths are written down as unreachable
+    # without being touched. On the lab machine unmapped drive letters fail
+    # instantly and this changes nothing; it is the laptop off the VPN it is
+    # for.
+    now = time.time()
+    fresh = [p for p in uniq
+             if not (_HERE.get(p) and now - _HERE[p][0] < HERE_TTL)]
+    roots = {}
+    for p in fresh:
+        r = _root_of(p)
+        if r:
+            roots.setdefault(r, []).append(p)
+    alive = {}
+
+    def probe_root(r):
+        target = r + ("\\" if not r.startswith("/") and not r.endswith(("\\", "/"))
+                      else "")
+        try:
+            ok = os.path.isdir(target)
+        except (OSError, ValueError):
+            ok = False
+        # A root that says no is asked once more through a real path on it.
+        # A share can refuse to be listed at its top and still let you into
+        # the folders under it, and calling that share dead would hide every
+        # recording on it -- a much worse fault than the time this saves.
+        if not ok:
+            ok = bool(_probe(roots[r][0])[1])
+        alive[r] = ok
+
+    pool_map(probe_root, list(roots))
+    dead_paths = []
+    for r, ps in roots.items():
+        if not alive.get(r):
+            dead_paths.extend(ps)
+    with _HERE_LOCK:
+        for p in dead_paths:
+            _HERE[p] = (now, False, None)
+
+    # Every remaining path at once, then the listdir for the ones that are
+    # there and have changed. `_opens` reads the stat the first pass cached,
+    # so a folder whose mtime has not moved costs no second round trip.
+    dead = set(dead_paths)
+    pool_map(_probe, [p for p in fresh if p not in dead])
+    pool_map(_opens, [p for p in uniq if is_here(p)])
 
 
 def _newest_sighting(rec):
@@ -864,7 +972,7 @@ class Registry:
         # folders that do not exist must not be touched again. Reaching for
         # an unmounted network path costs a timeout, and checking all 471
         # rather than the 184 that answer took this read from 5s to 25s.
-        here = [p for p in paths if os.path.isdir(p)]
+        here = [p for p in paths if is_here(p)]
         row = {
             "gid": rec.get("gid"),
             "key": rec.get("key"),

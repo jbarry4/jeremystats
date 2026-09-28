@@ -330,3 +330,90 @@ def based_on_default(rows, id_of=lambda r: r.get("v")):
     """
     got = [id_of(r) for r in (rows or []) if id_of(r) is not None]
     return max(got, key=_num) if got else None
+
+
+# ---------------------------------------------------------------------------
+# Repairing a merged history, on read
+# ---------------------------------------------------------------------------
+#
+# Measured across this bank: of 948 stored versions, 155 had no `id`, and 42
+# version numbers were duplicated in a way no id could resolve. Each of those
+# was one pass recorded twice -- the same person, the same minute, one copy
+# with an id and one written before ids existed. The shard layer unions a
+# history by id, so a copy with none and its id-bearing twin both survive the
+# merge, and `version_at` then rightly refuses to guess between them.
+#
+# The copies live in several machines' shards, and a machine may only write
+# its own (shards.py). So this is a repair of what is READ, never a rewrite of
+# what is stored: nothing on disk changes, which is what makes it safe.
+
+# Fields a version gained when ids were introduced. A pre-id copy lacks them,
+# so their absence is not a disagreement.
+_POST_ID = ("id", "changed", "gained", "lost", "moves")
+
+
+def _twin_of(keep, other):
+    """Whether `other` is `keep` recorded a second time.
+
+    Deliberately strict. Every field the two BOTH carry must be identical --
+    the snapshot included -- apart from the ones only an id-bearing version
+    has. One field that differs means these are two passes that happen to
+    share a number, which is a real and legitimate thing, and both are kept.
+    """
+    if not keep.get("id") or other.get("id"):
+        return False
+    for k in set(keep) & set(other):
+        if k in _POST_ID:
+            continue
+        if keep[k] != other[k]:
+            return False
+    # The identity of a pass, which must be present to match on at all: a
+    # version with no time or no author cannot be shown to be anything's twin.
+    return all(keep.get(k) is not None and keep.get(k) == other.get(k)
+               for k in ("v", "at", "by"))
+
+
+def stable_id(entry_id, ver):
+    """An id for a pre-id version that every machine derives identically.
+
+    From what the version already says about itself, so two machines reading
+    the same history agree on it without talking to each other. Prefixed so a
+    derived id can always be told apart from a minted one.
+    """
+    import hashlib
+    raw = "|".join(str(x) for x in (entry_id, ver.get("v"), ver.get("at"),
+                                     ver.get("by"), ver.get("machine")))
+    return "d" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:11]
+
+
+def repair(entry_id, versions):
+    """A merged history with pre-id twins folded in and every version id'd.
+
+    Returns (versions, report). Never loses a field: a twin is folded into the
+    id-bearing copy it duplicates, and anything only the twin carried is
+    copied across first. A version that is not provably a twin is kept as it
+    is. Pure -- the input is not modified.
+    """
+    out = [dict(v) for v in (versions or []) if isinstance(v, dict)]
+    folded = 0
+    keep_idx = [i for i, v in enumerate(out) if v.get("id")]
+    drop = set()
+    for j, other in enumerate(out):
+        if other.get("id"):
+            continue
+        for i in keep_idx:
+            if i in drop or not _twin_of(out[i], other):
+                continue
+            for k, val in other.items():
+                out[i].setdefault(k, val)
+            drop.add(j)
+            folded += 1
+            break
+    out = [v for j, v in enumerate(out) if j not in drop]
+    derived = 0
+    for v in out:
+        if not v.get("id"):
+            v["id"] = stable_id(entry_id, v)
+            v["id_derived"] = True
+            derived += 1
+    return out, {"folded": folded, "derived": derived}

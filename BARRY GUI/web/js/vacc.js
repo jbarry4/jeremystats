@@ -93,6 +93,64 @@ BARRY.vacc = (function () {
     return knows[gid] || null;
   }
 
+  /* ---- what the two affirmative states MEAN ----------------------------
+     One table, because four surfaces say it and they were saying it four
+     times: the card in Sessions, the row detail in Housekeeping, the tab in
+     Xplorefinder, and the toast when one opens. Four copies of "green means
+     it reads it in place, amber means a scratch copy that gets purged" is
+     four chances for one of them to be reworded and the others not, and the
+     one that drifts is the one somebody reads before trusting a trace.
+
+     `short` is for anywhere with a name competing for the room -- an
+     Xplorefinder tab is 230px. `word` is the full one, for a card that has
+     a row to itself. */
+  const STATES = {
+    native: {
+      word: 'VACC', short: 'VACC',
+      note: 'read in place, on a share VACC mounts',
+      why: (remote) =>
+        'The cluster reads this one where it already is'
+        + (remote ? ' — ' + remote : '')
+        + '\n\nNothing to upload: it is on a share VACC mounts.',
+    },
+    staged: {
+      word: 'VACC copy', short: 'VACC',
+      note: 'a copy in the cluster’s scratch',
+      why: (remote) =>
+        'A copy of this recording is in cluster scratch'
+        + (remote ? ' — ' + remote : '') + '.\n\n'
+        + 'Scratch is not storage — VACC may clear it without notice, so '
+        + 'this is a cache and never the only copy. If it goes, the next '
+        + 'run puts it back.',
+    },
+  };
+
+  /* The words for one state, or null. Null for `local-only`, for `unknown`
+     and for a recording nobody has established an answer for, because none
+     of those three is a thing to say on a card -- see `of`. */
+  function words(state) {
+    return STATES[state] || null;
+  }
+
+  /* THE cluster mark. Every view draws this one, never its own.
+
+     `from` is for a surface that already has the answer and must not ask a
+     second source for it: an Xplorefinder session opened off the cluster
+     carries `remote_state` from the open itself, and looking the same
+     recording up in `knows` could disagree with the read actually
+     happening. */
+  function mark(sess, opts) {
+    opts = opts || {};
+    const got = opts.from || of(sess);
+    const w = words(got && got.state);
+    if (!w) return null;
+    return el('span', {
+      class: 'flagchip vacc ' + got.state,
+      text: opts.compact ? w.short : w.word,
+      title: w.why(got.remote),
+    });
+  }
+
   /* ---- opening one, off the cluster ------------------------------------- */
   /* Whether a recording can be READ off the cluster.
 
@@ -105,8 +163,9 @@ BARRY.vacc = (function () {
      comment gives at length. */
   function canRead(sess) {
     const got = of(sess);
-    const st = got && got.state;
-    return st === 'native' || st === 'staged';
+    // `words` is the same table the chip draws from, so a state that can be
+    // read and a state that gets a mark can never come apart.
+    return !!words(got && got.state);
   }
 
   /* The id a cluster read is opened by.
@@ -780,8 +839,8 @@ BARRY.vacc = (function () {
     if (!on && timer) { clearInterval(timer); timer = null; }
   }
 
-  return { init, status, showVacc, loadKnows, of, canRead, open, pathFor,
-           watch,
+  return { init, status, showVacc, loadKnows, of, canRead, words, mark,
+           open, pathFor, watch,
            offerSignIn, showSignIn, signOut,
            get last() { return last; },
            counts: {}, drives: {} };

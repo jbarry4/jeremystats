@@ -185,9 +185,8 @@ BARRY.views.xplore = (function () {
        opened this morning can stop opening this afternoon with nothing
        having gone wrong. */
     if (info.source === 'vacc') {
-      notes.push(info.remote_state === 'staged'
-                 ? 'read off a copy in VACC scratch'
-                 : 'read off the cluster');
+      const w = BARRY.vacc && BARRY.vacc.words(info.remote_state);
+      notes.push('read off ' + (w ? w.note : 'the cluster'));
     }
     if (sess.bad.size) notes.push(sess.bad.size + ' bad channel(s)');
     if (Object.keys(info.view_state || {}).length) notes.push('view restored');
@@ -674,6 +673,28 @@ BARRY.views.xplore = (function () {
       const on = dragLine === line;
       const col = line.colour || '#e5484d';
 
+      /* A MARK, not a landmark. Incisor's lines are things you take hold
+         of and drag to where the hilus is, so they are heavy on purpose:
+         halo, grips, a pill. A line that only says "this channel took part"
+         is the opposite job -- it has to sit UNDER the trace you are
+         reading, not on top of it -- so it is a tinted lane, at whatever
+         strength the caller asks for, with no grips, no pill and no label
+         beside the row's own (which is how "CSC37  CSC37" happened). */
+      if (line.style === 'mark') {
+        const a = line.alpha == null ? 0.18 : Number(line.alpha);
+        if (a <= 0) continue;
+        ctx.globalAlpha = a;
+        ctx.fillStyle = col;
+        ctx.fillRect(padL, y - lane / 2, plotW, lane);
+        // A thin tick in the gutter, so the lane is findable at a glance
+        // even when the tint is faint.
+        ctx.globalAlpha = Math.min(1, a * 4);
+        ctx.fillRect(padL - 4, y - Math.max(2, lane * 0.35), 3,
+                     Math.max(4, lane * 0.7));
+        ctx.globalAlpha = 1;
+        continue;
+      }
+
       // A dark halo first, so the line holds against a bright trace
       // without having to be a colour that fights the palette.
       ctx.globalAlpha = 0.55;
@@ -783,6 +804,9 @@ BARRY.views.xplore = (function () {
     if (x < padL) return null;
     for (const line of chanLines) {
       if (line.number == null) continue;
+      // A mark cannot be picked up: it records what the detector found,
+      // and dragging it would be editing the evidence.
+      if (line.style === 'mark') continue;
       const i = laneOfNumber(win.series, line.number);
       if (i < 0) continue;
       const ly = geom.top + geom.lane * (i + 0.5);
@@ -1047,11 +1071,14 @@ BARRY.views.xplore = (function () {
       const remote = s.info && s.info.source === 'vacc' ? s.info : null;
       host.appendChild(el('div', {
         class: 'xf-tab' + (id === XF.active ? ' active' : ''),
+        /* Where the samples come from, in the words `vacc.js` keeps.
+           This used to spell out "a copy in VACC scratch" itself, which is
+           a third place saying what the state means -- and the one nobody
+           would think to reword. */
         title: (remote
-                ? ('Read off the cluster — '
-                   + (remote.remote_state === 'staged'
-                      ? 'a copy in VACC scratch'
-                      : 'a share VACC mounts')
+                ? ('Read off ' + ((BARRY.vacc
+                                   && BARRY.vacc.words(remote.remote_state)
+                                   || {}).note || 'the cluster')
                    + '\n' + (remote.remote || ''))
                 : s.path)
                + '\n\nDrag onto a pane to show it there.',
@@ -1066,22 +1093,22 @@ BARRY.views.xplore = (function () {
       }, [
         el('span', { class: 'dot', style: 'background:' + s.color }),
         el('span', { class: 'nm', text: s.identity.label || s.info.name }),
-        remote ? el('span', {
-          /* The chip Sessions already draws, not one of this view's own.
+        /* THE cluster mark, built by the module that owns what it means
+           -- not a copy of it with this view's own wording.
 
-             `.flagchip.vacc` carries the rule that green is only ever
-             "reads it in place" and a scratch copy takes the warning
-             colour, and a second chip meaning the same thing would
-             eventually disagree with it about which is which.
-
-             One word where the card says two. A session card says "VACC
-             copy" because it has a row to itself; this sits in a 230px tab
-             beside a name that is already competing for the room, and the
-             longer word would take that room from the name. Which of the
-             two it is, in words, is in the tab's title. */
-          class: 'flagchip vacc ' + (remote.remote_state || 'native'),
-          text: 'VACC',
-        }) : null,
+           `compact`, because a session card says "VACC copy" with a row to
+           itself and this sits in a 230px tab beside a name already
+           competing for the room. `from`, because this session was opened
+           off the cluster and carries the answer from that open: asking
+           `knows` instead would be a second source that could disagree with
+           the read actually happening. */
+        remote && BARRY.vacc
+          ? BARRY.vacc.mark(null, {
+              compact: true,
+              from: { state: remote.remote_state || 'native',
+                      remote: remote.remote },
+            })
+          : null,
         el('span', {
           class: 'x', text: '×', title: 'Close',
           onclick: (e) => { e.stopPropagation(); closeSession(id); },
@@ -8649,6 +8676,13 @@ BARRY.views.xplore = (function () {
     }
     if (BARRY.curate && BARRY.curate.draw) {
       BARRY.curate.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+    }
+    /* Spotter draws the same shape as Checkup and for the same reason. It
+       reads `sess.curationMarks` rather than its own module state, so the
+       aid window -- a separate page with no Spotter in it -- draws the same
+       mark from the same data. */
+    if (BARRY.spotter && BARRY.spotter.draw) {
+      BARRY.spotter.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
     }
     if (BARRY.strata && BARRY.strata.draw) {
       BARRY.strata.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);

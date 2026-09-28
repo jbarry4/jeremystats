@@ -1,0 +1,141 @@
+{
+  "_at": {
+    "added": "2026-09-28T17:16:12.601533+00:00",
+    "deleted": "2026-09-28T17:16:12.601533+00:00",
+    "id": "2026-09-28T17:16:12.601533+00:00",
+    "kind": "2026-09-28T17:16:12.601533+00:00",
+    "name": "2026-09-28T17:16:12.601533+00:00",
+    "nickname": "2026-09-28T17:16:12.601533+00:00",
+    "schema": "2026-09-28T17:16:12.601533+00:00",
+    "subject": "2026-09-28T17:16:12.601533+00:00",
+    "subject_key": "2026-09-28T17:16:12.601533+00:00",
+    "version": "2026-09-28T17:16:12.601533+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "d2ff9ccc1e44": [
+        "set",
+        "2026-09-28T17:16:12.601533+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-28T17:16:12.601533+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-28T13:16:12-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "0a3fd8af8f9c",
+  "kind": "drift",
+  "name": "Left vs Right \u00b7 Click \u2192 High tone \u2261 Click \u2192 Low Tone \u00b7 state",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "cue_equivalence": [
+      {
+        "from": "Click_HighTone",
+        "to": "Click_LowTone"
+      }
+    ],
+    "cue_label": "Click \u2192 High tone \u2261 Click \u2192 Low Tone",
+    "cue_type": "Click_LowTone",
+    "left": [
+      {
+        "digest": "35ee6a27a8ad",
+        "gid": "sec4bed944ba0",
+        "id": "7b8e88eddeed",
+        "kind": "artifact",
+        "name": "Test1",
+        "side": "left",
+        "version": 1,
+        "version_id": "bb490926f0e1"
+      }
+    ],
+    "left_label": "Left",
+    "right": [
+      {
+        "digest": "406d1aa4cd6c",
+        "gid": "s542aa8d87c27",
+        "id": "b9ea5c5e9abf",
+        "kind": "artifact",
+        "name": "DEWEY r7 s2 Precon2 SPC \u00b7 Click \u2192 High tone \u00b7 state",
+        "side": "right",
+        "version": 1,
+        "version_id": "0d9e38cfad91"
+      }
+    ],
+    "right_label": "Right",
+    "window_kind": "state"
+  },
+  "subject_key": "drift|0b8b9d9a8eed|e24e1a598e55|Click_LowTone|state|eq:47b4f79e1dd9",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.28.1",
+      "at": "2026-09-28T13:16:12-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "030bb0c",
+      "digest": "a3138d7c572d",
+      "id": "d2ff9ccc1e44",
+      "inputs": [
+        {
+          "digest": "35ee6a27a8ad",
+          "id": "7b8e88eddeed",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "bb490926f0e1"
+        },
+        {
+          "digest": "406d1aa4cd6c",
+          "id": "b9ea5c5e9abf",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "0d9e38cfad91"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "cells": 180,
+        "cue_types": [
+          "Click_LowTone",
+          "Click_HighTone"
+        ],
+        "equivalence": 1,
+        "kind": "state",
+        "left_k": 1,
+        "q_lt_05": 43,
+        "right_k": 1,
+        "tests": 180
+      },
+      "note": null,
+      "params": {
+        "analysis_fs": 1000.0,
+        "channel_rule": "lowest-numbered usable wire",
+        "cue_equivalence": [
+          {
+            "from": "Click_HighTone",
+            "to": "Click_LowTone"
+          }
+        ],
+        "high": 12.0,
+        "kind": "state",
+        "low": 4.0,
+        "max_lag_ms": 500.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "summary_hz": 8.0,
+        "test": "z_test"
+      },
+      "params_hash": "281a033e8c86",
+      "v": 1
+    }
+  ]
+}

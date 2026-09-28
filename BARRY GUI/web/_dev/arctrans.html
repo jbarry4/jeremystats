@@ -1,0 +1,535 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — The Arc: transition windows</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The transition windows, end to end in the page, on a REAL recording
+   (J7 Precon2: sixteen cue pairs, clipping at its boundaries, and one probe
+   the histology rules out).
+
+   Spark's one clipping read has to come back as two visible steps, each
+   graded; the transition lengths have to be on screen before it runs and a
+   bad one refused with a sentence; the exclusion the panel and a batch
+   would file has to carry both kinds. Clean has to switch between four
+   state blocks and three transition blocks over one decision model, say in
+   its verdict what the view NOT on screen is removing, and show which
+   region a spare wire rescues and which a missed probe ruins anyway.
+   Coupling's switch has to drive the overview and refuse a transition run
+   on an entry nobody checked.
+
+   NOTHING HERE WRITES TO THE BANK. Every POST to a bank route is answered
+   inside the page by a stand-in, and what it was handed is what is checked
+   -- then the bank's own version for this recording is read before and
+   after to show it did not move. The bank holds real curation work; a
+   harness that banked to prove banking works would be one crash away from
+   leaving a version nobody decided.
+
+   The numbers the page draws are compared against the server's own
+   answer (`/clipping`, which is cached, so asking again costs nothing),
+   and the wire each region uses is worked out here independently from the
+   raw reading and compared cell by cell. The heavy real-data check --
+   that the transition answer equals a direct measurement of exactly each
+   window, that the file is read once, and a real transition Coupling run
+   -- is `tools/check_arc_transition.py`. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+const txt = (n) => ((n && n.textContent) || '').replace(/\s+/g, ' ').trim();
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const $ = (q) => doc().querySelector(q);
+  const $$ = (q) => Array.from(doc().querySelectorAll(q));
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  win().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(700);
+  const ev = (src) => win().eval(src);
+  const val = (expr) => ev('(' + expr + ')');
+  const C = 'BARRY.arc.clean';
+
+  /* Every bank write answered here, never sent. */
+  const banked = [];
+  const realFetch = win().fetch.bind(win());
+  win().fetch = (url, opts) => {
+    const u = String(url || '');
+    const post = opts && String(opts.method || '').toUpperCase() === 'POST';
+    if (post && (/\/api\/arc\/spark\/[^/]+\/bank/.test(u)
+                 || /\/api\/bank\//.test(u))) {
+      let body = null;
+      try { body = JSON.parse(opts.body || '{}'); } catch (e) { body = {}; }
+      banked.push({ url: u, body: body });
+      return Promise.resolve(new (win().Response)(JSON.stringify({
+        ok: true, n: 16, entry: { id: 'harness-standin', version: -1 },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    }
+    return realFetch(url, opts);
+  };
+
+  /* ---------------------------------------------------------------- */
+  head('the recording');
+  const pre = await (await realFetch('/api/arc/spark/recordings?phase=Precon'))
+    .json();
+  const row = (pre.rows || []).find((r) => r.mouse === 7 && r.phase_n === 2
+                                           && r.reachable);
+  check('J7 Precon2 is in the registry and reachable', !!row);
+  if (!row) throw new Error('nothing to test against');
+  const GID = row.gid;
+  const bankBefore = (pre.banked || {})[GID] || null;
+  check('  and it is banked (so its bank version can be shown not to move)',
+        !!bankBefore, 'not banked');
+
+  ev('setView("toolkit")');
+  await sleep(300);
+  check('the Spark step opens', val('BARRY.views.toolkit.pick("spark")') === true);
+  /* The ToolKit renders twice; wait for the host to stop being replaced. */
+  let host = $('#arcPick'), steady = 0;
+  for (let i = 0; i < 150 && steady < 15; i++) {
+    await sleep(100);
+    const now = $('#arcPick');
+    steady = (now && now === host && $$('#arcPick .arc-row').length) ? steady + 1 : 0;
+    host = now;
+  }
+  const pick = $$('#arcPick .arc-row').find((b) => b.title === row.label);
+  check('the recording is on the picker', !!pick);
+  pick.click();
+  await untilN(() => $('#arcRead .chip-row'), 300);
+  check('it reads', !!$('#arcRead .chip-row'));
+
+  /* ---------------------------------------------------------------- */
+  head('before the check: the lengths are on screen');
+  const lens = () => $$('#arcRead .arc-tlen input');
+  check('two length fields, before and after',
+        lens().length === 2, lens().length);
+  check('  at the defaults, one second before and two after',
+        lens().length === 2 && Number(lens()[0].value) === 1
+        && Number(lens()[1].value) === 2,
+        lens().map((i) => i.value).join(','));
+  check('  and the hint says one read answers both kinds',
+        /once and answers twice/.test(txt($('#arcRead .arc-clipbar'))));
+
+  lens()[0].value = '7';
+  lens()[0].dispatchEvent(new (win().Event)('change', { bubbles: true }));
+  await sleep(150);
+  check('a changed length is what will be sent',
+        val('BARRY.arc.batch.lengths().before') === 7);
+  const btn = () => $$('#arcRead button').find(
+    (b) => /Check for clipping/.test(txt(b)));
+  btn().click();
+  await untilN(() => $$('.toast').some((t) => /between/.test(txt(t))), 200);
+  check('NEGATIVE CONTROL: a 7 s length is refused with a sentence, not '
+        + 'clamped', $$('.toast').some((t) => /between 0\.1 and 5/.test(txt(t))),
+        $$('.toast').map(txt).join(' | '));
+  check('  and nothing was measured', !$('#arcRead .arc-clip'));
+  lens()[0].value = '1';
+  lens()[0].dispatchEvent(new (win().Event)('change', { bubbles: true }));
+  await sleep(150);
+
+  /* ---------------------------------------------------------------- */
+  head('one read, two steps');
+  btn().click();
+  const got = await untilN(() => $('#arcRead .arc-clip'), 2400, 100);
+  check('the clipping check finishes', got >= 0);
+  if (got < 0) throw new Error('the clipping read never came back');
+  const S = await (await realFetch('/api/arc/spark/' + GID + '/clipping', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ before_s: 1, after_s: 2 }) })).json();
+  check('the server answers from its cache, both kinds measured',
+        S.cached === true && S.state_measured === true
+        && (S.transition || {}).measured === true);
+  check('  and says it read each channel once per pair',
+        S.read && S.read.slices === S.read.channels * S.n,
+        JSON.stringify(S.read));
+  const stS = $('#arcRead .arc-clip-step.state');
+  const stT = $('#arcRead .arc-clip-step.transition');
+  check('two steps are drawn: state windows, then transition windows',
+        !!stS && !!stT && /State windows checked/.test(txt(stS))
+        && /Transition windows checked/.test(txt(stT))
+        && (stS.compareDocumentPosition(stT)
+            & win().Node.DOCUMENT_POSITION_FOLLOWING));
+  check('  each says it was checked',
+        /checked/.test(txt(stS.querySelector('.flagchip')))
+        && txt(stT.querySelector('.flagchip')) === 'checked');
+  check('  the transition step states the lengths it was made at',
+        /1 s before to 2 s after/.test(txt(stT)));
+  const tally = (chans) => {
+    const by = {};
+    for (const c of chans) by[c.grade] = (by[c.grade] || 0) + 1;
+    return by;
+  };
+  const drawn = (step) => {
+    const by = {};
+    for (const chip of step.querySelectorAll('.arc-clip-grades .flagchip')) {
+      const m = /^(\d+) channels? · (.+)$/.exec(txt(chip));
+      if (m) by[m[2]] = Number(m[1]);
+    }
+    return by;
+  };
+  check('the state grades on screen are the server’s',
+        same(drawn(stS), tally(S.channels || [])),
+        JSON.stringify(drawn(stS)) + ' vs ' + JSON.stringify(tally(S.channels)));
+  check('the transition grades on screen are the server’s',
+        same(drawn(stT), tally(S.transition.channels || [])),
+        JSON.stringify(drawn(stT)) + ' vs '
+        + JSON.stringify(tally(S.transition.channels)));
+  check('  graded on three windows a pair',
+        (S.transition.channels || []).every((c) => c.windows_total === 3 * S.n));
+  check('  and the transition rule is stated in time',
+        /50 ms or more at its rail/.test(txt(stT)));
+
+  /* ---------------------------------------------------------------- */
+  head('what would be filed carries both kinds');
+  win().__read = await (await realFetch('/api/arc/spark/' + GID)).json();
+  win().__clip = S;
+  const pids = (win().__read.pairs || []).map((p) => p.pair_id);
+  const perPair = pids.map((pid) => ({
+    pid,
+    t: val(C + '.blocksGone(' + pid + ', "transition")'),
+    s: val(C + '.blocksGone(' + pid + ', "state")'),
+  }));
+  const tTotal = perPair.reduce((n, x) => n + x.t, 0);
+  check('the measurement excludes transition blocks on this recording',
+        tTotal > 0, 'none, so the rest of this is vacuous');
+  check('every transition block lost is excluded by default, and only those',
+        pids.every((pid) => same(
+          val('BARRY.arc.clean.excluded(' + pid + ', "transition")'),
+          val('BARRY.arc.batch.exclusionFrom(window.__read.pairs, '
+              + 'window.__clip, "transition")["' + pid + '"] || {}'))));
+  check('  the state exclusion is exactly what it was before transitions',
+        pids.every((pid) => same(
+          val('BARRY.arc.clean.excluded(' + pid + ')'),
+          val('BARRY.arc.batch.exclusionFrom(window.__read.pairs, '
+              + 'window.__clip)["' + pid + '"] || {}'))));
+  check('what a batch files is the panel’s list, both kinds in one dict',
+        pids.every((pid) => same(
+          val('BARRY.arc.clean.excluded(' + pid + ', "all")'),
+          val('BARRY.arc.batch.exclusionBoth(window.__read.pairs, '
+              + 'window.__clip)["' + pid + '"] || {}'))));
+  check('NEGATIVE CONTROL: a reading with no transition answer invents no '
+        + 'transition exclusion',
+        same(val('BARRY.arc.batch.exclusionFrom(window.__read.pairs, '
+                 + 'Object.assign({}, window.__clip, {transition: '
+                 + '{measured: false, by_pair: window.__clip.transition.by_pair}}),'
+                 + ' "transition")'), {}));
+  check('the pair table has a transition chip where there are blocks',
+        $$('#arcRead .arc-lost-t').length
+        === perPair.filter((x) => x.t > 0).length,
+        $$('#arcRead .arc-lost-t').length + ' vs '
+        + perPair.filter((x) => x.t > 0).length);
+  check('the sentence about what is excluded counts both',
+        /in the state windows and \d+ at the transitions/.test(
+          txt($('#arcRead .arc-clip .arc-drop-say'))),
+        txt($('#arcRead .arc-clip .arc-drop-say')).slice(0, 160));
+
+  /* ---------------------------------------------------------------- */
+  head('Clean: the transition view');
+  // The pair with the most transition blocks.
+  const target = perPair.slice().sort((a, b) => b.t - a.t)[0];
+  const PID = target.pid;
+  const chip = $('#arcRead .arc-pair[data-pair="' + PID + '"] .arc-lost-t');
+  check('its transition chip opens Clean', !!chip);
+  chip.click();
+  await untilN(() => $('#arcPanel') && val('window.barryArcMode.view')
+                                        === 'transition', 300);
+  await untilN(() => val('window.barryArcMode.regions') != null, 200);
+  check('Clean opens on the transition view of that pair',
+        val('window.barryArcMode.view') === 'transition'
+        && val('window.barryArcMode.state.pair') === pids.indexOf(PID));
+  const segBtns = () => $$('#arcPanel .arc-view-seg button');
+  check('a State / Transition switch is on the bar',
+        segBtns().length === 2
+        && /^State/.test(txt(segBtns()[0])) && /^Transition/.test(txt(segBtns()[1]))
+        && segBtns()[1].classList.contains('active'));
+  const rowsT = () => $$('#arcPanel .arc-chrow');
+  const nT = Object.keys((S.transition.by_pair || {})[String(PID)] || {}).length;
+  check('one row per channel the transition reading has anything on',
+        rowsT().length === nT, rowsT().length + ' vs ' + nT);
+  check('  three blocks a row: onset, switch, offset',
+        rowsT().every((r) => r.querySelectorAll('.arc-blk').length === 3)
+        && same(Array.from(rowsT()[0].querySelectorAll('.arc-blk'))
+                  .map((b) => b.dataset.w), ['onset', 'switch', 'offset']));
+  check('  every block shows the decision the model holds',
+        rowsT().every((r) => Array.from(r.querySelectorAll('.arc-blk')).every(
+          (b) => b.classList.contains('removed')
+                 === !val(C + '.blockKept(' + PID + ', ' + r.dataset.csc
+                          + ', "' + b.dataset.w + '")'))));
+  const other = () => $('#arcPanel .arc-verdict-other');
+  check('the verdict says what the STATE view is removing too',
+        !!other() && other().dataset.view === 'state'
+        && (target.s ? new RegExp('\\b' + target.s + ' state block')
+                         .test(txt(other()))
+                     : /nothing in the State view/.test(txt(other()))),
+        txt(other()));
+
+  // One block, clicked, and clicked back.
+  const exT = () => val(C + '.excluded(' + PID + ', "transition")');
+  const exS = () => val(C + '.excluded(' + PID + ', "state")');
+  const t0 = JSON.stringify(exT()), s0 = JSON.stringify(exS());
+  const rem = $('#arcPanel .arc-blk.removed');
+  if (rem) {
+    const w = rem.dataset.w;
+    const csc = Number(rem.closest('.arc-chrow').dataset.csc);
+    rem.click();
+    await sleep(120);
+    check('keeping one transition block takes exactly it out of the '
+          + 'transition exclusion',
+          !((exT()[w] || []).includes(csc))
+          && JSON.stringify(exT()) !== t0);
+    check('  and leaves the state exclusion alone', JSON.stringify(exS()) === s0);
+    $('#arcPanel .arc-chrow[data-csc="' + csc + '"] .arc-blk[data-w="' + w
+      + '"]').click();
+    await sleep(120);
+    check('  clicking it again puts it back', JSON.stringify(exT()) === t0);
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('Clean: which wire each region uses');
+  const regs = val('window.barryArcMode.regions');
+  check('the regions and the histology arrived', regs && regs.ok
+        && (regs.regions || []).length === 12);
+  const cells = () => $$('#arcPanel .arc-wires .arc-cs-c');
+  check('twelve regions by three transition windows',
+        cells().length === 36, cells().length);
+  /* The rule, worked out here from the raw reading -- not from the
+     function the grid calls. */
+  const present = new Set((S.present || []).map(Number));
+  const badCh = new Set((regs.bad || []).map(Number));
+  const lostT = (c, w) => (((S.transition.by_pair[String(PID)] || {})[String(c)]
+                            || {}).windows || []).includes(w);
+  const expect = (r, w) => {
+    if (r.usable === false) return '—';
+    for (const c of r.csc.slice().sort((a, b) => a - b)) {
+      if (!present.has(c) || badCh.has(c)) continue;
+      if (lostT(c, w)) continue;
+      if (!val(C + '.blockKept(' + PID + ', ' + c + ', "' + w + '")')) continue;
+      return String(c);
+    }
+    return '✕';
+  };
+  const wrong = cells().filter((c) => {
+    const r = regs.regions.find((x) => x.region === c.dataset.region);
+    return txt(c) !== expect(r, c.dataset.w);
+  });
+  check('every cell is the wire the one-wire rule gives, worked out '
+        + 'independently', wrong.length === 0,
+        wrong.slice(0, 3).map((c) => c.dataset.region + '/' + c.dataset.w
+                                     + '=' + txt(c)).join(', '));
+  const rescued = $$('#arcPanel .arc-wires .arc-cs-c.rescued');
+  const hist = $$('#arcPanel .arc-wires .arc-cs-c.hist');
+  check('a spare wire rescues a region here, and is marked so',
+        rescued.length > 0 && rescued.every((c) => /rescued/.test(c.title)),
+        rescued.length + ' rescued');
+  check('a missed probe ruins its region in every window, whatever its '
+        + 'wires do', hist.length > 0 && hist.length % 3 === 0
+        && hist.every((c) => txt(c) === '—'), hist.length + ' ruled out');
+  const hr = regs.regions.find((r) => r.usable === false);
+  if (hr) {
+    const clean0 = hr.csc.find((c) => present.has(c) && !badCh.has(c)
+                                      && !lostT(c, 'switch'));
+    check('  the ruined region has a clean wire it is not allowed to use',
+          clean0 != null, hr.region);
+  }
+  if (rescued.length) {
+    const c0 = rescued[0];
+    const w = c0.dataset.w, spare = Number(txt(c0));
+    const r = regs.regions.find((x) => x.region === c0.dataset.region);
+    ev(C + '.setBlock(' + PID + ', ' + spare + ', "' + w + '", false)');
+    ev('window.barryArcMode._pick(null)');   // repaints the panel
+    await sleep(150);
+    const again = $$('#arcPanel .arc-wires .arc-cs-c').find(
+      (c) => c.dataset.region === r.region && c.dataset.w === w);
+    check('NEGATIVE CONTROL: removing the spare too moves the region on, or '
+          + 'blocks it', !!again && txt(again) !== String(spare)
+          && txt(again) === expect(r, w), again && txt(again));
+    ev(C + '.setBlock(' + PID + ', ' + spare + ', "' + w + '", true)');
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('Clean: the state view, over the same model');
+  segBtns()[0].click();
+  await untilN(() => val('window.barryArcMode.view') === 'state', 50);
+  check('the switch goes to the state view',
+        val('window.barryArcMode.view') === 'state'
+        && segBtns()[0].classList.contains('active'));
+  check('  four blocks a row',
+        rowsT().length > 0
+        && rowsT().every((r) => r.querySelectorAll('.arc-blk').length === 4));
+  check('  and the wire grid is four windows wide',
+        cells().length === 48, cells().length);
+  check('  the verdict now says what the TRANSITION view is removing',
+        !!other() && other().dataset.view === 'transition'
+        && new RegExp('\\b' + target.t + ' transition block').test(txt(other())),
+        txt(other()));
+  check('  nothing was lost by switching', JSON.stringify(exT()) === t0);
+
+  /* ---------------------------------------------------------------- */
+  head('Save and return files both kinds');
+  const filed = banked.length;
+  const saveBtn = $$('#arcPanel button').find(
+    (b) => txt(b) === 'Save and return to Spark');
+  check('the primary is last on the bar',
+        saveBtn && saveBtn === $$('#arcPanel .arc-bar > button').slice(-1)[0]);
+  /* Keep one transition block against the measurement, so the save has an
+     overrule to carry: the bank's `kept`, which Coupling subtracts. */
+  const keepBlk = Object.entries(val(C + '.excluded(' + PID
+                                     + ', "transition")'))[0];
+  if (keepBlk) {
+    ev(C + '.setBlock(' + PID + ', ' + keepBlk[1][0] + ', "' + keepBlk[0]
+       + '", true)');
+  }
+  const wantKept = val(C + '.keptBlocks()');
+  const want = {};
+  for (const pid of pids) {
+    const e = val(C + '.excluded(' + pid + ', "all")');
+    if (Object.keys(e).length) want[String(pid)] = e;
+  }
+  saveBtn.click();
+  await untilN(() => banked.length > filed && !$('#arcPanel'), 150);
+  const sent = (banked[banked.length - 1] || {}).body || {};
+  check('it posts to the bank route (to the stand-in)',
+        banked.length === filed + 1 && /\/spark\/.+\/bank/.test(
+          (banked[banked.length - 1] || {}).url || ''));
+  check('  with the state AND transition blocks, as decided',
+        same(sent.excluded, want)
+        && Object.values(sent.excluded || {}).some(
+          (e) => Object.keys(e).some((w) => ['onset', 'switch', 'offset']
+                                             .includes(w))),
+        JSON.stringify(sent.excluded || {}).slice(0, 160));
+  check('  and the blocks kept against the measurement, as `kept`',
+        !!keepBlk && same(sent.kept, wantKept)
+        && ((sent.kept || {})[String(PID)] || {})[keepBlk[0]]
+             .includes(keepBlk[1][0]),
+        JSON.stringify(sent.kept || {}).slice(0, 160));
+  check('  a kept block is not also sent as excluded',
+        !!keepBlk && !(((sent.excluded || {})[String(PID)] || {})[keepBlk[0]]
+                       || []).includes(keepBlk[1][0]));
+  check('  and it leaves Clean', !$('#arcPanel'));
+
+  /* ---------------------------------------------------------------- */
+  head('Coupling: the switch');
+  val('BARRY.views.toolkit.pick("coupling")');
+  let cHost = $('#cpMain'); steady = 0;
+  for (let i = 0; i < 120 && steady < 15; i++) {
+    await sleep(100);
+    const now = $('#cpMain');
+    steady = (now && now === cHost) ? steady + 1 : 0;
+    cHost = now;
+  }
+  const O = () => val('window.barryArc.overview.over');
+  val('window.barryArc.overview.pick(' + JSON.stringify(GID) + ')');
+  await untilN(() => O() && O().ok && $$('.arc-ov-sec').length === 3, 200);
+  const kSeg = () => $$('#cpMain .arc-cp-kind .seg button');
+  check('a State / Transition switch sits above the overview',
+        kSeg().length === 2 && kSeg()[0].classList.contains('active')
+        && ($('.arc-cp-kind').compareDocumentPosition($('.arc-ov'))
+            & win().Node.DOCUMENT_POSITION_FOLLOWING));
+  check('  state: four windows and a baseline field',
+        same(O().windows, ['pre', 'cue1', 'cue2', 'post'])
+        && (O().params || []).some((p) => p.id === 'pad_s'));
+  kSeg()[1].click();
+  await untilN(() => O() && O().kind === 'transition', 200);
+  check('transition: the overview is asked again, for three windows',
+        O() && O().kind === 'transition'
+        && same(O().windows, ['onset', 'switch', 'offset']));
+  check('  with the transition lengths instead of the baseline',
+        (O().params || []).some((p) => p.id === 'before_s')
+        && !(O().params || []).some((p) => p.id === 'pad_s'));
+  const tm = O().transition_measured;
+  if (!tm) {
+    check('this entry was banked before transitions, and the panel says so '
+          + 'where the grid would be',
+          /never been checked/.test(txt($('.arc-ov-unmeasured')))
+          && !$('.arc-cs'), txt($('.arc-ov-unmeasured')).slice(0, 120));
+    const run = $$('.arc-cp-bar button').slice(-1)[0];
+    check('  and the Run button is not offered', run && run.disabled);
+    await val('window.barryArc.overview.run()');
+    await sleep(300);
+    check('  and a run asked for anyway is refused by the server',
+          val('window.barryArc.matrix.run') === null);
+  } else {
+    await untilN(() => $$('.arc-cs-row:not(.head):not(.foot)').length === 12, 50);
+    check('the grid is twelve regions by three windows',
+          $$('.arc-cs-row:not(.head):not(.foot)').every(
+            (r) => r.querySelectorAll('.arc-cs-c').length === 3));
+  }
+
+  /* The matrix's window seg, for a transition run handed in. */
+  const fake = { region_order: ['Left PER', 'Right PER'], pair_id: 1,
+    params: { kind: 'transition', before_s: 1, after_s: 2 },
+    windows: ['onset', 'switch', 'offset'].map((w) => ({
+      window: w, pairs: [{ a: 'Left PER', b: 'Right PER',
+                           coherence: { value: 0.5, what: 'c' },
+                           raw_cc: { value: 0.3, what: 'r' },
+                           amp_cc: { value: 0.2, what: 'a' } }],
+      n_pairs: 1, n_refused: 0 })) };
+  win().__fake = fake;
+  val('window.barryArc.matrix._show(window.__fake, '
+      + '{ window: "switch", method: "coherence" })');
+  const mSeg = $$('#cpMain .arc-cp-controls .seg')[0];
+  check('a transition matrix offers its three windows by name',
+        mSeg && same(Array.from(mSeg.querySelectorAll('button')).map(txt),
+                     ['cue 1 onset', 'cue 1 → cue 2', 'cue 2 offset'])
+        && txt(mSeg.querySelector('.active')) === 'cue 1 → cue 2');
+
+  kSeg().length && kSeg()[0].click();
+  val('window.barryArc.overview.setKind("state")');
+  await untilN(() => O() && O().kind === 'state' && O().ok, 200);
+  check('back to state: four windows again',
+        O() && same(O().windows, ['pre', 'cue1', 'cue2', 'post']));
+
+  /* ---------------------------------------------------------------- */
+  head('nothing reached the bank');
+  win().fetch = realFetch;
+  const post = await (await realFetch('/api/arc/spark/recordings?phase=Precon'))
+    .json();
+  const bankAfter = (post.banked || {})[GID] || null;
+  check('the bank’s version for this recording did not move',
+        same(bankBefore, bankAfter),
+        JSON.stringify(bankBefore) + ' -> ' + JSON.stringify(bankAfter));
+  check('no uncaught errors', errs.length === 0, errs.join(' | '));
+
+  say('note', '');
+  say('note', out.querySelectorAll('.ok').length + ' passed, '
+              + bad + ' failed');
+  document.title = 'arctrans: ' + out.querySelectorAll('.ok').length
+                 + ' pass ' + bad + ' fail';
+} catch (e) {
+  say('bad', 'CRASH ' + (e && e.message));
+  say('note', String((e && e.stack) || ''));
+  document.title = 'arctrans CRASH';
+} })();
+</script>

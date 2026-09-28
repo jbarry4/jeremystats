@@ -24,32 +24,32 @@
     "schema": "2026-09-24T19:38:02.666562+00:00",
     "session": "2026-09-24T19:38:02.666562+00:00",
     "start": "2026-09-24T19:38:02.666562+00:00",
-    "updated": "2026-09-25T16:45:06.855945+00:00"
+    "updated": "2026-09-25T20:23:10.597314+00:00"
   },
   "_keys": {
     "paths": {
       "E:\\Joe Multisite 2026 data\\J3\\J3 Con 1\\J3_Con_1_FP1\\2026-04-08_14-02-36": [
-        "gone",
-        "2026-09-24T20:02:27.596048+00:00"
+        "set",
+        "2026-09-25T18:32:13.262511+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J3\\J3 Con 1\\J3_Con_1_FP2\\2026-04-08_16-06-46": [
         "set",
         "2026-09-24T19:38:02.666562+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J3\\J3 Con 1\\J3_Con_1_SP\\2026-04-08_14-32-17": [
-        "gone",
-        "2026-09-24T20:02:27.596048+00:00"
+        "set",
+        "2026-09-25T18:32:13.262511+00:00"
       ]
     },
     "seen": {
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-09-25T16:45:06.855945+00:00"
+        "2026-09-25T20:23:10.597314+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T16:45:06.855945+00:00",
+    "at": "2026-09-25T20:23:10.597314+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -74,7 +74,9 @@
   "n_channels": 64,
   "note": "Acquisition wrote 64 CSC files; 33-64 are dead. The montage is the same 32-channel DEWEY map.",
   "paths": [
-    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 1\\J3_Con_1_FP2\\2026-04-08_16-06-46"
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 1\\J3_Con_1_FP2\\2026-04-08_16-06-46",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 1\\J3_Con_1_FP1\\2026-04-08_14-02-36",
+    "E:\\Joe Multisite 2026 data\\J3\\J3 Con 1\\J3_Con_1_SP\\2026-04-08_14-32-17"
   ],
   "phase": "Con",
   "phase_n": 1,
@@ -87,20 +89,20 @@
   "schema": 2,
   "seen": {
     "desktop-4h65ai7-d565": {
-      "at": "2026-09-25T12:45:06-04:00",
+      "at": "2026-09-25T16:23:10-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "E:\\Joe Multisite 2026 data\\J3\\J3 Con 1\\J3_Con_1_FP2\\2026-04-08_16-06-46",
       "root": "E:/Joe Multisite 2026 data",
-      "scan": "scan_175198d703"
+      "scan": "scan_f60458f16f"
     }
   },
   "session": 11,
   "start": "2026-04-08T16:06:46",
   "updated": {
-    "app_version": "2026.09.24.8",
-    "at": "2026-09-25T12:45:06-04:00",
-    "commit": "0fc4943",
+    "app_version": "2026.09.25.3",
+    "at": "2026-09-25T16:23:10-04:00",
+    "commit": "4f8e8ca",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

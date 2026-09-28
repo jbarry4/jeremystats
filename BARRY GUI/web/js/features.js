@@ -244,6 +244,60 @@ BARRY.palette = (function () {
       }
     }
 
+    /* The Storm's three steps, by name.
+     *
+     * Same reason as The Arc's: "Doppler" and "Spotter" are what somebody
+     * will half-remember, not "ToolKit". Spotter goes to the step rather
+     * than entering the mode, because entering takes over the panes and the
+     * keyboard and is not something a search box should do to you.
+     *
+     * The Dentist's steps still have no entries; adding them is a change to
+     * a shipped menu rather than part of this, and is left alone. */
+    const storm = [
+      ['Doppler', 'find interictal discharges on the cluster', 'doppler'],
+      ['Spotter', 'confirm discharges, solid or sputter', 'spotter'],
+      ['Eye', 'line the confirmed discharges up', 'eye'],
+    ];
+    for (const [label, sub, id] of storm) {
+      out.push({
+        kind: 'action', label, sub: sub + ' · step of The Storm',
+        hay: label + ' storm ied interictal discharge ' + sub,
+        run: () => {
+          setView('toolkit');
+          const tk = BARRY.views.toolkit;
+          if (tk && tk.pick) tk.pick(id);
+        },
+      });
+    }
+
+    /* The Lookout's three steps, by name.
+     *
+     * Same reason as The Storm's, and one more: neither Panorama nor Braid
+     * had an entry at all before this, so somebody half-remembering "that
+     * thing that draws the whole recording" had no way to reach either from
+     * here. Horizon goes first because it is what answers "which channel",
+     * which is the question the other two used to assume you had already
+     * answered somewhere else.
+     *
+     * The Dentist's steps still have no entries; adding them is a change to
+     * a shipped menu rather than part of this, and is left alone. */
+    const lookout = [
+      ['Horizon', 'which frequency won, on every channel, by depth', 'horizon'],
+      ['Panorama', 'the whole recording on one channel, end to end', 'panorama'],
+      ['Braid', 'band-resolved power and how the bands couple', 'cfc'],
+    ];
+    for (const [label, sub, id] of lookout) {
+      out.push({
+        kind: 'action', label, sub: sub + ' · step of The Lookout',
+        hay: label + ' lookout theta frequency spectral depth ' + sub,
+        run: () => {
+          setView('toolkit');
+          const tk = BARRY.views.toolkit;
+          if (tk && tk.pick) tk.pick(id);
+        },
+      });
+    }
+
     // Favourite scripts float to the top of the script block.
     const favs = BARRY.prefs.get('fav_scripts', []) || [];
     for (const it of cat.items) {

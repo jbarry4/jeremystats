@@ -53,6 +53,55 @@ BASE = "http://127.0.0.1:8791"
 # of this that would have been worse is a suite that found nothing and
 # reported "0 ok, 0 fail", which reads exactly like a clean sweep.
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _deleted_records():
+    """Tracked files under GUI_logs that are missing from the working tree."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-d", "-z", "--", "GUI_logs"],
+            cwd=ROOT, capture_output=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return [p for p in out.stdout.decode("utf-8", "replace").split("\0") if p]
+
+
+def _put_back(name, before):
+    """Restore any committed record a harness deleted, and say which one.
+
+    Several harnesses write to the Event Bank and do not always take their
+    own changes back out cleanly. In one session four separate runs deleted
+    between 29 and 40 committed records under GUI_logs -- real KCNT1 bank
+    entries among them -- and every time it was noticed only because
+    somebody happened to look at `git status` afterwards.
+
+    So the runner checks after every page. Anything committed that has gone
+    missing is checked back out of git and the harness that did it is named,
+    which turns a silent loss into a line of output with a culprit in it.
+    Only deletions are undone: a file a harness CREATED is left alone, because
+    removing files the runner did not make is how a clean-up becomes a loss.
+    """
+    if before is None:
+        return
+    after = _deleted_records()
+    if not after:
+        return
+    new = [p for p in after if p not in before]
+    if not new:
+        return
+    try:
+        subprocess.run(["git", "checkout", "--"] + new, cwd=ROOT,
+                       capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        print("  !! %s deleted %d committed record(s) under GUI_logs and "
+              "they could NOT be restored:" % (name, len(new)), flush=True)
+        for p in new[:10]:
+            print("       " + p, flush=True)
+        return
+    print("  !! %s deleted %d committed record(s) under GUI_logs; restored "
+          "from git. Fix the harness." % (name, len(new)), flush=True)
 # A browser profile of the suite's own. See the note on
 # --user-data-dir below: without it a run competes with whatever
 # browser is already open and silently produces nothing.
@@ -218,6 +267,12 @@ def drop_profile():
         shutil.rmtree(PROFILE, ignore_errors=True)
     except Exception:                                    # noqa: BLE001
         pass
+    # And this run's dump, which is per process too now.
+    try:
+        os.remove(os.path.join(tempfile.gettempdir(),
+                               "jarvis-harness-dump-%d.html" % os.getpid()))
+    except OSError:
+        pass
 
 
 def main():
@@ -228,7 +283,15 @@ def main():
         names = [n for n in names if any(o in n for o in only)]
 
     rows = []
+    # The records each page might delete are checked at the top of the NEXT
+    # iteration rather than the bottom of this one, because a page that
+    # times out or dumps nothing leaves the loop through `continue` -- and
+    # those are exactly the runs most likely to have been interrupted halfway
+    # through writing something.
+    prev, prev_before = None, None
     for name in names:
+        _put_back(prev, prev_before)
+        prev, prev_before = name, _deleted_records()
         url = "%s/_dev/%s" % (BASE, name)
         if name not in NO_SESSION:
             url += "?session=" + urllib.parse.quote(SESSION, safe="")
@@ -245,8 +308,15 @@ def main():
             # 6871. Every harness therefore reported "0 checks", which is
             # indistinguishable from what a shot-taker reports, so a suite
             # of real checks read as a suite of probes and passed.
+            # Per process, like PROFILE. One fixed name for every runner
+            # meant that two suites running at once -- two Claude sessions
+            # in this tree do exactly that -- deleted each other's dump
+            # before every page, and whichever page was still being written
+            # came back as "NO OUTPUT". The longest pages lost most often:
+            # web/_dev/drift.html passed run directly and failed three times
+            # in a row through the suite (2026-09-28).
             dump = os.path.join(tempfile.gettempdir(),
-                                "jarvis-harness-dump.html")
+                                "jarvis-harness-dump-%d.html" % os.getpid())
             try:
                 os.remove(dump)
             except OSError:
@@ -390,6 +460,7 @@ def main():
         for f in fails[1:6]:
             print("%-22s          %s" % ("", f[:96]), flush=True)
 
+    _put_back(prev, prev_before)
     print("\n== tally ==")
     tot_ok = sum(r[1] for r in rows)
     tot_bad = sum(r[2] for r in rows)

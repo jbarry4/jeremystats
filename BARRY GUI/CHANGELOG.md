@@ -15,6 +15,441 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.28.1 - The Arc: Circuit, Drift, and artifacts you can build on
+
+### Added
+
+- **Circuit, step 3 of The Arc.** One recording, one cue pairing, state
+  or transition windows: a connectivity matrix that keeps every cue pair's
+  value behind each cell, with n, mean and SD. Missed, relocated and
+  unscored probes are grey and never computed; a region usable in even one
+  cue pair is kept, with a warning saying how many. Drawn as the matrix
+  (Coupling's crosshair) and as the node/edge ring in the VACC's layout,
+  with a threshold slider, full region names, no star clutter, and SVG/PNG
+  download. Runs on this computer (about a minute a recording) or on the
+  VACC, one recording or many; every cue pair's result is cached, so an
+  identical re-run takes a fraction of a second and confirms the existing
+  version rather than adding one.
+- **Drift, step 4 of The Arc.** Put circuits in a left group and a right
+  group. Each group is pooled with recordings as the unit — DerSimonian–
+  Laird random effects, so a recording with one usable pair counts little
+  but is not dropped — and the difference is tested cell by cell, with
+  Benjamini–Hochberg across each panel. The delta matrix outlines cells by
+  q, the ring draws the cells below a chosen q, and a click shows every
+  recording behind both sides. A group of one recording is labelled as one
+  recording. Circuits of different cue pairings are refused, naming both;
+  treating them as the same cue type is an explicit choice that is recorded
+  on the result.
+- **Jarvis Artifacts, in Results.** Stages now produce objects, not only
+  files: versioned, identified by a content digest, with an automatic name
+  and a **nickname** of your own. Results lists them, shows every version,
+  its provenance and what it was made from, downloads the payload, and
+  draws it with the stage's own viewer. A Drift pins the exact circuit
+  versions it used and cites them, so a cited version cannot be deleted.
+  "Use in Drift" sends a circuit from Results straight into a group.
+  Sync needs `supabase/18_artifacts.sql` run once in the dashboard; until
+  then artifacts stay on the machine that made them.
+- **Transition windows in Spark.** Besides the four 10 s chunks, three
+  windows around the boundaries — cue 1 onset, cue 1 → cue 2, cue 2
+  offset — 1 s before to 2 s after by default, adjustable. One read of the
+  files measures both, shown as two steps; transitions use the same 50 ms
+  rule in time. Clean gets a State / Transition switch, and Coupling and
+  Circuit analyse either.
+
+### Changed
+
+- **A block kept in Clean now counts.** Marking a clipped block green used
+  to be ignored downstream; it is now banked as `kept` and Coupling, its
+  overview and Circuit use that wire. No existing entry's numbers changed.
+- VACC runs survive a Jarvis restart (each run is recorded at submit and
+  re-attached), a flaky poll no longer cancels a healthy cluster job, and a
+  batch has a deadline instead of waiting for ever on a task that never
+  answers. Doppler and Incisor get the last two.
+
+### Fixed
+
+- Every Doppler batch task was sent an empty recording path and would have
+  failed on the node.
+- Moving a result no longer drops its link to the run that made it, and a
+  CSV is no longer offered a figure's Rebuild.
+- Drift's result collapsed to a 34 px column in the ToolKit, the ring's
+  caption one word per line and its download buttons hanging off the left
+  (Results drew it fine). The panel borrowed Spark's `align-items: start`,
+  and the result view has no intrinsic width. Measured, fixed, and now
+  checked in `web/_dev/drift.html`.
+- Two harness suites running at once deleted each other's output, so a
+  long page came back "NO OUTPUT" through the suite while passing on its
+  own. Each run now writes to its own file.
+
+## 2026.09.27.1 - Horizon, and the frequency tools become one job
+
+### Added
+
+- **Horizon, a new ToolKit tool: which frequency was in charge, everywhere
+  on the probe at once.** Time across, the shank down, and the colour of
+  each cell is the frequency that won there.
+
+  Three views already answered part of this and each dropped an axis to fit
+  on a screen:
+
+      analysis `theta`      every channel, all of time, band LOCKED at 4-12
+      analysis `bandpower`  every frequency, all of time, ONE channel
+      Panorama              every frequency, all of time collapsed to a
+                            histogram, one channel
+
+  The band-power panel is the closest, and it refuses more than one channel
+  by hand — `if len(ch_list) != 1: ch_list = ch_list[:1]`. That refusal is
+  what has been lifted. What makes three axes fit in two is collapsing
+  frequency to a single number per cell, the one that won, and spending
+  colour on it.
+
+  Most of the measurement was already there. `panorama.run` has always
+  computed a dominant frequency per window for every channel it was given;
+  it then drew them one at a time, in file order, through a pill pager. So
+  this is mostly layout, ordering and cost — and the numbers come from the
+  functions Panorama already uses, because two spectral engines in one app
+  is only a problem when you cannot tell which you are looking at.
+
+- **The texture of the picture is the finding.** Vertical stripes mean the
+  column agrees: one rhythm, shifting through the session. Horizontal bands
+  mean the layers disagree — either real, or the probe is not all in one
+  structure, and both are worth knowing. Speckle means there is no rhythm
+  and the argmax is measuring noise.
+
+  This is not a new idea, which is the point of citing it: `FOOOF
+  Playgroun/theta_channels.py` is the command-line analysis this replaces,
+  the way `theta_through_time.py` was the one Panorama replaced, and it
+  already argues the whole thing — "theta is globally coherent across the
+  hippocampus, so the theta peak frequency should agree across channels,
+  which means the SPREAD across channels is a free quality check."
+
+  So the spread is measured rather than only looked at. One number per time
+  window — what fraction of the channels named the same frequency, against
+  the column's median rather than its mean, so a handful of wires in white
+  matter reporting the argmax of a slope cannot drag what everything else is
+  compared to — and one number per recording, which is the thing a test can
+  actually be run on.
+
+- **Channel number is not depth, and the tool no longer pretends it is.**
+  On an H3 channel order IS depth order and stacking by CSC number is right.
+  On an H10-D consecutive CSC numbers step ACROSS three interleaved columns,
+  so channels 1, 2 and 3 are three different columns at the same depth; on a
+  dual implant CSC 1-64 is hippocampus and 65-128 is M2. A single stack
+  would draw a depth axis that is not one, and it would look entirely
+  plausible.
+
+  `probes.columns_for` already answered this for CSD, so the row order comes
+  from there and a probe with several columns gets several panes with a rule
+  drawn between them. And because a guess must not read as an answer, the
+  panel says which template applied and whether anybody confirmed it:
+  `probes.state_of`'s *detected* is used — a dual implant drawn as one stack
+  is worse than one drawn as two and marked unconfirmed — and never
+  presented as a fact.
+
+- **Opacity is how clearly the winner won, and it costs nothing.**
+  `peak_margin` has been computed per window since Panorama shipped: 1.0
+  means the peak was the only one, 0.05 means a coin toss with the
+  runner-up. It was already stored, already written to the saved CSV, and
+  already used to flag recordings in the set tree — and never drawn.
+
+  It is the alpha channel now. Channels outside the layers that generate
+  theta wash out; the layer carrying it glows. The laminar structure finds
+  itself, with no threshold anybody has to defend. A cell that is fully
+  transparent still means what it always meant — nothing was read there —
+  so the least confident cell keeps a floor rather than vanishing, because
+  "measured, and it was a toss-up" and "not measured" are different facts.
+
+  `analysis._encode_image` takes an optional `alpha` array for this. It
+  already wrote a per-pixel alpha channel; it only ever wrote 0 or 255.
+
+- **2-14 Hz, with theta bracketed on the bar rather than being the bar.**
+  A hard 4-12 window guarantees every cell reports a theta even where there
+  is none, and pins the winner against an edge when the real peak is
+  outside, with nothing in the picture to say so. Urethane theta sits low
+  and a 4 Hz floor clips it outright. The shoulders are drawn instead.
+
+  The bar steps at 1 Hz rather than running smooth, because with a dozen
+  swatches a reader can NAME the frequency and with a continuous ramp they
+  can only say "warmer" — and 1 Hz is inside what was measured, since a 2 s
+  transform resolves 0.5. The swatches come from the server, computed from
+  the colormap and the colour limits the picture was actually drawn with, so
+  a bar and a map cannot come to disagree about what 8 Hz looks like.
+
+  Not jet by default, for the reason `analysis.py` already gives beside the
+  map it registered on the same argument: a rainbow invents edges in smooth
+  data, and this is a tool for reading whether a band is there. Jet is still
+  on the list — it is the lab standard and every existing figure uses it.
+
+- **The map arrives interlaced.** Every eighth channel first, then every
+  fourth, then the rest, so the whole depth extent is on screen coarsely
+  after an eighth of the work and sharpens from there. Panorama builds its
+  spectrogram left to right as it reads for exactly this reason — "a run
+  that is obviously wrong can be stopped in the first ten seconds instead of
+  at the end of four minutes" — and this is that idea applied to the axis
+  this view adds. A laminar pattern is visible at every-eighth-channel; you
+  decide whether to spend the other fifty-six after seeing it.
+
+- **Everything knowable before a run happens before it.** Pick a recording
+  and the panel says how many channels it has, how many are marked bad, how
+  the depth axis will be split, whether there is a layer sheet to name the
+  bands with, and whether the probe template is confirmed or guessed — the
+  shape the New curation set wizard uses, which asks the same question of a
+  gid the moment one is picked and answers it above the button.
+
+- **Two fidelities, and the result says which produced it.** Reading all 64
+  channels of a 30-minute recording costs about three minutes. Fitting every
+  window of every channel with fooof costs about two hours: 1.4e-3 s per
+  channel-second to read against 6.5e-2 s per window to fit, so the fit
+  dominates by about forty-five times. The whole cost problem is in the fit.
+
+  *Survey* fits the aperiodic component once per channel, on the mean
+  spectrum — which is free, because averaging the spectrogram's columns IS
+  the whole-recording Welch spectrum — and flattens every column by that one
+  curve before taking its argmax. That is `flat_hz`'s definition with the
+  peak decomposition left out. *Full* is `panorama.dominant` per window: the
+  real fit, which can say a window had no peak at all.
+
+  The slope is fitted over 2-100 Hz and the answer read from 2-14, because a
+  1/f fit over under three octaves is mostly fitting whatever theta is
+  doing. The mains is bridged even though 60 Hz is far outside the band the
+  answer comes from — otherwise the interference would reach the answer
+  through the slope rather than through the argmax.
+
+### Changed
+
+- **The frequency tools are a bundle: The Lookout.** Horizon, then Panorama,
+  then Braid — every channel by depth, then one channel end to end, then how
+  the bands couple. The order is a real dependency the way The Dentist's is,
+  and it inverts what the ToolKit used to ask of somebody: Panorama needs a
+  channel named before it can say anything, and until now nothing answered
+  that except somebody's memory of which CSC was in the cell layer last
+  time.
+
+  It is named for its theme and not for one of its own steps, which is why
+  Braid keeps its name. A heading repeating a row underneath it is the same
+  "menu that describes one thing twice" the flat list was fixed to stop
+  being.
+
+- **A bundle now removes its members from the flat list by itself.**
+  GUI-CONSTITUTION.md 6b states this as a rule and says `BUNDLED` does it
+  for you. It did not: the omissions were hand-written, which is why they
+  came with a paragraph explaining that Incisor and Checkup were
+  deliberately missing. Panorama and Braid joining a bundle is exactly the
+  case that could have half-landed. `toolButton` returns nothing for a
+  bundled id now, so the rule is the code.
+
+- **The step chip is derived.** `BARRY.views.toolkit.stepOf(id)` reads the
+  position out of `BUNDLES`, so inserting a step renumbers every header
+  after it — the thing 6b asks for by name, after Root Canal was inserted
+  between Braces and X-ray and X-ray's header had to be edited by hand from
+  4 to 5.
+
+- **Neither Panorama nor Braid had a command-palette entry.** Somebody
+  half-remembering "that thing that draws the whole recording" had no way to
+  reach either from Ctrl+K. All three steps of The Lookout have one now.
+
+### Fixed
+
+- **`step_s` could not be the cost lever, and looked as though it could.**
+  The first version of Horizon asked for a five-second step to get about 360
+  columns out of a 30-minute recording, and fitted 59 columns per channel
+  where it had planned 23.
+
+  `scipy.signal.spectrogram` takes `noverlap`, which can only make the hop
+  SHORTER than `nperseg`. Ask for a five-second step with a two-second
+  transform and `nper - hop` goes negative, the overlap clamps to zero, and
+  the columns come out two seconds apart. Nothing errors, and Panorama never
+  meets it because its step has always been at or under its transform.
+
+  So the hop stays at Panorama's one second — it is also what sets `n_avg`,
+  and changing it would change what a column IS rather than how many there
+  are — and the lever is dropping columns afterwards. One in five, by
+  default. The ones kept are exactly the columns Panorama would have
+  computed at those times.
+
+### Checks
+
+- **A job stage the run ticked and the estimate never read.** The route
+  declared a stage called `horizon rows`; `estimate` asked `cfc.rate_for`
+  for `horizon survey`. Nothing errored — `rate_for` returns 0.0 for a stage
+  it has never heard of — so the fitting half of every estimate was silently
+  zero, and the measurement each run took was filed under a name no estimate
+  would ever read, which meant it could never learn its way out of it
+  either. A 62-channel run quoted 78 seconds and took 168.
+
+  The name comes from `horizon.stage_name` now, so the run and the estimate
+  cannot hold different opinions about it. One stage rather than a read and
+  a fit, because `Job.begin` closes whatever stage is running and this reads,
+  fits and discards one channel before starting the next — the same shape
+  `panorama bulk` has, for the same reason, and a declared read stage that
+  was never ticked drew as a bar stuck at zero that then jumped. Two of
+  them, one per fidelity, because the fit is about forty-five times the read
+  and a single rate averaged over both would be wrong for each. The same
+  run now quotes 167.
+
+- **`tools/check_horizon.py` — is a row of the map the same answer as a
+  Panorama run?** The entire argument for building this on Panorama's engine
+  rather than a second one, so it is measured rather than asserted.
+
+  With the aperiodic fit range pinned to the top of the band the two are
+  **identical** — max difference 5e-06 Hz, which is the fourth decimal
+  Panorama rounds its stored windows to and nothing else. With the default
+  2-100 Hz fit they differ by a **median of 6e-04 Hz and at most 3e-02**,
+  and the cause is established rather than wondered about: the decimation
+  target follows the fit range, so 250 Hz rather than 35, and the signal
+  itself is slightly different. Both are far inside the 0.5 Hz the transform
+  can resolve.
+
+  Survey against full is judged where the winner actually won in **both**
+  routes — a coin toss landing differently twice is not evidence about
+  either — which is the standard `check_panorama.py` settled on for the same
+  reason, and is why both routes carry a margin. On the demo recording they
+  agree to a median of 0.08 Hz; the demo is one clean 8 Hz rhythm, so that
+  number flatters the survey route and the check should be run on a real
+  recording before it is quoted.
+
+- **`web/_dev/horizon.html` — 51 checks.** That The Lookout has three steps
+  in the order they happen; that Panorama and Braid left the flat tool list
+  when they joined it, which is the half that can silently not land; that
+  the step chip is derived; that the picker is labelled Recording with the
+  one placeholder and an empty state that says what to do next; that
+  everything knowable before a run is said before it; and a real
+  four-channel run, checking that theta is bracketed inside a wider band
+  rather than being the whole of it, that the bar's swatches come from the
+  server, and that re-colouring re-renders without re-measuring.
+
+  It reaches the app through the frame's own `eval`. `BARRY` is a const in
+  core.js and not a property of the frame's window, so `W().BARRY` is
+  undefined from a harness and every wait on it times out reading as "the
+  application never loaded".
+
+## 2026.09.25.4 - The Arc: Coupling knows where the probes are
+
+### Added
+
+- **Coupling shows what it will compute before it computes it.** Above the
+  Run button, three folding sections:
+  - **Parameters** — band, coherence read-out frequency, largest lag, mains
+    notch and baseline length, editable, each with its limits and what it
+    is for. The server refuses a bad value with a sentence shown where the
+    fields are; it never clamps, because a matrix made at corners other
+    than the ones on screen is what showing them prevents. The baseline
+    cannot exceed what the clipping was measured over. The analysis rate
+    and the channel rule are shown, fixed, with the reason.
+  - **Probe sanity** — where each of the twelve probes really is, from
+    `Joes multi site histo results.xlsx`, with thumbnails of the slides
+    that name each region. A slide opens full size, zooms about the
+    pointer, drags, double-clicks to fit, and shows the filename's own
+    verdict beside the workbook's.
+  - **Channel sanity** — for each cue pair, a 12 × 4 grid of the one wire
+    each region will be measured on in each window, or why it has none.
+    Steps with the pair the Run button uses.
+- **Histology is enforced.** `backend/histo.py` carries the workbook's 96
+  cells verbatim; `tools/check_histo.py` re-reads the workbook and asserts
+  they agree. A probe somewhere else keeps its slot and is relabelled
+  ("Left subiculum (aimed at Left PER)"); a missed probe is not computed,
+  and neither is a rat with no row (J5) until it is scored.
+- **Histology slides** — 63 photographs derived to 2400 px web copies and
+  thumbnails (66 MB, from 29 GB of TIFF) and put in the `results` bucket
+  under `histology/`, so a machine without the E: drive shows them.
+  `backend/histoimg.py`, `tools/check_histoimg.py`.
+- **The matrix** traces a hovered cell left and up to its two region names;
+  hatches every cell a relocated probe contributes to; blocks the row and
+  column of a region with no usable wire, with the reason on hover; and
+  names all of it in a legend under the grid.
+- **What the clipping really cost** — `docs/dewey-clipping-loss.md` and its
+  figure, rebuilt by `tools/clipping_loss.py`. 18.7% of matrix cells to
+  clipping, 42.8% with histology. The four-wire rhinal regions go dark
+  more often than the two-wire ones: their wires rail together.
+- Harnesses: `arcover.html` (50), `arcmatrix.html` (47), and the Bank's
+  exclusion card in `bank.html`.
+
+### Changed
+
+- **Coupling measures each region on one wire**, the lowest-numbered one
+  that is not bad and did not clip in that window, instead of averaging
+  whatever survived. Every Coupling number changes; re-run anything you
+  have looked at. The CSV names the one wire per region and carries the
+  band, lag and baseline on every row.
+
+### Fixed
+
+- **Coupling would not open any recording** once clipping had been banked
+  per window: `invalid literal for int() with base 10: 'cue1'`. Iterating a
+  per-window dict gives its window names. Two quieter copies of the same
+  fault are fixed with it: the pair summary would have listed four
+  excluded channels called cue1, cue2, post and pre, and the saved CSV
+  wrote `cue1;cue2;post;pre` into its excluded-channels column.
+- A per-window exclusion looked up by plain window names matched on first
+  letters, so clipping was silently ignored by anything asking that way.
+- Arc severity chips: `.flagchip.warn` had no rule of its own and rendered
+  grey, below the default, with the worst grade the only amber one.
+
+## 2026.09.25.3 - The cluster means one thing, said in one place
+
+### Changed
+
+- **Four surfaces were each describing `native` and `staged` in their
+  own words** — the card in Sessions, the detail panel in
+  Housekeeping, the tab in Xplorefinder, and the toast when a
+  recording opens. Two of them said scratch "is purged without
+  notice", one said VACC "may clear it without notice", and the
+  fourth said neither. The one that drifts is the one somebody reads
+  before trusting a trace. There is now one table, `BARRY.vacc.words`,
+  and one chip, `BARRY.vacc.mark`, that every surface draws.
+
+- **The predicate behind it was written out five times in three
+  files** — `state === 'native' || state === 'staged'` in
+  `housekeeping.onVacc`, again in its detail panel, again in the
+  `onvacc` filter, again in `vaccChip`, and once properly in
+  `BARRY.vacc.canRead`. One now, and `canRead` is *defined* as "there
+  are words for it", so the set that opens and the set that gets a
+  mark cannot come apart — not because two lists agree today, but
+  because there is one list.
+
+- The split that keeps it that way: **the module owns the fact, each
+  surface owns the consequence.** "A copy in the cluster's scratch" is
+  what the state is and lives in `vacc.js`; "opening it from here
+  reads the same files the rig wrote" is what that means for the
+  button underneath it, and belongs to the panel offering the button.
+  Restating the fact is the fault; adding a consequence is not.
+
+### Added
+
+- **`GUI-CONSTITUTION.md` §6c — Two views of one thing.** What is
+  shared and by which renderer, as a table, so the next person can
+  see it rather than discover it. The two ways to get one renderer
+  into two places (parameterise the host, as
+  `housekeeping.catalogue(scope)` does; move the nodes, as
+  `parkList` does, and only when the markup cannot be parameterised).
+  The fact/consequence split. That absent is not negative in every
+  view at once. That a count has to describe the list underneath it.
+  And a five-step recipe for adding a fourth view.
+
+  It also states the thing that is *not* expected to be shared: a
+  card change lands in both card views because there is one function,
+  and it does **not** land on a tree row and must not be made to. What
+  crosses between the two shapes is the vocabulary, never the layout.
+
+- Two rows in the enforcement table (§9) and two lines in the
+  "when you add a feature" checklist, so the section is checked rather
+  than merely published.
+
+### Checked
+
+- `web/_dev/vaccopen.html` is 41 checks, up 10: that `words` and
+  `canRead` agree about all four states, that the two affirmative ones
+  do not say the same thing and the other two say nothing, and that
+  **every cluster mark drawn on screen is a word the module actually
+  keeps** — a view that hand-builds its own chip fails that one.
+
+- Read off the cards, where the marks are. The tree rows carry none
+  and should not: in a view where every row is on the cluster, a mark
+  on every row says nothing.
+
+- 628 checks across the 21 Sessions, Housekeeping and VACC harnesses,
+  none failing on this change.
+
 ## 2026.09.25.2 - Everything VACC knows gets the cards
 
 ### Added

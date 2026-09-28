@@ -1,0 +1,767 @@
+{
+ "at": "2026-09-28T17:23:31.128Z",
+ "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0",
+ "boot": {
+  "domContentLoaded": 227.40000000596046,
+  "load": 229.59999999403954,
+  "firstContentfulPaint": 180,
+  "interactive": 386.40000000596046,
+  "settled": 1177.699999988079,
+  "scripts": 45,
+  "scriptKB": 3264.24609375,
+  "css": 1,
+  "cssKB": 537.6201171875,
+  "api": 16,
+  "apiKB": 1268.1171875,
+  "apiSlowest": [
+   {
+    "url": "/api/notes",
+    "start": 216,
+    "ms": 380,
+    "kb": 443
+   },
+   {
+    "url": "/api/sync/status",
+    "start": 371,
+    "ms": 337,
+    "kb": 405
+   },
+   {
+    "url": "/api/pipeline/check",
+    "start": 418,
+    "ms": 122,
+    "kb": 1
+   },
+   {
+    "url": "/api/catalog",
+    "start": 216,
+    "ms": 118,
+    "kb": 212
+   },
+   {
+    "url": "/api/prefs",
+    "start": 216,
+    "ms": 70,
+    "kb": 2
+   },
+   {
+    "url": "/api/profile",
+    "start": 215,
+    "ms": 47,
+    "kb": 1
+   }
+  ],
+  "blocked": 0
+ },
+ "views": [
+  {
+   "label": "pipeline",
+   "paint": 13.200000017881393,
+   "settled": 478.80000001192093,
+   "timedOut": false,
+   "requests": 2,
+   "api": 2,
+   "bytes": 1726,
+   "slowest": [
+    {
+     "url": "/api/pipeline/check",
+     "ms": 66,
+     "kb": 1
+    },
+    {
+     "url": "/api/warm/state",
+     "ms": 3,
+     "kb": 0
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "sessions",
+   "paint": 16.799999982118607,
+   "settled": 480.19999998807907,
+   "timedOut": false,
+   "requests": 2,
+   "api": 2,
+   "bytes": 2092583,
+   "slowest": [
+    {
+     "url": "/api/registry",
+     "ms": 97,
+     "kb": 2043
+    },
+    {
+     "url": "/api/warm/state",
+     "ms": 4,
+     "kb": 0
+    }
+   ],
+   "blocked": 182.09999999403954
+  },
+  {
+   "label": "explorer",
+   "paint": 52.400000005960464,
+   "settled": 483,
+   "timedOut": false,
+   "requests": 1,
+   "api": 1,
+   "bytes": 373,
+   "slowest": [
+    {
+     "url": "/api/warm/state",
+     "ms": 2,
+     "kb": 0
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "xplore",
+   "paint": 17.5,
+   "settled": 17.5,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "toolkit",
+   "paint": 36.5,
+   "settled": 87.5,
+   "timedOut": false,
+   "requests": 1,
+   "api": 1,
+   "bytes": 410,
+   "slowest": [
+    {
+     "url": "/api/warm/state",
+     "ms": 10,
+     "kb": 0
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "eventbank",
+   "paint": 20.399999976158142,
+   "settled": 1098,
+   "timedOut": false,
+   "requests": 6,
+   "api": 6,
+   "bytes": 3999825,
+   "slowest": [
+    {
+     "url": "/api/layers",
+     "ms": 1079,
+     "kb": 440
+    },
+    {
+     "url": "/api/presence",
+     "ms": 574,
+     "kb": 0
+    },
+    {
+     "url": "/api/toolfeed/bad",
+     "ms": 324,
+     "kb": 14
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "results",
+   "paint": 28.599999994039536,
+   "settled": 784.0999999940395,
+   "timedOut": false,
+   "requests": 14,
+   "api": 14,
+   "bytes": 365729,
+   "slowest": [
+    {
+     "url": "/api/toolfeed/bad",
+     "ms": 324,
+     "kb": 14
+    },
+    {
+     "url": "/api/results/folders",
+     "ms": 298,
+     "kb": 2
+    },
+    {
+     "url": "/api/results",
+     "ms": 273,
+     "kb": 210
+    }
+   ],
+   "blocked": 76.30000001192093
+  },
+  {
+   "label": "storyboard",
+   "paint": 20.599999994039536,
+   "settled": 291.19999998807907,
+   "timedOut": false,
+   "requests": 5,
+   "api": 5,
+   "bytes": 6377374,
+   "slowest": [
+    {
+     "url": "/api/results/file",
+     "ms": 60,
+     "kb": 2489
+    },
+    {
+     "url": "/api/results/file",
+     "ms": 41,
+     "kb": 1754
+    },
+    {
+     "url": "/api/results/file",
+     "ms": 40,
+     "kb": 1977
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "history",
+   "paint": 18.900000005960464,
+   "settled": 594.4000000059605,
+   "timedOut": false,
+   "requests": 5,
+   "api": 5,
+   "bytes": 727841,
+   "slowest": [
+    {
+     "url": "/api/toolfeed/bad",
+     "ms": 351,
+     "kb": 1
+    },
+    {
+     "url": "/api/history",
+     "ms": 92,
+     "kb": 338
+    },
+    {
+     "url": "/api/activity",
+     "ms": 42,
+     "kb": 371
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "misc",
+   "paint": 29.200000017881393,
+   "settled": 252.7000000178814,
+   "timedOut": false,
+   "requests": 7,
+   "api": 7,
+   "bytes": 799140,
+   "slowest": [
+    {
+     "url": "/api/outputs",
+     "ms": 116,
+     "kb": 102
+    },
+    {
+     "url": "/api/outputs/file",
+     "ms": 30,
+     "kb": 229
+    },
+    {
+     "url": "/api/outputs/file",
+     "ms": 27,
+     "kb": 73
+    }
+   ],
+   "blocked": 62.29999998211861
+  },
+  {
+   "label": "errors",
+   "paint": 19.599999994039536,
+   "settled": 577.2999999821186,
+   "timedOut": false,
+   "requests": 4,
+   "api": 4,
+   "bytes": 1225653,
+   "slowest": [
+    {
+     "url": "/api/errors/grouped",
+     "ms": 456,
+     "kb": 439
+    },
+    {
+     "url": "/api/feedback",
+     "ms": 72,
+     "kb": 361
+    },
+    {
+     "url": "/api/errors",
+     "ms": 48,
+     "kb": 391
+    }
+   ],
+   "blocked": 0
+  }
+ ],
+ "warm": [
+  {
+   "label": "pipeline",
+   "paint": 28.80000001192093,
+   "settled": 634.5999999940395,
+   "timedOut": false,
+   "requests": 3,
+   "api": 3,
+   "bytes": 7762,
+   "slowest": [
+    {
+     "url": "/api/devices",
+     "ms": 1024,
+     "kb": 5
+    },
+    {
+     "url": "/api/toolfeed/bad",
+     "ms": 306,
+     "kb": 1
+    },
+    {
+     "url": "/api/pipeline/check",
+     "ms": 172,
+     "kb": 1
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "sessions",
+   "paint": 231.60000002384186,
+   "settled": 231.7000000178814,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "explorer",
+   "paint": 30.69999998807907,
+   "settled": 30.69999998807907,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "xplore",
+   "paint": 17.900000005960464,
+   "settled": 18,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "toolkit",
+   "paint": 67.09999999403954,
+   "settled": 873,
+   "timedOut": false,
+   "requests": 5,
+   "api": 5,
+   "bytes": 2220414,
+   "slowest": [
+    {
+     "url": "/api/registry",
+     "ms": 2414,
+     "kb": 2043
+    },
+    {
+     "url": "/api/toolfeed/bad",
+     "ms": 306,
+     "kb": 1
+    },
+    {
+     "url": "/api/toolfeed/bad",
+     "ms": 278,
+     "kb": 14
+    }
+   ],
+   "blocked": 57.400000005960464
+  },
+  {
+   "label": "eventbank",
+   "paint": 61.599999994039536,
+   "settled": 148.39999997615814,
+   "timedOut": false,
+   "requests": 3,
+   "api": 3,
+   "bytes": 3887118,
+   "slowest": [
+    {
+     "url": "/api/presence",
+     "ms": 213,
+     "kb": 0
+    },
+    {
+     "url": "/api/layers",
+     "ms": 111,
+     "kb": 440
+    },
+    {
+     "url": "/api/bank",
+     "ms": 75,
+     "kb": 3356
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "results",
+   "paint": 33.099999994039536,
+   "settled": 707.0999999940395,
+   "timedOut": false,
+   "requests": 61,
+   "api": 61,
+   "bytes": 925953,
+   "slowest": [
+    {
+     "url": "/api/results/thumb",
+     "ms": 296,
+     "kb": 23
+    },
+    {
+     "url": "/api/results/thumb",
+     "ms": 293,
+     "kb": 37
+    },
+    {
+     "url": "/api/results/thumb",
+     "ms": 293,
+     "kb": 25
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "storyboard",
+   "paint": 16.099999994039536,
+   "settled": 66.19999998807907,
+   "timedOut": false,
+   "requests": 1,
+   "api": 1,
+   "bytes": 7253,
+   "slowest": [
+    {
+     "url": "/api/decks",
+     "ms": 9,
+     "kb": 7
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "history",
+   "paint": 24.400000005960464,
+   "settled": 96.80000001192093,
+   "timedOut": false,
+   "requests": 2,
+   "api": 2,
+   "bytes": 725842,
+   "slowest": [
+    {
+     "url": "/api/activity",
+     "ms": 25,
+     "kb": 371
+    },
+    {
+     "url": "/api/history",
+     "ms": 10,
+     "kb": 338
+    }
+   ],
+   "blocked": 0
+  },
+  {
+   "label": "misc",
+   "paint": 14.599999994039536,
+   "settled": 404.5,
+   "timedOut": false,
+   "requests": 66,
+   "api": 66,
+   "bytes": 14643544,
+   "slowest": [
+    {
+     "url": "/api/outputs/file",
+     "ms": 294,
+     "kb": 227
+    },
+    {
+     "url": "/api/outputs/file",
+     "ms": 291,
+     "kb": 227
+    },
+    {
+     "url": "/api/outputs/file",
+     "ms": 274,
+     "kb": 227
+    }
+   ],
+   "blocked": 101.7999999821186
+  },
+  {
+   "label": "errors",
+   "paint": 88,
+   "settled": 149.30000001192093,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  }
+ ],
+ "tools": [
+  {
+   "label": "Incisor",
+   "paint": 19.200000017881393,
+   "settled": 19.30000001192093,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Checkup",
+   "paint": 32.30000001192093,
+   "settled": 32.30000001192093,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Braces",
+   "paint": 33.400000005960464,
+   "settled": 33.400000005960464,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Root Canal",
+   "paint": 29.599999994039536,
+   "settled": 29.599999994039536,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "X-ray",
+   "paint": 10.799999982118607,
+   "settled": 10.799999982118607,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Spark",
+   "paint": 16.30000001192093,
+   "settled": 16.30000001192093,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Coupling",
+   "paint": 25.30000001192093,
+   "settled": 25.5,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Circuit",
+   "paint": 16.599999994039536,
+   "settled": 16.69999998807907,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Drift",
+   "paint": 20.80000001192093,
+   "settled": 20.80000001192093,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Doppler",
+   "paint": 30.80000001192093,
+   "settled": 30.80000001192093,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Spotter",
+   "paint": 14.699999988079071,
+   "settled": 14.800000011920929,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Eye",
+   "paint": 15.900000005960464,
+   "settled": 15.900000005960464,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Horizon",
+   "paint": 20.700000017881393,
+   "settled": 20.80000001192093,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Panorama",
+   "paint": 22.900000005960464,
+   "settled": 22.900000005960464,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Braid",
+   "paint": 20.5,
+   "settled": 20.5,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Bad channels",
+   "paint": 77.90000000596046,
+   "settled": 78,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "StrataScope",
+   "paint": 17.400000005960464,
+   "settled": 17.400000005960464,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Kilosort",
+   "paint": 42.69999998807907,
+   "settled": 42.69999998807907,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  },
+  {
+   "label": "Import sorted snapshots",
+   "paint": 23.099999994039536,
+   "settled": 23.099999994039536,
+   "timedOut": false,
+   "requests": 0,
+   "api": 0,
+   "bytes": 0,
+   "slowest": [],
+   "blocked": 0
+  }
+ ],
+ "longTasks": [
+  {
+   "phase": "sessions",
+   "ms": 182
+  },
+  {
+   "phase": "results",
+   "ms": 76
+  },
+  {
+   "phase": "misc",
+   "ms": 62
+  },
+  {
+   "phase": "toolkit",
+   "ms": 57
+  },
+  {
+   "phase": "misc",
+   "ms": 102
+  }
+ ],
+ "server": {
+  "import_ms": 3150.0778198242188,
+  "catalog_ms": 460.5436325073242,
+  "total_ms": 3611.7284297943115
+ }
+}

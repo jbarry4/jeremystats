@@ -1,0 +1,463 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — The Arc: Drift</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Drift, the page: two groups of circuits put side by side, pooled with
+   recordings as the unit, and the difference drawn as a matrix and a ring.
+
+   The statistics are proven elsewhere -- tools/check_drift.py against a
+   hand calculation and a published example, tools/check_driftrun.py for the
+   routes, pinning, citations, the cue-equivalence choice and every refusal.
+   What only a page can get wrong is DRAWING it: a significance outline on
+   the wrong cell, an edge the payload does not have, a result in Results
+   that differs from the one in the panel. So every check below compares the
+   page against the payload the server returned, never against what the page
+   happened to draw.
+
+   Setup is real: six harness circuits derived from J7 s1's real circuit
+   (fixtures/circuit_s360e48254222.json) on `harness-` gids through
+   /api/artifacts/_test/make, three a side, the right side shifted so there
+   is something to find; a real drift made through the real Compare button.
+   Everything made is erased in a finally -- the drift first, because it
+   cites the circuits and a cited circuit cannot go. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+const post = async (url, body) => (await fetch(url, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body || {}) })).json();
+
+const TAG = 'harness-drift-page-' + Date.now().toString(16);
+const made = { circuits: [], drifts: [] };
+
+/* The same derivation tools/check_driftrun.py uses: every value
+   v -> v*scale + off plus a small per-cell wobble, mean and SD recomputed,
+   so the six circuits differ like recordings and stay schema-valid. */
+function derive(base, i, off, label) {
+  const P = JSON.parse(JSON.stringify(base));
+  const gid = TAG + '-' + label + i;
+  P.source = Object.assign({}, P.source, { gid: gid,
+    session_label: 'HARNESS ' + gid });
+  P.computed_on = { kind: 'local', harness: true };
+  let k = 0;
+  for (const w of P.windows) {
+    for (const m of P.methods) {
+      for (const c of Object.values(P.cells[w][m])) {
+        k += 1;
+        /* The shift is graded cell by cell, from nothing to the full `off`,
+           so the payload's q values span every outline band. One shift for
+           every cell put every q at one extreme or the other, and a check
+           of the outlines then could not tell .05 from .2 -- a negative
+           control proved it passed with the threshold broken. */
+        const o = off * ((k % 11) / 10) + (((k * 7 + i * 3) % 5) - 2) * 0.004;
+        for (const x of c.values) x.v = x.v + o;
+        const vs = c.values.map((x) => x.v);
+        c.mean = vs.reduce((a, b) => a + b, 0) / vs.length;
+        if (c.sd != null && vs.length > 1) {
+          const mu = c.mean;
+          c.sd = Math.sqrt(vs.reduce((a, v) => a + (v - mu) * (v - mu), 0)
+                           / (vs.length - 1));
+        }
+      }
+    }
+  }
+  return P;
+}
+const subjectOf = (P, mouse, n) => ({
+  gid: P.source.gid, project: 'DEWEY', mouse: mouse, session: n,
+  phase: 'Precon', phase_n: n, run: 'SPC',
+  session_label: P.source.session_label, cue_type: P.cue_type,
+  cue_label: P.cue_label, window_kind: P.kind });
+
+/* q -> the outline weight the page should draw, worked out here and not
+   read back from the page. */
+const sigOf = (q) => q == null ? 0 : q < 0.001 ? 3 : q < 0.01 ? 2 : q < 0.05 ? 1 : 0;
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const $ = (q) => doc().querySelector(q);
+  const $$ = (q) => Array.from(doc().querySelectorAll(q));
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  win().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(700);
+  const ev = (src) => win().eval(src);
+  const val = (expr) => ev('(' + expr + ')');
+  const D = () => win().barryDrift;
+
+  try {
+    /* ---------------------------------------------------------------- */
+    head('the circuits to compare');
+    const FIX = await (await fetch('/_dev/fixtures/circuit_s360e48254222.json')).json();
+    const sides = { left: [], right: [] };
+    for (const [side, off, n] of [['left', 0, 1], ['right', 0.3, 4]]) {
+      for (let i = 0; i < 3; i++) {
+        const P = derive(FIX, i, off, side[0]);
+        const got = await post('/api/artifacts/_test/make', {
+          kind: 'circuit', payload: P, subject: subjectOf(P, 7, n),
+          params: P.params,
+          inputs: [{ kind: 'bank', entry: 'harness', version: 1 }] });
+        if (!got.ok) throw new Error('could not make a harness circuit: ' + got.error);
+        made.circuits.push(got.artifact.id);
+        sides[side].push({ id: got.artifact.id,
+                           version_id: got.artifact.current.id });
+      }
+    }
+    check('six harness circuits made, three a side', made.circuits.length === 6,
+          made.circuits.length);
+
+    /* ---------------------------------------------------------------- */
+    head('the panel');
+    ev('setView("toolkit")');
+    await sleep(300);
+    check('the Drift step opens', val('BARRY.views.toolkit.pick("drift")') === true);
+    /* The ToolKit renders twice -- once on show, once when its session list
+       lands -- and the second rebuilds this panel. Wait until the host has
+       stopped being replaced before touching it (memory: ToolKit renders
+       twice). */
+    let host = $('#drGroups'), steady = 0;
+    for (let i = 0; i < 120 && steady < 15; i++) {
+      await sleep(100);
+      const now = $('#drGroups');
+      steady = (now && now === host) ? steady + 1 : 0;
+      host = now;
+    }
+    check('the panel has settled', steady >= 15);
+    check('it is not a construction card',
+          !!$('#drGroups') && !!$('#drPre') && !!$('#drPick'));
+    check('it starts with nothing chosen, and says what to do next',
+          !!$('#drPre .dr-pre-empty'));
+
+    ev('window.barryDrift._clear()');
+    await D().reload();
+    await untilN(() => $$('#drPick .dr-row').length > 0, 150);
+    const listed = new Set($$('#drPick .dr-row').map((r) => r.dataset.id));
+    check('the picker lists the harness circuits',
+          made.circuits.every((id) => listed.has(id)),
+          made.circuits.filter((id) => !listed.has(id)).join(','));
+
+    for (const s of ['left', 'right']) {
+      for (const m of sides[s]) {
+        check('  added ' + s + ' ' + m.id,
+              D().addRow(s, m.id, m.version_id) === true);
+      }
+    }
+    await sleep(200);
+    const mems = (s) => $$('.dr-col[data-side="' + s + '"] .dr-mem');
+    check('each column shows its three circuits',
+          mems('left').length === 3 && mems('right').length === 3,
+          mems('left').length + ' / ' + mems('right').length);
+    check('each column names what it holds, in recordings and pairs',
+          /3 recordings/.test(($('.dr-col[data-side="left"] .dr-col-n') || {})
+                               .textContent || ''));
+    check('no one-recording warning when a side has three',
+          !$('.dr-col .dr-k1'));
+
+    await untilN(() => $('#drPre .dr-verdict'), 100);
+    check('the pre-flight says the two groups can be compared',
+          !!$('#drPre .dr-verdict.ok'),
+          ($('#drPre .dr-verdict') || {}).textContent);
+    const go = $('#drPre .dr-go');
+    check('Compare is offered and enabled', !!go && !go.disabled);
+    const btns = $$('#drPre .dr-runbar button');
+    check('it is the one primary, and last',
+          btns.length > 0 && btns[btns.length - 1] === go
+          && !go.classList.contains('ghost')
+          && btns.filter((b) => b.classList.contains('btn')
+                               && !b.classList.contains('ghost')).length === 1);
+
+    /* One recording on a side is a comparison of one recording's pairs,
+       and has to say so before it runs. */
+    D().remove('left', sides.left[1].id);
+    D().remove('left', sides.left[2].id);
+    await sleep(250);
+    check('a side of one recording is labelled as such, in its column',
+          /one recording/.test(($('.dr-col[data-side="left"] .dr-k1') || {})
+                                .textContent || ''));
+    await untilN(() => $('#drPre .dr-verdict'), 100);
+    check('  and in the pre-flight',
+          $$('#drPre .dr-warn').some((w) => /one recording/.test(w.textContent)),
+          $$('#drPre .dr-warn').map((w) => w.textContent).join(' | '));
+    D().addRow('left', sides.left[1].id, sides.left[1].version_id);
+    D().addRow('left', sides.left[2].id, sides.left[2].version_id);
+    await untilN(() => mems('left').length === 3
+                    && $('#drPre .dr-go') && !$('#drPre .dr-go').disabled, 100);
+
+    /* ---------------------------------------------------------------- */
+    head('comparing');
+    ev('window.barryDrift.setWhere("local")');
+    await sleep(100);
+    $('#drPre .dr-go').click();
+    await untilN(() => val('window.barryDrift.state.shown'), 600);
+    const shown = val('window.barryDrift.state.shown');
+    check('the comparison lands and is drawn', !!shown && !!$('.dr-host'),
+          shown ? '' : 'no result after 60 s');
+    if (!shown) throw new Error('nothing to check the drawing against');
+    const P = shown.payload, meta = shown.meta;
+    if (meta.artifact_id) made.drifts.push(meta.artifact_id);
+    check('it was filed as a drift artifact',
+          !!meta.artifact_id && P.schema === 'arc.drift/1');
+
+    /* ---------------------------------------------------------------- */
+    /* Reported by the user 2026-09-28: the ring's caption wrapped one word
+       per line in a column about 80 px wide, the download buttons hanging
+       out to the left. Measured, not eyeballed: the ring box and its
+       caption against the view that holds them, and the width of every
+       ancestor on the way up, so a collapse says WHERE it happened. */
+    const layout = (root, where) => {
+      const box = root.querySelector('.cir-ring-box');
+      const hint = box && Array.from(box.querySelectorAll('.hint'))
+        .find((h) => (h.textContent || '').length > 60);
+      const chain = [];
+      for (let n = box; n && n !== doc().body; n = n.parentElement) {
+        chain.push((n.id ? '#' + n.id : n.tagName.toLowerCase())
+                   + '.' + Array.from(n.classList).slice(0, 2).join('.')
+                   + ' ' + Math.round(n.getBoundingClientRect().width));
+      }
+      say('note', '  ' + where + ': ' + chain.join(' < '));
+      const w = box ? box.getBoundingClientRect().width : 0;
+      const lh = hint ? parseFloat(win().getComputedStyle(hint).lineHeight) || 16 : 16;
+      const lines = hint ? Math.round(hint.getBoundingClientRect().height / lh) : 0;
+      check(where + ': the ring has room (at least 320 px)', w >= 320,
+            Math.round(w) + ' px');
+      check(where + ': its caption is a few lines, not a word per line',
+            !!hint && lines <= 4, lines + ' lines');
+      const dl = Array.from(box ? box.querySelectorAll('button') : [])
+        .filter((b) => /Download/.test(b.textContent));
+      const br = box ? box.getBoundingClientRect() : null;
+      check(where + ': the download buttons sit inside it',
+            dl.length > 0 && dl.every((b) => {
+              const r = b.getBoundingClientRect();
+              return r.left >= br.left - 1 && r.right <= br.right + 1;
+            }), dl.map((b) => Math.round(b.getBoundingClientRect().left)
+                              + '..' + Math.round(br.left)).join(' '));
+    };
+    head('it lays out');
+    layout($('.dr-host'), 'panel');
+
+    /* ---------------------------------------------------------------- */
+    head('the delta matrix draws exactly the payload');
+    const dhost = $('.dr-host');
+    const ctx = dhost.__dr;
+    check('it opens on the delta', ctx && ctx.side === 'delta', ctx && ctx.side);
+    const panel = ((P.cells || {})[ctx.win] || {})[ctx.method] || {};
+    const fullGrey = (r) => {
+      const d = (P.grey_detail || {})[r] || [];
+      const all = ((P.left || {}).members || []).length
+                + ((P.right || {}).members || []).length;
+      return d.length > 0 && d.length >= all;
+    };
+    const want = Object.keys(panel).filter((k) => {
+      const [a, b] = k.split('|');
+      return panel[k].delta != null && !fullGrey(a) && !fullGrey(b);
+    });
+    const cells = $$('.dr-host .dr-mx .dr-val');
+    const drawnKeys = new Set(cells.map((c) => c.dataset.key));
+    /* Both triangles are drawn, so every key appears twice. */
+    check('every value cell is a cell of the payload, and every cell is drawn',
+          drawnKeys.size === want.length && want.every((k) => drawnKeys.has(k))
+          && cells.length === 2 * want.length,
+          drawnKeys.size + ' keys / ' + cells.length + ' cells vs '
+          + want.length + ' in the payload');
+    const sigWrong = cells.filter((c) => Number(c.dataset.sig)
+                                         !== sigOf(panel[c.dataset.key].q));
+    check('each cell’s significance outline is its q, worked out here',
+          sigWrong.length === 0,
+          sigWrong.slice(0, 3).map((c) => c.dataset.key + ' sig '
+            + c.dataset.sig + ' q ' + panel[c.dataset.key].q).join('; '));
+    const sigCount = [0, 0, 0, 0];
+    for (const k of want) sigCount[sigOf(panel[k].q)] += 1;
+    say('note', '  q < .05: ' + (sigCount[1] + sigCount[2] + sigCount[3])
+                + ' of ' + want.length + ' cells (' + sigCount[3]
+                + ' at q < .001)');
+    check('the shifted side gives something to find',
+          sigCount[1] + sigCount[2] + sigCount[3] > 0);
+    /* The precondition for the outline check meaning anything: q values
+       in every band, and some just above .05, where a loosened threshold
+       would start outlining cells it should not. */
+    const nearMiss = want.filter((k) => panel[k].q != null
+                                        && panel[k].q >= 0.05 && panel[k].q < 0.2).length;
+    check('  and the q values span every outline band, with near misses',
+          sigCount[0] > 0 && sigCount[1] > 0 && sigCount[2] > 0 && sigCount[3] > 0
+          && nearMiss > 0,
+          'bands ' + sigCount.join('/') + ', ' + nearMiss + ' at .05 ≤ q < .2');
+    const untestWrong = cells.filter((c) => c.classList.contains('untested')
+                                            === !!panel[c.dataset.key].testable);
+    check('an untested cell is marked, and only an untested one',
+          untestWrong.length === 0, untestWrong.length + ' disagree');
+    const vWrong = cells.filter((c) => Math.abs(Number(c.dataset.v)
+                                       - panel[c.dataset.key].delta) > 1e-12);
+    check('each cell carries its delta', vWrong.length === 0,
+          vWrong.length + ' disagree');
+    const n = P.region_order.length;
+    const blank = $$('.dr-host .dr-mx .arc-mx-cell')
+      .filter((c) => c.dataset.state === 'absent' || c.dataset.state === 'grey');
+    check('every other off-diagonal cell is blank, not zero',
+          blank.length === n * (n - 1) - 2 * want.length,
+          blank.length + ' vs ' + (n * (n - 1) - 2 * want.length));
+    check('the legend counts the outlines it draws',
+          /q < \.05 thin \((\d+)\)/.test(($('.dr-host .dr-key-sig') || {}).textContent || '')
+          && Number(RegExp.$1) === sigCount[1] + sigCount[2] + sigCount[3],
+          ($('.dr-host .dr-key-sig') || {}).textContent);
+
+    /* ---------------------------------------------------------------- */
+    head('the delta ring draws exactly the payload');
+    const view = val('window.barryDrift._view');
+    const wantEdges = want.filter((k) => view.edge === 'q'
+      ? (panel[k].q != null && panel[k].q < view.q)
+      : Math.abs(panel[k].delta) >= 0).sort();
+    const drawnEdges = $$('.dr-host svg .cir-edge').map((e) => e.dataset.key).sort();
+    check('by default it draws the cells whose q is below .05',
+          view.edge === 'q' && view.q === 0.05, view.edge + ' ' + view.q);
+    check('its edges are exactly those cells, worked out here',
+          JSON.stringify(drawnEdges) === JSON.stringify(wantEdges),
+          drawnEdges.length + ' drawn vs ' + wantEdges.length);
+    check('  and the page’s own reading agrees',
+          JSON.stringify((D()._edgeKeys(dhost) || []).slice().sort())
+          === JSON.stringify(wantEdges));
+    /* Negative control: the same comparison against a set with one edge
+       removed has to fail, or the check above could not have failed. */
+    const oneShort = wantEdges.slice(1);
+    check('NEGATIVE CONTROL: one edge short is told apart',
+          wantEdges.length === 0
+          || JSON.stringify(drawnEdges) !== JSON.stringify(oneShort));
+    const greyNodes = P.region_order.filter(fullGrey);
+    check('no edge touches a region grey in every recording',
+          drawnEdges.every((k) => k.split('|').every((r) => greyNodes.indexOf(r) < 0)));
+
+    /* ---------------------------------------------------------------- */
+    head('it says what it is made of');
+    const links = $$('.dr-host .dr-link');
+    const pinned = links.map((a) => a.dataset.ref + '@' + a.dataset.vid).sort();
+    const chosen = sides.left.concat(sides.right)
+      .map((m) => m.id + '@' + m.version_id).sort();
+    check('the header links to exactly the circuit versions compared',
+          JSON.stringify(pinned) === JSON.stringify(chosen),
+          pinned.length + ' links vs ' + chosen.length);
+    check('the method is stated on the result',
+          /DerSimonian|random/i.test(($('.dr-host .dr-method') || {}).textContent || ''),
+          ($('.dr-host .dr-method') || {}).textContent);
+    const first = cells[0];
+    first.click();
+    await sleep(150);
+    const rows = $$('.dr-host .dr-detail .dr-members tbody tr');
+    check('a clicked cell shows the recordings behind both sides',
+          $$('.dr-host .dr-detail .dr-dside').length === 2 && rows.length >= 2);
+
+    /* ---------------------------------------------------------------- */
+    head('Results draws the same drift');
+    ev('setView("results")');
+    await sleep(400);
+    val('BARRY.artifacts.open(' + JSON.stringify(meta.artifact_id) + ')');
+    await untilN(() => doc().querySelector('#view-results .dr-view .dr-val')
+                    || $$('.dr-view').some((v) => v !== dhost && v.querySelector('.dr-val')), 150);
+    const rview = $$('.dr-view').find((v) => v !== dhost && v.isConnected
+                                           && v.querySelector('.dr-val'));
+    check('the Results viewer draws it', !!rview);
+    if (rview) {
+      layout(rview, 'Results');
+      const rk = new Set(Array.from(rview.querySelectorAll('.dr-val'))
+        .map((c) => c.dataset.key + ':' + c.dataset.sig));
+      const pk = new Set(want.map((k) => k + ':' + sigOf(panel[k].q)));
+      check('  the same cells with the same outlines as the panel',
+            rk.size === pk.size && [...pk].every((x) => rk.has(x)),
+            rk.size + ' vs ' + pk.size);
+      const rl = Array.from(rview.querySelectorAll('.dr-link'))
+        .map((a) => a.dataset.ref + '@' + a.dataset.vid).sort();
+      check('  and its inputs link to the same circuit versions',
+            JSON.stringify(rl) === JSON.stringify(chosen));
+    }
+
+    /* ---------------------------------------------------------------- */
+    head('"Use in Drift" from Results');
+    // `actionsFor` returns the ids already.
+    const acts = val('(BARRY.artifacts.actionsFor ? BARRY.artifacts.actionsFor("circuit") : [])');
+    check('circuits in Results carry the action', (acts || []).indexOf('use-in-drift') >= 0,
+          JSON.stringify(acts));
+    ev('window.barryDrift._clear()');
+    const rec = await (await fetch('/api/artifacts/' + sides.right[0].id)).json();
+    win().__rec = rec.artifact;
+    ev('window.barryDrift.useInDrift(window.__rec, window.__rec.current)');
+    await untilN(() => $('.dr-use'), 50);
+    check('it asks which group', !!$('.dr-use .dr-use-seg'));
+    $$('.dr-use .dr-use-seg button').find((b) => b.dataset.side === 'right').click();
+    await sleep(50);
+    $('.dr-use [data-go]').click();
+    await sleep(500);
+    const right = val('window.barryDrift.state.right');
+    check('the circuit lands in the chosen group, this exact version',
+          right.length === 1 && right[0].id === sides.right[0].id
+          && right[0].version_id === sides.right[0].version_id,
+          JSON.stringify(right.map((m) => m.id + '@' + m.version_id)));
+    check('and the Drift step is what is showing',
+          val('BARRY.views.toolkit.tool()') === 'drift');
+    ev('window.barryDrift._clear()');
+
+    /* ---------------------------------------------------------------- */
+    head('nothing broke on the way');
+    check('no uncaught errors', errs.length === 0, errs.join(' | '));
+  } finally {
+    /* Drifts first: they cite the circuits, and a cited circuit version
+       cannot be deleted. */
+    const e1 = made.drifts.length
+      ? await post('/api/artifacts/_test/erase', { ids: made.drifts }) : { ok: true };
+    const e2 = made.circuits.length
+      ? await post('/api/artifacts/_test/erase', { ids: made.circuits }) : { ok: true };
+    const left = [];
+    for (const id of made.drifts.concat(made.circuits)) {
+      const r = await fetch('/api/artifacts/' + id);
+      if (r.status === 200) {
+        const j = await r.json();
+        if (j.ok && j.artifact && !j.artifact.deleted) left.push(id);
+      }
+    }
+    check('everything this made is erased (' + made.drifts.length + ' drift, '
+          + made.circuits.length + ' circuits)',
+          e1.ok && e2.ok && left.length === 0,
+          JSON.stringify({ e1: e1.refused, e2: e2.refused, left: left }));
+  }
+
+  say('note', '');
+  say('note', out.querySelectorAll('.ok').length + ' passed, ' + bad + ' failed');
+  document.title = 'drift: ' + out.querySelectorAll('.ok').length
+                 + ' pass ' + bad + ' fail';
+} catch (e) {
+  say('bad', 'CRASH ' + (e && e.message));
+  say('note', String((e && e.stack) || ''));
+  document.title = 'drift CRASH';
+} })();
+</script>

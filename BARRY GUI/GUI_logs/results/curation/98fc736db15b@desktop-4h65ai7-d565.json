@@ -3,19 +3,23 @@
     "key": "2026-09-09T21:48:49.857877+00:00",
     "rel": "2026-09-09T21:48:49.857877+00:00",
     "starred": "2026-09-09T21:48:49.857877+00:00",
-    "updated": "2026-09-09T21:48:49.857877+00:00"
+    "title": "2026-09-25T18:34:41.207538+00:00",
+    "updated": "2026-09-25T18:34:41.207538+00:00"
   },
   "_shard": {
-    "at": "2026-09-09T21:48:49.857877+00:00",
+    "at": "2026-09-25T18:34:41.207538+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "key": "toolkit/bad-channels_all_20260909_174740.csv",
   "rel": "ToolKit/bad-channels_all_20260909_174740.csv",
   "starred": false,
+  "title": "bad-channels_all_20260909_174740",
   "updated": {
-    "at": "2026-09-09T17:48:49-04:00",
-    "email": "Shahriar.Akhavan-Tafti@uvm.edu",
+    "app_version": "2026.09.25.2",
+    "at": "2026-09-25T14:34:41-04:00",
+    "commit": "4f8e8ca",
+    "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
     "os": "Windows",

@@ -1,0 +1,271 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>spotter: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:660px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}.hd{color:#ffb81c}
+iframe{position:fixed;left:660px;top:0;right:0;bottom:0;width:calc(100vw - 660px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Spotter end to end on a real recording: the mode contract, the keyboard,
+   auto-advance, undo, and the two surfaces that carry context.
+
+   IT MAKES ITS OWN SET AND DELETES IT AGAIN. It never touches one that is
+   already there: an earlier harness elsewhere in this folder took the first
+   `.cur-set` it found, read somebody else's progress and PRESSED KEYS INTO
+   SOMEBODY ELSE'S SET -- the decisions had to be unpicked by hand. So this
+   banks a throwaway entry of its own, curates that, and removes both on the
+   way out. */
+const L = document.getElementById('log');
+let fails = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n);
+  L.scrollTop = L.scrollHeight; };
+const check = (w, ok, note) => { if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + w + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const head = (t) => { say(''); say('=== ' + t + ' ===', 'hd'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 12000)) {
+    try { if (fn()) return true; } catch (e) {}
+    await sleep(90);
+  }
+  return false;
+}
+const post = (u, b) => fetch(u, { method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(b) }).then((r) => r.json());
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('BARRY.state.catalog'),
+              30000);
+  const W = frame.contentWindow, D = () => frame.contentDocument;
+  const $ = (s) => D().querySelector(s);
+  const $$ = (s) => Array.from(D().querySelectorAll(s));
+  const key = (k) => {
+    const e = new W.KeyboardEvent('keydown', { key: k, bubbles: true,
+                                               cancelable: true });
+    D().dispatchEvent(e);
+  };
+
+  let entryId = null, gid = null;
+  try {
+
+  /* ---------------------------------------------------------------- */
+  head('a set of our own');
+
+  const reg = await (await fetch('/api/registry?backfill=1')).json();
+  const rows = (reg.tree || []).flatMap((p) => p.mice.flatMap((m) => m.sessions));
+  /* A recording with NO IED set on it already. One set per (recording,
+     kind) is the server's rule, so banking against a recording that has one
+     means entering asks "replace it?" -- a modal nobody headless answers, and
+     the run hung there after its first check. Worse, answering yes would
+     replace somebody's set and the `finally` below would delete it. The
+     curate harness keeps one of its own on the first reachable recording,
+     which is exactly the one this used to pick. */
+  let target = null;
+  for (const s of rows) {
+    if (!s.reachable || !(s.here || []).length) continue;
+    const r = await fetch('/api/curation/' + s.gid + '/ied');
+    const j = await r.json().catch(() => ({}));
+    if (!j.set) { target = s; break; }
+  }
+  if (!target) {
+    say('no reachable recording without an IED set; nothing to curate', 'bad');
+    fails++;
+    throw new Error('no fixture');
+  }
+  gid = target.gid;
+  say('  note  ' + (target.label || gid), 'note');
+
+  // Ten stamps spread across the recording, at times nothing else uses.
+  const dur = Math.max(20, Number(target.duration_s) || 100);
+  const evts = [];
+  for (let i = 0; i < 10; i++) {
+    evts.push({ start: Math.round((dur * (i + 1) / 12) * 1000) / 1000 + 0.0007,
+                channel: 2, amplitude: 300 + i });
+  }
+  const added = await post('/api/bank/add', {
+    gid, project: target.project, mouse: target.mouse,
+    session: target.session, session_label: target.label,
+    session_path: target.here[0],
+    type: 'ied', type_name: 'IED',
+    name: 'spotter harness — delete me',
+    note: 'Made by web/_dev/spotter.html. Deleted on the way out.',
+    events: evts,
+    pipeline: 'Doppler (line length)', detector: 'LLspikedetector',
+    time_basis: 'recording', added_by: 'spotter harness',
+    parameters: { llw_s: 0.04, prc: 99.9, stamp: 'peak' },
+  });
+  entryId = (added.entry || {}).id || added.id;
+  check('a throwaway entry was banked', !!entryId, JSON.stringify(added).slice(0, 200));
+
+  /* ---------------------------------------------------------------- */
+  head('entering');
+
+  const ok = await ev('BARRY.spotter.enter(' + JSON.stringify(gid) + ','
+                      + JSON.stringify(entryId) + ')');
+  await until(() => ev('BARRY.spotter.active') === true, 30000);
+  check('enter() put the mode on', ev('BARRY.spotter.active') === true);
+  check('the view moved to Xplorefinder',
+        ev('BARRY.state.view') === 'xplore', ev('BARRY.state.view'));
+  await until(() => $('#spotBar'), 15000);
+  check('the toolbar is up', !!$('#spotBar'));
+  check('the whole-recording raster is up', !!$('#spotRaster'));
+  check('state says where it is',
+        ev('JSON.stringify(BARRY.spotter.state).indexOf("total")') > 0,
+        ev('JSON.stringify(BARRY.spotter.state)'));
+
+  /* One mode at a time. Entering on top of Checkup left two toolbars
+     stacked and two sets of key handlers fighting over the same presses. */
+  check('Checkup is not also active',
+        ev('!(BARRY.curate && BARRY.curate.active)'));
+
+  /* ---------------------------------------------------------------- */
+  head('the four buttons and their keys');
+
+  const cats = $$('#spotBar .cur-cat');
+  check('four categories', cats.length === 4, String(cats.length));
+  const kbds = $$('#spotBar .cur-cat kbd').map((k) => k.textContent);
+  check('labelled 1 2 3 4, as the mockup has them',
+        kbds.join(',') === '1,2,3,4', kbds.join(','));
+  check('a computed category gets no button',
+        cats.length === ev('BARRY.spotter._kindLabels '
+                           + '? BARRY.spotter._kindLabels().filter('
+                           + 'function(l){return !l.computed;}).length : 4'));
+
+  /* ---------------------------------------------------------------- */
+  head('labelling, and auto-advance');
+
+  const at0 = ev('BARRY.spotter.state.index');
+  key('1');
+  await until(() => ev('BARRY.spotter.state.index') !== at0, 8000);
+  check('pressing 1 moves on by itself',
+        ev('BARRY.spotter.state.index') !== at0,
+        at0 + ' -> ' + ev('BARRY.spotter.state.index'));
+  await sleep(600);
+  const labelled = ev('BARRY.spotter.events().filter('
+                      + 'function(e){return e.label==="solid";}).length');
+  check('and the one behind you is Solid', labelled === 1, String(labelled));
+
+  key('2'); await sleep(500);
+  key('3'); await sleep(500);
+  const tally = ev('JSON.stringify(BARRY.spotter.events().reduce('
+                   + 'function(a,e){if(e.label)a[e.label]=(a[e.label]||0)+1;'
+                   + 'return a;},{}))');
+  check('2 and 3 land as sputter and garbage',
+        /"sputter":1/.test(tally) && /"garbage":1/.test(tally), tally);
+
+  /* NAVIGATION BEATS THE VOCABULARY. `p` is "previous" and was also the
+     obvious mnemonic for sputter; pressing it to go back used to label. */
+  const beforeP = ev('BARRY.spotter.state.index');
+  key('p');
+  await sleep(400);
+  check('p goes back rather than labelling',
+        ev('BARRY.spotter.state.index') <= beforeP,
+        beforeP + ' -> ' + ev('BARRY.spotter.state.index'));
+  const stillThree = ev('BARRY.spotter.events().filter('
+                        + 'function(e){return !!e.label;}).length');
+  check('and nothing new was decided by it', stillThree === 3,
+        String(stillThree));
+
+  /* ---------------------------------------------------------------- */
+  head('undo goes back a decision AND back a candidate');
+
+  const beforeU = ev('BARRY.spotter.events().filter('
+                     + 'function(e){return !!e.label;}).length');
+  key('z');
+  await sleep(700);
+  const afterU = ev('BARRY.spotter.events().filter('
+                    + 'function(e){return !!e.label;}).length');
+  check('one fewer decision', afterU === beforeU - 1,
+        beforeU + ' -> ' + afterU);
+
+  /* ---------------------------------------------------------------- */
+  head('the passes');
+
+  const segs = $$('#spotBar .seg:not(.spot-light) button').map((b) => b.textContent);
+  check('Undecided / Flagged / All', segs.length === 3, segs.join(' | '));
+  check('it opened on Undecided',
+        ev('BARRY.spotter.review') === 'left', ev('BARRY.spotter.review'));
+
+  /* ---------------------------------------------------------------- */
+  head('the channel tint');
+
+  /* Lit, Faint, Off -- and Off has to mean nothing is drawn, not a tint at
+     zero alpha that still sits in the list and still gets hit-tested. */
+  const lightBtns = $$('#spotBar .spot-light button');
+  check('Lit / Faint / Off', lightBtns.map((b) => b.textContent).join(',')
+        === 'Lit,Faint,Off', lightBtns.map((b) => b.textContent).join(','));
+  const offBtn = lightBtns.find((b) => b.textContent === 'Off');
+  const litBtn = lightBtns.find((b) => b.textContent === 'Lit');
+  if (offBtn && litBtn) {
+    litBtn.click(); await sleep(200);
+    const lit = ev('JSON.stringify(BARRY.views.xplore.channelLines())');
+    check('lit channels are marks, not draggable landmarks',
+          lit === '[]' || JSON.parse(lit).every((l) => l.style === 'mark'),
+          lit.slice(0, 120));
+    $$('#spotBar .spot-light button').find((b) => b.textContent === 'Off')
+      .click();
+    await sleep(200);
+    check('Off draws nothing at all',
+          ev('BARRY.views.xplore.channelLines().length') === 0);
+    // Back to what it was, so the next person's preference is theirs.
+    $$('#spotBar .spot-light button').find((b) => b.textContent === 'Lit')
+      .click();
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('what the other windows are told');
+
+  const marks = ev('JSON.stringify(BARRY.views.xplore.current()'
+                   + '.curationMarks || null)');
+  check('the session carries the marks, which is how the aid window draws',
+        marks !== 'null' && /"kind":"ied"/.test(marks), marks.slice(0, 120));
+  check('every label has a colour in them',
+        /"color"/.test(marks));
+
+  /* ---------------------------------------------------------------- */
+  head('leaving');
+
+  ev('BARRY.spotter.exit()');
+  await sleep(500);
+  check('the mode is off', ev('BARRY.spotter.active') === false);
+  check('the toolbar is gone', !$('#spotBar'));
+  check('the raster is gone', !$('#spotRaster'));
+  check('the marks are gone from the session',
+        ev('!(BARRY.views.xplore.current() || {}).curationMarks'));
+
+  } catch (e) {
+    say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+    fails++;
+  } finally {
+    /* Take ours away again, both halves. A harness that leaves a set behind
+       is one somebody finds next week and tries to curate. */
+    try { ev('BARRY.spotter.active && BARRY.spotter.exit()'); } catch (e) {}
+    if (gid) {
+      try { await post('/api/curation/' + gid + '/ied/delete', {}); }
+      catch (e) { say('  note  could not remove the set', 'note'); }
+    }
+    if (entryId) {
+      try { await post('/api/bank/' + entryId + '/delete', {}); }
+      catch (e) { say('  note  could not remove the entry', 'note'); }
+    }
+    say('  note  the harness set and entry were removed', 'note');
+  }
+
+  say('');
+  say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
+  document.title = fails ? 'spotter: ' + fails + ' FAILED' : 'spotter: passed';
+})().catch((e) => {
+  say('CRASH ' + e.message + '\n' + e.stack, 'bad');
+  document.title = 'spotter CRASH';
+});
+</script></body></html>

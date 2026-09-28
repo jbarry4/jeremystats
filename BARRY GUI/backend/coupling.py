@@ -444,7 +444,7 @@ def _curve(x, y, x_unit, y_unit, dp=6):
 
 def metrics(a, b, fs=ANALYSIS_FS, notch_hz=NOTCH_HZ, low=LOW_FREQ,
             high=HIGH_FREQ, max_lag_s=MAX_LAG_SEC, curves=True,
-            harmonics=NOTCH_HARMONICS):
+            harmonics=NOTCH_HARMONICS, summary_hz=SUMMARY_HZ):
     """All three correlations between two signals, with their curves.
 
     `a` and `b` are one window of two regions, already at `fs`. Each method
@@ -479,20 +479,21 @@ def metrics(a, b, fs=ANALYSIS_FS, notch_hz=NOTCH_HZ, low=LOW_FREQ,
         },
         "params": {"low": float(low), "high": float(high),
                    "max_lag_s": float(max_lag_s),
-                   "summary_hz": SUMMARY_HZ,
+                   "summary_hz": float(summary_hz),
                    "nperseg": WELCH_NPERSEG, "noverlap": WELCH_NOVERLAP,
                    "nfft": WELCH_NFFT},
     }
 
     # coherence -----------------------------------------------------------
     f, cxy = coherence_curve(a, b, fs)
-    i = int(np.argmin(np.abs(f - SUMMARY_HZ)))
+    i = int(np.argmin(np.abs(f - float(summary_hz))))
     out["coherence"] = {
         "summary": {
             "value": round(float(cxy[i]), 6),
             "x": round(float(f[i]), 4),
             "x_unit": "Hz",
-            "what": "magnitude-squared coherence at %g Hz" % SUMMARY_HZ,
+            "what": "magnitude-squared coherence at %g Hz"
+                    % float(summary_hz),
         },
         "curve": _curve(f, cxy, "Hz", "coherence") if curves else None,
     }
@@ -599,7 +600,54 @@ def excluded_for(event):
     either, so callers can pass this straight through -- an older entry
     banked before the windows were separated keeps working and simply
     excludes its channels everywhere, which is what it meant.
+
+    MINUS `kept`. The third field, in the same two shapes: blocks somebody
+    looked at on the traces and put back in against the measurement. The
+    measurement still says the amplifier touched its rail there, and it is
+    kept in `clipped` because it is still true; `kept` is the judgement that
+    it does not matter. So a channel is left out of a window when it was
+    clipped or excluded there AND nobody kept it. An event with no `kept`
+    gives exactly the union it always gave.
     """
+    base = _excluded_union(event)
+    kept = (event or {}).get("kept")
+    if not kept:
+        return base
+    k_per, k_flat = _csc_shape(kept)
+    if isinstance(base, list) and not k_per:
+        return sorted(set(base) - k_flat)
+    # A per-window keep on a flat exclusion: the flat exclusion meant every
+    # window, so it is written out per window before anything is taken off.
+    names = list(CLIP_WINDOW_NAMES) + list(TRANSITION_WINDOW_NAMES)
+    per = ({w: set(base) for w in names} if isinstance(base, list)
+           else {w: set(v) for w, v in base.items()})
+    for w in list(per):
+        per[w] -= k_flat | k_per.get(w, set())
+    return {w: sorted(v) for w, v in per.items()}
+
+
+def _csc_shape(got):
+    """({window: set}, flat set) from either shape a channel list takes."""
+    per, flat = {}, set()
+    if isinstance(got, dict):
+        for wname, chans in got.items():
+            have = per.setdefault(str(wname), set())
+            for c in (chans or []):
+                try:
+                    have.add(int(c))
+                except (TypeError, ValueError):
+                    continue
+        return per, flat
+    for c in (got or []):
+        try:
+            flat.add(int(c))
+        except (TypeError, ValueError):
+            continue
+    return per, flat
+
+
+def _excluded_union(event):
+    """`clipped` union `excluded`, the shape `excluded_for` always returned."""
     ev = event or {}
     per, flat = {}, set()
     for key in ("clipped", "excluded"):
@@ -624,6 +672,12 @@ def excluded_for(event):
     for wname in list(per) or CLIP_WINDOW_NAMES:
         per[wname] |= flat
     for wname in CLIP_WINDOW_NAMES:
+        per.setdefault(wname, set(flat))
+    # The transition windows too, and for the same reason: a channel
+    # somebody dropped for the whole event is dropped at its boundaries as
+    # well. Without these keys a flat exclusion reached the state windows
+    # and silently missed the transition ones.
+    for wname in TRANSITION_WINDOW_NAMES:
         per.setdefault(wname, set(flat))
     return {k: sorted(v) for k, v in per.items()}
 
@@ -764,6 +818,25 @@ def _channel_windows(path, windows, origin_us):
 #: The four window names, taken from Spark so there is one source for them.
 CLIP_WINDOW_NAMES = tuple(spark.CLIP_WINDOWS)
 
+#: The three transition windows, from the same place.
+TRANSITION_WINDOW_NAMES = tuple(spark.TRANSITION_WINDOWS)
+WINDOW_KINDS = tuple(spark.KINDS)
+
+
+def windows_of(kind="state"):
+    """The window names of one kind of analysis, in order.
+
+    State is the four chunks of a pair; transition is the three boundaries.
+    Anything else is refused rather than defaulted, because a run made in
+    the wrong kind of window is a matrix labelled with the wrong question.
+    """
+    if kind == "state":
+        return CLIP_WINDOW_NAMES
+    if kind == "transition":
+        return TRANSITION_WINDOW_NAMES
+    raise CouplingError("There is no %r kind of analysis; it is state or "
+                        "transition." % (kind,))
+
 
 def _exclude_map(exclude, windows):
     """{window name: set of CSC} from either shape the caller may pass.
@@ -772,8 +845,16 @@ def _exclude_map(exclude, windows):
     every window; a dict names the windows one at a time. Both are real:
     somebody dropping a whole channel means the first, and the clipping
     measurement means the second.
+
+    `windows` may be the `(name, t0, t1)` triples the signal engine works
+    in, or plain window names. Both, because `w[0]` on a triple is the
+    name and `w[0]` on the string "pre" is "p" -- so a caller holding
+    names got a map keyed by first letters, every lookup missed, and the
+    exclusion silently did nothing while the result still looked
+    complete. Caught by a smoke test that marked four channels clipped
+    and watched the picker choose one of them anyway.
     """
-    names = [w[0] for w in windows]
+    names = [w if isinstance(w, str) else w[0] for w in windows]
     if isinstance(exclude, dict):
         return {n: {int(c) for c in (exclude.get(n) or [])} for n in names}
     flat = {int(c) for c in (exclude or [])}
@@ -781,14 +862,28 @@ def _exclude_map(exclude, windows):
 
 
 def _signals_for_windows(folder, chan_map, windows, exclude=(),
-                         target_fs=ANALYSIS_FS, progress=None):
+                         target_fs=ANALYSIS_FS, progress=None, blocked=None):
     """Every region's signal in every window: the shared engine.
 
     `region_signals` is one window of this and `pair_connectivity` is four.
     They share it because the cost is opening 32 files, and doing that once
     per window rather than once per pair is four times the work for the same
     answer.
+
+    ONE WIRE PER REGION PER WINDOW: the lowest-numbered channel in the region
+    that has a signal there -- not marked bad, not clipped, and readable.
+    See "Channel sanity" below for why one wire rather than an average. The
+    rule lives HERE, in the engine, and not only in `channel_sanity`,
+    because the wire a result reports has to be the wire it was computed
+    from; a preview that picks one way and an engine that picks another is
+    a label on the wrong number.
+
+    `blocked` is `{region name: sentence}` for regions that must not be
+    computed at all, whatever their wires look like -- histology, where the
+    probe is not in the region, or is in one nobody has checked. Those are
+    refused with that sentence and their files are not opened.
     """
+    blocked = dict(blocked or {})
     # Per window, not per event.
     #
     # A cue pair is analysed in four windows and a channel can be ruined in
@@ -805,7 +900,8 @@ def _signals_for_windows(folder, chan_map, windows, exclude=(),
             "No .ncs file in that folder could be read, so there is no clock "
             "to place these windows against.")
 
-    wanted = sorted({int(c) for csc in chan_map.values() for c in csc})
+    wanted = sorted({int(c) for name, csc in chan_map.items()
+                     if name not in blocked for c in csc})
     # Why a channel is unusable, keyed by (channel, window) and not by
     # channel: a wire can be fine in `pre` and off the end of the file in
     # `post`, and one reason per channel would put the second window's
@@ -852,10 +948,10 @@ def _signals_for_windows(folder, chan_map, windows, exclude=(),
         raise CouplingError("None of the channels these regions need could be "
                             "read from that folder.")
     if len(fs_seen) > 1:
-        # Regions are averaged across wires and then correlated against each
-        # other. Two channels at two rates are two different time axes, and
-        # averaging them is nonsense before anything else gets a chance to
-        # be wrong.
+        # Two regions are correlated against each other on one time axis.
+        # Two channels at two rates are two different time axes, and a
+        # correlation between them is nonsense before anything else gets a
+        # chance to be wrong.
         raise CouplingError(
             "The channels in this recording do not share a sampling rate "
             "(%s Hz). There is no single time axis to correlate on."
@@ -866,9 +962,18 @@ def _signals_for_windows(folder, chan_map, windows, exclude=(),
     for wname, t0, t1 in windows:
         regions = {}
         for name, csc in chan_map.items():
+            if name in blocked:
+                regions[name] = {
+                    "signal": None, "channel": None, "channels": [],
+                    "dropped": [], "spare": [], "n": 0, "usable": False,
+                    "blocked": "histology", "why": blocked[name],
+                    "of": len(csc),
+                }
+                continue
             used, dropped, stack = [], [], []
-            for num in csc:
-                num = int(num)
+            # Ascending, because "lowest-numbered" is the rule and the
+            # montage's own order is only ascending by coincidence.
+            for num in sorted(int(c) for c in csc):
                 arr = (traces.get(num) or {}).get(wname)
                 if arr is None:
                     dropped.append({"csc": num,
@@ -884,25 +989,29 @@ def _signals_for_windows(folder, chan_map, windows, exclude=(),
                 # with nothing left in it has not been measured, and a
                 # number here would be indistinguishable from one that was.
                 regions[name] = {
-                    "signal": None, "channels": [], "dropped": dropped,
-                    "n": 0, "usable": False,
+                    "signal": None, "channel": None, "channels": [],
+                    "dropped": dropped, "spare": [], "n": 0,
+                    "usable": False, "blocked": "wires",
                     "why": ("none of %s's %d channels are usable in this "
                             "window" % (name, len(csc))),
+                    "of": len(csc),
                 }
                 continue
-            n_min = min(a.size for a in stack)
-            mean = np.mean([a[:n_min] for a in stack], axis=0)
-            # Averaged at the source rate and decimated once, rather than
-            # decimated per wire and averaged: decimation is linear, so the
-            # two give the same answer, and a four-wire region costs one
-            # filter pass instead of four.
-            sig, fs_out = decimate_to(mean, source_fs, target_fs)
+            # The lowest-numbered wire with a signal. `used` is ascending,
+            # so it is the first. The rest are recorded as spares -- not
+            # used, but there, which is the difference between a region
+            # measured on its last wire and one with three to spare.
+            chosen = used[0]
+            sig, fs_out = decimate_to(stack[0], source_fs, target_fs)
             regions[name] = {
-                "signal": sig, "channels": used, "dropped": dropped,
-                "n": int(sig.size), "usable": True, "why": None,
-                # Said out loud so a reader can see when a region was
-                # averaged over fewer wires than the montage gives it.
-                "of": len(csc),
+                "signal": sig, "channel": chosen, "channels": [chosen],
+                "spare": used[1:],
+                # Only the wires BELOW the chosen one explain the choice;
+                # a clipped wire above it was never going to be picked.
+                "passed_over": [d for d in dropped if d["csc"] < chosen],
+                "dropped": dropped,
+                "n": int(sig.size), "usable": True, "blocked": None,
+                "why": None, "of": len(csc),
             }
         out[wname] = {
             "t0": float(t0), "t1": float(t1),
@@ -910,6 +1019,495 @@ def _signals_for_windows(folder, chan_map, windows, exclude=(),
             "regions": regions,
         }
     return out
+
+
+# --------------------------------------------------------------------------
+# Channel sanity: which wire a region is actually measured on
+# --------------------------------------------------------------------------
+#
+# A region is four channels, or two, and in this data a good fraction of
+# them are at the amplifier's rail for part of an event. Two ways to turn
+# that into one signal, and they are not equivalent:
+#
+#   average       mean of whatever wires survived. More signal, but the
+#                 number of wires changes between windows and between
+#                 recordings, so `pre` and `cue1` can be an average of four
+#                 and an average of one and nothing in the output says so.
+#                 A correlation computed on an average of four wires is not
+#                 the same measurement as one computed on a single wire,
+#                 and comparing them across windows is comparing two
+#                 different measurements.
+#
+#   representative  one wire, chosen by a fixed rule, or none. Every window
+#                 of every recording is then the same KIND of measurement,
+#                 and where no wire qualifies the answer is "blocked", not
+#                 a quietly thinner average.
+#
+# `representative` is the default, for both reasons above and because it is
+# what the cluster pipeline did -- "12 representative channels, one per
+# region" -- so the matrices this produces can be laid beside those.
+#
+# The rule is: the LOWEST-NUMBERED channel in the region that is neither
+# marked bad for the recording nor clipped in this window. Lowest-numbered
+# rather than best-looking, because "best" would be chosen by a statistic
+# computed on the same data the correlation is computed on, and a wire
+# picked for looking clean is a wire picked for its noise.
+
+CHANNEL_POLICIES = ("representative", "average")
+DEFAULT_CHANNEL_POLICY = "representative"
+
+BLOCKED_BAD = "bad"
+BLOCKED_CLIPPED = "clipped"
+BLOCKED_ABSENT = "absent"
+BLOCKED_HISTOLOGY = "histology"
+
+
+def representative(csc, bad=(), clipped=(), present=None):
+    """The one channel a region is measured on, or None.
+
+    `csc` is the montage's channels for the region, in montage order.
+    `bad` is marked bad for the whole recording; `clipped` is what the
+    amplifier saturated on in THIS window; `present` (optional) is the
+    channels the recording actually has, so a montage that names 32 wires
+    on a recording that has 16 does not pick one that is not there.
+
+    Returns `(channel_or_None, why)`, where `why` is a dict of what each
+    channel was rejected for -- kept even on success, because "we used
+    CSC 6 because 5 clipped" is the sentence somebody needs when two
+    windows of one region disagree.
+    """
+    bad = {int(c) for c in (bad or [])}
+    clip = {int(c) for c in (clipped or [])}
+    have = None if present is None else {int(c) for c in present}
+    rejected, chosen = {}, None
+    for num in sorted(int(c) for c in (csc or [])):
+        if have is not None and num not in have:
+            rejected[num] = BLOCKED_ABSENT
+            continue
+        if num in bad:
+            rejected[num] = BLOCKED_BAD
+            continue
+        if num in clip:
+            rejected[num] = BLOCKED_CLIPPED
+            continue
+        if chosen is None:
+            chosen = num
+    return chosen, rejected
+
+
+def _blocked_why(region, rejected, n):
+    """Why a region has no usable wire in this window, in words.
+
+    Names the reason for every wire rather than giving a count, because
+    "all four clipped" and "two are bad and two clipped" are different
+    problems -- the first is this event, the second is the recording.
+    """
+    if not n:
+        return ("%s has no channels on this recording at all." % region)
+    kinds = {}
+    for num, why in rejected.items():
+        kinds.setdefault(why, []).append(num)
+    say = []
+    order = (BLOCKED_CLIPPED, BLOCKED_BAD, BLOCKED_ABSENT)
+    words = {
+        BLOCKED_CLIPPED: "clipped in this window",
+        BLOCKED_BAD: "marked bad for the whole recording",
+        BLOCKED_ABSENT: "not present on this recording",
+    }
+    for kind in order:
+        got = sorted(kinds.get(kind) or [])
+        if got:
+            say.append("CSC " + ", ".join(str(c) for c in got)
+                       + " " + ("is " if len(got) == 1 else "are ")
+                       + words[kind])
+    return ("%s is blocked here: %s. Nothing is computed for it in this "
+            "window, and the cells in its row and column are blank rather "
+            "than zero." % (region, "; ".join(say)))
+
+
+def channel_sanity(regions, bad=(), clipped_by_window=None,
+                   windows=None, present=None, probe=None):
+    """One record per region: which wire it is measured on, per window.
+
+    `clipped_by_window` is `{window: [CSC, ...]}` -- what `excluded_for`
+    returns for a banked event, or `spark.clipping_for` for a fresh one. A
+    flat list is accepted and means every window, which is what a flat list
+    has always meant here.
+
+    `probe` is `histo.probe_sanity(...)` output, keyed by slot. When it is
+    given, a region whose probe missed is blocked for every window BEFORE
+    any channel is looked at -- there is no point choosing the cleanest
+    wire in a region the probe is not in.
+
+    Returns a list in `regions` order. Each record carries, per window,
+    either the chosen channel or `blocked` with a sentence.
+    """
+    names = tuple(windows or CLIP_WINDOW_NAMES)
+    per = _exclude_map(clipped_by_window or {}, names)
+    by_slot = {p.get("slot"): p for p in (probe or [])}
+
+    out = []
+    for r in (regions or []):
+        if not isinstance(r, dict):
+            raise CouplingError(
+                "A region has to be a dict with its channels; got %r." % (r,))
+        slot = r.get("id")
+        name = r.get("region") or slot
+        csc = [int(c) for c in (r.get("csc") or [])]
+        here = r.get("csc_present")
+        have = present if here is None else here
+
+        hist = by_slot.get(slot)
+        rec = {
+            "slot": slot,
+            "region": name,
+            # The label the matrix draws. Histology decides it when we have
+            # any; otherwise it is the montage's name.
+            "label": (hist or {}).get("label") or name,
+            "channels": csc,
+            "windows": {},
+            "blocked": [],
+            "histology": (hist or {}).get("verdict"),
+        }
+
+        if hist is not None and not hist.get("usable"):
+            for w in names:
+                rec["windows"][w] = {
+                    "channel": None, "blocked": BLOCKED_HISTOLOGY,
+                    "rejected": {}, "why": hist.get("why"),
+                }
+            rec["blocked"] = list(names)
+            out.append(rec)
+            continue
+
+        for w in names:
+            chosen, rejected = representative(
+                csc, bad=bad, clipped=per.get(w) or (), present=have)
+            if chosen is None:
+                rec["windows"][w] = {
+                    "channel": None,
+                    "blocked": (BLOCKED_ABSENT if not csc else
+                                _worst(rejected)),
+                    "rejected": {str(k): v for k, v in rejected.items()},
+                    "why": _blocked_why(rec["label"], rejected, len(csc)),
+                }
+                rec["blocked"].append(w)
+            else:
+                rec["windows"][w] = {
+                    "channel": chosen,
+                    "blocked": None,
+                    "rejected": {str(k): v for k, v in rejected.items()},
+                    "why": _chose_why(rec["label"], chosen, rejected),
+                }
+        out.append(rec)
+    return out
+
+
+def _worst(rejected):
+    """One word for why a region is blocked, when several apply.
+
+    Clipping first: it is the one that is about this event and might be
+    recovered by dropping a window, where a bad channel is a fact about
+    the recording and will be true in every window.
+    """
+    kinds = set(rejected.values())
+    for kind in (BLOCKED_CLIPPED, BLOCKED_BAD, BLOCKED_ABSENT):
+        if kind in kinds:
+            return kind
+    return BLOCKED_CLIPPED
+
+
+def _chose_why(region, chosen, rejected):
+    if not rejected:
+        return ("%s is measured on CSC %d, the lowest-numbered channel it "
+                "has. Nothing was rejected." % (region, chosen))
+    skipped = sorted(k for k in rejected if k < chosen)
+    if not skipped:
+        return ("%s is measured on CSC %d, the lowest-numbered channel it "
+                "has." % (region, chosen))
+    return ("%s is measured on CSC %d: CSC %s %s not usable here, so the "
+            "next one up was taken."
+            % (region, chosen, ", ".join(str(c) for c in skipped),
+               "was" if len(skipped) == 1 else "were"))
+
+
+def blocked_pairs(sanity, window):
+    """The region pairs that cannot be computed in one window, and why.
+
+    A pair is blocked when EITHER side is, and the reason names the side
+    that is blocked -- both, when both are. This is what the matrix draws
+    over a cell instead of a number, so the sentence has to stand alone.
+    """
+    by = {r["region"]: r for r in (sanity or [])}
+    names = [r["region"] for r in (sanity or [])]
+    out = {}
+    for a, b in region_pairs(names):
+        wa = (by[a]["windows"].get(window) or {})
+        wb = (by[b]["windows"].get(window) or {})
+        why = [w.get("why") for w in (wa, wb) if w.get("channel") is None]
+        if why:
+            out[(a, b)] = "  ".join(w for w in why if w)
+    return out
+
+
+# --------------------------------------------------------------------------
+# What somebody may change before a run, and what they may not
+# --------------------------------------------------------------------------
+#
+# Shown and editable in the Coupling panel before anything is computed, so
+# the corners a matrix was made with are a choice somebody made while
+# looking at them rather than a constant in a file. Every one is checked
+# here, on the server, and a value out of range is refused with a sentence
+# -- never clamped, because a run silently made at different corners than
+# the ones on screen is the exact failure these are on screen to prevent.
+#
+# Two are shown and NOT editable, and say why:
+#
+#   analysis rate  the Welch segment is 1000 samples, so at 1000 Hz it is
+#                  one second and the coherence resolution is 0.5 Hz; at
+#                  any other rate both change, and the matrix stops being
+#                  comparable to the cluster's.
+#   channel rule   one wire per region, lowest-numbered usable. Decided,
+#                  and the reason is under "Channel sanity" above.
+
+PARAMS = [
+    {"id": "low", "name": "Band, low edge", "unit": "Hz",
+     "default": LOW_FREQ, "min": 0.5, "max": 200.0, "step": 0.5,
+     "say": "The bottom of the band the two correlations are filtered to. "
+            "Theta is 4 to 12."},
+    {"id": "high", "name": "Band, high edge", "unit": "Hz",
+     "default": HIGH_FREQ, "min": 1.0, "max": 250.0, "step": 0.5,
+     "say": "The top of the band. Must be above the low edge and below "
+            "half the analysis rate."},
+    {"id": "summary_hz", "name": "Coherence read at", "unit": "Hz",
+     "default": SUMMARY_HZ, "min": 0.5, "max": 250.0, "step": 0.5,
+     "say": "Coherence is a curve; the matrix needs one number, so it is "
+            "read at this frequency. It has to sit inside the band, or the "
+            "coherence cell describes a frequency the other two methods "
+            "filtered out."},
+    {"id": "max_lag_ms", "name": "Largest lag", "unit": "ms",
+     "default": MAX_LAG_SEC * 1000.0, "min": 10.0, "max": 2000.0,
+     "step": 10.0,
+     "say": "How far either way the two correlations look for their peak. "
+            "Wider finds more, and a maximum over more lags is larger by "
+            "chance alone."},
+    {"id": "notch_hz", "name": "Mains notch", "unit": "Hz",
+     "default": NOTCH_HZ, "choices": [None, 50.0, 60.0],
+     "say": "Removes mains and its harmonics before correlating. 60 Hz is "
+            "inside the band a 1000 Hz signal covers, and a peak over a "
+            "thousand lags will find it and call it coupling."},
+    {"id": "pad_s", "name": "Baseline either side", "unit": "s",
+     "default": spark.CLIP_PAD_S, "min": 1.0, "max": spark.CLIP_PAD_S,
+     "step": 0.5, "kind": "state",
+     "say": "The length of the pre and post windows. It cannot be longer "
+            "than the windows the clipping was measured over: anything "
+            "past them has never been checked, and a railed stretch there "
+            "would go into the analysis unseen."},
+    # The transition windows' lengths. Bounded by the lengths Spark
+    # measured the transition clipping with, exactly as `pad_s` is bounded
+    # by the baseline it measured -- a shorter window sits inside what was
+    # checked, a longer one reaches into samples nobody looked at.
+    {"id": "before_s", "name": "Before each boundary", "unit": "s",
+     "default": spark.TRANSITION_BEFORE_S, "min": spark.TRANSITION_MIN_S,
+     "max": spark.TRANSITION_MAX_S, "step": 0.1, "kind": "transition",
+     "say": "How far ahead of cue 1 starting, of cue 2 starting, and of cue "
+            "2 ending each transition window begins. It cannot be longer "
+            "than the clipping was measured over."},
+    {"id": "after_s", "name": "After each boundary", "unit": "s",
+     "default": spark.TRANSITION_AFTER_S, "min": spark.TRANSITION_MIN_S,
+     "max": spark.TRANSITION_MAX_S, "step": 0.1, "kind": "transition",
+     "say": "How far past each boundary the transition window runs. Before "
+            "and after together have to make at least a second, the length "
+            "of one coherence segment."},
+    {"id": "analysis_fs", "name": "Analysis rate", "unit": "Hz",
+     "default": ANALYSIS_FS, "fixed": True,
+     "say": "Fixed. The Welch segment is 1000 samples, so at 1000 Hz it is "
+            "one second; at any other rate the coherence resolution changes "
+            "and the result stops being comparable to the cluster's."},
+    {"id": "channel_rule", "name": "Channel per region", "unit": "",
+     "default": "lowest-numbered usable wire", "fixed": True,
+     "say": "One wire per region per window: the lowest-numbered channel "
+            "that is not marked bad and did not clip there. Averaging "
+            "would make each window a different kind of measurement."},
+]
+
+_PARAM_BY_ID = {p["id"]: p for p in PARAMS}
+
+
+def default_params():
+    return {p["id"]: p["default"] for p in PARAMS}
+
+
+def params_for(kind="state"):
+    """The PARAMS a panel shows for one kind of run: the shared ones, and
+    the window lengths of that kind only. A baseline field on a transition
+    run, or a before-the-boundary field on a state one, would be a control
+    that changes nothing."""
+    windows_of(kind)
+    return [p for p in PARAMS if p.get("kind") in (None, kind)]
+
+
+def read_params(body, measured_pad_s=None, kind="state",
+                measured_transition=None):
+    """The run's parameters, from what the panel sent. Refuses, never clamps.
+
+    `measured_pad_s` is the baseline the clipping was measured over for
+    this recording, when the bank says. A longer baseline would read data
+    nobody checked, so it is the ceiling whatever PARAMS says.
+
+    `kind` is "state" or "transition". For a transition run
+    `measured_transition` is `(before_s, after_s)` as the bank says the
+    transition clipping was measured, and each is the ceiling on its own
+    length for the same reason. The baseline bound applies only to a state
+    run, and the transition bounds only to a transition run: each kind
+    reads only its own windows.
+    """
+    windows_of(kind)
+    body = body or {}
+    out = default_params()
+    for pid, spec in _PARAM_BY_ID.items():
+        if pid not in body or spec.get("fixed"):
+            continue
+        raw = body[pid]
+        if "choices" in spec:
+            val = None if raw in (None, "", "off", False) else raw
+            try:
+                val = None if val is None else float(val)
+            except (TypeError, ValueError):
+                raise CouplingError("%s: %r is not one of the choices."
+                                    % (spec["name"], raw))
+            if val not in spec["choices"]:
+                raise CouplingError(
+                    "%s has to be one of %s, not %s."
+                    % (spec["name"],
+                       ", ".join("off" if c is None else "%g" % c
+                                 for c in spec["choices"]), raw))
+            out[pid] = val
+            continue
+        try:
+            val = float(raw)
+        except (TypeError, ValueError):
+            raise CouplingError("%s: %r is not a number." % (spec["name"], raw))
+        if not np.isfinite(val):
+            raise CouplingError("%s has to be a finite number." % spec["name"])
+        lo, hi = spec.get("min"), spec.get("max")
+        if (lo is not None and val < lo) or (hi is not None and val > hi):
+            raise CouplingError("%s has to be between %g and %g %s, not %g."
+                                % (spec["name"], lo, hi, spec["unit"], val))
+        out[pid] = val
+
+    nyq = out["analysis_fs"] / 2.0
+    if not out["low"] < out["high"]:
+        raise CouplingError("The band's low edge (%g Hz) has to be below its "
+                            "high edge (%g Hz)." % (out["low"], out["high"]))
+    if out["high"] >= nyq:
+        raise CouplingError("The band's high edge (%g Hz) has to be below "
+                            "half the analysis rate (%g Hz)."
+                            % (out["high"], nyq))
+    if not out["low"] <= out["summary_hz"] <= out["high"]:
+        raise CouplingError(
+            "Coherence is read at %g Hz, which is outside the %g to %g Hz "
+            "band. The coherence cell would describe a frequency the other "
+            "two methods filtered out; move it inside the band."
+            % (out["summary_hz"], out["low"], out["high"]))
+    if (kind == "state" and measured_pad_s is not None
+            and out["pad_s"] > float(measured_pad_s)):
+        raise CouplingError(
+            "The baseline is %g s either side, but this recording's clipping "
+            "was only measured over %g s. The extra has never been checked; "
+            "make it %g s or less, or re-run the clipping check with a wider "
+            "window." % (out["pad_s"], measured_pad_s, measured_pad_s))
+    if kind == "transition":
+        if out["before_s"] + out["after_s"] < spark.TRANSITION_MIN_TOTAL_S:
+            raise CouplingError(
+                "A transition window of %g s before and %g s after is %g s "
+                "long; coherence is estimated on one-second segments, so it "
+                "has to be at least %g s in all."
+                % (out["before_s"], out["after_s"],
+                   out["before_s"] + out["after_s"],
+                   spark.TRANSITION_MIN_TOTAL_S))
+        if measured_transition is not None:
+            mb, ma = (float(x) for x in measured_transition)
+            for pid, cap, word in (("before_s", mb, "before"),
+                                   ("after_s", ma, "after")):
+                if out[pid] > cap + 1e-9:
+                    raise CouplingError(
+                        "The transition window runs %g s %s each boundary, "
+                        "but this recording's transition clipping was only "
+                        "measured to %g s %s. The extra has never been "
+                        "checked; make it %g s or less, or re-run the "
+                        "clipping check in Spark with a longer window."
+                        % (out[pid], word, cap, word, cap))
+    out["kind"] = kind
+    return out
+
+
+def sanity_from_run(run, probe=None):
+    """What the matrix draws on its axes and blocked cells, built from the
+    run itself.
+
+    Not from `channel_sanity`. That one is the PREVIEW -- what the rule
+    will pick, worked out from the bank before a single file is opened --
+    and the engine can disagree with it for a reason the bank cannot see:
+    a wire whose file will not read. The matrix labels a number, so it
+    takes its labels from the thing that produced the number.
+    """
+    by_slot = {}
+    by_region = {}
+    for rec in (probe or []):
+        by_slot[rec.get("slot")] = rec
+        by_region[rec.get("intended")] = rec
+    names = list(run.get("region_order") or [])
+    wins = run.get("windows") or []
+    out = []
+    for name in names:
+        hist = by_region.get(name) or {}
+        label = hist.get("label") or name
+        rec = {"region": name, "label": label,
+               "histology": hist.get("verdict"),
+               "histology_why": hist.get("why"),
+               "windows": {}}
+        for w in wins:
+            r = (w.get("regions") or {}).get(name) or {}
+            ch = r.get("channel")
+            if ch is not None:
+                over = r.get("passed_over") or []
+                why = ("%s is measured on CSC %d." % (label, ch)
+                       if not over else
+                       "%s is measured on CSC %d: CSC %s %s not usable here "
+                       "(%s), so the next one up was taken."
+                       % (label, ch,
+                          ", ".join(str(d["csc"]) for d in over),
+                          "was" if len(over) == 1 else "were",
+                          "; ".join("%d %s" % (d["csc"], d["why"])
+                                    for d in over)))
+            elif r.get("blocked") == "histology":
+                why = r.get("why")
+            else:
+                gone = r.get("dropped") or []
+                why = ("%s has no usable wire in this window: %s. Nothing "
+                       "is computed for it here, so the cells in its row "
+                       "and column are blank rather than zero."
+                       % (label, "; ".join("CSC %d %s" % (d["csc"], d["why"])
+                                           for d in gone) or "no channels"))
+            rec["windows"][w.get("window")] = {
+                "channel": ch, "spare": r.get("spare") or [],
+                "blocked": r.get("blocked"), "why": why,
+            }
+        out.append(rec)
+
+    blocked = {}
+    n_pairs = len(region_pairs(names))
+    for w in wins:
+        dead = [r["region"] for r in out
+                if (r["windows"].get(w.get("window")) or {}).get("channel")
+                is None]
+        blocked[w.get("window")] = {
+            "n": n_pairs - len(region_pairs([n for n in names
+                                             if n not in dead])),
+            "of": n_pairs, "regions": dead,
+        }
+    return {"channel_sanity": out, "blocked": blocked}
 
 
 def region_signals(folder, channels_by_region, t0, t1, exclude=(),
@@ -955,8 +1553,19 @@ def region_pairs(names):
 def pair_connectivity(folder, pair, regions=None, exclude_by_channel=(),
                       notch_hz=NOTCH_HZ, low=LOW_FREQ, high=HIGH_FREQ,
                       max_lag_s=MAX_LAG_SEC, target_fs=ANALYSIS_FS,
-                      pad_s=spark.CLIP_PAD_S, curves=False, progress=None):
+                      pad_s=spark.CLIP_PAD_S, curves=False, progress=None,
+                      blocked_regions=None, summary_hz=SUMMARY_HZ,
+                      kind="state", before_s=spark.TRANSITION_BEFORE_S,
+                      after_s=spark.TRANSITION_AFTER_S):
     """One cue pair: four windows, 66 region pairs, three methods each.
+
+    `kind="transition"` runs the same thing in the pair's three transition
+    windows instead -- `spark.transition_windows`, `before_s` ahead of each
+    boundary to `after_s` past it. Nothing else changes: one wire per region
+    per window, the same exclusion keyed by window name (the transition
+    windows' clipping is banked under `onset`, `switch` and `offset` in the
+    same dicts), the same histology blocking. `pad_s` means nothing to a
+    transition run and `before_s`/`after_s` nothing to a state one.
 
     `pair` is one of `spark.pair_events`'s pairs -- or a banked event that
     still carries its boundaries. The four windows are `spark.pair_windows`
@@ -966,20 +1575,27 @@ def pair_connectivity(folder, pair, regions=None, exclude_by_channel=(),
     of a window, in the module that found the pair.
 
     `exclude_by_channel` is the CSC numbers this event is not valid on --
-    `excluded_for(event)` for a banked one. They come out of the region
-    averages before the averages are taken, which is the only place taking
-    them out means anything.
+    `excluded_for(event)` for a banked one, plus the recording's bad
+    channels. A region is then measured on its lowest-numbered wire that is
+    not among them, in each window separately.
+
+    `blocked_regions` is `{region name: sentence}` for regions histology
+    rules out. They are refused for every window with that sentence.
 
     Every refusal is kept where it happened: a region pair that could not be
     measured is a row with `why` set and three Nones, not a missing row.
     """
     chan_map = region_map(regions)
-    windows = spark.pair_windows(pair, pad_s)
+    windows_of(kind)
+    if kind == "transition":
+        windows = spark.transition_windows(pair, before_s, after_s)
+    else:
+        windows = spark.pair_windows(pair, pad_s)
     exclude = (exclude_by_channel if isinstance(exclude_by_channel, dict)
                else sorted({int(c) for c in (exclude_by_channel or [])}))
 
     got = _signals_for_windows(folder, chan_map, windows, exclude, target_fs,
-                               progress=progress)
+                               progress=progress, blocked=blocked_regions)
 
     names = list(chan_map.keys())
     pairs_of = region_pairs(names)
@@ -1002,7 +1618,8 @@ def pair_connectivity(folder, pair, regions=None, exclude_by_channel=(),
             try:
                 m = metrics(ra["signal"], rb["signal"], w["fs"],
                             notch_hz=notch_hz, low=low, high=high,
-                            max_lag_s=max_lag_s, curves=curves)
+                            max_lag_s=max_lag_s, curves=curves,
+                            summary_hz=summary_hz)
             except CouplingError as exc:
                 row["why"] = str(exc)
                 for name in METHODS:
@@ -1021,9 +1638,13 @@ def pair_connectivity(folder, pair, regions=None, exclude_by_channel=(),
             "fs": w["fs"], "source_fs": w["source_fs"],
             "n_samples": max((r["n"] for r in w["regions"].values()),
                              default=0),
-            "regions": {name: {"channels": r["channels"], "of": r.get("of"),
-                               "usable": r["usable"], "why": r["why"],
-                               "dropped": r["dropped"]}
+            "regions": {name: {"channel": r.get("channel"),
+                               "channels": r["channels"], "of": r.get("of"),
+                               "spare": r.get("spare") or [],
+                               "passed_over": r.get("passed_over") or [],
+                               "usable": r["usable"],
+                               "blocked": r.get("blocked"),
+                               "why": r["why"], "dropped": r["dropped"]}
                         for name, r in w["regions"].items()},
             "pairs": rows,
             "n_pairs": len(rows),
@@ -1046,11 +1667,17 @@ def pair_connectivity(folder, pair, regions=None, exclude_by_channel=(),
             "analysis_fs": float(target_fs),
             "low": float(low), "high": float(high),
             "max_lag_s": float(max_lag_s),
-            "summary_hz": SUMMARY_HZ,
+            "summary_hz": float(summary_hz),
             "nperseg": WELCH_NPERSEG, "noverlap": WELCH_NOVERLAP,
             "nfft": WELCH_NFFT,
             "methods": list(METHODS),
             "pad_s": float(pad_s),
+            # Which question the windows answer. The lengths only for a
+            # transition run: a state run has no boundary windows, and a
+            # number there would be a claim about windows it never cut.
+            "kind": kind,
+            **({"before_s": float(before_s), "after_s": float(after_s)}
+               if kind == "transition" else {}),
             # Where every one of these came from, carried with the result.
             # Circuit saves a matrix that has to be able to say what made
             # it, and a provenance line assembled later is a provenance line
