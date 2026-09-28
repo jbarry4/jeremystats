@@ -341,6 +341,17 @@ BARRY.panorama = (function () {
     keepFocus(host, () => {
       host.style.opacity = '1';
       host.innerHTML = '';
+      /* Panorama opened straight onto its mode bar, with no header saying
+         what it is or that it is a step of The Lookout. Every step in a
+         bundle gets the same header (constitution section 6), and the
+         number is read from ToolKit rather than typed. */
+      host.appendChild(BARRY.ui.stepHeader({
+        title: 'Panorama',
+        step: BARRY.ui.stepOf('panorama'),
+        blurb: 'The whole recording at once: the spectrogram end to end, '
+             + 'which frequency was dominant and how often, and the power '
+             + 'spectrum over the range you ask for. Saves into Results.',
+      }));
       host.appendChild(modeBar());
       if (mode === 'many') {
         paintBulk(host);

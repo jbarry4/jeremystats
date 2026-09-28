@@ -236,6 +236,24 @@ BARRY.ui = (function () {
      tool is, and "· step 3 of The Dentist" is a different fact about it.
 
      `step` is optional: a tool that is not part of a bundle just omits it. */
+  /* "step 3 of The Dentist", read out of ToolKit's own bundle list.
+
+     Each tool used to type its own. When Root Canal went in between Braces
+     and X-ray, X-ray's header had to be changed from 4 to 5 by hand -- it
+     was, that time. Derived, inserting a step renumbers every header after
+     it, and a tool that is in no bundle simply gets no chip.
+
+     Called at render time, not load time: ToolKit loads after this file. */
+  function stepOf(toolId) {
+    const tk = BARRY.views && BARRY.views.toolkit;
+    const list = (tk && typeof tk.bundles === 'function') ? tk.bundles() : [];
+    for (const b of list) {
+      const i = (b.steps || []).findIndex((s) => s.id === toolId);
+      if (i >= 0) return 'step ' + (i + 1) + ' of ' + b.name;
+    }
+    return null;
+  }
+
   function stepHeader(o) {
     const opt = o || {};
     return el('div', { class: 'step-head' }, [
@@ -337,6 +355,7 @@ BARRY.ui = (function () {
   }
 
   return {
+    stepOf: stepOf,
     stepHeader: stepHeader,
     field: field,
     workbenchCard: workbenchCard,

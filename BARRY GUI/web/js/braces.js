@@ -417,7 +417,7 @@ BARRY.braces = (function () {
 
     box.appendChild(BARRY.ui.stepHeader({
       title: 'Braces',
-      step: 'step 3 of The Dentist',
+      step: BARRY.ui.stepOf('braces'),
       blurb: 'Every stamp onto the peak it belongs to. A ±100 ms window, the '
            + 'DS-filtered magnitude, and one peak per stamp — so a spike '
            + 'that drifted early is not corrected by stealing the next '
