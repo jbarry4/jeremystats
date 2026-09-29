@@ -15,8 +15,10 @@ something broke, the counter-example is named — those are the useful half.
 > exist today; **§6b is the one to read before building a new tool, bundle or
 > Xplorefinder mode**; **§6d** (running — here or on VACC, one or many) and
 > **§6e** (choosing a recording, versions, banking) are the workflow every
-> tool shares. Where a section names a shared component that is still being
-> built, it says so in italics and names the tool to copy until it lands.
+> tool shares. **§10** is speed; **§11** is what the cloud costs and how to
+> spend it -- read it before adding anything that reads or writes Supabase.
+> Where a section names a shared component that is still being built, it
+> says so in italics and names the tool to copy until it lands.
 
 ---
 
@@ -345,9 +347,9 @@ somebody arriving at step 3 learns there are four.
 "step 4 of The Dentist". When Root Canal was inserted between Braces and
 X-ray, X-ray's header had to be edited by hand from 4 to 5 — it was, this
 time. Use `stepOf(toolId)`, which reads the position out of `BUNDLES`, so
-inserting a step renumbers every header after it. *(Being built; The Arc
-already derives its own.)* Incisor and Checkup have no `stepHeader` at all
-and are being brought in.
+inserting a step renumbers every header after it. Every bundle step uses it
+now -- Incisor, Checkup, Braces, Root Canal, X-ray, Doppler, Panorama and
+Braid -- and `_dev/stepof.html` fails any header that types its own.
 
 **A step that is not built yet is shown and disabled, with the reason on it.**
 Leaving it out says the step does not exist. Somebody arriving at Coupling
@@ -426,12 +428,16 @@ list the other four is twenty pairs kept in step by hand, and the sixth mode
 breaks them all again. The rule is therefore a registry, not a habit:
 
 ```js
-BARRY.modes.register('yours', BARRY.yours);   // once, at load
-BARRY.modes.enter('yours', gid);              // exits whatever is active first
+BARRY.modes.register('yours', BARRY.yours);   // once, at load (end of file)
+BARRY.modes.leaveAllBut('yours');             // first thing in your enter()
 ```
 
-*`BARRY.modes` is being built (round 2, see the plan). Until it lands, a new
-mode must exit every mode listed above, and the table is the list.*
+`BARRY.modes` (core.js) is the registry. `leaveAllBut` leaves every other
+active mode, never the caller, and one mode throwing on its way out does not
+stop the rest. Checkup, StrataScope, Spotter, Braid and the Arc's review are
+registered; `_dev/onemode.html` checks all of that. Never list the other
+modes by name -- each mode used to, none listed them all, and entering
+Checkup with Spotter open left both live.
 
 **Resolve the recording, do not assume a path.** Registry rows carry `here`,
 a list of paths reachable from *this* machine — not `path`. Ask for `here[0]`
@@ -528,6 +534,7 @@ is not.
 Supabase egress is counted in **requests, not bytes**. Ask once per entry and
 hold it; do not ask per render. State the cost and the step size before
 anything long runs — Panorama does this and it is the pattern to copy.
+Anything that reads or writes the cloud follows **§11**.
 
 ### Before you call it done
 
@@ -538,6 +545,7 @@ anything long runs — Panorama does this and it is the pattern to copy.
 - [ ] Banked entries state who, when and what produced them
 - [ ] `from_t` on anything that moves an event
 - [ ] Writes only this machine's shard
+- [ ] Every cloud request it adds is in §11's budget, with its rate said
 - [ ] A `_dev/` harness, listed in `_dev/README.md`
 
 ## 6c. Two views of one thing
@@ -916,10 +924,27 @@ There are two acts, and they are different on purpose:
 
 Both go through **one** `ui.bankDialog`, in the same place, every time.
 It exists, on `BARRY.confirm`: `onBank` is awaited inside the dialog, so a
-refusal is shown there rather than after it has closed. Until now it was a
-dialog in Incisor, an inline card in
-Doppler, a note-only dialog in Root Canal, and a one-off "Who is banking
-these?" prompt in Checkup.
+refusal is shown there rather than after it has closed. It used to be a
+dialog in Incisor, a name field in Doppler, a note-only dialog in Root
+Canal, and a "Who is banking these?" prompt in Checkup and on the bench
+card. **All five use it now** (checked by `_dev/incbank.html`,
+`_dev/benchbank.html`, `_dev/rootcanal.html`); Braces and X-ray are next.
+
+The sentence is the bank's own rule, not a guess at it:
+`ui.versionNext(rows, row)` asks `BARRY.vers.nextFor`, which appends the
+new version to the history and names it the way `versions.label_rows` does.
+A shortcut on the names alone gets real histories wrong -- on one whose
+versions never recorded their parent, picking up v1 continues the trunk at
+v5, not v1.1. `BARRY.vers.labelRows` is the page's **only** copy of
+`label_rows`; `_dev/uiparts.html` names every version in the bank with it
+and compares against the server. Change one, change both.
+
+**Say which version, by ref, and the bank resolves it.** A caller may send
+`based_on` as an id, a derived id or a number; `versions.parent_ref`
+resolves it and the new version records both `from_v` and `from_id`. Before
+that, an id written into `from_v` matched no number and the version was
+named as a new root -- one stored version was, and is now read correctly,
+on read only.
 
 - **Who** comes from the profile. Never ask it in a prompt.
 - **Nothing banks silently.** Banking is the one act that is evidence, so it
@@ -1145,7 +1170,162 @@ they are not forgotten:
 - [ ] Heavy imports inside the function that uses them
 - [ ] Nothing fetched at boot that the first screen does not draw
 - [ ] Pollers stop in `onHide` and in a background window
-- [ ] No cloud call on the path to drawing the view
+- [ ] No cloud call on the path to drawing the view (§11)
 - [ ] One request per question; long lists draw what is visible
 - [ ] No new `backdrop-filter`
 - [ ] `perf_baseline.py` before and after, and the number moved
+
+---
+
+## 11. The cloud — what Supabase costs, and how to spend it
+
+The project runs on Supabase's free tier, and in September 2026 it went 130%
+over the 5 GB monthly egress allowance. This section is the rule for anything
+that talks to it, and the map of where the requests go today, so the
+overhaul that limits usage starts from what is true rather than from the
+biggest-looking table.
+
+### The unit is the request
+
+Measured 2026-09-21 (`tools/cloud_egress.py`, `tools/cloud_weight.py`): a
+full pull of every table is 14 MB; a real incremental pull is **7 KB of rows
+and 21 requests**. 6.5 GB a month divided by the request count is about
+**2.4 KB per request** — response headers and TLS, not rows. A request that
+answers "nothing changed" costs the same as one that answers with a row.
+
+So **count requests before looking at row sizes.** `tool_results` rows are
+106 KB and `curation_reviews` has 19,000 rows, and neither mattered.
+
+### One door
+
+Every request goes through `backend/cloud.py` (`Cloud._call`). The page never
+talks to Supabase; it talks to a route, and the route may. That is what makes
+the cost countable, and it stays that way:
+
+- **No Supabase client, key or URL in `web/`.**
+- **No direct `urllib`/`requests` to Supabase outside `cloud.py`.** A new
+  table read is a `cloud.select` in a backend module, where it can be seen.
+
+### Where the requests go today
+
+Read from the code on 2026-09-29, one machine, the `barry_watermarks` view
+present, a roster under 200 and bank tables under 1,000 rows. **Estimates
+from intervals, not measurements** — the overhaul measures them first.
+
+| path | trigger | ≈ requests / hour | already held back by |
+|---|---|---|---|
+| push: `machines`, `people`, `prefs` always upserted, plus 2 full `select_all` of `bank_snapshots`/`bank_entries` keys | `_cloud_loop`, at least every 60 s, and ~6 s after **any** write | ~300 idle; ~900 while curating | incremental rows for everything else |
+| pull: `barry_watermarks`, then only tables that moved | `_cloud_loop`, 20 s growing to 320 s idle | ~22 idle; ~360 while writes keep resetting it | watermark view; idle backoff |
+| `pull_files`: `select_all results` | every 300 s | 12 | nothing |
+| tool feed `GET /api/toolfeed/<tool>` | every 3 s, ToolKit visible | ~1,200 | stops when hidden and in `onHide` |
+| presence beat `POST /api/presence/beat` | every 20 s, Checkup or Spotter open | ~540 (3 per beat), each also scheduling a push | **no hidden check** |
+| presence poll `GET /api/presence` | every 10 s, any ToolKit tool visible | ~360 | stops when hidden and in `onHide` |
+| page reads: digest, devices, errors, activity, ping | a view opening, a click | small | TTL caches on a few |
+
+**A foreground ToolKit with a set open is roughly 3,000 requests an hour per
+machine.** The CHANGELOG's "~270 a day idle" counts pulls only.
+
+### Known leaks, worst first
+
+Found reading the code, 2026-09-29. Each is a counter-example for the rules
+below; fixing them is the overhaul.
+
+1. **Every write schedules a push.** `_note_local_write` (app.py) calls
+   `cloud_touch()` after any successful POST/PUT/PATCH/DELETE under `/api/`
+   — including presence beats, activity flushes (every 4 s), client error
+   reports and prefs. So a push follows ~6 s later, bypassing the 60 s floor,
+   and resets the pull backoff to 20 s. A write that changed nothing shared
+   should not buy a push.
+2. **The roster re-stamps itself.** `rows_people` (cloudsync.py) sets
+   `updated_at = now()` on every row on every push, so every machine's pull
+   sees `people` as changed and downloads the whole roster again. A quiet
+   pull is two requests, not one, and the watermark cannot do its job.
+3. **A push is never empty.** `machines`, `people` and `prefs` go up every
+   time, and `rows_bank_snapshots` runs two full key reads each push
+   (~5 requests before anything has changed).
+4. **A presence beat costs three.** One upsert, then `for_set` and
+   `taken_from_me` each re-read `curation_presence`. And it beats in a
+   background tab.
+5. **The tool feed polls every 3 s**, with a two-minute overlap that
+   re-downloads the same rows on every poll (the id check drops them after
+   they have been paid for).
+6. **`select` always appends `select=*`** (cloud.py), after the caller's own
+   query. A caller asking `select=id` sends both. *Unverified* whether
+   PostgREST honours the first or the last; if the last, the key-only reads
+   in the push and in `/api/bank/sync` return whole rows — `bank_entries`
+   rows carry every event.
+7. **`pull_files` reads the whole `results` table** every five minutes
+   instead of asking what changed.
+8. **`/api/activity/who` is N+1**: one `count` per person spelling and per
+   machine. Nothing in `web/` calls it today; nothing should until it is one
+   query.
+9. **The meter measures the wrong thing.** `tools/cloud_egress.py` walks
+   `cloudsync.ORDER` directly — the old path with no watermark — and ignores
+   push, presence and the tool feed. It predicts pulls only.
+
+### The rules
+
+1. **Ask whether anything changed before asking what.** One request to a
+   watermark (`barry_watermarks`: one row per table, its newest
+   `updated_at`) and then only the tables that moved. A new synced table
+   joins the view in the same migration that creates it.
+2. **Never stamp a row that did not change.** `updated_at` is what every
+   other machine's pull keys on; bumping it on an unchanged row makes every
+   machine download it, forever (leak 2). A heartbeat that must say "still
+   here" lives in its own small table, not on the rows everybody reads.
+3. **A push carries only what changed.** Upsert rows newer than the last
+   push; send nothing, and make no request, when there are none. A read
+   needed to build a push is cached against a signature (`rows_artifacts`
+   does this — copy it).
+4. **Only shared data schedules a push.** Presence, activity, error reports
+   and preferences are not a reason to push *now*; they ride the next
+   scheduled push. New routes that write must say which they are.
+5. **A cloud-backed poller states its rate and stops when unseen.** Every
+   `setInterval` whose route touches the cloud: a comment with its
+   requests per hour; stops in `onHide`; skips when `document.hidden`;
+   an interval no shorter than the thing it watches can change. Other
+   machines' work arrives through the sync, so polling faster than the pull
+   buys nothing (the tool feed's own comment says so; its 3 s is still too
+   often for what it asks).
+6. **One request per question, never one per row.** No `count` in a loop, no
+   `select` per entry. If the question needs a join, it is a view or an RPC
+   in a migration, not N calls.
+7. **Ask for the columns you need, and check what was sent.** A key-only read
+   says `select=` once; until leak 6 is settled, verify the URL `cloud.py`
+   builds rather than trusting the query string you passed.
+8. **Answer your own write without reading back.** A beat that has just
+   upserted its row knows what it wrote; re-reading the table to find it is
+   two requests spent on information already in hand (leak 4).
+9. **Slow facts are cached, with the TTL said.** Machines, the archived list,
+   the storage listing: `_archived_machines` (60 s), `_SCHEMA_SEEN`
+   (process), histoimg's listing (300 s). A new read of something that
+   changes a few times a day gets a TTL, not a request per page view.
+10. **Back off when quiet, and on failure.** The loop's idle growth
+    (20 s → 320 s) and failure backoff (30–900 s) are the pattern; a new
+    loop copies them rather than ticking at a fixed rate. A backoff that any
+    local click resets is not a backoff (leak 1).
+11. **The cloud being away is a state, not an error.** No retry storm: a
+    failed call waits its backoff and the page says "not reachable", as
+    presence already does ("nobody is reported present").
+
+### Measuring it
+
+- `tools/cloud_egress.py --twice` — one incremental pull's bytes and
+  requests, projected at 20 s cycles. **Pull only, and the old path** (leak
+  9); read its number as a ceiling for pulls, not as the total.
+- `tools/cloud_weight.py --rows N` — rows × average size per table: the cost
+  of a full pull.
+- Neither counts push, presence or the tool feed. Until one does, a change
+  that claims to cut requests says how it counted them — by the interval
+  arithmetic above, or by counting `Cloud._call` over a fixed window.
+
+### When you add something that talks to the cloud
+
+- [ ] Through `cloud.py`, from a backend route; nothing in `web/`
+- [ ] Its requests per hour written beside it, and added to the table above
+- [ ] Reads behind a watermark or a TTL; no read on the path to drawing a view
+- [ ] Never re-stamps unchanged rows; pushes nothing when nothing changed
+- [ ] Writes that are not shared data do not schedule a push
+- [ ] Pollers stop in `onHide` and when the window is hidden
+- [ ] One request per question; the columns it needs, checked in the URL
+- [ ] Backs off when quiet and on failure; says "not reachable" when away
