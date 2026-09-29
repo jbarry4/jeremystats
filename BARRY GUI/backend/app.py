@@ -16489,9 +16489,14 @@ def api_bank_update(entry_id):
                                           if k != "events"}})
 
 
-@app.route("/api/bank/<entry_id>/version/<int:v>", methods=["POST"])
+@app.route("/api/bank/<entry_id>/version/<v>", methods=["POST"])
 def api_bank_version(entry_id, v):
-    """Edit, archive or delete one version of an entry's history."""
+    """Edit, archive or delete one version of an entry's history.
+
+    `v` is a version REF: its id (what the page sends), or a number where
+    the number names one version -- the bank refuses a number two machines
+    both minted rather than guessing which was meant.
+    """
     body = request.get_json(force=True, silent=True) or {}
     action = (body.get("action") or "edit").strip()
     undo = None

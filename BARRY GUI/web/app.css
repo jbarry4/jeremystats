@@ -4036,20 +4036,7 @@ select {
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
 }
 /* The lineage, as something to move around in. */
-.ver-strip {
-  display: flex; flex-wrap: wrap; gap: var(--sp-4); margin: 4px 0 8px;
-}
-.ver-pip {
-  font: inherit; font-family: var(--mono); font-size: var(--fs-10);
-  padding: 2px 8px; border-radius: var(--r-pill); cursor: pointer;
-  background: var(--bg); color: var(--text-2);
-  border: 1px solid var(--line);
-}
-.ver-pip:hover { background: var(--bg-hover); color: var(--text); }
-.ver-pip.last { border-color: var(--accent); color: var(--accent); }
-.ver-pip.on {
-  background: var(--accent); border-color: var(--accent); color: var(--bg);
-}
+.ver-strip { margin: 4px 0 8px; }
 .ver-open {
   margin-top: 7px; padding: 7px 9px; border-radius: var(--radius-sm);
   background: var(--bg-3); border: 1px solid var(--line-soft);
@@ -10571,12 +10558,7 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 /* A version nobody has to scroll for. Eight is the worst real history in
    this archive and they fit; past that it scrolls rather than pushing the
    button that runs the thing off the bottom of the card. */
-.br-vers.bm-list.ver-pick-list { max-height: min(38vh, 330px); }
-.br-vers .ver-n {
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-}
-.br-vers .bm-row.off .ver-n { color: var(--text-3); }
+.br-vers { max-height: min(38vh, 330px); overflow-y: auto; }
 /* ==========================================================================
    Braces -- waiting, and what a proposal would do
    ========================================================================== */
@@ -11872,6 +11854,10 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
 .vtree-state { font-size: var(--fs-11); color: var(--accent); }
 .vtree-why { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-3); }
 .vtree-note { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-2); }
+.vtree-line { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-3); }
+.vtree-row.on .vtree-line { color: var(--text-2); }
+/* The "as they are now" row: a choice with no node, so no gutter mark. */
+.vtree-lead .vtree-n { font-family: inherit; }
 .vt-edge { stroke-width: 1.6; fill: none; }
 .vt-node { stroke-width: 1.6; fill: var(--bg); }
 .vt-node.on { fill: currentColor; }

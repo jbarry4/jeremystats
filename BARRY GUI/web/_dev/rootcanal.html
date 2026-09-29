@@ -198,8 +198,12 @@ const ENTRY = '46fd29a77cc7';
   const want = JSON.parse(dv(mine.versions || [])) || null;
   eq('picking the set ticks that version', String(st().q.from_version),
      String(want ? (want.ref != null ? want.ref : want.name) : null));
-  const vChecked = D().querySelector('input[name="rcVer"]:checked');
-  ok('and the radio on screen agrees', !want || !!vChecked);
+  /* The version tree now (constitution §6e): the chosen row is the one
+     with aria-checked, and it carries the same ref. */
+  const vChecked = D().querySelector('.rc-vers .vtree-row[aria-checked="true"]');
+  ok('and the row on screen agrees', !want || (!!vChecked
+     && vChecked.dataset.ref === String(want.ref != null ? want.ref : want.name)),
+     vChecked ? vChecked.dataset.ref : 'none chosen');
 
   /* ================================================================== */
   head('THE ACTIVITY FEED SURVIVES A READ');

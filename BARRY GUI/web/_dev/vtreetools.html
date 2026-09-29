@@ -1,0 +1,190 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Braces reads its stamps through the version tree</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 52vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 48vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Braces' "Read the stamps from" is the version tree (constitution §6e).
+
+   A set with several readable versions is what the tree is for, and one is
+   not guaranteed to be reachable on the machine running this, so the plan
+   card is drawn from a fixture through BARRY.braces._planCard -- the real
+   card, the real code, a given plan. Nothing is read or written. X-ray, Root
+   Canal, Checkup and the Event Bank are checked on real data by dspca.html,
+   rootcanal.html, curversion.html and lineage.html. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const ready = await untilN(() => typeof W().setView === 'function'
+                                   && W().eval('BARRY.braces && BARRY.braces._planCard'));
+  check('the application loads, with the hook', !!ready);
+  if (!ready) { document.title = 'FAIL'; return; }
+  const B = W().eval('BARRY');
+  const q = B.braces._state().q;
+  const was = q.from_version;
+  const T = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+  const plan = {
+    ok: true, spec: {}, session: { name: 'zz m1 s1' }, channels: [],
+    entry: { n: 120 }, current_name: '3', next_name: '4',
+    versions: [
+      { ref: 'r0', v: 0, name: '0', usable: true, n: 130, by: 'Incisor', at: T(50) },
+      { ref: 'r1', v: 1, name: '1', usable: true, n: 125, by: 'zz a', at: T(40),
+        note: 'first pass' },
+      { ref: 'r2', v: 2, name: '2', usable: false, n: 124, by: 'zz b', at: T(30),
+        why_not: 'its snapshot is on another machine' },
+      { ref: 'r3', v: 3, name: '3', usable: true, n: 120, by: 'zz a', at: T(20),
+        aligned: true },
+      { ref: 'r4', v: 4, name: '1.1', usable: true, n: 122, by: 'zz c', at: T(10) },
+    ],
+  };
+  const stage = D().createElement('div');
+  stage.style.cssText = 'position:fixed;left:10px;top:10px;width:520px;'
+    + 'z-index:99999;background:var(--bg);padding:8px';
+  D().body.appendChild(stage);
+  try {
+    q.from_version = null;
+    stage.appendChild(B.braces._planCard(plan));
+    await sleep(150);
+    const tree = stage.querySelector('.br-vers .vtree');
+    head('the tree');
+    check('the stamps are chosen with the version tree', !!tree);
+    const rows = () => Array.from(stage.querySelectorAll('.br-vers .vtree-row'));
+    const names = rows().map((r) => r.dataset.v || 'lead');
+    check('"now" first, then the versions newest on top, a branch beside where it forked',
+          names.join(' ') === 'lead 3 2 1.1 1 0', names.join(' '));
+    const lead = stage.querySelector('.br-vers .vtree-lead');
+    check('the "now" row is named by the tip’s name, not the largest number',
+          lead && /^v3 now/.test(lead.textContent.trim()), lead && lead.textContent);
+    check('and is the choice while nothing else is', lead
+          && lead.getAttribute('aria-checked') === 'true');
+    const row = (n) => rows().find((r) => r.dataset.v === n);
+    check('one that cannot be read is shown, disabled, with the reason',
+          row('2').disabled && /another machine/.test(row('2').textContent));
+    check('the count says what it counts', /125 stamps/.test(row('1').textContent));
+    check('an older one says it branches',
+          /branches off it/.test(row('1').textContent));
+    check('its note is on the row', /first pass/.test(row('1').textContent));
+    check('the branch has a lane of its own',
+          new Set(Array.from(stage.querySelectorAll('.vt-node'))
+            .map((n) => n.getAttribute('cx'))).size === 2);
+
+    head('choosing');
+    row('1').click();
+    check('picking a version sets what is read, by its ref', q.from_version === 'r1',
+          String(q.from_version));
+    row('2').click();
+    check('a disabled one cannot be picked', q.from_version === 'r1');
+    lead.click();
+    check('"now" puts it back to the stamps as they stand', q.from_version === null,
+          String(q.from_version));
+    q.from_version = 'r4';
+    stage.innerHTML = '';
+    stage.appendChild(B.braces._planCard(plan));
+    await sleep(100);
+    const on = stage.querySelector('.br-vers .vtree-row[aria-checked="true"]');
+    check('a choice already held is shown as chosen', on && on.dataset.v === '1.1',
+          on && on.dataset.v);
+  } finally {
+    q.from_version = was;
+    stage.remove();
+  }
+
+  /* Checkup's "Pick it up from", BARRY.pickVersion, on a fixture of two
+     entries. curversion.html checks it on the demo set when the demo set is
+     on the shelf; this checks it whatever is on the shelf. It resolves
+     without touching anything: nothing is picked up. */
+  head('Checkup: which version to pick up from');
+  const mk = (id, v, from, at, extra) => Object.assign(
+    { id, v, from_v: from, from_id: null, at: T(at), by: 'zz', n: 10,
+      has_snap: true, by_label: { spike: 6, garbage: 4 } }, extra || {});
+  const hist = [
+    { entry: 'eA', name: 'zz set A', n: 10, versions: [
+      mk('a0', 0, null, 50, { imported: true, by_label: {} }),
+      mk('a1', 1, 0, 40), mk('a2', 2, 1, 30) ] },
+    { entry: 'eB', name: 'zz set B', n: 10, versions: [
+      mk('b0', 0, null, 45, { has_snap: false }), mk('b1', 1, 0, 35) ] },
+  ];
+  for (const e of hist) for (const x of B.vers.labelRows(e.versions)) x.row.name = x.name;
+  const md = () => D().getElementById('bigModalBox');
+  const btnT = (re) => Array.from(md().querySelectorAll('.mf button'))
+    .find((b) => re.test(b.textContent.trim()));
+  let p = B.pickVersion(hist, { title: 'zz which', labels: [{ id: 'spike', name: 'DS' }],
+                                mode: 'pickup', verb: 'Pick it up from',
+                                okLabel: 'Pick it up' });
+  await sleep(150);
+  const trees = md().querySelectorAll('.ver-pick-list .vtree');
+  check('one version tree per entry', trees.length === 2, trees.length);
+  const vrow = (t, n) => Array.from(trees[t].querySelectorAll('.vtree-row'))
+    .find((r) => r.dataset.v === n);
+  check('it opens on the newest of the first entry',
+        vrow(0, '2').getAttribute('aria-checked') === 'true');
+  check('and the button names it', !!btnT(/^Pick it up from v2$/),
+        Array.from(md().querySelectorAll('.mf button')).map((b) => b.textContent).join('|'));
+  check('every row says what picking it would do',
+        /^continues from v2 as v3/.test(vrow(0, '2').querySelector('.vtree-line').textContent)
+        && /^branches off v1 as v1\.1/.test(vrow(0, '1').querySelector('.vtree-line').textContent),
+        vrow(0, '1').querySelector('.vtree-line').textContent);
+  check('with the mix it holds, in the label names',
+        /DS 6/.test(vrow(0, '1').textContent));
+  check('the detector’s version is marked', /the detector/.test(vrow(0, '0').textContent));
+  check('a version with no snapshot is shown, disabled, with why',
+        vrow(1, '0').disabled && /no snapshot kept/.test(vrow(1, '0').textContent));
+  vrow(0, '1').click();
+  await sleep(50);
+  check('an older one warns that the decisions are replaced',
+        /replaced by v1’s/.test(md().querySelector('.ver-said').textContent));
+  vrow(1, '1').click();
+  await sleep(50);
+  check('choosing in the second entry clears the first',
+        Array.from(trees[0].querySelectorAll('.vtree-row'))
+          .every((r) => r.getAttribute('aria-checked') !== 'true'));
+  btnT(/^Pick it up from v1$/).click();
+  const got = await p;
+  check('it resolves to that entry and version',
+        got && got.entry === 'eB' && got.v === 1 && got.name === '1',
+        JSON.stringify(got && { entry: got.entry, v: got.v, name: got.name }));
+  p = B.pickVersion(hist, { mode: 'pickup', verb: 'Pick it up from' });
+  await sleep(100);
+  btnT(/^Cancel$/).click();
+  check('Cancel resolves null', (await p) === null);
+
+  head(bad === 0 ? 'Braces and Checkup read through the version tree' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(
+    out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+  document.title = 'FAIL threw: ' + e.message;
+} })();
+</script>

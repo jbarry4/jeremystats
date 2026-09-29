@@ -137,7 +137,8 @@ BARRY.eye = (function () {
   function versionWord(c) {
     const v = (c.versions || []).find((x) => x.newest && x.usable);
     const name = (v && v.name) || c.newest_usable_name || c.current_name;
-    return name != null ? 'v' + String(name).replace(/^v/i, '') : null;
+    // One spelling of a version, everywhere (constitution §6e).
+    return name != null ? BARRY.ui.versionLabel(name) : null;
   }
 
   function recordingOf(c) {

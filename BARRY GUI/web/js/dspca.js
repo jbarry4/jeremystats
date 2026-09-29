@@ -805,7 +805,7 @@ BARRY.dspca = (function () {
              but every feature here is read at one instant relative to the
              stamp, so it is worth seeing before spending the read. */
           el('td', { class: r.aligned ? '' : 'dim',
-                     text: r.aligned ? ('v' + r.aligned) : 'not aligned' }),
+                     text: r.aligned ? BARRY.ui.versionLabel(r.aligned) : 'not aligned' }),
         ]))),
       ]));
       kids.push(el('button', { class: 'btn', text: 'Read the ticked',
@@ -1161,8 +1161,8 @@ BARRY.dspca = (function () {
                             text: 'cannot be read here' }) : null,
         el('span', { class: 'person-what', text: !can
           ? (c.why_not || '')
-          : c.newest_aligned_name ? 'v' + c.newest_aligned_name + '  aligned'
-          : c.newest_usable_name ? 'v' + c.newest_usable_name
+          : c.newest_aligned_name ? BARRY.ui.versionLabel(c.newest_aligned_name) + '  aligned'
+          : c.newest_usable_name ? BARRY.ui.versionLabel(c.newest_usable_name)
           : 'not through Braces' }),
       ].filter(Boolean)));
     }
@@ -1180,70 +1180,33 @@ BARRY.dspca = (function () {
     if (vers.length) {
       box.appendChild(el('div', { class: 'section-label',
                                   text: 'Read the stamps from' }));
-      const vlist = el('div', { class: 'bm-list dp-vers' });
-      /* "As they are now" is a real choice and needs a row.
-
-         `from_version` null means the server reads `rec["events"]` --
-         the set as it currently stands, which is what a set nobody has
-         banked a version of has and what the plan falls back to when the
-         version asked for is not here. With no row for it, that state
-         left every radio unchecked: the list looked like a set with no
-         version rather than a set being read at its newest. */
-      const nowOn = q.from_version == null;
-      vlist.appendChild(el('label', {
-        class: 'bm-row' + (nowOn ? ' on' : ''),
-        title: 'The stamps as this set currently stands, rather than a '
-             + 'banked version of it.',
-      }, [
-        el('input', {
-          type: 'radio', name: 'dpVer', checked: nowOn ? 'checked' : null,
-          onchange: () => {
-            q.from_version = null;
-            q.from_auto = false;
-            q.read = null;
-            fit = null;
-            refreshPlan();
-          },
-        }),
-        el('span', { class: 'mk-name', text: 'as they are now' }),
-        el('span', { class: 'flagchip', text: (plan.stamps || {}).of != null
-          ? (plan.stamps.of + ' stamps') : '' }),
-        el('span', { class: 'person-what', text: 'not a banked version' }),
-      ]));
-      for (const v of vers) {
-        const on = String(v.ref) === String(q.from_version)
-                   || String(v.name) === String(q.from_version);
-        vlist.appendChild(el('label', {
-          class: 'bm-row' + (on ? ' on' : '') + (v.usable ? '' : ' off'),
-          title: v.usable ? (v.note || '') : (v.why_not || ''),
-        }, [
-          el('input', {
-            type: 'radio', name: 'dpVer',
-            disabled: v.usable ? null : 'disabled',
-            checked: on ? 'checked' : null,
-            onchange: () => {
-              q.from_version = v.ref;
-              q.from_auto = false;
-              q.read = null;
-              fit = null;
-              refreshPlan();
-            },
-          }),
-          el('span', { class: 'mk-name', text: 'v' + v.name }),
-          el('span', { class: 'flagchip', text: v.n + ' stamps' }),
-          v.tag === 'rootcanal'
-            ? el('span', { class: 'flagchip', text: 'IEDs out (Root Canal)',
-                           title: 'Root Canal took the hidden IEDs out of '
-                                + 'this version. It is the default when '
-                                + 'there is one.' })
-            : null,
-          el('span', { class: 'person-what', text:
-            (v.aligned ? 'aligned' : 'not aligned')
-            + (v.by ? '  ' + v.by : '')
-            + (v.usable ? '' : '  ' + (v.why_not || 'not readable here')) }),
-        ]));
-      }
-      box.appendChild(vlist);
+      /* The version tree (constitution §6e), the one control every tool
+         chooses a version with: the lineage, newest on top, with "as they
+         are now" above it as the choice that is not a version. It was a
+         list of radios, oldest first, with no lineage. */
+      const stampsNow = (plan.stamps || {}).of;
+      box.appendChild(el('div', { class: 'dp-vers' }, [BARRY.ui.versionTree({
+        versions: vers,
+        idOf: (v) => (v.ref != null ? v.ref : v.name),
+        value: q.from_version,
+        unit: 'stamps',
+        lead: {
+          name: 'as they are now',
+          text: (stampsNow != null ? stampsNow + ' stamps  ·  ' : '')
+                + 'not a banked version',
+          title: 'The stamps as this set currently stands, rather than a '
+               + 'banked version of it.',
+        },
+        disabled: (v) => (v.usable ? null : (v.why_not || 'not readable here')),
+        state: (v) => (v.tag === 'rootcanal' ? ['IEDs out (Root Canal)'] : []),
+        onpick: (v) => {
+          q.from_version = v ? v.ref : null;
+          q.from_auto = false;
+          q.read = null;
+          fit = null;
+          refreshPlan();
+        },
+      })]));
     }
 
     const cur = setOf();

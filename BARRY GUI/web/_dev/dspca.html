@@ -933,17 +933,21 @@ const NL = String.fromCharCode(10);
   const entryRadios = D().querySelectorAll('.dp-choose input[name="dpEntry"]');
   ok('the banked entries are radios', entryRadios.length > 0,
      entryRadios.length + ' found');
-  const verRadios = D().querySelectorAll('.dp-choose input[name="dpVer"]');
-  ok('and so are the versions', verRadios.length > 0,
-     verRadios.length + ' found');
+  /* The versions are the version tree now (constitution §6e): rows with
+     aria-checked, "as they are now" first. */
+  const verRows = D().querySelectorAll('.dp-choose .vtree-row');
+  ok('and the versions are the version tree', verRows.length > 0
+     && !!D().querySelector('.dp-choose .vtree-lead'),
+     verRows.length + ' found');
   ok('exactly one entry is chosen',
      Array.from(entryRadios).filter((r) => r.checked).length === 1);
   /* The bug this replaced: the option carried a ref and the selected test
      compared a name, so the moment anybody used the picker nothing was
      marked and the box showed the first version instead of theirs. */
+  const onRows = Array.from(verRows)
+    .filter((r) => r.getAttribute('aria-checked') === 'true');
   ok('and exactly one version is chosen, whichever way it was named',
-     Array.from(verRadios).filter((r) => r.checked).length === 1,
-     Array.from(verRadios).filter((r) => r.checked).length + ' checked');
+     onRows.length === 1, onRows.length + ' checked');
 
   /* ================================================================== */
   head('THE PANELS SHOW THE WHOLE SHANK');

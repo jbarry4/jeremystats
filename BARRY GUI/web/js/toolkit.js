@@ -1822,7 +1822,7 @@ BARRY.views.toolkit = (function () {
             disabled: v.usable ? null : 'disabled',
             checked: ver && ver.v === v.v ? 'checked' : null,
             onchange: () => { ver = v; paint(); } }),
-          el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
+          el('span', { class: 'ver-n', text: BARRY.ui.versionLabel(v) }),
           v.imported ? el('span', { class: 'flagchip',
                                     text: 'the detector' }) : null,
           el('span', { class: 'mk-name', text: mix || (v.n || 0) + ' events' }),
@@ -1841,7 +1841,7 @@ BARRY.views.toolkit = (function () {
         body.appendChild(el('p', { class: 'confirm-msg',
           text: 'The set will hold ' + (ver.n || 0) + ' candidate(s)'
               + (decided ? ', ' + decided + ' of them already decided as of '
-                           + 'v' + (ver.name != null ? ver.name : ver.v) + '.'
+                           + BARRY.ui.versionLabel(ver) + '.'
                          : ', none decided \u2014 a fresh pass.') }));
         if (ver.note) {
           body.appendChild(el('p', { class: 'hint', text: '\u201c'

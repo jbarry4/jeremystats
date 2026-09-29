@@ -2275,7 +2275,7 @@ BARRY.views.sessions = (function () {
           previewRetime(sess, cont, entry, v.v);
         },
       }, [
-        el('strong', { text: 'v' + (v.name != null ? v.name : v.v) }),
+        el('strong', { text: BARRY.ui.versionLabel(v) }),
         el('span', { class: 'ver-n', text: (v.n != null ? v.n : '?') + ' ev' }),
         v.current ? el('span', { class: 'ver-tag', text: 'current' }) : null,
         v.retimed ? el('span', { class: 'ver-tag', text: 'corrected' }) : null,
@@ -2556,7 +2556,7 @@ BARRY.views.sessions = (function () {
           title: (v.note || '') + (v.by ? '\n\u2014 ' + v.by : ''),
           onclick: () => { picked = v.v; draw(); go.disabled = false; },
         }, [
-          el('strong', { text: 'v' + (v.name != null ? v.name : v.v) }),
+          el('strong', { text: BARRY.ui.versionLabel(v) }),
           el('span', { class: 'ver-n',
                        text: (v.n != null ? v.n : '?') + ' ev' }),
           v.current ? el('span', { class: 'ver-tag', text: 'current' }) : null,

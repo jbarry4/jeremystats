@@ -2313,18 +2313,57 @@ class EventBank:
         self._save(rec)
         return added
 
+    def _version_ref(self, rec, ref):
+        """The one version `ref` names in `rec`, or a refusal.
+
+        By id first -- stored, or derived on read for a version written
+        before ids (`versions.stable_id`), which is what the page holds for
+        those. A NUMBER is accepted only when it names one version: stored
+        numbers repeat (two machines both mint the next one), and editing or
+        deleting "v3" when there are two was a guess. A pre-id twin -- the
+        same pass recorded twice, which the page shows as one version -- is
+        not a second version.
+        """
+        vs = rec.get("versions") or []
+        s = str(ref).strip()
+        for ver in vs:
+            if ver.get("id") is not None and str(ver["id"]) == s:
+                return ver
+        for ver in vs:
+            if not ver.get("id") and versionsmod.stable_id(rec["id"], ver) == s:
+                return ver
+        try:
+            n = int(s.lstrip("vV"))
+        except ValueError:
+            raise BankError("That entry has no version %s." % ref)
+        same = [x for x in vs if x.get("v") == n]
+        if not same:
+            raise BankError("That entry has no version %s." % ref)
+        distinct = [x for x in same
+                    if not any(o is not x and versionsmod._twin_of(o, x)
+                               for o in same)]
+        if len(distinct) > 1:
+            raise BankError(
+                "%d versions of this entry are numbered %d -- two machines "
+                "both made one. Say which by its id." % (len(distinct), n))
+        return distinct[0]
+
     def edit_version(self, entry_id, v, patch):
-        """Change what a version says about itself, not what it holds."""
+        """Change what a version says about itself, not what it holds.
+
+        `v` is a version ref: its id, or a number that names one version
+        (see `_version_ref`).
+        """
         rec = self.get(entry_id)
         if not rec:
             raise BankError("No such entry.")
-        hit = None
-        for ver in rec.get("versions") or []:
-            if ver.get("v") == v:
-                hit = ver
-                break
-        if hit is None:
-            raise BankError("That entry has no version %s." % v)
+        hit = self._version_ref(rec, v)
+        # Its pre-id copies, found BEFORE anything changes. They are the same
+        # pass, shown as one version because they match field for field
+        # (versions.repair); edit one and not the other and they stop
+        # matching, and the copy comes back on read as a second version.
+        twins = [x for x in (rec.get("versions") or [])
+                 if versionsmod._twin_of(hit, x)]
 
         who = (self.store.provenance().get("user") if self.store else None)
         changed = []
@@ -2350,6 +2389,12 @@ class EventBank:
                 changed.append("archived" if want else "unarchived")
         if not changed:
             return rec, []
+        for x in twins:
+            for k in ("note", "title", "archived"):
+                if k in hit:
+                    x[k] = hit[k]
+                else:
+                    x.pop(k, None)
         # An edited note says so. The point of a note is that somebody
         # wrote it at the time; one quietly rewritten later is worth less,
         # and pretending otherwise is the kind of thing this store exists
@@ -2377,15 +2422,18 @@ class EventBank:
         if not rec:
             raise BankError("No such entry.")
         vs = rec.get("versions") or []
-        keep = [x for x in vs if x.get("v") != v]
-        if len(keep) == len(vs):
-            raise BankError("That entry has no version %s." % v)
+        # The one version named, and its own pre-id copy if it has one --
+        # never every version that shares its number. By number, a history
+        # where two machines both minted v3 lost both to one delete.
+        gone = self._version_ref(rec, v)
+        keep = [x for x in vs
+                if x is not gone and not versionsmod._twin_of(gone, x)]
+        v = gone.get("v")
         if not keep:
             raise BankError(
                 "That is the only version this entry has. Delete the whole "
                 "entry instead, or archive the version.")
 
-        gone = next(x for x in vs if x.get("v") == v)
         undo = None
         if gone.get("retimed"):
             # Only the correction that is actually in force needs undoing.

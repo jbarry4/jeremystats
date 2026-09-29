@@ -1844,46 +1844,28 @@ BARRY.vers = (function () {
   /* ------------------------------------------------------------------
      The list on screen
      ------------------------------------------------------------------
-     Deliberately the same object as the "New curation set" wizard's version
-     step -- .bm-row, .ver-n, ' off' for one that cannot be used -- because
-     it is the same question asked in a second place, and two visual
+     The version tree, BARRY.ui.versionTree -- the one control every tool
+     chooses a version with (constitution §6e), because two visual
      languages for one question is how people learn to distrust both.
 
      `mode` is 'pickup' or 'switch', and the only difference is what it says
      about the decisions that are already there. Switching always puts that
      version's decisions on the bench; picking up only does so when the
      chosen version is not the one the set already reflects. */
-  let seq = 0;
 
   function chooser(history, opts) {
     const o = opts || {};
     const labs = o.labels || [];
     const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
                         || (id === 'unspecified' ? 'undecided' : id);
-    const group = 'verpick' + (++seq);
     const said = el('div', { class: 'ver-said' });
     const host = el('div', { class: 'ver-pick' });
-    const marks = [];             // [rowNode, choice] so `on` can move
     let pick = null;
 
     const entries = (history || []).filter((e) => (e.versions || []).length);
     const many = entries.length > 1;
 
     const announce = () => {
-      for (const [node, ch] of marks) {
-        /* Matched on the version ITSELF, not on its number.
-           The stored number is not unique -- two machines curating one
-           entry both mint the next one and the union keeps both, which is
-           what the per-version id exists for -- so `ch.v === pick.v` lit up
-           every row sharing a number. On an entry holding two v1s that is
-           two rows highlighted and one radio filled, which reads as the
-           dialog having lost track of what you picked.
-
-           `ch.row` is the version object the row was built from, so
-           identity settles it and needs no id to be present: the histories
-           that predate ids are exactly the ones most likely to collide. */
-        node.classList.toggle('on', !!pick && ch.row === pick.row);
-      }
       said.innerHTML = '';
       if (pick) {
         said.appendChild(el('p', { class: 'confirm-sub',
@@ -1899,6 +1881,12 @@ BARRY.vers = (function () {
       if (typeof o.onpick === 'function') o.onpick(pick);
     };
 
+    /* One version tree per entry (constitution §6e): the lineage, newest
+       on top, with the consequence of picking each one on its row -- which
+       version you are about to make is the thing being decided, and it
+       cannot be what you find out afterwards. It was a radio list, oldest
+       first, with the lineage only in words. */
+    const trees = [];
     for (const ent of entries) {
       const rows = ent.versions || [];
       const tip = newest(rows);
@@ -1906,13 +1894,17 @@ BARRY.vers = (function () {
         host.appendChild(el('div', { class: 'section-label',
           text: ent.name + '  ·  ' + (ent.n || 0) + ' candidates' }));
       }
-      const list = el('div', { class: 'bm-list ver-pick-list' });
-      for (const v of rows) {
+      /* Matched on the version ITSELF, not on its number: the stored number
+         is not unique (two machines both mint the next one and the union
+         keeps both), so every row gets a key of its own here, including the
+         histories that predate ids -- they are the ones most likely to
+         collide. */
+      const keyOf = new Map(rows.map((v, i) => [v,
+        String(v.id != null ? v.id : 'row' + i)]));
+      const choiceOf = (v) => {
         const nxt = nextFor(rows, v);
         const restores = o.mode === 'switch' || v !== tip;
-        const here = o.current && o.current.entry === ent.entry
-                  && o.current.v === v.v;
-        const choice = {
+        return {
           entry: ent.entry, v: v.v, row: v, name: nxt.from, next: nxt.to,
           branches: nxt.branches, restores,
           lineage: 'Banking after this ' + describe(rows, v) + '.',
@@ -1924,48 +1916,39 @@ BARRY.vers = (function () {
             : 'The decisions already on the set are left exactly as they '
               + 'are. This only says where the next bank lands.',
         };
-        const mix = Object.keys(v.by_label || {})
-          .sort((a, b) => v.by_label[b] - v.by_label[a])
-          .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  ·  ');
-        const row = el('label', {
-          class: 'bm-row' + (v.has_snap ? '' : ' off'),
-          title: v.has_snap ? null
-            : 'Only the recent versions keep a candidate-by-candidate '
-              + 'snapshot. Without one there is nothing to put on the '
-              + 'bench, so this version cannot be a starting point — '
-              + 'its counts and its note are still here.',
-        }, [
-          el('input', {
-            type: 'radio', name: group,
-            disabled: v.has_snap ? null : 'disabled',
-            onchange: () => { pick = choice; announce(); },
-          }),
-          el('span', { class: 'ver-n', text: 'v' + nxt.from }),
-          v.imported ? el('span', { class: 'flagchip', text: 'the detector' })
-                     : null,
-          here ? el('span', { class: 'flagchip on-bench', text: 'on the bench' })
-               : null,
-          el('div', { class: 'ver-pick-mid' }, [
-            el('span', { class: 'mk-name', text: mix || (v.n || 0) + ' events' }),
-            /* The consequence on every row, not only the chosen one. Which
-               version you are about to make is the thing being decided, and
-               it cannot be the thing you find out afterwards. */
-            el('span', { class: 'ver-does' + (nxt.branches ? ' branch' : ''),
-              text: v.has_snap ? describe(rows, v)
-                               : 'no snapshot kept — cannot be worked from' }),
-          ]),
-          el('span', { class: 'person-what',
-            text: (v.by || 'unknown') + '  ·  '
-                + (BARRY.when ? BARRY.when(v.at, 'minute') : (v.at || '')) }),
-        ].filter(Boolean));
-        marks.push([row, choice]);
-        list.appendChild(row);
-        if (o.start && o.start(v, ent, tip)) {
-          const box = row.querySelector('input');
-          if (box && !box.disabled) { box.checked = true; pick = choice; }
+      };
+      const tree = BARRY.ui.versionTree({
+        versions: rows,
+        idOf: (v) => keyOf.get(v),
+        disabled: (v) => (v.has_snap ? null
+          : 'no snapshot kept — cannot be worked from. Only the recent '
+            + 'versions keep a candidate-by-candidate snapshot, so there is '
+            + 'nothing to put on the bench; its counts and its note are '
+            + 'still here.'),
+        state: (v) => [
+          v.imported ? 'the detector' : null,
+          o.current && o.current.entry === ent.entry && o.current.v === v.v
+            ? 'on the bench' : null,
+        ].filter(Boolean),
+        line: (v) => (v.has_snap ? describe(rows, v) : null),
+        notes: (v) => Object.keys(v.by_label || {})
+          .sort((x, y) => v.by_label[y] - v.by_label[x])
+          .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  ·  ')
+          || ((v.n || 0) + ' events'),
+        onpick: (v) => {
+          pick = choiceOf(v);
+          for (const other of trees) if (other !== tree) other.choose(null);
+          announce();
+        },
+      });
+      trees.push(tree);
+      host.appendChild(el('div', { class: 'ver-pick-list' }, [tree]));
+      for (const v of rows) {
+        if (o.start && o.start(v, ent, tip) && v.has_snap && !pick) {
+          pick = choiceOf(v);
+          tree.choose(keyOf.get(v));
         }
       }
-      host.appendChild(list);
     }
 
     const wrap = el('div', {}, [host, said]);

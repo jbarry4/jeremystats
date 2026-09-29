@@ -601,7 +601,16 @@ BARRY.ui = (function () {
                   is not on this machine is shown and cannot be picked
        readonly   a history to read rather than a choice: rows are not
                   buttons and nothing is dimmed
-       notes      each version's note on its row, not only in its title */
+       notes      each version's note on its row, not only in its title;
+                  or (v) => the text to show there instead
+       idOf       (v) => what `value` is matched against and what `onpick`'s
+                  caller sends back -- a tool's `ref`, say. Default: the id,
+                  else the name
+       lead       { name, text, title }: a first row that is not a version,
+                  "as they are now", chosen when `value` is null; picking
+                  it calls onpick(null)
+       line       (v) => a sentence under the row: what picking it does
+       unit       what the count counts, "stamps" */
   const LANE = 14, PAD = 8;
 
   function versionTree(o) {
@@ -612,7 +621,8 @@ BARRY.ui = (function () {
     vs.sort((a, b) => vcmp(b.k, a.k));
     const byName = new Map(vs.map((x, i) => [x.name, i]));
     const newest = vs.length ? vs[0].name : null;
-    const idOf = (v) => (v && (v.id || v.label || v.v));
+    const idOf = typeof opt.idOf === 'function' ? opt.idOf
+      : (v) => (v && (v.id || v.label || v.v));
     const chosen = opt.value === undefined || opt.value === null ? null
       : String(opt.value).replace(/^v/i, '');
 
@@ -669,23 +679,23 @@ BARRY.ui = (function () {
       if (v.archived) states.push('archived');
       if (v.snap_elsewhere) states.push('not on this machine');
       if (typeof opt.state === 'function') states.push(...(opt.state(v) || []));
-      const on = chosen !== null && (String(idOf(v)) === chosen || x.name === chosen);
+      const on = chosen !== null && (String(idOf(v)).replace(/^v/i, '') === chosen
+                                     || x.name === chosen);
+      const said = typeof opt.line === 'function' ? opt.line(v) : null;
+      const noteOf = (x) => (typeof opt.notes === 'function' ? opt.notes(x)
+                             : (opt.notes ? x.note : null));
       return el(opt.readonly ? 'div' : 'button', {
         class: 'vtree-row' + (on ? ' on' : '') + (why ? ' off' : ''),
         role: opt.readonly ? 'listitem' : 'radio',
         'aria-checked': opt.readonly ? null : (on ? 'true' : 'false'),
         'data-v': x.name,
+        'data-ref': String(idOf(v)),
         disabled: why ? 'disabled' : null,
         title: (v.at ? new Date(v.at).toLocaleString() : '')
                + (v.note ? '  ·  ' + v.note : '')
                + (why ? '\n' + why : ''),
         onclick: (why || opt.readonly) ? null : () => {
-          rowEls.forEach((r) => {
-            r.classList.remove('on'); r.setAttribute('aria-checked', 'false');
-          });
-          rowEls[i].classList.add('on');
-          rowEls[i].setAttribute('aria-checked', 'true');
-          draw();
+          mark(rowEls[i]);
           if (typeof opt.onpick === 'function') opt.onpick(v);
         },
         onkeydown: opt.readonly ? null : (e) => {
@@ -702,14 +712,42 @@ BARRY.ui = (function () {
         el('span', { class: 'vtree-when', text: when(v.at) }),
         el('span', { class: 'vtree-count',
                      text: v.n === undefined || v.n === null ? ''
-                           : Number(v.n).toLocaleString() }),
+                           : Number(v.n).toLocaleString()
+                             + (opt.unit ? ' ' + opt.unit : '') }),
         states.length ? el('span', { class: 'vtree-state',
                                      text: states.join(' · ') }) : null,
         why ? el('span', { class: 'vtree-why', text: why }) : null,
-        opt.notes && v.note ? el('span', { class: 'vtree-note', text: v.note })
-                            : null,
+        noteOf(v) ? el('span', { class: 'vtree-note', text: noteOf(v) }) : null,
+        said ? el('span', { class: 'vtree-line', text: said }) : null,
       ].filter(Boolean));
     });
+
+    /* "As they are now": a choice, but not a version, so it has a row and
+       no node -- it is the set before anything more is banked. */
+    const lead = (opt.lead && !opt.readonly) ? el('button', {
+      class: 'vtree-row vtree-lead' + (chosen === null ? ' on' : ''),
+      role: 'radio', 'aria-checked': chosen === null ? 'true' : 'false',
+      'data-ref': '',
+      title: opt.lead.title || null,
+      onclick: () => {
+        mark(lead);
+        if (typeof opt.onpick === 'function') opt.onpick(null);
+      },
+    }, [
+      el('strong', { class: 'vtree-n', text: opt.lead.name || 'now' }),
+      opt.lead.text ? el('span', { class: 'vtree-who', text: opt.lead.text }) : null,
+    ].filter(Boolean)) : null;
+
+    function mark(node) {
+      [lead].concat(rowEls).filter(Boolean).forEach((r) => {
+        const on = r === node;
+        r.classList.toggle('on', on);
+        r.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+      draw();
+    }
+
+    if (lead) host.appendChild(lead);
     rowEls.forEach((r) => host.appendChild(r));
     if (!vs.length) {
       host.appendChild(el('p', { class: 'hint', text: 'Nothing banked yet.' }));
@@ -764,6 +802,13 @@ BARRY.ui = (function () {
     host.value = () => {
       const i = rowEls.findIndex((r) => r.classList.contains('on'));
       return i >= 0 ? vs[i].v : null;
+    };
+    /* Choose one from outside, by what `idOf` answers, without calling
+       onpick -- for a caller restoring a choice it already holds. */
+    host.choose = (ref) => {
+      const i = rowEls.findIndex((r) => r.dataset.ref === String(ref));
+      // Nothing matching clears the choice: another tree was chosen.
+      if (i >= 0) mark(rowEls[i]); else mark(lead && ref == null ? lead : null);
     };
     return host;
   }

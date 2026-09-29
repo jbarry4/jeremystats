@@ -710,7 +710,7 @@ BARRY.rootcanal = (function () {
         el('strong', { text: cur.session_label || cur.gid || cur.entry_id }),
         el('span', { class: 'hint', text:
           (cur.name || 'DS set ' + cur.entry_id)
-          + '  ·  ' + (v ? 'v' + v.name : 'as it is now')
+          + '  ·  ' + (v ? BARRY.ui.versionLabel(v) : 'as it is now')
           + '  ·  ' + ((v && v.n) || cur.n) + ' events'
           + (v && v.aligned ? '  ·  aligned' : '') }),
         el('span', { class: 'spacer' }),
@@ -812,39 +812,27 @@ BARRY.rootcanal = (function () {
     if (vers.length) {
       box.appendChild(el('div', { class: 'section-label',
                                   text: 'Read the stamps from' }));
-      const vlist = el('div', { class: 'bm-list rc-list' });
       const want = defaultVersion(cur);
-      for (const v of vers) {
-        const ref = versionRef(v);
-        const on = String(ref) === String(q.from_version);
-        const ok = usable(v);
-        const rcOut = v.tag === 'rootcanal';
-        vlist.appendChild(el('label', {
-          class: 'bm-row' + (on ? ' on' : '') + (ok ? '' : ' off'),
-          title: ok ? (v.note || '') : (v.why_not || 'not readable here'),
-        }, [
-          el('input', {
-            type: 'radio', name: 'rcVer',
-            disabled: ok ? null : 'disabled',
-            checked: on ? 'checked' : null,
-            onchange: () => {
-              q.from_version = ref;
-              forget();
-              render();
-            },
-          }),
-          el('span', { class: 'mk-name', text: 'v' + v.name }),
-          v.n != null ? el('span', { class: 'flagchip',
-                                     text: v.n + ' stamps' }) : null,
-          rcOut ? el('span', { class: 'flagchip rc-done',
-                               text: 'Root Canal’s own output' }) : null,
-          el('span', { class: 'person-what', text:
-            (v.aligned ? 'aligned' : 'not aligned')
-            + (v.by ? '  ' + v.by : '')
-            + (want && versionRef(want) === ref ? '  · the default' : '') }),
-        ].filter(Boolean)));
-      }
-      box.appendChild(vlist);
+      /* The version tree (constitution §6e): the lineage, newest on top,
+         with Root Canal's own output and the default said on the row. It
+         was a list of radios, oldest first. */
+      box.appendChild(el('div', { class: 'rc-vers' }, [BARRY.ui.versionTree({
+        versions: vers,
+        idOf: versionRef,
+        value: q.from_version,
+        unit: 'stamps',
+        disabled: (v) => (usable(v) ? null : (v.why_not || 'not readable here')),
+        state: (v) => [
+          v.tag === 'rootcanal' ? 'Root Canal’s own output' : null,
+          v.aligned ? null : 'not aligned',
+          want && versionRef(want) === versionRef(v) ? 'the default' : null,
+        ].filter(Boolean),
+        onpick: (v) => {
+          q.from_version = versionRef(v);
+          forget();
+          render();
+        },
+      })]));
       if (want && want.tag !== 'rootcanal'
           && vers.some((v) => v.tag === 'rootcanal')) {
         box.appendChild(el('p', { class: 'hint', text:
@@ -1235,7 +1223,7 @@ BARRY.rootcanal = (function () {
       c.partial ? c.partial + ' on 2 of 3 axes' : null,
       c.wide ? c.wide + ' by the widened search' : null,
     ].filter(Boolean);
-    return 'Bank: ' + nDs + ' DS as ' + (nx ? 'v' + nx : 'a new version')
+    return 'Bank: ' + nDs + ' DS as ' + (nx ? BARRY.ui.versionLabel(nx) : 'a new version')
       + ', ' + (c.ied || 0) + ' IED as '
       + (ied ? 'a new version of its IED set' : 'a new entry')
       + (flags.length ? ' (' + flags.join(', ') + ')' : '');
@@ -1514,7 +1502,7 @@ BARRY.rootcanal = (function () {
       el('p', { text: bankLabel() + '.' }),
       el('ul', {}, [
         el('li', { text: (c.ds || 0) + ' dentate spikes stay in the set, '
-                         + 'read from ' + (v ? 'v' + v.name : 'the set as it '
+                         + 'read from ' + (v ? BARRY.ui.versionLabel(v) : 'the set as it '
                          + 'is now') + ', each with its stamp, label and '
                          + 'channel exactly as they are.' }),
         c.unmeasured

@@ -868,8 +868,21 @@ list.
   number, so numbers repeat.
 
 **Render every version through one `versionLabel(v)`.** About thirty places
-build `'v' + (name || v)` by hand, which is how one version comes to read as
-two different numbers in two panels.
+built `'v' + (name || v)` by hand, which is how one version comes to read as
+two different numbers in two panels. The bank's versions are all rendered
+through it now. Worse than untidy: the Event Bank's summaries carry the
+derived `label` and no `name`, so every `'v' + (v.name != null ? v.name : v.v)`
+there was showing the raw stored number. A person's own name for a version
+is its `title`, never its label. (The Arc's artifact versions are a
+different thing, numbered per artifact, and keep their own.)
+
+**A version is edited and deleted by its id.** The route takes a ref — the
+id the page holds, stored or derived — and a number only where it names one
+version (`EventBank._version_ref`); a number two machines both minted is
+refused with "say which by its id". By number, deleting one v3 deleted both,
+and an edit landed on whichever came first. Editing a version updates its
+pre-id copy too, or the two stop matching and the copy returns as a second
+version on read.
 
 **What the data showed, and how it is repaired.** Of 948 stored versions,
 155 had no id, and 42 numbers were duplicated in a way no id could resolve —
@@ -888,9 +901,28 @@ every event survives.
 tree, and six different controls showed it as a list — Braces' select,
 X-ray's *Read from*, Checkup's *Pick it up from*, the Event Bank's chips and
 rows, Root Canal's radios, Eye's own formatter — which is why a branch name
-like v4.1 looked arbitrary. It exists; the six controls move onto it one
-tool at a time. The rows may wrap on a narrow panel, so the graph is drawn
+like v4.1 looked arbitrary. **All of them use it now**: Checkup's *Pick it
+up from* (one tree per entry), Braces' and X-ray's and Root Canal's *Read the
+stamps from*, and the Event Bank's lineage strip; Eye's formatter is
+`versionLabel`. The rows may wrap on a narrow panel, so the graph is drawn
 from where the rows actually are and redrawn on resize.
+
+Its options, so a caller never draws its own row: `idOf` (what the tool
+chooses by — Braces' `ref`), `lead` (a first row that is a choice but not a
+version: *as they are now*), `line` (what picking it does: *continues from v4
+as v5*), `notes` (the note, or a function — Checkup puts the mix of labels
+there), `unit` (*stamps*), `state` (*the detector*, *on the bench*,
+*Root Canal's own output*), `disabled` (the reason, shown on the row) and
+`readonly` (a history to read). `tree.choose(ref)` sets the choice without
+calling back; `choose(null)` clears it, for a picker with several trees.
+
+A table row keeps a `<select>` (Braces' many-at-once list): the tree is for
+choosing, and a table is for comparing many entries at once.
+
+The Event Bank's strip had never opened a version: the chip stored the
+version's name and the two places that read it compared the stored number,
+so the choice was cleared on every repaint. Keyed by name throughout now
+(`_dev/lineage.html` opens one and reads the diff).
 
 Vertical lanes, like a git graph: the trunk down the left, each branch in a
 lane to its right, one row per version.
