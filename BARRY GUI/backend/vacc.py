@@ -270,6 +270,26 @@ def _popen_kwargs():
     return kw
 
 
+def ssh_cmd(cfg, remote_command):
+    """The ssh command line for one remote command, with this module's
+    options. `_ssh` runs it and waits; vaccupload streams a file into it.
+    One place, so the key, the options and the refusals are decided once."""
+    if not have_ssh():
+        raise SSHError("No ssh on this machine.", "no-ssh")
+    if not cfg.get("netid"):
+        raise SSHError("No VACC netid set.", "unconfigured")
+    cmd = ["ssh"] + list(SSH_OPTS)
+    if cfg.get("key_path"):
+        cmd += ["-i", cfg["key_path"], "-o", "IdentitiesOnly=yes"]
+    cmd += ["%s@%s" % (cfg["netid"], cfg["host"]), remote_command]
+    return cmd
+
+
+def popen_kwargs():
+    """What `_ssh` passes to Popen on this platform (no console window)."""
+    return _popen_kwargs()
+
+
 def _ssh(cfg, remote_command, stdin=None, timeout=45):
     """Run one command on the cluster and return its stdout.
 
@@ -283,15 +303,7 @@ def _ssh(cfg, remote_command, stdin=None, timeout=45):
     string with `shlex.quote`, or better, send data on `stdin` and keep paths
     out of it altogether.
     """
-    if not have_ssh():
-        raise SSHError("No ssh on this machine.", "no-ssh")
-    if not cfg.get("netid"):
-        raise SSHError("No VACC netid set.", "unconfigured")
-
-    cmd = ["ssh"] + list(SSH_OPTS)
-    if cfg.get("key_path"):
-        cmd += ["-i", cfg["key_path"], "-o", "IdentitiesOnly=yes"]
-    cmd += ["%s@%s" % (cfg["netid"], cfg["host"]), remote_command]
+    cmd = ssh_cmd(cfg, remote_command)
 
     try:
         # BINARY pipes, and the encoding done here by hand.
@@ -949,7 +961,11 @@ def places(cfg):
     One under scratch is already covered by scratch's walk."""
     root = cfg.get("scratch_root") or cfg.get("scratch") or ""
     out = [root] if root else []
-    for p in (cfg.get("places") or []):
+    # Jarvis Data, where uploads go, is always a place: an uploaded recording
+    # is then found the way any other is, by looking, by identity. Covered by
+    # scratch already when the account's scratch is the shared one.
+    data = ((cfg.get("shared") or {}).get("data_path") or "").rstrip("/")
+    for p in ([data] if data else []) + list(cfg.get("places") or []):
         p = str(p or "").rstrip("/")
         if not p or p in out:
             continue

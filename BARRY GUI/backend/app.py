@@ -54,7 +54,8 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, recipe as recipemod, store, thumbs, toolresults,
-               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccio as vacciomod, vaccrun as vaccrunmod, video,
+               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccio as vacciomod, vaccrun as vaccrunmod,
+               vaccupload as vaccuploadmod, video,
                warmcache)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -18075,6 +18076,157 @@ def api_vacc_scan():
                     "unmatched": unmatched, "ambiguous": ambiguous,
                     "registered": registered,
                     "can_register": len(to_register)})
+
+
+# --------------------------------------------------------------------------
+# Uploading to Jarvis Data (constitution section 6d; backend/vaccupload.py)
+# --------------------------------------------------------------------------
+# What the far side is. The real cluster, or -- for tools/test_vaccupload.py
+# -- a folder on this machine, so the whole path is testable without one.
+UPLOAD_REMOTE = None
+
+
+def _upload_remote(cfg):
+    return UPLOAD_REMOTE(cfg) if UPLOAD_REMOTE else vaccuploadmod.SshRemote(cfg)
+
+
+def _upload_items(cfg, gids):
+    """Each recording asked for: where it is read from here, and where it
+    goes -- or why it cannot go."""
+    index = {r.get("gid"): r for r in (REG.all() or []) if r.get("gid")}
+    out = []
+    for gid in gids or []:
+        rec = index.get(gid)
+        item = {"gid": gid, "label": (rec or {}).get("label") or gid}
+        if not rec:
+            item["why"] = "not in the registry"
+            out.append(item)
+            continue
+        local = next((x for x in (rec.get("paths") or [])
+                      if isinstance(x, str) and os.path.isdir(x)), None)
+        if not local:
+            item["why"] = "none of its paths can be opened from this computer"
+            out.append(item)
+            continue
+        item["local"] = local
+        try:
+            item["dest"] = vaccuploadmod.destination(cfg, rec, local)
+        except vaccuploadmod.UploadError as exc:
+            item["why"] = str(exc)
+        out.append(item)
+    return out
+
+
+@app.route("/api/vacc/upload/plan", methods=["POST"])
+def api_vacc_upload_plan():
+    """What uploading these recordings would send, and where. Sends nothing.
+
+    One listing of each destination, so a file already there at the same
+    size is counted as skipped -- which is what makes re-uploading cheap.
+    """
+    body = request.get_json(force=True) or {}
+    cfg = vaccmod.load_config(LOGS_DIR)
+    if not cfg.get("configured"):
+        return jsonify({"ok": False, "error": "No VACC account is set up on "
+                        "this machine."}), 400
+    st = vaccmod.status()
+    shared = st.get("shared") or {}
+    try:
+        items = _upload_items(cfg, body.get("gids"))
+        remote = _upload_remote(cfg)
+        for it in items:
+            if it.get("why"):
+                continue
+            pl = vaccuploadmod.plan_one(remote, it["local"], it["dest"])
+            it.update(n_files=pl["n_files"], n_send=len(pl["send"]),
+                      n_skip=pl["skip"], bytes=pl["bytes"],
+                      total_bytes=pl["total_bytes"])
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/upload-plan", exc, 400)
+    ready = [i for i in items if not i.get("why")]
+    return jsonify({
+        "ok": True, "items": items,
+        "n": len(ready), "bytes": sum(i.get("bytes") or 0 for i in ready),
+        "files": sum(i.get("n_send") or 0 for i in ready),
+        "skipped": sum(i.get("n_skip") or 0 for i in ready),
+        "blocked": [i for i in items if i.get("why")],
+        "dest_root": (cfg.get("shared") or {}).get("data_path"),
+        "shared": shared,
+    })
+
+
+@app.route("/api/vacc/upload", methods=["POST"])
+def api_vacc_upload():
+    """Upload recordings to Jarvis Data, as one job with a row per recording.
+
+    Refused without `confirm: true`: this writes to the lab's shared space on
+    the cluster, so it only ever happens after somebody has seen the plan
+    and pressed the button that says how much will be sent. Nothing is
+    written into the registry; the uploaded copies are found by the
+    inventory, by identity, the next time it looks.
+    """
+    body = request.get_json(force=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "An upload goes to the lab's "
+                        "shared space on the cluster, so it has to be "
+                        "confirmed. Ask for the plan first."}), 400
+    cfg = vaccmod.load_config(LOGS_DIR)
+    if not cfg.get("configured"):
+        return jsonify({"ok": False, "error": "No VACC account is set up on "
+                        "this machine."}), 400
+    items = [i for i in _upload_items(cfg, body.get("gids")) if not i.get("why")]
+    if not items:
+        return jsonify({"ok": False, "error": "None of those recordings can "
+                        "be uploaded from this computer."}), 400
+    remote = _upload_remote(cfg)
+
+    def work(job):
+        job.members_init([{"id": i["gid"], "label": i["label"]} for i in items])
+        sent_n = skipped_n = failed = 0
+        sent_bytes = [0]
+        for it in items:
+            job.check()
+            gid = it["gid"]
+            try:
+                pl = vaccuploadmod.plan_one(remote, it["local"], it["dest"])
+                job.member(gid, status="running", step="uploading", done=0,
+                           of=len(pl["send"]))
+
+                def on_file(i, rel, gid=gid):
+                    job.member(gid, step=rel, done=i)
+
+                def on_bytes(n):
+                    sent_bytes[0] += n
+                got = vaccuploadmod.send(remote, it["local"], it["dest"],
+                                         plan=pl, on_bytes=on_bytes,
+                                         check=job.check, on_file=on_file)
+                sent_n += got["sent"]
+                skipped_n += got["skipped"]
+                job.member(gid, status="done", step=(
+                    "%d sent, %d already there" % (got["sent"], got["skipped"])),
+                    done=got["sent"], of=got["sent"])
+            except cfcmod.Canceled:
+                raise
+            except Exception as exc:                     # noqa: BLE001
+                failed += 1
+                job.member(gid, status="failed", step=None, error=str(exc)[:200])
+        # The copies are on the cluster now; the next look finds them.
+        try:
+            root = (cfg.get("shared") or {}).get("data_path")
+            if root:
+                vaccmod.inventory_soon(cfg, root)
+        except Exception:                                # noqa: BLE001
+            pass
+        return {"n": len(items), "files_sent": sent_n, "files_skipped": skipped_n,
+                "bytes_sent": sent_bytes[0], "failed": failed,
+                "dest_root": (cfg.get("shared") or {}).get("data_path")}
+
+    job = cfcmod.start({"path": items[0]["local"]}, [("panorama pool", len(items))],
+                       work, 1.0, "vacc:upload")
+    STORE.record_activity([{"action": "vacc.upload",
+                            "detail": {"n": len(items),
+                                       "gids": [i["gid"] for i in items][:50]}}])
+    return jsonify({"ok": True, "job": job.snapshot(), "n": len(items)})
 
 
 @app.route("/api/vacc/inventory")

@@ -780,6 +780,7 @@ BARRY.vacc = (function () {
         ]),
 
         sharedBox(d),
+        uploadsBox(),
         jobsBox(d),
 
         el('h4', { text: 'Look around it' }),
@@ -907,6 +908,122 @@ BARRY.vacc = (function () {
     return el('div', { class: 'vacc-health' }, kids);
   }
 
+  /* ---- uploading to Jarvis Data (constitution §6d) ---------------------
+
+     Two steps, always: the plan -- what would be sent, where, and what is
+     already there -- and then the upload, which the server refuses without
+     `confirm`. The upload writes to the lab's shared space, so it happens
+     only after somebody has seen the plan and pressed the button that says
+     how much will be sent. */
+  const uploads = new Map();          // job id -> the latest snapshot
+  let upTimer = null;
+
+  const bytes = (n) => (typeof fmtBytes === 'function' ? fmtBytes(n || 0)
+                                                       : (n || 0) + ' B');
+
+  async function upload(gids) {
+    const want = (gids || []).filter(Boolean);
+    if (!want.length) {
+      toast('None of those is a registered recording.', 'warn');
+      return null;
+    }
+    let plan;
+    try {
+      toast('Working out what would be sent…', null, 2500);
+      plan = await apiPost('/api/vacc/upload/plan', { gids: want });
+    } catch (e) {
+      toast(e.message, 'err', 9000);
+      return null;
+    }
+    const ready = (plan.items || []).filter((i) => !i.why);
+    const body = el('div', { class: 'vacc-up' }, [
+      el('p', { text: 'To ' + (plan.dest_root || 'Jarvis Data') + ', as '
+          + 'project / mouse / recording. A file already there at the same '
+          + 'size is skipped, so uploading again sends only what is missing. '
+          + 'The copy here is only read.' }),
+      (plan.shared || {}).why ? el('p', { class: 'warn-line',
+                                          text: plan.shared.why }) : null,
+      el('ul', { class: 'fix-steps' }, ready.map((i) => el('li', { text:
+        i.label + ' — ' + (i.n_send
+          ? i.n_send + ' file(s), ' + bytes(i.bytes)
+            + (i.n_skip ? ', ' + i.n_skip + ' already there' : '')
+          : 'everything already there') }))
+        .concat((plan.blocked || []).map((i) => el('li', {
+          class: 'vacc-up-no', text: i.label + ' — ' + i.why })))),
+      el('p', { class: 'hint', text: 'Scratch is processing space: VACC may '
+          + 'clear it without notice, and this is never the only copy.' }),
+    ].filter(Boolean));
+    if (!plan.files) {
+      await BARRY.confirm('Upload to VACC', body, 'Close');
+      return null;
+    }
+    let started = null;
+    const ok = await BARRY.confirm('Upload to VACC', body,
+      'Upload ' + bytes(plan.bytes) + ' to VACC', false, async () => {
+        started = await apiPost('/api/vacc/upload', {
+          gids: ready.filter((i) => i.n_send).map((i) => i.gid), confirm: true });
+      });
+    if (!ok || !started || !started.job) return null;
+    track(started.job);
+    toast('Uploading ' + started.n + ' recording(s) to VACC. Progress is in '
+          + 'the VACC panel.', 'ok', 7000);
+    return started.job.id;
+  }
+
+  function track(snap) {
+    uploads.set(snap.id, snap);
+    if (!upTimer) upTimer = setInterval(pollUploads, 3000);
+  }
+
+  async function pollUploads() {
+    if (document.hidden) return;              // nobody can see it (§10)
+    for (const [id, was] of uploads) {
+      if (was.status !== 'running') continue;
+      try {
+        const got = await api('/api/cfc/job/' + encodeURIComponent(id));
+        const snap = got.job || got;
+        uploads.set(id, snap);
+        if (snap.status !== 'running') {
+          const failed = (snap.members || []).filter((m) => m.status === 'failed');
+          toast(snap.status === 'done' && !failed.length
+                  ? 'Uploaded to VACC. The cluster will find the copies the '
+                    + 'next time it looks.'
+                  : 'The upload ' + (snap.status === 'done'
+                      ? 'finished with ' + failed.length + ' failed'
+                      : snap.status) + (snap.error ? ': ' + snap.error : '.'),
+                snap.status === 'done' && !failed.length ? 'ok' : 'err', 9000);
+          knows = null;
+        }
+      } catch (e) { /* the next tick asks again */ }
+    }
+    if (![...uploads.values()].some((s) => s.status === 'running')) {
+      clearInterval(upTimer);
+      upTimer = null;
+    }
+  }
+
+  function uploadsBox() {
+    if (!uploads.size) return null;
+    const rows = [];
+    for (const snap of uploads.values()) {
+      for (const m of (snap.members || [])) {
+        rows.push(el('div', { class: 'vacc-row' }, [
+          el('span', { class: 'vacc-k', text: m.label || m.id }),
+          el('span', { class: 'vacc-v', text: m.status === 'failed'
+            ? 'failed: ' + (m.error || '')
+            : m.status === 'done' ? (m.step || 'done')
+            : (m.of ? 'file ' + Math.min((m.done || 0) + 1, m.of) + ' of ' + m.of
+                      + (m.step ? ' · ' + m.step : '')
+                    : (m.step || m.status || 'waiting')) }),
+        ]));
+      }
+    }
+    return el('div', { class: 'vacc-uploads' }, [
+      el('h4', { text: 'Uploads' }),
+      el('div', { class: 'vacc-grid' }, rows),
+    ]);
+  }
+
   /* ---- boot ------------------------------------------------------------- */
   async function init() {
     await status();
@@ -941,6 +1058,7 @@ BARRY.vacc = (function () {
   }
 
   return { init, status, showVacc, loadKnows, of, canRead, words, mark,
+           upload, _uploads: uploads,
            open, pathFor, watch,
            offerSignIn, showSignIn, signOut,
            get last() { return last; },

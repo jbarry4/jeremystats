@@ -2862,11 +2862,33 @@ BARRY.views.sessions = (function () {
       class: 'btn ghost sm', text: 'Export CSV',
       onclick: () => exportManifest(),
     }));
+    /* Upload to the lab's shared space on VACC (constitution §6d). Only
+       with an account set up; the dialog it opens says what would be sent,
+       where, and what is already there, before anything is. */
+    if (BARRY.vacc && BARRY.vacc.upload && (BARRY.vacc.last || {}).configured) {
+      bar.appendChild(el('button', {
+        class: 'btn ghost sm', text: 'Upload to VACC…',
+        title: 'Copy these recordings to Jarvis Data on the cluster. A file '
+             + 'already there at the same size is skipped.',
+        onclick: () => BARRY.vacc.upload(gidsOfPicked()),
+      }));
+    }
     bar.appendChild(el('button', {
       class: 'btn sm',
       text: 'Open ' + picked.size + ' in Xplorefinder',
       onclick: openPicked,
     }));
+  }
+
+  /* The recordings picked, by gid. `picked` holds paths. */
+  function gidsOfPicked() {
+    const out = [];
+    for (const s of sessions) {
+      if (!picked.has(s.path)) continue;
+      const gid = s.gid || (s.stored && s.stored.gid);
+      if (gid && out.indexOf(gid) < 0) out.push(gid);
+    }
+    return out;
   }
 
   async function openPicked() {

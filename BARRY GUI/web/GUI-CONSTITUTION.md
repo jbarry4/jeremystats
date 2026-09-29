@@ -680,9 +680,9 @@ sets at once* switch, Incisor with tabs that made "VACC" mean "many at once",
 Doppler with two ghost buttons and no primary. This section is the one shape.
 
 *`BARRY.ui.runBar` exists (ui.js, checked by `_dev/uiparts.html`); tools
-move onto it one at a time. The VACC health panel and upload are still being
-built. Until a tool has moved, Braces is the reference for everything local
-and this section is the spec.*
+move onto it one at a time. The VACC health panel and upload exist (below).
+Until a tool has moved, Braces is the reference for everything local and
+this section is the spec.*
 
 ### Four modes, on two independent axes
 
@@ -799,26 +799,60 @@ One component, `BARRY.ui.runBar`, at the top of the tool under its
 **One account runs the lab's jobs.** Others sign in with their own netid to
 reach the shared space.
 
-- **Data lives in `Jarvis Data`**, under `/gpfs2/scratch/sakhava1`, mirrored
-  as `<project>/<mouse>/<recording>/`. It is **processing space**: critical
-  data is kept elsewhere, and scratch may be purged. The local copy is never
-  touched and stays the source of truth.
-- **Uploading** is part of *Scan a drive*: select recordings, *Upload to
-  VACC*. A file already there at the same size is skipped, so re-uploading
-  is cheap and resumes where it stopped. An uploaded recording is runnable at
-  once.
+- **Data lives in `Jarvis Data`**, under `/gpfs2/scratch/sakhava1`. It is
+  **processing space**: critical data is kept elsewhere, and scratch may be
+  purged. The local copy is only ever read and stays the source of truth.
+  The path, the owner and the OnDemand link are lab facts in the tracked
+  `vacc.json` (`shared`), not code.
+- **Mirrored as `<project>/<mouse folder>/…/<recording>/`, every folder from
+  the mouse's down.** Not `<project>/<mouse>/<recording>` alone: the session
+  number is often in a folder between them
+  (`M1_Pten/M1ptens1oct2/2023-10-02_16-49-04`), and a copy without it
+  identified as a different recording and would never have been found.
+  `vaccupload.destination` refuses a destination that does not identify as
+  the same recording — 948 of the 1,040 registered have one; the rest have
+  folders that name no mouse and session, and a cluster copy of those could
+  not be matched back anyway.
+- **Uploading**: pick recordings in Sessions, *Upload to VACC…*. The plan
+  comes first — what each would send, what is already there, where, and why
+  one cannot go — and the upload is started only by the button that says how
+  much it sends; the route refuses without `confirm`. A file already there
+  at the same size is skipped, so re-uploading is cheap and resumes. A file
+  arrives as `.part` and is renamed only when whole, so a cut connection
+  never leaves something that looks complete. One ssh per file, streamed in
+  chunks, never held in memory. Progress is in the VACC panel.
+- **An upload is found by identity.** `Jarvis Data` is one of the places the
+  inventory walks (`vacc.places`), so an uploaded recording is known to be on
+  VACC the way any other is: by looking.
 - **Say "uploaded", not "staged".** "Staged" implied Jarvis had copied
-  something when it had not.
+  something when it had not. `staged` stays the internal name.
 - **A cluster path never enters the registry.** A recording on the cluster is
-  known by its identity, the same way it is on a second machine.
-- **Access is checked, and a refusal is specific.** When the shared space
-  cannot be read, say *what* was refused, link the folder in OnDemand
-  (`ondemand.vacc.uvm.edu`), and say **ask Shahriar to add you**. Never a
-  bare "permission denied".
-- **Jobs outlive the window.** A background check runs `squeue --me`,
-  reattaches to every job this account owns — including ones started before
-  Jarvis last restarted — and pulls back whatever finished. The VACC health
-  panel shows queued, running, recent failures and access.
+  known by its identity, the same way it is on a second machine. A scan of a
+  cluster folder remembers the FOLDER as a place to look (this machine's
+  `.vacc.json`, `places`), and never writes a path; registering a recording
+  from its cluster copy is refused, because `REG.ingest` records the path.
+  (Cluster paths written by the old scan are still in the registry; they are
+  left as they are.)
+- **Access is checked, and a refusal is specific.** The routine probe tests
+  whether this account can open the shared space and write into
+  `Jarvis Data` (or create it). When it cannot, the panel says *what* was
+  refused, links the folder in OnDemand, and says **ask Shahriar**
+  (`vacc.shared_words`). Never a bare "permission denied". The netfiles share
+  is not Shahriar's to open; its refusal still points at vacchelp.
+- **Jobs outlive the window.** The probe — still one connection — runs
+  `squeue --me` (falling back to `-u $USER`) and the last day's `sacct`
+  failures. Every batch Incisor, Doppler and Circuit submit writes a run
+  record (`GUI_logs/vacc_runs`, machine-local), and a restart re-attaches to
+  each open one and files its answers (`_resume_vacc_batches`, Circuit's
+  own). The panel lists every job the account has, marked *Jarvis here*
+  (with the tool), *Jarvis, not followed here* or *not Jarvis*, and the runs
+  waited on that the cluster no longer lists. A job with no record — one the
+  person started by hand, or another machine's — is shown, not adopted: only
+  the process that knows how to file an answer can take it. Drift's runs do
+  not write records yet.
+- **An account is claimed when one is set.** `#SBATCH --account=` goes into
+  both builders' scripts (`vacc.sbatch_account`); it was saved and never
+  sent.
 
 ---
 

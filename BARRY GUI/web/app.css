@@ -721,6 +721,7 @@
 .vacc-jobs td { padding: 3px 6px; border-bottom: 1px solid var(--line-soft);
                 font-family: var(--mono); overflow-wrap: anywhere; }
 .vacc-jobs tr.on td { color: var(--accent); }
+.vacc-up .vacc-up-no { color: var(--text-3); }
 .vacc-state { font-size: var(--fs-125); margin: 2px 0 10px; }
 /* The sign-in form. A label above its field rather than beside it, because
    "NetID" and "Password" are short and the fields are not, and a two-column
