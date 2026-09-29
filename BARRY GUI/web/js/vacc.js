@@ -113,15 +113,19 @@ BARRY.vacc = (function () {
         + (remote ? ' — ' + remote : '')
         + '\n\nNothing to upload: it is on a share VACC mounts.',
     },
+    /* `staged` is the internal name and stays so; what a person reads is
+       "uploaded" (constitution §6d). "Staged" said Jarvis had put it there,
+       and it had not -- this is a copy found on the cluster, in scratch or
+       in a folder a scan was pointed at. */
     staged: {
-      word: 'VACC copy', short: 'VACC',
-      note: 'a copy in the cluster’s scratch',
+      word: 'Uploaded to VACC', short: 'VACC',
+      note: 'a copy uploaded to the cluster',
       why: (remote) =>
-        'A copy of this recording is in cluster scratch'
+        'A copy of this recording is on the cluster'
         + (remote ? ' — ' + remote : '') + '.\n\n'
         + 'Scratch is not storage — VACC may clear it without notice, so '
-        + 'this is a cache and never the only copy. If it goes, the next '
-        + 'run puts it back.',
+        + 'this is a working copy and never the only one. If it goes, '
+        + 'upload it again.',
     },
   };
 
@@ -792,7 +796,7 @@ BARRY.vacc = (function () {
               + 'saying no.' }),
         el('div', { class: 'vacc-grid' }, [
           row('Reads in place', c['native']),
-          row('Copied to scratch', c['staged']),
+          row('Uploaded to VACC', c['staged']),
           row('Not reachable from it', c['local-only']),
           row('Not established', c['unknown']),
         ]),

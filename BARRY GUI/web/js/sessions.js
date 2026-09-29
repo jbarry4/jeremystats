@@ -69,7 +69,7 @@ BARRY.views.sessions = (function () {
        missing answer as a no is the mistake `canOpen` below is a comment
        about. */
     { group: 'VACC', id: 'onvacc', name: 'VACC can read it',
-      note: 'On a share the cluster mounts, or already copied to it' },
+      note: 'On a share the cluster mounts, or uploaded to it' },
     { group: 'VACC', id: 'notvacc', name: 'VACC cannot reach it',
       note: 'Established, and on a disk the cluster has no path to' },
     /* The work list for the flag, because a chip you have to scroll into is
@@ -1376,7 +1376,7 @@ BARRY.views.sessions = (function () {
                panel promising only part of it, reads as "this is showing
                everything". */
             ? ' in the catalogue can be read by VACC  ·  on a share it '
-              + 'mounts, or already copied to its scratch'
+              + 'mounts, or uploaded to it'
             : ' in the shared catalogue  ·  every machine, kept in step '
               + 'through Supabase')
       /* In the shared view, how the list divides between what this scan
@@ -3162,7 +3162,7 @@ BARRY.views.sessions = (function () {
         : null,
       vCounts ? el('div', { class: 'vacc-grid' }, [
         vRow('Reads in place', vCounts['native']),
-        vRow('Copied to its scratch', vCounts['staged']),
+        vRow('Uploaded to VACC', vCounts['staged']),
         vRow('Not reachable from it', vCounts['local-only']),
         vRow('Not established', vCounts['unknown']),
       ]) : el('p', { class: 'hint quiet', text: 'Counting…' }),
