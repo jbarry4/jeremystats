@@ -1639,6 +1639,26 @@ SAFETY = 3.0
 MIN_WALL_S = 600
 
 
+_ACCOUNT_OK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+
+
+def sbatch_account(cfg):
+    """The `#SBATCH --account=` line for this config, or "".
+
+    `account` was saved (`/api/vacc/setup`) and never sent, so every job ran
+    on the netid's default account whatever the lab had set. It goes into a
+    script, so anything that is not a plain account name is refused rather
+    than quoted: a slurm account has no spaces, slashes or quotes in it.
+    """
+    acct = str((cfg or {}).get("account") or "").strip()
+    if not acct:
+        return ""
+    if not _ACCOUNT_OK.match(acct):
+        raise ValueError("The VACC account %r is not an account name. Set it "
+                         "again from the VACC panel." % acct)
+    return "#SBATCH --account=%s\n" % acct
+
+
 def slurm_request(seconds, megasamples=1.0, partition=None):
     """What to ask slurm for, from what the estimator already knows.
 

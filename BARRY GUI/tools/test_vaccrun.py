@@ -133,6 +133,32 @@ def main():
           or '"height_sd":4.5' in sub, sub[:120])
     check("the job is named after its run id",
           "--job-name=" + r.rid in sub, sub[:200])
+    check("with no account set, none is claimed",
+          "--account" not in sub, sub[:300])
+
+    print("\nthe account is sent when one is set (it was saved and never sent)")
+    CFG["account"] = "barrylab"
+    try:
+        afake1 = FakeCluster(["COMPLETED"])
+        run_job(afake1, {"path": "Y:\\x\\m1"}, "/netfiles/bigdata_jbarry/x/m1")
+        asub1 = [a for a in afake1.asked if "sbatch" in a][0]
+        check("#SBATCH --account=barrylab is in the script",
+              "#SBATCH --account=barrylab\n" in asub1, asub1[:300])
+        afake = FakeCluster(["COMPLETED"])
+        arr = vaccrun.VaccArray(CFG, "doppler", [{"spec_remote": {"path": "/a"}}],
+                                ssh=afake)
+        arr.submit(seconds=60)
+        asub = [a for a in afake.asked if "sbatch" in a][0]
+        check("and in the array builder's script too",
+              "#SBATCH --account=barrylab\n" in asub, asub[-600:])
+        CFG["account"] = "bad; rm -rf ~"
+        try:
+            vacc.sbatch_account(CFG)
+            check("an account that is not a name is refused", False)
+        except ValueError:
+            check("an account that is not a name is refused", True)
+    finally:
+        CFG.pop("account", None)
     check("a --time was set, never left to the 30-minute default",
           "--time=" in sub, sub[:200])
     check("and a partition with it", "--partition=" in sub)
