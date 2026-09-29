@@ -904,7 +904,9 @@ BARRY.curate = (function () {
     try {
       res = await apiPost('/api/curation/' + encodeURIComponent(gid) + '/'
                           + encodeURIComponent(kd) + '/restore',
-                          { entry: pick.entry, version: pick.v });
+                          { entry: pick.entry,
+                            // By id: the number repeats (the route resolves a ref).
+                            version: (pick.row && pick.row.id != null) ? pick.row.id : pick.v });
     } catch (e) {
       toast('Could not switch to v' + pick.name + ': ' + e.message, 'err', 9000);
       return;

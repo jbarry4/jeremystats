@@ -1054,23 +1054,25 @@ BARRY.views.eventbank = (function () {
     const mix = Object.keys(v.by_label || {})
       .sort((a, b) => v.by_label[b] - v.by_label[a])
       .map((k) => (names[k] || k) + ' ' + v.by_label[k]).join(', ');
+    const name = BARRY.ui.versionLabel(v);
     const go = await BARRY.confirm(
-      'Put version ' + v.v + ' back?',
-      'The live curation set becomes what it was at version ' + v.v
+      'Put ' + name + ' back?',
+      'The live curation set becomes what it was at ' + name
       + ': ' + mix + '. Nothing is deleted \u2014 whatever is there now '
       + 'stays in the history, and coming back to it is the same one '
       + 'click.',
-      'Put v' + v.v + ' back', false);
+      'Put ' + name + ' back', false);
     if (!go) return;
     try {
       const res = await apiPost(
         '/api/curation/' + encodeURIComponent(e.gid) + '/'
         + encodeURIComponent(e.type) + '/restore',
-        { entry: e.id, version: v.v });
+        // By id: the stored number repeats; the route resolves a ref.
+        { entry: e.id, version: v.id != null ? v.id : v.v });
       toast(res.changed
-        ? 'Put version ' + v.v + ' back: ' + res.changed
+        ? 'Put ' + name + ' back: ' + res.changed
           + ' decision(s) changed, ' + res.unchanged + ' already matched.'
-        : 'The set already matches version ' + v.v + '.', 'ok', 8000);
+        : 'The set already matches ' + name + '.', 'ok', 8000);
       load(true);
     } catch (err) { toast(err.message, 'err', 9000); }
   }
@@ -1090,7 +1092,9 @@ BARRY.views.eventbank = (function () {
       return host;
     }
 
-    const others = vs.filter((o) => o.v !== v.v && o.snap);
+    // Every other version -- by identity: by number, a version sharing the
+    // open one's number was dropped from what it could be compared with.
+    const others = vs.filter((o) => o !== v && o.snap);
     if (!others.length) {
       host.appendChild(el('p', { class: 'hint',
         text: 'Nothing else to compare it against yet.' }));
@@ -1158,17 +1162,20 @@ BARRY.views.eventbank = (function () {
         onclick: () => restoreVersion(e, v),
       }),
       el('span', { class: 'hint', text: 'compared with' }),
+      /* By name, as the strip is: the stored number repeats when two
+         machines both mint it, and keyed on it this compared against
+         whichever came first. */
       el('select', {
         onchange: (ev) => {
-          against = others.find((o) => String(o.v) === ev.target.value)
+          against = others.find((o) => verKey(o) === ev.target.value)
                  || against;
           paint();
         },
       }, others.map((o) => el('option', {
-        value: String(o.v),
+        value: verKey(o),
         text: BARRY.ui.versionLabel(o) + '  ' + (o.by || '') + '  '
             + BARRY.when(o.at, 'minute'),
-        selected: o.v === against.v ? 'selected' : null,
+        selected: verKey(o) === verKey(against) ? 'selected' : null,
       }))),
     ]));
     host.appendChild(rows);

@@ -1222,6 +1222,10 @@ class EventBank:
         dropped = sorted({k for e in (rec.get("events") or [])
                           for k in e if k not in self.SNAP_FIELDS})
         rows = []
+        # Named, with lineage, so the page can draw the version tree and
+        # choose by id (constitution section 6e).
+        names = {id(r): n for r, n in versionsmod.label_rows(
+            list(rec.get("versions") or []))}
         for ver in sorted((rec.get("versions") or []),
                           key=lambda x: x.get("v") or 0):
             v = ver.get("v") or 0
@@ -1235,6 +1239,8 @@ class EventBank:
                        "be read back")
             rows.append({
                 "v": v,
+                "name": names.get(id(ver)),
+                "from_v": ver.get("from_v"), "from_id": ver.get("from_id"),
                 "id": ver.get("id"),
                 "at": ver.get("at"),
                 "by": ver.get("by"),
@@ -1276,12 +1282,15 @@ class EventBank:
         if not rec:
             raise BankError("No bank entry %s." % entry_id)
 
-        src_v, dropped = None, []
+        # `from_version` is a REF: the version's id (what the page sends), a
+        # derived id, or a number that names one version -- `version_at`
+        # refuses a number two machines both minted. The events are then
+        # read from THAT version, by its id where it has one.
+        src_v, src_ref, dropped = None, None, []
         if from_version is not None:
-            try:
-                src_v = int(from_version)
-            except (TypeError, ValueError):
-                raise BankError("%r is not a version number." % from_version)
+            hit = self.version_at(rec, from_version)
+            src_v = hit.get("v") or 0
+            src_ref = hit.get("id") if hit.get("id") is not None else from_version
 
         if src_v is None:
             basis = (rec.get("time_basis") or {}).get("kind")
@@ -1300,7 +1309,7 @@ class EventBank:
         if src_v is None:
             events = rec.get("events") or []
         else:
-            events, dropped = self.events_at(rec, src_v)
+            events, dropped = self.events_at(rec, src_ref)
 
         moved, unplaceable, shifts = [], [], []
         for ev in events:

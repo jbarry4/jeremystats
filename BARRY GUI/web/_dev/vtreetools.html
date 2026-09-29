@@ -180,7 +180,134 @@ async function untilN(fn, tries = 200, gap = 100) {
   btnT(/^Cancel$/).click();
   check('Cancel resolves null', (await p) === null);
 
-  head(bad === 0 ? 'Braces and Checkup read through the version tree' : bad + ' failed');
+  /* The three that were still different: Checkup's "New curation set",
+     Spotter's start (always v0), and Eye (no choice at all). The network is
+     stood in for: for-recording answers from here, and from-bank refuses,
+     so nothing is started. */
+  const fr = {
+    ok: true, existing: [],
+    entries: [{ id: 'zzE', name: 'zz Doppler run', kind: 'ied', kind_name: 'IED',
+                n: 20, label_names: { ied: 'IED', garbage: 'garbage' },
+                versions: [
+                  { v: 2, id: 'x2', name: '1.1', from_v: 1, from_id: 'x1', at: T(10),
+                    by: 'zz c', n: 20, usable: true, by_label: { ied: 12, garbage: 8 } },
+                  { v: 1, id: 'x1', name: '1', from_v: 0, from_id: 'x0', at: T(20),
+                    by: 'zz b', n: 20, usable: true, by_label: { ied: 15, garbage: 5 } },
+                  { v: 0, id: 'x0', name: '0', at: T(30), by: 'Doppler', n: 20,
+                    usable: false, imported: true, by_label: {} },
+                ] }],
+  };
+  const sentFB = [];
+  const txt = (n) => (n ? n.textContent : '').replace(/\s+/g, ' ').trim();
+  const realApi2 = W().api;
+  W().api = async (path, opts) => {
+    if (String(path).indexOf('/api/curation/for-recording/') === 0) return fr;
+    if (path === '/api/curation/from-bank') {
+      sentFB.push(JSON.parse(opts.body));
+      throw new Error('zz stopped by the harness');
+    }
+    return realApi2(path, opts);
+  };
+  try {
+    head('Spotter: which version a set starts from');
+    let sp = B.spotter._chooseVersion('zzG', 'zzE');
+    await untilN(() => md().querySelector('.spot-vers .vtree'), 50, 100);
+    const srow = (n) => Array.from(md().querySelectorAll('.spot-vers .vtree-row'))
+      .find((r) => r.dataset.v === n);
+    check('with more than one to start from, it asks, with the version tree',
+          !!md().querySelector('.spot-vers .vtree'));
+    check('opening on the newest a set can be built from, not on v0',
+          srow('1.1') && srow('1.1').getAttribute('aria-checked') === 'true');
+    check('Doppler’s own list is marked, and without a snapshot cannot be picked',
+          srow('0').disabled && /Doppler’s list/.test(srow('0').textContent));
+    srow('1').click();
+    check('the sentence follows the choice',
+          /start from v1: 20 candidate\(s\), 20 already decided/.test(
+            txt(md().querySelector('.spot-vers'))), txt(md().querySelector('.spot-vers')));
+    btnT(/^Start from this version$/).click();
+    const spPick = await sp;
+    check('and it hands back that version, with its id', spPick && spPick.id === 'x1',
+          JSON.stringify(spPick));
+    sp = B.spotter._chooseVersion('zzG', 'zzE');
+    await untilN(() => md().querySelector('.spot-vers'), 50, 100);
+    btnT(/^Cancel$/).click();
+    check('Cancel is a no, not v0', (await sp) === null);
+
+    head('Checkup: New curation set');
+    W().setView('toolkit');
+    await sleep(300);
+    B.views.toolkit.pick('curate');
+    const nb = await untilN(() => Array.from(D().querySelectorAll('#tkResult button'))
+      .find((b) => /^New curation set/.test(b.textContent)), 100, 100);
+    check('Checkup offers a new set', !!nb);
+    if (nb) {
+      nb.click();
+      const tree = await untilN(() => md().querySelector('.ncs-vers .vtree'), 150, 100);
+      check('which version to work from is the version tree', !!tree);
+      const nrow = (n) => Array.from(md().querySelectorAll('.ncs-vers .vtree-row'))
+        .find((r) => r.dataset.v === n);
+      const start = () => Array.from(md().querySelectorAll('.mf button'))
+        .find((b) => b.textContent === 'Start on it');
+      check('nothing is chosen for you when there are two', start() && start().disabled);
+      nrow('1').click();
+      await sleep(100);
+      check('choosing one says what the set will hold, by its name',
+            /as of v1/.test(txt(md())), txt(md()).slice(0, 200));
+      start().click();
+      await sleep(300);
+      check('it would start from that version by its id, not its number',
+            sentFB.length === 1 && sentFB[0].version === 'x1', JSON.stringify(sentFB));
+      W().eval('closeModal()');
+    }
+
+    head('Eye: which version to read');
+    const eyeList = [{ id: 'eyeE', n: 30, versions: [
+      { ref: 'e0', v: 0, name: '0', usable: true, n: 30, at: T(30) },
+      { ref: 'e1', v: 1, name: '1', usable: true, n: 28, at: T(20), note: 'confirmed' },
+      { ref: 'e2', v: 2, name: '2', usable: false, why_not: 'not on this machine', at: T(10) },
+    ] }];
+    const card = B.eye._versionCard(eyeList, 'eyeE');
+    check('Eye draws the version tree', card && !!card.querySelector('.vtree'));
+    check('with "now" first, as Braces does',
+          card && !!card.querySelector('.vtree-lead')
+          && /now/.test(card.querySelector('.vtree-lead').textContent));
+    const erow = (n) => card && Array.from(card.querySelectorAll('.vtree-row'))
+      .find((r) => r.dataset.v === n);
+    check('one that cannot be read is shown, disabled, with why',
+          erow('2') && erow('2').disabled && /not on this machine/.test(erow('2').textContent));
+    check('and with only one readable version, there is no choice to draw',
+          B.eye._versionCard([{ id: 'one', versions: [{ ref: 'a', name: '0', usable: true }] }],
+                             'one') === null);
+    head('Sessions: correct it again, from an earlier version');
+    const rt = [
+      { v: 0, id: 'r0', name: '0', n: 40, usable: true, at: T(30), by: 'zz' },
+      { v: 1, id: 'r1', name: '1', from_v: 0, from_id: 'r0', n: 40, usable: true,
+        at: T(20), by: 'zz' },
+      { v: 2, id: 'r2', name: '2', from_v: 1, from_id: 'r1', n: 40, usable: false,
+        current: true, at: T(10), by: 'zz',
+        why_not: 'already on neuralynx_true — it was corrected at or before this version' },
+    ];
+    const rp = B.views.sessions._pickVersion('zz already corrected', rt, []);
+    await untilN(() => md().querySelector('.ver-pick .vtree'), 50, 100);
+    const rrow = (n) => Array.from(md().querySelectorAll('.ver-pick .vtree-row'))
+      .find((r) => r.dataset.v === n);
+    check('the correction chooses its version with the version tree',
+          !!md().querySelector('.ver-pick .vtree'));
+    check('every version is there, the corrected one disabled with why',
+          rrow('2') && rrow('2').disabled && /already on neuralynx_true/.test(rrow('2').textContent));
+    const prev = () => Array.from(md().querySelectorAll('.mf button'))
+      .find((b) => /^Preview from this version$/.test(b.textContent));
+    check('nothing is previewed until one is chosen', prev() && prev().disabled);
+    rrow('1').click();
+    check('choosing one allows the preview', prev() && !prev().disabled);
+    prev().click();
+    check('and it reads that version by its id, not its number', (await rp) === 'r1');
+  } finally {
+    W().api = realApi2;
+    try { W().eval('closeModal()'); } catch (e) { /* closed */ }
+  }
+
+  head(bad === 0 ? 'every version chooser is the version tree' : bad + ' failed');
   document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(
     out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
 } catch (e) {

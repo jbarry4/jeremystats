@@ -935,10 +935,8 @@ every event survives.
 tree, and six different controls showed it as a list — Braces' select,
 X-ray's *Read from*, Checkup's *Pick it up from*, the Event Bank's chips and
 rows, Root Canal's radios, Eye's own formatter — which is why a branch name
-like v4.1 looked arbitrary. **All of them use it now**: Checkup's *Pick it
-up from* (one tree per entry), Braces' and X-ray's and Root Canal's *Read the
-stamps from*, and the Event Bank's lineage strip; Eye's formatter is
-`versionLabel`. The rows may wrap on a narrow panel, so the graph is drawn
+like v4.1 looked arbitrary. **All of them use it now** — every one is in
+the register below. The rows may wrap on a narrow panel, so the graph is drawn
 from where the rows actually are and redrawn on resize.
 
 Its options, so a caller never draws its own row: `idOf` (what the tool
@@ -950,8 +948,36 @@ there), `unit` (*stamps*), `state` (*the detector*, *on the bench*,
 `readonly` (a history to read). `tree.choose(ref)` sets the choice without
 calling back; `choose(null)` clears it, for a picker with several trees.
 
-A table row keeps a `<select>` (Braces' many-at-once list): the tree is for
-choosing, and a table is for comparing many entries at once.
+### Every version picker
+
+The register. **A new version picker is `ui.versionTree` and gets a row
+here** in the same change; one that is not the tree says why in the last
+column. Spotter, Eye, Checkup's *New curation set* and the Sessions
+correction were found still different after the first sweep: Spotter always
+started a set from v0, Eye never offered a choice, and the other two chose
+by stored number. The register is how the next one is not missed.
+
+| where | chooses | control | by | code | checked by |
+|---|---|---|---|---|---|
+| Checkup — *Pick it up from* (shelf) and *Switch to another version* (bench) | the version a curation set carries on from | tree, one per entry (`BARRY.pickVersion`) | the version itself | `curate.js` `BARRY.vers.chooser`; called from `toolkit.js` `pickUpSet` and the bench's Version chip, and `curate.js` | `curversion.html`, `vtreetools.html` |
+| Checkup — *New curation set* | the version a new set starts from | tree | id | `toolkit.js` `newCurationSet` | `vtreetools.html` |
+| Spotter — starting a set from a Doppler run | the version the set starts from | tree, in a dialog when more than one can be built from; else the newest | id | `spotter.js` `chooseVersion` | `vtreetools.html` |
+| Braces — *Read the stamps from* | the version read | tree, *now* first | ref | `braces.js` `planCard` | `vtreetools.html` |
+| X-ray — *Read the stamps from* | the version read | tree, *as they are now* first | ref | `dspca.js` | `dspca.html` |
+| Root Canal — *Read the stamps from* | the version read, its default marked | tree | ref | `rootcanal.js` | `rootcanal.html` |
+| Eye — *Read the stamps from* | the version read | tree, *now* first; only when there is a choice | ref | `eye.js` `versionCard` | `vtreetools.html` |
+| Event Bank — lineage strip | the version opened | tree | name | `eventbank.js` `detail` | `lineage.html` |
+| Sessions — *Correct it again, from an earlier version* | the version a correction reads | tree, every version, the corrected ones disabled with why | id | `sessions.js` `pickVersion` | `vtreetools.html` |
+| Checkup — bank dialog's history | nothing (a history to read) | tree, `readonly`, notes | — | `curate.js` `bankParts` | `benchbank.html` |
+| Braces — *Many at once*, per row | the version each entry in the batch reads | `<select>` | ref | `braces.js` bulk rows | — *a row in a table of many entries: the tree is for choosing one, a table for comparing many* |
+| Event Bank — *compare with*, inside an open version | the version the open one is diffed against | `<select>` | name | `eventbank.js` `versionDetail` | `lineage.html` — *a second choice inside one already made; the tree is the choice of which version to open* |
+| Drift — each artifact's version, in its member row | the artifact version a drift pins | `<select>` | version id | `drift.js` `pickRow` | — *The Arc's; its builders move it with the rest of the Arc, and it is a row in a list of many* |
+
+Every picker above sends the version by **id or ref**, never by the stored
+number alone, and every route it reaches resolves a ref:
+`/api/bank/<id>/version/<v>` (`EventBank._version_ref`),
+`/api/curation/from-bank` (the same), `/api/session/retime` (`version_at`),
+and the tools that read a version by `ref`.
 
 The Event Bank's strip had never opened a version: the chip stored the
 version's name and the two places that read it compared the stored number,

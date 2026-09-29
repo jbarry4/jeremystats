@@ -254,9 +254,17 @@ BARRY.spotter = (function () {
         ]), 'Replace it', true);
       if (!ok) return true;   // curate what is there
     }
+    /* Which version to start from. It was always 0 -- Doppler's own list,
+       nothing decided -- so a run that had already been through Spotter and
+       banked started again from scratch. Now: the newest version a set can
+       be built from, and when there is more than one, the version tree to
+       choose with (constitution §6e), the same control Checkup uses. */
+    const pick = await chooseVersion(gid, entryId);
+    if (pick === null) return false;          // asked, and called off
     try {
       await apiPost('/api/curation/from-bank', {
-        gid, kind: 'ied', entry: entryId, version: 0, replace: true,
+        gid, kind: 'ied', entry: entryId, replace: true,
+        version: pick && pick.id != null ? pick.id : (pick ? pick.v : 0),
       });
     } catch (e) {
       toast('Could not make a set from that run: ' + e.message, 'err', 9000);
@@ -264,6 +272,57 @@ BARRY.spotter = (function () {
     }
     entry = entryId;
     return true;
+  }
+
+  /* The version a new set starts from: {id, v, ...}, false for "the
+     detector's list" when nothing else can be read, or null when somebody
+     was asked and cancelled. */
+  async function chooseVersion(gid, entryId) {
+    let info = null;
+    try {
+      info = await api('/api/curation/for-recording/' + encodeURIComponent(gid));
+    } catch (e) { return false; }
+    const ent = ((info && info.entries) || []).find((e) => e.id === entryId);
+    const vs = (ent && ent.versions) || [];
+    const usable = vs.filter((v) => v.usable);
+    if (!usable.length) return false;
+    // `for-recording` lists newest first, by name.
+    let pick = usable[0];
+    if (usable.length === 1) return pick;
+    const names = ent.label_names || {};
+    const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
+    const said = el('p', { class: 'confirm-msg' });
+    const say = () => {
+      const decided = Object.keys(pick.by_label || {})
+        .filter((k) => k !== 'unspecified')
+        .reduce((n, k) => n + pick.by_label[k], 0);
+      said.textContent = 'The set will start from ' + BARRY.ui.versionLabel(pick)
+        + ': ' + (pick.n || 0) + ' candidate(s)'
+        + (decided ? ', ' + decided + ' already decided.'
+                   : ', none decided \u2014 a fresh pass.');
+    };
+    say();
+    const ok = await BARRY.confirm('Which version to start from',
+      el('div', { class: 'spot-vers' }, [
+        el('p', { class: 'hint', text: (ent.name || 'This run') + ' has been '
+            + 'worked on before. v0 is Doppler\u2019s own list, nothing decided; '
+            + 'a later one carries the decisions made in it.' }),
+        BARRY.ui.versionTree({
+          versions: vs,
+          idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
+          value: pick.id != null ? pick.id : 'v' + pick.v,
+          disabled: (v) => (v.usable ? null : 'no snapshot kept \u2014 a set '
+                                            + 'cannot be built from it'),
+          state: (v) => (v.imported ? ['Doppler\u2019s list'] : []),
+          notes: (v) => Object.keys(v.by_label || {})
+            .sort((a, b) => v.by_label[b] - v.by_label[a])
+            .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  \u00b7  ')
+            || ((v.n || 0) + ' candidates'),
+          onpick: (v) => { pick = v; say(); },
+        }),
+        said,
+      ]), 'Start from this version');
+    return ok ? pick : null;
   }
 
   function exit() {
@@ -1164,6 +1223,8 @@ BARRY.spotter = (function () {
       return set_ ? { gid: set_.gid, kind: 'ied', index,
                       total: events().length, left: left() } : null;
     },
+    // Which version a new set starts from, for web/_dev/vtreetools.html.
+    _chooseVersion: chooseVersion,
     _raster: drawRaster,
     _keys: keys,
     // For `_dev/spotter.html`: a computed category is read-only and gets no

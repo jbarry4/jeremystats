@@ -1809,30 +1809,22 @@ BARRY.views.toolkit = (function () {
                                    text: 'Which version to work from' }));
       const names = entry.label_names || {};
       const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
-      const vlist = el('div', { class: 'bm-list' });
-      for (const v of (entry.versions || [])) {
-        const mix = Object.keys(v.by_label || {})
+      /* The version tree (constitution §6e), chosen by id: the stored
+         number repeats when two machines both mint the next one, so
+         `ver.v === v.v` lit up two rows and sent an ambiguous number. */
+      body.appendChild(el('div', { class: 'ncs-vers' }, [BARRY.ui.versionTree({
+        versions: entry.versions || [],
+        idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
+        value: ver ? (ver.id != null ? ver.id : 'v' + ver.v) : undefined,
+        disabled: (v) => (v.usable ? null : 'no snapshot kept — a set cannot '
+                                          + 'be built from it'),
+        state: (v) => (v.imported ? ['the detector'] : []),
+        notes: (v) => Object.keys(v.by_label || {})
           .sort((a, b) => v.by_label[b] - v.by_label[a])
-          .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  \u00b7  ');
-        vlist.appendChild(el('label', {
-          class: 'bm-row' + (ver && ver.v === v.v ? ' on' : '')
-               + (v.usable ? '' : ' off'),
-        }, [
-          el('input', { type: 'radio', name: 'ncsVer',
-            disabled: v.usable ? null : 'disabled',
-            checked: ver && ver.v === v.v ? 'checked' : null,
-            onchange: () => { ver = v; paint(); } }),
-          el('span', { class: 'ver-n', text: BARRY.ui.versionLabel(v) }),
-          v.imported ? el('span', { class: 'flagchip',
-                                    text: 'the detector' }) : null,
-          el('span', { class: 'mk-name', text: mix || (v.n || 0) + ' events' }),
-          el('span', { class: 'person-what',
-            text: (v.by || 'unknown')
-                + '  \u00b7  ' + (curWhen(v.at) || '')
-                + (v.usable ? '' : '  \u00b7  no snapshot kept') }),
-        ].filter(Boolean)));
-      }
-      body.appendChild(vlist);
+          .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  \u00b7  ')
+          || ((v.n || 0) + ' events'),
+        onpick: (v) => { ver = v; paint(); },
+      })]));
 
       if (ver) {
         const decided = Object.keys(ver.by_label || {})
@@ -1861,21 +1853,25 @@ BARRY.views.toolkit = (function () {
           'This recording already has one \u2014 "' + (had.name || '')
           + '", ' + pr.specified + ' of ' + pr.total + ' decided'
           + (had.assignee ? ', assigned to ' + had.assignee : '')
-          + '. A recording has one set per kind, so starting from v' + ver.v
-          + ' replaces it. The decisions in it are still in the bank if they '
-          + 'were ever banked; anything never banked goes.',
-          'Replace it with v' + ver.v, true);
+          + '. A recording has one set per kind, so starting from '
+          + BARRY.ui.versionLabel(ver) + ' replaces it. The decisions in it '
+          + 'are still in the bank if they were ever banked; anything never '
+          + 'banked goes.',
+          'Replace it with ' + BARRY.ui.versionLabel(ver), true);
         if (!ok) return;
       }
       okBtn.disabled = 'disabled';
       try {
         const res = await apiPost('/api/curation/from-bank', {
-          gid, kind: entry.kind, entry: entry.id, version: ver.v,
+          gid, kind: entry.kind, entry: entry.id,
+          // By id where there is one (the route resolves a ref).
+          version: ver.id != null ? ver.id : ver.v,
           replace: true,
         });
         closeModal();
         const pr = res.progress || {};
-        toast('Started "' + (res.set || {}).name + '" from v' + ver.v
+        toast('Started "' + (res.set || {}).name + '" from '
+              + BARRY.ui.versionLabel(ver)
               + ': ' + pr.total + ' candidate(s), ' + pr.left + ' to decide.'
               + (res.replaced ? ' The previous set was replaced.' : ''),
               'ok', 8000);
@@ -2011,7 +2007,9 @@ BARRY.views.toolkit = (function () {
     try {
       res = await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
                           + encodeURIComponent(st.kind) + '/restore',
-                          { entry: pick.entry, version: pick.v });
+                          { entry: pick.entry,
+                            // By id: the number repeats (the route resolves a ref).
+                            version: (pick.row && pick.row.id != null) ? pick.row.id : pick.v });
     } catch (e) {
       toast('Could not work from v' + pick.name + ': '
             + (e && e.message || e), 'err', 9000);

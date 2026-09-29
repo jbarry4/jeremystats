@@ -130,6 +130,22 @@ try:
     ck("and the oldest carries none of them",
        garbage(rep_old) == 0, str(garbage(rep_old)))
 
+    # By id, which is what the page sends now: the stored number repeats
+    # when two machines both mint the next one.
+    lo_id = next(v.get("id") for v in rec["versions"] if v.get("v") == lo)
+    rep_id = bank.retime(eid, shift, TRUE, CONCAT, "sha-1", dry_run=True,
+                         from_version=lo_id)
+    ck("asked by the version's id, it reads the same version",
+       rep_id.get("from_version") == lo and garbage(rep_id) == 0
+       and rep_id.get("moved") == 40, str((rep_id.get("from_version"),
+                                           garbage(rep_id))))
+    try:
+        bank.retime(eid, shift, TRUE, CONCAT, "sha-1", dry_run=True,
+                    from_version="no-such-version")
+        ck("an unknown ref is refused", False, "it read something")
+    except eventbank.BankError:
+        ck("an unknown ref is refused", True)
+
     print()
     print("Applying, and refusing to apply it twice")
     done = bank.retime(eid, shift, TRUE, CONCAT, "sha-1", dry_run=False,

@@ -94,7 +94,11 @@ BARRY.eye = (function () {
            + 'an average of them is of the event and not of the jitter.',
     }));
     host.appendChild(pickCard());
-    if (q.entry) host.appendChild(settingsCard());
+    if (q.entry) {
+      const vc = versionCard();
+      if (vc) host.appendChild(vc);
+      host.appendChild(settingsCard());
+    }
     if (Object.keys(runs).length) host.appendChild(compareCard());
     if (q.measure && (runs[q.measure] || {}).proposal) {
       host.appendChild(commitCard());
@@ -301,6 +305,34 @@ BARRY.eye = (function () {
       }
       host.appendChild(g);
     }
+  }
+
+  /* Which version supplies the stamps (constitution §6e): the version
+     tree, as Braces draws it, with "now" above it for the stamps as they
+     stand. Eye used to take the newest readable version without asking, so
+     choosing an older pass meant going to the Event Bank first. Only where
+     there is a choice. */
+  function versionCard() {
+    const c = (cands || []).find((x) => x.id === q.entry);
+    const vs = (c && c.versions) || [];
+    if (vs.filter((v) => v.usable).length < 2) return null;
+    return el('div', { class: 'card eye-vers' }, [
+      el('div', { class: 'section-label', text: 'Read the stamps from' }),
+      BARRY.ui.versionTree({
+        versions: vs,
+        idOf: (v) => v.ref,
+        value: q.from_version,
+        unit: 'stamps',
+        notes: true,
+        lead: { name: 'now', text: (c.n || 0) + ' stamps, as they stand' },
+        disabled: (v) => (v.usable ? null : (v.why_not || 'cannot be read here')),
+        onpick: (v) => {
+          q.from_version = v ? v.ref : null;
+          runs = {}; q.measure = null;
+          paint();
+        },
+      }),
+    ]);
   }
 
   /* The band Eye aligns through, read from the `ied` filter preset -- the
@@ -760,6 +792,13 @@ BARRY.eye = (function () {
     _runs: () => runs,
     _best: bestGuess,
     _counts: counts,
+    /* The version card from a given set list, for web/_dev/vtreetools.html;
+       the list and the choice are put back. */
+    _versionCard: (list, entryId) => {
+      const was = [cands, q.entry];
+      cands = list; q.entry = entryId;
+      try { return versionCard(); } finally { cands = was[0]; q.entry = was[1]; }
+    },
     // For the harness: forget the list so the next paint asks again,
     // after it has banked a set of its own.
     _reset: () => {

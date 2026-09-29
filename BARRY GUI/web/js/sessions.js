@@ -2223,13 +2223,13 @@ BARRY.views.sessions = (function () {
        again means reading a version that predates the correction, so the
        refusal now offers that instead of only stating itself. */
     if (!res.ok && res.reason) {
-      const usable = (((res.versions || {}).versions) || [])
-        .filter((v) => v.usable);
-      if (!usable.length) {
+      const all = ((res.versions || {}).versions) || [];
+      if (!all.some((v) => v.usable)) {
         toast(res.reason, 'err', 9000);
         return;
       }
-      const pick = await pickVersion(res.reason, usable,
+      // Every version, the ones it cannot read from shown with why.
+      const pick = await pickVersion(res.reason, all,
                                      (res.versions || {}).drops_fields);
       if (pick == null) return;
       try {
@@ -2548,25 +2548,22 @@ BARRY.views.sessions = (function () {
   function pickVersion(why, rows, drops) {
     return new Promise((resolve) => {
       let picked = null;
-      const chips = el('div', { class: 'ver-pick' });
-      const draw = () => {
-        chips.innerHTML = '';
-        rows.forEach((v) => chips.appendChild(el('button', {
-          class: 'ver-chip' + (v.v === picked ? ' on' : ''),
-          title: (v.note || '') + (v.by ? '\n\u2014 ' + v.by : ''),
-          onclick: () => { picked = v.v; draw(); go.disabled = false; },
-        }, [
-          el('strong', { text: BARRY.ui.versionLabel(v) }),
-          el('span', { class: 'ver-n',
-                       text: (v.n != null ? v.n : '?') + ' ev' }),
-          v.current ? el('span', { class: 'ver-tag', text: 'current' }) : null,
-        ].filter(Boolean))));
-      };
+      /* The version tree (constitution §6e), chosen by id: it was a row of
+         chips chosen by stored number, which repeats when two machines both
+         mint the next one. The route resolves a ref. */
+      const chips = el('div', { class: 'ver-pick' }, [BARRY.ui.versionTree({
+        versions: rows,
+        idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
+        disabled: (v) => (v.usable ? null : (v.why_not || 'cannot be read here')),
+        state: (v) => (v.current ? ['current'] : []),
+        unit: 'events',
+        notes: true,
+        onpick: (v) => { picked = v.id != null ? v.id : v.v; go.disabled = false; },
+      })]);
       const go = el('button', {
         class: 'btn', text: 'Preview from this version', disabled: 'disabled',
         onclick: () => { closeModal(); resolve(picked); },
       });
-      draw();
       showModal(el('div', { class: 'continuity-modal' }, [
         el('div', { class: 'mh' }, [
           el('h3', { text: 'Correct it again, from an earlier version' }),
@@ -3491,6 +3488,8 @@ BARRY.views.sessions = (function () {
        button that merely looks changed is not the same as a scan that is
        changed -- so the harness reads the state the scan reads. */
     _scanOpts: () => Object.assign({}, scanOpts),
+    /* The correct-it-again version picker, for web/_dev/vtreetools.html. */
+    _pickVersion: (why, rows, drops) => pickVersion(why, rows, drops),
     /* Which filters exist. For web/_dev/healthfilter.html: a filter that is
        described in a popover but not wired into the predicate looks
        identical from outside until somebody relies on it. */

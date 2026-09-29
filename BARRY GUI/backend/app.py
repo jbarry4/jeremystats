@@ -10067,19 +10067,16 @@ def api_curation_from_bank():
     if not sess:
         return jsonify({"ok": False, "error": "No such recording."}), 404
 
-    try:
-        want_v = int(body.get("version"))
-    except (TypeError, ValueError):
+    if body.get("version") is None or body.get("version") == "":
         return jsonify({"ok": False, "error": "Which version?"}), 400
-
-    versions = ent.get("versions") or []
-    ver = next((v for v in versions if v.get("v") == want_v), None)
-    if ver is None:
-        return jsonify({
-            "ok": False,
-            "error": "That entry has no version %s. It has %s."
-                     % (want_v, ", ".join("v%s" % v.get("v")
-                                          for v in versions) or "none")}), 404
+    # By REF: the version's id (what the page sends), or a number where it
+    # names one version. By number this took the first version carrying it,
+    # and two machines both mint the next number.
+    try:
+        ver = BANK._version_ref(ent, body.get("version"))
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    want_v = ver.get("v")
 
     vocab = curation.vocabulary(kind)
     snap = ver.get("snap")
@@ -10182,9 +10179,14 @@ def api_curation_for_recording(gid):
             continue
         vs = []
         newest = rec.get("version") or 0
-        for v, vname in versionsmod.label_rows(rec.get("versions") or []):
+        # The repaired history, so a version written before ids carries the
+        # one derived for it, and with its lineage: the page chooses by id
+        # (versions repeat numbers) and names what comes next from it.
+        for v, vname in versionsmod.label_rows(
+                BANK.repaired(rec).get("versions") or []):
             vs.append({
-                "v": v.get("v"), "name": vname,
+                "v": v.get("v"), "name": vname, "id": v.get("id"),
+                "from_v": v.get("from_v"), "from_id": v.get("from_id"),
                 "at": v.get("at"), "by": v.get("by"),
                 "n": v.get("n"), "note": v.get("note"),
                 "by_label": v.get("by_label") or {},
@@ -11173,22 +11175,19 @@ def api_curation_restore(gid, kind):
     """Put a banked version's labels back onto the live set."""
     body = request.get_json(force=True, silent=True) or {}
     entry_id = body.get("entry")
-    try:
-        want_v = int(body.get("version"))
-    except (TypeError, ValueError):
+    if body.get("version") is None or body.get("version") == "":
         return jsonify({"ok": False, "error": "Which version?"}), 400
 
     ent = BANK.get(entry_id) if entry_id else None
     if not ent:
         return jsonify({"ok": False, "error": "No such bank entry."}), 404
-    ver = None
-    for v in ent.get("versions") or []:
-        if v.get("v") == want_v:
-            ver = v
-            break
-    if not ver:
-        return jsonify({"ok": False,
-                        "error": "That entry has no version %s." % want_v}), 404
+    # By REF (the id the page sends, or a number that names one version).
+    # By number this put back whichever version carrying it came first.
+    try:
+        ver = BANK._version_ref(ent, body.get("version"))
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    want_v = ver.get("v")
     snap = ver.get("snap")
     if not snap:
         return jsonify({
@@ -14067,13 +14066,22 @@ def api_session_retime():
     # would discard them. The curation set is a workbench with owners;
     # picking a version out of a dropdown is not a mandate to reset it.
     cur_v = (offer_versions or {}).get("current_version")
-    touch_set = bool(gid) and (from_version is None or from_version == cur_v)
+    # The page sends a version by id; compared as a number, an id never
+    # matched the current version, and the curation set was left out of a
+    # correction it should have had.
+    from_num = from_version
+    if from_version is not None and entry:
+        try:
+            from_num = (BANK.version_at(entry, from_version) or {}).get("v")
+        except eventbank.BankError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+    touch_set = bool(gid) and (from_version is None or from_num == cur_v)
     if gid and not touch_set:
         out["set_skipped"] = (
             "Reading v%s rather than the current v%s, so only the banked "
             "set is corrected. The curation set holds the decisions made "
             "since v%s and is left exactly as it is."
-            % (from_version, cur_v, from_version))
+            % (from_num, cur_v, from_num))
 
     try:
         # The curation set first on a dry run, because it is the one that

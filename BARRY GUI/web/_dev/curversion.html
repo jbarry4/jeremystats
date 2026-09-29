@@ -91,7 +91,12 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
   /* The picker is the version tree now (constitution §6e): a row is a
      button with aria-checked, its name in .vtree-n, what picking it does in
      .vtree-line, and why it cannot be picked in .vtree-why. */
-  const rows = () => Array.from(D.querySelectorAll('.ver-pick-list .vtree-row'));
+  /* The FIRST entry's tree: the picker draws one per entry in the set's
+     history, and `demoHist` is history[0]. The demo set has gathered more
+     than one entry (other harnesses bank it), and counting every tree's
+     rows compared 14 against one entry's 5. */
+  const rows = () => Array.from(
+    (D.querySelector('.ver-pick-list') || D).querySelectorAll('.vtree-row'));
   const vtext = (r) => ((r.querySelector('.vtree-n') || {}).textContent || '').trim();
   const does = (r) => ((r.querySelector('.vtree-line')
                         || r.querySelector('.vtree-why') || {}).textContent || '').trim();
