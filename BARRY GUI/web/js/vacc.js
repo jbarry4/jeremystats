@@ -377,9 +377,12 @@ BARRY.vacc = (function () {
         ])
       : null;
     const bits = [
-      line(d.dry ? 'would gain a cluster path' : 'gained a cluster path',
+      /* Nothing is written into the registry: the folder is remembered
+         and the recordings under it are known to be on VACC by identity
+         (constitution §6d, "a cluster path never enters the registry"). */
+      line(d.dry ? 'would be known to be on VACC' : 'now known to be on VACC',
            d.added || []),
-      line('already had it', d.already || []),
+      line('already known to be on VACC', d.already || []),
       line('not a recording Jarvis knows — left alone', d.unmatched || []),
       line('too ambiguous to match — refused', d.ambiguous || [], 'warn-line'),
     ].filter(Boolean);
@@ -388,17 +391,18 @@ BARRY.vacc = (function () {
     if (d.dry && n) {
       box.appendChild(el('div', { class: 'tk-actions' }, [
         BARRY.ui.button({
-          kind: 'primary', text: 'Add ' + n + ' path(s) to the registry',
+          kind: 'primary', text: 'Look here for recordings on VACC',
           disabled: scanning,
           onclick: () => scan(d.root, false),
         }),
         el('span', { class: 'hint quiet',
-          text: 'Paths only. Nothing new is created.' }),
+          text: 'Jarvis remembers this folder and looks in it as it looks '
+              + 'in scratch. Nothing is written into the registry.' }),
       ]));
     } else if (d.dry && !n) {
       box.appendChild(el('p', { class: 'hint quiet',
-        text: 'Nothing to add — every recording under here that Jarvis knows '
-            + 'already carries its cluster path.' }));
+        text: 'Nothing new — every recording under here that Jarvis knows '
+            + 'is already known to be on VACC.' }));
     }
     return box;
   }
@@ -409,7 +413,8 @@ BARRY.vacc = (function () {
     try {
       lastScan = await apiPost('/api/vacc/scan', { path, dry: !!dry });
       if (!dry) {
-        toast((lastScan.added || []).length + ' cluster path(s) added.', 'ok');
+        toast((lastScan.added || []).length + ' recording(s) now known to be '
+              + 'on VACC.', 'ok');
         knows = null;            // reachability just changed
       }
     } catch (e) {

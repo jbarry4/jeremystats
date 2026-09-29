@@ -17414,17 +17414,32 @@ def _vacc_staged(force=False, wait=True):
     has 84 recordings you have never opened" is worth knowing.
     """
     cfg = vaccmod.load_config(LOGS_DIR)
-    root = cfg.get("scratch_root") or os.path.dirname(cfg.get("scratch") or "")
-    if not root:
+    roots = vaccmod.places(cfg)
+    if not roots:
+        root = os.path.dirname(cfg.get("scratch") or "")
+        roots = [root] if root else []
+    if not roots:
         return {}, []
-    if not wait and not vaccmod.inventory_ready(cfg, root):
-        # Nothing in hand and the caller cannot afford to wait for a walk of
-        # the cluster's filesystem. Start one and answer with what is known
-        # now, which is nothing -- and nothing renders as `unknown`, which is
-        # the honest state for a question that has not been asked yet.
-        vaccmod.inventory_soon(cfg, root)
-        return {}, []
-    found = vaccmod.inventory_cached(cfg, root, force=force)
+    # Scratch, and every other cluster folder a scan was pointed at.
+    found, seen_paths = [], set()
+    for root in roots:
+        if not wait and not vaccmod.inventory_ready(cfg, root):
+            # Nothing in hand and the caller cannot afford to wait for a walk
+            # of the cluster's filesystem. Start one and answer with what is
+            # known now -- nothing renders as `unknown`, which is the honest
+            # state for a question that has not been asked yet.
+            vaccmod.inventory_soon(cfg, root)
+            continue
+        try:
+            rows = vaccmod.inventory_cached(cfg, root, force=force)
+        except Exception:                                # noqa: BLE001
+            if root == roots[0]:
+                raise
+            continue            # a scanned place that is gone is not fatal
+        for r in rows:
+            if r["path"] not in seen_paths:
+                seen_paths.add(r["path"])
+                found.append(r)
 
     by_key, by_loose = _match_index()
 
@@ -17802,10 +17817,17 @@ def api_vacc_scan():
     decision somebody should make deliberately and not a side effect of
     pressing Scan.
 
-    What it does add is a path, which is exactly what `paths` is for --
-    "every absolute path it has ever been opened from, on any machine".
-    A cluster path is one more mount of the same recording, and everything
-    downstream already knows how to show a path this computer cannot reach.
+    It writes NO path into the registry. It used to add each cluster path
+    to the recording's `paths`, which vaccio.py rules out: a cluster path
+    reads back as a place this machine can open, it cannot, and the
+    recording shows as `local-only`. Instead the folder is remembered as a
+    PLACE (vacc.places) that the cluster inventory walks alongside scratch,
+    so the recordings under it are known to be on the cluster by identity
+    -- found by looking, every time, the way scratch is.
+
+    `register` (minting a recording whose first sighting is the cluster)
+    is refused for the same reason: `REG.ingest` records the path it was
+    found at. Nothing in the page sends it.
 
     `?dry=1` says what it would do and writes nothing.
     """
@@ -17819,6 +17841,17 @@ def api_vacc_scan():
         return fail("vacc/scan", exc, 400, {"path": root})
 
     by_key, by_loose = _match_index()
+    if body.get("register"):
+        return jsonify({"ok": False, "error":
+            "Registering a recording from its cluster copy would write a "
+            "cluster path into the registry, which reads back as a place "
+            "this machine can open. Scan the drive it lives on here instead; "
+            "the cluster copy is then found by identity."}), 400
+    # Which recordings the cluster was already known to hold, before this.
+    try:
+        known_before = set((_vacc_staged(wait=False)[0] or {}).keys())
+    except Exception:                                    # noqa: BLE001
+        known_before = set()
 
     added, already, unmatched, ambiguous = [], [], [], []
     for row in found:
@@ -17851,48 +17884,27 @@ def api_vacc_scan():
             continue
         entry = {"gid": rec["gid"], "label": rec.get("label") or rec.get("key"),
                  "path": row["path"], "how": how}
-        if row["path"] in (rec.get("paths") or []):
+        if rec["gid"] in known_before:
             already.append(entry)
             continue
-        if not dry:
-            try:
-                REG.add_path(rec["gid"], row["path"])
-            except Exception as exc:                     # noqa: BLE001
-                entry["error"] = str(exc)[:160]
         added.append(entry)
 
-    # A recording whose first exposure is the cluster.
-    #
-    # Only the ones whose folder names an animal and a session. Registering
-    # goes through `REG.ingest` -- the same call the local drive scanner
-    # makes -- so a recording met on the cluster is registered by exactly the
-    # rules a recording met on a drive is, and the gid it gets is the one a
-    # local scan would later resolve to rather than a second record for the
-    # same thing.
+    # Remember the folder, so the inventory walks it from now on, and keep
+    # the listing just made so that walk is not repeated at once.
+    if not dry and root:
+        places_now = vaccmod.places(cfg)
+        if root.rstrip("/") not in [p.rstrip("/") for p in places_now]:
+            vaccmod.save_config(LOGS_DIR, places=sorted(set(
+                (cfg.get("places") or []) + [root.rstrip("/")])))
+            cfg = vaccmod.load_config(LOGS_DIR)
+    if not dry:
+        vaccmod.inventory_put(cfg, root or cfg.get("scratch_root"), found)
+
+    # Recordings whose first sighting is the cluster are REPORTED, with
+    # whether their folder names an animal and a session; they are not
+    # registered from here (see the docstring).
     registered = []
     to_register = [u for u in unmatched if u.get("can_register")]
-    if body.get("register") and to_register and not dry:
-        found_by_path = {r["path"]: r for r in found}
-        rows = []
-        for u in to_register:
-            row = found_by_path.get(u["path"]) or {}
-            rows.append({
-                "path": u["path"],
-                "identity": ids.identify(u["path"]),
-                "channels": row.get("n_channels"),
-            })
-        try:
-            new, seen = REG.ingest(rows, scan_id=None, root=root)
-            registered = [{"path": r["path"],
-                           "label": (r["identity"] or {}).get("label"),
-                           "n_channels": r.get("channels")} for r in rows]
-            unmatched = [u for u in unmatched if not u.get("can_register")]
-            STORE.record_activity([{
-                "action": "vacc.register",
-                "detail": {"root": root, "new": new, "seen": seen},
-            }])
-        except Exception as exc:                         # noqa: BLE001
-            return fail("vacc/register", exc, 400, {"root": root})
 
     if not dry and added:
         STORE.record_activity([{

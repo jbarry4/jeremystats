@@ -3120,8 +3120,8 @@ BARRY.views.sessions = (function () {
     try {
       vScan = await apiPost('/api/vacc/scan', { path, dry: !!dry });
       if (!dry) {
-        toast((vScan.added || []).length + ' cluster path(s) added. Those '
-              + 'recordings can now be run on VACC.', 'ok', 7000);
+        toast((vScan.added || []).length + ' recording(s) now known to be on '
+              + 'VACC, so they can be run there.', 'ok', 7000);
         // What the cluster can reach just changed, and the chips on the
         // cards above are drawn from it.
         if (BARRY.vacc) await BARRY.vacc.loadKnows(true);
@@ -3365,9 +3365,10 @@ BARRY.views.sessions = (function () {
         ])
       : null;
     [
-      part(d.dry ? 'would gain a cluster path' : 'gained a cluster path',
+      // By identity, not by a cluster path in the registry -- see vacc.js.
+      part(d.dry ? 'would be known to be on VACC' : 'now known to be on VACC',
            d.added || []),
-      part('already had it', d.already || []),
+      part('already known to be on VACC', d.already || []),
       part('not a recording Jarvis knows — left alone', d.unmatched || []),
       part('too ambiguous to match — refused', d.ambiguous || [], 'warn-line'),
     ].filter(Boolean).forEach((x) => box.appendChild(x));
@@ -3375,16 +3376,17 @@ BARRY.views.sessions = (function () {
     if (d.dry && n) {
       box.appendChild(el('div', { class: 'tk-actions' }, [
         el('button', { class: 'btn',
-          text: 'Add ' + n + ' path(s)',
+          text: 'Look here for recordings on VACC',
           disabled: vBusy ? 'disabled' : null,
           onclick: () => vaccScan(d.root, false) }),
         el('span', { class: 'hint quiet',
-          text: 'Paths only. Nothing new is created.' }),
+          text: 'Jarvis remembers this folder and looks in it as it looks in '
+              + 'scratch. Nothing is written into the registry.' }),
       ]));
     } else if (d.dry) {
       box.appendChild(el('p', { class: 'hint quiet',
-        text: 'Nothing to add — every recording under here that Jarvis '
-            + 'knows already carries its cluster path.' }));
+        text: 'Nothing new — every recording under here that Jarvis '
+            + 'knows is already known to be on VACC.' }));
     }
     return box;
   }

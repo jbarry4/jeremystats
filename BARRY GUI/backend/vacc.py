@@ -924,14 +924,40 @@ def inventory(cfg, root=None, timeout=180):
     return out
 
 
-_INV = {"at": 0.0, "root": None, "list": []}
+# One listing per root: scratch, and every other cluster folder somebody has
+# scanned (`places`). It was one slot, so walking a second root threw the
+# first one's listing away.
+_INVS = {}                       # root -> {"at", "list", "busy"}
 INV_TTL_S = 300.0
+
+
+def _inv(root):
+    return _INVS.setdefault(root, {"at": 0.0, "list": [], "busy": False})
+
+
+def places(cfg):
+    """Every cluster folder Jarvis looks in for recordings: scratch first,
+    then each folder a scan was pointed at (`/api/vacc/scan`), which is how
+    a recording kept somewhere other than scratch becomes known to be on the
+    cluster -- by identity, found by looking, rather than by writing its
+    cluster path into the registry (see vaccio.py on why that is wrong).
+    One under scratch is already covered by scratch's walk."""
+    root = cfg.get("scratch_root") or cfg.get("scratch") or ""
+    out = [root] if root else []
+    for p in (cfg.get("places") or []):
+        p = str(p or "").rstrip("/")
+        if not p or p in out:
+            continue
+        if root and (p == root.rstrip("/") or p.startswith(root.rstrip("/") + "/")):
+            continue
+        out.append(p)
+    return out
 
 
 def inventory_ready(cfg, root=None):
     """Is there a listing in hand, without going and getting one?"""
     root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
-    return bool(_INV["list"]) and _INV["root"] == root
+    return bool(_inv(root)["at"])
 
 
 def inventory_soon(cfg, root=None):
@@ -946,9 +972,11 @@ def inventory_soon(cfg, root=None):
     One walk at a time: a view that asks three times while the first is
     still going should not start three.
     """
-    if _INV.get("busy"):
+    root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
+    slot = _inv(root)
+    if slot.get("busy"):
         return
-    _INV["busy"] = True
+    slot["busy"] = True
 
     def go():
         try:
@@ -956,7 +984,7 @@ def inventory_soon(cfg, root=None):
         except Exception:                                # noqa: BLE001
             pass                                         # it stays unknown
         finally:
-            _INV["busy"] = False
+            slot["busy"] = False
 
     threading.Thread(target=go, daemon=True,
                      name="barry-vacc-inventory").start()
@@ -975,12 +1003,19 @@ def inventory_cached(cfg, root=None, force=False):
     """
     root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
     now = time.time()
-    if (not force and _INV["list"] and _INV["root"] == root
-            and (now - _INV["at"]) < INV_TTL_S):
-        return list(_INV["list"])
+    slot = _inv(root)
+    if not force and slot["at"] and (now - slot["at"]) < INV_TTL_S:
+        return list(slot["list"])
     got = inventory(cfg, root)
-    _INV.update(at=now, root=root, list=got)
+    slot.update(at=now, list=got)
     return list(got)
+
+
+def inventory_put(cfg, root, found):
+    """Keep a listing just made, so the scan that made it is not repeated
+    by the next page that asks."""
+    root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
+    _inv(root).update(at=time.time(), list=list(found or []))
 
 
 def env_path(cfg):
