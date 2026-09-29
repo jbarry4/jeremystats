@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-09-28T17:59:13.541032+00:00",
+    "gid": "2026-09-28T17:59:13.541032+00:00",
+    "group": "2026-09-28T17:59:13.541032+00:00",
+    "key": "2026-09-28T17:59:13.541032+00:00",
+    "label": "2026-09-28T17:59:13.541032+00:00",
+    "loose_key": "2026-09-28T17:59:13.541032+00:00",
+    "mouse": "2026-09-28T17:59:13.541032+00:00",
+    "project": "2026-09-28T17:59:13.541032+00:00",
+    "project_source": "2026-09-28T17:59:13.541032+00:00",
+    "retired": "2026-09-28T17:59:13.541032+00:00",
+    "schema": "2026-09-28T17:59:13.541032+00:00",
+    "session": "2026-09-28T17:59:13.541032+00:00",
+    "start": "2026-09-28T17:59:13.541032+00:00",
+    "updated": "2026-09-28T17:59:16.079666+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\ProcessedPtenData\\PTENDKOM53\\m53s7mar4-2025\\2025-03-06_13-17-00": [
+        "set",
+        "2026-09-28T17:59:16.079666+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-28T17:59:16.079666+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.28.1",
+    "at": "2026-09-28T13:59:13-04:00",
+    "commit": "030bb0c",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "sebd89c8b9428",
+  "group": null,
+  "key": "m053_s007_2025-03-06_13-17-18",
+  "label": "PTENDKO m53 s7 2025-03-06",
+  "loose_key": "m053_s007",
+  "mouse": 53,
+  "paths": [
+    "Y:\\ProcessedPtenData\\PTENDKOM53\\m53s7mar4-2025\\2025-03-06_13-17-00"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 7,
+  "start": "2025-03-06T18:17:18+00:00",
+  "updated": {
+    "app_version": "2026.09.28.1",
+    "at": "2026-09-28T13:59:16-04:00",
+    "commit": "030bb0c",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}
