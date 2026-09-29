@@ -3572,7 +3572,9 @@ def api_incisor_batch():
 
         done = 0
         if tasks:
-            done, failed = _vacc_run_array(job, tasks, failed, concurrency)
+            done, failed = _vacc_run_array(job, tasks, failed, concurrency,
+                                           runlog=VACC_RUNLOG,
+                                           record={"tool": "incisor"})
         return {"n": len(members), "done": done, "failed": failed,
                 "skipped": skipped, "submitted": len(tasks)}
 
@@ -3616,6 +3618,10 @@ def _incisor_prepare(member, body, force):
         "gid": member["gid"], "label": member["label"],
         "sess": sess, "spec_local": spec, "report": rep, "key": key,
         "plan": plan,
+        # What a restarted process needs to file this answer: the session is
+        # rebuilt from spec_local's path, so the key is the only thing that
+        # is not already in the run record (see _resume_vacc_batches).
+        "resume": {"key": key},
         "spec_remote": dict(spec, path=member["remote"]),
         "tool_steps": [("ds read", int(plan["span_s"] * plan["n_channels"])),
                        ("ds detect", plan["n_channels"])],
@@ -3686,6 +3692,92 @@ def _vacc_run_array(job, tasks, failed, concurrency=None,
 
     return vaccrunmod.collect(job, arr, tasks, on_result, failed,
                               deadline_s=deadline_s)
+
+
+# Every VACC batch this machine submits is written down
+# (`GUI_logs/vacc_runs/<rid>.json`, machine-local and git-ignored), so a
+# restart re-attaches instead of orphaning it. Circuit keeps its own
+# (circuitrun.RUNLOG); the files share the folder and are told apart by tool.
+VACC_RUNLOG = vaccrunmod.RunLog(LOGS_DIR)
+_VACC_RESUMED = {"done": False, "jobs": []}
+
+
+def _file_batch_answer(tool, t, out):
+    """File one answer of a resumed batch the way the live batch does."""
+    key = (t.get("resume") or {}).get("key") or t.get("key")
+    spec = t.get("spec_local") or {}
+    sess, err = _session_for(spec.get("path"), None, True)
+    if err or not sess:
+        raise RuntimeError("could not open %s to file its answer"
+                           % spec.get("path"))
+    if not sess.get("gid"):
+        sess["gid"] = t.get("gid")
+    if tool == "doppler":
+        dopplermod.cache_put(key, out)
+        _doppler_remember(sess, spec, key, out)
+    else:
+        incisormod.cache_put(key, out)
+        _incisor_remember(sess, spec, key, out)
+
+
+def _resume_vacc_batches(ssh=None):
+    """Pick up every Incisor and Doppler batch a previous process submitted
+    and never finished filing. Once per process; returns the jobs adopted.
+
+    A restart used to orphan them: the polling thread died with the
+    process and the answers sat in scratch until the purge took them.
+    Now the answers are fetched and filed exactly as the live batch files
+    them, into the same vault, so they appear in the review queue.
+    """
+    if _VACC_RESUMED["done"]:
+        return _VACC_RESUMED["jobs"]
+    _VACC_RESUMED["done"] = True
+    cfg = vaccmod.load_config(LOGS_DIR)
+    if not cfg.get("netid"):
+        return []
+    out = []
+    for rec in VACC_RUNLOG.open_runs():
+        tool = rec.get("tool")
+        if tool not in ("incisor", "doppler") or rec.get("kind") != "array":
+            continue
+        if rec.get("job_id") and cfcmod.exists(rec["job_id"]):
+            continue                    # this process is driving it already
+        try:
+            arr = vaccrunmod.VaccArray.reattach(cfg, rec, ssh=ssh)
+            arr.runlog = VACC_RUNLOG
+            tasks = [dict(j) for j in (rec.get("jobs") or [])]
+            first = (tasks[0].get("spec_local") or {}).get("path") if tasks else ""
+            job = cfcmod.adopt(cfcmod.Job(
+                {"path": first or ""}, [("panorama pool", len(tasks))], 1.0,
+                "vacc:scratch", id=rec.get("job_id")))
+            job.log.append("picked up again after a restart: array %s"
+                           % arr.array_id)
+            job.members_init([{"id": j.get("gid"), "label": j.get("label")}
+                              for j in tasks])
+            taken = set(rec.get("taken") or [])
+
+            def on_result(i, t, got, tool=tool):
+                _file_batch_answer(tool, t, got)
+
+            def go(job=job, arr=arr, tasks=tasks, taken=taken, tool=tool):
+                try:
+                    done, failed = vaccrunmod.collect(job, arr, tasks,
+                                                      on_result, taken=taken)
+                    job.finish({"ok": True, "tool": tool, "resumed": True,
+                                "done": done, "failed": failed})
+                except Exception as exc:                 # noqa: BLE001
+                    job.fail(exc)
+            threading.Thread(target=go, daemon=True,
+                             name="barry-vacc-resume-" + job.id).start()
+            out.append(job)
+        except Exception as exc:                         # noqa: BLE001
+            try:
+                VACC_RUNLOG.close(rec["rid"], "failed",
+                                  "could not be picked up again: %s" % exc)
+            except Exception:                            # noqa: BLE001
+                pass
+    _VACC_RESUMED["jobs"] = out
+    return out
 
 
 class _MemberJob:
@@ -4319,6 +4411,10 @@ def _doppler_prepare(member, body, force):
         "gid": member["gid"], "label": member["label"],
         "sess": sess, "spec_local": spec, "report": rep, "key": key,
         "plan": plan,
+        # What a restarted process needs to file this answer: the session is
+        # rebuilt from spec_local's path, so the key is the only thing that
+        # is not already in the run record (see _resume_vacc_batches).
+        "resume": {"key": key},
         "spec_remote": dict(spec, path=member["remote"]),
         "tool_steps": [
             ("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
@@ -4457,7 +4553,9 @@ def api_doppler_batch():
         done = 0
         if tasks:
             done, failed = _vacc_run_array(job, tasks, failed, concurrency,
-                                           tool="doppler", adopt=adopt)
+                                           tool="doppler", adopt=adopt,
+                                           runlog=VACC_RUNLOG,
+                                           record={"tool": "doppler"})
         return {"n": len(members), "done": done, "failed": failed,
                 "skipped": skipped, "submitted": len(tasks)}
 
@@ -17294,6 +17392,21 @@ threading.Thread(target=_seed_demo, daemon=True, name="barry-demo-seed").start()
 # a login node that is busy would be ten seconds of Jarvis not starting.
 # ==========================================================================
 threading.Thread(target=vaccmod.loop, daemon=True, name="barry-vacc").start()
+
+
+def _resume_later():
+    """Re-attach to the batches a previous process left running, a little
+    after start-up so it is never on the path to the first screen. Costs
+    nothing when there are none: the run records are local files."""
+    time.sleep(20)
+    try:
+        _resume_vacc_batches()
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("vacc.resume", exc, None, {})
+
+
+threading.Thread(target=_resume_later, daemon=True,
+                 name="barry-vacc-resume").start()
 
 
 @app.route("/api/vacc/status")
