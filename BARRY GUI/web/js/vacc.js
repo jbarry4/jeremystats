@@ -779,13 +779,16 @@ BARRY.vacc = (function () {
           row('Quota', d.quota || null),
         ]),
 
+        sharedBox(d),
+        jobsBox(d),
+
         el('h4', { text: 'Look around it' }),
         el('p', { class: 'hint',
-          text: 'The cluster’s own filesystem. Scanning a folder tells '
-              + 'recordings Jarvis already knows that they also live there '
-              + '— it adds a path, and never invents a recording: a '
-              + 'permanent id is not something a directory walk should be '
-              + 'allowed to mint.' }),
+          text: 'The cluster’s own filesystem. Scanning a folder makes '
+              + 'Jarvis look in it, as it looks in scratch, for recordings '
+              + 'it already knows. Nothing is written into the registry and '
+              + 'no recording is invented: a permanent id is not something '
+              + 'a directory walk should be allowed to mint.' }),
         browseBox(),
 
         el('h4', { text: 'What it can already read' }),
@@ -813,6 +816,95 @@ BARRY.vacc = (function () {
         ]),
       ]),
     ]), { replace: true });
+  }
+
+  /* The lab's shared space (constitution §6d): one account owns it and
+     everybody else reaches it with their own netid. When this account is
+     refused, say what was refused, where to look at it, and who to ask --
+     never a bare "permission denied". */
+  function sharedBox(d) {
+    const sh = d.shared || {};
+    if (!sh.root || !d.available) return null;
+    const words = {
+      ok: 'Open to this account',
+      denied: 'Refused to this account',
+      missing: 'Not there',
+    };
+    const dataWords = {
+      ok: 'writable — uploads can go here',
+      creatable: 'not made yet — the first upload creates it',
+      nowrite: 'readable, not writable — an upload would be refused',
+      missing: 'not there, and this account cannot create it',
+    };
+    return el('div', { class: 'vacc-shared' }, [
+      el('h4', { text: 'The lab’s shared space' }),
+      el('div', { class: 'vacc-grid' }, [
+        el('div', { class: 'vacc-row' }, [
+          el('span', { class: 'vacc-k', text: sh.root }),
+          el('span', { class: 'vacc-v', text: words[sh.state] || 'not checked yet' }),
+        ]),
+        el('div', { class: 'vacc-row' }, [
+          el('span', { class: 'vacc-k', text: sh.data || 'Jarvis Data' }),
+          el('span', { class: 'vacc-v',
+                       text: dataWords[sh.data_state] || 'not checked yet' }),
+        ]),
+      ]),
+      sh.why ? el('p', { class: 'warn-line', text: sh.why }) : null,
+      sh.ondemand ? el('a', {
+        class: 'linkish', href: sh.ondemand, target: '_blank',
+        rel: 'noopener', text: 'Open it in OnDemand',
+      }) : null,
+    ].filter(Boolean));
+  }
+
+  /* The account's jobs, from `squeue --me` on the routine probe, each
+     marked by whether Jarvis on this machine is following it: a run record
+     here is what lets a restart pick it up and file its answer. */
+  function jobsBox(d) {
+    if (!d.available) return null;
+    const jobs = d.jobs || [];
+    const whose = (j) => (j.followed
+      ? 'Jarvis here' + (j.tool ? ' · ' + j.tool : '')
+      : j.jarvis ? 'Jarvis, not followed here' : 'not Jarvis');
+    const kids = [el('h4', { text: 'Jobs on this account' })];
+    if (!jobs.length) {
+      kids.push(el('p', { class: 'hint', text: 'Nothing queued or running.' }));
+    } else {
+      kids.push(el('table', { class: 'tbl vacc-jobs' }, [
+        el('thead', {}, [el('tr', {}, ['Job', 'Name', 'State', 'Time', 'Why',
+                                       'Followed by'].map((h) => el('th', { text: h })))]),
+        el('tbody', {}, jobs.map((j) => el('tr', {
+          class: j.followed ? 'on' : '',
+        }, [
+          el('td', { text: j.id }),
+          el('td', { text: j.name }),
+          el('td', { text: j.state }),
+          el('td', { text: j.elapsed }),
+          el('td', { text: j.reason }),
+          el('td', { text: whose(j) }),
+        ]))),
+      ]));
+    }
+    if ((d.waiting || []).length) {
+      kids.push(el('p', { class: 'hint', text:
+        'Jarvis here is waiting on ' + d.waiting.length + ' run(s) the cluster '
+        + 'no longer lists — finished and being fetched, or lost: '
+        + d.waiting.map((w) => (w.tool || 'run') + ' ' + (w.id || w.rid))
+          .join(', ') + '.' }));
+    }
+    if (d.resumed) {
+      kids.push(el('p', { class: 'hint', text:
+        'Picked up ' + d.resumed + ' batch(es) a previous run of Jarvis left '
+        + 'on the cluster.' }));
+    }
+    const fails = d.failures || [];
+    if (fails.length) {
+      kids.push(el('p', { class: 'warn-line', text:
+        fails.length + ' job(s) ended badly in the last day: '
+        + fails.slice(0, 8).map((f) => f.id + ' ' + f.state.toLowerCase())
+          .join(', ') + (fails.length > 8 ? ', and more.' : '.') }));
+    }
+    return el('div', { class: 'vacc-health' }, kids);
   }
 
   /* ---- boot ------------------------------------------------------------- */

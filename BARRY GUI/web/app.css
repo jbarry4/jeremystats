@@ -709,7 +709,18 @@
             font-size: var(--fs-12); min-width: 0; }
 .vacc-k { color: var(--text-3); white-space: nowrap; }
 .vacc-v { color: var(--text); font-family: var(--mono); font-size: var(--fs-11);
-          overflow: hidden; text-overflow: ellipsis; }
+          min-width: 0; overflow-wrap: anywhere; text-align: right; }
+/* The shared space and the account's jobs (vacc.js sharedBox, jobsBox).
+   A cluster path is long and is the answer, so it wraps; nothing here is
+   cut short. */
+.vacc-shared .vacc-grid { grid-template-columns: 1fr; }
+.vacc-shared .vacc-k { white-space: normal; overflow-wrap: anywhere; font-family: var(--mono); }
+.vacc-jobs { width: 100%; border-collapse: collapse; font-size: var(--fs-11); margin: 4px 0 10px; }
+.vacc-jobs th { text-align: left; color: var(--text-3); font-weight: 500; padding: 3px 6px;
+                border-bottom: 1px solid var(--line); }
+.vacc-jobs td { padding: 3px 6px; border-bottom: 1px solid var(--line-soft);
+                font-family: var(--mono); overflow-wrap: anywhere; }
+.vacc-jobs tr.on td { color: var(--accent); }
 .vacc-state { font-size: var(--fs-125); margin: 2px 0 10px; }
 /* The sign-in form. A label above its field rather than beside it, because
    "NetID" and "Password" are short and the fields are not, and a two-column

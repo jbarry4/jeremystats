@@ -17409,10 +17409,54 @@ threading.Thread(target=_resume_later, daemon=True,
                  name="barry-vacc-resume").start()
 
 
+def _vacc_status_marked():
+    """`vacc.status()`, with each job the cluster lists marked by whether
+    Jarvis on this machine is following it -- a run record in
+    GUI_logs/vacc_runs, which is what lets a restart pick it up again.
+
+    A job named after a run id with no record here is Jarvis's but not this
+    machine's (another clone, or a record lost); one with neither is the
+    person's own work. Both are shown: the health panel is about the
+    account, not only about what this process started.
+    """
+    st = vaccmod.status()
+    try:
+        recs = VACC_RUNLOG.open_runs()
+    except Exception:                                    # noqa: BLE001
+        recs = []
+    by_id = {}
+    for r in recs:
+        for k in ("array_id", "slurm_id", "rid"):
+            if r.get(k):
+                by_id[str(r[k])] = r
+    seen = set()
+    for j in st.get("jobs") or []:
+        base = str(j.get("id") or "").split("_")[0]
+        rec = by_id.get(base) or by_id.get(str(j.get("name") or ""))
+        j["followed"] = bool(rec)
+        j["tool"] = (rec or {}).get("tool")
+        name = str(j.get("name") or "")
+        # A Jarvis job is named after its run id: twelve hex digits.
+        j["jarvis"] = bool(rec) or (
+            len(name) == 12 and all(c in "0123456789abcdef" for c in name))
+        if rec:
+            seen.add(rec.get("rid"))
+    # Runs this machine is waiting on that the cluster no longer lists:
+    # finished and not yet filed, or lost. Said, because either way somebody
+    # is waiting on an answer.
+    st["waiting"] = [{"rid": r.get("rid"), "tool": r.get("tool"),
+                      "status": r.get("status"),
+                      "id": r.get("array_id") or r.get("slurm_id"),
+                      "submitted_at": r.get("submitted_at")}
+                     for r in recs if r.get("rid") not in seen]
+    st["resumed"] = len(_VACC_RESUMED.get("jobs") or [])
+    return st
+
+
 @app.route("/api/vacc/status")
 def api_vacc_status():
     """How the cluster is, from the cache. Never connects."""
-    return jsonify(vaccmod.status())
+    return jsonify(_vacc_status_marked())
 
 
 @app.route("/api/vacc/check", methods=["POST"])
@@ -17427,7 +17471,7 @@ def api_vacc_check():
         vaccmod.refresh(force=True)
     except Exception as exc:                             # noqa: BLE001
         return fail("vacc/check", exc, 400)
-    return jsonify(vaccmod.status())
+    return jsonify(_vacc_status_marked())
 
 
 def _match_index():

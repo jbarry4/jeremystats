@@ -189,6 +189,11 @@ def load_config(logs_dir):
         # Lab-wide: [{"unc": "//server/share", "vacc": "/netfiles/share"}].
         "path_map": list(cfg.get("path_map") or []),
         "host_fingerprint": cfg.get("host_fingerprint") or "",
+        # The lab's shared space on the cluster, which ONE account owns and
+        # everybody else reaches with their own netid (constitution §6d).
+        # Lab-wide, so from the tracked vacc.json; these are its defaults.
+        "shared": _shared_of(cfg),
+        "places": list(cfg.get("places") or []),
         "enabled": bool(cfg.get("enabled", True)),
         "needs_netid": not netid,
         "configured": bool(netid and host and cfg.get("enabled", True)),
@@ -1232,6 +1237,80 @@ def quota(cfg, timeout=40):
     return (raw or "").strip()
 
 
+SHARED_DEFAULT = {
+    "root": "/gpfs2/scratch/sakhava1",
+    "data": "Jarvis Data",
+    "owner": "Shahriar",
+    "ondemand": "https://ondemand.vacc.uvm.edu/pun/sys/dashboard/files/fs/"
+                "/gpfs2/scratch/sakhava1",
+}
+
+
+def _shared_of(cfg):
+    got = dict(SHARED_DEFAULT)
+    got.update({k: v for k, v in (cfg.get("shared") or {}).items() if v})
+    got["data_path"] = _remote_path(got["root"], got["data"]) if got["root"] else ""
+    return got
+
+
+def shared_words(shared, state, data_state, netid=""):
+    """What to say about the shared space, or "" when all is well.
+
+    Never a bare "permission denied": what was refused, where to look at it,
+    and who can fix it (constitution §6d).
+    """
+    who = (" (%s)" % netid) if netid else ""
+    owner = shared.get("owner") or "the owner"
+    link = shared.get("ondemand") or ""
+    see = (" You can look at it in OnDemand: %s" % link) if link else ""
+    if state == "denied":
+        return ("This account%s cannot open the lab's shared VACC space, %s. "
+                "Ask %s to add you to it.%s"
+                % (who, shared.get("root"), owner, see))
+    if state == "missing":
+        return ("The lab's shared VACC space, %s, is not there. Ask %s where "
+                "it has moved.%s" % (shared.get("root"), owner, see))
+    if data_state == "nowrite":
+        return ("This account%s can read the shared space but cannot write to "
+                "%s, so an upload would be refused. Ask %s to give you write "
+                "access to it.%s" % (who, shared.get("data_path"), owner, see))
+    if data_state == "missing":
+        return ("%s does not exist yet, and this account%s cannot create it. "
+                "Ask %s to make it, or to give you write access to %s.%s"
+                % (shared.get("data_path"), who, owner, shared.get("root"), see))
+    return ""
+
+
+def _shared_checks(cfg):
+    """`shared=` and `jdata=` for the probe: can this account open the shared
+    space, and write into Jarvis Data (or create it)?"""
+    sh = cfg.get("shared") or _shared_of(cfg)
+    if not sh.get("root"):
+        return ""
+    s, d = q(sh["root"]), q(sh["data_path"])
+    return (
+        'if [ ! -e %s ]; then echo "shared=missing";'
+        ' elif [ -r %s ] && [ -x %s ]; then echo "shared=ok";'
+        ' else echo "shared=denied"; fi\n'
+        'if [ -d %s ]; then if [ -w %s ] && [ -x %s ]; then echo "jdata=ok";'
+        ' else echo "jdata=nowrite"; fi;'
+        ' elif [ -w %s ]; then echo "jdata=creatable";'
+        ' else echo "jdata=missing"; fi'
+        % (s, s, s, d, d, d, s))
+
+
+# The jobs this account has, and what failed lately. `--me` where the slurm
+# has it, `-u $USER` where it does not -- the same list either way. sacct is
+# bounded, because a slow accounting database must not slow the probe.
+_JOBS = r"""
+( squeue --me -h -o '%i|%j|%T|%M|%R' 2>/dev/null   || squeue -u "$USER" -h -o '%i|%j|%T|%M|%R' 2>/dev/null )   | head -200 | sed 's/^/job=/'
+timeout 8 sacct -X -n -P -S now-1days -s F,TO,OOM,NF,CA   -o JobID,JobName,State,End 2>/dev/null | head -50 | sed 's/^/fail=/'
+"""
+
+# Repeated keys: one line per job, one per failure.
+_LISTS = ("job", "fail")
+
+
 def _parse_probe(raw):
     """`key=value` lines into a dict. Anything else on the line is ignored.
 
@@ -1246,9 +1325,34 @@ def _parse_probe(raw):
             continue
         k, _, v = line.partition("=")
         k = k.strip()
-        if k.isidentifier():
+        if k in _LISTS:
+            got.setdefault(k + "s", []).append(v.strip())
+        elif k.isidentifier():
             got[k] = v.strip()
     return got
+
+
+def _jobs_of(lines):
+    out = []
+    for line in lines or []:
+        bits = (line.split("|") + ["", "", "", "", ""])[:5]
+        if not bits[0].strip():
+            continue
+        out.append({"id": bits[0].strip(), "name": bits[1].strip(),
+                    "state": bits[2].strip(), "elapsed": bits[3].strip(),
+                    "reason": bits[4].strip()})
+    return out
+
+
+def _fails_of(lines):
+    out = []
+    for line in lines or []:
+        bits = (line.split("|") + ["", "", "", ""])[:4]
+        if not bits[0].strip():
+            continue
+        out.append({"id": bits[0].strip(), "name": bits[1].strip(),
+                    "state": bits[2].strip(), "end": bits[3].strip()})
+    return out
 
 
 def _root_checks(cfg):
@@ -1274,7 +1378,8 @@ def probe(cfg, timeout=90):
     # The root checks go BEFORE the `end=1` line, so a connection cut halfway
     # cannot produce an answer that looks complete but has lost them.
     script = _PROBE.replace('echo "end=1"',
-                            _root_checks(cfg) + '\necho "end=1"')
+                            _root_checks(cfg) + "\n" + _shared_checks(cfg)
+                            + "\n" + _JOBS + '\necho "end=1"')
     raw = _ssh(cfg, "bash -s", stdin=script, timeout=timeout)
     got = _parse_probe(raw)
     # `end=1` is the last line the script writes, so its presence is how a
@@ -1296,6 +1401,8 @@ def probe(cfg, timeout=90):
         if path:
             roots[path] = verdict or "unknown"
     got["roots"] = roots
+    got["jobs"] = _jobs_of(got.pop("jobs", []))
+    got["fails"] = _fails_of(got.pop("fails", []))
     return got
 
 
@@ -1415,6 +1522,19 @@ def status():
         "roots": got.get("roots") or {},
         "denied_roots": sorted(k for k, v in (got.get("roots") or {}).items()
                                if v == "denied"),
+        # Every job this account has on the cluster, from `squeue --me`, and
+        # what failed in the last day. app.py marks which ones Jarvis here
+        # is following (a run record in GUI_logs/vacc_runs).
+        "jobs": got.get("jobs") or [],
+        "failures": got.get("fails") or [],
+        # The lab's shared space: can this account open it, and write into
+        # Jarvis Data? With the sentence to show when it cannot.
+        "shared": dict(cfg.get("shared") or {},
+                       state=got.get("shared") or "unknown",
+                       data_state=got.get("jdata") or "unknown",
+                       why=shared_words(cfg.get("shared") or {},
+                                        got.get("shared"), got.get("jdata"),
+                                        cfg.get("netid") or "")),
     }
 
 
