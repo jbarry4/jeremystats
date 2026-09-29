@@ -93,8 +93,17 @@ const TOOLS = ['bad', 'curate', 'strata', 'cfc', 'kilosort', 'snapshots'];
     const newest = all.rows[0].at;
     const after = await get('/api/toolfeed/curate?limit=5&since='
                             + encodeURIComponent(newest));
-    ck('nothing is newer than the newest', (after.rows || []).length === 0,
-       (after.rows || []).length + ' rows after ' + newest);
+    /* The contract, not "nothing at all": the server reads the shared table
+       at most every 30 s (toolfeed.REFRESH_S), so a refresh can land between
+       these two requests and bring rows that really are newer. What must
+       never come back is a row at or before `since`. */
+    // "-0400" as "-04:00", which is the form Date.parse is promised to read.
+    const t = (s) => Date.parse(String(s || '').replace(
+      /([+-]\d\d)(\d\d)$/, '$1:$2'));
+    const stale = (after.rows || []).filter((r) => !(t(r.at) > t(newest)));
+    ck('nothing at or before `since` comes back', stale.length === 0,
+       stale.length + ' of ' + (after.rows || []).length + ' rows not after '
+       + newest);
   }
 
   /* ---- on screen -------------------------------------------------- */

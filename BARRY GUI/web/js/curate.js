@@ -56,10 +56,17 @@ BARRY.curate = (function () {
 
   /* ---------- presence ----------
      Saying "somebody is in this set" often enough that the answer is still
-     true, and rarely enough that it is not a request per keystroke. Half the
-     server's TTL, so a single dropped beat does not make somebody vanish
-     mid-sentence. */
-  const PRESENCE_BEAT = 20000;
+     true, and rarely enough that it is not a request per keystroke. A third
+     of the server's TTL (presence.TTL_S, 180 s), so a single dropped beat
+     does not make somebody vanish mid-sentence.
+
+     Cost (constitution §11, rule 5): one beat a minute, at most two Supabase
+     requests each -- ~120 an hour while a set is open and the window is in
+     front. None while it is hidden: a set left open behind other windows
+     stops being reported after the TTL, and the first beat on coming back
+     reclaims it. This was every 20 s, three requests a beat, hidden or not,
+     and each beat scheduled a push. */
+  const PRESENCE_BEAT = 60000;
   let beatTimer = null;
   let decidedAtEntry = 0;      // so "this visit" means this visit
   let beatOthers = [];         // who else is in here, as of the last beat
@@ -195,9 +202,15 @@ BARRY.curate = (function () {
     toldTaken = false;
     beat(true);
     if (beatTimer) clearInterval(beatTimer);
-    beatTimer = setInterval(() => beat(false), PRESENCE_BEAT);
+    beatTimer = setInterval(() => { if (!document.hidden) beat(false); },
+                            PRESENCE_BEAT);
     return true;
   }
+
+  /* Back in front: say so at once, rather than up to a minute later. */
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && beatTimer && set_) beat(false);
+  });
 
   /* One beat: where we are, and who else is here.
 

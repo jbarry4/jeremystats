@@ -27,12 +27,18 @@
 BARRY.toolfeed = (function () {
   /* How often a mounted feed asks the server for more.
 
-     Three seconds, not nine and not one. This poll is for what OTHER
-     machines have done, and their work cannot reach this computer faster
-     than the sync brings it -- so asking every second would be three times
-     the requests for no more knowledge. This machine's own actions do not
-     wait for it at all: see `onLog` below. */
-  const EVERY_MS = 3000;
+     Fifteen seconds. This poll is for what OTHER machines have done, and
+     their work cannot reach this computer faster than their push brings it
+     -- a minute at most -- so asking more often is requests for no more
+     knowledge. This machine's own actions do not wait for it at all: see
+     `onLog` below.
+
+     Cost (constitution §11, rule 5): the server answers every feed from one
+     read of the shared table made at most every 30 s (toolfeed.REFRESH_S),
+     so this is ~120 Supabase requests an hour with ToolKit in front,
+     whatever the tool, and none while hidden. It was every 3 s, each poll
+     its own request -- ~1,200 an hour. */
+  const EVERY_MS = 15000;
   const KEEP = 120;             // rows held in the list before the tail goes
 
   let live = null;              // the feed currently on screen, if any

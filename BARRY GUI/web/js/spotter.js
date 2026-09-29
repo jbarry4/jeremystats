@@ -68,7 +68,10 @@ BARRY.spotter = (function () {
   let partIdx = null;           // sorted starts, for the nearest lookup
   let chanRows = [];            // every channel, for the raster's rows
 
-  const PRESENCE_BEAT = 20000;
+  /* Presence, as in curate.js: a beat a minute, at most two Supabase
+     requests each (~120 an hour with a set open and in front), none while
+     the window is hidden. */
+  const PRESENCE_BEAT = 60000;
   const MATCH_S = 0.002;        // how near a stamp has to be to claim a row
   const RASTER_ROW = 9;
 
@@ -212,9 +215,15 @@ BARRY.spotter = (function () {
     beatOthers = []; toldAbout = new Set();
     beat(true);
     if (beatTimer) clearInterval(beatTimer);
-    beatTimer = setInterval(() => beat(false), PRESENCE_BEAT);
+    beatTimer = setInterval(() => { if (!document.hidden) beat(false); },
+                            PRESENCE_BEAT);
     return true;
   }
+
+  /* Back in front: say so at once, rather than up to a minute later. */
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && beatTimer && set_) beat(false);
+  });
 
   /* Make the set from the bank entry, unless one is already there.
 

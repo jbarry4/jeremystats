@@ -10307,21 +10307,30 @@ def api_presence_beat():
     gid, kind = body.get("gid"), body.get("kind")
     if not gid:
         return jsonify({"ok": False, "error": "Need a gid."}), 400
-    PRESENCE.beat(
+    # Two requests at most, and often one: the write, which hands back this
+    # machine's row as the database holds it, and one shared read of the
+    # table for everybody else (cached for PRESENCE.READ_TTL_S). This was
+    # three -- the write, then `for_set` and `taken_from_me` each reading
+    # the whole table again.
+    mine = PRESENCE.beat(
         gid, kind,
         first=bool(body.get("first")),
         doing=body.get("doing"),
         n_total=body.get("n_total"), n_decided=body.get("n_decided"),
         n_this_visit=body.get("n_this_visit"),
         at_index=body.get("at_index"), at_time_s=body.get("at_time_s"))
+    taken = None
+    if mine and mine.get("yielded_to"):
+        taken = {"by": mine.get("yielded_to"), "at": mine.get("yielded_at")}
     return jsonify({
         "ok": True,
         # Whoever else is in this set -- the reason to answer at all.
         "others": [r for r in PRESENCE.for_set(gid, kind, include_self=False)
                    if r.get("active")],
         # And whether this machine has had the set taken off it, which it
-        # cannot find out any other way: the taking happens elsewhere.
-        "taken": PRESENCE.taken_from_me(gid, kind),
+        # cannot find out any other way: the taking happens elsewhere, and
+        # marks this machine's own row -- which the write just returned.
+        "taken": taken,
     })
 
 
@@ -10395,6 +10404,8 @@ def api_presence_test_ghost():
                            on_conflict="gid,kind,machine")
     except Exception as exc:                             # noqa: BLE001
         return jsonify({"ok": False, "error": str(exc)[:200]}), 502
+    # Written behind PRESENCE's back, so its cached read is out of date.
+    PRESENCE._forget()
     return jsonify({"ok": True, "row": row})
 
 
@@ -10416,6 +10427,7 @@ def api_presence_test_clear():
         CLOUD.cloud.delete(presencemod.TABLE, "gid=eq.%s" % gid)
     except Exception as exc:                             # noqa: BLE001
         return jsonify({"ok": False, "error": str(exc)[:200]}), 502
+    PRESENCE._forget()
     return jsonify({"ok": True})
 
 
@@ -14960,6 +14972,8 @@ COLUMN_MIGRATIONS = {
     # And the third trick of the same kind: tool_results is a whole table,
     # and a column probe is how a machine finds out it was never created.
     "params_hash": "16_results_museum.sql",
+    # Which code each computer runs, sent with its heartbeat.
+    "jarvis_version": "19_request_budget.sql",
 }
 
 
@@ -14993,6 +15007,7 @@ COLUMN_TABLES = {
     "recorded_on": "results",
     "recipe": "runs",
     "params_hash": "tool_results",
+    "jarvis_version": "machines",
 }
 
 
@@ -15270,8 +15285,12 @@ def api_devices():
     newest = {}
     for table, key in (("activity", "actions"), ("errors", "errors")):
         try:
+            # Two columns, not every column: this only counts rows per
+            # machine, and every column of 600 error rows carries each
+            # message, detail and context along for nothing.
             rows = CLOUD.cloud.select(
-                table, query="order=at.desc", limit=600) or []
+                table, query="order=at.desc", limit=600,
+                columns="machine,at") or []
         except Exception:                                # noqa: BLE001
             rows = []
         for r in rows:
@@ -15380,11 +15399,16 @@ def api_devices():
             "first_seen": m.get("first_seen"),
             "last_seen": m.get("last_seen"),
             "age_s": seen,
-            # Online means "pushed recently". The sync loop pushes at least
-            # once a minute, so a machine quiet for five has either been
-            # closed or has stopped syncing -- and both of those are things
-            # somebody would want to know.
-            "online": seen is not None and seen <= 300,
+            # Online means "heard from recently". The machine row is a
+            # heartbeat every five minutes (cloudsync.HEARTBEAT_S) rather than
+            # a row on every push, so three missed beats -- a quarter of an
+            # hour -- is closed or no longer syncing, both of which somebody
+            # would want to know.
+            "online": (seen is not None
+                       and seen <= 3 * cloudsync.Sync.HEARTBEAT_S),
+            # Which code it runs (migration 19). A rig still on an old
+            # version is the one that undoes everybody else's savings.
+            "version": m.get("jarvis_version"),
             "is_me": m.get("id") == mine,
             "last_action_at": (got.get("actions") or {}).get("at"),
             "recent_actions": (got.get("actions") or {}).get("n") or 0,
@@ -17210,10 +17234,50 @@ FILES_EVERY = 300        # figures and screenshots, which are big and rare
 PULL_MAX = 320           # five and a bit minutes, the ceiling when idle
 PULL_GROWTH = 2.0        # doubling, so it reaches the ceiling in four
 
+# Somebody is working here but nothing is arriving from anywhere else. A
+# pull every 20 seconds exists so two people in the same set see each other;
+# one person alone gains nothing from it, and it was the rate a machine sat
+# at all day because every click reset it (constitution §11, leak 1). The
+# floor comes back the moment another machine's change does.
+PULL_SOLO = 60
+
+# Nobody is looking. Every poller in the page stops when the window is
+# hidden, so a server that has heard nothing from a browser for ten minutes
+# has nobody in front of it -- a rig left on overnight, a laptop lid shut.
+# The pull then backs off to half an hour, and the first request from a
+# browser brings it straight back.
+AWAY_AFTER = 600
+PULL_AWAY = 1800
+
 # When a write happened, so a push can follow it promptly. Set by the
 # after_request hook rather than by each route: there are about ninety routes
 # that write and one place they all pass through.
 _push_wanted = [0.0]
+# When the person at this machine last did something (a write they caused;
+# not a timer). Holds the pull at PULL_SOLO rather than letting it back off.
+_user_active = [0.0]
+# When a browser last asked this server anything at all.
+_ui_seen = [time.time()]
+# The pull interval the loop is on, and why -- shown in the Cloud panel so
+# "why is it pulling so often" has an answer on screen.
+_cloud_pace = {"pull_s": PULL_EVERY, "why": "starting"}
+
+# Writes that change nothing another machine reads, so they are no reason to
+# push NOW (constitution §11, rule 4). They still travel -- activity, errors
+# and preferences go with the next scheduled push, a minute at most. Presence
+# is written straight to the cloud by its own route and has nothing local to
+# push at all.
+_NOT_SHARED_WRITES = (
+    "/api/presence/",
+    "/api/activity",
+    "/api/errors/client",
+    "/api/errors/context",
+    "/api/errors/bundle",
+    "/api/prefs",
+)
+# Written by a timer rather than by somebody doing something, so they say
+# nothing about whether anybody is working.
+_TIMER_WRITES = ("/api/presence/",)
 
 
 def cloud_touch():
@@ -17257,9 +17321,17 @@ def _cloud_loop():
     losing the race locally means the next pull just undoes your screen.
     """
     time.sleep(8)           # let the app finish starting
+    if not _cloud_loop_lock():
+        # A second Jarvis on this computer, against the same GUI_logs. It
+        # works normally; it just does not sync, because two loops pushing
+        # the same records is twice the requests for the same result.
+        _cloud_pace.update(pull_s=None,
+                           why="another Jarvis on this computer is syncing")
+        return
     next_pull = next_push = next_files = 0.0
     retry_at = 0.0
     idle_pull = float(PULL_EVERY)   # grows while nothing is happening
+    away = False
     while True:
         try:
             cfg = CLOUD.cloud.reload()
@@ -17272,6 +17344,14 @@ def _cloud_loop():
             if now < retry_at:
                 time.sleep(min(5, retry_at - now))
                 continue
+            base = max(5, int(cfg.get("interval") or PULL_EVERY))
+
+            # Somebody came back to a machine that had been left alone:
+            # catch up now, not at the end of a half-hour wait.
+            if away and now - _ui_seen[0] < AWAY_AFTER:
+                away = False
+                idle_pull = float(base)
+                next_pull = min(next_pull, now)
 
             # A write since the last push brings the next one forward.
             wrote = _push_wanted[0]
@@ -17283,23 +17363,36 @@ def _cloud_loop():
             if due_pull or due_push or due_files:
                 if due_push:
                     _push_wanted[0] = 0.0
-                before = dict(_cloud_last.get("applied") or {})
                 cloud_sync_once(pull=due_pull, push=due_push,
                                 files=due_files)
-                base = max(5, int(cfg.get("interval") or PULL_EVERY))
                 if due_pull:
-                    # Did that cycle find anything? A local write counts as
-                    # well: somebody typing here is the best available
-                    # evidence that somebody is also working elsewhere.
-                    got = _cloud_last.get("applied") or {}
-                    moved = any(v for k, v in got.items()
-                                if not str(k).startswith("_"))
-                    if moved or wrote or got != before:
-                        idle_pull = base
+                    # How soon to ask again, by what is going on.
+                    #
+                    # This used to drop to the 20 s floor on any local
+                    # write -- every presence beat and every 4 s activity
+                    # flush counted -- so a machine with a set open never
+                    # backed off at all. And the "did anything arrive"
+                    # half read a field nothing ever set, so it never
+                    # fired. Now the floor is for the case it exists for:
+                    # somebody else's work actually arriving.
+                    t = time.time()
+                    arrived = bool(_cloud_last.get("ok")) and (
+                        _cloud_last.get("pulled") or 0) > 0
+                    working = t - _user_active[0] < 300
+                    if arrived:
+                        idle_pull = float(base)
+                        why = "a change arrived from another machine"
+                    elif working:
+                        idle_pull = float(max(base, PULL_SOLO))
+                        why = "somebody is working here"
                     else:
-                        idle_pull = min(PULL_MAX,
+                        away = t - _ui_seen[0] >= AWAY_AFTER
+                        ceiling = PULL_AWAY if away else PULL_MAX
+                        idle_pull = min(ceiling,
                                         max(base, idle_pull * PULL_GROWTH))
-                    next_pull = time.time() + idle_pull
+                        why = "nobody is looking" if away else "quiet"
+                    next_pull = t + idle_pull
+                    _cloud_pace.update(pull_s=int(idle_pull), why=why)
                 if due_push:
                     next_push = time.time() + max(base, PUSH_EVERY)
                 if due_files:
@@ -17317,28 +17410,90 @@ def _cloud_loop():
         time.sleep(1)
 
 
-if CLOUD.cloud.configured and CLOUD.cloud.cfg.get("auto"):
+_CLOUD_LOOP_LOCK = []
+
+
+def _cloud_loop_lock():
+    """Be the only sync loop on this computer, or say so.
+
+    start.py takes the next free port when 8733 is busy, so a second
+    double-click on "Wake up Jarvis" is a second full server -- and it used
+    to be a second sync loop too, pushing and pulling the same GUI_logs.
+    An OS lock on a file beside them settles which one syncs; it is released
+    by the operating system when that process ends, however it ends, so a
+    crash never strands it.
+    """
+    path = os.path.join(CLOUD.cloud.logs_dir, ".cache", "cloud_loop.lock")
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        fh = open(path, "a+")
+        try:
+            if os.name == "nt":
+                import msvcrt
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            fh.close()
+            return False
+        _CLOUD_LOOP_LOCK.append(fh)      # held for the life of the process
+        return True
+    except OSError:
+        # Cannot even make the file: sync anyway rather than not at all.
+        return True
+
+
+# Only the app itself syncs in the background. start.py says so by setting
+# Jarvis_CLOUD_SYNC=on before importing this module; the harness runner and
+# the ~25 tools that import it for its routes do not, and each of them used
+# to start a production sync loop of its own for as long as it ran -- the
+# harness pushing thousands of test writes into the lab's database, which is
+# how `harness@test` came to be on everybody's roster. A tool that does want
+# the loop sets the variable itself.
+if (CLOUD.cloud.configured and CLOUD.cloud.cfg.get("auto")
+        and os.environ.get("Jarvis_CLOUD_SYNC", "").lower() in
+        ("1", "on", "true", "yes")):
     threading.Thread(target=_cloud_loop, daemon=True,
                      name="barry-cloud-sync").start()
+else:
+    _cloud_pace.update(pull_s=None, why=(
+        "background sync is off in this process (only start.py turns it "
+        "on); Sync now still works"))
 
 
 @app.after_request
 def _note_local_write(resp):
-    """Any successful write means there is something worth pushing.
+    """What this request says about pushing, and about who is here.
 
     Here rather than in each route: there are about ninety that write, and
-    one place they all pass through. GETs are excluded, and so are failures
-    -- a rejected request changed nothing.
+    one place they all pass through. Three separate facts come out of it:
+
+    - a browser asked something -- somebody is looking (any /api/ request);
+    - the person did something -- a successful write that no timer sent;
+    - there is shared data to push soon -- a write another machine reads.
+
+    These used to be one fact. Every write, presence beats and 4 s activity
+    flushes included, scheduled a push six seconds later and reset the pull
+    backoff, so a machine with a set open pushed and pulled every twenty
+    seconds all day (constitution §11, leak 1).
     """
     try:
+        path = request.path
+        if path.startswith("/api/"):
+            _ui_seen[0] = time.time()
         if (request.method in ("POST", "PUT", "PATCH", "DELETE")
                 and resp.status_code < 400
-                and request.path.startswith("/api/")
+                and path.startswith("/api/")
                 # Not the sync routes themselves, or a manual sync would
                 # schedule another one on its way out.
-                and not request.path.startswith("/api/cloud/")
-                and not request.path.startswith("/api/sync/")):
-            cloud_touch()
+                and not path.startswith("/api/cloud/")
+                and not path.startswith("/api/sync/")):
+            if not path.startswith(_TIMER_WRITES):
+                _user_active[0] = time.time()
+            if not path.startswith(_NOT_SHARED_WRITES):
+                cloud_touch()
     except Exception:                                # noqa: BLE001
         pass
     return resp
@@ -18569,6 +18724,14 @@ def api_cloud_status():
         "machine": CLOUD.machine,
         "last": dict(_cloud_last),
         "state": CLOUD.cloud.state(),
+        # Every request this process has made to Supabase, counted at the
+        # one door they all pass through (cloud.meter). The hour is what the
+        # panel shows; the day is for comparing against the dashboard.
+        "requests": cloudmod.meter(int(request.args.get("window") or 3600)),
+        "requests_day": {k: v for k, v in cloudmod.meter(86400).items()
+                         if k in ("requests", "failed", "bytes", "covers_s")},
+        "pull_interval_s": _cloud_pace.get("pull_s"),
+        "pace": _cloud_pace.get("why"),
     }
     if request.args.get("ping") and CLOUD.cloud.configured:
         out["ping"] = CLOUD.cloud.ping()

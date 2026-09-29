@@ -27,6 +27,10 @@ were logged as `channels.*` long before there was a toolkit page for them.
 """
 from __future__ import annotations
 
+import threading
+import time
+from datetime import datetime, timezone
+
 from . import extras
 
 # tool id -> the action prefixes that belong to it.
@@ -70,6 +74,26 @@ TOOLS = {
 LIMIT = 200
 MAX_LIMIT = 1000
 
+# One read of the shared table answers every feed.
+#
+# Each feed used to ask Supabase for its own tool's rows on every poll --
+# every 3 s per open ToolKit, hidden window or not, ~1,200 requests an hour
+# on its own (constitution §11, leak 5). Other machines' actions cannot
+# arrive faster than their push (a minute at most), so the table is now
+# read at most every REFRESH_S seconds, for everybody's rows at once, and
+# each tool's feed is cut from that locally. A tool's older history is read
+# once per process the first time its feed is opened.
+REFRESH_S = 30
+# Rows are stamped where the action happened and pushed up to a minute or
+# two later, so each refresh re-asks for the last few minutes; ids fold the
+# repeats away. Cheap: it is a handful of rows, compressed.
+OVERLAP_S = 300
+SEED = 60              # a tool's own newest rows, read once
+KEEP = 3000            # rows held; the oldest go first
+
+_LOCK = threading.Lock()
+_CACHE = {"rows": {}, "at": 0.0, "through": None, "seeded": set()}
+
 
 def prefixes_for(tool):
     """The action prefixes for a tool, named or not.
@@ -97,18 +121,69 @@ def matches(action, prefixes):
     return any(a == p.rstrip(".") or a.startswith(p) for p in prefixes)
 
 
-def _cloud_query(prefixes, since=None, limit=LIMIT):
+def _cloud_query(prefixes, since=None):
     """PostgREST's filter for "any of these prefixes", newest first.
 
     `or=(...)` with `like` per prefix. The alternative -- fetching
     everything and filtering here -- is a table scan across every machine's
-    history to show twenty rows.
+    history to show twenty rows. The limit is `Cloud.select`'s to add; it
+    used to be here as well, so every request carried two.
     """
     parts = ["action.like.%s*" % p.replace(",", "") for p in prefixes]
     q = "or=(%s)" % ",".join(parts)
     if since:
         q += "&at=gt.%s" % since
-    return q + "&order=at.desc&limit=%d" % int(limit)
+    return q + "&order=at.desc"
+
+
+def _iso_before(stamp, seconds):
+    t = extras.moment_key(stamp)
+    if not t:
+        return None
+    return datetime.fromtimestamp(t - seconds, timezone.utc).isoformat()
+
+
+def _shared(cloud, tool, prefixes):
+    """Every recent shared row this process knows of, refreshed at most
+    every REFRESH_S seconds and seeded once per tool. Raises when the cloud
+    does not answer, so the caller can say so."""
+    with _LOCK:
+        # Away is a state, not an error to retry every poll (constitution
+        # §11, rule 11): after a failure, wait a refresh before asking again.
+        if time.time() - _CACHE.get("fail_at", 0.0) < REFRESH_S:
+            raise RuntimeError("not reachable just now")
+        rows = _CACHE["rows"]
+        got = []
+        try:
+            if tool not in _CACHE["seeded"]:
+                got += cloud.select("activity",
+                                    query=_cloud_query(prefixes), limit=SEED)
+                _CACHE["seeded"].add(tool)
+            fresh = []
+            if time.time() - _CACHE["at"] >= REFRESH_S:
+                since = _iso_before(_CACHE["through"], OVERLAP_S)
+                q = (("at=gt.%s&order=at.desc" % since) if since
+                     else "order=at.desc")
+                fresh = cloud.select("activity", query=q, limit=500)
+                _CACHE["at"] = time.time()
+        except Exception:
+            _CACHE["fail_at"] = time.time()
+            raise
+        got += fresh
+        if fresh:
+            for r in fresh:
+                if (extras.moment_key(r.get("at"))
+                        > extras.moment_key(_CACHE["through"])):
+                    _CACHE["through"] = r.get("at")
+        for r in got:
+            if r.get("id"):
+                rows[r["id"]] = _shape(r)
+        if len(rows) > KEEP:
+            keep = sorted(rows.values(),
+                          key=lambda r: extras.moment_key(r.get("at")),
+                          reverse=True)[:KEEP]
+            _CACHE["rows"] = rows = {r["id"]: r for r in keep}
+        return list(rows.values())
 
 
 def feed(store, cloud, tool, limit=LIMIT, since=None):
@@ -132,10 +207,14 @@ def feed(store, cloud, tool, limit=LIMIT, since=None):
 
     if cloud is not None and getattr(cloud, "configured", False):
         try:
-            rows = cloud.select("activity",
-                                query=_cloud_query(prefixes, since, limit),
-                                limit=limit)
-            shared = [_shape(r) for r in rows]
+            cut = extras.moment_key(since) if since else None
+            shared = [r for r in _shared(cloud, tool, prefixes)
+                      if matches(r.get("action"), prefixes)
+                      and (cut is None
+                           or extras.moment_key(r.get("at")) > cut)]
+            shared.sort(key=lambda r: extras.moment_key(r.get("at")),
+                        reverse=True)
+            shared = shared[:limit]
             return {"ok": True, "source": "supabase", "tool": tool,
                     "name": name_for(tool), "prefixes": prefixes,
                     "rows": _merge(shared, mine, limit)}

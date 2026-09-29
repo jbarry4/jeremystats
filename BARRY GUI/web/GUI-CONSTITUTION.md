@@ -1300,60 +1300,71 @@ the cost countable, and it stays that way:
 
 ### Where the requests go today
 
-Read from the code on 2026-09-29, one machine, the `barry_watermarks` view
-present, a roster under 200 and bank tables under 1,000 rows. **Estimates
-from intervals, not measurements** — the overhaul measures them first.
+After the overhaul of 2026-09-29 (CHANGELOG 2026.09.29.1), one machine.
+**Measured** where it says so, by counting `Cloud._call` (`cloud.meter`)
+over a fixed window; the rest from intervals.
 
-| path | trigger | ≈ requests / hour | already held back by |
+| path | trigger | ≈ requests / hour | held back by |
 |---|---|---|---|
-| push: `machines`, `people`, `prefs` always upserted, plus 2 full `select_all` of `bank_snapshots`/`bank_entries` keys | `_cloud_loop`, at least every 60 s, and ~6 s after **any** write | ~300 idle; ~900 while curating | incremental rows for everything else |
-| pull: `barry_watermarks`, then only tables that moved | `_cloud_loop`, 20 s growing to 320 s idle | ~22 idle; ~360 while writes keep resetting it | watermark view; idle backoff |
-| `pull_files`: `select_all results` | every 300 s | 12 | nothing |
-| tool feed `GET /api/toolfeed/<tool>` | every 3 s, ToolKit visible | ~1,200 | stops when hidden and in `onHide` |
-| presence beat `POST /api/presence/beat` | every 20 s, Checkup or Spotter open | ~540 (3 per beat), each also scheduling a push | **no hidden check** |
-| presence poll `GET /api/presence` | every 10 s, any ToolKit tool visible | ~360 | stops when hidden and in `onHide` |
+| push | `_cloud_loop`: every 60 s, and ~6 s after a write of shared data | **0 when nothing changed (measured)**; one upsert per table that did | rows stamped when they changed; `machines` a 5-minute heartbeat; pushed snapshot keys remembered in the sync state |
+| pull: `barry_watermarks`, then only tables that moved | `_cloud_loop` | 20 s only while another machine's changes arrive; 60 s while somebody works here; up to 320 s quiet; 1,800 s with nobody looking — **17 requests in 230 s measured**, most of them other machines' old-code roster | watermark view; `_cloud_pace` |
+| `pull_files` | files step, every 300 s | 0 unless a pull saw `results` move; then the new rows only | `results_moved`, `_files_through` |
+| `upload_results` | files step, every 300 s | 0 unless a figure changed; a refused file is not retried until it changes | `uploaded` / `upload_refused` in the sync state |
+| tool feed `GET /api/toolfeed/<tool>` | every 15 s, ToolKit visible | ≤ 120 (one shared read per 30 s for every tool), 0 hidden | `toolfeed._shared` |
+| presence beat `POST /api/presence/beat` | every 60 s, Checkup or Spotter open and visible | ≤ 120 (2 per beat), 0 hidden; no push | `upsert_returning`; `Presence.READ_TTL_S` |
+| presence poll `GET /api/presence` | every 30 s, any ToolKit tool visible | ≤ 120, shared with beats | `Presence.READ_TTL_S` (10 s) |
 | page reads: digest, devices, errors, activity, ping | a view opening, a click | small | TTL caches on a few |
 
-**A foreground ToolKit with a set open is roughly 3,000 requests an hour per
-machine.** The CHANGELOG's "~270 a day idle" counts pulls only.
+Background sync runs only in the process `start.py` starts
+(`Jarvis_CLOUD_SYNC=on`), and only one per computer (`_cloud_loop_lock`).
+The harness runner and the tools that import `backend.app` do not sync.
 
-### Known leaks, worst first
+### Known leaks
 
 Found reading the code, 2026-09-29. Each is a counter-example for the rules
-below; fixing them is the overhaul.
+below.
 
-1. **Every write schedules a push.** `_note_local_write` (app.py) calls
-   `cloud_touch()` after any successful POST/PUT/PATCH/DELETE under `/api/`
-   — including presence beats, activity flushes (every 4 s), client error
-   reports and prefs. So a push follows ~6 s later, bypassing the 60 s floor,
-   and resets the pull backoff to 20 s. A write that changed nothing shared
-   should not buy a push.
-2. **The roster re-stamps itself.** `rows_people` (cloudsync.py) sets
-   `updated_at = now()` on every row on every push, so every machine's pull
-   sees `people` as changed and downloads the whole roster again. A quiet
-   pull is two requests, not one, and the watermark cannot do its job.
-3. **A push is never empty.** `machines`, `people` and `prefs` go up every
-   time, and `rows_bank_snapshots` runs two full key reads each push
-   (~5 requests before anything has changed).
-4. **A presence beat costs three.** One upsert, then `for_set` and
-   `taken_from_me` each re-read `curation_presence`. And it beats in a
-   background tab.
-5. **The tool feed polls every 3 s**, with a two-minute overlap that
-   re-downloads the same rows on every poll (the id check drops them after
-   they have been paid for).
-6. **`select` always appends `select=*`** (cloud.py), after the caller's own
-   query. A caller asking `select=id` sends both. *Unverified* whether
-   PostgREST honours the first or the last; if the last, the key-only reads
-   in the push and in `/api/bank/sync` return whole rows — `bank_entries`
-   rows carry every event.
-7. **`pull_files` reads the whole `results` table** every five minutes
-   instead of asking what changed.
+1. ~~**Every write schedules a push.**~~ Fixed 2026-09-29:
+   `_note_local_write` separates "somebody is looking", "somebody did
+   something" and "there is shared data to push". Presence, activity, error
+   reports and preferences ride the next scheduled push
+   (`_NOT_SHARED_WRITES`); only another machine's change resets the pull to
+   its floor.
+2. ~~**The roster re-stamps itself.**~~ Fixed: `rows_people` sends a row when
+   what it says changed, stamped with `edited_at`; a name compiled from the
+   records is only ever inserted.
+3. ~~**A push is never empty.**~~ Fixed, measured: a quiet push makes no
+   request.
+4. ~~**A presence beat costs three.**~~ Fixed: the write returns the row
+   (`upsert_returning`), which answers "was it taken"; one cached read
+   answers "who else".
+5. ~~**The tool feed polls every 3 s.**~~ Fixed: one shared read per 30 s.
+6. ~~**`select` always appends `select=*`.**~~ Fixed: a caller's `select=`
+   is kept, and `columns=` states it. (PostgREST honoured the first, so the
+   key reads were right all along; measured 2026-09-27.)
+7. ~~**`pull_files` reads the whole `results` table.**~~ Fixed.
 8. **`/api/activity/who` is N+1**: one `count` per person spelling and per
    machine. Nothing in `web/` calls it today; nothing should until it is one
    query.
-9. **The meter measures the wrong thing.** `tools/cloud_egress.py` walks
-   `cloudsync.ORDER` directly — the old path with no watermark — and ignores
-   push, presence and the tool feed. It predicts pulls only.
+9. ~~**The meter measures the wrong thing.**~~ `cloud.meter` counts every
+   request at the door, by caller and table; `/api/cloud/status` serves it
+   and the Sync panel shows it. `tools/cloud_egress.py` still models the old
+   pull only.
+10. ~~**Refused uploads, retried for ever.**~~ Fixed: Windows' `mimetypes`
+    calls a `.csv` `application/vnd.ms-excel`, which the bucket refuses, so
+    73 files were sent and refused every five minutes — ~21,000 requests a
+    day from one machine. Types are stated (`cloudsync.BUCKET_TYPES`), and
+    a 4xx is remembered against the file's signature.
+11. ~~**Every importer of `backend.app` was a sync client.**~~ Fixed: see
+    above. The harness pushed its test writes into the lab's database,
+    which is how `harness@test` reached the shared roster.
+
+**Open: the pull cursor is a client stamp.** `last_pull` is the newest
+`updated_at` seen, and `updated_at` is written by the machine that made the
+edit. An edit pushed after another machine's newer one can land behind a
+colleague's cursor and be skipped. Honest roster stamps make this rarer —
+the `now()` stamps were dragging every cursor forward — but a
+server-assigned stamp is the real fix.
 
 ### The rules
 
@@ -1402,14 +1413,20 @@ below; fixing them is the overhaul.
 
 ### Measuring it
 
-- `tools/cloud_egress.py --twice` — one incremental pull's bytes and
-  requests, projected at 20 s cycles. **Pull only, and the old path** (leak
-  9); read its number as a ceiling for pulls, not as the total.
+- **`cloud.meter(window_s)`** — every request this process made, by caller
+  (`module.function`, worked out from the stack, so a new call site is
+  counted without anybody labelling it) and by table, with the bytes that
+  came back. `GET /api/cloud/status?window=3600` serves it; the Sync panel
+  shows the hour; `python tools/cloud_meter.py` prints it from the running
+  app. This is the number a change that claims to cut requests quotes.
+- **Supabase's own logs** — every request carries
+  `User-Agent: Jarvis/<version>+<commit> <machine>`, so the dashboard's
+  Logs Explorer can group by computer and by version. A machine still on old
+  code is the one whose user agent is old, or absent.
 - `tools/cloud_weight.py --rows N` — rows × average size per table: the cost
   of a full pull.
-- Neither counts push, presence or the tool feed. Until one does, a change
-  that claims to cut requests says how it counted them — by the interval
-  arithmetic above, or by counting `Cloud._call` over a fixed window.
+- `tools/cloud_egress.py` — the old pull path only (no watermark); a ceiling,
+  not a total.
 
 ### When you add something that talks to the cloud
 

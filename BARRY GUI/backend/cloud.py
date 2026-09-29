@@ -44,10 +44,13 @@ profile: Jarvis_SUPABASE_URL and Jarvis_SUPABASE_KEY.
 """
 from __future__ import annotations
 
+import collections
+import gzip
 import json
 import mimetypes
 import os
 import re
+import sys
 import threading
 import time
 import urllib.error
@@ -58,6 +61,141 @@ from datetime import datetime, timezone
 from . import shards
 
 TIMEOUT = 60
+
+
+# ==========================================================================
+# The meter
+# ==========================================================================
+# Every request Jarvis makes to Supabase passes through Cloud._call, so this
+# is where they are counted (constitution §11, "One door"). The unit that
+# costs money is the request -- ~1 KB of response headers and a gateway log
+# line each, whatever the body -- so the question this answers is "how many,
+# and who asked", not "how big".
+#
+# In-process and local only: nothing here is uploaded, and it starts from
+# zero when Jarvis does. `who` is worked out from the call stack rather than
+# passed by every caller, so a new call site is counted without anybody
+# remembering to label it -- which is how the old meter came to measure only
+# the path it was written for.
+_METER_KEEP_S = 24 * 3600
+_METER_LOCK = threading.Lock()
+_METER = collections.deque()     # (t, who, method, table, status, wire_bytes)
+_HERE = os.path.abspath(__file__)
+
+
+def _who():
+    """`module.function` of the first caller outside this file."""
+    try:
+        f = sys._getframe(2)
+    except ValueError:
+        return "?"
+    while f is not None and os.path.abspath(f.f_code.co_filename) == _HERE:
+        f = f.f_back
+    if f is None:
+        return "?"
+    mod = os.path.splitext(os.path.basename(f.f_code.co_filename))[0]
+    return "%s.%s" % (mod, f.f_code.co_name)
+
+
+def _table_of(path):
+    """`sessions` out of /rest/v1/sessions?..., `storage:figures` out of a
+    storage path -- what a request was about, for grouping."""
+    p = (path or "").split("?", 1)[0]
+    if p.startswith("/rest/v1/rpc/"):
+        return "rpc:" + p[len("/rest/v1/rpc/"):]
+    if p.startswith("/rest/v1/"):
+        return p[len("/rest/v1/"):] or "(root)"
+    if p.startswith("/storage/v1/object/list/"):
+        return "storage-list:" + p[len("/storage/v1/object/list/"):]
+    if p.startswith("/storage/v1/object/"):
+        return "storage:" + p[len("/storage/v1/object/"):].split("/", 1)[0]
+    return p or "?"
+
+
+def _meter_note(who, method, path, status, wire):
+    now = time.time()
+    with _METER_LOCK:
+        _METER.append((now, who, method, _table_of(path), status, wire))
+        cutoff = now - _METER_KEEP_S
+        while _METER and _METER[0][0] < cutoff:
+            _METER.popleft()
+
+
+def meter(window_s=3600):
+    """Requests in the last `window_s` seconds: the total, the bytes that
+    came back (headers and compressed body -- what egress counts), and the
+    same broken down by caller and by table, busiest first."""
+    cutoff = time.time() - max(1, float(window_s or 3600))
+    with _METER_LOCK:
+        rows = [r for r in _METER if r[0] >= cutoff]
+    by_who, by_table, failed = {}, {}, 0
+    total_bytes = 0
+    for _t, who, method, table, status, wire in rows:
+        total_bytes += wire
+        for bucket, key in ((by_who, who), (by_table, "%s %s" % (method, table))):
+            slot = bucket.setdefault(key, [0, 0])
+            slot[0] += 1
+            slot[1] += wire
+        if not status or status >= 400:
+            failed += 1
+
+    def ranked(d):
+        return [{"key": k, "n": v[0], "bytes": v[1]}
+                for k, v in sorted(d.items(), key=lambda kv: -kv[1][0])]
+    return {
+        "window_s": int(window_s),
+        "requests": len(rows),
+        "failed": failed,
+        "bytes": total_bytes,
+        "by_caller": ranked(by_who),
+        "by_table": ranked(by_table),
+        # Since this process started, capped at a day: how much of the
+        # window the numbers actually cover.
+        "covers_s": int(time.time() - rows[0][0]) if rows else 0,
+    }
+
+
+_UA = {}
+
+
+def _user_agent(machine):
+    """`Jarvis/<version>+<commit> <machine id>`, on every request.
+
+    So Supabase's own logs can say which computer, running which code, sent
+    what -- the question a stale rig answers wrongly by saying nothing. The
+    version is read once (store._code_version caches it); a failure to read
+    it still names the machine.
+    """
+    if machine in _UA:
+        return _UA[machine]
+    ver = commit = None
+    try:
+        from .store import _code_version
+        ver, commit = _code_version()
+    except Exception:                                    # noqa: BLE001
+        pass
+    tag = "Jarvis/%s%s %s" % (ver or "unknown",
+                              ("+" + commit) if commit else "",
+                              machine or "unknown-machine")
+    _UA[machine] = tag
+    return tag
+
+
+def _gunzip(payload, headers):
+    """The body as sent, uncompressed when the server compressed it."""
+    if payload and (headers.get("Content-Encoding") or "").lower() == "gzip":
+        try:
+            return gzip.decompress(payload)
+        except OSError:
+            return payload
+    return payload
+
+
+def _header_bytes(headers):
+    try:
+        return sum(len(k) + len(v) + 4 for k, v in headers.items())
+    except Exception:                                    # noqa: BLE001
+        return 0
 
 
 def _quiet_rm(path):
@@ -387,6 +525,12 @@ class Cloud:
             "Authorization": "Bearer " + self.cfg["key"],
             "Content-Type": "application/json",
             "Accept": "application/json",
+            # urllib never asks for compression, so every JSON answer came
+            # back at full size. Measured on `people`: 7,824 bytes plain,
+            # 1,201 gzipped. Egress is what leaves Supabase, so this is a
+            # straight division of every row this client downloads.
+            "Accept-Encoding": "gzip",
+            "User-Agent": _user_agent(self.machine),
         }
         h.update(extra or {})
         return h
@@ -399,9 +543,13 @@ class Cloud:
             if body is not None else None)
         req = urllib.request.Request(url, data=data, method=method,
                                      headers=self._headers(headers))
+        who = _who()
         try:
             with urllib.request.urlopen(req, timeout=timeout) as res:
-                payload = res.read()
+                wire = res.read()
+                _meter_note(who, method, path, res.status,
+                            len(wire) + _header_bytes(res.headers))
+                payload = _gunzip(wire, res.headers)
                 if not payload:
                     return None, res.headers
                 try:
@@ -411,11 +559,16 @@ class Cloud:
         except urllib.error.HTTPError as exc:
             detail = ""
             try:
-                detail = exc.read().decode("utf-8", "replace")[:600]
+                wire = exc.read()
+                _meter_note(who, method, path, exc.code,
+                            len(wire) + _header_bytes(exc.headers or {}))
+                detail = _gunzip(wire, exc.headers or {}).decode(
+                    "utf-8", "replace")[:600]
             except Exception:            # noqa: BLE001
-                pass
+                _meter_note(who, method, path, exc.code, 0)
             raise CloudError(_explain(method, path, exc.code, detail)) from None
         except urllib.error.URLError as exc:
+            _meter_note(who, method, path, 0, 0)
             raise CloudError("cannot reach %s: %s"
                              % (self.cfg["url"], exc.reason)) from None
 
@@ -444,20 +597,35 @@ class Cloud:
                                    for b in ch.encode("utf-8")))
         return "".join(out)
 
-    def select(self, table, query="", limit=PAGE, offset=0):
+    _HAS_SELECT = re.compile(r"(^|&)select=")
+
+    def select(self, table, query="", limit=PAGE, offset=0, columns=None):
+        """Rows of `table`, with `columns` (a PostgREST select list) or all.
+
+        A caller that already put `select=` in its query keeps it. This used
+        to append `select=*` regardless, so a key-only read sent two select
+        parameters and was right only because PostgREST happens to honour
+        the first -- constitution §11, leak 6.
+        """
         q = self._safe_query(query)
-        q = q + ("&" if q else "")
-        path = "/rest/v1/%s?%sselect=*&limit=%d&offset=%d" % (
-            table, q, limit, offset)
+        if columns:
+            # Stated twice, the explicit argument wins.
+            q = "&".join(p for p in q.split("&")
+                         if p and not p.startswith("select="))
+            q = (q + "&" if q else "") + "select=" + self._safe_query(columns)
+        elif not self._HAS_SELECT.search(q):
+            q = (q + "&" if q else "") + "select=*"
+        path = "/rest/v1/%s?%s&limit=%d&offset=%d" % (table, q, limit, offset)
         rows, _h = self._call("GET", path)
         return rows or []
 
-    def select_all(self, table, query=""):
+    def select_all(self, table, query="", columns=None):
         """Every matching row, paged. PostgREST caps a response; walking the
         pages here means a caller never silently sees the first thousand."""
         out, offset = [], 0
         while True:
-            page = self.select(table, query, limit=PAGE, offset=offset)
+            page = self.select(table, query, limit=PAGE, offset=offset,
+                               columns=columns)
             out.extend(page)
             if len(page) < PAGE:
                 return out
@@ -510,6 +678,41 @@ class Cloud:
             PENDING_COLUMNS.setdefault(table, set()).update(dropped)
         return sent
 
+    def upsert_returning(self, table, row, on_conflict=None):
+        """Insert or update one row and get it back as the database holds it.
+
+        One request where a write followed by a read was two: the answer
+        includes columns somebody else set on the same row (a presence row
+        another machine has marked taken, say), which is exactly what the
+        read was for.
+        """
+        path = "/rest/v1/" + table
+        if on_conflict:
+            path += "?on_conflict=" + urllib.parse.quote(on_conflict)
+        # A column the database has not got yet is dropped and retried, as
+        # `upsert` does, rather than failing the write.
+        dropped = set(PENDING_COLUMNS.get(table) or ())
+        for _attempt in range(16):
+            body = {k: v for k, v in row.items() if k not in dropped}
+            try:
+                rows, _h = self._call(
+                    "POST", path, body=[body],
+                    headers={"Prefer": "resolution=merge-duplicates,"
+                                       "return=representation"})
+                break
+            except Exception as exc:                     # noqa: BLE001
+                col = missing_column(exc)
+                if not col or col in dropped:
+                    raise
+                dropped.add(col)
+                PENDING_COLUMNS.setdefault(table, set()).add(col)
+        else:
+            raise CloudError("%s: gave up after dropping %s"
+                             % (table, sorted(dropped)))
+        if isinstance(rows, list) and rows:
+            return rows[0]
+        return None
+
     def patch_rows(self, table, query, values):
         """Change existing rows, without needing their primary key.
 
@@ -553,8 +756,11 @@ class Cloud:
         """Put one file in the bucket. Overwrites, so a re-run is a no-op."""
         with open(path, "rb") as fh:
             blob = fh.read()
-        ct = content_type or mimetypes.guess_type(path)[0] \
-            or "application/octet-stream"
+        # Not `mimetypes` for a .csv: on Windows it reads the registry, which
+        # says "application/vnd.ms-excel", and the bucket refuses that.
+        ct = content_type or (
+            "text/csv" if path.lower().endswith(".csv") else None) \
+            or mimetypes.guess_type(path)[0] or "application/octet-stream"
         target = "/storage/v1/object/%s/%s" % (
             bucket, urllib.parse.quote(key))
         self._call("POST", target, raw=blob,

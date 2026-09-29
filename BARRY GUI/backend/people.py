@@ -457,6 +457,11 @@ class People:
                 for k in ("role", "initials", "orcid", "note"):
                     if mine.get(k):
                         r[k] = mine[k]
+                # When somebody last changed this entry by hand. The sync
+                # stamps the cloud row with it rather than with now(), so an
+                # unchanged roster stops looking new on every push.
+                if mine.get("edited_at"):
+                    r["edited_at"] = mine["edited_at"]
                 # An alias written on this entry, even when nothing has been
                 # folded through it yet -- the sync has to carry the
                 # statement, not just its effect.

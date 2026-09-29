@@ -15,6 +15,79 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.29.1 - The cloud asks only when something changed
+
+September's Supabase bill was 192% of the free egress allowance and 1,148%
+of log ingestion. Both count **requests**: each one is about a kilobyte of
+headers and a log line, whatever it carries. The watermark fix of 09-21 made
+pulls cheap; this goes after everything it left behind (constitution §11).
+
+**Every computer needs to pull and restart.** One machine on old code keeps
+re-stamping the roster every minute and every other machine keeps
+downloading it. **Run `supabase/19_request_budget.sql` once** in the SQL
+editor; until then everything still works, with one refused request per
+start and error triage checked every ten minutes.
+
+### Changed
+
+- **A push with nothing new makes no requests.** It used to make five
+  every minute on every machine, idle or not. Three of them were
+  `machines`, `prefs` and the whole roster re-sent stamped "now". The
+  other two read every key in `bank_snapshots` and `bank_entries`, about
+  1.2 GB a month per machine. People and preferences now carry the time
+  they were actually changed. The machine row is a five-minute heartbeat.
+  Snapshot keys the cloud already has are remembered. Measured: a second
+  and third push, zero requests.
+- **The pull backs off unless somebody else's work is arriving.** The pace:
+  - 20 s when a change comes in from another machine;
+  - a minute while somebody works here alone;
+  - up to five minutes when it's quiet;
+  - half an hour when nobody has been looking at the window for ten
+    minutes. The first click brings it straight back.
+
+  Before, every presence beat and every 4 s activity flush counted as work.
+  A machine with a set open pulled and pushed every 20 s all day. The
+  "something arrived" half never fired at all.
+- **Presence beats once a minute, not every 20 s, and not while the window
+  is hidden.** A beat is two requests at most, down from three: its own
+  write reports whether the set was taken. A set left open behind other
+  windows stops showing as held after three minutes, and coming back
+  reclaims it at once. Beats and activity flushes no longer schedule a push.
+- **The tool feed reads the shared table once every 30 s for every tool,**
+  not once every 3 s per open ToolKit. The page asks every 15 s and never
+  while hidden.
+- **The figure list is read when it changed.** It was read in full, every
+  column, every five minutes (~0.8 GB a month per machine). Now it's read
+  once at start and then only when a pull sees `results` move, and then only
+  the new rows.
+- **Refused uploads stop being retried.** Windows calls a `.csv`
+  "application/vnd.ms-excel", which the bucket refuses. On this machine 73
+  files (every CSV and a spreadsheet) were sent and refused every five
+  minutes, about 21,000 refused requests a day. CSVs now go up as
+  `text/csv`. A file the bucket refuses is not tried again until it changes.
+- **Responses come back gzipped** (a roster: 7.8 KB → 1.2 KB), and every
+  request says which computer and version sent it, so Supabase's own logs
+  can tell the machines apart.
+- **Only Jarvis itself syncs in the background.** The harness runner and the
+  tools that import the app used to each run a sync loop against the real
+  database. A second Jarvis on the same computer now leaves syncing to the
+  first.
+
+### Added
+
+- **The Sync panel shows what this computer has cost:** requests to Supabase
+  in the last hour, what came back, and who asked. It also shows the pace
+  the sync is on, and why.
+- **The device list shows which version each computer runs** (after
+  migration 19), so the stale one is visible.
+
+### Fixed
+
+- **Error triage travels again.** `errors` and `error_marks` were left out of
+  the watermark view in migration 17, so no pull asked for them after that.
+
+---
+
 ## 2026.09.28.1 - The Arc: Circuit, Drift, and artifacts you can build on
 
 ### Added

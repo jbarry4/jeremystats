@@ -1118,10 +1118,16 @@ BARRY.views.toolkit = (function () {
 
      Kept separate from the curation sets themselves because it is a
      different kind of fact: a set is a record and is still true tomorrow,
-     presence is a claim about this minute. Ten seconds because a stale
-     "nobody is here" is worse than showing nothing -- it looks
-     authoritative, and somebody acts on it. */
-  const PRESENCE_POLL = 10000;
+     presence is a claim about this minute. A stale "nobody is here" is
+     worse than showing nothing -- it looks authoritative, and somebody acts
+     on it -- but the claim itself only changes when somebody beats, once a
+     minute (curate.js PRESENCE_BEAT), so asking every ten seconds bought
+     nothing the server knew.
+
+     Cost (constitution §11, rule 5): one request per poll at most, and the
+     server answers several askers from one read (presence.READ_TTL_S) --
+     ~120 an hour with ToolKit in front, none when hidden or elsewhere. */
+  const PRESENCE_POLL = 30000;
   let presence = { sessions: [], machine: null, ttl_s: 150 };
   let presenceTimer = null;
 
@@ -1129,7 +1135,7 @@ BARRY.views.toolkit = (function () {
     try {
       const res = await api('/api/presence');
       if (!res || !res.ok) return;
-      const before = JSON.stringify(presence.sessions || []);
+      const before = presenceSig(presence.sessions);
       presence = res;
       /* Only redraw when it actually changed, and only when the tool it is
          about is the one on screen. This runs every ten seconds for as long
@@ -1137,10 +1143,22 @@ BARRY.views.toolkit = (function () {
          Curation over StrataScope, or over Kilosort, on its own -- a jump to
          another module with nothing you did to explain it. */
       if (andRender && q.tool === 'curate'
-          && JSON.stringify(res.sessions || []) !== before) {
+          && presenceSig(res.sessions) !== before) {
         renderCuration();
       }
     } catch (e) { /* presence is a courtesy, never an interruption */ }
+  }
+
+  /* What a presence answer says, less how old each row is. `age_s` differs
+     on every read, so comparing whole answers redrew Curation every poll --
+     and each redraw remounted the tool feed, which fired a full read of its
+     own. Whether somebody is active, and where they are, is the news. */
+  function presenceSig(list) {
+    return JSON.stringify((list || []).map((r) => {
+      const o = Object.assign({}, r);
+      delete o.age_s;
+      return o;
+    }));
   }
 
   function startPresence() {

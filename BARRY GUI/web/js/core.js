@@ -1069,6 +1069,32 @@ function askForKey(c) {
 }
 
 
+/* 20 -> "20 s", 320 -> "5 min", 1800 -> "30 min". */
+function cloudPace(s) {
+  if (s < 90) return Math.round(s) + ' s';
+  return Math.round(s / 60) + ' min';
+}
+
+
+/* What this computer has asked Supabase for, from the server's own count
+   (cloud.meter) -- the free tier is priced in requests, so this is the
+   number that matters, and the one nothing showed. */
+function cloudBudget(c) {
+  const r = c.requests || {};
+  if (r.requests == null) return null;
+  const kb = Math.round((r.bytes || 0) / 1024);
+  const top = (r.by_caller || []).slice(0, 3)
+    .map((x) => x.key.replace(/^[^.]*\./, '') + ' ' + x.n).join(', ');
+  const hrs = (r.covers_s || 0) < (r.window_s || 3600) * 0.9
+    ? ' since Jarvis started' : ' in the last hour';
+  return el('div', { class: 'hint cloud-budget',
+    text: r.requests + ' request' + (r.requests === 1 ? '' : 's')
+        + ' to Supabase' + hrs + ' (' + kb + ' KB back)'
+        + (top ? ' — ' + top : '')
+        + (r.failed ? '; ' + r.failed + ' failed' : '') });
+}
+
+
 function cloudNote() {
   const box = el('div', { class: 'cloud-note' }, [
     el('div', { class: 'hint', text: 'Checking the shared copy…' }),
@@ -1121,9 +1147,14 @@ function cloudNote() {
       el('span', { class: 'dot' + (last.ok === false ? ' bad'
                                    : (last.ok ? ' ok' : '')) }),
       el('strong', { text: c.project || 'Supabase' }),
+      /* The pace it is actually on, and why -- it changes with who is
+         working (see _cloud_loop) -- rather than the configured floor. */
       el('span', { class: 'hint',
-        text: c.auto ? 'syncing every ' + c.interval + 's' : 'automatic sync '
-            + 'is off' }),
+        text: !c.auto ? 'automatic sync is off'
+          : (c.pull_interval_s
+            ? 'checking every ' + cloudPace(c.pull_interval_s)
+              + (c.pace ? ' — ' + c.pace : '')
+            : (c.pace || 'syncing')) }),
       el('div', { class: 'spacer' }),
       el('button', {
         class: 'btn ghost sm', text: last.running ? 'Syncing…' : 'Sync now',
@@ -1175,6 +1206,8 @@ function cloudNote() {
           + (last.pulled ? '  ·  brought back ' + last.pulled : '')
           + (last.downloaded ? '  ·  ' + last.downloaded + ' file(s) down'
              : '') }));
+    const budget = cloudBudget(c);
+    if (budget) box.appendChild(budget);
     if (last.error) {
       box.appendChild(el('pre', { class: 'cloud-err', text: last.error }));
     }
