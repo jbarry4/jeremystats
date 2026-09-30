@@ -86,12 +86,31 @@ def _source_for(entry, prior, pipeline):
     In order: what the adopted import said, then what this entry already
     said, and only if neither exists is a source built from the caller's
     `pipeline`. An entry acquires a source once and keeps it.
+
+    With one exception: the SAME pipeline filing the entry again. That is
+    the producer re-running, not curation reading its output, and its
+    parameters describe the run that made these events. Keeping the old
+    ones is how Spark's re-bank put the transition windows' clipping on
+    every event while the entry went on saying `transition_measured` was
+    never looked at -- and Circuit refused all 80 runs of the Precon
+    analysis on 2026-09-30. The pipeline, and anything the caller does not
+    say, stay as they were.
     """
     came = entry.get("import_from") or {}
-    for got in (came.get("source"),
-                (prior or {}).get("source")):
-        if got:
-            return got
+    if came.get("source"):
+        return came["source"]
+    had = (prior or {}).get("source")
+    if had:
+        if (pipeline and had.get("pipeline") == pipeline
+                and entry.get("parameters") is not None):
+            out = dict(had)
+            out["parameters"] = entry.get("parameters") or {}
+            for key, src in (("detector", "detector"),
+                             ("file", "source_file"), ("run_id", "run_id")):
+                if entry.get(src):
+                    out[key] = entry[src]
+            return out
+        return had
     return {
         "pipeline": pipeline,
         "run_id": entry.get("run_id"),

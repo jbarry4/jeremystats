@@ -449,3 +449,162 @@ harnesses after):
 Register the artifact viewer: `BARRY.artifacts.register('circuit', {title,
 icon, summary, render(host, record, payload, version)})` using the SAME
 renderer the panel uses, so Results and the panel draw a circuit one way.
+
+---------------------------------------------------------------------------
+## 7. The Precon1 → Precon4 analysis (2026-09-29): bands, rest, roles, matched drift
+
+The plan is `C:\Users\Z390\.claude\plans\okay-time-for-a-fluffy-crescent.md`.
+Three agents build in parallel against THIS section; nothing here may be
+changed without saying so in the report.
+
+### 7.1 Bands (agent A)
+
+```python
+BANDS = {
+  "theta":     {"id": "theta",     "low": 4.0,  "high": 12.0, "max_lag_ms": 500.0},
+  "beta":      {"id": "beta",      "low": 13.0, "high": 30.0, "max_lag_ms": 150.0},
+  "gamma_low": {"id": "gamma_low", "low": 30.0, "high": 55.0, "max_lag_ms": 60.0},
+}
+BAND_ORDER = ("theta", "beta", "gamma_low")
+```
+- `coupling.pair_connectivity(..., bands=[band spec, ...])` reads and
+  decimates each wire ONCE and computes the three methods per band. Without
+  `bands`, behaviour is exactly today's (one band from low/high/max_lag_s/
+  summary_hz) — every existing circuit and check must be unchanged.
+- In band mode, per band:
+  - `coherence` = the MEAN of the Welch coherence over [low, high]
+    (`summary.what` says "mean coherence over L–H Hz"; `x` = null).
+  - `raw_cc` = cross-correlation of the BAND-PASSED signals (today it is on the
+    unfiltered signal, which would give nearly the same number in every band).
+    Peak |r| within ±max_lag_ms. `summary.what` says so; params carry
+    `raw_cc_filtered: true`.
+  - `amp_cc` = as today (band envelope), within ±max_lag_ms.
+- Return shape in band mode: `{"bands": {band_id: <exactly today's
+  pair_connectivity output for that band>}, ...shared keys}` so every
+  downstream consumer (`circuit.build`, `sanity_from_run`, the CSV) reads one
+  band's result unchanged.
+- Params for a band = today's `read_params` output with `low`, `high`,
+  `max_lag_ms` from the band, plus `band: <id>`, `coherence_mode: "band"`,
+  `raw_cc_filtered: true`. The per-pair cache stores each band under its own
+  params hash (one read fills all three).
+- Circuits: ONE artifact per band. `subject.band = <id>`;
+  `circuit.subject_key(gid, cue_type, kind, band=None)` appends `|<band>`
+  when band is given (keys of existing circuits unchanged). Automatic name
+  appends ` · <band label>` (Theta / Beta / Low gamma).
+
+### 7.2 Cue roles (agent C produces, A files, B compares)
+
+- `backend/cueroles.py`: `role_table(rat) -> {"food_cue": "Low Tone",
+  "roles": {cue_type: "food" | "no_food"}, "source": {"sessions": [gid...],
+  "followed": {cue: count}, "window_s": 15.0}}`; raises `CueRoleError` if more
+  than one cue is ever followed by Pellet Delivery, or none is.
+- Circuit run body may carry `cue_role` and `role_source`; circuitrun writes
+  them into `subject.cue_role`, `payload.cue_role`, `payload.role_source`
+  (role is NOT part of subject_key — within a rat it is a function of
+  cue_type).
+- Drift: when every member carries `cue_role`, compatibility compares
+  `cue_role` instead of `cue_type` and records `pooled_by: "cue_role"` and
+  each member's role_source in the payload. Mixed (some with, some without)
+  is refused.
+
+### 7.3 Rest circuits — FP1 + FP2 (agent A)
+
+- New kind `"rest"` alongside `"state"` and `"transition"`. One rest circuit
+  per DAY per band: the day is identified by its SPC recording (subject.gid =
+  the SPC gid, so matching and naming work), `source.fp = [{gid, run,
+  label}]` lists the FP1/FP2 recordings used (same project, mouse, phase,
+  phase_n; run FP1 or FP2; found via the registry).
+- Windows: N epochs of 10 s, N = the larger cue-pair count of that day's two
+  pairings, spread evenly across the usable span of FP1+FP2 (by duration,
+  starting 10 s in, ending 10 s before the end), named `rest01`..`restNN`.
+  Payload `windows: ["rest"]` — ALL epochs are the samples ("pairs") of the
+  single window `rest`, so a rest circuit has one window whose cells hold N
+  values, exactly like one state window holds one value per cue pair.
+  `pairs` entries are `{pair_id: i, label: "FP1 @ 123.0 s"}`.
+- Clipping: measured per epoch with the SAME detector and 50 ms rule as cue
+  windows, bad channels (from each FP recording's registry record) skipped;
+  stored in `source.clipping`. One wire per region per epoch, histology grey —
+  the same engine.
+- `cue_type` for rest circuits is `"none"`; `cue_role` absent.
+
+### 7.4 Drift: matched design, HK, contrasts, scope (agent B)
+
+- Body/params: `design: "independent" | "matched"`, `test: "z" | "hk"`,
+  `bh_scope: "panel" | "artifact"`, `contrast: null | "baseline" | "roles"`.
+  Defaults = today's behaviour (independent, z, panel, none).
+- `matched`: members paired by `subject.mouse`; a rat on one side only is
+  refused naming it; two members of one rat on one side refused. Per rat r:
+  Δ_r = mean_right − mean_left, se_r² = se_left² + se_right² (each side's se
+  from its cell's sd/√n; n = 1 → the pooled within-recording SD of that cell
+  across the other rats' recordings on that side, as today). Then DL τ² over
+  the k rats' Δ_r, pooled Δ, and the test.
+- `hk`: Hartung–Knapp: var = Σw_r(Δ_r − Δ̂)² / ((k−1) Σw_r), t = Δ̂/√var on
+  k−1 df (no truncation — as metafor's test="knha"). k < 2 → not testable,
+  with the reason. `pool`/test stays one swappable function.
+- `bh_scope: "artifact"`: one BH family over every tested cell of every panel
+  in the drift (windows × methods). One drift = one band × one kind × one
+  role × one contrast, so this is "per band, across windows and methods".
+- `contrast: "baseline"`: before pooling, each member circuit is turned into a
+  derived circuit whose windows are `cue1−pre`, `cue2−pre`, `post−pre`
+  (state) — per CUE PAIR: v(w, pair) − v(pre, pair) for pairs present in both
+  — and for transition members `onset−pre`, `switch−pre`, `offset−pre` using
+  the `pre` window of the SAME recording+pairing+band STATE circuit, passed as
+  an extra pinned input `{"kind": "artifact", ..., "role": "baseline"}`. Rest
+  circuits have no baseline contrast.
+- `contrast: "roles"` (the sanity check): matched by rat with FOUR members
+  per rat (food/no_food × Precon1/Precon4); per rat D_r = Δ_food,r −
+  Δ_nofood,r, se² = sum of the four side variances; then DL + HK over rats.
+  Inputs carry `side` ∈ {left, right} and `cue_role`.
+- Payload gains `design`, `test`, `bh_scope`, `contrast`, `pooled_by`,
+  `matched: [{rat, left: ref, right: ref}]`; each cell gains `t`, `df` when
+  HK, and per-rat `deltas: [{rat, delta, se, weight}]` in matched mode.
+- Routes: `/api/arc/drift/check` and `/run` accept the four fields; the result
+  view shows them in words ("within-rat, 8 rats; Hartung–Knapp t on 7 df; BH
+  across all windows and methods").
+
+### 7.5 Orchestration and report (agent C)
+
+- `tools/run_precon_drift.py` drives the user's running Jarvis over HTTP
+  (discover the port: 8733 upward, `GET /api/health` or `/api/arc/circuit/recordings`),
+  stating the cost first, resumable (skips what exists at the same params
+  digest — the routes' own `already`/`confirmed` behaviour), writing a run log
+  to `docs/dewey-precon-drift.runlog.json`.
+- `tools/precon_drift_report.py --from docs/dewey-precon-drift.runlog.json`
+  writes `docs/dewey-precon-drift.md`, `docs/dewey-precon-drift.csv`, and
+  figures under `docs/dewey-precon-drift/`. Every number names its artifact id
+  and version.
+- The same script, from Drift's **Precon1 → Precon4** tab (`web/js/driftprecon.js`).
+  `backend/preconrun.py` starts it as a child of Jarvis, one at a time, with
+  its output in a file under `GUI_logs/.cache/precon/`. The routes are:
+  - `/api/arc/precon/plan` runs `--dry-run --plan-json`.
+  - `/api/arc/precon/run` runs `--yes --plan-json --progress --stop-file`. It
+    is refused unless `plan_at` is the dry-run plan on file, that plan came
+    from this boot of Jarvis, and no backend file has changed since start.
+  - `/api/arc/precon/stop` makes a soft stop between items (exit 3), or a
+    hard stop with `hard`.
+  - `/api/arc/precon/report` runs the report.
+  - `/api/arc/precon/status` returns the plan, the progress, a summary of the
+    run log and the report files.
+  - `/api/arc/precon/file/<md|csv|figure/NAME>` serves the report files.
+
+  The run log stays the record; `progress.json` exists only for the panel.
+- **Interruptions.**
+  - *Inside the run:* the script's `Api` knows the `started_at` of the
+    Jarvis it began with. When a request can't reach Jarvis, when Jarvis
+    doesn't know a job, and between items, the run checks `/api/health`.
+    If Jarvis has restarted, or has been silent for 120 s, it raises
+    `JarvisGone`. No item or stage handler catches that, so the run ends
+    with exit 4: `interrupted` is recorded in the run log and progress, and
+    the item in flight isn't counted.
+  - *In Jarvis:* `backend/preconrun.py` keeps `last.json["run"].resume`
+    armed through exit 4, and through an end nobody saw (the computer went
+    off). It's disarmed by a stop by hand or `/forget`.
+  - *At start:* `resume_precon(port)`, called by `start.py` only, waits for
+    this server. It then waits for a leftover run to end, identified by pid
+    *and* process creation time (a pid can be reused after a reboot). If the
+    wait passes 10 min it ends that run, then calls `resume()`: the same run,
+    `--resumed WHY`, the same argv.
+  - *Limit:* after `MAX_STALLS` (3) carries-on in a row that file nothing,
+    it stops carrying on by itself.
+  - Everything the run writes (run log plus `.bak`, progress, `last.json`)
+    and every artifact payload is fsync'd before the rename.

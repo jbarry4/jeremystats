@@ -15,6 +15,111 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.30.1 - Bands, rest circuits, within-rat Drift, and clipping restored
+
+### Fixed
+
+The first real Precon1 → Precon4 run turned up five problems. Each has a
+check in `tools/check_precon_repairs.py`, with a control.
+
+- **Circuit refused all 80 runs.** Spark's re-bank put the transition
+  clipping on every event, but the bank keeps an entry's *first* source and
+  its parameters when the entry is filed again. So the entry still said
+  `transition_measured` had never been looked at.
+  - Now the same pipeline filing again brings its own parameters.
+    Curation, and an adopted import, still leave the source alone.
+  - The Spark stage now reads back what the bank kept, and stops at once if
+    the measurement didn't land.
+  - The 12 recordings that were measured kept their work:
+    `tools/repair_precon_spark.py` gives each entry that run's parameters,
+    only after checking the entry holds exactly what the run filed.
+- **Spark read an FP recording for r10 Precon1 and r10 Precon4.**
+  - The registry files a DEWEY day's FP1, SPC and FP2 under one id, in no
+    reliable order, and Spark, Coupling and Circuit all read the first
+    folder.
+  - They now read the folder the cue pairs came from
+    (`circuitrun.cued_folder`).
+  - Circuits are named after their folder, because 5 of the 16 registry
+    labels name the wrong run or say "m9".
+- **One recording's error stopped the whole Spark stage.** Now it fails that
+  recording and the stage goes on. A reading that isn't the banked pairs is
+  refused rather than re-banked.
+- **The run died writing its progress file while Jarvis was reading it.**
+  Windows won't replace a file another process has open. Writes now wait
+  briefly for the reader. A progress write that fails no longer ends the
+  run, and an unexpected error is recorded and shown ("Stopped by an
+  error", exit 5).
+- **The circuit cache could have reused stale pairs.** It was keyed on the
+  bank version, which a new clipping measurement doesn't change. The pair's
+  clipped wires are now part of the key.
+
+- **Coupling had stopped seeing the clipping on 31 of 35 DEWEY entries.**
+  Another machine pulled them while running code from before the bank
+  knew `clipped`/`excluded`, kept a copy without them, stamped a minute
+  newer than the original; a git merge of that machine's shards then let
+  the stripped copy win field by field. Every Coupling and Circuit result
+  made after that merge (2026-09-28 13:51) correlated clipped wires as if
+  they were clean. This machine's measurements were never lost:
+  `tools/repair_bank_echo.py` re-filed them through the bank (no new
+  versions; backups under `GUI_logs/.cache/`). The machine with the old
+  copies needs to update Jarvis and pull.
+- **Spark and Circuit could read different entries of one recording.** A
+  recording banked twice had Spark re-banking into one and Coupling reading
+  the other. Both now choose with one rule: measured clipping first, then
+  transitions, then the most recent.
+- A Jarvis that saw the artifact tables missing never asked again until an
+  artifact changed; it now asks again after fifteen minutes.
+
+### Added
+
+- **Frequency bands in Coupling and Circuit**: theta 4–12, beta 13–30 and
+  low gamma 30–55 Hz from ONE read of the wires; band-average coherence,
+  the peak searched over about two cycles of each band (±500 / ±150 /
+  ±60 ms), and in band mode raw cross-correlation on the band-passed
+  signal. One circuit per band. `tools/check_bands.py`: without bands the
+  answer is exactly the pre-band one; three bands from one read equal each
+  band alone.
+- **Rest circuits** from each day's FP1 and FP2: as many 10 s epochs as the
+  day's cue pairs, spread evenly, clipping-measured like cue windows.
+- **Food pair and other pair**: each rat's two preconditioning pairs are
+  labelled from its own conditioning TTLs — the pair whose second cue is
+  later followed by food (`backend/cueroles.py`).
+- **Drift, within-rat**: each rat's Precon4 − Precon1, pooled over rats,
+  with Hartung–Knapp t, correction across all windows and methods, and two
+  contrasts — cue windows minus baseline, and food pair minus other pair.
+  The result says all of it in words and lists the members by rat.
+- Results lists new artifacts as they are filed, without a reload.
+- `tools/run_precon_drift.py` runs the Precon1 → Precon4 analysis
+  end to end through Jarvis, cost stated first; `tools/precon_drift_report.py`
+  writes the summary, figures and CSV.
+- Drift has a second tab, **Precon1 → Precon4**, that runs the same analysis
+  from buttons. It works out the cost first by reading only (about ten seconds),
+  and you can run it only from that cost.
+  - While it runs, the tab shows the three stages, the item in flight, the
+    time left and the script's own output.
+  - Stop waits for the item in flight to finish; "Stop now" ends it at once.
+  - Once done, it lists each drift it filed (opened below or in Results) and
+    writes the report.
+  - Jarvis starts the script as a child process whose output goes to a file,
+    never a pipe (`backend/preconrun.py`, `/api/arc/precon/*`).
+  - The run is refused if Jarvis is running older code, or if the plan is
+    not the one on screen.
+  - It survives interruptions:
+    - A refresh changes nothing. A page that loads while it runs says so.
+    - If Jarvis stops or restarts mid-run, the run ends as *interrupted*,
+      not as a list of failures.
+    - The next Jarvis to start (from `start.py` only) waits for any
+      leftover run to end, then carries it on by itself.
+    - Everything filed is kept, and the item in flight is redone from its
+      per-pair cache.
+    - After a computer shutdown the same happens when Jarvis next starts.
+    - A run stopped by hand is not carried on.
+    - Automatic carrying-on gives up after three tries that file nothing.
+    - The tab offers **Carry on now** and **Don't carry it on**.
+- The run log, the runner's state and artifact payloads are now flushed to
+  disk before each rename, so a power cut can't leave them empty. A torn
+  payload file is rewritten instead of blocking its version for good.
+
 ## 2026.09.29.1 - The cloud asks only when something changed
 
 September's Supabase bill was 192% of the free egress allowance and 1,148%

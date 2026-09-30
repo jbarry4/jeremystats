@@ -54,6 +54,10 @@ GID_TABLES = (
     "tool_results",
 )
 
+#: After finding the artifact tables missing (migration 18 not run), how long
+#: before asking again. One request per interval is the whole cost.
+ART_ABSENT_RETRY_S = 15 * 60
+
 ORDER = [
     "machines", "sessions", "session_paths", "session_sightings", "mice",
     "bank_entries",
@@ -287,6 +291,9 @@ class Sync:
         self.artifacts = None
         self._art_sent_sig = None
         self._art_pending_sig = None
+        # When the artifact tables were last found missing: asked again after
+        # ART_ABSENT_RETRY_S rather than never. See rows_artifacts.
+        self._art_absent_until = 0.0
         # What a push is about to have sent, committed to the sync state only
         # once the whole push has gone through -- the same two-step as the
         # artifact signatures, so a push that fails half way re-sends rather
@@ -693,6 +700,10 @@ class Sync:
         store = self.artifacts
         if store is None:
             return empty
+        if time.time() < getattr(self, "_art_absent_until", 0.0):
+            # The tables were missing a moment ago; one request every
+            # ART_ABSENT_RETRY_S is the whole cost of waiting for them.
+            return empty
         sig = store.signature()
         if sig == self._art_sent_sig and not store.cloud_dirty:
             self._art_pending_sig = sig
@@ -710,11 +721,15 @@ class Sync:
                         "artifact_snapshots",
                         query="select=artifact_id,version_id")}
         except Exception as exc:                         # noqa: BLE001
-            # Migration 18 not run: nothing to send to, and no reason to ask
-            # again until something here changes. Anything else -- no
+            # Migration 18 not run: nothing to send to. Ask again in a while
+            # -- NOT "once something here changes". Marking the signature
+            # sent here meant that a Jarvis running when the migration WAS
+            # run never pushed its artifacts until one of them changed or it
+            # was restarted: found 2026-09-28, three artifacts sat unsent
+            # for ten minutes after the tables appeared. Anything else -- no
             # answer -- sends nothing and asks again next time.
             if _absent(exc):
-                self._art_pending_sig = sig
+                self._art_absent_until = time.time() + ART_ABSENT_RETRY_S
             return empty
 
         now = cloud.now()

@@ -665,6 +665,13 @@ STAGES = [
     # on the cluster it includes the queue.
     ("circuit pairs", "pairs"),
     ("circuit batch", "circuits"),
+    # A rest circuit (arc_contracts.md 7.3): its ten-second no-cue epochs
+    # are clipping-checked first, then run through Coupling one at a time.
+    # Their own names because an epoch is a quarter of a cue pair's read;
+    # counted as "circuit pairs" they would teach every state estimate a
+    # rate four times too fast.
+    ("rest clipping", "epochs"),
+    ("rest epochs", "epochs"),
     # The Arc's Drift (backend/driftrun.py). One unit is one CELL -- a
     # region pair in one window by one method -- pooled on both sides and
     # tested. Pure arithmetic over payloads already in hand, so flat and not
@@ -741,6 +748,9 @@ _RATES = {
     # tools/check_circuitrun.py). Seeded between the two.
     "circuit pairs": 6.0,         # per cue pair
     "circuit batch": 0.0,         # never learned; see _NOLEARN
+    # Seeds, measured on the first real rest run like everything else.
+    "rest clipping": 0.5,         # per epoch
+    "rest epochs": 2.0,           # per epoch
     # Measured here, 2026-09-28: 3 v 3 circuits, 792 cells, 0.056 s for
     # drift.build -- 7e-5 s a cell. Seeded a shade above.
     "drift cells": 1e-4,          # per cell
@@ -769,7 +779,7 @@ _FLAT = {"draw", "spectrum read", "spectrum", "ds read", "ds detect",
          "vacc stage", "vacc queue", "vacc fetch",
          # A cue pair is a cue pair: ten-second windows whatever the length
          # of the recording they are cut from.
-         "circuit pairs", "circuit batch",
+         "circuit pairs", "circuit batch", "rest clipping", "rest epochs",
          # A cell is a cell; no recording is read at all.
          "drift cells"}
 _RATES_PATH = None
@@ -790,7 +800,7 @@ _RATES_LOCK = threading.Lock()
 _PER_VOLUME = {"read", "decimate", "spectrum read", "ds read",
                "panorama bulk",
                # Mostly reading: 32 channels sliced four times per pair.
-               "circuit pairs"}
+               "circuit pairs", "rest clipping", "rest epochs"}
 
 
 # Stages whose rate is never learned.

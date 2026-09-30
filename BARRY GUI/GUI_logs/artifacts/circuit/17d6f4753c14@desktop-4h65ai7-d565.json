@@ -1,0 +1,153 @@
+{
+  "_at": {
+    "added": "2026-09-30T17:33:30.742953+00:00",
+    "deleted": "2026-09-30T17:38:21.202124+00:00",
+    "id": "2026-09-30T17:33:30.742953+00:00",
+    "kind": "2026-09-30T17:33:30.742953+00:00",
+    "name": "2026-09-30T17:33:30.742953+00:00",
+    "nickname": "2026-09-30T17:38:21.202124+00:00",
+    "schema": "2026-09-30T17:33:30.742953+00:00",
+    "subject": "2026-09-30T17:33:30.742953+00:00",
+    "subject_key": "2026-09-30T17:33:30.742953+00:00",
+    "version": "2026-09-30T17:33:30.742953+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "17d6f4753c14:02f8c3302144>dd79da0e5601:1": [
+        "set",
+        "2026-09-30T17:38:21.202124+00:00"
+      ]
+    },
+    "versions": {
+      "02f8c3302144": [
+        "set",
+        "2026-09-30T17:33:30.742953+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T17:38:21.202124+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T13:33:30-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-09-30T17:38:21+00:00",
+      "by_id": "dd79da0e5601",
+      "by_version": 1,
+      "digest": "38591dcb30e1",
+      "id": "17d6f4753c14:02f8c3302144>dd79da0e5601:1",
+      "version": 1,
+      "version_id": "02f8c3302144"
+    }
+  ],
+  "deleted": null,
+  "id": "17d6f4753c14",
+  "kind": "circuit",
+  "name": "DEWEY r4 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Theta",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "band": "theta",
+    "cue_label": "FP1 + FP2, no cue",
+    "cue_type": "none",
+    "gid": "s989ca3b5b2d6",
+    "mouse": 4,
+    "phase": "Precon",
+    "phase_n": 1,
+    "project": "DEWEY",
+    "run": "SPC",
+    "session": 1,
+    "session_label": "DEWEY r4 s1 Precon1 SPC 2026-07-22",
+    "window_kind": "rest"
+  },
+  "subject_key": "circuit|s989ca3b5b2d6|none|rest|theta",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T13:33:30-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "38591dcb30e1",
+      "id": "02f8c3302144",
+      "inputs": [
+        {
+          "entry": "89edcc328d09",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "theta",
+        "by_window": {
+          "rest": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 0
+            }
+          }
+        },
+        "cells_possible": 28,
+        "cue_type": "none",
+        "grey": [
+          "Right PER",
+          "Right POR",
+          "Left POR",
+          "Left PER"
+        ],
+        "kind": "rest",
+        "n_absent": 0,
+        "n_cells": 84,
+        "n_grey": 4,
+        "n_pairs": 6,
+        "n_regions": 12,
+        "n_warn": 0,
+        "of": 6
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "bad_by_fp": {
+          "s5b5adfd4f4f6": [],
+          "s60758fb04dae": []
+        },
+        "bad_channels": [],
+        "band": "theta",
+        "before_s": 1.0,
+        "blocked_regions": [],
+        "channel_rule": "lowest-numbered usable wire",
+        "coherence_mode": "band",
+        "high": 12.0,
+        "inputs_hash": "a5cbda56db15",
+        "kind": "rest",
+        "low": 4.0,
+        "max_lag_ms": 500.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "raw_cc_filtered": true,
+        "summary_hz": null
+      },
+      "params_hash": "3ee85dd5fdee",
+      "v": 1
+    }
+  ]
+}

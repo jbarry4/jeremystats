@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Precon Averaged Change</title>
+<style>
+:root {
+  --bg: #f7f7f4; --surface: #ffffff; --ink: #16181b; --ink-2: #474c54; --ink-3: #767b84;
+  --line: #e2e1db; --line-2: #cfcec7; --untested: #ebeae5; --hatch: #d3d2cb;
+  --neg: #1c5cab; --neg-2: #86b6ef; --mid: #f1f0ec; --pos-2: #f0a3a2; --pos: #c63a39;
+  --mark: #16181b; --focus: #d99a00; --chip: #efeee9;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --r: 8px; --cell: 26px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #191c20; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+    --line: #2b2f35; --line-2: #3a3f46; --untested: #22262b; --hatch: #343940;
+    --neg: #6aa5f2; --neg-2: #2c4e7d; --mid: #26292e; --pos-2: #83393a; --pos: #f2807e;
+    --mark: #f3f4f5; --focus: #f2b933; --chip: #23262b;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #191c20; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+  --line: #2b2f35; --line-2: #3a3f46; --untested: #22262b; --hatch: #343940;
+  --neg: #6aa5f2; --neg-2: #2c4e7d; --mid: #26292e; --pos-2: #83393a; --pos: #f2807e;
+  --mark: #f3f4f5; --focus: #f2b933; --chip: #23262b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+main { max-width: 1180px; margin: 0 auto; padding: 28px 16px 60px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 17px; margin: 0 0 10px; }
+p { margin: 0 0 10px; }
+.lede { color: var(--ink-2); max-width: 72ch; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+        padding: 16px 18px; margin: 14px 0; }
+.verdict { border-left: 4px solid var(--ink-3); }
+.verdict strong { display: block; font-size: 16px; margin-bottom: 4px; }
+.leads { margin: 8px 0 0; padding-left: 18px; }
+.leads li { margin: 3px 0; }
+.muted { color: var(--ink-3); }
+.small { font-size: 13px; }
+.num { font-variant-numeric: tabular-nums; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; background: var(--chip); padding: 4px;
+       border-radius: var(--r); width: fit-content; max-width: 100%; }
+.seg button { font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--ink-2);
+              padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600;
+                                   box-shadow: 0 0 0 1px var(--line); }
+button:focus-visible, .cell:focus-visible, th button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.viewsay { margin: 10px 0 0; color: var(--ink-2); max-width: 80ch; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; margin-top: 14px; }
+.mx { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 12px 10px;
+      min-width: 0; }
+.mx h3 { font-size: 14px; margin: 0 0 2px; }
+.mx .tally { font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
+.mxwrap { overflow-x: auto; }
+table.m { border-collapse: separate; border-spacing: 2px; }
+table.m th { font: 11px/1.2 var(--mono); color: var(--ink-3); font-weight: 500; white-space: nowrap; }
+table.m th.row { text-align: right; padding-right: 4px; }
+table.m th.col { height: 58px; vertical-align: bottom; padding: 0; }
+table.m th.col span { display: inline-block; transform: rotate(-55deg); transform-origin: left bottom;
+                      width: 18px; margin-left: 12px; white-space: nowrap; }
+.cell { width: var(--cell); height: var(--cell); border-radius: 4px; border: 0; padding: 0; cursor: pointer;
+        position: relative; display: block; }
+.cell.none { background: transparent; cursor: default; }
+.cell.untested { background: repeating-linear-gradient(135deg, var(--untested) 0 4px, var(--hatch) 4px 6px); }
+.cell.p05 { box-shadow: inset 0 0 0 2px var(--mark); }
+.cell.q05 { box-shadow: inset 0 0 0 4px var(--mark); }
+.cell.sel { outline: 2px solid var(--focus); outline-offset: 1px; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+.bar { width: 180px; height: 10px; border-radius: 5px; }
+.barlab { display: flex; justify-content: space-between; width: 180px; font: 11px var(--mono); color: var(--ink-3); }
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.key i { width: 16px; height: 16px; border-radius: 3px; display: inline-block; background: var(--mid); }
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink);
+       border: 1px solid var(--line-2); border-radius: var(--r); padding: 8px 10px; font-size: 13px;
+       box-shadow: 0 6px 24px rgba(0,0,0,.14); max-width: 300px; display: none; }
+.tip b { display: block; margin-bottom: 2px; }
+#detail svg { display: block; width: 100%; height: auto; }
+.dl { font-size: 13px; }
+.twrap { overflow-x: auto; }
+table.t { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.t th, table.t td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+table.t th:first-child, table.t td:first-child, table.t th:nth-child(2), table.t td:nth-child(2) { text-align: left; }
+table.t th button { font: inherit; font-weight: 600; background: none; border: 0; color: var(--ink); cursor: pointer; padding: 0; }
+table.t tr.p05 td { background: color-mix(in srgb, var(--pos-2) 18%, transparent); }
+table.t tr { cursor: pointer; }
+table.t tr:hover td { background: var(--chip); }
+.foot { font-size: 13px; color: var(--ink-3); }
+.foot code { font-family: var(--mono); font-size: 12px; }
+.row2 { display: grid; grid-template-columns: 1fr; gap: 14px; }
+@media (max-width: 520px) {
+  h1 { font-size: 22px; }
+  :root { --cell: 22px; }
+  .grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Precon1 → Precon4, averaged</h1>
+  <p class="lede" id="lede"></p>
+  <div class="card verdict" id="verdict"></div>
+
+  <div class="seg" role="group" aria-label="What to average over" id="seg"></div>
+  <p class="viewsay" id="viewsay"></p>
+  <div class="legend" id="legend"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="card" id="detailcard">
+    <h2 id="dtitle">One region pair, every view</h2>
+    <p class="small muted" id="dsub">Click any cell to see each rat's averaged change for that region pair in every view.</p>
+    <div id="detail"></div>
+  </div>
+
+  <div class="card">
+    <h2 id="ttitle">Every region pair in this view</h2>
+    <div class="twrap"><table class="t" id="table"></table></div>
+  </div>
+
+  <div class="card foot" id="foot"></div>
+</main>
+<div class="tip" id="tip" role="status"></div>
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+'use strict';
+(function () {
+  const D = JSON.parse(document.getElementById('data').textContent);
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, attrs, kids) => {
+    const n = document.createElement(tag);
+    for (const k in (attrs || {})) {
+      const v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === 'text') n.textContent = v;
+      else if (k === 'html') n.innerHTML = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    }
+    for (const c of [].concat(kids || [])) if (c != null) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    return n;
+  };
+  const f3 = (v) => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(3);
+  const fp = (v) => v == null ? '—' : (v < 0.001 ? v.toExponential(1) : v.toFixed(3));
+  const short = (name) => name.replace('Right ', 'R ').replace('Left ', 'L ');
+
+  const VIEWS = [
+    ['all', 'Everything', 'Each rat’s mean change over every cue-session cell — state and transition windows, both cue pairs, all three bands and all three methods.'],
+    ['band', 'By band', 'The same average, one frequency band at a time.'],
+    ['method', 'By method', 'One method at a time. The methods are on different scales: coherence moves less than the two correlations, so read colours within a panel.'],
+    ['kind', 'State or transition', 'The four 10 s state windows, or the three transition windows (−1 s / +2 s around each cue edge).'],
+    ['window', 'By window', 'One window at a time.'],
+    ['role', 'By cue pair', 'The pair whose second cue is later followed by food in conditioning, and the other. Before conditioning these should move alike.'],
+    ['rest', 'Rest', 'The FP1 + FP2 recordings of the same days, which hold no cues: the change in the rat and the electrodes across days.'],
+    ['cue-rest', 'Cue − rest', 'Per rat, the cue-session mean minus the rest mean. What is left is a change in the cue sessions that the no-cue recordings of the same days do not show.'],
+  ];
+  const LEVEL_SAY = { all: 'all', theta: 'theta 4–12 Hz', beta: 'beta 13–30 Hz', gamma_low: 'low gamma 30–55 Hz',
+    coherence: 'coherence', raw_cc: 'raw cross-correlation', amp_cc: 'envelope cross-correlation',
+    state: 'state windows', transition: 'transition windows', pre: 'baseline', cue1: 'cue 1', cue2: 'cue 2',
+    post: 'after cue 2', onset: 'cue 1 onset', switch: 'cue 1 → cue 2', offset: 'cue 2 offset',
+    food: 'food pair', no_food: 'no-food pair' };
+  const viewsOf = (v) => D.views.filter((x) => x.view === v);
+  const levelName = (x) => x.view === 'all' ? 'every cue-session cell'
+    : x.view === 'rest' ? (x.level === 'all' ? 'rest, every cell' : 'rest, ' + LEVEL_SAY[x.level])
+    : x.view === 'cue-rest' ? (x.level === 'all' ? 'cue sessions − rest' : 'cue − rest, ' + LEVEL_SAY[x.level])
+    : LEVEL_SAY[x.level] || x.level;
+
+  const order = D.region_order;
+  const keyOf = (a, b) => D.pairs.indexOf(a + '|' + b) >= 0 ? a + '|' + b
+    : (D.pairs.indexOf(b + '|' + a) >= 0 ? b + '|' + a : null);
+  const pairName = (pk) => pk.split('|').join(' – ');
+  const byPair = new Map();          // view|level -> pair -> entry
+  for (const v of D.views) {
+    const m = new Map(); for (const e of v.entries) m.set(e.pair, e);
+    byPair.set(v.view + '|' + v.level, m);
+  }
+
+  /* colours: a diverging ramp read from the theme, redrawn if it changes */
+  function rgb(name) {
+    const c = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const h = c.replace('#', '');
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  let RAMP = null;
+  function ramp() {
+    RAMP = [rgb('--neg'), rgb('--neg-2'), rgb('--mid'), rgb('--pos-2'), rgb('--pos')];
+  }
+  function colour(v, max) {
+    if (v == null || !isFinite(v)) return 'transparent';
+    const x = Math.max(-1, Math.min(1, v / (max || 1)));
+    const pos = (x + 1) * 2, i = Math.min(3, Math.floor(pos)), t = pos - i;
+    const a = RAMP[i], b = RAMP[i + 1];
+    return 'rgb(' + a.map((c, j) => Math.round(c + (b[j] - c) * t)).join(',') + ')';
+  }
+
+  let viewNow = 'all', selected = null, sortKey = 'p', sortDir = 1;
+  try { viewNow = localStorage.getItem('precon-avg-view') || 'all'; } catch (e) { /* none */ }
+  if (!VIEWS.some((v) => v[0] === viewNow)) viewNow = 'all';
+
+  function maxAbs(levels) {
+    let m = 0;
+    for (const L of levels) for (const e of L.entries) if (e.mean != null && e.k >= 3) m = Math.max(m, Math.abs(e.mean));
+    return m || 1;
+  }
+
+  /* ---- the tooltip ---- */
+  const tip = $('tip');
+  function showTip(evt, L, e) {
+    const rats = D.rats.filter((r) => e.per_rat[r] != null);
+    tip.innerHTML = '';
+    tip.appendChild(el('b', { text: pairName(e.pair) }));
+    tip.appendChild(el('div', { class: 'muted', text: levelName(L) }));
+    if (e.k < 3) tip.appendChild(el('div', { text: 'Not tested: ' + e.k + ' rat' + (e.k === 1 ? '' : 's') + ' with both regions placed (needs 3).' }));
+    else {
+      tip.appendChild(el('div', { class: 'num', text: 'mean Δ ' + f3(e.mean) + '  (SE ' + (e.se == null ? '—' : e.se.toFixed(3)) + ')' }));
+      tip.appendChild(el('div', { class: 'num', text: 't(' + e.df + ') = ' + (e.t == null ? '—' : e.t.toFixed(2)) + ',  p = ' + fp(e.p) + ',  q = ' + fp(e.q) }));
+      tip.appendChild(el('div', { class: 'num', text: 'up in ' + e.pos + ' of ' + e.k + ' rats' }));
+    }
+    tip.appendChild(el('div', { class: 'num muted small', text: rats.map((r) => r + ' ' + f3(e.per_rat[r])).join('  ') }));
+    tip.style.display = 'block';
+    placeTip(evt);
+  }
+  function placeTip(evt) {
+    const r = evt.target.getBoundingClientRect();
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = (evt.clientX || r.right) + 14, y = (evt.clientY || r.bottom) + 14;
+    if (x + w > window.innerWidth - 8) x = Math.max(8, window.innerWidth - w - 8);
+    if (y + h > window.innerHeight - 8) y = Math.max(8, (evt.clientY || r.top) - h - 14);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  const hideTip = () => { tip.style.display = 'none'; };
+
+  /* ---- one matrix ---- */
+  function matrix(L, max) {
+    const m = byPair.get(L.view + '|' + L.level);
+    const tested = L.entries.filter((e) => e.p != null);
+    const nP = tested.filter((e) => e.p < 0.05).length, nQ = tested.filter((e) => e.q != null && e.q < 0.05).length;
+    const regions = order.filter((r) => D.pairs.some((pk) => pk.split('|').indexOf(r) >= 0));
+    const t = el('table', { class: 'm', role: 'grid', 'aria-label': levelName(L) });
+    const head = el('tr', {}, [el('th', {})].concat(regions.slice(0, -1).map((r) => el('th', { class: 'col', scope: 'col' }, [el('span', { text: short(r) })]))));
+    t.appendChild(head);
+    regions.forEach((a, i) => {
+      if (i === 0) return;
+      const tr = el('tr', {}, [el('th', { class: 'row', scope: 'row', text: short(a) })]);
+      regions.slice(0, -1).forEach((b, j) => {
+        const td = el('td', {});
+        if (j < i) {
+          const pk = keyOf(a, b), e = pk && m.get(pk);
+          if (!e) td.appendChild(el('span', { class: 'cell none', 'aria-hidden': 'true' }));
+          else {
+            const cls = 'cell' + (e.k < 3 ? ' untested' : '') + (e.p != null && e.p < 0.05 ? ' p05' : '')
+              + (e.q != null && e.q < 0.05 ? ' q05' : '') + (selected === e.pair ? ' sel' : '');
+            const btn = el('button', {
+              class: cls, type: 'button',
+              style: e.k >= 3 ? 'background:' + colour(e.mean, max) : null,
+              'aria-label': pairName(e.pair) + ', ' + levelName(L) + (e.k < 3 ? ', not tested' : ', mean change ' + f3(e.mean) + ', p ' + fp(e.p)),
+              onmouseenter: (evt) => showTip(evt, L, e), onmousemove: placeTip, onmouseleave: hideTip,
+              onfocus: (evt) => showTip(evt, L, e), onblur: hideTip,
+              onclick: () => { selected = e.pair; renderGrid(); renderDetail(); document.getElementById('detailcard').scrollIntoView({ block: 'nearest' }); },
+            });
+            td.appendChild(btn);
+          }
+        }
+        tr.appendChild(td);
+      });
+      t.appendChild(tr);
+    });
+    return el('div', { class: 'mx' }, [
+      el('h3', { text: levelName(L) }),
+      el('p', { class: 'tally', text: tested.length + ' pairs tested · ' + nP + ' at p < .05 · ' + nQ + ' at q < .05' }),
+      el('div', { class: 'mxwrap' }, [t]),
+    ]);
+  }
+
+  function renderSeg() {
+    const seg = $('seg'); seg.innerHTML = '';
+    for (const [id, name] of VIEWS) {
+      seg.appendChild(el('button', { type: 'button', 'aria-pressed': String(id === viewNow), text: name,
+        onclick: () => { viewNow = id; try { localStorage.setItem('precon-avg-view', id); } catch (e) { /* none */ }
+                         renderSeg(); renderGrid(); renderTable(); } }));
+    }
+    $('viewsay').textContent = (VIEWS.find((v) => v[0] === viewNow) || [])[2] || '';
+  }
+
+  function renderLegend(max) {
+    const lg = $('legend'); lg.innerHTML = '';
+    const stops = [-1, -0.5, 0, 0.5, 1].map((x) => colour(x * max, max));
+    lg.appendChild(el('div', {}, [
+      el('div', { class: 'bar', style: 'background:linear-gradient(90deg,' + stops.join(',') + ')' }),
+      el('div', { class: 'barlab' }, [el('span', { text: f3(-max) }), el('span', { text: '0' }), el('span', { text: f3(max) })]),
+    ]));
+    lg.appendChild(el('span', { class: 'small', text: 'Mean Precon4 − Precon1 change, one scale for every panel in this view. Red is stronger coupling on Precon4.' }));
+    lg.appendChild(el('span', { class: 'key' }, [el('i', { style: 'box-shadow: inset 0 0 0 2px var(--mark)' }), 'p < .05']));
+    lg.appendChild(el('span', { class: 'key' }, [el('i', { style: 'box-shadow: inset 0 0 0 4px var(--mark)' }), 'q < .05 (none)']));
+    lg.appendChild(el('span', { class: 'key' }, [el('i', { style: 'background: repeating-linear-gradient(135deg, var(--untested) 0 4px, var(--hatch) 4px 6px)' }), 'fewer than 3 rats, not tested']));
+  }
+
+  function renderGrid() {
+    const levels = viewsOf(viewNow);
+    const max = maxAbs(levels);
+    renderLegend(max);
+    const g = $('grid'); g.innerHTML = '';
+    for (const L of levels) g.appendChild(matrix(L, max));
+  }
+
+  /* ---- one pair across every view: each rat a dot ---- */
+  function renderDetail() {
+    const host = $('detail'); host.innerHTML = '';
+    if (!selected) return;
+    $('dtitle').textContent = pairName(selected) + ', every view';
+    $('dsub').textContent = 'Each dot is one rat’s averaged change; the bar is the mean over rats. Outlined rows are p < .05 (none reaches q < .05).';
+    const rows = D.views.map((L) => ({ L, e: byPair.get(L.view + '|' + L.level).get(selected) })).filter((x) => x.e);
+    let max = 0;
+    for (const x of rows) for (const r of D.rats) if (x.e.per_rat[r] != null) max = Math.max(max, Math.abs(x.e.per_rat[r]));
+    max = max || 1;
+    const W = 860, lw = 190, rw = 170, rowH = 22, top = 26, H = top + rows.length * rowH + 10;
+    const X = (v) => lw + (v + max) / (2 * max) * (W - lw - rw);
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Per-rat averaged change for ' + pairName(selected) + ' in every view');
+    const s = getComputedStyle(document.documentElement);
+    const C = (n) => s.getPropertyValue(n).trim();
+    const add = (tag, a, text) => { const n = document.createElementNS(ns, tag); for (const k in a) n.setAttribute(k, a[k]); if (text != null) n.textContent = text; svg.appendChild(n); return n; };
+    add('line', { x1: X(0), x2: X(0), y1: top - 8, y2: H - 6, stroke: C('--line-2'), 'stroke-width': 1 });
+    add('text', { x: X(0), y: 14, 'text-anchor': 'middle', 'font-size': 11, fill: C('--ink-3'), 'font-family': 'ui-monospace, monospace' }, '0');
+    add('text', { x: X(-max), y: 14, 'text-anchor': 'start', 'font-size': 11, fill: C('--ink-3'), 'font-family': 'ui-monospace, monospace' }, f3(-max));
+    add('text', { x: X(max), y: 14, 'text-anchor': 'end', 'font-size': 11, fill: C('--ink-3'), 'font-family': 'ui-monospace, monospace' }, f3(max));
+    let lastView = null;
+    rows.forEach((x, i) => {
+      const y = top + i * rowH + rowH / 2;
+      if (x.L.view !== lastView && i > 0) add('line', { x1: 8, x2: W - 8, y1: y - rowH / 2, y2: y - rowH / 2, stroke: C('--line'), 'stroke-width': 1 });
+      lastView = x.L.view;
+      const sig = x.e.p != null && x.e.p < 0.05;
+      if (sig) add('rect', { x: 4, y: y - rowH / 2 + 1, width: W - 8, height: rowH - 2, rx: 4, fill: 'none', stroke: C('--mark'), 'stroke-width': 1.5 });
+      add('text', { x: lw - 10, y: y + 4, 'text-anchor': 'end', 'font-size': 12, fill: C('--ink-2') }, levelName(x.L));
+      for (const r of D.rats) {
+        const v = x.e.per_rat[r];
+        if (v == null) continue;
+        const c = add('circle', { cx: X(v), cy: y, r: 4, fill: v >= 0 ? C('--pos') : C('--neg'), 'fill-opacity': 0.75 });
+        const tt = document.createElementNS(ns, 'title'); tt.textContent = r + ': ' + f3(v); c.appendChild(tt);
+      }
+      if (x.e.mean != null) add('line', { x1: X(x.e.mean), x2: X(x.e.mean), y1: y - 8, y2: y + 8, stroke: C('--ink'), 'stroke-width': 2.5 });
+      add('text', { x: W - rw + 12, y: y + 4, 'font-size': 12, fill: sig ? C('--ink') : C('--ink-3'), 'font-family': 'ui-monospace, monospace' },
+        x.e.k < 3 ? x.e.k + ' rats, not tested' : f3(x.e.mean) + '  p ' + fp(x.e.p) + '  ' + x.e.pos + '/' + x.e.k);
+    });
+    host.appendChild(svg);
+  }
+
+  /* ---- the table of the current view ---- */
+  function renderTable() {
+    const levels = viewsOf(viewNow);
+    const rows = [];
+    for (const L of levels) for (const e of L.entries) rows.push({ L, e });
+    const val = (x, k) => k === 'pair' ? pairName(x.e.pair) : k === 'level' ? levelName(x.L) : x.e[k];
+    rows.sort((a, b) => {
+      const va = val(a, sortKey), vb = val(b, sortKey);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
+      return (va - vb) * sortDir;
+    });
+    $('ttitle').textContent = 'Every region pair · ' + (VIEWS.find((v) => v[0] === viewNow) || [])[1] + ' (' + rows.length + ' rows)';
+    const cols = [['level', 'view'], ['pair', 'region pair'], ['k', 'rats'], ['mean', 'mean Δ'], ['se', 'SE'], ['t', 't'],
+                  ['p', 'p'], ['q', 'q'], ['pos', 'rats up']];
+    const t = $('table'); t.innerHTML = '';
+    t.appendChild(el('thead', {}, [el('tr', {}, cols.map(([k, name]) => el('th', { scope: 'col', 'aria-sort': sortKey === k ? (sortDir > 0 ? 'ascending' : 'descending') : 'none' }, [
+      el('button', { type: 'button', text: name + (sortKey === k ? (sortDir > 0 ? ' ↑' : ' ↓') : ''),
+        onclick: () => { if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; } renderTable(); } })])))]));
+    const tb = el('tbody', {});
+    for (const x of rows) {
+      const e = x.e;
+      tb.appendChild(el('tr', { class: e.p != null && e.p < 0.05 ? 'p05' : null,
+        onclick: () => { selected = e.pair; renderGrid(); renderDetail(); document.getElementById('detailcard').scrollIntoView({ block: 'nearest' }); } }, [
+        el('td', { text: levelName(x.L) }), el('td', { text: pairName(e.pair) }),
+        el('td', { class: 'num', text: String(e.k) }), el('td', { class: 'num', text: e.k ? f3(e.mean) : '—' }),
+        el('td', { class: 'num', text: e.se == null ? '—' : e.se.toFixed(3) }),
+        el('td', { class: 'num', text: e.t == null ? '—' : e.t.toFixed(2) }),
+        el('td', { class: 'num', text: e.k < 3 ? 'not tested' : fp(e.p) }), el('td', { class: 'num', text: fp(e.q) }),
+        el('td', { class: 'num', text: e.k ? e.pos + '/' + e.k : '—' }),
+      ]));
+    }
+    t.appendChild(tb);
+  }
+
+  function renderText() {
+    $('lede').textContent = D.question + ' ' + D.rats.length + ' rats (' + D.rats.join(', ') + '). For each rat and region pair, the mean of its Precon4 − Precon1 changes over a set of cells, then those per-rat means tested across rats: one-sample t on k − 1 df, Benjamini–Hochberg across region pairs within each view.';
+    const all = byPair.get('all|all'), cr = byPair.get('cue-rest|all');
+    const tested = D.views.reduce((n, v) => n + v.entries.filter((e) => e.p != null).length, 0);
+    const sigq = D.views.reduce((n, v) => n + v.entries.filter((e) => e.q != null && e.q < 0.05).length, 0);
+    const leads = [];
+    const top = [...all.values()].filter((e) => e.p != null).sort((a, b) => a.p - b.p).slice(0, 2);
+    for (const e of top) {
+      const c = cr.get(e.pair);
+      leads.push(el('li', {}, [el('strong', { text: pairName(e.pair) + ': ' }),
+        'averaged over every cue-session cell, ' + f3(e.mean) + ', up in ' + e.pos + ' of ' + e.k + ' rats (p = ' + fp(e.p) + ', q = ' + fp(e.q) + ')'
+        + (c && c.p != null ? '; cue sessions minus rest ' + f3(c.mean) + ', up in ' + c.pos + ' of ' + c.k + ' (p = ' + fp(c.p) + ', q = ' + fp(c.q) + ').' : '.')]));
+    }
+    const v = $('verdict'); v.innerHTML = '';
+    v.appendChild(el('strong', { text: sigq === 0
+      ? 'Averaged, no region pair’s change survives correction in any view (' + tested + ' tests, 0 at q < .05).'
+      : sigq + ' of ' + tested + ' averaged tests reach q < .05.' }));
+    v.appendChild(el('p', { class: 'small muted', text: 'The strongest averaged changes, as leads rather than findings (this test was not in the plan):' }));
+    v.appendChild(el('ul', { class: 'leads' }, leads));
+    v.appendChild(el('p', { class: 'small muted', text: 'Left OFC and left ACC are the two channels the two channel maps disagree on, so a pair naming either may be the other.' }));
+    const f = $('foot'); f.innerHTML = '';
+    f.appendChild(el('p', { text: 'Made ' + D.made + ' by tools/precon_average.py from ' + D.from.length + ' drift artifacts (the raw change in each window; digest-checked), pinned in ' + D.runlog + '. The cue − baseline and food − no-food drifts are not averaged in: they are made from the same numbers.' }));
+    f.appendChild(el('p', { html: 'Drifts: ' + D.from.map((d) => '<code>' + d.artifact_id + ' v' + d.version + '</code> ' + (d.nickname || d.key).replace(/&/g, '&amp;').replace(/</g, '&lt;')).join(' · ') }));
+    f.appendChild(el('p', { text: 'Every rat’s value for every view is in docs/dewey-precon-average.csv and .json.' }));
+  }
+
+  function renderAll() { ramp(); renderSeg(); renderGrid(); renderDetail(); renderTable(); }
+  renderText();
+  if (!selected) {
+    const top = [...byPair.get('cue-rest|all').values()].filter((e) => e.p != null).sort((a, b) => a.p - b.p)[0];
+    selected = top ? top.pair : null;
+  }
+  renderAll();
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll); } catch (e) { /* old browser */ }
+})();
+</script>
+</body>
+</html>

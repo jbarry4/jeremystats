@@ -204,8 +204,14 @@ def _need(subject, keys, kind):
 
 def _circuit_key(subject):
     _need(subject, ("gid", "cue_type", "window_kind"), "circuit")
-    return "circuit|%s|%s|%s" % (subject["gid"], subject["cue_type"],
-                                 subject["window_kind"])
+    key = "circuit|%s|%s|%s" % (subject["gid"], subject["cue_type"],
+                                subject["window_kind"])
+    # One artifact per band (arc_contracts.md 7.1); the same rule as
+    # `circuit.subject_key`. Appended only when the subject has a band, so
+    # every circuit filed before bands keeps its key.
+    if subject.get("band") not in (None, ""):
+        key += "|%s" % subject["band"]
+    return key
 
 
 def _circuit_name(subject):
@@ -282,6 +288,20 @@ def _drift_key(subject):
     if eq:
         key += "|eq:" + hashlib.sha1(",".join(eq).encode("utf-8")) \
             .hexdigest()[:12]
+    # Nor is one made with other analysis choices -- within rat, another
+    # test, BH scope or contrast, or other baseline circuits (arc_contracts.md
+    # 7.4): the same circuits, a different comparison, so a different drift
+    # rather than a new version of the default one. A default drift's
+    # subject has neither field, so its key is unchanged.
+    if subject.get("analysis") or subject.get("baseline"):
+        blob = json.dumps({"analysis": subject.get("analysis") or {},
+                           "baseline": sorted(
+                               "%s@%s>%s" % (b.get("id"), b.get("version_id"),
+                                             b.get("for"))
+                               for b in subject.get("baseline") or []
+                               if isinstance(b, dict))},
+                          sort_keys=True, separators=(",", ":"))
+        key += "|an:" + hashlib.sha1(blob.encode("utf-8")).hexdigest()[:12]
     return key
 
 
@@ -295,6 +315,12 @@ def _drift_name(subject):
     bits = ["%s vs %s" % (side("left"), side("right")),
             cue_label(subject.get("cue_type"), subject),
             subject.get("window_kind")]
+    # A band drift (7.1) and a contrast (7.4) say so; a default drift's
+    # subject has neither, so its name is what it always was.
+    bits.append(subject.get("band_label") or subject.get("band"))
+    bits.append({"baseline": "cue − baseline",
+                 "roles": "food − no-food"}.get(
+        (subject.get("analysis") or {}).get("contrast")))
     return " · ".join(str(b) for b in bits if b)
 
 
@@ -504,15 +530,24 @@ class Artifacts:
                 have = None
             if have is not None and digest(have) == dig:
                 return path
-            raise ArtifactError(
-                "The stored payload for %s v%d already exists and does not "
-                "match digest %s. Nothing was overwritten." % (
-                    artifact_id, int(v), dig))
+            # A file that does not read at all is a torn write -- the
+            # computer went off between the rename and the bytes -- not
+            # evidence of a different answer, so it is written again.
+            if have is not None:
+                raise ArtifactError(
+                    "The stored payload for %s v%d already exists and does "
+                    "not match digest %s. Nothing was overwritten." % (
+                        artifact_id, int(v), dig))
         os.makedirs(os.path.dirname(path), exist_ok=True)
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(payload, fh, indent=1, sort_keys=True,
                       ensure_ascii=False, allow_nan=False)
+            # To the disk before the rename, as shards.py does for the
+            # records: a record that names this version must never outlive
+            # the payload it names.
+            fh.flush()
+            os.fsync(fh.fileno())
         os.replace(tmp, path)
         if self.store:
             try:

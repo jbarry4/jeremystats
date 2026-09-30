@@ -58,6 +58,7 @@ noticing.
 """
 from __future__ import annotations
 
+import math
 import os
 import re
 
@@ -616,8 +617,10 @@ def windows_for(pair, kind="state", pad_s=CLIP_PAD_S,
         return pair_windows(pair, pad_s)
     if kind == "transition":
         return transition_windows(pair, before_s, after_s)
+    if kind == "rest":
+        return rest_windows(pair)
     raise SparkError("There is no %r kind of window; it is one of %s."
-                     % (kind, ", ".join(KINDS)))
+                     % (kind, ", ".join(KINDS + ("rest",))))
 
 
 def window_names(kind="state"):
@@ -626,8 +629,147 @@ def window_names(kind="state"):
         return tuple(STATE_WINDOWS)
     if kind == "transition":
         return tuple(TRANSITION_WINDOWS)
+    if kind == "rest":
+        return tuple(REST_WINDOWS)
     raise SparkError("There is no %r kind of window; it is one of %s."
-                     % (kind, ", ".join(KINDS)))
+                     % (kind, ", ".join(KINDS + ("rest",))))
+
+
+# --------------------------------------------------------------------------
+# Rest epochs: the no-cue recordings of the same day (arc_contracts.md 7.3)
+# --------------------------------------------------------------------------
+# Every DEWEY day has three recordings: FP1, the cued run (SPC), and FP2.
+# FP1 and FP2 have no cues, and they are the control a cue window is read
+# against -- the same regions, the same wires, the same day, and nothing
+# happening. So they are cut into ten-second epochs, as many as the day's
+# larger pairing has cue pairs, and each epoch is one sample of one window,
+# `rest`, exactly as each cue pair is one sample of `pre`.
+#
+# NOT a Spark KIND. `KINDS` is what a clipping check of a CUED recording
+# measures and banks; rest epochs are measured when a rest circuit is made,
+# from recordings Spark never reads, and are not banked (see
+# `clipping_windows`). Keeping them out of KINDS keeps the bank's schema
+# exactly what it was.
+REST_WINDOWS = ("rest",)
+#: Ten seconds, the length of every state window.
+REST_EPOCH_S = 10.0
+#: How far in from each end of FP1 and FP2 the epochs keep. The first and
+#: last seconds of a recording are the rig starting and stopping -- the
+#: headstage settling, somebody at the box -- and neither is rest.
+REST_EDGE_S = 10.0
+
+
+def rest_windows(epoch):
+    """The one window of a rest epoch, as [(name, t0, t1)] seconds.
+
+    `epoch` carries its own `t0` and `t1` (from `rest_epochs`): seconds from
+    the start of the FP recording it was cut from, the same frame every
+    other window here is in.
+    """
+    return [("rest", float(epoch["t0"]), float(epoch["t1"]))]
+
+
+def rest_epochs(recordings, n, epoch_s=REST_EPOCH_S, edge_s=REST_EDGE_S):
+    """`n` epochs of `epoch_s` seconds, spread evenly over FP1 and FP2.
+
+    `recordings` is `[{"key", "run", "duration_s", ...}]` in order (FP1,
+    then FP2). The usable span of each is `[edge_s, duration_s - edge_s]`;
+    the epochs are shared out between the recordings in proportion to their
+    usable spans (largest remainder, ties to the earlier recording), and
+    within one recording they sit at the middles of equal slices of its
+    usable span -- evenly spread, never across the junction between two
+    recordings, and never nearer an end than `edge_s`.
+
+    Returns `[{pair_id, name, key, run, t0, t1, label}]`, numbered from 1
+    in time order, named rest01..restNN. Raises SparkError when there is
+    not room: a recording whose usable span cannot hold its share without
+    epochs overlapping is refused, not packed.
+    """
+    n = int(n)
+    if n < 1:
+        raise SparkError("A rest circuit needs at least one epoch; %d were "
+                         "asked for." % n)
+    epoch_s, edge_s = float(epoch_s), float(edge_s)
+    spans = []
+    for rec in recordings or []:
+        dur = rec.get("duration_s")
+        use = (float(dur) - 2.0 * edge_s) if dur is not None else 0.0
+        spans.append((rec, max(0.0, use)))
+    total = sum(u for _r, u in spans)
+    if total < epoch_s:
+        raise SparkError(
+            "FP1 and FP2 together have %.1f s of usable recording between "
+            "their first and last %g s, not enough for one %g s epoch."
+            % (total, edge_s, epoch_s))
+    # Largest remainder, so the shares add up to n exactly and follow the
+    # durations as closely as whole epochs can.
+    raw = [n * u / total for _r, u in spans]
+    share = [int(math.floor(x)) for x in raw]
+    left = n - sum(share)
+    order = sorted(range(len(raw)), key=lambda i: (-(raw[i] - share[i]), i))
+    for i in order[:left]:
+        share[i] += 1
+    out = []
+    for (rec, use), k in zip(spans, share):
+        if k <= 0:
+            continue
+        step = use / k
+        if step < epoch_s:
+            raise SparkError(
+                "%s has %.1f s usable, too little for %d epochs of %g s "
+                "without them overlapping." % (rec.get("run") or "A "
+                                               "recording", use, k, epoch_s))
+        for j in range(k):
+            mid = edge_s + step * (j + 0.5)
+            t0 = round(mid - epoch_s / 2.0, 6)
+            out.append({"key": rec.get("key"), "run": rec.get("run"),
+                        "t0": t0, "t1": round(t0 + epoch_s, 6)})
+    for i, e in enumerate(out, start=1):
+        e["pair_id"] = i
+        e["name"] = "rest%02d" % i
+        e["label"] = "%s @ %.1f s" % (e["run"] or "rest", e["t0"])
+    return out
+
+
+def recording_span_s(folder):
+    """How long a recording runs on its own clock, in seconds, or None.
+
+    From the records themselves rather than the registry's `duration_s`
+    (absent on some rows): the SHORTEST channel's end -- its last record's
+    timestamp plus that record's length -- minus the recording's start
+    (`nlx.recording_start_us`, the frame every window here is cut in). The
+    shortest, because an epoch placed by the longest could run off the end
+    of another channel. None when no channel has a single record: an
+    aborted acquisition, which the registry holds a few of.
+    """
+    import numpy as np
+    origin = nlx.recording_start_us(folder)
+    if origin is None:
+        return None
+    ends = []
+    for _num, path in nlx.list_csc_files(folder, even_only=False):
+        try:
+            hdr = nlx.read_header(path)
+            fs = float(nlx._header_float(hdr, "SamplingFrequency")
+                       or nlx.DEFAULT_FS)
+            n_rec = ((os.path.getsize(path) - nlx.HEADER_BYTES)
+                     // nlx.RECORD_DTYPE.itemsize)
+            if n_rec <= 0:
+                continue
+            with open(path, "rb") as fh:
+                fh.seek(nlx.HEADER_BYTES
+                        + (int(n_rec) - 1) * nlx.RECORD_DTYPE.itemsize)
+                buf = fh.read(nlx.RECORD_DTYPE.itemsize)
+            if len(buf) < nlx.RECORD_DTYPE.itemsize:
+                continue
+            last = float(np.frombuffer(buf, dtype=nlx.RECORD_DTYPE,
+                                       count=1)["timestamp"][0])
+            ends.append(last + nlx.SAMPLES_PER_RECORD / fs * 1e6)
+        except (OSError, ValueError, TypeError):
+            continue
+    if not ends:
+        return None
+    return round((min(ends) - float(origin)) / 1e6, 6)
 
 
 def _runs_at(hit, min_run):
@@ -752,6 +894,34 @@ def clipping_both(folder, pairs, pad_s=CLIP_PAD_S,
                     stats=stats)
 
 
+def clipping_windows(folder, spans, progress=None, skip=(), only=None,
+                     stats=None):
+    """Clipping in windows somebody names, rather than a cue pair's.
+
+    `spans` is `[{"pair_id": id, "windows": [(name, t0, t1), ...]}]` --
+    the rest epochs of a no-cue recording (`rest_epochs`), or any other
+    span. Measured by the SAME detector as every cue window (`_clip_runs`:
+    at the rail, or flat-topped at the window's own extreme, for
+    CLIP_MIN_RUN samples) and graded by the SAME rule the transition
+    windows use -- 50 ms at the rail inside the window, in time
+    (TRANSITION_LOST_MS), which for a ten-second window is exactly the
+    state rule's half a percent. Cut to the sample from the records' own
+    timestamps, as Coupling cuts them, so the span measured is the span
+    correlated.
+
+    `skip` is the recording's bad channels, not measured at all (see
+    `_measure`). `only`, when given, limits the measurement to those CSC
+    numbers -- the channels the analysis will actually read -- so a 64-wire
+    recording analysed on 32 is not read twice over for nothing.
+
+    Returns `{"by_pair": {id: {csc: record}}, "per_channel": {csc: n},
+    "unmeasured": {id: {csc: {window: why}}}, "measured": bool, "why"}` --
+    the transition half of `clipping_both`, for these windows.
+    """
+    return _measure(folder, spans, progress=progress, skip=skip,
+                    kinds=("windows",), only=only, stats=stats)["windows"]
+
+
 def _detail(hits, run, spans, n_samples, fs, rule):
     """One window's measurement, and whether it counts as lost.
 
@@ -795,10 +965,16 @@ def _channel_record(detail, lost, spans_all, n_windows, extra=None):
 
 def _measure(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=(),
              kinds=("state",), before_s=TRANSITION_BEFORE_S,
-             after_s=TRANSITION_AFTER_S, stats=None):
-    """The engine under `clipping_for` and `clipping_both`."""
+             after_s=TRANSITION_AFTER_S, stats=None, only=None):
+    """The engine under `clipping_for`, `clipping_both` and
+    `clipping_windows`.
+
+    `kinds` may also hold "windows": each pair then carries its own
+    `windows` list, measured exactly as the transition windows are (cut to
+    the sample, graded in time) and answered under "windows"."""
     import numpy as np
 
+    want_win = "windows" in kinds
     kinds = tuple(k for k in KINDS if k in kinds)
     want_state = "state" in kinds
     want_trans = "transition" in kinds
@@ -812,6 +988,10 @@ def _measure(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=(),
                 "by_pair": {}, "per_channel": {}, "unmeasured": {},
                 "before_s": float(before_s), "after_s": float(after_s),
                 "measured": False, "why": None}
+        if want_win:
+            out["windows"] = {"by_pair": {}, "per_channel": {},
+                              "unmeasured": {}, "measured": False,
+                              "why": None}
         return out
 
     if stats is not None:
@@ -840,6 +1020,11 @@ def _measure(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=(),
     skip = {int(c) for c in (skip or [])}
     if skip:
         files = [(n, p) for n, p in files if int(n) not in skip]
+    # The channels the caller will actually read, when it says. Leaving the
+    # rest unread changes no answer about these.
+    if only is not None:
+        keep = {int(c) for c in only}
+        files = [(n, p) for n, p in files if int(n) in keep]
     if not files:
         return empty()
 
@@ -849,18 +1034,28 @@ def _measure(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=(),
     t_out = {p["pair_id"]: {} for p in pairs} if want_trans else None
     t_per_channel = {}
     t_unmeasured = {}
+    w_out = {p["pair_id"]: {} for p in pairs} if want_win else None
+    w_per_channel = {}
+    w_unmeasured = {}
 
     # The transition windows are cut to the SAMPLE, from the records' own
     # timestamps, which needs the clock they are measured against -- the
-    # same origin Spark's pair times and Coupling's windows use.
+    # same origin Spark's pair times and Coupling's windows use. Named
+    # windows are cut the same way.
     origin_us = None
-    if want_trans:
+    if want_trans or want_win:
         origin_us = nlx.recording_start_us(folder)
         if origin_us is None:
-            result["transition"]["why"] = (
-                "No .ncs file in that folder could be read for its clock, so "
-                "the transition windows could not be placed on it.")
-            want_trans = False
+            if want_trans:
+                result["transition"]["why"] = (
+                    "No .ncs file in that folder could be read for its clock, "
+                    "so the transition windows could not be placed on it.")
+                want_trans = False
+            if want_win:
+                result["windows"]["why"] = (
+                    "No .ncs file in that folder could be read for its clock, "
+                    "so those windows could not be placed on it.")
+                want_win = False
 
     for n, (num, path) in enumerate(files):
         if progress:
@@ -898,17 +1093,13 @@ def _measure(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=(),
                         s_ranges.append((name, i0, i1))
                 t_wins = (transition_windows(p, before_s, after_s)
                           if want_trans else [])
-                t_ranges = []
-                for name, wa, wb in t_wins:
-                    # Slack either side: the arithmetic guess is exact in a
-                    # continuous file, and the cut below is made from the
-                    # timestamps, so a record or two of margin is all it
-                    # needs to find the sample it wants inside the block.
-                    j0 = int(max(0, wa // per_rec_s - 2))
-                    j1 = int(min(n_rec, wb // per_rec_s + 3))
-                    t_ranges.append((name, wa, wb, j0, j1))
+                t_ranges = _timed_ranges(t_wins, per_rec_s, n_rec)
+                w_ranges = (_timed_ranges(p.get("windows") or [], per_rec_s,
+                                          n_rec) if want_win else [])
                 spans_of = ([(a, b) for _n, a, b in s_ranges if b > a]
                             + [(a, b) for _n, _a, _b, a, b in t_ranges
+                               if b > a]
+                            + [(a, b) for _n, _a, _b, a, b in w_ranges
                                if b > a])
                 if not spans_of:
                     continue
@@ -948,67 +1139,32 @@ def _measure(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=(),
                             detail, lost, spans_all, len(CLIP_WINDOWS))
                         per_channel[int(num)] = per_channel.get(int(num), 0) + 1
 
-                # ---- transition: each window cut to the sample from the
-                # records' own timestamps, and graded in time.
+                # ---- transition, and named windows: each window cut to the
+                # sample from the records' own timestamps, and graded in
+                # time. One grader for both, so a rest epoch is judged by
+                # exactly the rule a transition window is.
+                timed = []
                 if want_trans and t_ranges:
+                    timed.append((t_ranges, len(TRANSITION_WINDOWS), t_out,
+                                  t_per_channel, t_unmeasured))
+                if want_win and w_ranges:
+                    timed.append((w_ranges, len(w_ranges), w_out,
+                                  w_per_channel, w_unmeasured))
+                if timed:
                     ts = np.asarray(mm["timestamp"][u0:u1]).astype(np.float64)
                     nvalid = np.asarray(mm["nvalid"][u0:u1])
                     flat = rows.ravel()
-                    lost, detail, spans_all, gaps = [], {}, [], {}
-                    for name, wa, wb, _j0, _j1 in t_ranges:
-                        want_us = float(origin_us) + float(wa) * 1e6
-                        n_want = int(round((float(wb) - float(wa)) * fs))
-                        r = int(np.searchsorted(ts, want_us, side="right")) - 1
-                        if r < 0 or want_us >= ts[r] + per_rec_us * 1.5:
-                            gaps[name] = ("that window is outside this "
-                                          "channel's file, or falls in a "
-                                          "break in its clock")
-                            continue
-                        s0 = r * spr + int(round((want_us - ts[r]) * fs / 1e6))
-                        s1 = s0 + n_want
-                        if s0 < 0 or s1 > flat.size or n_want <= 0:
-                            gaps[name] = ("that window runs off the end of "
-                                          "this channel's file")
-                            continue
-                        r1 = (s1 - 1) // spr
-                        if np.any(nvalid[r:r1 + 1] != spr):
-                            gaps[name] = ("acquisition hiccups inside this "
-                                          "window (a short record)")
-                            continue
-                        if r1 > r:
-                            dr = np.abs(np.diff(ts[r:r1 + 1]) - per_rec_us)
-                            if float(dr.max()) > per_rec_us * 0.5:
-                                gaps[name] = ("a break in the clock falls "
-                                              "inside this window")
-                                continue
-                        block = flat[s0:s1]
-                        hits, run, spans = _clip_runs(block, ceiling,
-                                                      CLIP_MIN_RUN)
-                        if not hits:
-                            continue
-                        # The time of the block's first sample, from the
-                        # record it sits in: seconds from the recording's
-                        # start, the frame everything else here uses.
-                        base = ((ts[r] - float(origin_us)) / 1e6
-                                + (s0 - r * spr) / fs)
-                        d, ms = _detail(hits, run, spans, block.size, fs,
-                                        "time")
-                        d["ms"] = round(ms, 3)
-                        if d["lost"]:
-                            lost.append(name)
-                        detail[name] = d
-                        for a, b in spans[:20]:
-                            spans_all.append([round(base + a / fs, 4),
-                                              round(base + b / fs, 4)])
+                for ranges, n_win, g_out, g_per, g_unm in timed:
+                    lost, detail, spans_all, gaps = _grade_timed(
+                        ranges, flat, ts, nvalid, origin_us, fs, per_rec_us,
+                        spr, ceiling)
                     if gaps:
-                        t_unmeasured.setdefault(p["pair_id"], {})[
-                            int(num)] = gaps
+                        g_unm.setdefault(p["pair_id"], {})[int(num)] = gaps
                     if detail:
-                        t_out[p["pair_id"]][int(num)] = _channel_record(
-                            detail, lost, spans_all, len(TRANSITION_WINDOWS),
+                        g_out[p["pair_id"]][int(num)] = _channel_record(
+                            detail, lost, spans_all, n_win,
                             extra=({"unmeasured": gaps} if gaps else None))
-                        t_per_channel[int(num)] = (
-                            t_per_channel.get(int(num), 0) + 1)
+                        g_per[int(num)] = g_per.get(int(num), 0) + 1
         finally:
             del mm
 
@@ -1019,7 +1175,76 @@ def _measure(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=(),
             "by_pair": t_out, "per_channel": t_per_channel,
             "unmeasured": t_unmeasured, "measured": True, "why": None,
         })
+    if "windows" in result and want_win:
+        result["windows"].update({
+            "by_pair": w_out, "per_channel": w_per_channel,
+            "unmeasured": w_unmeasured, "measured": True, "why": None,
+        })
     return result
+
+
+def _timed_ranges(wins, per_rec_s, n_rec):
+    """[(name, t0, t1, first record, last record)] for windows cut to the
+    sample. Slack either side: the arithmetic guess is exact in a
+    continuous file, and the cut is made from the timestamps, so a record
+    or two of margin is all it needs to find the sample it wants inside the
+    block."""
+    out = []
+    for name, wa, wb in wins:
+        j0 = int(max(0, wa // per_rec_s - 2))
+        j1 = int(min(n_rec, wb // per_rec_s + 3))
+        out.append((name, wa, wb, j0, j1))
+    return out
+
+
+def _grade_timed(ranges, flat, ts, nvalid, origin_us, fs, per_rec_us, spr,
+                 ceiling):
+    """One channel's windows, each cut to the sample from the block's own
+    timestamps and graded in time. Returns (lost, detail, spans, gaps):
+    the windows lost, the measurement of each window with any hit, the
+    railed spans in seconds from the recording's start, and the windows
+    that could not be cut at all, with why -- not measured is not clean."""
+    import numpy as np
+    lost, detail, spans_all, gaps = [], {}, [], {}
+    for name, wa, wb, _j0, _j1 in ranges:
+        want_us = float(origin_us) + float(wa) * 1e6
+        n_want = int(round((float(wb) - float(wa)) * fs))
+        r = int(np.searchsorted(ts, want_us, side="right")) - 1
+        if r < 0 or want_us >= ts[r] + per_rec_us * 1.5:
+            gaps[name] = ("that window is outside this channel's file, or "
+                          "falls in a break in its clock")
+            continue
+        s0 = r * spr + int(round((want_us - ts[r]) * fs / 1e6))
+        s1 = s0 + n_want
+        if s0 < 0 or s1 > flat.size or n_want <= 0:
+            gaps[name] = "that window runs off the end of this channel's file"
+            continue
+        r1 = (s1 - 1) // spr
+        if np.any(nvalid[r:r1 + 1] != spr):
+            gaps[name] = "acquisition hiccups inside this window (a short " \
+                         "record)"
+            continue
+        if r1 > r:
+            dr = np.abs(np.diff(ts[r:r1 + 1]) - per_rec_us)
+            if float(dr.max()) > per_rec_us * 0.5:
+                gaps[name] = "a break in the clock falls inside this window"
+                continue
+        block = flat[s0:s1]
+        hits, run, spans = _clip_runs(block, ceiling, CLIP_MIN_RUN)
+        if not hits:
+            continue
+        # The time of the block's first sample, from the record it sits in:
+        # seconds from the recording's start, the frame everything else
+        # here uses.
+        base = ((ts[r] - float(origin_us)) / 1e6 + (s0 - r * spr) / fs)
+        d, ms = _detail(hits, run, spans, block.size, fs, "time")
+        d["ms"] = round(ms, 3)
+        if d["lost"]:
+            lost.append(name)
+        detail[name] = d
+        for a, b in spans[:20]:
+            spans_all.append([round(base + a / fs, 4), round(base + b / fs, 4)])
+    return lost, detail, spans_all, gaps
 
 
 def clip_summary(per_pair, n_pairs, n_windows=None):

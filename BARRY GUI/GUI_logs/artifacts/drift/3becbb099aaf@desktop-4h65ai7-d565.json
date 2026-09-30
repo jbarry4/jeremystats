@@ -1,0 +1,445 @@
+{
+  "_at": {
+    "added": "2026-09-30T17:39:24.348431+00:00",
+    "deleted": "2026-09-30T17:39:24.348431+00:00",
+    "id": "2026-09-30T17:39:24.348431+00:00",
+    "kind": "2026-09-30T17:39:24.348431+00:00",
+    "name": "2026-09-30T17:39:24.348431+00:00",
+    "nickname": "2026-09-30T17:39:24.348431+00:00",
+    "schema": "2026-09-30T17:39:24.348431+00:00",
+    "subject": "2026-09-30T17:39:24.348431+00:00",
+    "subject_key": "2026-09-30T17:39:24.348431+00:00",
+    "version": "2026-09-30T17:39:24.348431+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "75d76d2d4f69": [
+        "set",
+        "2026-09-30T17:39:24.348431+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T17:39:24.348431+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T13:39:24-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "3becbb099aaf",
+  "kind": "drift",
+  "name": "Precon1 vs Precon4 \u00b7 food pair \u00b7 transition \u00b7 Low gamma",
+  "nickname": "Precon1\u21924 \u00b7 low gamma \u00b7 transition \u00b7 food pair",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "analysis": {
+      "bh_scope": "artifact",
+      "contrast": null,
+      "design": "matched",
+      "test": "hk"
+    },
+    "band": "gamma_low",
+    "band_label": "Low gamma",
+    "cue_equivalence": [],
+    "cue_label": "food pair",
+    "cue_role": "food",
+    "cue_type": "HighTone_Noise",
+    "left": [
+      {
+        "digest": "0e2ce7f52bf5",
+        "gid": "s989ca3b5b2d6",
+        "id": "05e86465065d",
+        "kind": "artifact",
+        "name": "DEWEY r4 s1 Precon1 SPC \u00b7 High tone \u2192 Noise \u00b7 transition \u00b7 Low gamma",
+        "rat": "r4",
+        "side": "left",
+        "version": 1,
+        "version_id": "c7ca69096879"
+      },
+      {
+        "digest": "f36d4ae61d0a",
+        "gid": "sec4bed944ba0",
+        "id": "8f3c4abc23f2",
+        "kind": "artifact",
+        "name": "DEWEY r3 s1 Precon1 SPC \u00b7 Click \u2192 Low Tone \u00b7 transition \u00b7 Low gamma",
+        "rat": "r3",
+        "side": "left",
+        "version": 1,
+        "version_id": "fac64337da12"
+      },
+      {
+        "digest": "225f5f90f19f",
+        "gid": "sb3ad74706f07",
+        "id": "9926b58d428b",
+        "kind": "artifact",
+        "name": "DEWEY r9 s1 Precon1 SPC \u00b7 High tone \u2192 Click \u00b7 transition \u00b7 Low gamma",
+        "rat": "r9",
+        "side": "left",
+        "version": 1,
+        "version_id": "ce2f7800f810"
+      },
+      {
+        "digest": "06339f4d0579",
+        "gid": "s360e48254222",
+        "id": "a2a0e195cee2",
+        "kind": "artifact",
+        "name": "DEWEY r7 s1 Precon1 SPC \u00b7 Noise \u2192 Low Tone \u00b7 transition \u00b7 Low gamma",
+        "rat": "r7",
+        "side": "left",
+        "version": 1,
+        "version_id": "a7ad10d886a7"
+      },
+      {
+        "digest": "b24bdb13d12e",
+        "gid": "sce947d33ceb8",
+        "id": "c5d4e040013b",
+        "kind": "artifact",
+        "name": "DEWEY r6 s1 Precon1 SPC \u00b7 Noise \u2192 High tone \u00b7 transition \u00b7 Low gamma",
+        "rat": "r6",
+        "side": "left",
+        "version": 1,
+        "version_id": "bf637578944d"
+      },
+      {
+        "digest": "ca589f80494d",
+        "gid": "s234fc080573e",
+        "id": "c7dde16638ce",
+        "kind": "artifact",
+        "name": "DEWEY r8 s1 Precon1 SPC \u00b7 Click \u2192 High tone \u00b7 transition \u00b7 Low gamma",
+        "rat": "r8",
+        "side": "left",
+        "version": 1,
+        "version_id": "76707d2e4c68"
+      },
+      {
+        "digest": "5ab82b9a8b86",
+        "gid": "s3fcdbcc678da",
+        "id": "cd9a70d0e364",
+        "kind": "artifact",
+        "name": "DEWEY r11 s1 Precon1 SPC \u00b7 Low Tone \u2192 Click \u00b7 transition \u00b7 Low gamma",
+        "rat": "r11",
+        "side": "left",
+        "version": 1,
+        "version_id": "391f118868ae"
+      },
+      {
+        "digest": "d064f5cdfbb3",
+        "gid": "s0c6efa477a94",
+        "id": "def55dce565e",
+        "kind": "artifact",
+        "name": "DEWEY r10 s1 Precon1 SPC \u00b7 Low Tone \u2192 Noise \u00b7 transition \u00b7 Low gamma",
+        "rat": "r10",
+        "side": "left",
+        "version": 1,
+        "version_id": "c60d3c6b77af"
+      }
+    ],
+    "left_label": "Precon1",
+    "right": [
+      {
+        "digest": "1cb1f90afded",
+        "gid": "s09af032023a9",
+        "id": "5daa94c82e00",
+        "kind": "artifact",
+        "name": "DEWEY r4 s4 Precon4 SPC \u00b7 High tone \u2192 Noise \u00b7 transition \u00b7 Low gamma",
+        "rat": "r4",
+        "side": "right",
+        "version": 1,
+        "version_id": "60621cb44e18"
+      },
+      {
+        "digest": "f3e0ebec166c",
+        "gid": "s4af2a78d7ab7",
+        "id": "79f998740ab8",
+        "kind": "artifact",
+        "name": "DEWEY r9 s4 Precon4 SPC \u00b7 High tone \u2192 Click \u00b7 transition \u00b7 Low gamma",
+        "rat": "r9",
+        "side": "right",
+        "version": 1,
+        "version_id": "c2101ba89a4c"
+      },
+      {
+        "digest": "599b97f8cda7",
+        "gid": "sc905a9b9e371",
+        "id": "7bf3645d6f60",
+        "kind": "artifact",
+        "name": "DEWEY r6 s4 Precon4 SPC \u00b7 Noise \u2192 High tone \u00b7 transition \u00b7 Low gamma",
+        "rat": "r6",
+        "side": "right",
+        "version": 1,
+        "version_id": "ab98467d14b0"
+      },
+      {
+        "digest": "084a7058e622",
+        "gid": "sdf092805b0cb",
+        "id": "7fd8f104e5ca",
+        "kind": "artifact",
+        "name": "DEWEY r8 s4 Precon4 SPC \u00b7 Click \u2192 High tone \u00b7 transition \u00b7 Low gamma",
+        "rat": "r8",
+        "side": "right",
+        "version": 1,
+        "version_id": "503d8dc66dc9"
+      },
+      {
+        "digest": "cd9af75cad72",
+        "gid": "sbd33a50b7fec",
+        "id": "95defd456c4f",
+        "kind": "artifact",
+        "name": "DEWEY r11 s4 Precon4 SPC \u00b7 Low Tone \u2192 Click \u00b7 transition \u00b7 Low gamma",
+        "rat": "r11",
+        "side": "right",
+        "version": 1,
+        "version_id": "bd12f21253cb"
+      },
+      {
+        "digest": "9c577ba3dc0c",
+        "gid": "s5e2c6d208fc7",
+        "id": "bed35d59f347",
+        "kind": "artifact",
+        "name": "DEWEY r10 s4 Precon4 SPC \u00b7 Low Tone \u2192 Noise \u00b7 transition \u00b7 Low gamma",
+        "rat": "r10",
+        "side": "right",
+        "version": 1,
+        "version_id": "3b068e725c7f"
+      },
+      {
+        "digest": "880ad4e7fe10",
+        "gid": "sc710262dff13",
+        "id": "c7d14adb7933",
+        "kind": "artifact",
+        "name": "DEWEY r7 s4 Precon4 SPC \u00b7 Noise \u2192 Low Tone \u00b7 transition \u00b7 Low gamma",
+        "rat": "r7",
+        "side": "right",
+        "version": 1,
+        "version_id": "c5cf987f5241"
+      },
+      {
+        "digest": "109e13a59ec7",
+        "gid": "s7f9b97e294b8",
+        "id": "f26233f95919",
+        "kind": "artifact",
+        "name": "DEWEY r3 s4 Precon4 SPC \u00b7 Click \u2192 Low Tone \u00b7 transition \u00b7 Low gamma",
+        "rat": "r3",
+        "side": "right",
+        "version": 1,
+        "version_id": "a3bcc19d10b9"
+      }
+    ],
+    "right_label": "Precon4",
+    "window_kind": "transition"
+  },
+  "subject_key": "drift|90f4b30c8ce9|d1cf46727d0c|HighTone_Noise|transition|an:361bd8da0e98",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T13:39:24-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "73ac19c04a3d",
+      "id": "75d76d2d4f69",
+      "inputs": [
+        {
+          "cue_role": "food",
+          "digest": "0e2ce7f52bf5",
+          "id": "05e86465065d",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "c7ca69096879"
+        },
+        {
+          "cue_role": "food",
+          "digest": "f36d4ae61d0a",
+          "id": "8f3c4abc23f2",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "fac64337da12"
+        },
+        {
+          "cue_role": "food",
+          "digest": "225f5f90f19f",
+          "id": "9926b58d428b",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "ce2f7800f810"
+        },
+        {
+          "cue_role": "food",
+          "digest": "06339f4d0579",
+          "id": "a2a0e195cee2",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "a7ad10d886a7"
+        },
+        {
+          "cue_role": "food",
+          "digest": "b24bdb13d12e",
+          "id": "c5d4e040013b",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "bf637578944d"
+        },
+        {
+          "cue_role": "food",
+          "digest": "ca589f80494d",
+          "id": "c7dde16638ce",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "76707d2e4c68"
+        },
+        {
+          "cue_role": "food",
+          "digest": "5ab82b9a8b86",
+          "id": "cd9a70d0e364",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "391f118868ae"
+        },
+        {
+          "cue_role": "food",
+          "digest": "d064f5cdfbb3",
+          "id": "def55dce565e",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "c60d3c6b77af"
+        },
+        {
+          "cue_role": "food",
+          "digest": "1cb1f90afded",
+          "id": "5daa94c82e00",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "60621cb44e18"
+        },
+        {
+          "cue_role": "food",
+          "digest": "f3e0ebec166c",
+          "id": "79f998740ab8",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "c2101ba89a4c"
+        },
+        {
+          "cue_role": "food",
+          "digest": "599b97f8cda7",
+          "id": "7bf3645d6f60",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "ab98467d14b0"
+        },
+        {
+          "cue_role": "food",
+          "digest": "084a7058e622",
+          "id": "7fd8f104e5ca",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "503d8dc66dc9"
+        },
+        {
+          "cue_role": "food",
+          "digest": "cd9af75cad72",
+          "id": "95defd456c4f",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "bd12f21253cb"
+        },
+        {
+          "cue_role": "food",
+          "digest": "9c577ba3dc0c",
+          "id": "bed35d59f347",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "3b068e725c7f"
+        },
+        {
+          "cue_role": "food",
+          "digest": "880ad4e7fe10",
+          "id": "c7d14adb7933",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "c5cf987f5241"
+        },
+        {
+          "cue_role": "food",
+          "digest": "109e13a59ec7",
+          "id": "f26233f95919",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "a3bcc19d10b9"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "gamma_low",
+        "bh_scope": "artifact",
+        "cells": 396,
+        "contrast": null,
+        "cue_role": "food",
+        "cue_types": [
+          "HighTone_Noise",
+          "Click_LowTone",
+          "HighTone_Click",
+          "Noise_LowTone",
+          "Noise_HighTone",
+          "Click_HighTone",
+          "LowTone_Click",
+          "LowTone_Noise"
+        ],
+        "design": "matched",
+        "equivalence": 0,
+        "kind": "transition",
+        "left_k": 8,
+        "pooled_by": "cue_role",
+        "q_lt_05": 0,
+        "rats": 8,
+        "right_k": 8,
+        "test": "hk",
+        "tests": 369
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "band": "gamma_low",
+        "before_s": 1.0,
+        "bh_scope": "artifact",
+        "channel_rule": "lowest-numbered usable wire",
+        "coherence_mode": "band",
+        "contrast": null,
+        "cue_equivalence": [],
+        "design": "matched",
+        "high": 55.0,
+        "kind": "transition",
+        "low": 30.0,
+        "max_lag_ms": 60.0,
+        "notch_hz": 60.0,
+        "raw_cc_filtered": true,
+        "summary_hz": null,
+        "test": "hk"
+      },
+      "params_hash": "9e5ff03280a8",
+      "v": 1
+    }
+  ]
+}

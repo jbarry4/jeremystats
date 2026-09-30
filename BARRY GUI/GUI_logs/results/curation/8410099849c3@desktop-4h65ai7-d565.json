@@ -3,10 +3,11 @@
     "key": "2026-09-16T16:30:33.332892+00:00",
     "rel": "2026-09-16T16:30:33.332892+00:00",
     "starred": "2026-09-16T16:30:33.332892+00:00",
-    "updated": "2026-09-16T16:30:33.332892+00:00"
+    "title": "2026-09-29T21:34:31.052538+00:00",
+    "updated": "2026-09-29T21:34:31.052538+00:00"
   },
   "_shard": {
-    "at": "2026-09-16T16:30:33.332892+00:00",
+    "at": "2026-09-29T21:34:31.052538+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -14,10 +15,11 @@
   "rel": "Panorama/converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings.csv",
   "starred": false,
   "tags": [],
+  "title": "converge_Untitled_set_pnb4a9d10da1_3e0ee950f70d_20260915_192018_recordings",
   "updated": {
-    "app_version": "2026.09.16.2",
-    "at": "2026-09-16T12:30:33-04:00",
-    "commit": "eb25504",
+    "app_version": "2026.09.29.1",
+    "at": "2026-09-29T17:34:31-04:00",
+    "commit": "875d1b4e",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

@@ -44,6 +44,7 @@ BARRY.circuit = (function () {
   const WINDOW_SAY = {
     pre: 'baseline', cue1: 'cue 1', cue2: 'cue 2', post: 'after cue 2',
     onset: 'cue 1 onset', switch: 'cue 1 \u2192 cue 2', offset: 'cue 2 offset',
+    rest: 'rest (FP1 + FP2)',
   };
   const METHODS = [
     ['coherence', 'Coherence', 'magnitude-squared, read at the summary frequency'],
@@ -53,7 +54,15 @@ BARRY.circuit = (function () {
   ];
   const METHOD_NAME = {};
   METHODS.forEach(([id, name]) => { METHOD_NAME[id] = name; });
-  const KIND_SAY = { state: 'State', transition: 'Transition' };
+  const KIND_SAY = { state: 'State', transition: 'Transition', rest: 'Rest' };
+  /* arc_contracts.md 7.1 / 7.3. The band a circuit was computed in, and
+     the rest window's words. A circuit with no band is the classic one:
+     the edges, lag and coherence frequency set under Parameters. */
+  const BAND_SAY = { theta: 'Theta', beta: 'Beta', gamma_low: 'Low gamma' };
+  const BAND_RANGE = { theta: '4–12 Hz', beta: '13–30 Hz',
+                       gamma_low: '30–55 Hz' };
+  const ROLE_SAY = { food: 'food pair', no_food: 'no-food pair' };
+  const bandSay = (b) => (b ? (BAND_SAY[b] || b) : null);
   const VERDICT_WORD = {
     intended: 'in target', uncertain: 'maybe', relocated: 'elsewhere',
     missed: 'missed', unscored: 'not scored',
@@ -169,6 +178,7 @@ BARRY.circuit = (function () {
     mode: 'one',             // 'one' | 'many'
     rows: null, rowsErr: null,
     gid: null, cue: null, kind: 'state',
+    band: null,              // null (classic) | a band id | 'all'
     plan: null, planKey: null,
     params: null, paramErr: null,
     where: 'local',
@@ -405,14 +415,28 @@ BARRY.circuit = (function () {
     loadPlan();
   }
 
-  function findCircuit(r, cue, kind) {
-    return ((r && r.circuits) || []).find(
-      (c) => c.cue_type === cue && c.kind === kind) || null;
+  /* The band(s) a run asks for: none (the classic circuit), one, or all
+     three from one read. The circuit shown for "all" is the first. */
+  function bandsBody() {
+    if (!st.band) return null;
+    return st.band === 'all' ? ['theta', 'beta', 'gamma_low'] : [st.band];
+  }
+  function shownBand() {
+    const b = bandsBody();
+    return b ? b[0] : null;
   }
 
-  function choose(cue, kind) {
+  function findCircuit(r, cue, kind) {
+    const want = shownBand();
+    return ((r && r.circuits) || []).find(
+      (c) => (kind === 'rest' || c.cue_type === cue) && c.kind === kind
+             && (c.band || null) === want) || null;
+  }
+
+  function choose(cue, kind, band) {
     if (cue != null) st.cue = cue;
     if (kind != null) st.kind = kind;
+    if (band !== undefined) st.band = band;
     st.plan = null; st.planKey = null; st.paramErr = null;
     const have = findCircuit(rowOf(st.gid), st.cue, st.kind);
     st.nickname = (have && have.nickname) || '';
@@ -424,7 +448,7 @@ BARRY.circuit = (function () {
     const r = rowOf(st.gid);
     if (!r || !st.cue) return;
     if (st.kind === 'transition' && !r.transition_measured) return;
-    const key = st.gid + '|' + st.cue + '|' + st.kind;
+    const key = st.gid + '|' + st.cue + '|' + st.kind + '|' + (st.band || '');
     st.planKey = key;
     const seq = (st.planSeq = (st.planSeq || 0) + 1);
     /* Asked WITH the parameters on screen, so "already computed" and the
@@ -435,7 +459,7 @@ BARRY.circuit = (function () {
     let plan;
     try {
       plan = await apiPost('/api/arc/circuit/' + encodeURIComponent(st.gid)
-        + '/plan', { cue_type: st.cue, kind: st.kind,
+        + '/plan', { cue_type: st.cue, kind: st.kind, bands: bandsBody(),
                      params: st.params ? Object.assign({}, st.params) : null });
     } catch (e) {
       plan = { error: e.message };
@@ -555,7 +579,7 @@ BARRY.circuit = (function () {
     const tm = !!r.transition_measured;
     card.appendChild(BARRY.ui.field({
       label: 'Kind',
-      control: el('div', { class: 'seg cir-kinds' }, ['state', 'transition']
+      control: el('div', { class: 'seg cir-kinds' }, ['state', 'transition', 'rest']
         .map((k) => el('button', {
           class: st.kind === k ? 'active' : '',
           'data-kind': k,
@@ -563,6 +587,10 @@ BARRY.circuit = (function () {
           title: k === 'state'
             ? 'Four 10 s windows per cue pair: baseline, cue 1, cue 2, after '
               + 'cue 2.'
+            : k === 'rest'
+            ? 'The same day\u2019s FP1 and FP2, no cues: as many 10 s epochs as '
+              + 'the day\u2019s larger pairing has cue pairs, each checked for '
+              + 'clipping.'
             : (tm ? 'Three windows around the boundaries: cue 1 onset, cue 1 '
                     + '\u2192 cue 2, cue 2 offset.'
                   : 'Transition clipping has not been measured on this '
@@ -570,7 +598,10 @@ BARRY.circuit = (function () {
           text: KIND_SAY[k],
           onclick: () => { if (st.kind !== k) choose(null, k); },
         }))),
-      hint: tm
+      hint: st.kind === 'rest'
+        ? 'Rest: the day\u2019s FP1 and FP2 cut into 10 s epochs, one sample '
+          + 'each of one window. No cue, so the pairing above does not apply.'
+        : tm
         ? (st.kind === 'state'
           ? 'State: four windows per cue pair \u2014 baseline, cue 1, cue 2, '
             + 'after cue 2.'
@@ -579,6 +610,33 @@ BARRY.circuit = (function () {
         : 'Transition is not offered: nobody has measured transition '
           + 'clipping on this recording, and not measured is not the same as '
           + 'clean. Run the transition check in Spark to open it.',
+    }));
+    card.appendChild(BARRY.ui.field({
+      label: 'Band',
+      control: el('div', { class: 'seg cir-bands' }, [
+        [null, 'As set below'], ['theta', 'Theta'], ['beta', 'Beta'],
+        ['gamma_low', 'Low gamma'], ['all', 'All three'],
+      ].map(([b, text]) => el('button', {
+        class: (st.band || null) === b ? 'active' : '',
+        'data-band': b || 'classic',
+        title: b === null
+          ? 'The classic circuit: the band, lag and coherence frequency set '
+            + 'under Parameters.'
+          : b === 'all'
+          ? 'Theta, beta and low gamma from one read of each cue pair; one '
+            + 'circuit per band.'
+          : BAND_SAY[b] + ', ' + BAND_RANGE[b] + ': coherence averaged over the '
+            + 'band, both correlations on the band-passed traces.',
+        text: text,
+        onclick: () => { if ((st.band || null) !== b) choose(null, null, b); },
+      }))),
+      hint: st.band
+        ? 'In a band, coherence is the mean over the band and raw '
+          + 'cross-correlation is of the band-passed traces; each band has its '
+          + 'own lag bound (\u00b1500, \u00b1150, \u00b160 ms). One circuit per '
+          + 'band, filed apart.'
+        : 'The classic circuit, as the cluster computed it: coherence read at '
+          + 'one frequency, raw cross-correlation on the whole trace.',
     }));
     const have = r.circuits || [];
     if (have.length) {
@@ -594,7 +652,9 @@ BARRY.circuit = (function () {
         el('strong', { text: c.nickname || c.name }),
         c.nickname ? el('span', { class: 'cir-have-name', text: c.name }) : null,
         el('span', { class: 'cir-have-v',
-                     text: 'v' + c.version + ' \u00b7 ' + (KIND_SAY[c.kind] || c.kind) }),
+                     text: 'v' + c.version + ' \u00b7 ' + (KIND_SAY[c.kind] || c.kind)
+                           + (c.band ? ' \u00b7 ' + bandSay(c.band) : '')
+                           + (c.cue_role ? ' \u00b7 ' + (ROLE_SAY[c.cue_role] || c.cue_role) : '') }),
       ].filter(Boolean)))));
     }
     return card;
@@ -685,11 +745,20 @@ BARRY.circuit = (function () {
     const specs = (st.plan && st.plan.params) || [];
     const n = specs.filter((x) => !x.fixed && paramChanged(x.id)).length;
     const bits = [];
-    if (p.low != null && p.high != null) bits.push(p.low + '\u2013' + p.high + ' Hz');
-    if (p.summary_hz != null) bits.push('coherence at ' + p.summary_hz + ' Hz');
-    if (p.max_lag_ms != null) bits.push('\u00b1' + p.max_lag_ms + ' ms');
+    const bands = bandsBody();
+    if (bands) {
+      // The band sets the edges, the lag and the coherence read-out.
+      bits.push(bands.map((b) => BAND_SAY[b] + ' ' + BAND_RANGE[b]).join(', ')
+                + ', coherence averaged over the band');
+    } else {
+      if (p.low != null && p.high != null) bits.push(p.low + '\u2013' + p.high + ' Hz');
+      if (p.summary_hz != null) bits.push('coherence at ' + p.summary_hz + ' Hz');
+      if (p.max_lag_ms != null) bits.push('\u00b1' + p.max_lag_ms + ' ms');
+    }
     if ('notch_hz' in p) bits.push(p.notch_hz ? p.notch_hz + ' Hz notch' : 'no notch');
-    if (st.kind === 'transition') {
+    if (st.kind === 'rest') {
+      bits.push('10 s epochs of FP1 + FP2');
+    } else if (st.kind === 'transition') {
       if (p.before_s != null) bits.push(p.before_s + ' s before');
       if (p.after_s != null) bits.push(p.after_s + ' s after');
     } else if (p.pad_s != null) {
@@ -731,6 +800,24 @@ BARRY.circuit = (function () {
 
   function paramField(spec) {
     const val = (st.params || {})[spec.id];
+    if (spec.band_owned) {
+      /* Set by the band, so shown and not editable -- what each band made
+         it, from the server's own run parameters. */
+      const bp = (st.plan && st.plan.band_params) || {};
+      const say = Object.keys(bp).map((b) => {
+        const v = bp[b][spec.id];
+        return BAND_SAY[b] + ' ' + (v == null ? 'none (the band mean)'
+                                              : v + (spec.unit ? ' ' + spec.unit : ''));
+      }).join(' · ');
+      return BARRY.ui.field({
+        label: spec.name,
+        control: el('div', { class: 'arc-ov-fixed', 'data-param': spec.id,
+                             text: say || 'set by the band' }),
+        hint: 'Set by the band. Choose “As set below” under Band to set '
+              + 'it yourself.',
+        extra: 'arc-ov-field fixed',
+      });
+    }
     let control;
     if (spec.fixed) {
       control = el('div', { class: 'arc-ov-fixed',
@@ -861,6 +948,11 @@ BARRY.circuit = (function () {
     const n = p.n_pairs != null ? p.n_pairs : (p.pairs || []).length;
     const c = p.n_cached != null ? p.n_cached
       : (p.pairs || []).filter((x) => x.cached).length;
+    if (p.kind === 'rest') {
+      return plural(n, 'rest epoch') + ' of '
+        + ((p.fp || []).map((f) => f.run).join(' + ') || 'FP1 + FP2')
+        + ' \u00b7 ' + c + ' already computed';
+    }
     return plural(n, 'cue pair') + ' of ' + (p.cue_label || st.cue)
       + ' \u00b7 ' + c + ' already computed';
   }
@@ -880,9 +972,14 @@ BARRY.circuit = (function () {
       }, [
         el('strong', { text: String(x.pair_id) }),
         el('span', { text: x.opener_t != null
-          ? Number(x.opener_t).toFixed(0) + ' s' : '' }),
+          ? Number(x.opener_t).toFixed(0) + ' s'
+          : (x.t0 != null ? (x.run || '') + ' ' + Number(x.t0).toFixed(0) + ' s' : '') }),
         x.cached ? el('span', { class: 'cir-pair-c', text: 'cached' }) : null,
       ].filter(Boolean)))),
+      ((st.plan && st.plan.fp_notes) || []).length
+        ? el('p', { class: 'hint cir-fp-notes',
+                    text: 'Passed over: ' + st.plan.fp_notes.join(' ') })
+        : null,
       el('p', { class: 'hint', text: 'A pair marked cached was computed '
         + 'before at the parameters above' + (changed ? ' (not the defaults)' : '')
         + ' and is read back rather than run again. Change a parameter and '
@@ -1009,6 +1106,7 @@ BARRY.circuit = (function () {
     const body = { cue_type: cue, kind: kind,
                    params: Object.assign({}, st.params || {}),
                    where: st.where };
+    if (bandsBody()) body.bands = bandsBody();
     if ((st.nickname || '').trim()) body.nickname = st.nickname.trim();
     try {
       const got = await apiPost('/api/arc/circuit/' + encodeURIComponent(gid)
@@ -1085,11 +1183,15 @@ BARRY.circuit = (function () {
           computed_on: res.computed_on || res.payload.computed_on,
         };
         if (st.gid === gid) { st.shown = { payload: res.payload, meta: meta }; st.shownErr = null; }
+        const nb = res.bands ? Object.keys(res.bands).length : 0;
         toast((res.new_version === false
                ? 'Same numbers as v' + res.version + ' \u2014 confirmed, no new '
                  + 'version: '
                : 'Circuit made, v' + res.version + ': ')
-              + (res.nickname || res.name || label) + '.', 'ok', 9000);
+              + (res.nickname || res.name || label) + '.'
+              + (nb > 1 ? ' ' + nb + ' band circuits were filed from one read; '
+                          + 'the others are under Circuits already made.' : ''),
+              'ok', 9000);
         log('arc.circuit.landed', { gid: gid, cue_type: cue, kind: kind,
                                     artifact: res.artifact_id,
                                     version: res.version,
@@ -1459,12 +1561,18 @@ BARRY.circuit = (function () {
       ? 'made on VACC' + (on.slurm_id ? ' (job ' + on.slurm_id + ')' : '')
       : on.kind === 'local' ? 'made on this computer'
       : (on.kind ? 'made on ' + on.kind : 'where it was made is not recorded');
+    const band = P.band || (P.params || {}).band || null;
     const facts = [
       m.version != null ? 'v' + m.version : null,
       m.digest ? 'digest ' + m.digest : null,
       P.cue_label || P.cue_type,
       KIND_SAY[P.kind] || P.kind,
-      plural(P.n_pairs || 0, 'cue pair'),
+      band ? bandSay(band) + ' ' + (BAND_RANGE[band] || '') : null,
+      P.cue_role ? (ROLE_SAY[P.cue_role] || P.cue_role) : null,
+      P.kind === 'rest'
+        ? plural(P.n_pairs || 0, 'rest epoch') + ' of '
+          + (((P.source || {}).fp || []).map((f) => f.run).join(' + ') || 'FP1 + FP2')
+        : plural(P.n_pairs || 0, 'cue pair'),
       where,
     ].filter(Boolean);
     const kids = [
@@ -2574,8 +2682,11 @@ BARRY.circuit = (function () {
     const [gid, cue] = m.gid ? [m.gid, m.cue_type] : String(m.id || '').split('|');
     if (!id && gid && BARRY.artifacts && BARRY.artifacts.list) {
       const list = await BARRY.artifacts.list({ kind: 'circuit', gid: gid });
+      // The batch makes classic circuits: a band circuit of the same
+      // recording is a different artifact and is not this row's.
       const hit = list.find((a) => (a.subject || {}).cue_type === cue
-                                && (a.subject || {}).window_kind === bulk.kind);
+                                && (a.subject || {}).window_kind === bulk.kind
+                                && !(a.subject || {}).band);
       id = hit && hit.id;
     }
     if (!id) return null;
@@ -2599,13 +2710,16 @@ BARRY.circuit = (function () {
       const n = cur.n_summary || {};
       const s = rec.subject || {};
       const bits = [];
-      if (n.n_pairs != null) bits.push(plural(n.n_pairs, 'cue pair'));
+      const rest = s.window_kind === 'rest';
+      if (n.n_pairs != null) bits.push(plural(n.n_pairs, rest ? 'rest epoch' : 'cue pair'));
       else if (s.cue_type) bits.push(s.cue_type);
       if (n.n_grey) bits.push(n.n_grey + ' grey');
       if (n.n_cells != null) {
         bits.push(n.n_cells + ' cells' + (n.n_warn ? ', ' + n.n_warn + ' warn' : ''));
       }
       if (s.window_kind) bits.push(s.window_kind);
+      if (s.band) bits.push(bandSay(s.band));
+      if (s.cue_role) bits.push(ROLE_SAY[s.cue_role] || s.cue_role);
       return bits.join(' \u00b7 ');
     },
     render: (host, rec, payload, version) => {
@@ -2661,7 +2775,7 @@ BARRY.circuit = (function () {
     },
     _pref: pref,
     get state() {
-      return { mode: st.mode, gid: st.gid, cue: st.cue, kind: st.kind,
+      return { mode: st.mode, gid: st.gid, cue: st.cue, kind: st.kind, band: st.band,
                where: st.where, plan: st.plan, params: Object.assign({}, st.params || {}),
                paramErr: st.paramErr, job: st.job, shown: st.shown,
                rowsErr: st.rowsErr, rows: st.rows };

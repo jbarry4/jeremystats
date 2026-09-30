@@ -460,6 +460,16 @@ def main():
     if os.environ.get("JARVIS_WARM", "1") != "0":
         warm_start()
 
+    # The Precon1 -> Precon4 analysis carries on by itself if Jarvis or the
+    # computer stopped while it ran (backend/preconrun.py). Only here, for
+    # the same reason as the warm start: a harness server or a script that
+    # imports the app must never start an hour of work.
+    try:
+        from backend.app import resume_precon
+        resume_precon(port)
+    except Exception as exc:                       # noqa: BLE001
+        print("  (could not check for an interrupted analysis: %s)" % exc)
+
     # Threaded so a long-running job's log stream never blocks the UI.
     try:
         app.run(host="127.0.0.1", port=port, debug=False,

@@ -1,0 +1,283 @@
+{
+  "_at": {
+    "added": "2026-09-30T17:07:01.482922+00:00",
+    "deleted": "2026-09-30T17:38:07.743719+00:00",
+    "id": "2026-09-30T17:07:01.482922+00:00",
+    "kind": "2026-09-30T17:07:01.482922+00:00",
+    "name": "2026-09-30T17:07:01.482922+00:00",
+    "nickname": "2026-09-30T17:38:07.743719+00:00",
+    "schema": "2026-09-30T17:07:01.482922+00:00",
+    "subject": "2026-09-30T17:07:01.482922+00:00",
+    "subject_key": "2026-09-30T17:07:01.482922+00:00",
+    "version": "2026-09-30T17:07:01.482922+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "bc03b7fe6f2c:e675871997d5>0e94a6e67546:1": [
+        "set",
+        "2026-09-30T17:37:45.912076+00:00"
+      ],
+      "bc03b7fe6f2c:e675871997d5>0ef6db2acaae:1": [
+        "set",
+        "2026-09-30T17:38:07.743719+00:00"
+      ],
+      "bc03b7fe6f2c:e675871997d5>7be2b9c1df6b:1": [
+        "set",
+        "2026-09-30T17:37:48.919708+00:00"
+      ],
+      "bc03b7fe6f2c:e675871997d5>e82ffb979c3a:1": [
+        "set",
+        "2026-09-30T17:38:00.499312+00:00"
+      ]
+    },
+    "versions": {
+      "e675871997d5": [
+        "set",
+        "2026-09-30T17:07:01.482922+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T17:38:07.743719+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T13:07:01-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-09-30T17:37:45+00:00",
+      "by_id": "0e94a6e67546",
+      "by_version": 1,
+      "digest": "a1fbb41bb09a",
+      "id": "bc03b7fe6f2c:e675871997d5>0e94a6e67546:1",
+      "version": 1,
+      "version_id": "e675871997d5"
+    },
+    {
+      "at": "2026-09-30T17:37:48+00:00",
+      "by_id": "7be2b9c1df6b",
+      "by_version": 1,
+      "digest": "a1fbb41bb09a",
+      "id": "bc03b7fe6f2c:e675871997d5>7be2b9c1df6b:1",
+      "version": 1,
+      "version_id": "e675871997d5"
+    },
+    {
+      "at": "2026-09-30T17:38:00+00:00",
+      "by_id": "e82ffb979c3a",
+      "by_version": 1,
+      "digest": "a1fbb41bb09a",
+      "id": "bc03b7fe6f2c:e675871997d5>e82ffb979c3a:1",
+      "version": 1,
+      "version_id": "e675871997d5"
+    },
+    {
+      "at": "2026-09-30T17:38:07+00:00",
+      "by_id": "0ef6db2acaae",
+      "by_version": 1,
+      "digest": "a1fbb41bb09a",
+      "id": "bc03b7fe6f2c:e675871997d5>0ef6db2acaae:1",
+      "version": 1,
+      "version_id": "e675871997d5"
+    }
+  ],
+  "deleted": null,
+  "id": "bc03b7fe6f2c",
+  "kind": "circuit",
+  "name": "DEWEY r3 s4 Precon4 SPC \u00b7 Click \u2192 Low Tone \u00b7 state \u00b7 Theta",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "band": "theta",
+    "cue_label": "Click \u2192 Low Tone",
+    "cue_role": "food",
+    "cue_type": "Click_LowTone",
+    "gid": "s7f9b97e294b8",
+    "mouse": 3,
+    "phase": "Precon",
+    "phase_n": 4,
+    "project": "DEWEY",
+    "run": "SPC",
+    "session": 4,
+    "session_label": "DEWEY r3 s4 Precon4 SPC 2026-04-07",
+    "window_kind": "state"
+  },
+  "subject_key": "circuit|s7f9b97e294b8|Click_LowTone|state|theta",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T13:07:01-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "a1fbb41bb09a",
+      "id": "e675871997d5",
+      "inputs": [
+        {
+          "entry": "77811b41578d",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "theta",
+        "by_window": {
+          "cue1": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          },
+          "cue2": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          },
+          "post": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          },
+          "pre": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          }
+        },
+        "cells_possible": 15,
+        "cue_role": "food",
+        "cue_type": "Click_LowTone",
+        "grey": [
+          "Right RSC",
+          "Right PER",
+          "Right POR",
+          "Left POR",
+          "Left PER",
+          "Left RSC"
+        ],
+        "kind": "state",
+        "n_absent": 0,
+        "n_cells": 180,
+        "n_grey": 6,
+        "n_pairs": 8,
+        "n_regions": 12,
+        "n_warn": 0,
+        "of": 8
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "bad_channels": [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64
+        ],
+        "band": "theta",
+        "before_s": 1.0,
+        "blocked_regions": [
+          "Left PER",
+          "Left POR",
+          "Left RSC",
+          "Right POR",
+          "Right RSC"
+        ],
+        "channel_rule": "lowest-numbered usable wire",
+        "coherence_mode": "band",
+        "cue_role": "food",
+        "high": 12.0,
+        "inputs_hash": "f5575a74a952",
+        "kind": "state",
+        "low": 4.0,
+        "max_lag_ms": 500.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "raw_cc_filtered": true,
+        "summary_hz": null
+      },
+      "params_hash": "9e3a3d28f9d5",
+      "v": 1
+    }
+  ]
+}
