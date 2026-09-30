@@ -611,9 +611,13 @@ const NL = String.fromCharCode(10);
      the queue and the panel each took room from the other and neither
      was what you had come to do. The same switch Braces has. */
   const seg = D().querySelectorAll('.dp-mode .seg button');
+  /* Through the shared run bar now (constitution §6d): "How many", One or
+     Many -- the same words in every tool that offers the choice. */
   eq('the panel offers both modes',
-     Array.from(seg).map((b2) => b2.textContent),
-     ['One set at a time', 'Many sets at once']);
+     Array.from(seg).map((b2) => b2.textContent), ['One', 'Many']);
+  ok('under the run bar’s How many',
+     Array.from(D().querySelectorAll('.dp-mode .run-bar .section-label'))
+       .some((n) => n.textContent === 'How many'));
   ok('and opens on one at a time',
      seg[0] && seg[0].classList.contains('active'));
   ok('which is the mode the workbench is in',
@@ -929,17 +933,21 @@ const NL = String.fromCharCode(10);
   const entryRadios = D().querySelectorAll('.dp-choose input[name="dpEntry"]');
   ok('the banked entries are radios', entryRadios.length > 0,
      entryRadios.length + ' found');
-  const verRadios = D().querySelectorAll('.dp-choose input[name="dpVer"]');
-  ok('and so are the versions', verRadios.length > 0,
-     verRadios.length + ' found');
+  /* The versions are the version tree now (constitution §6e): rows with
+     aria-checked, "as they are now" first. */
+  const verRows = D().querySelectorAll('.dp-choose .vtree-row');
+  ok('and the versions are the version tree', verRows.length > 0
+     && !!D().querySelector('.dp-choose .vtree-lead'),
+     verRows.length + ' found');
   ok('exactly one entry is chosen',
      Array.from(entryRadios).filter((r) => r.checked).length === 1);
   /* The bug this replaced: the option carried a ref and the selected test
      compared a name, so the moment anybody used the picker nothing was
      marked and the box showed the first version instead of theirs. */
+  const onRows = Array.from(verRows)
+    .filter((r) => r.getAttribute('aria-checked') === 'true');
   ok('and exactly one version is chosen, whichever way it was named',
-     Array.from(verRadios).filter((r) => r.checked).length === 1,
-     Array.from(verRadios).filter((r) => r.checked).length + ' checked');
+     onRows.length === 1, onRows.length + ' checked');
 
   /* ================================================================== */
   head('THE PANELS SHOW THE WHOLE SHANK');

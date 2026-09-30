@@ -35,7 +35,11 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 
-import matplotlib.colors as mcolors
+# pyplot and the classes below load on first use, not at start-up;
+# see lazyimp.py. `use("Agg")` stays eager: it must run before pyplot
+# is imported by anything.
+from . import lazyimp  # noqa: E402
+mcolors = lazyimp.module("matplotlib.colors")
 
 from . import cfc, csc
 

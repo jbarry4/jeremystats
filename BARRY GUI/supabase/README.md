@@ -12,6 +12,11 @@ more than once.
 | `01_schema.sql` | the tables, indexes, the newest-wins trigger, two views |
 | `02_rls.sql` | locks it down — **read the note at the top of that file** |
 | `03_storage.sql` | the `results` bucket for figures |
+| `04`–`19` | everything since, in number order; the Sync panel names any the database is missing |
+
+`19_request_budget.sql` is the one that goes with the request budget
+(CHANGELOG 2026.09.29.1): which version each computer runs, and error
+triage back in the watermark view.
 
 ## Then, on each machine: nothing
 

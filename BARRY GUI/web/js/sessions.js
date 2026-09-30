@@ -69,7 +69,7 @@ BARRY.views.sessions = (function () {
        missing answer as a no is the mistake `canOpen` below is a comment
        about. */
     { group: 'VACC', id: 'onvacc', name: 'VACC can read it',
-      note: 'On a share the cluster mounts, or already copied to it' },
+      note: 'On a share the cluster mounts, or uploaded to it' },
     { group: 'VACC', id: 'notvacc', name: 'VACC cannot reach it',
       note: 'Established, and on a disk the cluster has no path to' },
     /* The work list for the flag, because a chip you have to scroll into is
@@ -1335,6 +1335,26 @@ BARRY.views.sessions = (function () {
   /* ---------- tree ---------- */
   function renderTree() {
     const host = $('#sessTree');
+    /* Rows off screen are not laid out (`content-visibility` on .mouse-row,
+       constitution §10): 519 cards were 100 ms of layout per repaint for the
+       dozen in view. What that needs from here is each row's height, so the
+       scrollbar is right and `repaintQuietly` puts the scroll back exactly
+       where it was -- the height this row had last time, or failing that
+       its card count times a card. Keyed by the count as well, so a row a
+       filter has shortened is estimated again rather than kept at its old
+       height. 83 px is a card as measured when this was written; a real
+       card is measured whenever there is one. */
+    const tall = new Map();
+    host.querySelectorAll('.mouse-row[data-k]').forEach((r) => {
+      tall.set(r.dataset.k, r.offsetHeight);
+    });
+    const card0 = host.querySelector('.sess-card');
+    const cardH = (card0 && card0.offsetHeight) || 83;
+    const perLine = Math.max(1, Math.floor((host.clientWidth - 72 + 5) / 219));
+    const guess = (n) => {
+      const lines = Math.ceil(n / perLine);
+      return lines * cardH + (lines - 1) * 5;
+    };
     host.innerHTML = '';
     const visible = sessions.filter(matches);
 
@@ -1356,7 +1376,7 @@ BARRY.views.sessions = (function () {
                panel promising only part of it, reads as "this is showing
                everything". */
             ? ' in the catalogue can be read by VACC  ·  on a share it '
-              + 'mounts, or already copied to its scratch'
+              + 'mounts, or uploaded to it'
             : ' in the shared catalogue  ·  every machine, kept in step '
               + 'through Supabase')
       /* In the shared view, how the list divides between what this scan
@@ -1433,7 +1453,12 @@ BARRY.views.sessions = (function () {
       for (const mk of keys) {
         const list = mice.get(mk).slice().sort(
           (a, b) => (a.identity.session || 0) - (b.identity.session || 0));
-        const row = el('div', { class: 'mouse-row' }, [
+        const k = g + '/' + mk + '#' + list.length;
+        const row = el('div', {
+          class: 'mouse-row', 'data-k': k,
+          style: 'contain-intrinsic-size: auto '
+                 + (tall.get(k) || guess(list.length)) + 'px',
+        }, [
           /* In a narrow gutter now, so it has to be short. The folder name
              is the long part and it is the part you rarely need, so it moves
              to the tooltip. */
@@ -2198,13 +2223,13 @@ BARRY.views.sessions = (function () {
        again means reading a version that predates the correction, so the
        refusal now offers that instead of only stating itself. */
     if (!res.ok && res.reason) {
-      const usable = (((res.versions || {}).versions) || [])
-        .filter((v) => v.usable);
-      if (!usable.length) {
+      const all = ((res.versions || {}).versions) || [];
+      if (!all.some((v) => v.usable)) {
         toast(res.reason, 'err', 9000);
         return;
       }
-      const pick = await pickVersion(res.reason, usable,
+      // Every version, the ones it cannot read from shown with why.
+      const pick = await pickVersion(res.reason, all,
                                      (res.versions || {}).drops_fields);
       if (pick == null) return;
       try {
@@ -2250,7 +2275,7 @@ BARRY.views.sessions = (function () {
           previewRetime(sess, cont, entry, v.v);
         },
       }, [
-        el('strong', { text: 'v' + (v.name != null ? v.name : v.v) }),
+        el('strong', { text: BARRY.ui.versionLabel(v) }),
         el('span', { class: 'ver-n', text: (v.n != null ? v.n : '?') + ' ev' }),
         v.current ? el('span', { class: 'ver-tag', text: 'current' }) : null,
         v.retimed ? el('span', { class: 'ver-tag', text: 'corrected' }) : null,
@@ -2523,25 +2548,22 @@ BARRY.views.sessions = (function () {
   function pickVersion(why, rows, drops) {
     return new Promise((resolve) => {
       let picked = null;
-      const chips = el('div', { class: 'ver-pick' });
-      const draw = () => {
-        chips.innerHTML = '';
-        rows.forEach((v) => chips.appendChild(el('button', {
-          class: 'ver-chip' + (v.v === picked ? ' on' : ''),
-          title: (v.note || '') + (v.by ? '\n\u2014 ' + v.by : ''),
-          onclick: () => { picked = v.v; draw(); go.disabled = false; },
-        }, [
-          el('strong', { text: 'v' + (v.name != null ? v.name : v.v) }),
-          el('span', { class: 'ver-n',
-                       text: (v.n != null ? v.n : '?') + ' ev' }),
-          v.current ? el('span', { class: 'ver-tag', text: 'current' }) : null,
-        ].filter(Boolean))));
-      };
+      /* The version tree (constitution §6e), chosen by id: it was a row of
+         chips chosen by stored number, which repeats when two machines both
+         mint the next one. The route resolves a ref. */
+      const chips = el('div', { class: 'ver-pick' }, [BARRY.ui.versionTree({
+        versions: rows,
+        idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
+        disabled: (v) => (v.usable ? null : (v.why_not || 'cannot be read here')),
+        state: (v) => (v.current ? ['current'] : []),
+        unit: 'events',
+        notes: true,
+        onpick: (v) => { picked = v.id != null ? v.id : v.v; go.disabled = false; },
+      })]);
       const go = el('button', {
         class: 'btn', text: 'Preview from this version', disabled: 'disabled',
         onclick: () => { closeModal(); resolve(picked); },
       });
-      draw();
       showModal(el('div', { class: 'continuity-modal' }, [
         el('div', { class: 'mh' }, [
           el('h3', { text: 'Correct it again, from an earlier version' }),
@@ -2837,11 +2859,33 @@ BARRY.views.sessions = (function () {
       class: 'btn ghost sm', text: 'Export CSV',
       onclick: () => exportManifest(),
     }));
+    /* Upload to the lab's shared space on VACC (constitution §6d). Only
+       with an account set up; the dialog it opens says what would be sent,
+       where, and what is already there, before anything is. */
+    if (BARRY.vacc && BARRY.vacc.upload && (BARRY.vacc.last || {}).configured) {
+      bar.appendChild(el('button', {
+        class: 'btn ghost sm', text: 'Upload to VACC…',
+        title: 'Copy these recordings to Jarvis Data on the cluster. A file '
+             + 'already there at the same size is skipped.',
+        onclick: () => BARRY.vacc.upload(gidsOfPicked()),
+      }));
+    }
     bar.appendChild(el('button', {
       class: 'btn sm',
       text: 'Open ' + picked.size + ' in Xplorefinder',
       onclick: openPicked,
     }));
+  }
+
+  /* The recordings picked, by gid. `picked` holds paths. */
+  function gidsOfPicked() {
+    const out = [];
+    for (const s of sessions) {
+      if (!picked.has(s.path)) continue;
+      const gid = s.gid || (s.stored && s.stored.gid);
+      if (gid && out.indexOf(gid) < 0) out.push(gid);
+    }
+    return out;
   }
 
   async function openPicked() {
@@ -3095,8 +3139,8 @@ BARRY.views.sessions = (function () {
     try {
       vScan = await apiPost('/api/vacc/scan', { path, dry: !!dry });
       if (!dry) {
-        toast((vScan.added || []).length + ' cluster path(s) added. Those '
-              + 'recordings can now be run on VACC.', 'ok', 7000);
+        toast((vScan.added || []).length + ' recording(s) now known to be on '
+              + 'VACC, so they can be run there.', 'ok', 7000);
         // What the cluster can reach just changed, and the chips on the
         // cards above are drawn from it.
         if (BARRY.vacc) await BARRY.vacc.loadKnows(true);
@@ -3137,7 +3181,7 @@ BARRY.views.sessions = (function () {
         : null,
       vCounts ? el('div', { class: 'vacc-grid' }, [
         vRow('Reads in place', vCounts['native']),
-        vRow('Copied to its scratch', vCounts['staged']),
+        vRow('Uploaded to VACC', vCounts['staged']),
         vRow('Not reachable from it', vCounts['local-only']),
         vRow('Not established', vCounts['unknown']),
       ]) : el('p', { class: 'hint quiet', text: 'Counting…' }),
@@ -3340,9 +3384,10 @@ BARRY.views.sessions = (function () {
         ])
       : null;
     [
-      part(d.dry ? 'would gain a cluster path' : 'gained a cluster path',
+      // By identity, not by a cluster path in the registry -- see vacc.js.
+      part(d.dry ? 'would be known to be on VACC' : 'now known to be on VACC',
            d.added || []),
-      part('already had it', d.already || []),
+      part('already known to be on VACC', d.already || []),
       part('not a recording Jarvis knows — left alone', d.unmatched || []),
       part('too ambiguous to match — refused', d.ambiguous || [], 'warn-line'),
     ].filter(Boolean).forEach((x) => box.appendChild(x));
@@ -3350,16 +3395,17 @@ BARRY.views.sessions = (function () {
     if (d.dry && n) {
       box.appendChild(el('div', { class: 'tk-actions' }, [
         el('button', { class: 'btn',
-          text: 'Add ' + n + ' path(s)',
+          text: 'Look here for recordings on VACC',
           disabled: vBusy ? 'disabled' : null,
           onclick: () => vaccScan(d.root, false) }),
         el('span', { class: 'hint quiet',
-          text: 'Paths only. Nothing new is created.' }),
+          text: 'Jarvis remembers this folder and looks in it as it looks in '
+              + 'scratch. Nothing is written into the registry.' }),
       ]));
     } else if (d.dry) {
       box.appendChild(el('p', { class: 'hint quiet',
-        text: 'Nothing to add — every recording under here that Jarvis '
-            + 'knows already carries its cluster path.' }));
+        text: 'Nothing new — every recording under here that Jarvis '
+            + 'knows is already known to be on VACC.' }));
     }
     return box;
   }
@@ -3442,6 +3488,8 @@ BARRY.views.sessions = (function () {
        button that merely looks changed is not the same as a scan that is
        changed -- so the harness reads the state the scan reads. */
     _scanOpts: () => Object.assign({}, scanOpts),
+    /* The correct-it-again version picker, for web/_dev/vtreetools.html. */
+    _pickVersion: (why, rows, drops) => pickVersion(why, rows, drops),
     /* Which filters exist. For web/_dev/healthfilter.html: a filter that is
        described in a popover but not wired into the predicate looks
        identical from outside until somebody relies on it. */

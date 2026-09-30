@@ -21,13 +21,26 @@ is the thing a jsonb blob cannot do however carefully you merge it.
 """
 from __future__ import annotations
 
+import json
 import os
+import re
+import time
 
 from datetime import datetime
 
 from . import cloud, eventbank, shards
 
 BUCKET = "results"
+# What the bucket accepts (supabase/03_storage.sql, allowed_mime_types), by
+# extension, stated rather than guessed: `mimetypes` reads the Windows
+# registry, which calls a .csv "application/vnd.ms-excel" -- a type the
+# bucket refuses.
+BUCKET_TYPES = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".svg": "image/svg+xml", ".webp": "image/webp",
+    ".pdf": "application/pdf", ".csv": "text/csv", ".txt": "text/plain",
+    ".json": "application/json", ".mp4": "video/mp4",
+}
 
 # Two-way tables, in dependency order: a child row whose parent is not there
 # yet is a foreign key violation, so sessions go before everything that
@@ -200,6 +213,16 @@ def _decision_wins(theirs_at, ours_at, our_label, ours_cleared=None):
     return _newer_in(theirs_at, ours_at)
 
 
+def _ts_key(stamp):
+    """A stamp as something `max` can order -- as a time, not as text,
+    because two stamps from `cloud.ts` differ in whether they carry
+    microseconds, and that decides a text comparison."""
+    try:
+        return datetime.fromisoformat(cloud.ts(stamp) or UNSTAMPED)
+    except (TypeError, ValueError):
+        return datetime.fromisoformat(UNSTAMPED)
+
+
 def _after(stamp, since):
     """Is `stamp` newer than `since`? Compared as times, not as text.
 
@@ -264,6 +287,20 @@ class Sync:
         self.artifacts = None
         self._art_sent_sig = None
         self._art_pending_sig = None
+        # What a push is about to have sent, committed to the sync state only
+        # once the whole push has gone through -- the same two-step as the
+        # artifact signatures, so a push that fails half way re-sends rather
+        # than forgetting. See rows_machines, rows_people, rows_bank_snapshots.
+        self._pending = {}
+        # The last "which snapshot keys are still missing up there" question
+        # and when it was asked, so a snapshot whose entry has not landed is
+        # asked about every quarter of an hour rather than every minute.
+        self._snap_asked = (None, 0.0)
+        # Whether the figures in the cloud may have changed since pull_files
+        # last looked. True at start so a fresh process looks once; after
+        # that only a pull that saw `results` move sets it.
+        self.results_moved = True
+        self._full = False
         self.repo_root = repo_root
         self.cloud = cloud.Cloud(self.logs, store)
         self.machine = shards.machine_id()
@@ -289,16 +326,46 @@ class Sync:
             # A malformed local record must not take the whole push with it.
             return {"health_checks": []}
 
+    # How often the machine row says "still here" when nothing about the
+    # machine has changed. /api/devices calls a machine online for three
+    # times this, so one late heartbeat does not take it off the list.
+    HEARTBEAT_S = 300
+
     def rows_machines(self):
+        """This computer's row -- sent when it changes, or as a heartbeat.
+
+        It went up on every push, stamped now(), which made a push that had
+        nothing to say cost a request every minute on every machine forever
+        (constitution §11, leak 3). `last_seen` is a heartbeat and does need
+        refreshing, but "still here" every five minutes answers the only
+        question anybody asks of it -- is that rig on -- exactly as well.
+        """
         prov = self.store.provenance()
-        return [{
+        row = {
             "id": self.machine,
             "hostname": prov.get("machine"),
             "os": prov.get("os"),
             "git_user": prov.get("user"),
-            "last_seen": cloud.now(),
-            "updated_at": cloud.now(),
-        }]
+            # Which code this machine runs, so a rig that never pulled is a
+            # line in the device list rather than a surprise in the bill.
+            # Migration 19; without it the column is dropped and retried.
+            # Named for itself: `version` is already a bank_entries column,
+            # and the pending-migration check matches columns by name.
+            "jarvis_version": "%s%s" % (prov.get("app_version") or "",
+                                 ("+" + prov["commit"])
+                                 if prov.get("commit") else ""),
+        }
+        sig = json.dumps(row, sort_keys=True, default=str)
+        sent = (self.cloud.state() or {}).get("machines_sent") or {}
+        age = time.time() - float(sent.get("at") or 0)
+        if (sent.get("sig") == sig and age < self.HEARTBEAT_S
+                and not self._full):
+            return []
+        stamp = cloud.now()
+        row["last_seen"] = stamp
+        row["updated_at"] = stamp
+        self._pending["machines_sent"] = {"sig": sig, "at": time.time()}
+        return [row]
 
     # The made-up recordings exist on every machine unconditionally, so
     # pushing them would put two fake sessions -- and their curation -- into
@@ -485,20 +552,61 @@ class Sync:
         # Demo entries stay local, as they do for `rows_bank`.
         real = {rec.get("id") for rec in self.bank.all()
                 if not self._is_demo(rec)}
+        local = [(eid, v, snap, machine, at)
+                 for eid, v, snap, machine, at in self.bank.snapshots()
+                 if eid in real]
 
-        # What is already up there, as a set of keys.
+        # Which of these the cloud already has -- remembered here, rather
+        # than asked every push.
         #
         # NOT a timestamp comparison. These rows carry the version's own
         # creation time so that a pushed snapshot is never re-sent -- which
         # also means every snapshot older than the day this feature shipped
-        # is older than `last_push` and would be skipped for ever. The table
-        # is append-only and small, so asking which keys exist is one light
-        # query and is right on the first push and the thousandth.
+        # is older than `last_push` and would be skipped for ever. So the
+        # question is by key.
+        #
+        # It used to be asked of the whole table on every push: every key in
+        # bank_snapshots and every id in bank_entries, ~25 KB, every minute,
+        # on every machine -- about 1.2 GB a month each, for an answer that
+        # changes when somebody banks a version. Now a key this machine has
+        # seen up there (or sent) is kept in the sync state, and only keys
+        # it has not are asked about, by name. A quiet push asks nothing.
+        state = self.cloud.state() or {}
+        known_keys = set() if self._full else set(state.get("snap_keys") or [])
+        missing = {"%s:%d" % (eid, int(v)) for eid, v, _s, _m, _a in local}
+        missing -= known_keys
+        if not missing:
+            return {"bank_snapshots": []}
+        # The same unanswerable question -- a snapshot whose entry has not
+        # reached the database -- is asked again every quarter hour, not
+        # every minute.
+        asked, asked_at = self._snap_asked
+        if asked == missing and time.time() - asked_at < 900:
+            return {"bank_snapshots": []}
+        self._snap_asked = (set(missing), time.time())
+
+        ids = sorted({k.rsplit(":", 1)[0] for k in missing})
         have = set()
         known = None
         try:
-            for r in self.cloud.select_all(
-                    "bank_snapshots", query="select=entry_id,v"):
+            if len(ids) <= 40:
+                # By name: a short URL and a small answer.
+                inlist = "in.(%s)" % ",".join(
+                    '"%s"' % i.replace('"', '') for i in ids)
+                snap_rows = self.cloud.select_all(
+                    "bank_snapshots", query="entry_id=" + inlist,
+                    columns="entry_id,v")
+                entry_rows = self.cloud.select_all(
+                    "bank_entries", query="id=" + inlist, columns="id")
+            else:
+                # A machine with no memory of this yet (first push after an
+                # update, or a cleared cache): one full key read, once, and
+                # everything it says is remembered.
+                snap_rows = self.cloud.select_all(
+                    "bank_snapshots", columns="entry_id,v")
+                entry_rows = self.cloud.select_all(
+                    "bank_entries", columns="id")
+            for r in snap_rows:
                 have.add((str(r.get("entry_id")), int(r.get("v"))))
             # And which entries the database actually has.
             #
@@ -509,24 +617,31 @@ class Sync:
             # later in the order. One new entry could stop a day's work
             # leaving the machine. The entry goes up from a table earlier
             # in the same push, so its snapshots follow a minute later.
-            known = {str(r.get("id")) for r in self.cloud.select_all(
-                "bank_entries", query="select=id") if r.get("id")}
+            known = {str(r.get("id")) for r in entry_rows if r.get("id")}
         except Exception:                            # noqa: BLE001
             # No answer means send nothing rather than everything: an
             # unanswered question is not a reason to risk the push that
             # carries every other table.
             return {"bank_snapshots": []}
 
+        # What the cloud said it has is a fact now, whatever this push does.
+        local_keys = {"%s:%d" % (eid, int(v)) for eid, v, _s, _m, _a in local}
+        up_there = {"%s:%d" % k for k in have} & local_keys
+        if up_there:
+            self.cloud.save_state(
+                {"snap_keys": sorted(known_keys | up_there)})
+            known_keys |= up_there
+
         out = []
-        for eid, v, snap, machine, at in self.bank.snapshots():
-            if eid not in real:
-                continue
+        sending = set()
+        for eid, v, snap, machine, at in local:
             if (str(eid), int(v)) in have:
                 continue
             # Its entry has to be there first, or the batch is refused and
             # takes the rest of the push with it.
             if known is not None and str(eid) not in known:
                 continue
+            sending.add("%s:%d" % (eid, int(v)))
             out.append({
                 "entry_id": eid,
                 "v": int(v),
@@ -536,6 +651,8 @@ class Sync:
                 "machine": machine,
                 "updated_at": cloud.ts(at) or UNSTAMPED,
             })
+        if sending:
+            self._pending["snap_keys"] = sorted(known_keys | sending)
         return {"bank_snapshots": out}
 
     # -- Jarvis Artifacts ------------------------------------------------
@@ -1041,56 +1158,161 @@ class Sync:
                 })
         return {"feedback": rows, "feedback_notes": notes}
 
+    # What a roster row says that another machine can use -- everything but
+    # the counts, which each machine compiles from its own data and which
+    # `_apply_people` never takes.
+    _PEOPLE_FIELDS = ("name", "email", "role", "initials", "orcid", "note",
+                      "is_person", "aliases", "archived")
+
     def rows_people(self):
-        """The roster, so a name typed on one machine is pickable on another."""
+        """The roster, so a name typed on one machine is pickable on another.
+
+        Only rows that changed, stamped with when they changed. Every row
+        used to go up on every push stamped now(), so every push moved the
+        `people` watermark and every machine's every pull downloaded the
+        whole roster again -- a quiet pull was two requests, not one, on
+        every machine, forever (constitution §11, leak 2; rule 2).
+
+        Two kinds of row, handled differently because only one of them has
+        an honest time:
+
+        - A name somebody added or edited by hand carries `edited_at`. It is
+          sent when what it says differs from what this machine last sent,
+          stamped with that time, so the database's newest-wins trigger
+          orders it against an edit made elsewhere.
+        - A name compiled from the records (a decision's `by`, a profile) has
+          no such time and no typed details. Stamping it now() would let it
+          blank a role somebody typed on another machine, so it is only ever
+          INSERTED: a name the cloud has not got goes up once; a name it has
+          is left alone. Asking which is one request, made only when this
+          machine has names it has not asked about.
+        """
         if not self.people:
             return {"people": []}
         try:
             got = self.people.roster(self.curate, self.bank)
         except Exception:                            # noqa: BLE001
             return {"people": []}
-        out = []
-        for row in (got.get("people") or []) + (got.get("not_people") or []):
-            out.append({
-                "name": row.get("name"),
-                "email": row.get("email"),
-                # The details somebody actually typed. These were missing,
-                # and they are the only part of a roster entry that is not
-                # compiled from the data -- so they were the only part that
-                # never travelled. An edited role stayed on the machine it
-                # was edited on, which is exactly what was reported.
-                "role": row.get("role") or None,
-                "initials": row.get("initials") or None,
-                "orcid": row.get("orcid") or None,
-                "note": row.get("note") or None,
-                "is_person": bool(row.get("is_person")),
-                "seen": row.get("counts") or {},
-                # The other spellings that are this same person. Local-only
-                # until now, which meant a merge held until the next pull and
-                # then came apart: the shared roster still had the old name,
-                # so `_apply_people` wrote it back every cycle and the merge
-                # looked like it had failed.
-                "aliases": sorted(row.get("aliases") or []) or None,
-                # Whether they should still be offered work. Shared, because
-                # that is a lab-wide question -- and because a local-only
-                # flag would be written back by the next pull.
-                "archived": bool(row.get("archived")) or None,
-                "last_seen": cloud.now(),
-                "updated_at": cloud.now(),
-            })
-        return {"people": out}
+        state = self.cloud.state() or {}
+        sent = {} if self._full else dict(state.get("people_fp") or {})
+        rows = [self._people_row(r) for r in
+                (got.get("people") or []) + (got.get("not_people") or [])
+                if (r.get("name") or "").strip()]
+        if "people_fp" not in state and not self._full:
+            # First push on this code. Everything the roster says has
+            # already gone up -- the old code sent it all every minute -- so
+            # it is recorded as sent rather than sent again. Sending it again
+            # would stamp this machine's copy "now" and let a stale role
+            # here overwrite a newer one from elsewhere, lab-wide.
+            self.cloud.save_state({"people_fp": {
+                row["name"].strip().lower(): fp for row, fp, _e in rows}})
+            return {"people": []}
+        last_push = state.get("last_push")
+        changed = []
+        unknown = []
+        for row, fp, edited in rows:
+            key = row["name"].strip().lower()
+            if sent.get(key) == fp:
+                continue
+            if edited:
+                # Changed by hand since the last push: that time. Changed
+                # some other way (an email from a profile) with no fresh
+                # edit behind it: now, or the push's own "newer than the
+                # last push" filter would drop it and it would never travel.
+                row["updated_at"] = (edited if _after(edited, last_push)
+                                     else cloud.now())
+                changed.append((key, fp, row))
+            elif key not in sent:
+                unknown.append((key, fp, row))
+        if unknown:
+            names = ",".join('"%s"' % k[2]["name"].replace('"', '')
+                             for k in unknown)
+            try:
+                there = {(r.get("name") or "").strip().lower()
+                         for r in self.cloud.select_all(
+                             "people", query="name=in.(%s)" % names,
+                             columns="name")}
+            except Exception:                        # noqa: BLE001
+                there = None                         # ask again next push
+            if there is not None:
+                stamp = cloud.now()
+                for key, fp, row in unknown:
+                    if key in there:
+                        # Already up there. Remembered, not sent.
+                        sent[key] = fp
+                        continue
+                    row["updated_at"] = stamp
+                    changed.append((key, fp, row))
+                self.cloud.save_state({"people_fp": sent})
+        if changed:
+            pending = dict(sent)
+            pending.update({key: fp for key, fp, _row in changed})
+            self._pending["people_fp"] = pending
+        return {"people": [row for _key, _fp, row in changed]}
+
+    def _people_row(self, row):
+        """(cloud row, fingerprint of what it says, its edit time or None)."""
+        out = self._people_payload(row)
+        fp = json.dumps({k: out.get(k) for k in self._PEOPLE_FIELDS},
+                        sort_keys=True, default=str)
+        return out, fp, cloud.ts(row.get("edited_at"))
+
+    def _people_payload(self, row):
+        return {
+            "name": row.get("name"),
+            "email": row.get("email"),
+            # The details somebody actually typed. These were missing,
+            # and they are the only part of a roster entry that is not
+            # compiled from the data -- so they were the only part that
+            # never travelled. An edited role stayed on the machine it
+            # was edited on, which is exactly what was reported.
+            "role": row.get("role") or None,
+            "initials": row.get("initials") or None,
+            "orcid": row.get("orcid") or None,
+            "note": row.get("note") or None,
+            "is_person": bool(row.get("is_person")),
+            "seen": row.get("counts") or {},
+            # The other spellings that are this same person. Local-only
+            # until now, which meant a merge held until the next pull and
+            # then came apart: the shared roster still had the old name,
+            # so `_apply_people` wrote it back every cycle and the merge
+            # looked like it had failed.
+            "aliases": sorted(row.get("aliases") or []) or None,
+            # Whether they should still be offered work. Shared, because
+            # that is a lab-wide question -- and because a local-only
+            # flag would be written back by the next pull.
+            "archived": bool(row.get("archived")) or None,
+            # No `last_seen`: nothing reads it, and stamping it was half
+            # of what made every row look new on every push.
+        }
 
     def rows_prefs(self):
+        """This machine's preferences, when they have changed.
+
+        Stamped with when they were last written -- `set_prefs` keeps that in
+        `updated` -- rather than now(), so an unchanged record stops going up
+        every minute (constitution §11, rule 2). The screen-shaped keys live
+        in this machine's own shard and are written without that stamp, so
+        its file time stands in for them.
+        """
         from .store import PREFS_LOCAL
         prefs = self.store.get_prefs() or {}
         local = {k: v for k, v in prefs.items() if k in PREFS_LOCAL}
         shared = {k: v for k, v in prefs.items()
                   if k not in PREFS_LOCAL and not k.startswith("_")}
+        stamps = [cloud.ts(prefs.get("updated"))]
+        try:
+            own = self.store._prefs_path()
+            if own and os.path.isfile(own):
+                stamps.append(cloud.ts(os.path.getmtime(own)))
+        except Exception:                            # noqa: BLE001
+            pass
+        stamps = [s for s in stamps if s]
         return {"prefs": [{
             "machine": self.machine,
             "local": local,
             "shared": shared,
-            "updated_at": cloud.now(),
+            "updated_at": max(stamps, key=_ts_key) if stamps else UNSTAMPED,
         }]}
 
     # ==================================================================
@@ -1196,6 +1418,25 @@ class Sync:
         # database drops as a no-op. Sending something twice is free;
         # sending it never is not.
         started = cloud.now()
+        self._pending = {}
+        # A full push (the migration) sends everything regardless of what
+        # this machine remembers sending -- the database it is filling may
+        # be a new one.
+        self._full = bool(full)
+        try:
+            return self._push(since, started, include_history, on_progress,
+                              dry_run, full)
+        except Exception:
+            # Whatever was about to be remembered as sent was not. And the
+            # snapshot question is asked again at once rather than in a
+            # quarter of an hour: this failure is not the database saying
+            # the entry is missing.
+            self._pending = {}
+            self._snap_asked = (None, 0.0)
+            raise
+
+    def _push(self, since, started, include_history, on_progress, dry_run,
+              full):
         rows = self.collect(include_history=include_history)
         sent, report = 0, {}
 
@@ -1242,7 +1483,8 @@ class Sync:
         if not dry_run:
             # The time the push *started*: anything written while it ran must
             # be caught next time rather than skipped.
-            self.cloud.save_state({"last_push": started})
+            self.cloud.save_state(dict(self._pending, last_push=started))
+            self._pending = {}
             # Only now, with every table sent, is the artifact store's
             # state the one the cloud has.
             self._art_sent_sig = self._art_pending_sig
@@ -1270,6 +1512,9 @@ class Sync:
         done, skipped, failed = 0, 0, []
         state = self.cloud.state()
         seen = {} if force else (state.get("uploaded") or {})
+        # Files the bucket refused for good, by the same signature: not
+        # asked again until the file itself changes.
+        refused = {} if force else dict(state.get("upload_refused") or {})
         for r in self.results.catalog():
             path, rel = r.get("path"), (r.get("rel") or r.get("key"))
             if not path or not rel or not os.path.isfile(path):
@@ -1279,11 +1524,21 @@ class Sync:
                                  int(os.path.getmtime(path)))
             except OSError:
                 continue
-            if seen.get(rel) == sig:
+            if seen.get(rel) == sig or refused.get(rel) == sig:
+                skipped += 1
+                continue
+            # A type the bucket does not take (03_storage.sql) is not sent.
+            # This used to be sent anyway and refused, every five minutes,
+            # for ever -- a spreadsheet, and every CSV, because Windows
+            # names .csv "application/vnd.ms-excel". Measured on one
+            # machine: 73 files, ~21,000 refused requests a day.
+            ctype = BUCKET_TYPES.get(os.path.splitext(rel)[1].lower())
+            if not ctype:
+                refused[rel] = sig
                 skipped += 1
                 continue
             try:
-                self.cloud.upload(BUCKET, rel, path)
+                self.cloud.upload(BUCKET, rel, path, content_type=ctype)
                 self.cloud.upsert("results", [{
                     "id": r.get("id"), "rel_path": rel,
                     "storage_path": rel, "storage_at": cloud.now(),
@@ -1295,7 +1550,12 @@ class Sync:
                     on_progress(rel, done)
             except cloud.CloudError as exc:
                 failed.append({"rel": rel, "error": str(exc)[:200]})
-        self.cloud.save_state({"uploaded": seen})
+                # A 4xx is the bucket's answer about this file (its type,
+                # its size), not the network's, and asking again gets the
+                # same answer. A 5xx or no answer is tried next time.
+                if re.search(r"HTTP 4\d\d", str(exc)):
+                    refused[rel] = sig
+        self.cloud.save_state({"uploaded": seen, "upload_refused": refused})
         return {"uploaded": done, "skipped": skipped, "failed": failed}
 
     def push_deletions(self):
@@ -1353,12 +1613,36 @@ class Sync:
         folders, laid out exactly as the Results view shows them. Only what
         is missing is fetched -- a file already on disk is left alone, since
         it is the same bytes and re-downloading it would be pure noise.
+
+        Asked only when there can be an answer. This read every figure row
+        in the table, every column, every five minutes on every machine --
+        ~90 KB a time, ~0.8 GB a month each -- whether or not a figure had
+        been added anywhere (constitution §11, leak 7). Now: the whole list
+        once when Jarvis starts (which also retries anything that failed),
+        and after that only when a pull saw the `results` watermark move,
+        and then only rows newer than the last look, and only the three
+        columns this uses.
         """
         if not self.results:
             return {"downloaded": 0, "skipped": 0, "failed": []}
+        if not self.results_moved:
+            return {"downloaded": 0, "skipped": 0, "failed": [],
+                    "asked": False}
         out_dir = self.results.outputs_dir
+        through = getattr(self, "_files_through", None)
+        q = "storage_path=not.is.null&deleted_at=is.null"
+        if through:
+            q += "&updated_at=gt.%s" % through
         rows = self.cloud.select_all(
-            "results", "storage_path=not.is.null&deleted_at=is.null")
+            "results", q, columns="rel_path,storage_path,updated_at")
+        self.results_moved = False
+        for r in rows:
+            at = r.get("updated_at")
+            if at and (not through or _ts_key(at) > _ts_key(through)):
+                through = at
+        # The database's own stamps, never this machine's clock: an empty
+        # answer leaves the cursor where it was.
+        self._files_through = through
         got, skipped, failed = 0, 0, []
         for r in rows:
             rel = r.get("rel_path")
@@ -1450,26 +1734,48 @@ class Sync:
         # been applied everywhere is a sync that stops working for the
         # person who did not apply it.
         fresh = None
+        listed = set()
         if since:
             try:
                 marks = self.cloud.select("barry_watermarks", "", limit=100)
                 fresh = set()
                 for row in (marks or []):
+                    listed.add(row.get("table_name"))
                     at = row.get("updated_at")
-                    if at and at > since:
+                    # As times, not text (see _after): a stamp with no
+                    # microseconds sorts wrongly against one with them.
+                    if at and _after(at, since):
                         fresh.add(row.get("table_name"))
             except Exception as exc:                     # noqa: BLE001
                 if not _absent(exc):
                     raise
                 fresh = None                 # no view here; ask each table
-
+        # The figure list is worth reading again only when it moved.
+        if fresh is None or "results" in fresh:
+            self.results_moved = True
+        # A table the view does not list cannot be skipped on its say-so --
+        # `errors` and `error_marks` were left out of it, and were silently
+        # never pulled again. Until the view lists them (migration 19) they
+        # are asked about every ten minutes rather than every cycle.
+        unlisted_due = (time.time() - getattr(self, "_unlisted_at", 0.0)
+                        >= 600)
+        # Their own cursor: the shared one moves on every cycle, and a table
+        # asked every ten minutes with it would miss what landed between.
+        unlisted_since = getattr(self, "_unlisted_since", None) or since
+        uq = ("updated_at=gt.%s" % unlisted_since) if unlisted_since else ""
+        if unlisted_due:
+            self._unlisted_at = time.time()
+            self._unlisted_since = since
 
         def fetch(table):
             # Skipped entirely when the watermark says this table has not
             # moved. That is the whole saving: on a quiet cycle every one of
             # these returns without a request being made at all.
+            tq = q
             if fresh is not None and table not in fresh:
-                return []
+                if table in listed or not unlisted_due:
+                    return []
+                tq = uq
             # Said before the request, not after it: the point of announcing
             # a table is that it is the one currently taking the time. The
             # pull is the slow half of a sync -- fifteen round trips -- and
@@ -1477,7 +1783,7 @@ class Sync:
             if on_table:
                 on_table(table)
             try:
-                rows = self.cloud.select_all(table, q)
+                rows = self.cloud.select_all(table, tq)
             except Exception as exc:                     # noqa: BLE001
                 # A table this database has never been given. Reported and
                 # skipped, because the alternative is what actually
@@ -1494,7 +1800,8 @@ class Sync:
                 raise
             for r in rows:
                 got = r.get("updated_at")
-                if got and (not newest_holder[0] or got > newest_holder[0]):
+                if got and (not newest_holder[0]
+                            or _ts_key(got) > _ts_key(newest_holder[0])):
                     newest_holder[0] = got
             return rows
 

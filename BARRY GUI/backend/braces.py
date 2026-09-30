@@ -116,12 +116,10 @@ import numpy as np
 
 from . import continuity, csc, incisor, probes
 
-try:
-    from scipy import signal as _sig
-    HAVE_SCIPY = True
-except Exception:                                        # noqa: BLE001
-    _sig = None
-    HAVE_SCIPY = False
+# Loaded on first use, not at start-up; see lazyimp.py for why.
+from . import lazyimp  # noqa: E402
+HAVE_SCIPY = lazyimp.have("scipy")
+_sig = lazyimp.module("scipy.signal") if HAVE_SCIPY else None
 
 
 # --------------------------------------------------------------------------

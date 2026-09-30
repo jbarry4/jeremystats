@@ -42,10 +42,7 @@ BARRY.cfc = (function () {
        keyboard and a second window, and entering one on top of another left
        two toolbars stacked and two key handlers fighting over the same
        presses. `active` on curate is a getter, not a method. */
-    if (BARRY.curate && BARRY.curate.active) BARRY.curate.exit();
-    if (BARRY.strata && BARRY.strata.exit) {
-      try { BARRY.strata.exit(); } catch (e) { /* it may not be in */ }
-    }
+    BARRY.modes.leaveAllBut('cfc');   // every other mode; see core.js
     if (sess) exit();                  // re-entering: start clean
 
     let path = gidOrPath || null;
@@ -297,3 +294,6 @@ BARRY.cfc = (function () {
    `window` rather than `BARRY.cfc`, because `BARRY` is a `const` and so is
    invisible to any other window. */
 window.barryCfc = BARRY.cfc;
+
+// One mode at a time, kept by the registry in core.js.
+BARRY.modes.register('cfc', BARRY.cfc);

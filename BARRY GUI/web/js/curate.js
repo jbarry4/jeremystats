@@ -56,10 +56,17 @@ BARRY.curate = (function () {
 
   /* ---------- presence ----------
      Saying "somebody is in this set" often enough that the answer is still
-     true, and rarely enough that it is not a request per keystroke. Half the
-     server's TTL, so a single dropped beat does not make somebody vanish
-     mid-sentence. */
-  const PRESENCE_BEAT = 20000;
+     true, and rarely enough that it is not a request per keystroke. A third
+     of the server's TTL (presence.TTL_S, 180 s), so a single dropped beat
+     does not make somebody vanish mid-sentence.
+
+     Cost (constitution §11, rule 5): one beat a minute, at most two Supabase
+     requests each -- ~120 an hour while a set is open and the window is in
+     front. None while it is hidden: a set left open behind other windows
+     stops being reported after the TTL, and the first beat on coming back
+     reclaims it. This was every 20 s, three requests a beat, hidden or not,
+     and each beat scheduled a push. */
+  const PRESENCE_BEAT = 60000;
   let beatTimer = null;
   let decidedAtEntry = 0;      // so "this visit" means this visit
   let beatOthers = [];         // who else is in here, as of the last beat
@@ -73,7 +80,7 @@ BARRY.curate = (function () {
     // See the same note in strata.js: one mode at a time, or the two stack
     // their toolbars and their key handlers on top of each other.
     // `active` is a getter, not a method -- calling it throws.
-    if (BARRY.strata && BARRY.strata.active) BARRY.strata.exit();
+    BARRY.modes.leaveAllBut('curate');   // every other mode; see core.js
     if (set_) exit();
     let data;
     try {
@@ -195,9 +202,15 @@ BARRY.curate = (function () {
     toldTaken = false;
     beat(true);
     if (beatTimer) clearInterval(beatTimer);
-    beatTimer = setInterval(() => beat(false), PRESENCE_BEAT);
+    beatTimer = setInterval(() => { if (!document.hidden) beat(false); },
+                            PRESENCE_BEAT);
     return true;
   }
+
+  /* Back in front: say so at once, rather than up to a minute later. */
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && beatTimer && set_) beat(false);
+  });
 
   /* One beat: where we are, and who else is here.
 
@@ -904,7 +917,9 @@ BARRY.curate = (function () {
     try {
       res = await apiPost('/api/curation/' + encodeURIComponent(gid) + '/'
                           + encodeURIComponent(kd) + '/restore',
-                          { entry: pick.entry, version: pick.v });
+                          { entry: pick.entry,
+                            // By id: the number repeats (the route resolves a ref).
+                            version: (pick.row && pick.row.id != null) ? pick.row.id : pick.v });
     } catch (e) {
       toast('Could not switch to v' + pick.name + ': ' + e.message, 'err', 9000);
       return;
@@ -1156,138 +1171,76 @@ BARRY.curate = (function () {
     return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
   }
 
-  function bankDialog(entry, who, at) {
-    return new Promise((resolve) => {
-      const labs = (kind && kind.labels)
-        || (at && at.labels) || [];
-      const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
-                          || (id === 'unspecified' ? 'undecided' : id);
-      /* The mix, from the set if it is still open and from the last
-         progress the server reported if it is not -- leaving curation
-         empties events() and the dialog would then claim the set was
-         empty. */
-      const tally = {};
-      const live = events();
-      if (live.length) {
-        for (const e of live) {
-          if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
-        }
-      } else {
-        const by = ((at && at.progress) || {}).by_label || {};
-        for (const k in by) tally[k] = by[k];
+  /* What only Checkup knows about a bank, for the shared dialog to show
+     (BARRY.ui.bankDialog, constitution §6e): the mix this version will
+     hold, and the history it joins. The dialog, the name, the note, who,
+     and the continue/branch sentence are the shared one's.
+
+     This was a dialog of its own. It titled itself "version N" off the
+     stored number -- which is the sync key, not the name, so a branch read
+     as the wrong version -- and when the profile had no name it stopped to
+     ask "Who is banking these?" in a prompt. */
+  function bankParts(entry, at) {
+    const labs = (kind && kind.labels)
+      || (at && at.labels) || [];
+    const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
+                        || (id === 'unspecified' ? 'undecided' : id);
+    /* The mix, from the set if it is still open and from the last
+       progress the server reported if it is not -- leaving curation
+       empties events() and the dialog would then claim the set was
+       empty. */
+    const tally = {};
+    /* Only when the open set IS the one being banked. The bench banks any
+       set, and reading whatever Checkup had open would show one set's mix
+       on another's dialog. */
+    const mine = !!(set_ && at && set_.gid === at.gid && set_.kind === at.kind);
+    const live = mine ? events() : [];
+    if (live.length) {
+      for (const e of live) {
+        if (e.label) tally[e.label] = (tally[e.label] || 0) + 1;
       }
-      const stillLeft = live.length
-        ? left() : (((at && at.progress) || {}).left || 0);
-      const vs = (entry && entry.versions) || [];
-      /* Highest so far plus one, which is what the server does. The
-         count is not the same number: the detector's import sits at
-         version zero, so an entry with v0 and v1 has two versions
-         and its next one is v2. The dialog offered to write v3 and
-         the server wrote v2. */
-      const next = vs.reduce((hi, v) => Math.max(hi, v.v || 0), 0) + 1;
+    } else {
+      const by = ((at && at.progress) || {}).by_label || {};
+      for (const k in by) tally[k] = by[k];
+    }
+    const stillLeft = live.length
+      ? left() : (((at && at.progress) || {}).left || 0);
+    const vs = (entry && entry.versions) || [];
 
-      const wrap = el('div', { class: 'modal bank-dialog' });
-      wrap.appendChild(el('div', { class: 'mh' }, [
-        el('h2', { text: vs.length ? 'Bank this as version ' + next
-                                   : 'Bank this set' }),
-        el('p', { class: 'sub', text: (at && at.name) || '' }),
-      ]));
-
-      /* What is about to be written. */
-      wrap.appendChild(el('div', { class: 'section-label',
-                                   text: 'What this version will hold' }));
-      wrap.appendChild(el('div', { class: 'ver-mix' },
-        Object.keys(tally).sort((a, b) => tally[b] - tally[a]).map(
-          (k) => el('span', { class: 'ver-chip',
-                              text: nameOf(k) + ' ' + tally[k] }))
+    const what = el('div', { class: 'bank-dialog' }, [
+      el('div', { class: 'section-label', text: 'What this version will hold' }),
+      el('div', { class: 'ver-mix' },
+        Object.keys(tally).sort((x, y) => tally[y] - tally[x]).map(
+          (k) => el('span', { class: 'ver-chip', text: nameOf(k) + ' ' + tally[k] }))
         .concat(stillLeft
           ? [el('span', { class: 'ver-chip',
                           text: stillLeft + ' still undecided, not banked' })]
-          : [])));
+          : [])),
+    ]);
 
-      if (vs.length) {
-        /* "Already banked as N versions" is wrong when the history it is
-           about to join belongs to the detector's export rather than to a
-           previous bank of this set -- v0 was nobody banking anything. */
-        wrap.appendChild(el('div', { class: 'section-label',
+    let extra;
+    if (vs.length) {
+      /* "Already banked as N versions" is wrong when the history it is
+         about to join belongs to the detector's export rather than to a
+         previous bank of this set -- v0 was nobody banking anything. */
+      extra = el('div', {}, [
+        el('div', { class: 'section-label',
           text: entry && entry.adopted
             ? 'Carrying on from ' + (entry.source || 'the detector')
               + '  ·  ' + vs.length + ' version'
               + (vs.length === 1 ? '' : 's') + ' so far'
             : 'Already banked as ' + vs.length + ' version'
-              + (vs.length === 1 ? '' : 's') }));
-        const list = el('div', { class: 'ver-list compact' });
-        for (let i = vs.length - 1; i >= 0; i--) {
-          const v = vs[i];
-          list.appendChild(el('div', { class: 'ver-row' }, [
-            el('div', { class: 'ver-top' }, [
-              el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
-              v.imported ? el('span', { class: 'flagchip',
-                                        text: 'the import' }) : null,
-              el('span', { class: 'ver-when',
-                           title: BARRY.whenRaw(v.at),
-                           text: BARRY.when(v.at, 'minute') }),
-              el('span', { class: 'ver-who', text: v.by || 'unknown' }),
-              el('span', { class: 'ver-count', text: (v.n || 0) + ' events' }),
-            ]),
-            v.note ? el('div', { class: 'ver-note', text: v.note })
-                   : el('div', { class: 'ver-note none', text: 'no note' }),
-            /* What each version holds, so the history is readable as a
-               history rather than as a list of dates. */
-            v.by_label && Object.keys(v.by_label).length
-              ? el('div', { class: 'ver-mix small' },
-                  Object.keys(v.by_label)
-                    .sort((a, b) => v.by_label[b] - v.by_label[a])
-                    .map((k) => el('span', { class: 'ver-chip',
-                                             text: nameOf(k) + ' '
-                                                 + v.by_label[k] })))
-              : null,
-            v.changed
-              ? el('div', { class: 'ver-shifts' }, [
-                  el('span', { class: 'ver-since',
-                               text: v.changed + ' decision'
-                                   + (v.changed === 1 ? '' : 's')
-                                   + ' changed' })])
-              : null,
-          ].filter(Boolean)));
-        }
-        wrap.appendChild(list);
-      } else {
-        wrap.appendChild(el('p', { class: 'hint',
-          text: 'This set has not been banked before. From now on each bank '
-              + 'writes a version onto the same entry, so the entry keeps '
-              + 'its whole history rather than the bank filling up with '
-              + 'copies.' }));
-      }
-
-      const box = el('textarea', {
-        class: 'ver-note-input', rows: '3',
-        placeholder: 'What changed in this pass? (optional)',
-      });
-      wrap.appendChild(el('div', { class: 'section-label',
-                                   text: 'Note for version ' + next }));
-      wrap.appendChild(box);
-      wrap.appendChild(el('p', { class: 'hint',
-        text: 'Banking as ' + who + '.' }));
-
-      let settled = false;
-      const done = (val) => {
-        if (settled) return;
-        settled = true;
-        closeModal();
-        resolve(val);
-      };
-      wrap.appendChild(el('div', { class: 'mf' }, [
-        el('div', { style: 'flex:1' }),
-        el('button', { class: 'btn ghost', text: 'Cancel',
-                       onclick: () => done(null) }),
-        el('button', { class: 'btn', text: vs.length
-                         ? 'Bank as v' + next : 'Bank',
-                       onclick: () => done(box.value || '') }),
-      ]));
-      showModal(wrap);
-      setTimeout(() => { try { box.focus(); } catch (e) {} }, 30);
-    });
+              + (vs.length === 1 ? '' : 's') }),
+        BARRY.ui.versionTree({ versions: vs, readonly: true, notes: true }),
+      ]);
+    } else {
+      extra = el('p', { class: 'hint',
+        text: 'This set has not been banked before. From now on each bank '
+            + 'writes a version onto the same entry, so the entry keeps '
+            + 'its whole history rather than the bank filling up with '
+            + 'copies.' });
+    }
+    return { what, extra };
   }
 
   /* How the list was last looked at, kept across openings so a person who
@@ -1518,26 +1471,37 @@ BARRY.curate = (function () {
       toast('Already opening the banking dialog\u2026', null, 2500);
       return;
     }
-    /* Who is in the profile. Asking again every time was a field to retype
-       and a chance to type it differently. */
     banking = true;
     try {
-      const who = (BARRY.profile && BARRY.profile.who())
-        || await askPath('Who is banking these?', 'your name or email', '');
-      if (!who) return;
       /* What it has been banked as before, so the note is written knowing
-         what it follows rather than into a blank box. */
+         what it follows rather than into a blank box -- and which version
+         this pass was picked up from, so the dialog can say whether it
+         continues that line or branches off it. */
       let known = null;
       try {
         known = await api('/api/curation/' + encodeURIComponent(at.gid) + '/'
                           + encodeURIComponent(at.kind) + '/banked');
       } catch (e) { /* never banked, or an older server; the dialog copes */ }
-      const note = await bankDialog(known && known.entry, who, at);
-      if (note === null) return;
-      const res = await apiPost(
-        '/api/curation/' + encodeURIComponent(at.gid) + '/'
-        + encodeURIComponent(at.kind) + '/bank',
-        { added_by: who, note: note });
+      const entry = known && known.entry;
+      const parts = bankParts(entry, at);
+      /* Who comes from the profile, and only from it; the shared dialog
+         refuses to bank for nobody and says where to fix that. */
+      let res = null;
+      const ok = await BARRY.ui.bankDialog({
+        kind: 'version',
+        entry: { name: (entry && entry.name) || at.name,
+                 versions: (entry && entry.versions) || [] },
+        fromV: known ? known.based_on : null,
+        what: parts.what,
+        extra: parts.extra,
+        onBank: async ({ note, who }) => {
+          res = await apiPost(
+            '/api/curation/' + encodeURIComponent(at.gid) + '/'
+            + encodeURIComponent(at.kind) + '/bank',
+            { added_by: who, note: note });
+        },
+      });
+      if (!ok || !res) return;
       /* One entry, one version. Says which version, and what is in it, so
          the toast confirms the thing that was written rather than a count
          of records. */
@@ -1780,7 +1744,13 @@ BARRY.vers = (function () {
       const x = String(a.at || ''), y = String(b.at || '');
       return x < y ? -1 : x > y ? 1 : 0;
     });
-    const name = {}, kids = {}, used = new Set();
+    /* Kept in step with versions.label_rows, which names what the server
+       sends: `from_id` first where it resolves, because it names one
+       version and only one; children counted per parent NAME, not per
+       parent number, because two parents can share a number. This copy
+       had neither, so on a history that needed them it named a version
+       differently from the bank. */
+    const name = {}, kids = {}, used = new Set(), byUid = {};
 
     /* The name, or the next one along if something already holds it. Two
        versions with one name is worse than an ugly name -- the history gets
@@ -1794,12 +1764,24 @@ BARRY.vers = (function () {
       return got_;
     };
 
+    // Nothing built on the parent yet means continue its line; something
+    // already built on it means branch. That is the whole rule.
+    const childOf = (parName) => {
+      const seen = kids[parName] || 0;
+      kids[parName] = seen + 1;
+      const base = key(parName);
+      return take(seen === 0 ? fmt(bump(base)) : fmt(base.concat([seen])));
+    };
+
     let trunk = 0;
     const out = [];
     for (const r of got) {
       let nm;
       const par = r.from_v;
-      if (par === null || par === undefined || !(par in name)) {
+      const parUid = r.from_id;
+      if (parUid !== null && parUid !== undefined && parUid in byUid) {
+        nm = childOf(byUid[parUid]);
+      } else if (par === null || par === undefined || !(par in name)) {
         // A root. The detector's import is 0 and the first pass is 1; a
         // version whose parent this machine has never seen is treated as one
         // rather than dropped, because a branch can arrive from the cloud
@@ -1807,14 +1789,12 @@ BARRY.vers = (function () {
         nm = take(String(trunk));
         trunk = key(nm)[key(nm).length - 1] + 1;
       } else {
-        const seen = kids[par] || 0;
-        kids[par] = seen + 1;
-        const base = key(name[par]);
-        // Nothing built on the parent yet means continue its line; something
-        // already built on it means branch. That is the whole rule.
-        nm = take(seen === 0 ? fmt(bump(base)) : fmt(base.concat([seen])));
+        // The LAST version with that number, as in label_rows: a branch
+        // made off "v3" means the v3 that was there when it was made.
+        nm = childOf(name[par]);
       }
       name[r.v] = nm;
+      if (r.id !== null && r.id !== undefined) byUid[r.id] = nm;
       out.push({ row: r, name: nm });
     }
     return out;
@@ -1831,7 +1811,10 @@ BARRY.vers = (function () {
   function nextFor(rows, row) {
     const all = rows || [];
     const top = all.reduce((hi, r) => Math.max(hi, num(r.v)), -1);
-    const probe = { v: top + 1, from_v: row.v, at: '9999', _probe: true };
+    /* With the parent's id, which is what the bank records now that
+       eventbank.add resolves the version it was based on (parent_ref). */
+    const probe = { v: top + 1, from_v: row.v, from_id: row.id,
+                    at: '9999', _probe: true };
     const named = labelRows(all.concat([probe]));
     const mine = named.find((x) => x.row._probe);
     const was = named.find((x) => x.row === row);
@@ -1876,46 +1859,28 @@ BARRY.vers = (function () {
   /* ------------------------------------------------------------------
      The list on screen
      ------------------------------------------------------------------
-     Deliberately the same object as the "New curation set" wizard's version
-     step -- .bm-row, .ver-n, ' off' for one that cannot be used -- because
-     it is the same question asked in a second place, and two visual
+     The version tree, BARRY.ui.versionTree -- the one control every tool
+     chooses a version with (constitution §6e), because two visual
      languages for one question is how people learn to distrust both.
 
      `mode` is 'pickup' or 'switch', and the only difference is what it says
      about the decisions that are already there. Switching always puts that
      version's decisions on the bench; picking up only does so when the
      chosen version is not the one the set already reflects. */
-  let seq = 0;
 
   function chooser(history, opts) {
     const o = opts || {};
     const labs = o.labels || [];
     const nameOf = (id) => (labs.find((l) => l.id === id) || {}).name
                         || (id === 'unspecified' ? 'undecided' : id);
-    const group = 'verpick' + (++seq);
     const said = el('div', { class: 'ver-said' });
     const host = el('div', { class: 'ver-pick' });
-    const marks = [];             // [rowNode, choice] so `on` can move
     let pick = null;
 
     const entries = (history || []).filter((e) => (e.versions || []).length);
     const many = entries.length > 1;
 
     const announce = () => {
-      for (const [node, ch] of marks) {
-        /* Matched on the version ITSELF, not on its number.
-           The stored number is not unique -- two machines curating one
-           entry both mint the next one and the union keeps both, which is
-           what the per-version id exists for -- so `ch.v === pick.v` lit up
-           every row sharing a number. On an entry holding two v1s that is
-           two rows highlighted and one radio filled, which reads as the
-           dialog having lost track of what you picked.
-
-           `ch.row` is the version object the row was built from, so
-           identity settles it and needs no id to be present: the histories
-           that predate ids are exactly the ones most likely to collide. */
-        node.classList.toggle('on', !!pick && ch.row === pick.row);
-      }
       said.innerHTML = '';
       if (pick) {
         said.appendChild(el('p', { class: 'confirm-sub',
@@ -1931,6 +1896,12 @@ BARRY.vers = (function () {
       if (typeof o.onpick === 'function') o.onpick(pick);
     };
 
+    /* One version tree per entry (constitution §6e): the lineage, newest
+       on top, with the consequence of picking each one on its row -- which
+       version you are about to make is the thing being decided, and it
+       cannot be what you find out afterwards. It was a radio list, oldest
+       first, with the lineage only in words. */
+    const trees = [];
     for (const ent of entries) {
       const rows = ent.versions || [];
       const tip = newest(rows);
@@ -1938,13 +1909,17 @@ BARRY.vers = (function () {
         host.appendChild(el('div', { class: 'section-label',
           text: ent.name + '  ·  ' + (ent.n || 0) + ' candidates' }));
       }
-      const list = el('div', { class: 'bm-list ver-pick-list' });
-      for (const v of rows) {
+      /* Matched on the version ITSELF, not on its number: the stored number
+         is not unique (two machines both mint the next one and the union
+         keeps both), so every row gets a key of its own here, including the
+         histories that predate ids -- they are the ones most likely to
+         collide. */
+      const keyOf = new Map(rows.map((v, i) => [v,
+        String(v.id != null ? v.id : 'row' + i)]));
+      const choiceOf = (v) => {
         const nxt = nextFor(rows, v);
         const restores = o.mode === 'switch' || v !== tip;
-        const here = o.current && o.current.entry === ent.entry
-                  && o.current.v === v.v;
-        const choice = {
+        return {
           entry: ent.entry, v: v.v, row: v, name: nxt.from, next: nxt.to,
           branches: nxt.branches, restores,
           lineage: 'Banking after this ' + describe(rows, v) + '.',
@@ -1956,48 +1931,39 @@ BARRY.vers = (function () {
             : 'The decisions already on the set are left exactly as they '
               + 'are. This only says where the next bank lands.',
         };
-        const mix = Object.keys(v.by_label || {})
-          .sort((a, b) => v.by_label[b] - v.by_label[a])
-          .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  ·  ');
-        const row = el('label', {
-          class: 'bm-row' + (v.has_snap ? '' : ' off'),
-          title: v.has_snap ? null
-            : 'Only the recent versions keep a candidate-by-candidate '
-              + 'snapshot. Without one there is nothing to put on the '
-              + 'bench, so this version cannot be a starting point — '
-              + 'its counts and its note are still here.',
-        }, [
-          el('input', {
-            type: 'radio', name: group,
-            disabled: v.has_snap ? null : 'disabled',
-            onchange: () => { pick = choice; announce(); },
-          }),
-          el('span', { class: 'ver-n', text: 'v' + nxt.from }),
-          v.imported ? el('span', { class: 'flagchip', text: 'the detector' })
-                     : null,
-          here ? el('span', { class: 'flagchip on-bench', text: 'on the bench' })
-               : null,
-          el('div', { class: 'ver-pick-mid' }, [
-            el('span', { class: 'mk-name', text: mix || (v.n || 0) + ' events' }),
-            /* The consequence on every row, not only the chosen one. Which
-               version you are about to make is the thing being decided, and
-               it cannot be the thing you find out afterwards. */
-            el('span', { class: 'ver-does' + (nxt.branches ? ' branch' : ''),
-              text: v.has_snap ? describe(rows, v)
-                               : 'no snapshot kept — cannot be worked from' }),
-          ]),
-          el('span', { class: 'person-what',
-            text: (v.by || 'unknown') + '  ·  '
-                + (BARRY.when ? BARRY.when(v.at, 'minute') : (v.at || '')) }),
-        ].filter(Boolean));
-        marks.push([row, choice]);
-        list.appendChild(row);
-        if (o.start && o.start(v, ent, tip)) {
-          const box = row.querySelector('input');
-          if (box && !box.disabled) { box.checked = true; pick = choice; }
+      };
+      const tree = BARRY.ui.versionTree({
+        versions: rows,
+        idOf: (v) => keyOf.get(v),
+        disabled: (v) => (v.has_snap ? null
+          : 'no snapshot kept — cannot be worked from. Only the recent '
+            + 'versions keep a candidate-by-candidate snapshot, so there is '
+            + 'nothing to put on the bench; its counts and its note are '
+            + 'still here.'),
+        state: (v) => [
+          v.imported ? 'the detector' : null,
+          o.current && o.current.entry === ent.entry && o.current.v === v.v
+            ? 'on the bench' : null,
+        ].filter(Boolean),
+        line: (v) => (v.has_snap ? describe(rows, v) : null),
+        notes: (v) => Object.keys(v.by_label || {})
+          .sort((x, y) => v.by_label[y] - v.by_label[x])
+          .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  ·  ')
+          || ((v.n || 0) + ' events'),
+        onpick: (v) => {
+          pick = choiceOf(v);
+          for (const other of trees) if (other !== tree) other.choose(null);
+          announce();
+        },
+      });
+      trees.push(tree);
+      host.appendChild(el('div', { class: 'ver-pick-list' }, [tree]));
+      for (const v of rows) {
+        if (o.start && o.start(v, ent, tip) && v.has_snap && !pick) {
+          pick = choiceOf(v);
+          tree.choose(keyOf.get(v));
         }
       }
-      host.appendChild(list);
     }
 
     const wrap = el('div', {}, [host, said]);
@@ -2078,3 +2044,6 @@ BARRY.pickVersion = function pickVersion(history, opts) {
     ]));
   });
 };
+
+// One mode at a time, kept by the registry in core.js.
+BARRY.modes.register('curate', BARRY.curate);

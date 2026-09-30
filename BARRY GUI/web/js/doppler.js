@@ -57,6 +57,8 @@ BARRY.doppler = (function () {
        indices, because an index shifts the moment even-only is toggled. */
     exclude: [],
     preset: 'all',
+    // One recording or many (constitution §6d). Both run on the VACC.
+    count: 'one',
   };
 
   /* The .m file's own, named once so the "changed" tag and the reset cannot
@@ -108,13 +110,27 @@ BARRY.doppler = (function () {
     host.innerHTML = '';
 
     host.appendChild(head());
-    host.appendChild(pickCard());
-    if (est) host.appendChild(planCard());
-    if (job) host.appendChild(stageCard());
-    if (res) host.appendChild(reportCard());
-    if (res) host.appendChild(bankCard());
-    host.appendChild(reviewCard());
-    host.appendChild(batchCard());
+    /* Where and how many (constitution §6d). Doppler runs only on the
+       VACC, so there is no Where to choose -- the bar shows How many, and
+       says why nothing can run when the VACC is not set up. One recording
+       and many used to be on screen together, one under the other. */
+    host.appendChild(BARRY.ui.runBar({
+      modes: { vacc: ['one', 'many'] },
+      where: 'vacc', count: q.count,
+      onChange: (w, c) => { q.count = c; paint(); },
+    }));
+    if (q.count === 'many') {
+      host.appendChild(batchCard());
+      host.appendChild(reviewCard());
+    } else {
+      if (!q.gid) openOnSomething();
+      host.appendChild(pickCard());
+      if (est) host.appendChild(planCard());
+      if (job) host.appendChild(stageCard());
+      if (res) host.appendChild(reportCard());
+      if (res) host.appendChild(bankCard());
+      host.appendChild(reviewCard());
+    }
 
     if (res) {
       // Twice on purpose: now, so a repaint that is not a layout change
@@ -129,7 +145,7 @@ BARRY.doppler = (function () {
   function head() {
     return BARRY.ui.stepHeader({
       title: 'Doppler',
-      step: 'step 1 of The Storm',
+      step: BARRY.ui.stepOf('doppler'),
       blurb: 'Interictal discharges by line length, on the cluster. The '
            + 'detector is Kleen’s LLspikedetector, checked event for '
            + 'event against the MATLAB it came from.',
@@ -138,35 +154,52 @@ BARRY.doppler = (function () {
 
   /* ------------------------------------------------------- 1. a recording */
 
+  /* A recording this computer can open: Doppler reads the channel list
+     here before it sends anything, so a recording with no reachable path
+     has nothing to run. */
+  const rows = () => (BARRY.views.toolkit.registryRows &&
+                      BARRY.views.toolkit.registryRows()) || [];
+  const usable = (r) => ((r.here || []).length ? true
+    : 'None of this recording’s paths are reachable from this computer, so '
+      + 'its channel list cannot be read and there is nothing to send.');
+
+  function choose(r) {
+    q.gid = r ? r.gid : null;
+    q.row = r || null;
+    /* `here[0]`, not `path`. A registry row carries the paths reachable
+       from THIS machine and the field is called `here`; asking for
+       `path` returns undefined for every recording. */
+    q.path = r ? ((r.here || [])[0] || null) : null;
+    // Left-out channels belong to the recording they were chosen on.
+    // CSC12 on the next one is a different wire.
+    q.exclude = []; q.preset = 'all';
+    reset();
+  }
+
+  /* Open on something workable, never on nothing (§6e). State only: the
+     estimate is asked for after, and repaints when it lands. */
+  function openOnSomething() {
+    const g = BARRY.ui.openOn(rows(), usable, null);
+    const r = g && rows().find((x) => x.gid === g);
+    if (!r) return;
+    choose(r);
+    refreshEstimate().then(paint);
+  }
+
   function pickCard() {
-    const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', text: '1. Which recording' }),
-    ]);
-    box.appendChild(BARRY.pickSession({
-      rows: (BARRY.views.toolkit.registryRows &&
-             BARRY.views.toolkit.registryRows()) || [],
+    const box = el('div', { class: 'card' });
+    box.appendChild(BARRY.ui.pickRecording({
+      rows: rows(),
+      usable,
       value: q.gid,
+      emptyText: 'No recording Jarvis knows about can be opened from this '
+               + 'computer, so there is no channel list to send.',
       onpick: (r) => {
-        q.gid = r ? r.gid : null;
-        q.row = r || null;
-        /* `here[0]`, not `path`. A registry row carries the paths reachable
-           from THIS machine and the field is called `here`; asking for
-           `path` returns undefined for every recording. */
-        q.path = r ? ((r.here || [])[0] || null) : null;
-        // Left-out channels belong to the recording they were chosen on.
-        // CSC12 on the next one is a different wire.
-        q.exclude = []; q.preset = 'all';
-        reset();
+        choose(r);
         refreshEstimate().then(paint);
         paint();
       },
     }));
-    if (q.gid && !q.path) {
-      box.appendChild(el('p', { class: 'hint',
-        text: 'None of this recording’s paths are reachable from this '
-            + 'computer, so its channel list cannot be read and there is '
-            + 'nothing to send.' }));
-    }
     return box;
   }
 
@@ -1260,84 +1293,84 @@ BARRY.doppler = (function () {
   }
 
   async function bank() {
-    /* A set goes to the bank under a name or not at all. The bank refuses
-       an entry that cannot say who added it, and asking here is better than
-       being refused after the round trip. */
-    const who = await BARRY.profile.who();
-    if (!who) return;
-
+    /* Through the one bank dialog (constitution §6e): a new entry, named,
+       with the session already in the name. Who comes from the profile --
+       this used to return without a word when nobody was set, so Bank did
+       nothing at all -- and the note is the account of how the run was
+       made, there to be read and changed before it is filed. */
     const p = res.params || {};
+    const r = q.row || {};
     const suggested = BARRY.bankName.suggest(
-      q.row || {},
-      'Doppler ' + (p.band ? (p.band[0] + '–' + p.band[1] + ' Hz')
-                           : 'unfiltered'));
-    const name = el('input', { type: 'text', class: 'inc-name',
-                               value: suggested });
-    const ok = await BARRY.confirm(
-      'Bank ' + res.n.toLocaleString() + ' IEDs from '
-        + ((q.row || {}).label || 'this recording') + '?',
-      el('div', { class: 'fix-facts' }, [
-        BARRY.ui.field({ label: 'Call this run', control: name,
-          hint: 'The session is in it already. This is the name you will '
-              + 'pick this run out by when there are three of them on the '
-              + 'same recording, and it can be changed later.' }),
-        el('p', { text: 'It goes in as a detector’s output, not as a '
-            + 'curated set — nothing is decided about any of them '
-            + 'yet, and the next step is confirming them in Spotter.' }),
-      ]), 'Bank them');
-    if (!ok) return;
-
-    banking = true; paint();
-    try {
-      /* `channel` is the one the peak was taken from. An event in the
-         bank has a channel, not a list of them -- the whitelist in
-         `eventbank.add` is deliberate, and a `channels` field would be
-         dropped on the way in and would not survive a version restore. The
-         full participation stays in Doppler's own vault and Spotter reads
-         it back from there. */
-      const evs = (res.events || []).map((e) => ({
-        start: e.start,
-        end: e.end || undefined,
-        channel: e.peak_channel,
-        amplitude: e.peak_uv,
-      }));
-      const r = q.row || {};
-      const added = await apiPost('/api/bank/add', {
-        project: r.project || r.group,
-        mouse: r.mouse, session: r.session,
-        session_key: r.key, session_loose_key: r.loose_key,
-        session_label: r.label, session_path: q.path,
-        recording_start: r.start, duration_s: r.duration_s,
-        gid: q.gid,
-        type: 'ied', type_name: 'IED',
-        name: (name.value || suggested).trim(),
-        note: bankNote(),
-        events: evs,
-        pipeline: 'Doppler (line length)',
-        detector: 'LLspikedetector',
-        time_basis: 'recording',
-        parameters: p,
-        added_by: who,
-        version_note: 'The detector’s own list, nothing decided about '
-                    + 'it yet.',
-      });
-      banking = false;
-      toast('Banked. Confirm them in Spotter.', 'ok', 7000);
-      loadReviews(true);
-      paint();
-      /* Offered, not taken. Banking and confirming are two steps of a
-         bundle and the second one is a sitting somebody chooses to start. */
-      const entryId = (added.entry || {}).id || added.id;
-      const go = await BARRY.confirm(
-        'Confirm them now?',
-        el('p', { text: res.n.toLocaleString() + ' candidates are banked. '
-            + 'Spotter walks them one at a time.' }),
-        'Open Spotter');
-      if (go && BARRY.spotter) BARRY.spotter.enter(q.gid, entryId);
-    } catch (e) {
-      banking = false; paint();
-      toast(e.message, 'err', 12000);
-    }
+      r, 'Doppler ' + (p.band ? (p.band[0] + '–' + p.band[1] + ' Hz')
+                              : 'unfiltered'));
+    let added = null;
+    const ok = await BARRY.ui.bankDialog({
+      kind: 'entry',
+      title: 'Bank ' + res.n.toLocaleString() + ' IEDs from '
+             + (r.label || 'this recording') + '?',
+      name: suggested,
+      note: bankNote(),
+      what: 'It goes in as a detector’s output, not as a curated set — '
+          + 'nothing is decided about any of them yet, and the next step is '
+          + 'confirming them in Spotter.',
+      where: 'Filed under ' + [r.project || r.group || 'Unfiled',
+                               r.mouse != null ? 'm' + r.mouse : null,
+                               r.session != null ? 's' + r.session : null]
+        .filter(Boolean).join(' / ') + ' in the Event Bank, as its own entry '
+        + 'beside any other run on this recording.',
+      okText: 'Bank them',
+      onBank: async ({ name, note, who }) => {
+        banking = true; paint();
+        try {
+          /* `channel` is the one the peak was taken from. An event in the
+             bank has a channel, not a list of them -- the whitelist in
+             `eventbank.add` is deliberate, and a `channels` field would be
+             dropped on the way in and would not survive a version restore.
+             The full participation stays in Doppler's own vault and
+             Spotter reads it back from there. */
+          const evs = (res.events || []).map((e) => ({
+            start: e.start,
+            end: e.end || undefined,
+            channel: e.peak_channel,
+            amplitude: e.peak_uv,
+          }));
+          added = await apiPost('/api/bank/add', {
+            project: r.project || r.group,
+            mouse: r.mouse, session: r.session,
+            session_key: r.key, session_loose_key: r.loose_key,
+            session_label: r.label, session_path: q.path,
+            recording_start: r.start, duration_s: r.duration_s,
+            gid: q.gid,
+            type: 'ied', type_name: 'IED',
+            name,
+            note: note || bankNote(),
+            events: evs,
+            pipeline: 'Doppler (line length)',
+            detector: 'LLspikedetector',
+            time_basis: 'recording',
+            parameters: p,
+            added_by: who,
+            version_note: 'The detector’s own list, nothing decided about '
+                        + 'it yet.',
+          });
+        } finally {
+          banking = false; paint();
+        }
+      },
+    });
+    if (!ok || !added) return;
+    toast('Banked. Confirm them in Spotter.', 'ok', 7000);
+    loadReviews(true);
+    paint();
+    /* Offered, not taken. Banking and confirming are two steps of a
+       bundle and the second one is a sitting somebody chooses to start. */
+    const entryId = (added.entry || {}).id || added.id;
+    const go = await BARRY.confirm(
+      'Confirm them now?',
+      el('p', { text: res.n.toLocaleString() + ' candidates are banked. '
+          + 'Spotter walks them one at a time.' }),
+      'Open Spotter');
+    if (go && BARRY.spotter) BARRY.spotter.enter(q.gid, entryId);
   }
 
   function bankNote() {
@@ -1472,11 +1505,16 @@ BARRY.doppler = (function () {
     }
     box.appendChild(el('div', { class: 'tk-actions' }, [
       el('span', { class: 'spacer' }),
-      el('button', { class: 'btn ghost', text: 'What would it run?',
+      /* The primary is last and names what it will do (§6d), with the
+         count once it is known. It was a second ghost button, "Run the
+         batch", beside the first. */
+      el('button', { class: 'btn ghost', text: 'Check what it would run',
         disabled: !vaccOn() ? 'disabled' : null,
         onclick: planBatch }),
-      el('button', { class: 'btn ghost',
-        text: batch ? 'Running…' : 'Run the batch',
+      el('button', { class: 'btn',
+        text: batch ? 'Running…'
+              : (batchPlan && batchPlan.n
+                   ? 'Submit ' + batchPlan.n + ' to VACC' : 'Submit to VACC'),
         disabled: (batch || !batchPlan || !batchPlan.n) ? 'disabled' : null,
         onclick: runBatch }),
     ]));

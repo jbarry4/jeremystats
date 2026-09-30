@@ -357,6 +357,7 @@ class VaccArray:
             "#!/bin/bash\n"
             "#SBATCH --job-name=%(rid)s\n"
             "#SBATCH --array=0-%(last)d%(cap)s\n"
+            "%(acct)s"
             "#SBATCH --partition=%(part)s\n"
             "#SBATCH --time=%(time)s\n"
             "#SBATCH --mem=%(mem)s\n"
@@ -370,6 +371,7 @@ class VaccArray:
             "exec python vacc_run.py %(ws)s/spec_${SLURM_ARRAY_TASK_ID}.json\n"
         ) % {
             "rid": self.rid, "last": max(0, n - 1), "cap": cap,
+            "acct": vacc.sbatch_account(self.cfg),
             "part": req["partition"], "time": req["time"], "mem": req["mem"],
             "cpus": req["cpus"], "ws": self.ws,
             "pre": vacc.activate(self.cfg),
@@ -849,6 +851,7 @@ class VaccRun:
         submit_sh = (
             "#!/bin/bash\n"
             "#SBATCH --job-name=%(rid)s\n"
+            "%(acct)s"
             "#SBATCH --partition=%(part)s\n"
             "#SBATCH --time=%(time)s\n"
             "#SBATCH --mem=%(mem)s\n"
@@ -863,6 +866,7 @@ class VaccRun:
         ) % {
             "rid": self.rid, "part": req["partition"], "time": req["time"],
             "mem": req["mem"], "cpus": req["cpus"], "ws": ws,
+            "acct": vacc.sbatch_account(self.cfg),
             "pre": vacc.activate(self.cfg),
             "code": vacc._remote_path(self.cfg.get("workspace") or ".", "code"),
         }

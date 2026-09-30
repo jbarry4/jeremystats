@@ -535,7 +535,7 @@ BARRY.views.misc = (function () {
       const url = '/api/outputs/file?rel=' + encodeURIComponent(f.rel);
       grid.appendChild(el('div', { class: 'out-card' }, [
         el('div', { class: 'thumb' }, [
-          isImg ? el('img', { src: url, alt: f.name, loading: 'lazy' })
+          isImg ? el('img', { src: url + '&thumb=1', alt: f.name, loading: 'lazy' })
                 : el('span', { class: 'noimg',
                     text: (f.ext || '?').replace('.', '').toUpperCase() }),
         ]),

@@ -15,8 +15,10 @@ something broke, the counter-example is named — those are the useful half.
 > exist today; **§6b is the one to read before building a new tool, bundle or
 > Xplorefinder mode**; **§6d** (running — here or on VACC, one or many) and
 > **§6e** (choosing a recording, versions, banking) are the workflow every
-> tool shares. Where a section names a shared component that is still being
-> built, it says so in italics and names the tool to copy until it lands.
+> tool shares. **§10** is speed; **§11** is what the cloud costs and how to
+> spend it -- read it before adding anything that reads or writes Supabase.
+> Where a section names a shared component that is still being built, it
+> says so in italics and names the tool to copy until it lands.
 
 ---
 
@@ -345,9 +347,9 @@ somebody arriving at step 3 learns there are four.
 "step 4 of The Dentist". When Root Canal was inserted between Braces and
 X-ray, X-ray's header had to be edited by hand from 4 to 5 — it was, this
 time. Use `stepOf(toolId)`, which reads the position out of `BUNDLES`, so
-inserting a step renumbers every header after it. *(Being built; The Arc
-already derives its own.)* Incisor and Checkup have no `stepHeader` at all
-and are being brought in.
+inserting a step renumbers every header after it. Every bundle step uses it
+now -- Incisor, Checkup, Braces, Root Canal, X-ray, Doppler, Panorama and
+Braid -- and `_dev/stepof.html` fails any header that types its own.
 
 **A step that is not built yet is shown and disabled, with the reason on it.**
 Leaving it out says the step does not exist. Somebody arriving at Coupling
@@ -379,7 +381,12 @@ safe rather than merely possible:
 5. **It animates, and says so to reduced motion.** The steps ease their
    height and opacity closed rather than vanishing, because a list that
    snaps shut reads as something having broken. Under
-   `prefers-reduced-motion` it snaps (§4). *(Being built.)*
+   `prefers-reduced-motion` it snaps (§4). The rail re-renders on every
+   change, so a CSS transition has nothing to run on: `foldBundle`
+   (toolkit.js) animates the steps either side of the render, and ends on
+   a timer as well as on `onfinish` — a background or headless tab may
+   never report the end, and a fold waiting on it refuses every click
+   after. `_dev/bundlefold.html` checks all three.
 
 The same shape applies to anything else that is a heading over a list — the
 Explorer's tree sections and the Errors view's groups already work this way,
@@ -421,12 +428,16 @@ list the other four is twenty pairs kept in step by hand, and the sixth mode
 breaks them all again. The rule is therefore a registry, not a habit:
 
 ```js
-BARRY.modes.register('yours', BARRY.yours);   // once, at load
-BARRY.modes.enter('yours', gid);              // exits whatever is active first
+BARRY.modes.register('yours', BARRY.yours);   // once, at load (end of file)
+BARRY.modes.leaveAllBut('yours');             // first thing in your enter()
 ```
 
-*`BARRY.modes` is being built (round 2, see the plan). Until it lands, a new
-mode must exit every mode listed above, and the table is the list.*
+`BARRY.modes` (core.js) is the registry. `leaveAllBut` leaves every other
+active mode, never the caller, and one mode throwing on its way out does not
+stop the rest. Checkup, StrataScope, Spotter, Braid and the Arc's review are
+registered; `_dev/onemode.html` checks all of that. Never list the other
+modes by name -- each mode used to, none listed them all, and entering
+Checkup with Spotter open left both live.
 
 **Resolve the recording, do not assume a path.** Registry rows carry `here`,
 a list of paths reachable from *this* machine — not `path`. Ask for `here[0]`
@@ -523,6 +534,7 @@ is not.
 Supabase egress is counted in **requests, not bytes**. Ask once per entry and
 hold it; do not ask per render. State the cost and the step size before
 anything long runs — Panorama does this and it is the pattern to copy.
+Anything that reads or writes the cloud follows **§11**.
 
 ### Before you call it done
 
@@ -533,6 +545,7 @@ anything long runs — Panorama does this and it is the pattern to copy.
 - [ ] Banked entries state who, when and what produced them
 - [ ] `from_t` on anything that moves an event
 - [ ] Writes only this machine's shard
+- [ ] Every cloud request it adds is in §11's budget, with its rate said
 - [ ] A `_dev/` harness, listed in `_dev/README.md`
 
 ## 6c. Two views of one thing
@@ -666,9 +679,10 @@ drew that differently — Braces and X-ray with a *One set at a time | Many
 sets at once* switch, Incisor with tabs that made "VACC" mean "many at once",
 Doppler with two ghost buttons and no primary. This section is the one shape.
 
-*The shared pieces named here (`runBar`, the VACC health panel, upload) are
-being built in round 2. Until they land, Braces is the reference for
-everything local and this section is the spec.*
+*`BARRY.ui.runBar` exists (ui.js, checked by `_dev/uiparts.html`); tools
+move onto it one at a time. The VACC health panel and upload exist (below).
+Until a tool has moved, Braces is the reference for everything local and
+this section is the spec.*
 
 ### Four modes, on two independent axes
 
@@ -708,9 +722,20 @@ so it runs here in seconds and can run on the VACC, never as a batch.
 | Circuit | ✓ | ✓ | ✓ | ✓ |
 | Checkup, Braces, Root Canal, X-ray, Eye | ✓ | ✓ | | |
 | Doppler | | | ✓ | ✓ |
-| Panorama | ✓ | | ✓ | |
+| Panorama | ✓ | ✓ | ✓ | |
 | Spotter, Kilosort, StrataScope | ✓ | | | |
 | Drift | ✓ | | ✓ | |
+
+Panorama's local batch was missing from the first draft of this table. It
+already had one — *Many at once*, a set and where each recording got to — so
+the table was wrong, not the tool.
+
+**On the run bar so far:** Incisor, Doppler, Braces, X-ray, Root Canal and
+Panorama. **Cells in the table not built yet**, which the bar therefore does
+not offer: Incisor here · many, and Panorama on the VACC. A tool gains one
+by building it and adding it to its `modes`, not by drawing a new switch.
+The Arc's tools (Circuit, Drift, Spark) adopt the bar once their builders
+are done.
 
 A tool that gains a mode changes its declaration, not its layout.
 
@@ -774,26 +799,60 @@ One component, `BARRY.ui.runBar`, at the top of the tool under its
 **One account runs the lab's jobs.** Others sign in with their own netid to
 reach the shared space.
 
-- **Data lives in `Jarvis Data`**, under `/gpfs2/scratch/sakhava1`, mirrored
-  as `<project>/<mouse>/<recording>/`. It is **processing space**: critical
-  data is kept elsewhere, and scratch may be purged. The local copy is never
-  touched and stays the source of truth.
-- **Uploading** is part of *Scan a drive*: select recordings, *Upload to
-  VACC*. A file already there at the same size is skipped, so re-uploading
-  is cheap and resumes where it stopped. An uploaded recording is runnable at
-  once.
+- **Data lives in `Jarvis Data`**, under `/gpfs2/scratch/sakhava1`. It is
+  **processing space**: critical data is kept elsewhere, and scratch may be
+  purged. The local copy is only ever read and stays the source of truth.
+  The path, the owner and the OnDemand link are lab facts in the tracked
+  `vacc.json` (`shared`), not code.
+- **Mirrored as `<project>/<mouse folder>/…/<recording>/`, every folder from
+  the mouse's down.** Not `<project>/<mouse>/<recording>` alone: the session
+  number is often in a folder between them
+  (`M1_Pten/M1ptens1oct2/2023-10-02_16-49-04`), and a copy without it
+  identified as a different recording and would never have been found.
+  `vaccupload.destination` refuses a destination that does not identify as
+  the same recording — 948 of the 1,040 registered have one; the rest have
+  folders that name no mouse and session, and a cluster copy of those could
+  not be matched back anyway.
+- **Uploading**: pick recordings in Sessions, *Upload to VACC…*. The plan
+  comes first — what each would send, what is already there, where, and why
+  one cannot go — and the upload is started only by the button that says how
+  much it sends; the route refuses without `confirm`. A file already there
+  at the same size is skipped, so re-uploading is cheap and resumes. A file
+  arrives as `.part` and is renamed only when whole, so a cut connection
+  never leaves something that looks complete. One ssh per file, streamed in
+  chunks, never held in memory. Progress is in the VACC panel.
+- **An upload is found by identity.** `Jarvis Data` is one of the places the
+  inventory walks (`vacc.places`), so an uploaded recording is known to be on
+  VACC the way any other is: by looking.
 - **Say "uploaded", not "staged".** "Staged" implied Jarvis had copied
-  something when it had not.
+  something when it had not. `staged` stays the internal name.
 - **A cluster path never enters the registry.** A recording on the cluster is
-  known by its identity, the same way it is on a second machine.
-- **Access is checked, and a refusal is specific.** When the shared space
-  cannot be read, say *what* was refused, link the folder in OnDemand
-  (`ondemand.vacc.uvm.edu`), and say **ask Shahriar to add you**. Never a
-  bare "permission denied".
-- **Jobs outlive the window.** A background check runs `squeue --me`,
-  reattaches to every job this account owns — including ones started before
-  Jarvis last restarted — and pulls back whatever finished. The VACC health
-  panel shows queued, running, recent failures and access.
+  known by its identity, the same way it is on a second machine. A scan of a
+  cluster folder remembers the FOLDER as a place to look (this machine's
+  `.vacc.json`, `places`), and never writes a path; registering a recording
+  from its cluster copy is refused, because `REG.ingest` records the path.
+  (Cluster paths written by the old scan are still in the registry; they are
+  left as they are.)
+- **Access is checked, and a refusal is specific.** The routine probe tests
+  whether this account can open the shared space and write into
+  `Jarvis Data` (or create it). When it cannot, the panel says *what* was
+  refused, links the folder in OnDemand, and says **ask Shahriar**
+  (`vacc.shared_words`). Never a bare "permission denied". The netfiles share
+  is not Shahriar's to open; its refusal still points at vacchelp.
+- **Jobs outlive the window.** The probe — still one connection — runs
+  `squeue --me` (falling back to `-u $USER`) and the last day's `sacct`
+  failures. Every batch Incisor, Doppler and Circuit submit writes a run
+  record (`GUI_logs/vacc_runs`, machine-local), and a restart re-attaches to
+  each open one and files its answers (`_resume_vacc_batches`, Circuit's
+  own). The panel lists every job the account has, marked *Jarvis here*
+  (with the tool), *Jarvis, not followed here* or *not Jarvis*, and the runs
+  waited on that the cluster no longer lists. A job with no record — one the
+  person started by hand, or another machine's — is shown, not adopted: only
+  the process that knows how to file an answer can take it. Drift's runs do
+  not write records yet.
+- **An account is claimed when one is set.** `#SBATCH --account=` goes into
+  both builders' scripts (`vacc.sbatch_account`); it was saved and never
+  sent.
 
 ---
 
@@ -802,7 +861,9 @@ reach the shared space.
 ### Choosing a recording
 
 Braces is the reference (`braces.js`), and `ui.pickRecording` is its rules
-made shared. *(Being built; until then, copy Braces.)*
+made shared. It exists; `ui.openOn(rows, usable, value)` is what to open
+on, set by the caller before it builds, so the picker never calls back into
+a render still in progress.
 
 - The label is **Recording**. Not "1. Which recording", not "Session".
 - One placeholder: *Which recording? Type a mouse, session or date…*
@@ -841,8 +902,21 @@ list.
   number, so numbers repeat.
 
 **Render every version through one `versionLabel(v)`.** About thirty places
-build `'v' + (name || v)` by hand, which is how one version comes to read as
-two different numbers in two panels.
+built `'v' + (name || v)` by hand, which is how one version comes to read as
+two different numbers in two panels. The bank's versions are all rendered
+through it now. Worse than untidy: the Event Bank's summaries carry the
+derived `label` and no `name`, so every `'v' + (v.name != null ? v.name : v.v)`
+there was showing the raw stored number. A person's own name for a version
+is its `title`, never its label. (The Arc's artifact versions are a
+different thing, numbered per artifact, and keep their own.)
+
+**A version is edited and deleted by its id.** The route takes a ref — the
+id the page holds, stored or derived — and a number only where it names one
+version (`EventBank._version_ref`); a number two machines both minted is
+refused with "say which by its id". By number, deleting one v3 deleted both,
+and an edit landed on whichever came first. Editing a version updates its
+pre-id copy too, or the two stop matching and the copy returns as a second
+version on read.
 
 **What the data showed, and how it is repaired.** Of 948 stored versions,
 155 had no id, and 42 numbers were duplicated in a way no id could resolve —
@@ -851,8 +925,9 @@ from before ids existed. They sit in several machines' files, and a machine
 may only write its own. So the repair is **on read, never a rewrite**: a twin
 collapses into its id-bearing copy **only when the snapshots match exactly**
 (`snap_sha`), and an id-less version gets an id every machine derives the
-same way. No file changes, so nothing can be lost. *(Being built, with a
-check that proves every event survives.)*
+same way. No file changes, so nothing can be lost. Done: `versions.repair`,
+applied as the bank is read, and `tools/check_versions.py`, which proves
+every event survives.
 
 ### Versions: choosing one
 
@@ -860,7 +935,54 @@ check that proves every event survives.)*
 tree, and six different controls showed it as a list — Braces' select,
 X-ray's *Read from*, Checkup's *Pick it up from*, the Event Bank's chips and
 rows, Root Canal's radios, Eye's own formatter — which is why a branch name
-like v4.1 looked arbitrary. *(Being built.)*
+like v4.1 looked arbitrary. **All of them use it now** — every one is in
+the register below. The rows may wrap on a narrow panel, so the graph is drawn
+from where the rows actually are and redrawn on resize.
+
+Its options, so a caller never draws its own row: `idOf` (what the tool
+chooses by — Braces' `ref`), `lead` (a first row that is a choice but not a
+version: *as they are now*), `line` (what picking it does: *continues from v4
+as v5*), `notes` (the note, or a function — Checkup puts the mix of labels
+there), `unit` (*stamps*), `state` (*the detector*, *on the bench*,
+*Root Canal's own output*), `disabled` (the reason, shown on the row) and
+`readonly` (a history to read). `tree.choose(ref)` sets the choice without
+calling back; `choose(null)` clears it, for a picker with several trees.
+
+### Every version picker
+
+The register. **A new version picker is `ui.versionTree` and gets a row
+here** in the same change; one that is not the tree says why in the last
+column. Spotter, Eye, Checkup's *New curation set* and the Sessions
+correction were found still different after the first sweep: Spotter always
+started a set from v0, Eye never offered a choice, and the other two chose
+by stored number. The register is how the next one is not missed.
+
+| where | chooses | control | by | code | checked by |
+|---|---|---|---|---|---|
+| Checkup — *Pick it up from* (shelf) and *Switch to another version* (bench) | the version a curation set carries on from | tree, one per entry (`BARRY.pickVersion`) | the version itself | `curate.js` `BARRY.vers.chooser`; called from `toolkit.js` `pickUpSet` and the bench's Version chip, and `curate.js` | `curversion.html`, `vtreetools.html` |
+| Checkup — *New curation set* | the version a new set starts from | tree | id | `toolkit.js` `newCurationSet` | `vtreetools.html` |
+| Spotter — starting a set from a Doppler run | the version the set starts from | tree, in a dialog when more than one can be built from; else the newest | id | `spotter.js` `chooseVersion` | `vtreetools.html` |
+| Braces — *Read the stamps from* | the version read | tree, *now* first | ref | `braces.js` `planCard` | `vtreetools.html` |
+| X-ray — *Read the stamps from* | the version read | tree, *as they are now* first | ref | `dspca.js` | `dspca.html` |
+| Root Canal — *Read the stamps from* | the version read, its default marked | tree | ref | `rootcanal.js` | `rootcanal.html` |
+| Eye — *Read the stamps from* | the version read | tree, *now* first; only when there is a choice | ref | `eye.js` `versionCard` | `vtreetools.html` |
+| Event Bank — lineage strip | the version opened | tree | name | `eventbank.js` `detail` | `lineage.html` |
+| Sessions — *Correct it again, from an earlier version* | the version a correction reads | tree, every version, the corrected ones disabled with why | id | `sessions.js` `pickVersion` | `vtreetools.html` |
+| Checkup — bank dialog's history | nothing (a history to read) | tree, `readonly`, notes | — | `curate.js` `bankParts` | `benchbank.html` |
+| Braces — *Many at once*, per row | the version each entry in the batch reads | `<select>` | ref | `braces.js` bulk rows | — *a row in a table of many entries: the tree is for choosing one, a table for comparing many* |
+| Event Bank — *compare with*, inside an open version | the version the open one is diffed against | `<select>` | name | `eventbank.js` `versionDetail` | `lineage.html` — *a second choice inside one already made; the tree is the choice of which version to open* |
+| Drift — each artifact's version, in its member row | the artifact version a drift pins | `<select>` | version id | `drift.js` `pickRow` | — *The Arc's; its builders move it with the rest of the Arc, and it is a row in a list of many* |
+
+Every picker above sends the version by **id or ref**, never by the stored
+number alone, and every route it reaches resolves a ref:
+`/api/bank/<id>/version/<v>` (`EventBank._version_ref`),
+`/api/curation/from-bank` (the same), `/api/session/retime` (`version_at`),
+and the tools that read a version by `ref`.
+
+The Event Bank's strip had never opened a version: the chip stored the
+version's name and the two places that read it compared the stored number,
+so the choice was cleared on every repaint. Keyed by name throughout now
+(`_dev/lineage.html` opens one and reads the diff).
 
 Vertical lanes, like a git graph: the trunk down the left, each branch in a
 lane to its right, one row per version.
@@ -893,9 +1015,28 @@ There are two acts, and they are different on purpose:
 | states | where it will be filed | **continues v5 → v6**, or **branches from v3 → v3.1** |
 
 Both go through **one** `ui.bankDialog`, in the same place, every time.
-*(Being built.)* Until now it was a dialog in Incisor, an inline card in
-Doppler, a note-only dialog in Root Canal, and a one-off "Who is banking
-these?" prompt in Checkup.
+It exists, on `BARRY.confirm`: `onBank` is awaited inside the dialog, so a
+refusal is shown there rather than after it has closed. It used to be a
+dialog in Incisor, a name field in Doppler, a note-only dialog in Root
+Canal, and a "Who is banking these?" prompt in Checkup and on the bench
+card. **All five use it now** (checked by `_dev/incbank.html`,
+`_dev/benchbank.html`, `_dev/rootcanal.html`); Braces and X-ray are next.
+
+The sentence is the bank's own rule, not a guess at it:
+`ui.versionNext(rows, row)` asks `BARRY.vers.nextFor`, which appends the
+new version to the history and names it the way `versions.label_rows` does.
+A shortcut on the names alone gets real histories wrong -- on one whose
+versions never recorded their parent, picking up v1 continues the trunk at
+v5, not v1.1. `BARRY.vers.labelRows` is the page's **only** copy of
+`label_rows`; `_dev/uiparts.html` names every version in the bank with it
+and compares against the server. Change one, change both.
+
+**Say which version, by ref, and the bank resolves it.** A caller may send
+`based_on` as an id, a derived id or a number; `versions.parent_ref`
+resolves it and the new version records both `from_v` and `from_id`. Before
+that, an id written into `from_v` matched no number and the version was
+named as a new root -- one stored version was, and is now read correctly,
+on read only.
 
 - **Who** comes from the profile. Never ask it in a prompt.
 - **Nothing banks silently.** Banking is the one act that is evidence, so it
@@ -1121,7 +1262,179 @@ they are not forgotten:
 - [ ] Heavy imports inside the function that uses them
 - [ ] Nothing fetched at boot that the first screen does not draw
 - [ ] Pollers stop in `onHide` and in a background window
-- [ ] No cloud call on the path to drawing the view
+- [ ] No cloud call on the path to drawing the view (§11)
 - [ ] One request per question; long lists draw what is visible
 - [ ] No new `backdrop-filter`
 - [ ] `perf_baseline.py` before and after, and the number moved
+
+---
+
+## 11. The cloud — what Supabase costs, and how to spend it
+
+The project runs on Supabase's free tier, and in September 2026 it went 130%
+over the 5 GB monthly egress allowance. This section is the rule for anything
+that talks to it, and the map of where the requests go today, so the
+overhaul that limits usage starts from what is true rather than from the
+biggest-looking table.
+
+### The unit is the request
+
+Measured 2026-09-21 (`tools/cloud_egress.py`, `tools/cloud_weight.py`): a
+full pull of every table is 14 MB; a real incremental pull is **7 KB of rows
+and 21 requests**. 6.5 GB a month divided by the request count is about
+**2.4 KB per request** — response headers and TLS, not rows. A request that
+answers "nothing changed" costs the same as one that answers with a row.
+
+So **count requests before looking at row sizes.** `tool_results` rows are
+106 KB and `curation_reviews` has 19,000 rows, and neither mattered.
+
+### One door
+
+Every request goes through `backend/cloud.py` (`Cloud._call`). The page never
+talks to Supabase; it talks to a route, and the route may. That is what makes
+the cost countable, and it stays that way:
+
+- **No Supabase client, key or URL in `web/`.**
+- **No direct `urllib`/`requests` to Supabase outside `cloud.py`.** A new
+  table read is a `cloud.select` in a backend module, where it can be seen.
+
+### Where the requests go today
+
+After the overhaul of 2026-09-29 (CHANGELOG 2026.09.29.1), one machine.
+**Measured** where it says so, by counting `Cloud._call` (`cloud.meter`)
+over a fixed window; the rest from intervals.
+
+| path | trigger | ≈ requests / hour | held back by |
+|---|---|---|---|
+| push | `_cloud_loop`: every 60 s, and ~6 s after a write of shared data | **0 when nothing changed (measured)**; one upsert per table that did | rows stamped when they changed; `machines` a 5-minute heartbeat; pushed snapshot keys remembered in the sync state |
+| pull: `barry_watermarks`, then only tables that moved | `_cloud_loop` | 20 s only while another machine's changes arrive; 60 s while somebody works here; up to 320 s quiet; 1,800 s with nobody looking — **17 requests in 230 s measured**, most of them other machines' old-code roster | watermark view; `_cloud_pace` |
+| `pull_files` | files step, every 300 s | 0 unless a pull saw `results` move; then the new rows only | `results_moved`, `_files_through` |
+| `upload_results` | files step, every 300 s | 0 unless a figure changed; a refused file is not retried until it changes | `uploaded` / `upload_refused` in the sync state |
+| tool feed `GET /api/toolfeed/<tool>` | every 15 s, ToolKit visible | ≤ 120 (one shared read per 30 s for every tool), 0 hidden | `toolfeed._shared` |
+| presence beat `POST /api/presence/beat` | every 60 s, Checkup or Spotter open and visible | ≤ 120 (2 per beat), 0 hidden; no push | `upsert_returning`; `Presence.READ_TTL_S` |
+| presence poll `GET /api/presence` | every 30 s, any ToolKit tool visible | ≤ 120, shared with beats | `Presence.READ_TTL_S` (10 s) |
+| page reads: digest, devices, errors, activity, ping | a view opening, a click | small | TTL caches on a few |
+
+Background sync runs only in the process `start.py` starts
+(`Jarvis_CLOUD_SYNC=on`), and only one per computer (`_cloud_loop_lock`).
+The harness runner and the tools that import `backend.app` do not sync.
+
+### Known leaks
+
+Found reading the code, 2026-09-29. Each is a counter-example for the rules
+below.
+
+1. ~~**Every write schedules a push.**~~ Fixed 2026-09-29:
+   `_note_local_write` separates "somebody is looking", "somebody did
+   something" and "there is shared data to push". Presence, activity, error
+   reports and preferences ride the next scheduled push
+   (`_NOT_SHARED_WRITES`); only another machine's change resets the pull to
+   its floor.
+2. ~~**The roster re-stamps itself.**~~ Fixed: `rows_people` sends a row when
+   what it says changed, stamped with `edited_at`; a name compiled from the
+   records is only ever inserted.
+3. ~~**A push is never empty.**~~ Fixed, measured: a quiet push makes no
+   request.
+4. ~~**A presence beat costs three.**~~ Fixed: the write returns the row
+   (`upsert_returning`), which answers "was it taken"; one cached read
+   answers "who else".
+5. ~~**The tool feed polls every 3 s.**~~ Fixed: one shared read per 30 s.
+6. ~~**`select` always appends `select=*`.**~~ Fixed: a caller's `select=`
+   is kept, and `columns=` states it. (PostgREST honoured the first, so the
+   key reads were right all along; measured 2026-09-27.)
+7. ~~**`pull_files` reads the whole `results` table.**~~ Fixed.
+8. **`/api/activity/who` is N+1**: one `count` per person spelling and per
+   machine. Nothing in `web/` calls it today; nothing should until it is one
+   query.
+9. ~~**The meter measures the wrong thing.**~~ `cloud.meter` counts every
+   request at the door, by caller and table; `/api/cloud/status` serves it
+   and the Sync panel shows it. `tools/cloud_egress.py` still models the old
+   pull only.
+10. ~~**Refused uploads, retried for ever.**~~ Fixed: Windows' `mimetypes`
+    calls a `.csv` `application/vnd.ms-excel`, which the bucket refuses, so
+    73 files were sent and refused every five minutes — ~21,000 requests a
+    day from one machine. Types are stated (`cloudsync.BUCKET_TYPES`), and
+    a 4xx is remembered against the file's signature.
+11. ~~**Every importer of `backend.app` was a sync client.**~~ Fixed: see
+    above. The harness pushed its test writes into the lab's database,
+    which is how `harness@test` reached the shared roster.
+
+**Open: the pull cursor is a client stamp.** `last_pull` is the newest
+`updated_at` seen, and `updated_at` is written by the machine that made the
+edit. An edit pushed after another machine's newer one can land behind a
+colleague's cursor and be skipped. Honest roster stamps make this rarer —
+the `now()` stamps were dragging every cursor forward — but a
+server-assigned stamp is the real fix.
+
+### The rules
+
+1. **Ask whether anything changed before asking what.** One request to a
+   watermark (`barry_watermarks`: one row per table, its newest
+   `updated_at`) and then only the tables that moved. A new synced table
+   joins the view in the same migration that creates it.
+2. **Never stamp a row that did not change.** `updated_at` is what every
+   other machine's pull keys on; bumping it on an unchanged row makes every
+   machine download it, forever (leak 2). A heartbeat that must say "still
+   here" lives in its own small table, not on the rows everybody reads.
+3. **A push carries only what changed.** Upsert rows newer than the last
+   push; send nothing, and make no request, when there are none. A read
+   needed to build a push is cached against a signature (`rows_artifacts`
+   does this — copy it).
+4. **Only shared data schedules a push.** Presence, activity, error reports
+   and preferences are not a reason to push *now*; they ride the next
+   scheduled push. New routes that write must say which they are.
+5. **A cloud-backed poller states its rate and stops when unseen.** Every
+   `setInterval` whose route touches the cloud: a comment with its
+   requests per hour; stops in `onHide`; skips when `document.hidden`;
+   an interval no shorter than the thing it watches can change. Other
+   machines' work arrives through the sync, so polling faster than the pull
+   buys nothing (the tool feed's own comment says so; its 3 s is still too
+   often for what it asks).
+6. **One request per question, never one per row.** No `count` in a loop, no
+   `select` per entry. If the question needs a join, it is a view or an RPC
+   in a migration, not N calls.
+7. **Ask for the columns you need, and check what was sent.** A key-only read
+   says `select=` once; until leak 6 is settled, verify the URL `cloud.py`
+   builds rather than trusting the query string you passed.
+8. **Answer your own write without reading back.** A beat that has just
+   upserted its row knows what it wrote; re-reading the table to find it is
+   two requests spent on information already in hand (leak 4).
+9. **Slow facts are cached, with the TTL said.** Machines, the archived list,
+   the storage listing: `_archived_machines` (60 s), `_SCHEMA_SEEN`
+   (process), histoimg's listing (300 s). A new read of something that
+   changes a few times a day gets a TTL, not a request per page view.
+10. **Back off when quiet, and on failure.** The loop's idle growth
+    (20 s → 320 s) and failure backoff (30–900 s) are the pattern; a new
+    loop copies them rather than ticking at a fixed rate. A backoff that any
+    local click resets is not a backoff (leak 1).
+11. **The cloud being away is a state, not an error.** No retry storm: a
+    failed call waits its backoff and the page says "not reachable", as
+    presence already does ("nobody is reported present").
+
+### Measuring it
+
+- **`cloud.meter(window_s)`** — every request this process made, by caller
+  (`module.function`, worked out from the stack, so a new call site is
+  counted without anybody labelling it) and by table, with the bytes that
+  came back. `GET /api/cloud/status?window=3600` serves it; the Sync panel
+  shows the hour; `python tools/cloud_meter.py` prints it from the running
+  app. This is the number a change that claims to cut requests quotes.
+- **Supabase's own logs** — every request carries
+  `User-Agent: Jarvis/<version>+<commit> <machine>`, so the dashboard's
+  Logs Explorer can group by computer and by version. A machine still on old
+  code is the one whose user agent is old, or absent.
+- `tools/cloud_weight.py --rows N` — rows × average size per table: the cost
+  of a full pull.
+- `tools/cloud_egress.py` — the old pull path only (no watermark); a ceiling,
+  not a total.
+
+### When you add something that talks to the cloud
+
+- [ ] Through `cloud.py`, from a backend route; nothing in `web/`
+- [ ] Its requests per hour written beside it, and added to the table above
+- [ ] Reads behind a watermark or a TTL; no read on the path to drawing a view
+- [ ] Never re-stamps unchanged rows; pushes nothing when nothing changed
+- [ ] Writes that are not shared data do not schedule a push
+- [ ] Pollers stop in `onHide` and when the window is hidden
+- [ ] One request per question; the columns it needs, checked in the URL
+- [ ] Backs off when quiet and on failure; says "not reachable" when away

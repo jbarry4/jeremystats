@@ -408,6 +408,81 @@ BARRY.views.toolkit = (function () {
     catch (e) { /* private mode: it just will not be remembered */ }
   }
 
+  /* Fold or unfold, easing the steps rather than snapping them (constitution
+     §5, "a bundle", rule 5).
+
+     The rail is re-rendered on every change, so there is no element that
+     persists across the fold for a CSS transition to run on. The steps are
+     animated either side of the render instead: shrunk away before a fold,
+     grown in after an unfold. The 9px the open bundle puts between head and
+     steps goes with them, as a margin, so it does not jump, and the caret
+     turns with them (it is a new caret after each render too, so CSS could
+     not turn it). Under prefers-reduced-motion it is the plain render it
+     always was. */
+  const FOLD_MS = 220;
+  let folding = null;           // the bundle mid-fold; a second click waits
+  function foldBundle(id, off) {
+    if (folding) return;
+    const calm = window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const boxOf = () =>
+      document.querySelector('.tk-bundle[data-bundle="' + id + '"]');
+    const opts = { duration: FOLD_MS,
+                   easing: 'cubic-bezier(.22, .61, .36, 1)' };  // --ease-out
+    const turn = (b, from, to) => {
+      const c = b && b.querySelector('.tk-bundle-hd .caret');
+      if (c && c.animate) {
+        c.animate([{ transform: 'rotate(' + from + 'deg)' },
+                   { transform: 'rotate(' + to + 'deg)' }], opts);
+      }
+    };
+    const was = boxOf();
+    const steps = was && was.querySelector('.tk-steps');
+    if (off) {
+      if (calm || !steps || !steps.animate) {
+        setFolded(id, true); render(); return;
+      }
+      folding = id;
+      steps.style.overflow = 'hidden';
+      turn(was, 90, 0);
+      const a = steps.animate([
+        { height: steps.offsetHeight + 'px', opacity: 1, marginTop: '0px' },
+        { height: '0px', opacity: 0, marginTop: '-9px' },
+      ], Object.assign({ fill: 'forwards' }, opts));
+      settle(a, () => { setFolded(id, true); render(); });
+      return;
+    }
+    setFolded(id, false);
+    render();
+    const now = boxOf();
+    const grown = now && now.querySelector('.tk-steps');
+    if (calm || !grown || !grown.animate) return;
+    folding = id;
+    grown.style.overflow = 'hidden';
+    turn(now, 0, 90);
+    const a = grown.animate([
+      { height: '0px', opacity: 0, marginTop: '-9px' },
+      { height: grown.offsetHeight + 'px', opacity: 1, marginTop: '0px' },
+    ], opts);
+    settle(a, () => { grown.style.overflow = ''; });
+  }
+
+  /* An animation's end, whichever comes first: the animation saying so, or
+     the time it should have taken. A background tab throttles animations
+     and a headless one may never tick them, and a fold that waits on an
+     event that never comes leaves the rail refusing every click after. */
+  function settle(anim, then) {
+    let done = false;
+    const end = () => {
+      if (done) return;
+      done = true; folding = null;
+      try { anim.finish(); } catch (e) { /* already over */ }
+      then();
+    };
+    anim.onfinish = anim.oncancel = end;
+    setTimeout(end, FOLD_MS + 80);
+  }
+
   function bundleCard(bundle) {
     const steps = bundle.steps;
     const here = steps.find(([id]) => id === q.tool);
@@ -415,6 +490,7 @@ BARRY.views.toolkit = (function () {
     const open = !folded.has(bundle.id);
     const box = el('div', {
       class: 'tk-bundle' + (on ? ' on' : '') + (open ? ' open' : ''),
+      'data-bundle': bundle.id,
     });
     /* The head is the control, so it is a button -- it was a div, and a div
        you have to click is one nothing can tab to and nothing can announce.
@@ -428,7 +504,7 @@ BARRY.views.toolkit = (function () {
       'aria-expanded': open ? 'true' : 'false',
       title: open ? 'Fold ' + bundle.name + ' away'
                   : 'Show the ' + steps.length + ' steps of ' + bundle.name,
-      onclick: () => { setFolded(bundle.id, open); render(); },
+      onclick: () => foldBundle(bundle.id, open),
     }, [
       el('span', { class: 'caret',
                    html: '<svg viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>' }),
@@ -957,14 +1033,17 @@ BARRY.views.toolkit = (function () {
     const open = curOpen();
 
     host.appendChild(el('div', { class: 'tk-head' }, [
-      el('div', {}, [
-        el('h2', { text: 'Event curation' }),
-        el('p', { class: 'sub',
-          text: open.length
-            ? 'What you have open. It stays here until you close it.'
-            : 'Start a set from a banked entry, or pick one up below. It '
-              + 'stays here until you close it.' }),
-      ]),
+      /* Step 2 of The Dentist, and titled with the name on the step button
+         you clicked to get here -- it said "Event curation" while the button
+         said "Checkup". The number is read from the bundle (stepOf). */
+      BARRY.ui.stepHeader({
+        title: 'Checkup',
+        step: BARRY.ui.stepOf('curate'),
+        blurb: 'Event curation. ' + (open.length
+          ? 'What you have open. It stays here until you close it.'
+          : 'Start a set from a banked entry, or pick one up below. It '
+            + 'stays here until you close it.'),
+      }),
       el('div', { class: 'spacer' }),
       open.length > 1 ? el('button', {
         class: 'btn ghost sm', text: 'Close all',
@@ -1039,10 +1118,16 @@ BARRY.views.toolkit = (function () {
 
      Kept separate from the curation sets themselves because it is a
      different kind of fact: a set is a record and is still true tomorrow,
-     presence is a claim about this minute. Ten seconds because a stale
-     "nobody is here" is worse than showing nothing -- it looks
-     authoritative, and somebody acts on it. */
-  const PRESENCE_POLL = 10000;
+     presence is a claim about this minute. A stale "nobody is here" is
+     worse than showing nothing -- it looks authoritative, and somebody acts
+     on it -- but the claim itself only changes when somebody beats, once a
+     minute (curate.js PRESENCE_BEAT), so asking every ten seconds bought
+     nothing the server knew.
+
+     Cost (constitution §11, rule 5): one request per poll at most, and the
+     server answers several askers from one read (presence.READ_TTL_S) --
+     ~120 an hour with ToolKit in front, none when hidden or elsewhere. */
+  const PRESENCE_POLL = 30000;
   let presence = { sessions: [], machine: null, ttl_s: 150 };
   let presenceTimer = null;
 
@@ -1050,7 +1135,7 @@ BARRY.views.toolkit = (function () {
     try {
       const res = await api('/api/presence');
       if (!res || !res.ok) return;
-      const before = JSON.stringify(presence.sessions || []);
+      const before = presenceSig(presence.sessions);
       presence = res;
       /* Only redraw when it actually changed, and only when the tool it is
          about is the one on screen. This runs every ten seconds for as long
@@ -1058,10 +1143,22 @@ BARRY.views.toolkit = (function () {
          Curation over StrataScope, or over Kilosort, on its own -- a jump to
          another module with nothing you did to explain it. */
       if (andRender && q.tool === 'curate'
-          && JSON.stringify(res.sessions || []) !== before) {
+          && presenceSig(res.sessions) !== before) {
         renderCuration();
       }
     } catch (e) { /* presence is a courtesy, never an interruption */ }
+  }
+
+  /* What a presence answer says, less how old each row is. `age_s` differs
+     on every read, so comparing whole answers redrew Curation every poll --
+     and each redraw remounted the tool feed, which fired a full read of its
+     own. Whether somebody is active, and where they are, is the news. */
+  function presenceSig(list) {
+    return JSON.stringify((list || []).map((r) => {
+      const o = Object.assign({}, r);
+      delete o.age_s;
+      return o;
+    }));
   }
 
   function startPresence() {
@@ -1730,30 +1827,22 @@ BARRY.views.toolkit = (function () {
                                    text: 'Which version to work from' }));
       const names = entry.label_names || {};
       const nameOf = (k) => names[k] || (k === 'unspecified' ? 'undecided' : k);
-      const vlist = el('div', { class: 'bm-list' });
-      for (const v of (entry.versions || [])) {
-        const mix = Object.keys(v.by_label || {})
+      /* The version tree (constitution §6e), chosen by id: the stored
+         number repeats when two machines both mint the next one, so
+         `ver.v === v.v` lit up two rows and sent an ambiguous number. */
+      body.appendChild(el('div', { class: 'ncs-vers' }, [BARRY.ui.versionTree({
+        versions: entry.versions || [],
+        idOf: (v) => (v.id != null ? v.id : 'v' + v.v),
+        value: ver ? (ver.id != null ? ver.id : 'v' + ver.v) : undefined,
+        disabled: (v) => (v.usable ? null : 'no snapshot kept — a set cannot '
+                                          + 'be built from it'),
+        state: (v) => (v.imported ? ['the detector'] : []),
+        notes: (v) => Object.keys(v.by_label || {})
           .sort((a, b) => v.by_label[b] - v.by_label[a])
-          .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  \u00b7  ');
-        vlist.appendChild(el('label', {
-          class: 'bm-row' + (ver && ver.v === v.v ? ' on' : '')
-               + (v.usable ? '' : ' off'),
-        }, [
-          el('input', { type: 'radio', name: 'ncsVer',
-            disabled: v.usable ? null : 'disabled',
-            checked: ver && ver.v === v.v ? 'checked' : null,
-            onchange: () => { ver = v; paint(); } }),
-          el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
-          v.imported ? el('span', { class: 'flagchip',
-                                    text: 'the detector' }) : null,
-          el('span', { class: 'mk-name', text: mix || (v.n || 0) + ' events' }),
-          el('span', { class: 'person-what',
-            text: (v.by || 'unknown')
-                + '  \u00b7  ' + (curWhen(v.at) || '')
-                + (v.usable ? '' : '  \u00b7  no snapshot kept') }),
-        ].filter(Boolean)));
-      }
-      body.appendChild(vlist);
+          .map((k) => nameOf(k) + ' ' + v.by_label[k]).join('  \u00b7  ')
+          || ((v.n || 0) + ' events'),
+        onpick: (v) => { ver = v; paint(); },
+      })]));
 
       if (ver) {
         const decided = Object.keys(ver.by_label || {})
@@ -1762,7 +1851,7 @@ BARRY.views.toolkit = (function () {
         body.appendChild(el('p', { class: 'confirm-msg',
           text: 'The set will hold ' + (ver.n || 0) + ' candidate(s)'
               + (decided ? ', ' + decided + ' of them already decided as of '
-                           + 'v' + (ver.name != null ? ver.name : ver.v) + '.'
+                           + BARRY.ui.versionLabel(ver) + '.'
                          : ', none decided \u2014 a fresh pass.') }));
         if (ver.note) {
           body.appendChild(el('p', { class: 'hint', text: '\u201c'
@@ -1782,21 +1871,25 @@ BARRY.views.toolkit = (function () {
           'This recording already has one \u2014 "' + (had.name || '')
           + '", ' + pr.specified + ' of ' + pr.total + ' decided'
           + (had.assignee ? ', assigned to ' + had.assignee : '')
-          + '. A recording has one set per kind, so starting from v' + ver.v
-          + ' replaces it. The decisions in it are still in the bank if they '
-          + 'were ever banked; anything never banked goes.',
-          'Replace it with v' + ver.v, true);
+          + '. A recording has one set per kind, so starting from '
+          + BARRY.ui.versionLabel(ver) + ' replaces it. The decisions in it '
+          + 'are still in the bank if they were ever banked; anything never '
+          + 'banked goes.',
+          'Replace it with ' + BARRY.ui.versionLabel(ver), true);
         if (!ok) return;
       }
       okBtn.disabled = 'disabled';
       try {
         const res = await apiPost('/api/curation/from-bank', {
-          gid, kind: entry.kind, entry: entry.id, version: ver.v,
+          gid, kind: entry.kind, entry: entry.id,
+          // By id where there is one (the route resolves a ref).
+          version: ver.id != null ? ver.id : ver.v,
           replace: true,
         });
         closeModal();
         const pr = res.progress || {};
-        toast('Started "' + (res.set || {}).name + '" from v' + ver.v
+        toast('Started "' + (res.set || {}).name + '" from '
+              + BARRY.ui.versionLabel(ver)
               + ': ' + pr.total + ' candidate(s), ' + pr.left + ' to decide.'
               + (res.replaced ? ' The previous set was replaced.' : ''),
               'ok', 8000);
@@ -1932,7 +2025,9 @@ BARRY.views.toolkit = (function () {
     try {
       res = await apiPost('/api/curation/' + encodeURIComponent(st.gid) + '/'
                           + encodeURIComponent(st.kind) + '/restore',
-                          { entry: pick.entry, version: pick.v });
+                          { entry: pick.entry,
+                            // By id: the number repeats (the route resolves a ref).
+                            version: (pick.row && pick.row.id != null) ? pick.row.id : pick.v });
     } catch (e) {
       toast('Could not work from v' + pick.name + ': '
             + (e && e.message || e), 'err', 9000);
@@ -2226,28 +2321,19 @@ BARRY.views.toolkit = (function () {
      Resolves to the full entry, or null if cancelled. */
 
 
+  /* Through Checkup's own banking, which is the shared bank dialog
+     (constitution §6e) with the mix and the history on it -- the same path
+     Spotter takes. This asked "Who is banking these?" in a prompt every
+     time, then banked without showing what it was about to write or which
+     version it would become. */
   async function bankSet(st) {
-    const who = await askPath('Who is banking these?', 'your name or email',
-                              BARRY.profile && BARRY.profile.who());
-    if (!who) return;
-    try {
-      const res = await apiPost(
-        '/api/curation/' + encodeURIComponent(st.gid) + '/'
-        + encodeURIComponent(st.kind) + '/bank', { added_by: who });
-      /* One entry for the whole set, with the mix in it. `x.label`
-         was left over from the era of one entry per category and the
-         route has never returned it, so this read
-         "Banked 1 entry: undefined (416)". */
-      const it = res.entries[0] || {};
-      const names = it.label_names || {};
-      const mix = Object.keys(it.by_label || {})
-        .sort((a, b) => it.by_label[b] - it.by_label[a])
-        .map((k) => (names[k] || k) + ' ' + it.by_label[k])
-        .join(' \u00b7 ');
-      toast('Banked as version ' + (it.version || 1) + ': '
-            + (it.n || 0) + ' events \u2014 ' + mix, 'ok', 8000);
-      BARRY.refreshSync();
-    } catch (e) { toast(e.message, 'err', 8000); }
+    if (!(BARRY.curate && BARRY.curate.bankAt)) return;
+    const pr = st.progress || {};
+    await BARRY.curate.bankAt({
+      gid: st.gid, kind: st.kind, name: st.name,
+      labels: st.labels || [],
+      progress: { by_label: pr.by_label || {}, left: pr.left || 0 },
+    });
   }
 
 
@@ -2684,12 +2770,13 @@ BARRY.views.toolkit = (function () {
     });
 
     host.appendChild(el('div', { class: 'tk-head' }, [
-      el('div', {}, [
-        el('h2', { text: 'Braid' }),
-        el('p', { class: 'sub',
-          text: 'Theta, resolved into the bands it is actually made of, and '
-              + 'phase-amplitude coupling for a window you choose.' }),
-      ]),
+      // A step of The Lookout; the number is read from the bundle.
+      BARRY.ui.stepHeader({
+        title: 'Braid',
+        step: BARRY.ui.stepOf('cfc'),
+        blurb: 'Theta, resolved into the bands it is actually made of, and '
+             + 'phase-amplitude coupling for a window you choose.',
+      }),
     ]));
 
     const card = el('div', { class: 'card' });

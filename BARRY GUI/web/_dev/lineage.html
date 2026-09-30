@@ -73,16 +73,20 @@ async function untilN(fn, tries = 250, gap = 100) {
 
   async function bankThrough(note) {
     bankBtn().click();
-    const got = await untilN(() => D.querySelector('.bank-dialog'), 120);
+    /* The shared bank dialog (ui.bankDialog) since Checkup moved onto it:
+       the modal holds it, the note is `.bank-dlg-note`, the title an h3.
+       `.bank-dialog` is still Checkup's own part of it -- the mix. */
+    const got = await untilN(() => D.querySelector('#bigModalBox .bank-dlg'), 120);
     if (got < 0) return null;
     await sleep(500);
-    const dlg = D.querySelector('.bank-dialog');
-    const box = dlg.querySelector('.ver-note-input');
+    const dlg = D.getElementById('bigModalBox');
+    const box = dlg.querySelector('.bank-dlg-note');
     box.value = note;
     box.dispatchEvent(new W.Event('input', { bubbles: true }));
     const go = Array.from(dlg.querySelectorAll('.mf button'))
       .find((b) => /^Bank/.test(b.textContent));
-    const title = dlg.querySelector('h2').textContent;
+    const title = dlg.querySelector('h3').textContent
+                  + '  ' + (dlg.querySelector('.bank-dlg-line') || {}).textContent;
     go.click();
     await sleep(2200);
     return title;
@@ -119,7 +123,7 @@ async function untilN(fn, tries = 250, gap = 100) {
 
   const t2 = await bankThrough('second look: one call changed');
   check('the second bank offers a version number',
-        /version 2/i.test(t2 || ''), t2);
+        /\bv2\b/.test(t2 || ''), t2);
   const shown = D.querySelectorAll('.bank-dialog').length;
   check('and the dialog closed after banking', shown === 0,
         shown + ' still open');
@@ -137,8 +141,10 @@ async function untilN(fn, tries = 250, gap = 100) {
   await untilN(() => D.querySelector('.ver-strip'), 120);
   await sleep(700);
 
-  const pips = () => Array.from(D.querySelectorAll('.ver-pip'));
-  say('note', '  lineage: ' + pips().map((p) => p.textContent).join(' '));
+  /* The lineage is the version tree now (constitution §6e); a row's name
+     is its data-v, without the "v". */
+  const pips = () => Array.from(D.querySelectorAll('.ver-strip .vtree-row'));
+  say('note', '  lineage: ' + pips().map((p) => 'v' + p.dataset.v).join(' '));
   /* At least the two this harness banked. Not exactly two: an entry
      legitimately carries version 0 -- the detector's own list, with nothing
      decided yet -- so v0, v1 and v2 is three pips and correct. Asserting
@@ -158,7 +164,8 @@ async function untilN(fn, tries = 250, gap = 100) {
      there is no version 0, and comparing the detector's list against a
      curated pass is a diff of every decision made -- 24 of them here,
      which is what "the one decision that changed" was measuring. */
-  const openedAt = pips().length - 1;
+  // The version tree puts the newest on top, where the chip strip put it last.
+  const openedAt = 0;
   pips()[openedAt].click();
   await untilN(() => D.querySelector('.ver-open'), 120);
   await sleep(800);

@@ -975,7 +975,7 @@ BARRY.sync = { git: null, root: null, index: null };
 
 BARRY.refreshSync = async function refreshSync() {
   let data;
-  try { data = await api('/api/sync/status'); } catch (e) { return; }
+  try { data = await api('/api/sync/status?head=1'); } catch (e) { return; }
   BARRY.sync = data;
   /* Source files written since this server started. The 404-based check
      cannot see this case: the route is still there, it just does something
@@ -1069,6 +1069,32 @@ function askForKey(c) {
 }
 
 
+/* 20 -> "20 s", 320 -> "5 min", 1800 -> "30 min". */
+function cloudPace(s) {
+  if (s < 90) return Math.round(s) + ' s';
+  return Math.round(s / 60) + ' min';
+}
+
+
+/* What this computer has asked Supabase for, from the server's own count
+   (cloud.meter) -- the free tier is priced in requests, so this is the
+   number that matters, and the one nothing showed. */
+function cloudBudget(c) {
+  const r = c.requests || {};
+  if (r.requests == null) return null;
+  const kb = Math.round((r.bytes || 0) / 1024);
+  const top = (r.by_caller || []).slice(0, 3)
+    .map((x) => x.key.replace(/^[^.]*\./, '') + ' ' + x.n).join(', ');
+  const hrs = (r.covers_s || 0) < (r.window_s || 3600) * 0.9
+    ? ' since Jarvis started' : ' in the last hour';
+  return el('div', { class: 'hint cloud-budget',
+    text: r.requests + ' request' + (r.requests === 1 ? '' : 's')
+        + ' to Supabase' + hrs + ' (' + kb + ' KB back)'
+        + (top ? ' — ' + top : '')
+        + (r.failed ? '; ' + r.failed + ' failed' : '') });
+}
+
+
 function cloudNote() {
   const box = el('div', { class: 'cloud-note' }, [
     el('div', { class: 'hint', text: 'Checking the shared copy…' }),
@@ -1121,9 +1147,14 @@ function cloudNote() {
       el('span', { class: 'dot' + (last.ok === false ? ' bad'
                                    : (last.ok ? ' ok' : '')) }),
       el('strong', { text: c.project || 'Supabase' }),
+      /* The pace it is actually on, and why -- it changes with who is
+         working (see _cloud_loop) -- rather than the configured floor. */
       el('span', { class: 'hint',
-        text: c.auto ? 'syncing every ' + c.interval + 's' : 'automatic sync '
-            + 'is off' }),
+        text: !c.auto ? 'automatic sync is off'
+          : (c.pull_interval_s
+            ? 'checking every ' + cloudPace(c.pull_interval_s)
+              + (c.pace ? ' — ' + c.pace : '')
+            : (c.pace || 'syncing')) }),
       el('div', { class: 'spacer' }),
       el('button', {
         class: 'btn ghost sm', text: last.running ? 'Syncing…' : 'Sync now',
@@ -1175,6 +1206,8 @@ function cloudNote() {
           + (last.pulled ? '  ·  brought back ' + last.pulled : '')
           + (last.downloaded ? '  ·  ' + last.downloaded + ' file(s) down'
              : '') }));
+    const budget = cloudBudget(c);
+    if (budget) box.appendChild(budget);
     if (last.error) {
       box.appendChild(el('pre', { class: 'cloud-err', text: last.error }));
     }
@@ -1357,9 +1390,13 @@ function showSync() {
 BARRY.notes = (function () {
   let data = null;
 
-  async function load() {
+  /* Two sizes of one answer. Boot asks only for what the chip shows --
+     `head=1` is about a hundred bytes -- because the full notes are 450 kB
+     and were arriving before the first screen had settled, to paint a chip.
+     `open` asks for the rest when somebody actually wants to read them. */
+  async function load(full) {
     try {
-      data = await api('/api/notes');
+      data = await api(full ? '/api/notes' : '/api/notes?head=1');
     } catch (e) {
       data = null;
     }
@@ -1388,7 +1425,12 @@ BARRY.notes = (function () {
   }
 
   function open() {
-    if (!data) { load().then((d) => { if (d) open(); }); return; }
+    // A failed read comes back `ok: false` with no entries, and has to reach
+    // the error toast below rather than doing nothing.
+    if (!data || (data.ok && !data.entries)) {
+      load(true).then((d) => { if (d && (d.entries || !d.ok)) open(); });
+      return;
+    }
     if (!data.ok) {
       toast(data.error || 'There are no patch notes to show.', 'err', 8000);
       return;
@@ -3731,3 +3773,56 @@ BARRY.init = async function init() {
     new Promise((r) => setTimeout(r, 1500)),
   ]).then(() => requestAnimationFrame(() => BARRY.boot.clear()));
 };
+
+/* ==========================================================================
+   Xplorefinder modes: one at a time, kept by a registry rather than a habit.
+
+   A mode -- Checkup, StrataScope, Spotter, Braid, the Arc's review -- takes
+   over the panes, the keyboard and the aid window. Two at once leaves two
+   toolbars stacked, two sets of key handlers fighting over the same presses,
+   and an aid window belonging to whichever got there first.
+
+   Each mode used to exit the others itself, by name, and none of them named
+   them all: Checkup left StrataScope and nothing else, StrataScope left
+   Checkup and nothing else, so entering Checkup with Spotter open left both
+   running. Five modes that each list the other four is twenty pairs kept in
+   step by hand, and the sixth breaks them all again.
+
+   So a mode registers once, at load, and its `enter` calls `leaveAllBut`
+   with its own name. Nobody has to know who else exists.
+   ========================================================================== */
+BARRY.modes = (function () {
+  const known = {};
+
+  function register(name, api) {
+    if (name && api) known[name] = api;
+  }
+
+  /* `active` is a getter on every mode, not a method -- calling it throws.
+     Read it inside a try: a mode that half-loaded must not stop another
+     from being entered. */
+  function isOn(api) {
+    try { return !!(api && api.active); } catch (e) { return false; }
+  }
+
+  function leaveAllBut(name) {
+    for (const other of Object.keys(known)) {
+      if (other === name) continue;
+      const api = known[other];
+      if (!isOn(api)) continue;
+      try {
+        api.exit();
+      } catch (err) {
+        // A mode that fails on its way out must not strand you outside the
+        // one you are entering.
+        reportClientError('modes.leave:' + other, err.message, err.stack);
+      }
+    }
+  }
+
+  function active() {
+    return Object.keys(known).filter((n) => isOn(known[n]));
+  }
+
+  return { register, leaveAllBut, active, names: () => Object.keys(known) };
+})();

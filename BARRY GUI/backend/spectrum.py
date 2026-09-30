@@ -44,12 +44,10 @@ import numpy as np
 
 from . import cfc, csc, specparam
 
-try:
-    from scipy import signal as _sig
-    HAVE_SCIPY = True
-except Exception:                                        # noqa: BLE001
-    _sig = None
-    HAVE_SCIPY = False
+# Loaded on first use, not at start-up; see lazyimp.py for why.
+from . import lazyimp  # noqa: E402
+HAVE_SCIPY = lazyimp.have("scipy")
+_sig = lazyimp.module("scipy.signal") if HAVE_SCIPY else None
 
 
 # How much of the recording to read at a time. Long enough that the

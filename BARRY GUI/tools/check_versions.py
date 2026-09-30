@@ -35,9 +35,20 @@ IGNORE = {"id", "id_derived"}
 
 
 def covers(big, small):
-    """Whether `big` carries every field `small` does, with the same value."""
-    return all(k in IGNORE or (k in big and big[k] == v)
-               for k, v in small.items())
+    """Whether `big` carries every field `small` does, with the same value.
+
+    One reading is allowed: a `from_v` that held a ref (a version id, not a
+    number) is read as the number of the version it names, and the stored
+    ref is kept beside it as `from_ref` -- so the original is still there,
+    and that is what is checked.
+    """
+    def same(k, v):
+        if k in IGNORE:
+            return True
+        if k == "from_v" and big.get("from_ref") == v:
+            return True
+        return k in big and big[k] == v
+    return all(same(k, v) for k, v in small.items())
 
 
 def snaps(vers):

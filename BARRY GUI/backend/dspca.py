@@ -72,13 +72,15 @@ import numpy as np
 
 from . import braces, csc, incisor, probes
 
-try:
-    from scipy.signal import convolve, find_peaks
-    from scipy.signal.windows import gaussian
-    HAVE_SCIPY = True
-except Exception:                                        # noqa: BLE001
+# Loaded on first use, not at start-up; see lazyimp.py for why.
+from . import lazyimp  # noqa: E402
+HAVE_SCIPY = lazyimp.have("scipy")
+if HAVE_SCIPY:
+    convolve, find_peaks = lazyimp.names("scipy.signal", "convolve",
+                                         "find_peaks")
+    gaussian = lazyimp.names("scipy.signal.windows", "gaussian")
+else:
     convolve = find_peaks = gaussian = None
-    HAVE_SCIPY = False
 
 # Guarded, and the guard is not decoration.
 #
@@ -88,13 +90,32 @@ except Exception:                                        # noqa: BLE001
 # panel, the whole thing -- with an ImportError nobody would connect to a
 # dentate spike. Missing sklearn has to be a sentence in one tool, not a
 # server that will not start.
-try:
-    from sklearn.cluster import KMeans
-    from sklearn.decomposition import PCA
-    HAVE_SKLEARN = True
-except Exception:                                        # noqa: BLE001
-    KMeans = PCA = None
-    HAVE_SKLEARN = False
+#
+# And it is imported on first USE rather than at boot. The guarded import that
+# was here cost half a second of every start-up -- sklearn alone, measured at
+# 481 ms -- for a step that most sessions never open. Whether it is installed
+# is still known at boot, cheaply, from the import system's index; the
+# library itself loads the first time X-ray fits anything.
+import importlib.util as _ilu
+
+HAVE_SKLEARN = _ilu.find_spec("sklearn") is not None
+
+
+def _sklearn(module, name):
+    """A constructor from sklearn, loaded on the first call to it."""
+    def make(*args, **kwargs):
+        try:
+            mod = __import__(module, fromlist=[name])
+        except Exception as exc:                         # noqa: BLE001
+            # Installed but broken is still one sentence in one tool.
+            raise RuntimeError(NO_SKLEARN) from exc
+        return getattr(mod, name)(*args, **kwargs)
+    make.__name__ = name
+    return make
+
+
+KMeans = _sklearn("sklearn.cluster", "KMeans") if HAVE_SKLEARN else None
+PCA = _sklearn("sklearn.decomposition", "PCA") if HAVE_SKLEARN else None
 
 NO_SKLEARN = (
     "This step needs scikit-learn, which is not installed on this machine. "

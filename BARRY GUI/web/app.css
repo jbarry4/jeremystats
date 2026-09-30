@@ -709,7 +709,19 @@
             font-size: var(--fs-12); min-width: 0; }
 .vacc-k { color: var(--text-3); white-space: nowrap; }
 .vacc-v { color: var(--text); font-family: var(--mono); font-size: var(--fs-11);
-          overflow: hidden; text-overflow: ellipsis; }
+          min-width: 0; overflow-wrap: anywhere; text-align: right; }
+/* The shared space and the account's jobs (vacc.js sharedBox, jobsBox).
+   A cluster path is long and is the answer, so it wraps; nothing here is
+   cut short. */
+.vacc-shared .vacc-grid { grid-template-columns: 1fr; }
+.vacc-shared .vacc-k { white-space: normal; overflow-wrap: anywhere; font-family: var(--mono); }
+.vacc-jobs { width: 100%; border-collapse: collapse; font-size: var(--fs-11); margin: 4px 0 10px; }
+.vacc-jobs th { text-align: left; color: var(--text-3); font-weight: 500; padding: 3px 6px;
+                border-bottom: 1px solid var(--line); }
+.vacc-jobs td { padding: 3px 6px; border-bottom: 1px solid var(--line-soft);
+                font-family: var(--mono); overflow-wrap: anywhere; }
+.vacc-jobs tr.on td { color: var(--accent); }
+.vacc-up .vacc-up-no { color: var(--text-3); }
 .vacc-state { font-size: var(--fs-125); margin: 2px 0 10px; }
 /* The sign-in form. A label above its field rather than beside it, because
    "NetID" and "Password" are short and the fields are not, and a two-column
@@ -2306,6 +2318,9 @@ body.strip-resizing canvas { pointer-events: none; }
 .mouse-row {
   display: grid; grid-template-columns: 62px 1fr;
   gap: 4px 10px; align-items: start; margin-bottom: 6px;
+  /* Laid out only near the viewport; the height it stands in with is set
+     per row by renderTree (sessions.js). */
+  content-visibility: auto;
 }
 .mouse-label {
   font-family: var(--mono); font-size: var(--fs-11); color: var(--text-2);
@@ -4033,20 +4048,7 @@ select {
   border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
 }
 /* The lineage, as something to move around in. */
-.ver-strip {
-  display: flex; flex-wrap: wrap; gap: var(--sp-4); margin: 4px 0 8px;
-}
-.ver-pip {
-  font: inherit; font-family: var(--mono); font-size: var(--fs-10);
-  padding: 2px 8px; border-radius: var(--r-pill); cursor: pointer;
-  background: var(--bg); color: var(--text-2);
-  border: 1px solid var(--line);
-}
-.ver-pip:hover { background: var(--bg-hover); color: var(--text); }
-.ver-pip.last { border-color: var(--accent); color: var(--accent); }
-.ver-pip.on {
-  background: var(--accent); border-color: var(--accent); color: var(--bg);
-}
+.ver-strip { margin: 4px 0 8px; }
 .ver-open {
   margin-top: 7px; padding: 7px 9px; border-radius: var(--radius-sm);
   background: var(--bg-3); border: 1px solid var(--line-soft);
@@ -4690,6 +4692,9 @@ button.tag:hover { filter: brightness(1.25); }
 .tk-fields .hint { grid-column: 1 / -1; font-size: var(--fs-11); margin: 0; }
 .tk-result { display: flex; flex-direction: column; gap: var(--sp-12); min-width: 0; }
 .tk-head { display: flex; align-items: flex-end; gap: var(--sp-12); }
+/* A step's header inside the ToolKit head row, beside its action buttons:
+   it takes the free width and wraps, so the buttons keep their place. */
+.tk-head > .step-head { flex: 1 1 auto; min-width: 0; padding: 0; }
 .tk-head h2 { margin: 0; font-size: var(--fs-15); }
 .tk-head .sub { margin: 2px 0 0; font-size: var(--fs-115); color: var(--text-2); }
 .tk-head .spacer { flex: 1; }
@@ -8494,7 +8499,8 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
    else. Every selector here stays inside .pn-*, for the reason given in the
    Panorama block above.
    ========================================================================== */
-.pn-modes { display: flex; gap: var(--sp-6); flex-wrap: wrap; margin-bottom: 10px; }
+.pn-modes { display: flex; gap: var(--sp-6) var(--sp-12); flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+.pn-modes > .hint { margin: 0; }
 .pn-sets { display: flex; flex-direction: column; gap: var(--sp-6); margin-top: 8px; }
 .pn-set {
   display: grid; grid-template-columns: minmax(0, 1fr) auto;
@@ -10564,12 +10570,7 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 /* A version nobody has to scroll for. Eight is the worst real history in
    this archive and they fit; past that it scrolls rather than pushing the
    button that runs the thing off the bottom of the card. */
-.br-vers.bm-list.ver-pick-list { max-height: min(38vh, 330px); }
-.br-vers .ver-n {
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-}
-.br-vers .bm-row.off .ver-n { color: var(--text-3); }
+.br-vers { max-height: min(38vh, 330px); overflow-y: auto; }
 /* ==========================================================================
    Braces -- waiting, and what a proposal would do
    ========================================================================== */
@@ -11811,3 +11812,80 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
 .hz-set .ui-field + .ui-field { margin-top: var(--sp-12); }
 .hz-run .hint.bad, .hz-save .hint.bad { color: var(--err); }
 .hz-wait .hz-preview { margin-top: var(--sp-8); }
+
+/* ==========================================================================
+   Round 2 components (ui.js): run bar, recording picker, version tree,
+   bank dialog. Constitution §6d and §6e.
+   ========================================================================== */
+
+/* The run bar: Where and How many, then the cost and the primary. */
+.run-bar {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-8) var(--sp-16);
+}
+.run-bar .ui-field.inline { flex: none; }
+.run-bar-go {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8);
+  flex: 1 1 260px; min-width: 0;
+}
+.run-bar-go .spacer { flex: 1; }
+.run-bar-go .hint { margin: 0; }
+.run-bar-why { color: var(--warn); }
+
+/* Choosing a recording. */
+.pick-rec .pick-rec-slot { min-width: 0; }
+.pick-rec .pick-rec-why { color: var(--warn); margin: var(--sp-4) 0 0; }
+.pick-rec .pick-rec-empty { margin: var(--sp-4) 0 0; }
+.pick-rec .pick-rec-all { margin-top: var(--sp-4); }
+
+/* The version tree. The graph is drawn in the gutter over the rows, from
+   where the rows actually are (versionTree measures them). */
+.vtree {
+  position: relative; display: flex; flex-direction: column; gap: 1px;
+}
+.vtree-g { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.vtree-row {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 2px var(--sp-10);
+  padding: 5px 8px 5px calc(var(--vt-gutter, 22px) + 4px);
+  min-height: 28px; width: 100%;
+  border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-2); font: inherit;
+  font-size: var(--fs-12); text-align: left; cursor: pointer;
+}
+.vtree-row:hover { background: var(--bg-hover); }
+/* A history to read, not a choice: no hover, no pointer. */
+.vtree.ro .vtree-row { cursor: default; }
+.vtree.ro .vtree-row:hover { background: transparent; }
+.vtree-row.on { border-color: var(--accent-line); background: var(--accent-soft); color: var(--text); }
+.vtree-row.off { cursor: default; opacity: 0.55; }
+.vtree-row.off:hover { background: transparent; }
+.vtree-n { font-family: var(--mono); font-size: var(--fs-12); color: var(--text); min-width: 4ch; }
+.vtree-who { color: var(--text-2); }
+.vtree-when, .vtree-count { font-family: var(--mono); font-size: var(--fs-11); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.vtree-state { font-size: var(--fs-11); color: var(--accent); }
+.vtree-why { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-3); }
+.vtree-note { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-2); }
+.vtree-line { flex-basis: 100%; font-size: var(--fs-11); color: var(--text-3); }
+.vtree-row.on .vtree-line { color: var(--text-2); }
+/* The "as they are now" row: a choice with no node, so no gutter mark. */
+.vtree-lead .vtree-n { font-family: inherit; }
+.vt-edge { stroke-width: 1.6; fill: none; }
+.vt-node { stroke-width: 1.6; fill: var(--bg); }
+.vt-node.on { fill: currentColor; }
+.vt-node.off { stroke-dasharray: 2 2; }
+.vt-l0 { stroke: var(--c1); color: var(--c1); }
+.vt-l1 { stroke: var(--c2); color: var(--c2); }
+.vt-l2 { stroke: var(--c3); color: var(--c3); }
+.vt-l3 { stroke: var(--c4); color: var(--c4); }
+.vt-l4 { stroke: var(--c5); color: var(--c5); }
+
+/* The bank dialog. */
+.bank-dlg { display: flex; flex-direction: column; gap: var(--sp-12); }
+.bank-dlg-what { margin: 0; color: var(--text); }
+.bank-dlg-name, .bank-dlg-note { width: 100%; }
+.bank-dlg-entry { color: var(--text); font-weight: 600; }
+.bank-dlg-line {
+  margin: 0; font-family: var(--mono); font-size: var(--fs-12); color: var(--accent);
+}
+.bank-dlg-nowho { color: var(--warn); }

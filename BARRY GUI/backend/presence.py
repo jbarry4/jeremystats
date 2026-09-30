@@ -32,10 +32,18 @@ from . import shards
 TABLE = "curation_presence"
 
 # How long a session stays "present" after its last heartbeat. Comfortably
-# more than the client's beat (see PRESENCE_BEAT in curate.js) so one dropped
-# request does not make somebody vanish mid-sentence, and short enough that a
-# closed laptop stops holding a set within a coffee break.
-TTL_S = 150
+# more than the client's beat (see PRESENCE_BEAT in curate.js, 60 s) so one
+# dropped request does not make somebody vanish mid-sentence, and short
+# enough that a closed laptop stops holding a set within a coffee break.
+# Three beats: the beat was every 20 s against 150 here, and each beat cost
+# three requests; it is now one a minute costing two.
+TTL_S = 180
+
+# How long one read of the table answers every question asked of it. The
+# workbench poll, a beat's "who else is here" and a second window all ask
+# within seconds of each other, and presence does not change faster than a
+# beat -- so they share one read (constitution §11, rule 9).
+READ_TTL_S = 10
 
 # Anything older than this is not worth reading or keeping.
 STALE_S = 24 * 3600
@@ -98,6 +106,26 @@ class Presence(object):
         self.cloud = cloud
         self.store = store
         self._last_sweep = 0.0
+        # The last read of the table and when it was made. Raw rows: ages
+        # are worked out on every call, so a cached row still ages.
+        self._rows = None
+        self._rows_at = 0.0
+
+    def _forget(self):
+        self._rows = None
+        self._rows_at = 0.0
+
+    def _remember(self, row):
+        """Put this machine's own row into the cached read, so the answer
+        to "who is here" includes what was just written without reading the
+        table back to find it (constitution §11, rule 8)."""
+        if self._rows is None or not row:
+            return
+        key = (row.get("gid"), row.get("kind"), row.get("machine"))
+        kept = [r for r in self._rows
+                if (r.get("gid"), r.get("kind"), r.get("machine")) != key]
+        kept.append(dict(row))
+        self._rows = kept
 
     # -- identity ---------------------------------------------------------
     def machine(self):
@@ -165,7 +193,13 @@ class Presence(object):
             row["yielded_to"] = None
             row["yielded_at"] = None
         try:
-            self.cloud.upsert(TABLE, [row], on_conflict="gid,kind,machine")
+            # The row comes back as the database now holds it, which is the
+            # whole of "has somebody taken this set off me": `take` marks
+            # this very row. So that question costs nothing extra.
+            got = self.cloud.upsert_returning(
+                TABLE, row, on_conflict="gid,kind,machine")
+            row = dict(row, **(got or {}))
+            self._remember(row)
             return row
         except Exception:                                # noqa: BLE001
             # A heartbeat that does not arrive is not an error worth showing
@@ -181,6 +215,7 @@ class Presence(object):
         """
         if not self.cloud or not self.cloud.configured or not gid:
             return False
+        self._forget()
         try:
             self.cloud.delete(TABLE, "gid=eq.%s&kind=eq.%s&machine=eq.%s"
                               % (gid, kind or "ds", self.machine()))
@@ -199,6 +234,7 @@ class Presence(object):
         if not self.cloud or not self.cloud.configured:
             return False
         who = self._person() or self.machine()
+        self._forget()
         try:
             self.cloud.patch_rows(
                 TABLE,
@@ -219,10 +255,15 @@ class Presence(object):
         """
         if not self.cloud or not self.cloud.configured:
             return []
-        try:
-            rows = self.cloud.select(TABLE, limit=500) or []
-        except Exception:                                # noqa: BLE001
-            return []
+        if (self._rows is not None
+                and time.time() - self._rows_at < READ_TTL_S):
+            rows = self._rows
+        else:
+            try:
+                rows = self.cloud.select(TABLE, limit=500) or []
+            except Exception:                            # noqa: BLE001
+                return []
+            self._rows, self._rows_at = rows, time.time()
 
         mine = self.machine()
         out = []

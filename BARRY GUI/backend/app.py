@@ -54,7 +54,8 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                pipeline, prewarm,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, recipe as recipemod, store, thumbs, toolresults,
-               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccio as vacciomod, vaccrun as vaccrunmod, video,
+               storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccio as vacciomod, vaccrun as vaccrunmod,
+               vaccupload as vaccuploadmod, video,
                warmcache)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -1108,6 +1109,10 @@ def api_sync_status():
     body["started_at"] = _STARTED_AT
     body["conflicts"] = conflict_audit()
     body["warm"] = WARM.marker("sync_status", how)
+    # The page polls this for a count and a git state. The full index is
+    # ~470 kB of it and nothing on screen reads more than its counts.
+    if request.args.get("head"):
+        body["index"] = {"counts": (body.get("index") or {}).get("counts")}
     return jsonify(body)
 
 
@@ -3568,7 +3573,9 @@ def api_incisor_batch():
 
         done = 0
         if tasks:
-            done, failed = _vacc_run_array(job, tasks, failed, concurrency)
+            done, failed = _vacc_run_array(job, tasks, failed, concurrency,
+                                           runlog=VACC_RUNLOG,
+                                           record={"tool": "incisor"})
         return {"n": len(members), "done": done, "failed": failed,
                 "skipped": skipped, "submitted": len(tasks)}
 
@@ -3612,6 +3619,10 @@ def _incisor_prepare(member, body, force):
         "gid": member["gid"], "label": member["label"],
         "sess": sess, "spec_local": spec, "report": rep, "key": key,
         "plan": plan,
+        # What a restarted process needs to file this answer: the session is
+        # rebuilt from spec_local's path, so the key is the only thing that
+        # is not already in the run record (see _resume_vacc_batches).
+        "resume": {"key": key},
         "spec_remote": dict(spec, path=member["remote"]),
         "tool_steps": [("ds read", int(plan["span_s"] * plan["n_channels"])),
                        ("ds detect", plan["n_channels"])],
@@ -3682,6 +3693,92 @@ def _vacc_run_array(job, tasks, failed, concurrency=None,
 
     return vaccrunmod.collect(job, arr, tasks, on_result, failed,
                               deadline_s=deadline_s)
+
+
+# Every VACC batch this machine submits is written down
+# (`GUI_logs/vacc_runs/<rid>.json`, machine-local and git-ignored), so a
+# restart re-attaches instead of orphaning it. Circuit keeps its own
+# (circuitrun.RUNLOG); the files share the folder and are told apart by tool.
+VACC_RUNLOG = vaccrunmod.RunLog(LOGS_DIR)
+_VACC_RESUMED = {"done": False, "jobs": []}
+
+
+def _file_batch_answer(tool, t, out):
+    """File one answer of a resumed batch the way the live batch does."""
+    key = (t.get("resume") or {}).get("key") or t.get("key")
+    spec = t.get("spec_local") or {}
+    sess, err = _session_for(spec.get("path"), None, True)
+    if err or not sess:
+        raise RuntimeError("could not open %s to file its answer"
+                           % spec.get("path"))
+    if not sess.get("gid"):
+        sess["gid"] = t.get("gid")
+    if tool == "doppler":
+        dopplermod.cache_put(key, out)
+        _doppler_remember(sess, spec, key, out)
+    else:
+        incisormod.cache_put(key, out)
+        _incisor_remember(sess, spec, key, out)
+
+
+def _resume_vacc_batches(ssh=None):
+    """Pick up every Incisor and Doppler batch a previous process submitted
+    and never finished filing. Once per process; returns the jobs adopted.
+
+    A restart used to orphan them: the polling thread died with the
+    process and the answers sat in scratch until the purge took them.
+    Now the answers are fetched and filed exactly as the live batch files
+    them, into the same vault, so they appear in the review queue.
+    """
+    if _VACC_RESUMED["done"]:
+        return _VACC_RESUMED["jobs"]
+    _VACC_RESUMED["done"] = True
+    cfg = vaccmod.load_config(LOGS_DIR)
+    if not cfg.get("netid"):
+        return []
+    out = []
+    for rec in VACC_RUNLOG.open_runs():
+        tool = rec.get("tool")
+        if tool not in ("incisor", "doppler") or rec.get("kind") != "array":
+            continue
+        if rec.get("job_id") and cfcmod.exists(rec["job_id"]):
+            continue                    # this process is driving it already
+        try:
+            arr = vaccrunmod.VaccArray.reattach(cfg, rec, ssh=ssh)
+            arr.runlog = VACC_RUNLOG
+            tasks = [dict(j) for j in (rec.get("jobs") or [])]
+            first = (tasks[0].get("spec_local") or {}).get("path") if tasks else ""
+            job = cfcmod.adopt(cfcmod.Job(
+                {"path": first or ""}, [("panorama pool", len(tasks))], 1.0,
+                "vacc:scratch", id=rec.get("job_id")))
+            job.log.append("picked up again after a restart: array %s"
+                           % arr.array_id)
+            job.members_init([{"id": j.get("gid"), "label": j.get("label")}
+                              for j in tasks])
+            taken = set(rec.get("taken") or [])
+
+            def on_result(i, t, got, tool=tool):
+                _file_batch_answer(tool, t, got)
+
+            def go(job=job, arr=arr, tasks=tasks, taken=taken, tool=tool):
+                try:
+                    done, failed = vaccrunmod.collect(job, arr, tasks,
+                                                      on_result, taken=taken)
+                    job.finish({"ok": True, "tool": tool, "resumed": True,
+                                "done": done, "failed": failed})
+                except Exception as exc:                 # noqa: BLE001
+                    job.fail(exc)
+            threading.Thread(target=go, daemon=True,
+                             name="barry-vacc-resume-" + job.id).start()
+            out.append(job)
+        except Exception as exc:                         # noqa: BLE001
+            try:
+                VACC_RUNLOG.close(rec["rid"], "failed",
+                                  "could not be picked up again: %s" % exc)
+            except Exception:                            # noqa: BLE001
+                pass
+    _VACC_RESUMED["jobs"] = out
+    return out
 
 
 class _MemberJob:
@@ -4315,6 +4412,10 @@ def _doppler_prepare(member, body, force):
         "gid": member["gid"], "label": member["label"],
         "sess": sess, "spec_local": spec, "report": rep, "key": key,
         "plan": plan,
+        # What a restarted process needs to file this answer: the session is
+        # rebuilt from spec_local's path, so the key is the only thing that
+        # is not already in the run record (see _resume_vacc_batches).
+        "resume": {"key": key},
         "spec_remote": dict(spec, path=member["remote"]),
         "tool_steps": [
             ("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
@@ -4453,7 +4554,9 @@ def api_doppler_batch():
         done = 0
         if tasks:
             done, failed = _vacc_run_array(job, tasks, failed, concurrency,
-                                           tool="doppler", adopt=adopt)
+                                           tool="doppler", adopt=adopt,
+                                           runlog=VACC_RUNLOG,
+                                           record={"tool": "doppler"})
         return {"n": len(members), "done": done, "failed": failed,
                 "skipped": skipped, "submitted": len(tasks)}
 
@@ -9220,7 +9323,16 @@ def api_outputs_file():
     full = os.path.abspath(os.path.join(d, rel.replace("/", os.sep)))
     if not full.startswith(d) or not os.path.isfile(full):
         return jsonify({"ok": False, "error": "No such output file."}), 404
-    return send_file(full, conditional=True)
+    # `thumb=1` is the Misc grid, and the same reasoning as /api/results/thumb:
+    # its cards drew full-size exports as postage stamps, 14.6 MB for one
+    # visit. Falls through to the original when no thumbnail can be made.
+    small = None
+    if request.args.get("thumb"):
+        small = thumbs.thumb_for(full, os.path.join(LOGS_DIR, ".cache", "thumbs"))
+    # No max-age: this URL is the file's name, and a figure re-exported under
+    # the same name must not show yesterday's picture. The ETag makes a
+    # repeat visit a 304 anyway.
+    return send_file(small or full, conditional=True)
 
 
 _GH_CACHE = {}
@@ -9955,19 +10067,16 @@ def api_curation_from_bank():
     if not sess:
         return jsonify({"ok": False, "error": "No such recording."}), 404
 
-    try:
-        want_v = int(body.get("version"))
-    except (TypeError, ValueError):
+    if body.get("version") is None or body.get("version") == "":
         return jsonify({"ok": False, "error": "Which version?"}), 400
-
-    versions = ent.get("versions") or []
-    ver = next((v for v in versions if v.get("v") == want_v), None)
-    if ver is None:
-        return jsonify({
-            "ok": False,
-            "error": "That entry has no version %s. It has %s."
-                     % (want_v, ", ".join("v%s" % v.get("v")
-                                          for v in versions) or "none")}), 404
+    # By REF: the version's id (what the page sends), or a number where it
+    # names one version. By number this took the first version carrying it,
+    # and two machines both mint the next number.
+    try:
+        ver = BANK._version_ref(ent, body.get("version"))
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    want_v = ver.get("v")
 
     vocab = curation.vocabulary(kind)
     snap = ver.get("snap")
@@ -10070,9 +10179,14 @@ def api_curation_for_recording(gid):
             continue
         vs = []
         newest = rec.get("version") or 0
-        for v, vname in versionsmod.label_rows(rec.get("versions") or []):
+        # The repaired history, so a version written before ids carries the
+        # one derived for it, and with its lineage: the page chooses by id
+        # (versions repeat numbers) and names what comes next from it.
+        for v, vname in versionsmod.label_rows(
+                BANK.repaired(rec).get("versions") or []):
             vs.append({
-                "v": v.get("v"), "name": vname,
+                "v": v.get("v"), "name": vname, "id": v.get("id"),
+                "from_v": v.get("from_v"), "from_id": v.get("from_id"),
                 "at": v.get("at"), "by": v.get("by"),
                 "n": v.get("n"), "note": v.get("note"),
                 "by_label": v.get("by_label") or {},
@@ -10193,21 +10307,30 @@ def api_presence_beat():
     gid, kind = body.get("gid"), body.get("kind")
     if not gid:
         return jsonify({"ok": False, "error": "Need a gid."}), 400
-    PRESENCE.beat(
+    # Two requests at most, and often one: the write, which hands back this
+    # machine's row as the database holds it, and one shared read of the
+    # table for everybody else (cached for PRESENCE.READ_TTL_S). This was
+    # three -- the write, then `for_set` and `taken_from_me` each reading
+    # the whole table again.
+    mine = PRESENCE.beat(
         gid, kind,
         first=bool(body.get("first")),
         doing=body.get("doing"),
         n_total=body.get("n_total"), n_decided=body.get("n_decided"),
         n_this_visit=body.get("n_this_visit"),
         at_index=body.get("at_index"), at_time_s=body.get("at_time_s"))
+    taken = None
+    if mine and mine.get("yielded_to"):
+        taken = {"by": mine.get("yielded_to"), "at": mine.get("yielded_at")}
     return jsonify({
         "ok": True,
         # Whoever else is in this set -- the reason to answer at all.
         "others": [r for r in PRESENCE.for_set(gid, kind, include_self=False)
                    if r.get("active")],
         # And whether this machine has had the set taken off it, which it
-        # cannot find out any other way: the taking happens elsewhere.
-        "taken": PRESENCE.taken_from_me(gid, kind),
+        # cannot find out any other way: the taking happens elsewhere, and
+        # marks this machine's own row -- which the write just returned.
+        "taken": taken,
     })
 
 
@@ -10281,6 +10404,8 @@ def api_presence_test_ghost():
                            on_conflict="gid,kind,machine")
     except Exception as exc:                             # noqa: BLE001
         return jsonify({"ok": False, "error": str(exc)[:200]}), 502
+    # Written behind PRESENCE's back, so its cached read is out of date.
+    PRESENCE._forget()
     return jsonify({"ok": True, "row": row})
 
 
@@ -10302,6 +10427,7 @@ def api_presence_test_clear():
         CLOUD.cloud.delete(presencemod.TABLE, "gid=eq.%s" % gid)
     except Exception as exc:                             # noqa: BLE001
         return jsonify({"ok": False, "error": str(exc)[:200]}), 502
+    PRESENCE._forget()
     return jsonify({"ok": True})
 
 
@@ -10328,8 +10454,17 @@ def api_notes():
     Read from CHANGELOG.md on every request, but only re-parsed when the
     file has actually changed -- so editing the notes shows up without a
     restart, which is the whole point of them living in a file.
+
+    `?head=1` is the version and the running commit and nothing else. The
+    rail's version chip is painted at boot and needs about a hundred bytes;
+    the full notes are 450 kB and were being sent at every start, before the
+    first screen had settled, to paint that chip. The notes come when the
+    chip is clicked.
     """
-    return jsonify(NOTES.read())
+    body = NOTES.read()
+    if request.args.get("head"):
+        body = {k: body.get(k) for k in ("ok", "version", "running")}
+    return jsonify(body)
 
 
 @app.route("/api/people")
@@ -11039,6 +11174,11 @@ def api_curation_banked(gid, kind):
         "split": [{"id": e["id"], "name": e.get("name"), "n": e.get("n"),
                    "label": e.get("curation_label")}
                   for e in found if e.get("curation_label") != "*"],
+        # Which stored version this pass was picked up from, so the dialog
+        # can say "continues v5 -> v6" or "branches from v3 -> v3.1" about
+        # the version the bank route will actually write. None means the
+        # route will take the newest, as `based_on_default` does.
+        "based_on": (CURATE.get(gid, kind) or {}).get("based_on"),
     })
 
 
@@ -11047,22 +11187,19 @@ def api_curation_restore(gid, kind):
     """Put a banked version's labels back onto the live set."""
     body = request.get_json(force=True, silent=True) or {}
     entry_id = body.get("entry")
-    try:
-        want_v = int(body.get("version"))
-    except (TypeError, ValueError):
+    if body.get("version") is None or body.get("version") == "":
         return jsonify({"ok": False, "error": "Which version?"}), 400
 
     ent = BANK.get(entry_id) if entry_id else None
     if not ent:
         return jsonify({"ok": False, "error": "No such bank entry."}), 404
-    ver = None
-    for v in ent.get("versions") or []:
-        if v.get("v") == want_v:
-            ver = v
-            break
-    if not ver:
-        return jsonify({"ok": False,
-                        "error": "That entry has no version %s." % want_v}), 404
+    # By REF (the id the page sends, or a number that names one version).
+    # By number this put back whichever version carrying it came first.
+    try:
+        ver = BANK._version_ref(ent, body.get("version"))
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    want_v = ver.get("v")
     snap = ver.get("snap")
     if not snap:
         return jsonify({
@@ -13941,13 +14078,22 @@ def api_session_retime():
     # would discard them. The curation set is a workbench with owners;
     # picking a version out of a dropdown is not a mandate to reset it.
     cur_v = (offer_versions or {}).get("current_version")
-    touch_set = bool(gid) and (from_version is None or from_version == cur_v)
+    # The page sends a version by id; compared as a number, an id never
+    # matched the current version, and the curation set was left out of a
+    # correction it should have had.
+    from_num = from_version
+    if from_version is not None and entry:
+        try:
+            from_num = (BANK.version_at(entry, from_version) or {}).get("v")
+        except eventbank.BankError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+    touch_set = bool(gid) and (from_version is None or from_num == cur_v)
     if gid and not touch_set:
         out["set_skipped"] = (
             "Reading v%s rather than the current v%s, so only the banked "
             "set is corrected. The curation set holds the decisions made "
             "since v%s and is left exactly as it is."
-            % (from_version, cur_v, from_version))
+            % (from_num, cur_v, from_num))
 
     try:
         # The curation set first on a dry run, because it is the one that
@@ -14826,6 +14972,8 @@ COLUMN_MIGRATIONS = {
     # And the third trick of the same kind: tool_results is a whole table,
     # and a column probe is how a machine finds out it was never created.
     "params_hash": "16_results_museum.sql",
+    # Which code each computer runs, sent with its heartbeat.
+    "jarvis_version": "19_request_budget.sql",
 }
 
 
@@ -14859,6 +15007,7 @@ COLUMN_TABLES = {
     "recorded_on": "results",
     "recipe": "runs",
     "params_hash": "tool_results",
+    "jarvis_version": "machines",
 }
 
 
@@ -15136,8 +15285,12 @@ def api_devices():
     newest = {}
     for table, key in (("activity", "actions"), ("errors", "errors")):
         try:
+            # Two columns, not every column: this only counts rows per
+            # machine, and every column of 600 error rows carries each
+            # message, detail and context along for nothing.
             rows = CLOUD.cloud.select(
-                table, query="order=at.desc", limit=600) or []
+                table, query="order=at.desc", limit=600,
+                columns="machine,at") or []
         except Exception:                                # noqa: BLE001
             rows = []
         for r in rows:
@@ -15246,11 +15399,16 @@ def api_devices():
             "first_seen": m.get("first_seen"),
             "last_seen": m.get("last_seen"),
             "age_s": seen,
-            # Online means "pushed recently". The sync loop pushes at least
-            # once a minute, so a machine quiet for five has either been
-            # closed or has stopped syncing -- and both of those are things
-            # somebody would want to know.
-            "online": seen is not None and seen <= 300,
+            # Online means "heard from recently". The machine row is a
+            # heartbeat every five minutes (cloudsync.HEARTBEAT_S) rather than
+            # a row on every push, so three missed beats -- a quarter of an
+            # hour -- is closed or no longer syncing, both of which somebody
+            # would want to know.
+            "online": (seen is not None
+                       and seen <= 3 * cloudsync.Sync.HEARTBEAT_S),
+            # Which code it runs (migration 19). A rig still on an old
+            # version is the one that undoes everybody else's savings.
+            "version": m.get("jarvis_version"),
             "is_me": m.get("id") == mine,
             "last_action_at": (got.get("actions") or {}).get("at"),
             "recent_actions": (got.get("actions") or {}).get("n") or 0,
@@ -16409,7 +16567,8 @@ def api_bank_entry(entry_id):
     rec = BANK.get(entry_id)
     if not rec:
         return jsonify({"ok": False, "error": "No such entry."}), 404
-    return jsonify({"ok": True, "entry": rec})
+    # Repaired on the way out; see EventBank.repaired.
+    return jsonify({"ok": True, "entry": BANK.repaired(rec)})
 
 
 @app.route("/api/bank/add", methods=["POST"])
@@ -16461,9 +16620,14 @@ def api_bank_update(entry_id):
                                           if k != "events"}})
 
 
-@app.route("/api/bank/<entry_id>/version/<int:v>", methods=["POST"])
+@app.route("/api/bank/<entry_id>/version/<v>", methods=["POST"])
 def api_bank_version(entry_id, v):
-    """Edit, archive or delete one version of an entry's history."""
+    """Edit, archive or delete one version of an entry's history.
+
+    `v` is a version REF: its id (what the page sends), or a number where
+    the number names one version -- the bank refuses a number two machines
+    both minted rather than guessing which was meant.
+    """
     body = request.get_json(force=True, silent=True) or {}
     action = (body.get("action") or "edit").strip()
     undo = None
@@ -17070,10 +17234,50 @@ FILES_EVERY = 300        # figures and screenshots, which are big and rare
 PULL_MAX = 320           # five and a bit minutes, the ceiling when idle
 PULL_GROWTH = 2.0        # doubling, so it reaches the ceiling in four
 
+# Somebody is working here but nothing is arriving from anywhere else. A
+# pull every 20 seconds exists so two people in the same set see each other;
+# one person alone gains nothing from it, and it was the rate a machine sat
+# at all day because every click reset it (constitution §11, leak 1). The
+# floor comes back the moment another machine's change does.
+PULL_SOLO = 60
+
+# Nobody is looking. Every poller in the page stops when the window is
+# hidden, so a server that has heard nothing from a browser for ten minutes
+# has nobody in front of it -- a rig left on overnight, a laptop lid shut.
+# The pull then backs off to half an hour, and the first request from a
+# browser brings it straight back.
+AWAY_AFTER = 600
+PULL_AWAY = 1800
+
 # When a write happened, so a push can follow it promptly. Set by the
 # after_request hook rather than by each route: there are about ninety routes
 # that write and one place they all pass through.
 _push_wanted = [0.0]
+# When the person at this machine last did something (a write they caused;
+# not a timer). Holds the pull at PULL_SOLO rather than letting it back off.
+_user_active = [0.0]
+# When a browser last asked this server anything at all.
+_ui_seen = [time.time()]
+# The pull interval the loop is on, and why -- shown in the Cloud panel so
+# "why is it pulling so often" has an answer on screen.
+_cloud_pace = {"pull_s": PULL_EVERY, "why": "starting"}
+
+# Writes that change nothing another machine reads, so they are no reason to
+# push NOW (constitution §11, rule 4). They still travel -- activity, errors
+# and preferences go with the next scheduled push, a minute at most. Presence
+# is written straight to the cloud by its own route and has nothing local to
+# push at all.
+_NOT_SHARED_WRITES = (
+    "/api/presence/",
+    "/api/activity",
+    "/api/errors/client",
+    "/api/errors/context",
+    "/api/errors/bundle",
+    "/api/prefs",
+)
+# Written by a timer rather than by somebody doing something, so they say
+# nothing about whether anybody is working.
+_TIMER_WRITES = ("/api/presence/",)
 
 
 def cloud_touch():
@@ -17117,9 +17321,17 @@ def _cloud_loop():
     losing the race locally means the next pull just undoes your screen.
     """
     time.sleep(8)           # let the app finish starting
+    if not _cloud_loop_lock():
+        # A second Jarvis on this computer, against the same GUI_logs. It
+        # works normally; it just does not sync, because two loops pushing
+        # the same records is twice the requests for the same result.
+        _cloud_pace.update(pull_s=None,
+                           why="another Jarvis on this computer is syncing")
+        return
     next_pull = next_push = next_files = 0.0
     retry_at = 0.0
     idle_pull = float(PULL_EVERY)   # grows while nothing is happening
+    away = False
     while True:
         try:
             cfg = CLOUD.cloud.reload()
@@ -17132,6 +17344,14 @@ def _cloud_loop():
             if now < retry_at:
                 time.sleep(min(5, retry_at - now))
                 continue
+            base = max(5, int(cfg.get("interval") or PULL_EVERY))
+
+            # Somebody came back to a machine that had been left alone:
+            # catch up now, not at the end of a half-hour wait.
+            if away and now - _ui_seen[0] < AWAY_AFTER:
+                away = False
+                idle_pull = float(base)
+                next_pull = min(next_pull, now)
 
             # A write since the last push brings the next one forward.
             wrote = _push_wanted[0]
@@ -17143,23 +17363,36 @@ def _cloud_loop():
             if due_pull or due_push or due_files:
                 if due_push:
                     _push_wanted[0] = 0.0
-                before = dict(_cloud_last.get("applied") or {})
                 cloud_sync_once(pull=due_pull, push=due_push,
                                 files=due_files)
-                base = max(5, int(cfg.get("interval") or PULL_EVERY))
                 if due_pull:
-                    # Did that cycle find anything? A local write counts as
-                    # well: somebody typing here is the best available
-                    # evidence that somebody is also working elsewhere.
-                    got = _cloud_last.get("applied") or {}
-                    moved = any(v for k, v in got.items()
-                                if not str(k).startswith("_"))
-                    if moved or wrote or got != before:
-                        idle_pull = base
+                    # How soon to ask again, by what is going on.
+                    #
+                    # This used to drop to the 20 s floor on any local
+                    # write -- every presence beat and every 4 s activity
+                    # flush counted -- so a machine with a set open never
+                    # backed off at all. And the "did anything arrive"
+                    # half read a field nothing ever set, so it never
+                    # fired. Now the floor is for the case it exists for:
+                    # somebody else's work actually arriving.
+                    t = time.time()
+                    arrived = bool(_cloud_last.get("ok")) and (
+                        _cloud_last.get("pulled") or 0) > 0
+                    working = t - _user_active[0] < 300
+                    if arrived:
+                        idle_pull = float(base)
+                        why = "a change arrived from another machine"
+                    elif working:
+                        idle_pull = float(max(base, PULL_SOLO))
+                        why = "somebody is working here"
                     else:
-                        idle_pull = min(PULL_MAX,
+                        away = t - _ui_seen[0] >= AWAY_AFTER
+                        ceiling = PULL_AWAY if away else PULL_MAX
+                        idle_pull = min(ceiling,
                                         max(base, idle_pull * PULL_GROWTH))
-                    next_pull = time.time() + idle_pull
+                        why = "nobody is looking" if away else "quiet"
+                    next_pull = t + idle_pull
+                    _cloud_pace.update(pull_s=int(idle_pull), why=why)
                 if due_push:
                     next_push = time.time() + max(base, PUSH_EVERY)
                 if due_files:
@@ -17177,28 +17410,90 @@ def _cloud_loop():
         time.sleep(1)
 
 
-if CLOUD.cloud.configured and CLOUD.cloud.cfg.get("auto"):
+_CLOUD_LOOP_LOCK = []
+
+
+def _cloud_loop_lock():
+    """Be the only sync loop on this computer, or say so.
+
+    start.py takes the next free port when 8733 is busy, so a second
+    double-click on "Wake up Jarvis" is a second full server -- and it used
+    to be a second sync loop too, pushing and pulling the same GUI_logs.
+    An OS lock on a file beside them settles which one syncs; it is released
+    by the operating system when that process ends, however it ends, so a
+    crash never strands it.
+    """
+    path = os.path.join(CLOUD.cloud.logs_dir, ".cache", "cloud_loop.lock")
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        fh = open(path, "a+")
+        try:
+            if os.name == "nt":
+                import msvcrt
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            fh.close()
+            return False
+        _CLOUD_LOOP_LOCK.append(fh)      # held for the life of the process
+        return True
+    except OSError:
+        # Cannot even make the file: sync anyway rather than not at all.
+        return True
+
+
+# Only the app itself syncs in the background. start.py says so by setting
+# Jarvis_CLOUD_SYNC=on before importing this module; the harness runner and
+# the ~25 tools that import it for its routes do not, and each of them used
+# to start a production sync loop of its own for as long as it ran -- the
+# harness pushing thousands of test writes into the lab's database, which is
+# how `harness@test` came to be on everybody's roster. A tool that does want
+# the loop sets the variable itself.
+if (CLOUD.cloud.configured and CLOUD.cloud.cfg.get("auto")
+        and os.environ.get("Jarvis_CLOUD_SYNC", "").lower() in
+        ("1", "on", "true", "yes")):
     threading.Thread(target=_cloud_loop, daemon=True,
                      name="barry-cloud-sync").start()
+else:
+    _cloud_pace.update(pull_s=None, why=(
+        "background sync is off in this process (only start.py turns it "
+        "on); Sync now still works"))
 
 
 @app.after_request
 def _note_local_write(resp):
-    """Any successful write means there is something worth pushing.
+    """What this request says about pushing, and about who is here.
 
     Here rather than in each route: there are about ninety that write, and
-    one place they all pass through. GETs are excluded, and so are failures
-    -- a rejected request changed nothing.
+    one place they all pass through. Three separate facts come out of it:
+
+    - a browser asked something -- somebody is looking (any /api/ request);
+    - the person did something -- a successful write that no timer sent;
+    - there is shared data to push soon -- a write another machine reads.
+
+    These used to be one fact. Every write, presence beats and 4 s activity
+    flushes included, scheduled a push six seconds later and reset the pull
+    backoff, so a machine with a set open pushed and pulled every twenty
+    seconds all day (constitution §11, leak 1).
     """
     try:
+        path = request.path
+        if path.startswith("/api/"):
+            _ui_seen[0] = time.time()
         if (request.method in ("POST", "PUT", "PATCH", "DELETE")
                 and resp.status_code < 400
-                and request.path.startswith("/api/")
+                and path.startswith("/api/")
                 # Not the sync routes themselves, or a manual sync would
                 # schedule another one on its way out.
-                and not request.path.startswith("/api/cloud/")
-                and not request.path.startswith("/api/sync/")):
-            cloud_touch()
+                and not path.startswith("/api/cloud/")
+                and not path.startswith("/api/sync/")):
+            if not path.startswith(_TIMER_WRITES):
+                _user_active[0] = time.time()
+            if not path.startswith(_NOT_SHARED_WRITES):
+                cloud_touch()
     except Exception:                                # noqa: BLE001
         pass
     return resp
@@ -17263,10 +17558,69 @@ threading.Thread(target=_seed_demo, daemon=True, name="barry-demo-seed").start()
 threading.Thread(target=vaccmod.loop, daemon=True, name="barry-vacc").start()
 
 
+def _resume_later():
+    """Re-attach to the batches a previous process left running, a little
+    after start-up so it is never on the path to the first screen. Costs
+    nothing when there are none: the run records are local files."""
+    time.sleep(20)
+    try:
+        _resume_vacc_batches()
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("vacc.resume", exc, None, {})
+
+
+threading.Thread(target=_resume_later, daemon=True,
+                 name="barry-vacc-resume").start()
+
+
+def _vacc_status_marked():
+    """`vacc.status()`, with each job the cluster lists marked by whether
+    Jarvis on this machine is following it -- a run record in
+    GUI_logs/vacc_runs, which is what lets a restart pick it up again.
+
+    A job named after a run id with no record here is Jarvis's but not this
+    machine's (another clone, or a record lost); one with neither is the
+    person's own work. Both are shown: the health panel is about the
+    account, not only about what this process started.
+    """
+    st = vaccmod.status()
+    try:
+        recs = VACC_RUNLOG.open_runs()
+    except Exception:                                    # noqa: BLE001
+        recs = []
+    by_id = {}
+    for r in recs:
+        for k in ("array_id", "slurm_id", "rid"):
+            if r.get(k):
+                by_id[str(r[k])] = r
+    seen = set()
+    for j in st.get("jobs") or []:
+        base = str(j.get("id") or "").split("_")[0]
+        rec = by_id.get(base) or by_id.get(str(j.get("name") or ""))
+        j["followed"] = bool(rec)
+        j["tool"] = (rec or {}).get("tool")
+        name = str(j.get("name") or "")
+        # A Jarvis job is named after its run id: twelve hex digits.
+        j["jarvis"] = bool(rec) or (
+            len(name) == 12 and all(c in "0123456789abcdef" for c in name))
+        if rec:
+            seen.add(rec.get("rid"))
+    # Runs this machine is waiting on that the cluster no longer lists:
+    # finished and not yet filed, or lost. Said, because either way somebody
+    # is waiting on an answer.
+    st["waiting"] = [{"rid": r.get("rid"), "tool": r.get("tool"),
+                      "status": r.get("status"),
+                      "id": r.get("array_id") or r.get("slurm_id"),
+                      "submitted_at": r.get("submitted_at")}
+                     for r in recs if r.get("rid") not in seen]
+    st["resumed"] = len(_VACC_RESUMED.get("jobs") or [])
+    return st
+
+
 @app.route("/api/vacc/status")
 def api_vacc_status():
     """How the cluster is, from the cache. Never connects."""
-    return jsonify(vaccmod.status())
+    return jsonify(_vacc_status_marked())
 
 
 @app.route("/api/vacc/check", methods=["POST"])
@@ -17281,7 +17635,7 @@ def api_vacc_check():
         vaccmod.refresh(force=True)
     except Exception as exc:                             # noqa: BLE001
         return fail("vacc/check", exc, 400)
-    return jsonify(vaccmod.status())
+    return jsonify(_vacc_status_marked())
 
 
 def _match_index():
@@ -17381,17 +17735,32 @@ def _vacc_staged(force=False, wait=True):
     has 84 recordings you have never opened" is worth knowing.
     """
     cfg = vaccmod.load_config(LOGS_DIR)
-    root = cfg.get("scratch_root") or os.path.dirname(cfg.get("scratch") or "")
-    if not root:
+    roots = vaccmod.places(cfg)
+    if not roots:
+        root = os.path.dirname(cfg.get("scratch") or "")
+        roots = [root] if root else []
+    if not roots:
         return {}, []
-    if not wait and not vaccmod.inventory_ready(cfg, root):
-        # Nothing in hand and the caller cannot afford to wait for a walk of
-        # the cluster's filesystem. Start one and answer with what is known
-        # now, which is nothing -- and nothing renders as `unknown`, which is
-        # the honest state for a question that has not been asked yet.
-        vaccmod.inventory_soon(cfg, root)
-        return {}, []
-    found = vaccmod.inventory_cached(cfg, root, force=force)
+    # Scratch, and every other cluster folder a scan was pointed at.
+    found, seen_paths = [], set()
+    for root in roots:
+        if not wait and not vaccmod.inventory_ready(cfg, root):
+            # Nothing in hand and the caller cannot afford to wait for a walk
+            # of the cluster's filesystem. Start one and answer with what is
+            # known now -- nothing renders as `unknown`, which is the honest
+            # state for a question that has not been asked yet.
+            vaccmod.inventory_soon(cfg, root)
+            continue
+        try:
+            rows = vaccmod.inventory_cached(cfg, root, force=force)
+        except Exception:                                # noqa: BLE001
+            if root == roots[0]:
+                raise
+            continue            # a scanned place that is gone is not fatal
+        for r in rows:
+            if r["path"] not in seen_paths:
+                seen_paths.add(r["path"])
+                found.append(r)
 
     by_key, by_loose = _match_index()
 
@@ -17769,10 +18138,17 @@ def api_vacc_scan():
     decision somebody should make deliberately and not a side effect of
     pressing Scan.
 
-    What it does add is a path, which is exactly what `paths` is for --
-    "every absolute path it has ever been opened from, on any machine".
-    A cluster path is one more mount of the same recording, and everything
-    downstream already knows how to show a path this computer cannot reach.
+    It writes NO path into the registry. It used to add each cluster path
+    to the recording's `paths`, which vaccio.py rules out: a cluster path
+    reads back as a place this machine can open, it cannot, and the
+    recording shows as `local-only`. Instead the folder is remembered as a
+    PLACE (vacc.places) that the cluster inventory walks alongside scratch,
+    so the recordings under it are known to be on the cluster by identity
+    -- found by looking, every time, the way scratch is.
+
+    `register` (minting a recording whose first sighting is the cluster)
+    is refused for the same reason: `REG.ingest` records the path it was
+    found at. Nothing in the page sends it.
 
     `?dry=1` says what it would do and writes nothing.
     """
@@ -17786,6 +18162,17 @@ def api_vacc_scan():
         return fail("vacc/scan", exc, 400, {"path": root})
 
     by_key, by_loose = _match_index()
+    if body.get("register"):
+        return jsonify({"ok": False, "error":
+            "Registering a recording from its cluster copy would write a "
+            "cluster path into the registry, which reads back as a place "
+            "this machine can open. Scan the drive it lives on here instead; "
+            "the cluster copy is then found by identity."}), 400
+    # Which recordings the cluster was already known to hold, before this.
+    try:
+        known_before = set((_vacc_staged(wait=False)[0] or {}).keys())
+    except Exception:                                    # noqa: BLE001
+        known_before = set()
 
     added, already, unmatched, ambiguous = [], [], [], []
     for row in found:
@@ -17818,48 +18205,27 @@ def api_vacc_scan():
             continue
         entry = {"gid": rec["gid"], "label": rec.get("label") or rec.get("key"),
                  "path": row["path"], "how": how}
-        if row["path"] in (rec.get("paths") or []):
+        if rec["gid"] in known_before:
             already.append(entry)
             continue
-        if not dry:
-            try:
-                REG.add_path(rec["gid"], row["path"])
-            except Exception as exc:                     # noqa: BLE001
-                entry["error"] = str(exc)[:160]
         added.append(entry)
 
-    # A recording whose first exposure is the cluster.
-    #
-    # Only the ones whose folder names an animal and a session. Registering
-    # goes through `REG.ingest` -- the same call the local drive scanner
-    # makes -- so a recording met on the cluster is registered by exactly the
-    # rules a recording met on a drive is, and the gid it gets is the one a
-    # local scan would later resolve to rather than a second record for the
-    # same thing.
+    # Remember the folder, so the inventory walks it from now on, and keep
+    # the listing just made so that walk is not repeated at once.
+    if not dry and root:
+        places_now = vaccmod.places(cfg)
+        if root.rstrip("/") not in [p.rstrip("/") for p in places_now]:
+            vaccmod.save_config(LOGS_DIR, places=sorted(set(
+                (cfg.get("places") or []) + [root.rstrip("/")])))
+            cfg = vaccmod.load_config(LOGS_DIR)
+    if not dry:
+        vaccmod.inventory_put(cfg, root or cfg.get("scratch_root"), found)
+
+    # Recordings whose first sighting is the cluster are REPORTED, with
+    # whether their folder names an animal and a session; they are not
+    # registered from here (see the docstring).
     registered = []
     to_register = [u for u in unmatched if u.get("can_register")]
-    if body.get("register") and to_register and not dry:
-        found_by_path = {r["path"]: r for r in found}
-        rows = []
-        for u in to_register:
-            row = found_by_path.get(u["path"]) or {}
-            rows.append({
-                "path": u["path"],
-                "identity": ids.identify(u["path"]),
-                "channels": row.get("n_channels"),
-            })
-        try:
-            new, seen = REG.ingest(rows, scan_id=None, root=root)
-            registered = [{"path": r["path"],
-                           "label": (r["identity"] or {}).get("label"),
-                           "n_channels": r.get("channels")} for r in rows]
-            unmatched = [u for u in unmatched if not u.get("can_register")]
-            STORE.record_activity([{
-                "action": "vacc.register",
-                "detail": {"root": root, "new": new, "seen": seen},
-            }])
-        except Exception as exc:                         # noqa: BLE001
-            return fail("vacc/register", exc, 400, {"root": root})
 
     if not dry and added:
         STORE.record_activity([{
@@ -17873,6 +18239,157 @@ def api_vacc_scan():
                     "unmatched": unmatched, "ambiguous": ambiguous,
                     "registered": registered,
                     "can_register": len(to_register)})
+
+
+# --------------------------------------------------------------------------
+# Uploading to Jarvis Data (constitution section 6d; backend/vaccupload.py)
+# --------------------------------------------------------------------------
+# What the far side is. The real cluster, or -- for tools/test_vaccupload.py
+# -- a folder on this machine, so the whole path is testable without one.
+UPLOAD_REMOTE = None
+
+
+def _upload_remote(cfg):
+    return UPLOAD_REMOTE(cfg) if UPLOAD_REMOTE else vaccuploadmod.SshRemote(cfg)
+
+
+def _upload_items(cfg, gids):
+    """Each recording asked for: where it is read from here, and where it
+    goes -- or why it cannot go."""
+    index = {r.get("gid"): r for r in (REG.all() or []) if r.get("gid")}
+    out = []
+    for gid in gids or []:
+        rec = index.get(gid)
+        item = {"gid": gid, "label": (rec or {}).get("label") or gid}
+        if not rec:
+            item["why"] = "not in the registry"
+            out.append(item)
+            continue
+        local = next((x for x in (rec.get("paths") or [])
+                      if isinstance(x, str) and os.path.isdir(x)), None)
+        if not local:
+            item["why"] = "none of its paths can be opened from this computer"
+            out.append(item)
+            continue
+        item["local"] = local
+        try:
+            item["dest"] = vaccuploadmod.destination(cfg, rec, local)
+        except vaccuploadmod.UploadError as exc:
+            item["why"] = str(exc)
+        out.append(item)
+    return out
+
+
+@app.route("/api/vacc/upload/plan", methods=["POST"])
+def api_vacc_upload_plan():
+    """What uploading these recordings would send, and where. Sends nothing.
+
+    One listing of each destination, so a file already there at the same
+    size is counted as skipped -- which is what makes re-uploading cheap.
+    """
+    body = request.get_json(force=True) or {}
+    cfg = vaccmod.load_config(LOGS_DIR)
+    if not cfg.get("configured"):
+        return jsonify({"ok": False, "error": "No VACC account is set up on "
+                        "this machine."}), 400
+    st = vaccmod.status()
+    shared = st.get("shared") or {}
+    try:
+        items = _upload_items(cfg, body.get("gids"))
+        remote = _upload_remote(cfg)
+        for it in items:
+            if it.get("why"):
+                continue
+            pl = vaccuploadmod.plan_one(remote, it["local"], it["dest"])
+            it.update(n_files=pl["n_files"], n_send=len(pl["send"]),
+                      n_skip=pl["skip"], bytes=pl["bytes"],
+                      total_bytes=pl["total_bytes"])
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/upload-plan", exc, 400)
+    ready = [i for i in items if not i.get("why")]
+    return jsonify({
+        "ok": True, "items": items,
+        "n": len(ready), "bytes": sum(i.get("bytes") or 0 for i in ready),
+        "files": sum(i.get("n_send") or 0 for i in ready),
+        "skipped": sum(i.get("n_skip") or 0 for i in ready),
+        "blocked": [i for i in items if i.get("why")],
+        "dest_root": (cfg.get("shared") or {}).get("data_path"),
+        "shared": shared,
+    })
+
+
+@app.route("/api/vacc/upload", methods=["POST"])
+def api_vacc_upload():
+    """Upload recordings to Jarvis Data, as one job with a row per recording.
+
+    Refused without `confirm: true`: this writes to the lab's shared space on
+    the cluster, so it only ever happens after somebody has seen the plan
+    and pressed the button that says how much will be sent. Nothing is
+    written into the registry; the uploaded copies are found by the
+    inventory, by identity, the next time it looks.
+    """
+    body = request.get_json(force=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "An upload goes to the lab's "
+                        "shared space on the cluster, so it has to be "
+                        "confirmed. Ask for the plan first."}), 400
+    cfg = vaccmod.load_config(LOGS_DIR)
+    if not cfg.get("configured"):
+        return jsonify({"ok": False, "error": "No VACC account is set up on "
+                        "this machine."}), 400
+    items = [i for i in _upload_items(cfg, body.get("gids")) if not i.get("why")]
+    if not items:
+        return jsonify({"ok": False, "error": "None of those recordings can "
+                        "be uploaded from this computer."}), 400
+    remote = _upload_remote(cfg)
+
+    def work(job):
+        job.members_init([{"id": i["gid"], "label": i["label"]} for i in items])
+        sent_n = skipped_n = failed = 0
+        sent_bytes = [0]
+        for it in items:
+            job.check()
+            gid = it["gid"]
+            try:
+                pl = vaccuploadmod.plan_one(remote, it["local"], it["dest"])
+                job.member(gid, status="running", step="uploading", done=0,
+                           of=len(pl["send"]))
+
+                def on_file(i, rel, gid=gid):
+                    job.member(gid, step=rel, done=i)
+
+                def on_bytes(n):
+                    sent_bytes[0] += n
+                got = vaccuploadmod.send(remote, it["local"], it["dest"],
+                                         plan=pl, on_bytes=on_bytes,
+                                         check=job.check, on_file=on_file)
+                sent_n += got["sent"]
+                skipped_n += got["skipped"]
+                job.member(gid, status="done", step=(
+                    "%d sent, %d already there" % (got["sent"], got["skipped"])),
+                    done=got["sent"], of=got["sent"])
+            except cfcmod.Canceled:
+                raise
+            except Exception as exc:                     # noqa: BLE001
+                failed += 1
+                job.member(gid, status="failed", step=None, error=str(exc)[:200])
+        # The copies are on the cluster now; the next look finds them.
+        try:
+            root = (cfg.get("shared") or {}).get("data_path")
+            if root:
+                vaccmod.inventory_soon(cfg, root)
+        except Exception:                                # noqa: BLE001
+            pass
+        return {"n": len(items), "files_sent": sent_n, "files_skipped": skipped_n,
+                "bytes_sent": sent_bytes[0], "failed": failed,
+                "dest_root": (cfg.get("shared") or {}).get("data_path")}
+
+    job = cfcmod.start({"path": items[0]["local"]}, [("panorama pool", len(items))],
+                       work, 1.0, "vacc:upload")
+    STORE.record_activity([{"action": "vacc.upload",
+                            "detail": {"n": len(items),
+                                       "gids": [i["gid"] for i in items][:50]}}])
+    return jsonify({"ok": True, "job": job.snapshot(), "n": len(items)})
 
 
 @app.route("/api/vacc/inventory")
@@ -18207,6 +18724,14 @@ def api_cloud_status():
         "machine": CLOUD.machine,
         "last": dict(_cloud_last),
         "state": CLOUD.cloud.state(),
+        # Every request this process has made to Supabase, counted at the
+        # one door they all pass through (cloud.meter). The hour is what the
+        # panel shows; the day is for comparing against the dashboard.
+        "requests": cloudmod.meter(int(request.args.get("window") or 3600)),
+        "requests_day": {k: v for k, v in cloudmod.meter(86400).items()
+                         if k in ("requests", "failed", "bytes", "covers_s")},
+        "pull_interval_s": _cloud_pace.get("pull_s"),
+        "pace": _cloud_pace.get("why"),
     }
     if request.args.get("ping") and CLOUD.cloud.configured:
         out["ping"] = CLOUD.cloud.ping()

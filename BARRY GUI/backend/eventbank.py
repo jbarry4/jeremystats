@@ -220,7 +220,8 @@ class EventBank:
             return self._summaries
         out = []
         for rec in self.all():
-            row = {k: v for k, v in rec.items() if k != "events"}
+            row = {k: v for k, v in self.repaired(rec).items()
+                   if k != "events"}
             if row.get("versions"):
                 # The name each version is known by, worked out from what
                 # each was based on. Computed here rather than stored: a
@@ -239,6 +240,29 @@ class EventBank:
         self._summaries = out
         self._sum_stamp = stamp
         return out
+
+    @staticmethod
+    def repaired(rec):
+        """A record as a person should SEE it: its history repaired.
+
+        The merge unions a history by id, so a version recorded before ids
+        existed survives beside its own id-bearing copy -- the same pass
+        twice. `versions.repair` folds those twins (only when they agree on
+        everything, snapshot included) and gives every id-less version a
+        derived id, so each version can be asked for exactly.
+
+        A copy, and only ever used on the way OUT -- the listing and the
+        entry the browser is sent. Every write path loads through `get()`
+        and saves the whole record, so repairing inside `all()` would write
+        the repair back into this machine's shard; the decision was that the
+        repair happens on read and nothing on disk changes. A derived id the
+        browser sends back is resolved by `version_at`.
+        """
+        vers = rec.get("versions")
+        if not vers:
+            return rec
+        fixed, _report = versionsmod.repair(rec.get("id"), vers)
+        return dict(rec, versions=fixed)
 
     def get(self, entry_id):
         """One entry by id.
@@ -640,6 +664,8 @@ class EventBank:
             based_on = entry.get("based_on")
             if based_on is None and not first_import:
                 based_on = versionsmod.based_on_default(versions)
+            _par = None if first_import else versionsmod.parent_ref(
+                rec.get("id") or entry.get("id"), versions, based_on)
             fresh = {
                 # Highest so far plus one, not the count -- the import sits
                 # at zero and would otherwise make the numbering skip.
@@ -648,8 +674,13 @@ class EventBank:
                 # A stable key, so two machines' histories union instead
                 # of one replacing the other.
                 "id": uuid.uuid4().hex[:12],
-                # The version this one was worked from, by stored id.
-                "from_v": (None if first_import else based_on),
+                # The version this one was worked from: its number, and --
+                # where the caller named it by ref -- its id as well, which
+                # is exact where the number is not. See `parent_ref`.
+                "from_v": (None if first_import
+                           else (_par["v"] if _par else based_on)),
+                "from_id": (None if first_import or not _par
+                            else _par.get("id")),
                 "at": _now(),
                 "by": who,
                 "note": (entry.get("version_note") or "").strip(),
@@ -1116,6 +1147,14 @@ class EventBank:
         for ver in vers:
             if EventBank.version_key(ver) == want:
                 return ver
+        # A derived id: what `repaired()` gave an id-less version on its way
+        # to the browser, coming back. Recomputed from the stored version --
+        # `stable_id` is deterministic -- so it resolves to the real record,
+        # never to the repaired copy.
+        for ver in vers:
+            if not ver.get("id") and \
+                    versionsmod.stable_id(rec.get("id"), ver) == want:
+                return ver
         try:
             n = int(want)
         except (TypeError, ValueError):
@@ -1183,6 +1222,10 @@ class EventBank:
         dropped = sorted({k for e in (rec.get("events") or [])
                           for k in e if k not in self.SNAP_FIELDS})
         rows = []
+        # Named, with lineage, so the page can draw the version tree and
+        # choose by id (constitution section 6e).
+        names = {id(r): n for r, n in versionsmod.label_rows(
+            list(rec.get("versions") or []))}
         for ver in sorted((rec.get("versions") or []),
                           key=lambda x: x.get("v") or 0):
             v = ver.get("v") or 0
@@ -1196,6 +1239,8 @@ class EventBank:
                        "be read back")
             rows.append({
                 "v": v,
+                "name": names.get(id(ver)),
+                "from_v": ver.get("from_v"), "from_id": ver.get("from_id"),
                 "id": ver.get("id"),
                 "at": ver.get("at"),
                 "by": ver.get("by"),
@@ -1237,12 +1282,15 @@ class EventBank:
         if not rec:
             raise BankError("No bank entry %s." % entry_id)
 
-        src_v, dropped = None, []
+        # `from_version` is a REF: the version's id (what the page sends), a
+        # derived id, or a number that names one version -- `version_at`
+        # refuses a number two machines both minted. The events are then
+        # read from THAT version, by its id where it has one.
+        src_v, src_ref, dropped = None, None, []
         if from_version is not None:
-            try:
-                src_v = int(from_version)
-            except (TypeError, ValueError):
-                raise BankError("%r is not a version number." % from_version)
+            hit = self.version_at(rec, from_version)
+            src_v = hit.get("v") or 0
+            src_ref = hit.get("id") if hit.get("id") is not None else from_version
 
         if src_v is None:
             basis = (rec.get("time_basis") or {}).get("kind")
@@ -1261,7 +1309,7 @@ class EventBank:
         if src_v is None:
             events = rec.get("events") or []
         else:
-            events, dropped = self.events_at(rec, src_v)
+            events, dropped = self.events_at(rec, src_ref)
 
         moved, unplaceable, shifts = [], [], []
         for ev in events:
@@ -2274,18 +2322,57 @@ class EventBank:
         self._save(rec)
         return added
 
+    def _version_ref(self, rec, ref):
+        """The one version `ref` names in `rec`, or a refusal.
+
+        By id first -- stored, or derived on read for a version written
+        before ids (`versions.stable_id`), which is what the page holds for
+        those. A NUMBER is accepted only when it names one version: stored
+        numbers repeat (two machines both mint the next one), and editing or
+        deleting "v3" when there are two was a guess. A pre-id twin -- the
+        same pass recorded twice, which the page shows as one version -- is
+        not a second version.
+        """
+        vs = rec.get("versions") or []
+        s = str(ref).strip()
+        for ver in vs:
+            if ver.get("id") is not None and str(ver["id"]) == s:
+                return ver
+        for ver in vs:
+            if not ver.get("id") and versionsmod.stable_id(rec["id"], ver) == s:
+                return ver
+        try:
+            n = int(s.lstrip("vV"))
+        except ValueError:
+            raise BankError("That entry has no version %s." % ref)
+        same = [x for x in vs if x.get("v") == n]
+        if not same:
+            raise BankError("That entry has no version %s." % ref)
+        distinct = [x for x in same
+                    if not any(o is not x and versionsmod._twin_of(o, x)
+                               for o in same)]
+        if len(distinct) > 1:
+            raise BankError(
+                "%d versions of this entry are numbered %d -- two machines "
+                "both made one. Say which by its id." % (len(distinct), n))
+        return distinct[0]
+
     def edit_version(self, entry_id, v, patch):
-        """Change what a version says about itself, not what it holds."""
+        """Change what a version says about itself, not what it holds.
+
+        `v` is a version ref: its id, or a number that names one version
+        (see `_version_ref`).
+        """
         rec = self.get(entry_id)
         if not rec:
             raise BankError("No such entry.")
-        hit = None
-        for ver in rec.get("versions") or []:
-            if ver.get("v") == v:
-                hit = ver
-                break
-        if hit is None:
-            raise BankError("That entry has no version %s." % v)
+        hit = self._version_ref(rec, v)
+        # Its pre-id copies, found BEFORE anything changes. They are the same
+        # pass, shown as one version because they match field for field
+        # (versions.repair); edit one and not the other and they stop
+        # matching, and the copy comes back on read as a second version.
+        twins = [x for x in (rec.get("versions") or [])
+                 if versionsmod._twin_of(hit, x)]
 
         who = (self.store.provenance().get("user") if self.store else None)
         changed = []
@@ -2311,6 +2398,12 @@ class EventBank:
                 changed.append("archived" if want else "unarchived")
         if not changed:
             return rec, []
+        for x in twins:
+            for k in ("note", "title", "archived"):
+                if k in hit:
+                    x[k] = hit[k]
+                else:
+                    x.pop(k, None)
         # An edited note says so. The point of a note is that somebody
         # wrote it at the time; one quietly rewritten later is worth less,
         # and pretending otherwise is the kind of thing this store exists
@@ -2338,15 +2431,18 @@ class EventBank:
         if not rec:
             raise BankError("No such entry.")
         vs = rec.get("versions") or []
-        keep = [x for x in vs if x.get("v") != v]
-        if len(keep) == len(vs):
-            raise BankError("That entry has no version %s." % v)
+        # The one version named, and its own pre-id copy if it has one --
+        # never every version that shares its number. By number, a history
+        # where two machines both minted v3 lost both to one delete.
+        gone = self._version_ref(rec, v)
+        keep = [x for x in vs
+                if x is not gone and not versionsmod._twin_of(gone, x)]
+        v = gone.get("v")
         if not keep:
             raise BankError(
                 "That is the only version this entry has. Delete the whole "
                 "entry instead, or archive the version.")
 
-        gone = next(x for x in vs if x.get("v") == v)
         undo = None
         if gone.get("retimed"):
             # Only the correction that is actually in force needs undoing.

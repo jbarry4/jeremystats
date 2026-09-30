@@ -11,5 +11,12 @@
       "unc": "//netfiles03.uvm.edu/bigdata_jbarry",
       "vacc": "/netfiles/bigdata_jbarry"
     }
-  ]
+  ],
+  "_shared": "The lab's shared space on the cluster. One account owns it (Shahriar's, sakhava1); everybody else reaches it with their own netid, and Jarvis says who to ask when an account is refused. Jarvis Data under it is where uploads go, mirrored as <project>/<mouse>/<recording>/. Processing space: scratch may be purged, and the local copy stays the source of truth.",
+  "shared": {
+    "root": "/gpfs2/scratch/sakhava1",
+    "data": "Jarvis Data",
+    "owner": "Shahriar",
+    "ondemand": "https://ondemand.vacc.uvm.edu/pun/sys/dashboard/files/fs//gpfs2/scratch/sakhava1"
+  }
 }

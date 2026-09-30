@@ -88,9 +88,19 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
   const byText = (root, sel, re) => Array.from(root.querySelectorAll(sel))
     .find((n) => re.test((n.textContent || '').trim()));
   const seen = (n) => !!(n && n.offsetParent !== null);
-  const rows = () => Array.from(D.querySelectorAll('.ver-pick-list .bm-row'));
-  const vtext = (r) => ((r.querySelector('.ver-n') || {}).textContent || '').trim();
-  const does = (r) => ((r.querySelector('.ver-does') || {}).textContent || '').trim();
+  /* The picker is the version tree now (constitution §6e): a row is a
+     button with aria-checked, its name in .vtree-n, what picking it does in
+     .vtree-line, and why it cannot be picked in .vtree-why. */
+  /* The FIRST entry's tree: the picker draws one per entry in the set's
+     history, and `demoHist` is history[0]. The demo set has gathered more
+     than one entry (other harnesses bank it), and counting every tree's
+     rows compared 14 against one entry's 5. */
+  const rows = () => Array.from(
+    (D.querySelector('.ver-pick-list') || D).querySelectorAll('.vtree-row'));
+  const vtext = (r) => ((r.querySelector('.vtree-n') || {}).textContent || '').trim();
+  const does = (r) => ((r.querySelector('.vtree-line')
+                        || r.querySelector('.vtree-why') || {}).textContent || '').trim();
+  const isOn = (r) => r.getAttribute('aria-checked') === 'true';
   const said = () => Array.from(D.querySelectorAll('.ver-said .confirm-sub'))
     .map((n) => n.textContent.trim());
   const dialogGone = () => !D.querySelector('.ver-pick-list');
@@ -146,9 +156,16 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
        share a stored number and none of them share a name. */
     say('note', '  ' + named.map((x) => '#' + x.row.v + '→v' + x.name)
         .join('  '));
-    check('it has more versions than it has distinct numbers',
-          new Set(vs.map((v) => v.v)).size < vs.length,
-          'numbers are unique after all');
+    /* It HAD more versions than distinct numbers. Its duplicates were
+       pre-id twins -- one pass recorded twice, identical snapshots -- and
+       the bank now folds those as it is read (versions.repair; nothing on
+       disk changes, and tools/check_versions.py proves no event is lost).
+       So what reaches the page has one version per stored number. Two
+       genuinely different versions sharing a number are still named apart:
+       uiparts.html checks that on a history built to have them. */
+    check('its pre-id twins arrive folded: one version per stored number',
+          new Set(vs.map((v) => v.v)).size === vs.length,
+          vs.map((v) => v.v).join(','));
     check('and every one of them still gets its own name',
           new Set(names).size === vs.length,
           names.join(','));
@@ -259,7 +276,7 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
         vr.length === (demoHist.versions || []).length,
         vr.length + ' rows for ' + (demoHist.versions || []).length + ' versions');
   check('the detector’s own version is marked',
-        !!byText(D, '.ver-pick-list .flagchip', /the detector/));
+        !!byText(D, '.ver-pick-list .vtree-state', /the detector/));
 
   /* The requirement in one check: what the click would do is readable
      without making it. */
@@ -271,8 +288,8 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
   const onRow = vr.find((r) => r.classList.contains('on'));
   check('it opens on the newest version', !!onRow && vtext(onRow) === 'v4',
         onRow ? vtext(onRow) : 'nothing selected');
-  check('and its radio is actually checked',
-        !!onRow && onRow.querySelector('input').checked);
+  check('and it is actually the chosen one',
+        !!onRow && isOn(onRow));
   const okBtn = byText(D, '.mf button', /^Pick it up from /);
   check('the button names the version it would use',
         !!okBtn && /Pick it up from v4$/.test(okBtn.textContent.trim()),
@@ -288,7 +305,7 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
   /* Now an older one, without committing to it. */
   const older = vr.find((r) => vtext(r) === 'v1');
   check('an older version can be chosen', !!older);
-  older.querySelector('input').click();
+  older.click();
   await sleep(200);
   say('note', '  v1 says: ' + said().join('  //  '));
   check('choosing an older one warns that the decisions are replaced',
@@ -306,7 +323,7 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
 
   /* Take the newest after all, which is the non-destructive path: it says
      where the next bank lands and touches nothing. */
-  onRow.querySelector('input').click();
+  onRow.click();
   await sleep(200);
   const goPick = byText(D, '.mf button', /^Pick it up from /);
   if (!goPick) throw new Error('no button to pick it up with');
@@ -357,14 +374,14 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
           + ' with no snapshot kept');
       check('a version with no snapshot is there but marked', dead.length > 0);
       check('and cannot be chosen',
-            dead.every((r) => r.querySelector('input').disabled),
+            dead.every((r) => r.disabled),
             'an unusable version is selectable');
       check('and says why, rather than failing at the click',
             dead.every((r) => /no snapshot kept/.test(does(r))),
             dead.map(does).join(' | '));
       check('the usable ones are still usable',
             vr2.filter((r) => !r.classList.contains('off'))
-               .every((r) => !r.querySelector('input').disabled));
+               .every((r) => !r.disabled));
       /* Measured, not eyeballed. `.mk-name` comes from the bookmark list
          with `text-overflow: ellipsis` on it, and a consequence that stops
          halfway through is worse than no consequence at all -- "branches
@@ -372,7 +389,7 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
          promise it does not make. */
       const clipped = [];
       for (const r of vr2) {
-        for (const sel of ['.ver-does', '.mk-name', '.person-what', '.ver-n']) {
+        for (const sel of ['.vtree-line', '.vtree-note', '.vtree-who', '.vtree-n']) {
           const x = r.querySelector(sel);
           if (x && x.scrollWidth > x.clientWidth + 1) {
             clipped.push(vtext(r) + ' ' + sel + ' ' + x.scrollWidth + '>'
@@ -411,7 +428,7 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
           'no lead-in about what switching does');
     const target = rows().find((r) => vtext(r) === 'v1');
     check('v1 is offered to switch to', !!target);
-    target.querySelector('input').click();
+    target.click();
     await sleep(200);
     check('switching to it says the decisions are replaced, not merged',
           said().some((t) => /replaced by v1’s/.test(t)),
@@ -491,7 +508,7 @@ const STRESS = '7d5fa32206b4';          // seven versions, duplicate numbers
       check('with the same list and the same rules',
             rows().length > 1
             && rows().filter((r) => r.classList.contains('off'))
-                 .every((r) => r.querySelector('input').disabled),
+                 .every((r) => r.disabled),
             rows().length + ' row(s)');
       cancel();
       await untilN(dialogGone, 300);

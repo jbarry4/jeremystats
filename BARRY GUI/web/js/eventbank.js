@@ -383,7 +383,7 @@ BARRY.views.eventbank = (function () {
       const n = v.n != null ? v.n : Object.keys(v.snap || {}).length;
       box.appendChild(el('div', { class: 'ver-row' }, [
         el('div', { class: 'ver-top' }, [
-          el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
+          el('span', { class: 'ver-n', text: BARRY.ui.versionLabel(v) }),
           el('span', { class: 'ver-when', title: BARRY.whenRaw(v.at),
             text: BARRY.when(v.at, 'minute') }),
           el('span', { class: 'ver-who', text: v.by || 'unknown' }),
@@ -642,8 +642,11 @@ BARRY.views.eventbank = (function () {
     const vs = (e.versions || []).slice();
     if (!vs.length) return;
     /* Which version is open, if any. Held outside so it survives the
-       repaint that opening one causes. */
-    if (openVersion && !vs.some((v) => v.v === openVersion)) {
+       repaint that opening one causes. By NAME (verKey), as the strip sets
+       it: compared against the stored number here, a name never matched,
+       so the choice was cleared on every repaint and no version ever
+       opened. */
+    if (openVersion && !vs.some((v) => verKey(v) === openVersion)) {
       openVersion = null;
     }
     const names = e.label_names || {};
@@ -706,27 +709,28 @@ BARRY.views.eventbank = (function () {
       });
     }
 
-    const strip = el('div', { class: 'ver-strip' });
-    shown.forEach((v) => {
-      strip.appendChild(el('button', {
-        /* Keyed on the NAME, not the number. Two versions can share a
-           number -- that is the whole reason names exist -- and keyed on
-           the number, clicking the second one opened the first. */
-        class: 'ver-pip' + (openVersion === verKey(v) ? ' on' : '')
-             + (v.v === vs.length ? ' last' : ''),
-        title: 'v' + (v.name != null ? v.name : v.v) + '  ' + (v.by || '') + '  '
-             + (v.note || 'no note'),
-        text: 'v' + (v.name != null ? v.name : v.v),
-        onclick: () => {
-          openVersion = openVersion === verKey(v) ? null : verKey(v);
-          const host = box.parentNode;
-          // Repaint just the entry, so the list on the left does not
-          // scroll back to the top.
-          const fresh = detail();
-          if (host) host.replaceChild(fresh, box);
-        },
-      }));
-    });
+    /* The lineage, as the version tree (constitution §6e): which version to
+       open, drawn as the tree it is -- a branch sits beside the version it
+       came from instead of in a row of chips that read as a sequence.
+       Keyed on the NAME, not the number: two versions can share a number,
+       and keyed on the number, clicking the second one opened the first.
+       Picking the open one again closes it, as the chip did. Every version
+       here can be opened -- its counts and note are on record even without
+       a snapshot -- so none is disabled. */
+    const strip = el('div', { class: 'ver-strip' }, [BARRY.ui.versionTree({
+      versions: shown,
+      idOf: verKey,
+      value: openVersion,
+      disabled: () => null,
+      onpick: (v) => {
+        openVersion = openVersion === verKey(v) ? null : verKey(v);
+        const host = box.parentNode;
+        // Repaint just the entry, so the list on the left does not
+        // scroll back to the top.
+        const fresh = detail();
+        if (host) host.replaceChild(fresh, box);
+      },
+    })]);
     box.appendChild(strip);
     box.appendChild(syncBar);
 
@@ -762,7 +766,7 @@ BARRY.views.eventbank = (function () {
              + (v.archived ? ' archived' : ''),
       }, [
         el('div', { class: 'ver-top' }, [
-          el('span', { class: 'ver-n', text: 'v' + (v.name != null ? v.name : v.v) }),
+          el('span', { class: 'ver-n', text: BARRY.ui.versionLabel(v) }),
           el('span', { class: 'ver-when', title: BARRY.whenRaw(v.at),
                        text: BARRY.when(v.at, 'minute') }),
           el('span', { class: 'ver-who', text: v.by || 'unknown' }),
@@ -853,7 +857,7 @@ BARRY.views.eventbank = (function () {
            whichever other version you pick -- not only the one before it,
            because "what has changed since the first pass" is the question
            three versions later. */
-        openVersion === v.v ? versionDetail(e, vs, v) : null,
+        openVersion === verKey(v) ? versionDetail(e, vs, v) : null,
         (v.confirmed || []).length
           ? el('div', { class: 'ver-conf',
               text: 'banked again with no change '
@@ -919,7 +923,10 @@ BARRY.views.eventbank = (function () {
   async function versionOp(e, v, action, body) {
     try {
       const res = await apiPost(
-        '/api/bank/' + encodeURIComponent(e.id) + '/version/' + v.v,
+        /* By id: the stored number is not unique, and the bank refuses a
+           number two machines both minted rather than guessing. */
+        '/api/bank/' + encodeURIComponent(e.id) + '/version/'
+          + encodeURIComponent(v.id != null ? v.id : v.v),
         Object.assign({ action: action }, body || {}));
       /* In place rather than refetching everything, so the panel does not
          jump -- but the route answers without the snapshots, and dropping
@@ -977,21 +984,22 @@ BARRY.views.eventbank = (function () {
         + ' Archive it instead if you only want it out of the way.';
 
     const go = await BARRY.confirm(
-      undoes ? 'Undo the correction at v' + v.v + '?'
-             : 'Delete version ' + v.v + '?',
-      body, undoes ? 'Undo and delete v' + v.v : 'Delete v' + v.v, true);
+      undoes ? 'Undo the correction at ' + BARRY.ui.versionLabel(v) + '?'
+             : 'Delete version ' + BARRY.ui.versionLabel(v).slice(1) + '?',
+      body, undoes ? 'Undo and delete ' + BARRY.ui.versionLabel(v)
+                   : 'Delete ' + BARRY.ui.versionLabel(v), true);
     if (!go) return;
     const res = await versionOp(e, v, 'delete');
     if (!res) return;
     const undo = res.undo;
     if (undo) {
       healthChanged();
-      toast('v' + (v.name != null ? v.name : v.v) + ' deleted and the correction undone. '
+      toast(BARRY.ui.versionLabel(v) + ' deleted and the correction undone. '
             + undo.n + ' time(s) restored from v' + undo.restored_from
             + '; this recording is an unresolved segment issue again.',
             'ok', 11000);
     } else {
-      toast('Version ' + v.v + ' deleted.', 'ok');
+      toast('Version ' + BARRY.ui.versionLabel(v).slice(1) + ' deleted.', 'ok');
     }
   }
 
@@ -1046,23 +1054,25 @@ BARRY.views.eventbank = (function () {
     const mix = Object.keys(v.by_label || {})
       .sort((a, b) => v.by_label[b] - v.by_label[a])
       .map((k) => (names[k] || k) + ' ' + v.by_label[k]).join(', ');
+    const name = BARRY.ui.versionLabel(v);
     const go = await BARRY.confirm(
-      'Put version ' + v.v + ' back?',
-      'The live curation set becomes what it was at version ' + v.v
+      'Put ' + name + ' back?',
+      'The live curation set becomes what it was at ' + name
       + ': ' + mix + '. Nothing is deleted \u2014 whatever is there now '
       + 'stays in the history, and coming back to it is the same one '
       + 'click.',
-      'Put v' + v.v + ' back', false);
+      'Put ' + name + ' back', false);
     if (!go) return;
     try {
       const res = await apiPost(
         '/api/curation/' + encodeURIComponent(e.gid) + '/'
         + encodeURIComponent(e.type) + '/restore',
-        { entry: e.id, version: v.v });
+        // By id: the stored number repeats; the route resolves a ref.
+        { entry: e.id, version: v.id != null ? v.id : v.v });
       toast(res.changed
-        ? 'Put version ' + v.v + ' back: ' + res.changed
+        ? 'Put ' + name + ' back: ' + res.changed
           + ' decision(s) changed, ' + res.unchanged + ' already matched.'
-        : 'The set already matches version ' + v.v + '.', 'ok', 8000);
+        : 'The set already matches ' + name + '.', 'ok', 8000);
       load(true);
     } catch (err) { toast(err.message, 'err', 9000); }
   }
@@ -1082,7 +1092,9 @@ BARRY.views.eventbank = (function () {
       return host;
     }
 
-    const others = vs.filter((o) => o.v !== v.v && o.snap);
+    // Every other version -- by identity: by number, a version sharing the
+    // open one's number was dropped from what it could be compared with.
+    const others = vs.filter((o) => o !== v && o.snap);
     if (!others.length) {
       host.appendChild(el('p', { class: 'hint',
         text: 'Nothing else to compare it against yet.' }));
@@ -1140,7 +1152,7 @@ BARRY.views.eventbank = (function () {
     };
 
     host.appendChild(el('div', { class: 'ver-open-bar' }, [
-      el('strong', { text: 'v' + (v.name != null ? v.name : v.v) }),
+      el('strong', { text: BARRY.ui.versionLabel(v) }),
       /* A history you can read but not act on is half a history. */
       el('button', {
         class: 'btn ghost sm', text: 'Put this version back',
@@ -1150,17 +1162,20 @@ BARRY.views.eventbank = (function () {
         onclick: () => restoreVersion(e, v),
       }),
       el('span', { class: 'hint', text: 'compared with' }),
+      /* By name, as the strip is: the stored number repeats when two
+         machines both mint it, and keyed on it this compared against
+         whichever came first. */
       el('select', {
         onchange: (ev) => {
-          against = others.find((o) => String(o.v) === ev.target.value)
+          against = others.find((o) => verKey(o) === ev.target.value)
                  || against;
           paint();
         },
       }, others.map((o) => el('option', {
-        value: String(o.v),
-        text: 'v' + (o.name != null ? o.name : o.v) + '  ' + (o.by || '') + '  '
+        value: verKey(o),
+        text: BARRY.ui.versionLabel(o) + '  ' + (o.by || '') + '  '
             + BARRY.when(o.at, 'minute'),
-        selected: o.v === against.v ? 'selected' : null,
+        selected: verKey(o) === verKey(against) ? 'selected' : null,
       }))),
     ]));
     host.appendChild(rows);
@@ -1230,7 +1245,7 @@ BARRY.views.eventbank = (function () {
        deleted the highest number and the count are different things and
        saying "of" makes one of them look wrong. */
     add('Version', e.version
-        ? ('v' + (e.version_name != null ? e.version_name : e.version) + '  ·  ' + (e.versions || []).length
+        ? (BARRY.ui.versionLabel(e.version_name != null ? e.version_name : e.version) + '  ·  ' + (e.versions || []).length
            + ' in the history')
         : null);
     add('Times are', e.units);
@@ -2295,7 +2310,7 @@ BARRY.views.eventbank = (function () {
               { dry_run: false, conflicts: policy, note: note });
             if (res.error) { toast(res.error, 'err', 9000); return; }
             closeModal();
-            toast('v' + (res.version_name != null ? res.version_name : res.version) + ': ' + res.removed
+            toast(BARRY.ui.versionLabel(res.version_name != null ? res.version_name : res.version) + ': ' + res.removed
                   + ' duplicate row(s) removed, ' + res.now + ' events left'
                   + (res.conflicts
                       ? ' — ' + res.conflicts + ' contested time(s) '

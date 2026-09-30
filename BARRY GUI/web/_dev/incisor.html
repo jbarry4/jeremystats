@@ -96,8 +96,13 @@ async function pickShortest() {
   ck('there is an Incisor tool button', !!tool, 'not in the list');
   if (!tool) { document.title = 'incisor: ' + (bad || 1) + ' FAILED'; return; }
   tool.click();
-  await until(() => /Which recording/.test(body()), 15000);
-  ck('clicking it opens the panel', /Which recording/.test(body()), body().slice(0, 80));
+  /* The label is "Recording" (constitution §6e) -- it was "1. Which
+     recording", and "Which recording" now lives in the placeholder,
+     which is an attribute and not in the text this reads. */
+  const hasPicker = () => Array.from(D().querySelectorAll('#tkBody .section-label'))
+    .some((n) => n.textContent.trim() === 'Recording');
+  await until(hasPicker, 15000);
+  ck('clicking it opens the panel', hasPicker(), body().slice(0, 80));
   /* The scope card is about bad channels and belongs to the tools that
      scope a read by them. Incisor picks its own recording. */
   ck('the bad-channel scope card is not above it',

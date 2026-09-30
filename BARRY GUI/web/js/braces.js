@@ -449,15 +449,14 @@ BARRY.braces = (function () {
        tool because the sets, the versions and the settings are the same
        in both. */
     box.appendChild(el('div', { class: 'card br-mode' }, [
-      el('div', { class: 'seg' }, [
-        ['one', 'One set at a time'],
-        ['many', 'Many sets at once'],
-      ].map(([id, label]) => el('button', {
-        class: (bulk.on ? 'many' : 'one') === id ? 'active' : '',
-        onclick: () => { if ((bulk.on ? 'many' : 'one') === id) return;
-                         bulk.on = id === 'many'; render(); },
-        text: label,
-      }))),
+      /* How many, through the run bar (constitution §6d): one component
+         for the choice every tool makes, rather than a seg each tool drew
+         for itself. Only local modes, so the bar shows How many alone. */
+      BARRY.ui.runBar({
+        modes: { local: ['one', 'many'] }, where: 'local',
+        count: bulk.on ? 'many' : 'one',
+        onChange: (w, c) => { bulk.on = c === 'many'; render(); },
+      }),
       el('span', { class: 'br-hint', text: bulk.on
         ? 'Reads them one after another and leaves a proposal for each. '
           + 'Nothing is banked — every set still has to be reviewed.'
@@ -779,102 +778,43 @@ BARRY.braces = (function () {
 
 
     /* Which version supplies the stamps. Only where there is a choice --
-       a set with one version does not need a dropdown saying so. */
-    /* Which version supplies the stamps.
+       a set with one version does not need a control saying so.
 
-       A list rather than a dropdown, in the same shape the curation version
-       chooser uses -- the radio, the version chip, what it did, who and
-       when. Not the same FUNCTION: that one is built around a curation
-       history, with a bench to restore onto and a mix of labels per
-       version, and reshaping this into that contract would be inventing
-       fields to satisfy an adapter. The look is what is worth sharing.
-
-       It earns the room. A dropdown shows one line at a time, and the thing
-       being chosen between is "which pass of curation" -- which is a
-       question about who did what and when, not about a number. */
+       A list rather than a dropdown: the thing being chosen between is
+       "which pass of curation", which is a question about who did what and
+       when, and a dropdown shows one line at a time. */
     const usable = (plan.versions || []).filter((v) => v.usable);
     if (usable.length > 1) {
-      const group = 'brver' + Math.random().toString(36).slice(2, 8);
-      const list = el('div', { class: 'bm-list ver-pick-list br-vers' });
+      /* The version tree (constitution §6e), the control every tool
+         chooses a version with: the lineage, newest on top, one lane per
+         line, and "now" above it for the stamps as they stand. It was a
+         list of radios, oldest first, with the lineage only in words.
 
-      const row = (opts) => {
-        const r = el('label', {
-          class: 'bm-row' + (opts.off ? ' off' : ''),
-          title: opts.title || null,
-        }, [
-          el('input', {
-            type: 'radio', name: group,
-            disabled: opts.off ? 'disabled' : null,
-            checked: opts.on ? 'checked' : null,
-            onchange: () => {
-              q.from_version = opts.ref;
-              // Only the chips that say what is selected need repainting,
-              // and a full render would rebuild the radio being clicked.
-              for (const n of list.querySelectorAll('.bm-row')) {
-                n.classList.toggle('on', n === r);
-              }
-            },
-          }),
-          el('span', { class: 'ver-n', text: opts.v }),
-          opts.chip ? el('span', { class: 'flagchip', text: opts.chip }) : null,
-          el('div', { class: 'ver-pick-mid' }, [
-            el('span', { class: 'mk-name', text: opts.what }),
-            el('span', { class: 'ver-does' + (opts.branch ? ' branch' : ''),
-                         text: opts.does }),
-          ]),
-          el('span', { class: 'person-what', text: opts.who }),
-        ].filter(Boolean));
-        if (opts.on) r.classList.add('on');
-        return r;
-      };
-
+         The "now" row is named by the tip's NAME. It is the entry's current
+         events, the newest state there is -- labelling it with the maximum
+         stored NUMBER put "v4" at the top of a list ending in v6. A version
+         that cannot be a starting point is shown, disabled, with the
+         reason: its count and note are still worth reading. */
       const tip = usable[usable.length - 1];
-      list.appendChild(row({
-        ref: null, on: q.from_version == null,
-        // The tip's NAME. This row is the entry's current events, which
-        // is the newest state there is -- labelling it with the maximum
-        // stored NUMBER put "v4" at the top of a list ending in v6 and
-        // read as the chooser having defaulted two versions back.
-        v: vName(plan),
-        chip: 'now',
-        what: plan.entry.n + ' stamps, as they stand',
-        does: 'the newest there is \u2014 '
-              + vName(plan, 'next_name') + ' continues the line',
-        who: '',
-      }));
-      for (const v of usable) {
-        list.appendChild(row({
-          ref: v.ref,
-          on: q.from_version === v.ref,
-          v: 'v' + (v.name || v.v),
-          chip: v.aligned ? 'aligned' : null,
-          what: (v.note || (v.n || 0) + ' stamps').slice(0, 70),
-          does: v === tip ? 'the newest of these'
-                          : 'branches off it — nothing after it is touched',
-          branch: v !== tip,
-          who: (v.by || 'unknown')
-               + (v.at && BARRY.when ? '  ·  ' + BARRY.when(v.at, 'minute')
-                                     : ''),
-        }));
-      }
-
-      /* The ones that cannot be a starting point, said rather than hidden:
-         their counts and their notes are still worth reading, and a version
-         that silently is not in the list reads as a version that does not
-         exist. */
-      for (const v of (plan.versions || []).filter((x) => !x.usable)) {
-        list.appendChild(row({
-          ref: v.ref, off: true, title: v.why_not,
-          v: 'v' + (v.name || v.v),
-          what: (v.note || (v.n || 0) + ' stamps').slice(0, 70),
-          does: v.why_not || 'cannot be read back',
-          who: v.by || '',
-        }));
-      }
-
       card.appendChild(el('div', { class: 'br-field br-vers-field' }, [
         el('label', { text: 'Read the stamps from' }),
-        list,
+        el('div', { class: 'br-vers' }, [BARRY.ui.versionTree({
+          versions: plan.versions || [],
+          idOf: (v) => v.ref,
+          value: q.from_version,
+          unit: 'stamps',
+          notes: true,
+          lead: {
+            name: vName(plan) + ' now',
+            text: plan.entry.n + ' stamps, as they stand  ·  the newest there '
+                  + 'is — ' + vName(plan, 'next_name') + ' continues the line',
+          },
+          disabled: (v) => (v.usable ? null : (v.why_not || 'cannot be read back')),
+          line: (v) => (!v.usable ? null
+            : v === tip ? 'the newest of these'
+            : 'branches off it — nothing after it is touched'),
+          onpick: (v) => { q.from_version = v ? v.ref : null; },
+        })]),
       ]));
     }
     return card;
@@ -890,7 +830,7 @@ BARRY.braces = (function () {
      shows, and it is what every other mention of a version has to show
      or they disagree on screen. The number is the fallback for a payload
      from a server that has not been restarted yet. */
-  const vName = (o, key) => 'v' + ((o && o[key || 'current_name'])
+  const vName = (o, key) => BARRY.ui.versionLabel((o && o[key || 'current_name'])
                                    != null
                                    ? o[key || 'current_name']
                                    : ((o || {}).current_version));
@@ -1121,7 +1061,7 @@ BARRY.braces = (function () {
         }, vs.map((v) => el('option', {
           value: v.ref,
           selected: bulk.pick[c.id] === v.ref ? 'selected' : null,
-          text: 'v' + v.name + (v === newestOf(c) ? '  (newest)' : '')
+          text: BARRY.ui.versionLabel(v) + (v === newestOf(c) ? '  (newest)' : '')
                 + (v.n != null ? '  \u00b7 ' + v.n + ' stamps' : ''),
         }))) : el('span', { class: 'br-hint', text: 'no readable version' }),
         /* What it is doing, or why it cannot. The "newest is not
@@ -1131,8 +1071,8 @@ BARRY.braces = (function () {
           || why
           || (c.newest_usable_name
               && c.newest_name !== c.newest_usable_name
-              ? 'v' + c.newest_name + ' never reached this machine — '
-                + 'v' + c.newest_usable_name + ' is the newest readable'
+              ? BARRY.ui.versionLabel(c.newest_name) + ' never reached this machine — '
+                + BARRY.ui.versionLabel(c.newest_usable_name) + ' is the newest readable'
               : '') }),
         st.set_id ? el('button', {
           class: 'mini', text: 'Open',
@@ -3763,5 +3703,14 @@ BARRY.braces = (function () {
     _enter: enter,
     _view: () => view,
     _reset: () => { set_ = null; bench = null; cands = null; },
+    /* The plan card drawn from a given plan, for web/_dev/vtreetools.html:
+       a set with several readable versions is what the version tree is for,
+       and the harness cannot count on one being reachable here. The plan
+       on the module is put back. */
+    _planCard: (p) => {
+      const was = plan;
+      plan = p;
+      try { return planCard(); } finally { plan = was; }
+    },
   };
 }());

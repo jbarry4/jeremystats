@@ -189,6 +189,11 @@ def load_config(logs_dir):
         # Lab-wide: [{"unc": "//server/share", "vacc": "/netfiles/share"}].
         "path_map": list(cfg.get("path_map") or []),
         "host_fingerprint": cfg.get("host_fingerprint") or "",
+        # The lab's shared space on the cluster, which ONE account owns and
+        # everybody else reaches with their own netid (constitution §6d).
+        # Lab-wide, so from the tracked vacc.json; these are its defaults.
+        "shared": _shared_of(cfg),
+        "places": list(cfg.get("places") or []),
         "enabled": bool(cfg.get("enabled", True)),
         "needs_netid": not netid,
         "configured": bool(netid and host and cfg.get("enabled", True)),
@@ -265,6 +270,26 @@ def _popen_kwargs():
     return kw
 
 
+def ssh_cmd(cfg, remote_command):
+    """The ssh command line for one remote command, with this module's
+    options. `_ssh` runs it and waits; vaccupload streams a file into it.
+    One place, so the key, the options and the refusals are decided once."""
+    if not have_ssh():
+        raise SSHError("No ssh on this machine.", "no-ssh")
+    if not cfg.get("netid"):
+        raise SSHError("No VACC netid set.", "unconfigured")
+    cmd = ["ssh"] + list(SSH_OPTS)
+    if cfg.get("key_path"):
+        cmd += ["-i", cfg["key_path"], "-o", "IdentitiesOnly=yes"]
+    cmd += ["%s@%s" % (cfg["netid"], cfg["host"]), remote_command]
+    return cmd
+
+
+def popen_kwargs():
+    """What `_ssh` passes to Popen on this platform (no console window)."""
+    return _popen_kwargs()
+
+
 def _ssh(cfg, remote_command, stdin=None, timeout=45):
     """Run one command on the cluster and return its stdout.
 
@@ -278,15 +303,7 @@ def _ssh(cfg, remote_command, stdin=None, timeout=45):
     string with `shlex.quote`, or better, send data on `stdin` and keep paths
     out of it altogether.
     """
-    if not have_ssh():
-        raise SSHError("No ssh on this machine.", "no-ssh")
-    if not cfg.get("netid"):
-        raise SSHError("No VACC netid set.", "unconfigured")
-
-    cmd = ["ssh"] + list(SSH_OPTS)
-    if cfg.get("key_path"):
-        cmd += ["-i", cfg["key_path"], "-o", "IdentitiesOnly=yes"]
-    cmd += ["%s@%s" % (cfg["netid"], cfg["host"]), remote_command]
+    cmd = ssh_cmd(cfg, remote_command)
 
     try:
         # BINARY pipes, and the encoding done here by hand.
@@ -924,14 +941,44 @@ def inventory(cfg, root=None, timeout=180):
     return out
 
 
-_INV = {"at": 0.0, "root": None, "list": []}
+# One listing per root: scratch, and every other cluster folder somebody has
+# scanned (`places`). It was one slot, so walking a second root threw the
+# first one's listing away.
+_INVS = {}                       # root -> {"at", "list", "busy"}
 INV_TTL_S = 300.0
+
+
+def _inv(root):
+    return _INVS.setdefault(root, {"at": 0.0, "list": [], "busy": False})
+
+
+def places(cfg):
+    """Every cluster folder Jarvis looks in for recordings: scratch first,
+    then each folder a scan was pointed at (`/api/vacc/scan`), which is how
+    a recording kept somewhere other than scratch becomes known to be on the
+    cluster -- by identity, found by looking, rather than by writing its
+    cluster path into the registry (see vaccio.py on why that is wrong).
+    One under scratch is already covered by scratch's walk."""
+    root = cfg.get("scratch_root") or cfg.get("scratch") or ""
+    out = [root] if root else []
+    # Jarvis Data, where uploads go, is always a place: an uploaded recording
+    # is then found the way any other is, by looking, by identity. Covered by
+    # scratch already when the account's scratch is the shared one.
+    data = ((cfg.get("shared") or {}).get("data_path") or "").rstrip("/")
+    for p in ([data] if data else []) + list(cfg.get("places") or []):
+        p = str(p or "").rstrip("/")
+        if not p or p in out:
+            continue
+        if root and (p == root.rstrip("/") or p.startswith(root.rstrip("/") + "/")):
+            continue
+        out.append(p)
+    return out
 
 
 def inventory_ready(cfg, root=None):
     """Is there a listing in hand, without going and getting one?"""
     root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
-    return bool(_INV["list"]) and _INV["root"] == root
+    return bool(_inv(root)["at"])
 
 
 def inventory_soon(cfg, root=None):
@@ -946,9 +993,11 @@ def inventory_soon(cfg, root=None):
     One walk at a time: a view that asks three times while the first is
     still going should not start three.
     """
-    if _INV.get("busy"):
+    root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
+    slot = _inv(root)
+    if slot.get("busy"):
         return
-    _INV["busy"] = True
+    slot["busy"] = True
 
     def go():
         try:
@@ -956,7 +1005,7 @@ def inventory_soon(cfg, root=None):
         except Exception:                                # noqa: BLE001
             pass                                         # it stays unknown
         finally:
-            _INV["busy"] = False
+            slot["busy"] = False
 
     threading.Thread(target=go, daemon=True,
                      name="barry-vacc-inventory").start()
@@ -975,12 +1024,19 @@ def inventory_cached(cfg, root=None, force=False):
     """
     root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
     now = time.time()
-    if (not force and _INV["list"] and _INV["root"] == root
-            and (now - _INV["at"]) < INV_TTL_S):
-        return list(_INV["list"])
+    slot = _inv(root)
+    if not force and slot["at"] and (now - slot["at"]) < INV_TTL_S:
+        return list(slot["list"])
     got = inventory(cfg, root)
-    _INV.update(at=now, root=root, list=got)
+    slot.update(at=now, list=got)
     return list(got)
+
+
+def inventory_put(cfg, root, found):
+    """Keep a listing just made, so the scan that made it is not repeated
+    by the next page that asks."""
+    root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
+    _inv(root).update(at=time.time(), list=list(found or []))
 
 
 def env_path(cfg):
@@ -1197,6 +1253,80 @@ def quota(cfg, timeout=40):
     return (raw or "").strip()
 
 
+SHARED_DEFAULT = {
+    "root": "/gpfs2/scratch/sakhava1",
+    "data": "Jarvis Data",
+    "owner": "Shahriar",
+    "ondemand": "https://ondemand.vacc.uvm.edu/pun/sys/dashboard/files/fs/"
+                "/gpfs2/scratch/sakhava1",
+}
+
+
+def _shared_of(cfg):
+    got = dict(SHARED_DEFAULT)
+    got.update({k: v for k, v in (cfg.get("shared") or {}).items() if v})
+    got["data_path"] = _remote_path(got["root"], got["data"]) if got["root"] else ""
+    return got
+
+
+def shared_words(shared, state, data_state, netid=""):
+    """What to say about the shared space, or "" when all is well.
+
+    Never a bare "permission denied": what was refused, where to look at it,
+    and who can fix it (constitution §6d).
+    """
+    who = (" (%s)" % netid) if netid else ""
+    owner = shared.get("owner") or "the owner"
+    link = shared.get("ondemand") or ""
+    see = (" You can look at it in OnDemand: %s" % link) if link else ""
+    if state == "denied":
+        return ("This account%s cannot open the lab's shared VACC space, %s. "
+                "Ask %s to add you to it.%s"
+                % (who, shared.get("root"), owner, see))
+    if state == "missing":
+        return ("The lab's shared VACC space, %s, is not there. Ask %s where "
+                "it has moved.%s" % (shared.get("root"), owner, see))
+    if data_state == "nowrite":
+        return ("This account%s can read the shared space but cannot write to "
+                "%s, so an upload would be refused. Ask %s to give you write "
+                "access to it.%s" % (who, shared.get("data_path"), owner, see))
+    if data_state == "missing":
+        return ("%s does not exist yet, and this account%s cannot create it. "
+                "Ask %s to make it, or to give you write access to %s.%s"
+                % (shared.get("data_path"), who, owner, shared.get("root"), see))
+    return ""
+
+
+def _shared_checks(cfg):
+    """`shared=` and `jdata=` for the probe: can this account open the shared
+    space, and write into Jarvis Data (or create it)?"""
+    sh = cfg.get("shared") or _shared_of(cfg)
+    if not sh.get("root"):
+        return ""
+    s, d = q(sh["root"]), q(sh["data_path"])
+    return (
+        'if [ ! -e %s ]; then echo "shared=missing";'
+        ' elif [ -r %s ] && [ -x %s ]; then echo "shared=ok";'
+        ' else echo "shared=denied"; fi\n'
+        'if [ -d %s ]; then if [ -w %s ] && [ -x %s ]; then echo "jdata=ok";'
+        ' else echo "jdata=nowrite"; fi;'
+        ' elif [ -w %s ]; then echo "jdata=creatable";'
+        ' else echo "jdata=missing"; fi'
+        % (s, s, s, d, d, d, s))
+
+
+# The jobs this account has, and what failed lately. `--me` where the slurm
+# has it, `-u $USER` where it does not -- the same list either way. sacct is
+# bounded, because a slow accounting database must not slow the probe.
+_JOBS = r"""
+( squeue --me -h -o '%i|%j|%T|%M|%R' 2>/dev/null   || squeue -u "$USER" -h -o '%i|%j|%T|%M|%R' 2>/dev/null )   | head -200 | sed 's/^/job=/'
+timeout 8 sacct -X -n -P -S now-1days -s F,TO,OOM,NF,CA   -o JobID,JobName,State,End 2>/dev/null | head -50 | sed 's/^/fail=/'
+"""
+
+# Repeated keys: one line per job, one per failure.
+_LISTS = ("job", "fail")
+
+
 def _parse_probe(raw):
     """`key=value` lines into a dict. Anything else on the line is ignored.
 
@@ -1211,9 +1341,34 @@ def _parse_probe(raw):
             continue
         k, _, v = line.partition("=")
         k = k.strip()
-        if k.isidentifier():
+        if k in _LISTS:
+            got.setdefault(k + "s", []).append(v.strip())
+        elif k.isidentifier():
             got[k] = v.strip()
     return got
+
+
+def _jobs_of(lines):
+    out = []
+    for line in lines or []:
+        bits = (line.split("|") + ["", "", "", "", ""])[:5]
+        if not bits[0].strip():
+            continue
+        out.append({"id": bits[0].strip(), "name": bits[1].strip(),
+                    "state": bits[2].strip(), "elapsed": bits[3].strip(),
+                    "reason": bits[4].strip()})
+    return out
+
+
+def _fails_of(lines):
+    out = []
+    for line in lines or []:
+        bits = (line.split("|") + ["", "", "", ""])[:4]
+        if not bits[0].strip():
+            continue
+        out.append({"id": bits[0].strip(), "name": bits[1].strip(),
+                    "state": bits[2].strip(), "end": bits[3].strip()})
+    return out
 
 
 def _root_checks(cfg):
@@ -1239,7 +1394,8 @@ def probe(cfg, timeout=90):
     # The root checks go BEFORE the `end=1` line, so a connection cut halfway
     # cannot produce an answer that looks complete but has lost them.
     script = _PROBE.replace('echo "end=1"',
-                            _root_checks(cfg) + '\necho "end=1"')
+                            _root_checks(cfg) + "\n" + _shared_checks(cfg)
+                            + "\n" + _JOBS + '\necho "end=1"')
     raw = _ssh(cfg, "bash -s", stdin=script, timeout=timeout)
     got = _parse_probe(raw)
     # `end=1` is the last line the script writes, so its presence is how a
@@ -1261,6 +1417,8 @@ def probe(cfg, timeout=90):
         if path:
             roots[path] = verdict or "unknown"
     got["roots"] = roots
+    got["jobs"] = _jobs_of(got.pop("jobs", []))
+    got["fails"] = _fails_of(got.pop("fails", []))
     return got
 
 
@@ -1380,6 +1538,19 @@ def status():
         "roots": got.get("roots") or {},
         "denied_roots": sorted(k for k, v in (got.get("roots") or {}).items()
                                if v == "denied"),
+        # Every job this account has on the cluster, from `squeue --me`, and
+        # what failed in the last day. app.py marks which ones Jarvis here
+        # is following (a run record in GUI_logs/vacc_runs).
+        "jobs": got.get("jobs") or [],
+        "failures": got.get("fails") or [],
+        # The lab's shared space: can this account open it, and write into
+        # Jarvis Data? With the sentence to show when it cannot.
+        "shared": dict(cfg.get("shared") or {},
+                       state=got.get("shared") or "unknown",
+                       data_state=got.get("jdata") or "unknown",
+                       why=shared_words(cfg.get("shared") or {},
+                                        got.get("shared"), got.get("jdata"),
+                                        cfg.get("netid") or "")),
     }
 
 
@@ -1637,6 +1808,26 @@ PARTITIONS = [
 # 3x costs nothing but queue priority, and being wrong by 1% costs the run.
 SAFETY = 3.0
 MIN_WALL_S = 600
+
+
+_ACCOUNT_OK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+
+
+def sbatch_account(cfg):
+    """The `#SBATCH --account=` line for this config, or "".
+
+    `account` was saved (`/api/vacc/setup`) and never sent, so every job ran
+    on the netid's default account whatever the lab had set. It goes into a
+    script, so anything that is not a plain account name is refused rather
+    than quoted: a slurm account has no spaces, slashes or quotes in it.
+    """
+    acct = str((cfg or {}).get("account") or "").strip()
+    if not acct:
+        return ""
+    if not _ACCOUNT_OK.match(acct):
+        raise ValueError("The VACC account %r is not an account name. Set it "
+                         "again from the VACC panel." % acct)
+    return "#SBATCH --account=%s\n" % acct
 
 
 def slurm_request(seconds, megasamples=1.0, partition=None):

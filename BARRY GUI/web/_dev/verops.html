@@ -204,8 +204,8 @@ async function untilN(fn, tries = 250, gap = 100) {
         mine2.n + ' vs ' + nEvents);
 
   head('And the comparison still works');
-  const pip = Array.from(D.querySelectorAll('.ver-pip'))
-    .find((p) => p.textContent === 'v3');
+  const pip = Array.from(D.querySelectorAll('.ver-strip .vtree-row'))
+    .find((p) => p.dataset.v === '3');
   pip.click();
   await untilN(() => D.querySelector('.ver-open'), 120);
   await sleep(900);

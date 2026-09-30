@@ -113,15 +113,19 @@ BARRY.vacc = (function () {
         + (remote ? ' — ' + remote : '')
         + '\n\nNothing to upload: it is on a share VACC mounts.',
     },
+    /* `staged` is the internal name and stays so; what a person reads is
+       "uploaded" (constitution §6d). "Staged" said Jarvis had put it there,
+       and it had not -- this is a copy found on the cluster, in scratch or
+       in a folder a scan was pointed at. */
     staged: {
-      word: 'VACC copy', short: 'VACC',
-      note: 'a copy in the cluster’s scratch',
+      word: 'Uploaded to VACC', short: 'VACC',
+      note: 'a copy uploaded to the cluster',
       why: (remote) =>
-        'A copy of this recording is in cluster scratch'
+        'A copy of this recording is on the cluster'
         + (remote ? ' — ' + remote : '') + '.\n\n'
         + 'Scratch is not storage — VACC may clear it without notice, so '
-        + 'this is a cache and never the only copy. If it goes, the next '
-        + 'run puts it back.',
+        + 'this is a working copy and never the only one. If it goes, '
+        + 'upload it again.',
     },
   };
 
@@ -377,9 +381,12 @@ BARRY.vacc = (function () {
         ])
       : null;
     const bits = [
-      line(d.dry ? 'would gain a cluster path' : 'gained a cluster path',
+      /* Nothing is written into the registry: the folder is remembered
+         and the recordings under it are known to be on VACC by identity
+         (constitution §6d, "a cluster path never enters the registry"). */
+      line(d.dry ? 'would be known to be on VACC' : 'now known to be on VACC',
            d.added || []),
-      line('already had it', d.already || []),
+      line('already known to be on VACC', d.already || []),
       line('not a recording Jarvis knows — left alone', d.unmatched || []),
       line('too ambiguous to match — refused', d.ambiguous || [], 'warn-line'),
     ].filter(Boolean);
@@ -388,17 +395,18 @@ BARRY.vacc = (function () {
     if (d.dry && n) {
       box.appendChild(el('div', { class: 'tk-actions' }, [
         BARRY.ui.button({
-          kind: 'primary', text: 'Add ' + n + ' path(s) to the registry',
+          kind: 'primary', text: 'Look here for recordings on VACC',
           disabled: scanning,
           onclick: () => scan(d.root, false),
         }),
         el('span', { class: 'hint quiet',
-          text: 'Paths only. Nothing new is created.' }),
+          text: 'Jarvis remembers this folder and looks in it as it looks '
+              + 'in scratch. Nothing is written into the registry.' }),
       ]));
     } else if (d.dry && !n) {
       box.appendChild(el('p', { class: 'hint quiet',
-        text: 'Nothing to add — every recording under here that Jarvis knows '
-            + 'already carries its cluster path.' }));
+        text: 'Nothing new — every recording under here that Jarvis knows '
+            + 'is already known to be on VACC.' }));
     }
     return box;
   }
@@ -409,7 +417,8 @@ BARRY.vacc = (function () {
     try {
       lastScan = await apiPost('/api/vacc/scan', { path, dry: !!dry });
       if (!dry) {
-        toast((lastScan.added || []).length + ' cluster path(s) added.', 'ok');
+        toast((lastScan.added || []).length + ' recording(s) now known to be '
+              + 'on VACC.', 'ok');
         knows = null;            // reachability just changed
       }
     } catch (e) {
@@ -770,13 +779,17 @@ BARRY.vacc = (function () {
           row('Quota', d.quota || null),
         ]),
 
+        sharedBox(d),
+        uploadsBox(),
+        jobsBox(d),
+
         el('h4', { text: 'Look around it' }),
         el('p', { class: 'hint',
-          text: 'The cluster’s own filesystem. Scanning a folder tells '
-              + 'recordings Jarvis already knows that they also live there '
-              + '— it adds a path, and never invents a recording: a '
-              + 'permanent id is not something a directory walk should be '
-              + 'allowed to mint.' }),
+          text: 'The cluster’s own filesystem. Scanning a folder makes '
+              + 'Jarvis look in it, as it looks in scratch, for recordings '
+              + 'it already knows. Nothing is written into the registry and '
+              + 'no recording is invented: a permanent id is not something '
+              + 'a directory walk should be allowed to mint.' }),
         browseBox(),
 
         el('h4', { text: 'What it can already read' }),
@@ -787,7 +800,7 @@ BARRY.vacc = (function () {
               + 'saying no.' }),
         el('div', { class: 'vacc-grid' }, [
           row('Reads in place', c['native']),
-          row('Copied to scratch', c['staged']),
+          row('Uploaded to VACC', c['staged']),
           row('Not reachable from it', c['local-only']),
           row('Not established', c['unknown']),
         ]),
@@ -804,6 +817,211 @@ BARRY.vacc = (function () {
         ]),
       ]),
     ]), { replace: true });
+  }
+
+  /* The lab's shared space (constitution §6d): one account owns it and
+     everybody else reaches it with their own netid. When this account is
+     refused, say what was refused, where to look at it, and who to ask --
+     never a bare "permission denied". */
+  function sharedBox(d) {
+    const sh = d.shared || {};
+    if (!sh.root || !d.available) return null;
+    const words = {
+      ok: 'Open to this account',
+      denied: 'Refused to this account',
+      missing: 'Not there',
+    };
+    const dataWords = {
+      ok: 'writable — uploads can go here',
+      creatable: 'not made yet — the first upload creates it',
+      nowrite: 'readable, not writable — an upload would be refused',
+      missing: 'not there, and this account cannot create it',
+    };
+    return el('div', { class: 'vacc-shared' }, [
+      el('h4', { text: 'The lab’s shared space' }),
+      el('div', { class: 'vacc-grid' }, [
+        el('div', { class: 'vacc-row' }, [
+          el('span', { class: 'vacc-k', text: sh.root }),
+          el('span', { class: 'vacc-v', text: words[sh.state] || 'not checked yet' }),
+        ]),
+        el('div', { class: 'vacc-row' }, [
+          el('span', { class: 'vacc-k', text: sh.data || 'Jarvis Data' }),
+          el('span', { class: 'vacc-v',
+                       text: dataWords[sh.data_state] || 'not checked yet' }),
+        ]),
+      ]),
+      sh.why ? el('p', { class: 'warn-line', text: sh.why }) : null,
+      sh.ondemand ? el('a', {
+        class: 'linkish', href: sh.ondemand, target: '_blank',
+        rel: 'noopener', text: 'Open it in OnDemand',
+      }) : null,
+    ].filter(Boolean));
+  }
+
+  /* The account's jobs, from `squeue --me` on the routine probe, each
+     marked by whether Jarvis on this machine is following it: a run record
+     here is what lets a restart pick it up and file its answer. */
+  function jobsBox(d) {
+    if (!d.available) return null;
+    const jobs = d.jobs || [];
+    const whose = (j) => (j.followed
+      ? 'Jarvis here' + (j.tool ? ' · ' + j.tool : '')
+      : j.jarvis ? 'Jarvis, not followed here' : 'not Jarvis');
+    const kids = [el('h4', { text: 'Jobs on this account' })];
+    if (!jobs.length) {
+      kids.push(el('p', { class: 'hint', text: 'Nothing queued or running.' }));
+    } else {
+      kids.push(el('table', { class: 'tbl vacc-jobs' }, [
+        el('thead', {}, [el('tr', {}, ['Job', 'Name', 'State', 'Time', 'Why',
+                                       'Followed by'].map((h) => el('th', { text: h })))]),
+        el('tbody', {}, jobs.map((j) => el('tr', {
+          class: j.followed ? 'on' : '',
+        }, [
+          el('td', { text: j.id }),
+          el('td', { text: j.name }),
+          el('td', { text: j.state }),
+          el('td', { text: j.elapsed }),
+          el('td', { text: j.reason }),
+          el('td', { text: whose(j) }),
+        ]))),
+      ]));
+    }
+    if ((d.waiting || []).length) {
+      kids.push(el('p', { class: 'hint', text:
+        'Jarvis here is waiting on ' + d.waiting.length + ' run(s) the cluster '
+        + 'no longer lists — finished and being fetched, or lost: '
+        + d.waiting.map((w) => (w.tool || 'run') + ' ' + (w.id || w.rid))
+          .join(', ') + '.' }));
+    }
+    if (d.resumed) {
+      kids.push(el('p', { class: 'hint', text:
+        'Picked up ' + d.resumed + ' batch(es) a previous run of Jarvis left '
+        + 'on the cluster.' }));
+    }
+    const fails = d.failures || [];
+    if (fails.length) {
+      kids.push(el('p', { class: 'warn-line', text:
+        fails.length + ' job(s) ended badly in the last day: '
+        + fails.slice(0, 8).map((f) => f.id + ' ' + f.state.toLowerCase())
+          .join(', ') + (fails.length > 8 ? ', and more.' : '.') }));
+    }
+    return el('div', { class: 'vacc-health' }, kids);
+  }
+
+  /* ---- uploading to Jarvis Data (constitution §6d) ---------------------
+
+     Two steps, always: the plan -- what would be sent, where, and what is
+     already there -- and then the upload, which the server refuses without
+     `confirm`. The upload writes to the lab's shared space, so it happens
+     only after somebody has seen the plan and pressed the button that says
+     how much will be sent. */
+  const uploads = new Map();          // job id -> the latest snapshot
+  let upTimer = null;
+
+  const bytes = (n) => (typeof fmtBytes === 'function' ? fmtBytes(n || 0)
+                                                       : (n || 0) + ' B');
+
+  async function upload(gids) {
+    const want = (gids || []).filter(Boolean);
+    if (!want.length) {
+      toast('None of those is a registered recording.', 'warn');
+      return null;
+    }
+    let plan;
+    try {
+      toast('Working out what would be sent…', null, 2500);
+      plan = await apiPost('/api/vacc/upload/plan', { gids: want });
+    } catch (e) {
+      toast(e.message, 'err', 9000);
+      return null;
+    }
+    const ready = (plan.items || []).filter((i) => !i.why);
+    const body = el('div', { class: 'vacc-up' }, [
+      el('p', { text: 'To ' + (plan.dest_root || 'Jarvis Data') + ', as '
+          + 'project / mouse / recording. A file already there at the same '
+          + 'size is skipped, so uploading again sends only what is missing. '
+          + 'The copy here is only read.' }),
+      (plan.shared || {}).why ? el('p', { class: 'warn-line',
+                                          text: plan.shared.why }) : null,
+      el('ul', { class: 'fix-steps' }, ready.map((i) => el('li', { text:
+        i.label + ' — ' + (i.n_send
+          ? i.n_send + ' file(s), ' + bytes(i.bytes)
+            + (i.n_skip ? ', ' + i.n_skip + ' already there' : '')
+          : 'everything already there') }))
+        .concat((plan.blocked || []).map((i) => el('li', {
+          class: 'vacc-up-no', text: i.label + ' — ' + i.why })))),
+      el('p', { class: 'hint', text: 'Scratch is processing space: VACC may '
+          + 'clear it without notice, and this is never the only copy.' }),
+    ].filter(Boolean));
+    if (!plan.files) {
+      await BARRY.confirm('Upload to VACC', body, 'Close');
+      return null;
+    }
+    let started = null;
+    const ok = await BARRY.confirm('Upload to VACC', body,
+      'Upload ' + bytes(plan.bytes) + ' to VACC', false, async () => {
+        started = await apiPost('/api/vacc/upload', {
+          gids: ready.filter((i) => i.n_send).map((i) => i.gid), confirm: true });
+      });
+    if (!ok || !started || !started.job) return null;
+    track(started.job);
+    toast('Uploading ' + started.n + ' recording(s) to VACC. Progress is in '
+          + 'the VACC panel.', 'ok', 7000);
+    return started.job.id;
+  }
+
+  function track(snap) {
+    uploads.set(snap.id, snap);
+    if (!upTimer) upTimer = setInterval(pollUploads, 3000);
+  }
+
+  async function pollUploads() {
+    if (document.hidden) return;              // nobody can see it (§10)
+    for (const [id, was] of uploads) {
+      if (was.status !== 'running') continue;
+      try {
+        const got = await api('/api/cfc/job/' + encodeURIComponent(id));
+        const snap = got.job || got;
+        uploads.set(id, snap);
+        if (snap.status !== 'running') {
+          const failed = (snap.members || []).filter((m) => m.status === 'failed');
+          toast(snap.status === 'done' && !failed.length
+                  ? 'Uploaded to VACC. The cluster will find the copies the '
+                    + 'next time it looks.'
+                  : 'The upload ' + (snap.status === 'done'
+                      ? 'finished with ' + failed.length + ' failed'
+                      : snap.status) + (snap.error ? ': ' + snap.error : '.'),
+                snap.status === 'done' && !failed.length ? 'ok' : 'err', 9000);
+          knows = null;
+        }
+      } catch (e) { /* the next tick asks again */ }
+    }
+    if (![...uploads.values()].some((s) => s.status === 'running')) {
+      clearInterval(upTimer);
+      upTimer = null;
+    }
+  }
+
+  function uploadsBox() {
+    if (!uploads.size) return null;
+    const rows = [];
+    for (const snap of uploads.values()) {
+      for (const m of (snap.members || [])) {
+        rows.push(el('div', { class: 'vacc-row' }, [
+          el('span', { class: 'vacc-k', text: m.label || m.id }),
+          el('span', { class: 'vacc-v', text: m.status === 'failed'
+            ? 'failed: ' + (m.error || '')
+            : m.status === 'done' ? (m.step || 'done')
+            : (m.of ? 'file ' + Math.min((m.done || 0) + 1, m.of) + ' of ' + m.of
+                      + (m.step ? ' · ' + m.step : '')
+                    : (m.step || m.status || 'waiting')) }),
+        ]));
+      }
+    }
+    return el('div', { class: 'vacc-uploads' }, [
+      el('h4', { text: 'Uploads' }),
+      el('div', { class: 'vacc-grid' }, rows),
+    ]);
   }
 
   /* ---- boot ------------------------------------------------------------- */
@@ -840,6 +1058,7 @@ BARRY.vacc = (function () {
   }
 
   return { init, status, showVacc, loadKnows, of, canRead, words, mark,
+           upload, _uploads: uploads,
            open, pathFor, watch,
            offerSignIn, showSignIn, signOut,
            get last() { return last; },

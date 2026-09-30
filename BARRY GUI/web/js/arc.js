@@ -3760,9 +3760,7 @@ BARRY.arcmode = (function () {
 
   async function enter(which, gid, reading, clipping, atPair, atView) {
     /* One mode at a time, and this is the function responsible for it. */
-    if (BARRY.curate && BARRY.curate.active) BARRY.curate.exit();
-    if (BARRY.strata && BARRY.strata.active) BARRY.strata.exit();
-    if (BARRY.cfc && BARRY.cfc.active) BARRY.cfc.exit();
+    BARRY.modes.leaveAllBut('arcmode');   // every other mode; see core.js
     if (kind) exit();
 
     const path = reading && reading.path;
@@ -5065,3 +5063,6 @@ BARRY.coupling = (function () {
    modules that are opened that way hang themselves here as well; this one
    follows, so a harness driving the app from outside can find it. */
 window.barryArc = BARRY.arc;
+
+// One mode at a time, kept by the registry in core.js.
+BARRY.modes.register('arcmode', BARRY.arcmode);

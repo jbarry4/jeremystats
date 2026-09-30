@@ -386,6 +386,69 @@ def stable_id(entry_id, ver):
     return "d" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:11]
 
 
+def parent_ref(entry_id, versions, ref):
+    """The version `ref` names, or None.
+
+    A caller that picks a version sends the ref the page holds: the
+    per-version id where there is one (Root Canal's `from_version`), an id
+    derived on read (`stable_id`) for one written before ids, or a plain
+    number. Written into `from_v` as it came, an id matches no number, and
+    `label_rows` then names the new version as a root -- a branch that reads
+    as the start of an unrelated history. Measured here: one version in this
+    bank carries a Braces id in its `from_v` for exactly that reason.
+
+    A number resolves the way `label_rows` resolves it -- the last version
+    carrying it -- so recording its id changes nothing about the name and
+    makes it exact from then on.
+    """
+    if ref is None:
+        return None
+    vs = [v for v in (versions or []) if isinstance(v, dict)]
+    s = str(ref).strip()
+    for v in vs:
+        if v.get("id") is not None and str(v["id"]) == s:
+            return v
+    for v in vs:
+        if not v.get("id") and stable_id(entry_id, v) == s:
+            return v
+    try:
+        n = int(s.lstrip("vV"))
+    except ValueError:
+        return None
+    same = [v for v in vs if _num(v.get("v")) == n]
+    return max(same, key=lambda v: v.get("at") or "") if same else None
+
+
+def _ref_from_v(entry_id, out):
+    """Stored refs in `from_v`, read as what they name. In place, on copies.
+
+    The read-side half of `parent_ref`: a history already written with an
+    id in `from_v` is shown with its lineage, not as a stray root, and
+    nothing on disk changes.
+    """
+    fixed = 0
+    for v in out:
+        fv = v.get("from_v")
+        if fv is None or isinstance(fv, int):
+            continue
+        try:
+            int(str(fv).lstrip("vV"))
+            continue                    # a number sent as text; label_rows copes
+        except ValueError:
+            pass
+        par = parent_ref(entry_id, [x for x in out if x is not v], fv)
+        if par is None:
+            continue
+        # What was stored, kept: this is a reading of the field, not a
+        # replacement for it (tools/check_versions.py holds it to that).
+        v["from_ref"] = fv
+        v["from_v"] = par.get("v")
+        if not v.get("from_id") and par.get("id"):
+            v["from_id"] = par["id"]
+        fixed += 1
+    return fixed
+
+
 def repair(entry_id, versions):
     """A merged history with pre-id twins folded in and every version id'd.
 
@@ -416,4 +479,5 @@ def repair(entry_id, versions):
             v["id"] = stable_id(entry_id, v)
             v["id_derived"] = True
             derived += 1
-    return out, {"folded": folded, "derived": derived}
+    refs = _ref_from_v(entry_id, out)
+    return out, {"folded": folded, "derived": derived, "refs": refs}

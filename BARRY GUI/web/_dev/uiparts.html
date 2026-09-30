@@ -1,0 +1,457 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — run bar, recording picker, version tree, bank dialog</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 52vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 48vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The four shared pieces of round 2 (ui.js, constitution §6d/§6e), checked
+   against the rules the constitution states for them, in the running app
+   and with its own styles:
+
+     runBar         an axis with one option is hidden; VACC only when it can
+                    be used; a VACC-only tool says why it cannot run
+     pickRecording  usable first, everything on request, the reason shown
+     versionTree    newest on top, one lane per line, joined to its origin,
+                    nodes on their rows even when rows wrap
+     bankDialog     a name for an entry, a note for a version, and the
+                    continue/branch sentence; a refusal stays in the dialog
+
+   Nothing is banked or written: every callback here is a stand-in, and the
+   two things borrowed from the app (VACC status, who you are) are put back. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const ready = await untilN(() => typeof W().setView === 'function'
+                                   && W().eval('BARRY.ui && BARRY.ui.runBar'));
+  check('the application loads, with the round 2 pieces', !!ready);
+  if (!ready) { document.title = 'FAIL'; return; }
+  const B = W().eval('BARRY');
+  const stage = D().createElement('div');
+  stage.style.cssText = 'position:fixed;left:10px;top:10px;width:420px;'
+    + 'z-index:99999;background:var(--bg);padding:8px';
+  D().body.appendChild(stage);
+  const put = (n) => { stage.innerHTML = ''; stage.appendChild(n); return n; };
+  const txt = (n) => (n.textContent || '').replace(/\s+/g, ' ').trim();
+
+  /* VACC status, stood in for and put back. `last` is a getter on the
+     module's object, so it is redefined rather than assigned. */
+  const realLast = Object.getOwnPropertyDescriptor(B.vacc, 'last');
+  const realVacc = B.state.vacc;
+  const vacc = (on) => {
+    B.state.vacc = on;
+    Object.defineProperty(B.vacc, 'last', { configurable: true,
+      get: () => ({ configured: on }) });
+  };
+  const realWho = B.profile.who;
+
+  try {
+    head('versionLabel and versionNext');
+    const L = B.ui.versionLabel;
+    check('a derived name wins over the stored number',
+          L({ label: '3.1', v: 4 }) === 'v3.1', L({ label: '3.1', v: 4 }));
+    check('the number when there is nothing else', L({ v: 2 }) === 'v2');
+    check('a bare name or number', L('v5') === 'v5' && L(7) === 'v7');
+    /* The page names versions with BARRY.vers.labelRows, its one copy of
+       versions.label_rows. The strongest check there is: every entry in
+       the bank, named on the page, against the names the server sent. */
+    const bank = await (await W().fetch('/api/bank')).json();
+    let nEnt = 0, nVer = 0;
+    const off = [];
+    for (const e of (bank.entries || [])) {
+      const vs0 = e.versions || [];
+      if (!vs0.length) continue;
+      nEnt += 1; nVer += vs0.length;
+      for (const x of B.vers.labelRows(vs0)) {
+        if (String(x.name) !== String(x.row.label)) {
+          off.push(e.id + ' v' + x.row.v + ': page ' + x.name
+                   + ', server ' + x.row.label);
+        }
+      }
+    }
+    check('the page names every banked version as the server does ('
+          + nVer + ' versions, ' + nEnt + ' entries)',
+          nVer > 0 && off.length === 0, off.slice(0, 3).join(' | '));
+
+    /* What banking next would be called: the bank's rule, simulated. */
+    const T0 = Date.now();
+    const at = (i) => new Date(T0 - (100 - i) * 3600e3).toISOString();
+    const chain = (n) => Array.from({ length: n }, (_, i) => ({
+      id: 'c' + i, v: i, from_v: i ? i - 1 : null, from_id: i ? 'c' + (i - 1) : null,
+      at: at(i) }));
+    const named = (rows) => {
+      for (const x of B.vers.labelRows(rows)) x.row.label = x.name;
+      return rows;
+    };
+    const N = (rows, v) => B.ui.versionNext(rows, rows.find((r) => r.v === v));
+    const c6 = named(chain(6));
+    let nx = N(c6, 5);
+    check('from the tip, v5, it continues as v6',
+          nx.name === '6' && !nx.branch, JSON.stringify(nx));
+    nx = N(c6, 3);
+    check('from v3, with v4 and v5 after it, it branches as v3.1',
+          nx.name === '3.1' && nx.branch, JSON.stringify(nx));
+    /* The case a shortcut on the names gets wrong: a history whose
+       versions never recorded what they came from. Picking up v1 continues
+       the trunk -- at v5, because 2, 3 and 4 are spoken for -- which is
+       what the bank will actually write. */
+    const bare = named([0, 1, 2, 3, 4].map((i) => ({ id: 'b' + i, v: i, at: at(i) })));
+    nx = N(bare, 1);
+    check('on a history with no lineage, picking up v1 continues at v5',
+          nx.name === '5' && !nx.branch, JSON.stringify(nx));
+    /* Two machines both minted 3. The parent's id says which. */
+    const twin = named([
+      { id: 'a', v: 0, at: at(0) },
+      { id: 'b', v: 1, from_v: 0, from_id: 'a', at: at(1) },
+      { id: 'c', v: 2, from_v: 1, from_id: 'b', at: at(2) },
+      { id: 'd', v: 3, from_v: 2, from_id: 'c', at: at(3) },
+      { id: 'e', v: 3, from_v: 1, from_id: 'b', at: at(4) },
+    ]);
+    check('the second v3, built on v1 after v2 existed, is named v1.1',
+          twin.find((r) => r.id === 'e').label === '1.1',
+          twin.map((r) => r.id + '=' + r.label).join(' '));
+    nx = B.ui.versionNext(twin, twin.find((r) => r.id === 'd'));
+    check('and picking up the first v3, by identity, continues as v4',
+          nx.name === '4' && !nx.branch && nx.from === '3', JSON.stringify(nx));
+
+    head('runBar');
+    vacc(false);
+    let changed = null;
+    let bar = put(B.ui.runBar({
+      modes: { local: ['one', 'many'], vacc: ['one', 'many'] },
+      where: 'vacc', count: 'many',
+      onChange: (w, c) => { changed = [w, c]; },
+      action: { text: 'Run on this recording', onclick: () => {} },
+      cost: 'about a minute here',
+    }));
+    check('VACC is not offered while it cannot be used',
+          !/VACC/.test(txt(bar)), txt(bar));
+    check('so the Where axis, down to one option, is hidden',
+          !Array.from(bar.querySelectorAll('.section-label'))
+            .some((n) => n.textContent === 'Where'));
+    check('and a tool asked for VACC runs here instead', bar.where === 'local',
+          bar.where);
+    check('How many is shown, and keeps what was asked', bar.count === 'many'
+          && !!bar.querySelector('.seg .active')
+          && bar.querySelector('.seg .active').textContent === 'Many');
+    const btns = Array.from(bar.querySelectorAll('button'));
+    check('the primary is last, and names what it does',
+          btns[btns.length - 1].textContent === 'Run on this recording'
+          && btns[btns.length - 1].className === 'btn');
+    check('the cost is said before it is spent', /about a minute/.test(txt(bar)));
+
+    vacc(true);
+    bar = put(B.ui.runBar({
+      modes: { local: ['one', 'many'], vacc: ['one', 'many'] },
+      where: 'local', count: 'one',
+      onChange: (w, c) => { changed = [w, c]; },
+    }));
+    check('with VACC set up, Where is offered',
+          Array.from(bar.querySelectorAll('.section-label'))
+            .some((n) => n.textContent === 'Where'));
+    const vbtn = Array.from(bar.querySelectorAll('.seg button'))
+      .find((b) => b.textContent === 'VACC');
+    if (vbtn) vbtn.click();
+    check('and choosing it says so, keeping How many',
+          JSON.stringify(changed) === JSON.stringify(['vacc', 'one']),
+          JSON.stringify(changed));
+
+    vacc(false);
+    bar = put(B.ui.runBar({
+      modes: { vacc: ['one', 'many'] }, count: 'many',
+      action: { text: 'Submit 12 to VACC', onclick: () => {} },
+    }));
+    const go = bar.querySelector('button.btn');
+    check('a VACC-only tool with no VACC says why it cannot run',
+          /VACC Mode is off/.test(txt(bar)), txt(bar));
+    check('and its primary cannot be pressed', go && go.disabled);
+    check('rather than vanishing: the tool is still there to read',
+          bar.where === 'vacc');
+
+    const drift = put(B.ui.runBar({ modes: { local: ['one'], vacc: ['one'] } }));
+    check('a tool with one mode here and no VACC draws no switches at all',
+          drift.querySelectorAll('.seg').length === 0, txt(drift));
+
+    head('pickRecording');
+    const rows = [
+      { gid: 'g1', label: 'zz m1 s1', reachable: true, hasSet: true },
+      { gid: 'g2', label: 'zz m1 s2', reachable: true, hasSet: false },
+      { gid: 'g3', label: 'zz m2 s1', reachable: true, hasSet: true },
+    ];
+    const usable = (r) => (r.hasSet ? true
+      : 'Nothing curated is banked against this recording.');
+    check('opens on the current choice when it is usable',
+          B.ui.openOn(rows, usable, 'g3') === 'g3');
+    check('else on the first that is, never on nothing',
+          B.ui.openOn(rows, usable, 'g2') === 'g1'
+          && B.ui.openOn(rows, usable, null) === 'g1');
+    let picked = null;
+    const pr = put(B.ui.pickRecording({ rows, usable, value: 'g1',
+                                        onpick: (r) => { picked = r; } }));
+    check('the label is Recording',
+          pr.querySelector('.section-label').textContent === 'Recording');
+    const list = () => {
+      const inp = pr.querySelector('.sp-input');
+      inp.value = 'zz'; inp.dispatchEvent(new (W().Event)('input'));
+      return Array.from(pr.querySelectorAll('.sp-row')).map((n) => txt(n));
+    };
+    check('only the usable recordings are listed', list().length === 2,
+          list().join(' | '));
+    const all = pr.querySelector('.pick-rec-all');
+    check('with the rest offered on request',
+          all && /Show all recordings \(1 more\)/.test(all.textContent),
+          all && all.textContent);
+    all.click();
+    check('and listed when asked for', list().length === 3, list().join(' | '));
+    const two = Array.from(pr.querySelectorAll('.sp-row'))
+      .find((n) => /s2/.test(n.textContent));
+    two.dispatchEvent(new (W().MouseEvent)('mousedown', { bubbles: true }));
+    check('picking one this tool cannot use says why',
+          /Nothing curated/.test(txt(pr.querySelector('.pick-rec-why')))
+          && !pr.querySelector('.pick-rec-why').classList.contains('hidden'));
+    check('and still tells the caller', picked && picked.gid === 'g2');
+    const none = put(B.ui.pickRecording({ rows, usable: () => 'no',
+      emptyText: 'Run Incisor first.' }));
+    check('with nothing usable, it says what to do next',
+          /Run Incisor first/.test(txt(none)));
+
+    head('versionTree');
+    const T = (hours) => new Date(Date.now() - hours * 3600e3).toISOString();
+    const vs = ['0', '1', '2', '3', '4', '5', '6', '3.1', '3.2', '3.1.1']
+      .map((label, i) => ({ id: 'id-' + label, label, v: i, by: 'zz',
+                            at: T(100 - i), n: 1000 + i }));
+    vs.find((v) => v.label === '4').snap_elsewhere = true;
+    vs.find((v) => v.label === '3').aligned = true;
+    let got = null;
+    const tree = put(B.ui.versionTree({ versions: vs, value: 'id-5',
+                                        onpick: (v) => { got = v; } }));
+    await sleep(100);
+    const names = Array.from(tree.querySelectorAll('.vtree-row'))
+      .map((r) => r.dataset.v);
+    check('newest at the top, each branch right above where it forked',
+          names.join(' ') === '6 5 4 3.2 3.1.1 3.1 3 2 1 0', names.join(' '));
+    const row = (n) => tree.querySelector('.vtree-row[data-v="' + n + '"]');
+    check('every row says name, who, when and count',
+          ['vtree-n', 'vtree-who', 'vtree-when', 'vtree-count']
+            .every((c) => row('3.1').querySelector('.' + c)));
+    check('the newest says so', /newest/.test(txt(row('6'))));
+    check('an aligned one says so', /aligned/.test(txt(row('3'))));
+    check('one not on this machine is shown, disabled, with the reason',
+          row('4') && row('4').disabled
+          && /another machine/.test(txt(row('4'))), txt(row('4')));
+    check('the chosen one is marked',
+          row('5').classList.contains('on')
+          && row('5').getAttribute('aria-checked') === 'true');
+    const nodes = Array.from(tree.querySelectorAll('.vt-node'));
+    check('one node per version', nodes.length === 10, nodes.length);
+    const cxs = [...new Set(nodes.map((n) => n.getAttribute('cx')))];
+    check('three lanes: the trunk, the v3 branch, the branch off v3.1',
+          cxs.length === 3, cxs.join(','));
+    const laneOf = (n) => nodes[names.indexOf(n)].getAttribute('cx');
+    check('the trunk shares a lane',
+          ['6', '5', '3', '0'].every((n) => laneOf(n) === laneOf('6')));
+    check('a line shares a lane',
+          laneOf('3.1') === laneOf('3.2') && laneOf('3.1') !== laneOf('6'));
+    check('a branch off a branch gets a lane of its own',
+          laneOf('3.1.1') !== laneOf('3.1') && laneOf('3.1.1') !== laneOf('6'));
+    check('each branch is joined to where it forked',
+          tree.querySelectorAll('path.vt-edge').length === 2,
+          tree.querySelectorAll('path.vt-edge').length);
+    const onRow = () => names.every((n, i) => {
+      const r = row(n);
+      return Math.abs(parseFloat(nodes[i].getAttribute('cy'))
+                      - (r.offsetTop + r.offsetHeight / 2)) < 1;
+    });
+    check('every node sits on its row', onRow());
+    row('3.2').click();
+    check('picking one tells the caller', got && got.label === '3.2');
+    check('and moves the mark', row('3.2').classList.contains('on')
+          && !row('5').classList.contains('on'));
+    row('4').click();
+    check('a disabled one cannot be picked', got.label === '3.2');
+
+    stage.style.width = '150px';
+    /* The redraw comes from a ResizeObserver, which is delivered with a
+       rendering frame -- waited for, up to two seconds, not assumed. */
+    const follows = () => {
+      const ns = Array.from(tree.querySelectorAll('.vt-node'));
+      return ns.length === names.length && names.every((n, i) => {
+        const r = row(n);
+        return Math.abs(parseFloat(ns[i].getAttribute('cy'))
+                        - (r.offsetTop + r.offsetHeight / 2)) < 1;
+      });
+    };
+    await untilN(() => row('6').offsetHeight > 34 && follows(), 20, 100);
+    const nodes2 = Array.from(tree.querySelectorAll('.vt-node'));
+    const wrapped = row('6').offsetHeight > 34;
+    check('on a narrow panel the rows wrap rather than being cut short',
+          wrapped && Array.from(tree.querySelectorAll('.vtree-row'))
+            .every((r) => r.scrollWidth <= r.clientWidth + 1),
+          row('6').offsetHeight + 'px');
+    check('and the nodes follow them',
+          names.every((n, i) => {
+            const r = row(n);
+            return Math.abs(parseFloat(nodes2[i].getAttribute('cy'))
+                            - (r.offsetTop + r.offsetHeight / 2)) < 1;
+          }));
+    stage.style.width = '420px';
+
+    head('bankDialog');
+    B.profile.who = () => 'zz harness';
+    const modal = () => D().getElementById('bigModalBox');
+    const open = () => !D().getElementById('bigModal').classList.contains('hidden');
+    const okBtn = () => Array.from(modal().querySelectorAll('.mf button'))
+      .pop();
+    const btn = (label) => Array.from(modal().querySelectorAll('.mf button'))
+      .find((b) => b.textContent === label);
+    const entry = { name: 'zz m1 s1 · Incisor CSC4',
+                    versions: named(chain(6).map((r) => Object.assign(r, {
+                      id: 'e-' + r.v,
+                      from_id: r.v ? 'e-' + (r.v - 1) : null }))) };
+
+    let wrote = null;
+    let p = B.ui.bankDialog({ kind: 'version', entry, from: '3',
+                              onBank: (x) => { wrote = x; } });
+    await sleep(50);
+    check('a version from an older one says it branches',
+          /branches from v3 → v3\.1/.test(txt(modal())), txt(modal()));
+    check('the entry name is shown, not asked',
+          /zz m1 s1/.test(txt(modal())) && !modal().querySelector('.bank-dlg-name'));
+    check('who comes from the profile', /Banked by zz harness/.test(txt(modal())));
+    modal().querySelector('.bank-dlg-note').value = 'zz note';
+    okBtn().click();
+    check('banking resolves true', (await p) === true);
+    check('and hands over the note and who',
+          wrote && wrote.note === 'zz note' && wrote.who === 'zz harness'
+          && wrote.name === null, JSON.stringify(wrote));
+    check('the dialog is gone', !open());
+
+    p = B.ui.bankDialog({ kind: 'version', entry, from: 'e-5', onBank: () => {} });
+    await sleep(50);
+    check('from the tip, by id, it continues',
+          /continues v5 → v6/.test(txt(modal())), txt(modal()));
+    Array.from(modal().querySelectorAll('.mf button'))
+      .find((b) => b.textContent === 'Cancel').click();
+    check('Cancel resolves false', (await p) === false);
+
+    /* By stored number, the way a curation set records what it was picked
+       up from -- and with nothing recorded, the bank's own default: the
+       highest stored number, the last version carrying it. Here the stored
+       numbers collide (two machines both minted 3), which is the case the
+       name exists for. */
+    /* The twin history from above: v0, v1, v2, v3 and a second v3 built
+       on v1, named v1.1. */
+    const clash = { name: 'zz clash', versions: twin };
+    p = B.ui.bankDialog({ kind: 'version', entry: clash, fromV: 1,
+                          onBank: () => {} });
+    await sleep(50);
+    check('fromV names the stored number: v1, already built on twice, branches',
+          /branches from v1 → v1\.2/.test(txt(modal())), txt(modal()));
+    btn('Cancel').click(); await p;
+    p = B.ui.bankDialog({ kind: 'version', entry: clash, onBank: () => {} });
+    await sleep(50);
+    check('with nothing recorded, the newest stored: the last v3, named v1.1',
+          /continues v1\.1 → v1\.2/.test(txt(modal())), txt(modal()));
+    check('and the title names the version it will write',
+          /Bank this as v1\.2/.test(txt(modal().querySelector('h3'))));
+    btn('Cancel').click(); await p;
+    p = B.ui.bankDialog({ kind: 'version', entry: { name: 'zz new', versions: [] },
+                          onBank: () => {} });
+    await sleep(50);
+    check('a set never banked says it is the first version',
+          /first version of this entry, v1/.test(txt(modal()))
+          && /Bank this set/.test(txt(modal().querySelector('h3'))));
+    check('and the note box has the focus',
+          D().activeElement === modal().querySelector('.bank-dlg-note'));
+    btn('Cancel').click(); await p;
+
+    const ro = put(B.ui.versionTree({ versions: vs, readonly: true, notes: true }));
+    check('a history to read has no buttons in it',
+          ro.querySelectorAll('button').length === 0
+          && ro.querySelectorAll('.vtree-row').length === 10);
+    check('and nothing in it is dimmed as unpickable',
+          ro.querySelectorAll('.vtree-row.off').length === 0);
+
+    p = B.ui.bankDialog({ kind: 'entry', name: 'zz m1 s1 · Incisor CSC4',
+      what: '12 candidates from CSC4',
+      onBank: (x) => { wrote = x; } });
+    await sleep(50);
+    const nb = modal().querySelector('.bank-dlg-name');
+    check('a new entry asks its name, pre-filled',
+          nb && nb.value === 'zz m1 s1 · Incisor CSC4');
+    nb.value = '   ';
+    okBtn().click();
+    await p;
+    check('a name emptied out falls back to the suggestion, never to nothing',
+          wrote.name === 'zz m1 s1 · Incisor CSC4', JSON.stringify(wrote));
+
+    p = B.ui.bankDialog({ kind: 'entry', name: 'zz x',
+      onBank: () => { throw new Error('zz refused by the server'); } });
+    await sleep(50);
+    okBtn().click();
+    await sleep(100);
+    check('a refusal is shown in the dialog, which stays open',
+          open() && /zz refused by the server/.test(txt(modal())));
+    Array.from(modal().querySelectorAll('.mf button'))
+      .find((b) => b.textContent === 'Cancel').click();
+    await p;
+
+    B.profile.who = () => '';
+    let called = false;
+    p = B.ui.bankDialog({ kind: 'entry', name: 'zz y',
+                          onBank: () => { called = true; } });
+    await sleep(50);
+    check('with nobody set as who you are, it says so',
+          /Nobody is set as who you are/.test(txt(modal())));
+    okBtn().click();
+    await sleep(100);
+    check('and does not bank', !called && open());
+    Array.from(modal().querySelectorAll('.mf button'))
+      .find((b) => b.textContent === 'Cancel').click();
+    await p;
+  } finally {
+    B.profile.who = realWho;
+    B.state.vacc = realVacc;
+    if (realLast) Object.defineProperty(B.vacc, 'last', realLast);
+    stage.remove();
+  }
+
+  head(bad === 0 ? 'the four pieces hold their rules' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(
+    out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+  document.title = 'FAIL threw: ' + e.message;
+} })();
+</script>

@@ -394,6 +394,10 @@ def main():
         pause()
         return 1
 
+    # This is the app, so it syncs. Tools and the harness import the same
+    # module for its routes and do not set this, so they no longer run a
+    # background sync loop of their own (backend/app.py, _cloud_loop).
+    os.environ.setdefault("Jarvis_CLOUD_SYNC", "on")
     from backend.app import (app, refresh_catalog, warm_start,
                              REPO_ROOT, LOGS_DIR)
     from backend import runner, sysinfo, video

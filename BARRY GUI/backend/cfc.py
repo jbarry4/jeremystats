@@ -68,7 +68,38 @@ import time
 import uuid
 
 import numpy as np
-from scipy.signal import decimate, filtfilt, firls, freqz, hilbert
+
+
+# scipy.signal, imported the first time a filter is actually run.
+#
+# Measured: this module is imported by nine others -- incisor, panorama,
+# spectrum, horizon, analysis, vaccrun, circuitrun, driftrun, app -- and every
+# one of them is loaded when the server starts. The top-level
+# `from scipy.signal import ...` that was here was paid by the first of them,
+# about a second of the ~3 s the server spent importing before it could
+# serve anything, on a lab machine. On a laptop, where antivirus scans each
+# compiled library the first time it loads, several times that.
+#
+# The same five names, so no caller changes.
+#
+# Self-contained on purpose, NOT through lazyimp.py like the rest of the
+# backend. Two scripts in `FOOOF Playgroun` put this folder on sys.path and
+# `import cfc` as a plain module, and a package-relative `from . import
+# lazyimp` fails that way -- which is exactly what happened, and what
+# tools/check_panorama.py caught. This module has never had a relative
+# import, and that is what lets the lab's own scripts use it directly.
+def _from_signal(name):
+    def call(*args, **kwargs):
+        from scipy import signal
+        return getattr(signal, name)(*args, **kwargs)
+    call.__name__ = name
+    call.__qualname__ = name
+    return call
+
+
+decimate, filtfilt, firls, freqz, hilbert = (
+    _from_signal(n) for n in ("decimate", "filtfilt", "firls", "freqz",
+                              "hilbert"))
 
 # --------------------------------------------------------------------------
 # eegfilt.m

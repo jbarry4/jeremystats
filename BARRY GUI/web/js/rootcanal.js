@@ -669,13 +669,16 @@ BARRY.rootcanal = (function () {
   function modeSwitch() {
     const mode = bulk.on ? 'many' : 'one';
     return el('div', { class: 'card rc-mode' }, [
-      BARRY.ui.seg([
-        ['one', 'One set at a time'],
-        ['many', 'Many sets at once'],
-      ], mode, (id) => {
-        bulk.on = id === 'many';
-        render();
-        if (bulk.on && !bulk.plan) loadBulk();
+      /* How many, through the run bar (constitution §6d): one component
+         for the choice every tool makes, rather than a seg each tool drew
+         for itself. Only local modes, so the bar shows How many alone. */
+      BARRY.ui.runBar({
+        modes: { local: ['one', 'many'] }, where: 'local', count: mode,
+        onChange: (w, c) => {
+          bulk.on = c === 'many';
+          render();
+          if (bulk.on && !bulk.plan) loadBulk();
+        },
       }),
       el('span', { class: 'hint', text: bulk.on
         ? 'Reads them one after another. Nothing is banked by the queue — '
@@ -707,7 +710,7 @@ BARRY.rootcanal = (function () {
         el('strong', { text: cur.session_label || cur.gid || cur.entry_id }),
         el('span', { class: 'hint', text:
           (cur.name || 'DS set ' + cur.entry_id)
-          + '  ·  ' + (v ? 'v' + v.name : 'as it is now')
+          + '  ·  ' + (v ? BARRY.ui.versionLabel(v) : 'as it is now')
           + '  ·  ' + ((v && v.n) || cur.n) + ' events'
           + (v && v.aligned ? '  ·  aligned' : '') }),
         el('span', { class: 'spacer' }),
@@ -809,39 +812,27 @@ BARRY.rootcanal = (function () {
     if (vers.length) {
       box.appendChild(el('div', { class: 'section-label',
                                   text: 'Read the stamps from' }));
-      const vlist = el('div', { class: 'bm-list rc-list' });
       const want = defaultVersion(cur);
-      for (const v of vers) {
-        const ref = versionRef(v);
-        const on = String(ref) === String(q.from_version);
-        const ok = usable(v);
-        const rcOut = v.tag === 'rootcanal';
-        vlist.appendChild(el('label', {
-          class: 'bm-row' + (on ? ' on' : '') + (ok ? '' : ' off'),
-          title: ok ? (v.note || '') : (v.why_not || 'not readable here'),
-        }, [
-          el('input', {
-            type: 'radio', name: 'rcVer',
-            disabled: ok ? null : 'disabled',
-            checked: on ? 'checked' : null,
-            onchange: () => {
-              q.from_version = ref;
-              forget();
-              render();
-            },
-          }),
-          el('span', { class: 'mk-name', text: 'v' + v.name }),
-          v.n != null ? el('span', { class: 'flagchip',
-                                     text: v.n + ' stamps' }) : null,
-          rcOut ? el('span', { class: 'flagchip rc-done',
-                               text: 'Root Canal’s own output' }) : null,
-          el('span', { class: 'person-what', text:
-            (v.aligned ? 'aligned' : 'not aligned')
-            + (v.by ? '  ' + v.by : '')
-            + (want && versionRef(want) === ref ? '  · the default' : '') }),
-        ].filter(Boolean)));
-      }
-      box.appendChild(vlist);
+      /* The version tree (constitution §6e): the lineage, newest on top,
+         with Root Canal's own output and the default said on the row. It
+         was a list of radios, oldest first. */
+      box.appendChild(el('div', { class: 'rc-vers' }, [BARRY.ui.versionTree({
+        versions: vers,
+        idOf: versionRef,
+        value: q.from_version,
+        unit: 'stamps',
+        disabled: (v) => (usable(v) ? null : (v.why_not || 'not readable here')),
+        state: (v) => [
+          v.tag === 'rootcanal' ? 'Root Canal’s own output' : null,
+          v.aligned ? null : 'not aligned',
+          want && versionRef(want) === versionRef(v) ? 'the default' : null,
+        ].filter(Boolean),
+        onpick: (v) => {
+          q.from_version = versionRef(v);
+          forget();
+          render();
+        },
+      })]));
       if (want && want.tag !== 'rootcanal'
           && vers.some((v) => v.tag === 'rootcanal')) {
         box.appendChild(el('p', { class: 'hint', text:
@@ -1212,11 +1203,14 @@ BARRY.rootcanal = (function () {
      the ones a person reads (`label_rows` on the server), so the tip's name
      plus one where it is a plain number, and "the next version" where it is
      a branch -- a branch's successor is the server's to name. */
+  /* What the bank will call the new version: the rule in versions.py, from
+     the version being read. It was the tip plus one, which is wrong
+     whenever an older version is read -- that bank is a branch. */
   function nextName(c) {
     const vs = (c && c.versions) || [];
-    const tip = vs.length ? String(vs[vs.length - 1].name) : null;
-    if (tip != null && /^\d+$/.test(tip)) return String(Number(tip) + 1);
-    return null;
+    if (!vs.length) return null;
+    const from = versionOf(c, q.from_version) || vs[vs.length - 1];
+    return BARRY.ui.versionNext(vs, from).name;
   }
 
   function bankLabel() {
@@ -1229,7 +1223,7 @@ BARRY.rootcanal = (function () {
       c.partial ? c.partial + ' on 2 of 3 axes' : null,
       c.wide ? c.wide + ' by the widened search' : null,
     ].filter(Boolean);
-    return 'Bank: ' + nDs + ' DS as ' + (nx ? 'v' + nx : 'a new version')
+    return 'Bank: ' + nDs + ' DS as ' + (nx ? BARRY.ui.versionLabel(nx) : 'a new version')
       + ', ' + (c.ied || 0) + ' IED as '
       + (ied ? 'a new version of its IED set' : 'a new entry')
       + (flags.length ? ' (' + flags.join(', ') + ')' : '');
@@ -1504,13 +1498,11 @@ BARRY.rootcanal = (function () {
     const c = fit.counts || {};
     const cur = setOf();
     const v = versionOf(cur, q.from_version);
-    const note = el('input', { type: 'text', class: 'rc-note',
-      placeholder: 'A note for the version, if there is anything to say' });
     const body = el('div', { class: 'rc-ask' }, [
       el('p', { text: bankLabel() + '.' }),
       el('ul', {}, [
         el('li', { text: (c.ds || 0) + ' dentate spikes stay in the set, '
-                         + 'read from ' + (v ? 'v' + v.name : 'the set as it '
+                         + 'read from ' + (v ? BARRY.ui.versionLabel(v) : 'the set as it '
                          + 'is now') + ', each with its stamp, label and '
                          + 'channel exactly as they are.' }),
         c.unmeasured
@@ -1540,20 +1532,36 @@ BARRY.rootcanal = (function () {
                          + ' and both pictures are filed with it.' }),
       ].filter(Boolean)),
       el('p', { class: 'hint', text: fit.rule || '' }),
-      note,
     ]);
-    showModal(el('div', {}, [
-      el('div', { class: 'mh' }, [
-        el('h3', { text: 'Bank this root canal?' }),
-        el('div', { class: 'spacer' })]),
-      el('div', { class: 'mb' }, [body]),
-      BARRY.ui.modalFoot([], [
-        BARRY.ui.button({ kind: 'ghost', text: 'Cancel', onclick: closeModal }),
-        BARRY.ui.button({ kind: 'primary', text: 'Bank it',
-          onclick: () => { const t = note.value.trim(); closeModal();
-                           commit(t); } }),
-      ]),
-    ]), { replace: true });
+    /* The one bank dialog (constitution §6e), with Root Canal's account of
+       what it files as its body. The shared one adds the entry's name, the
+       note, who, and the sentence saying which version this becomes --
+       "continues v5 -> v6" or "branches from v3 -> v3.1" off the version
+       it read, which the label above used to guess as the tip plus one.
+
+       A refusal stays in the dialog, except the one that has a dialog of
+       its own: a set Root Canal has already cleaned, where cleaning again
+       is offered as a deliberate second press. */
+    let refused = null, rep = null;
+    return BARRY.ui.bankDialog({
+      kind: 'version',
+      title: 'Bank this root canal?',
+      entry: { name: (cur && cur.name) || '', versions: (cur && cur.versions) || [] },
+      from: q.from_version,
+      what: body,
+      okText: 'Bank it',
+      onBank: async ({ note }) => {
+        try {
+          rep = await send(note, false);
+        } catch (e) {
+          if (cleanedAlready(e)) { refused = { msg: e.message, note }; return; }
+          throw e;
+        }
+      },
+    }).then((ok) => {
+      if (refused) { refusedDialog(refused.msg, refused.note); return null; }
+      return ok && rep ? after(rep, fit.counts || {}) : null;
+    });
   }
 
   function refusedDialog(msg, note) {
@@ -1580,14 +1588,23 @@ BARRY.rootcanal = (function () {
     ]), { replace: true });
   }
 
+  function send(note, again) {
+    return apiPost('/api/rootcanal/commit', fitBody({
+      note: note || '', pngs: pngs(),
+      again: again ? true : undefined,
+    }));
+  }
+
+  function cleanedAlready(e) {
+    const v = versionOf(setOf(), q.from_version);
+    return (v && v.tag === 'rootcanal') || /again/i.test((e && e.message) || '');
+  }
+
   async function commit(note, again) {
     let rep;
     const expect = fit.counts || {};
     try {
-      rep = await apiPost('/api/rootcanal/commit', fitBody({
-        note: note || '', pngs: pngs(),
-        again: again ? true : undefined,
-      }));
+      rep = await send(note, again);
     } catch (e) {
       /* A SET ROOT CANAL HAS ALREADY CLEANED IS REFUSED, and says why.
 
@@ -1597,14 +1614,18 @@ BARRY.rootcanal = (function () {
          is, and cleaning again anyway is on offer only as the secondary
          action of a dialog -- a deliberate second press, never the
          default one. */
-      const v = versionOf(setOf(), q.from_version);
-      if (!again && ((v && v.tag === 'rootcanal') || /again/i.test(e.message))) {
+      if (!again && cleanedAlready(e)) {
         refusedDialog(e.message, note);
       } else {
         toast(e.message, 'err', 12000);
       }
       return null;
     }
+    return after(rep, expect);
+  }
+
+  /* What a commit that went through does next, whichever way it was sent. */
+  function after(rep, expect) {
     /* A commit that changed nothing wrote nothing, and says so -- pressing
        it twice on one answer must not read as two versions. */
     if (rep.already) {

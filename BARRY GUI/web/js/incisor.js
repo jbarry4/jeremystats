@@ -44,6 +44,11 @@ BARRY.incisor = (function () {
     /* Which half of the tool is showing: this computer, or the cluster.
        Local until VACC Mode is on and somebody asks for the other one. */
     tab: 'local',
+    // Where and how many (constitution §6d). `tab` follows from them: the
+    // cluster panel is VACC and many; everything else is the one-recording
+    // panel, run here or there.
+    where: 'local',
+    count: 'one',
     gid: null,
     path: null,
     // The picked registry row. A banked set has to say which animal and
@@ -332,7 +337,19 @@ BARRY.incisor = (function () {
     }
     host.innerHTML = '';
     host.appendChild(head());
-    host.appendChild(tabs());
+    /* Here · one, VACC · one and VACC · many. Here · many is in the
+       constitution's matrix and not built yet, so the bar does not offer
+       it: a choice that leads nowhere is not a choice. With VACC Mode off,
+       or no account, there is only one mode and the bar draws nothing. */
+    const bar = BARRY.ui.runBar({
+      modes: { local: ['one'], vacc: ['one', 'many'] },
+      where: q.where, count: q.count,
+      onChange: (w, c) => { q.where = w; q.count = c; paint(); },
+    });
+    q.where = bar.where;
+    q.count = bar.count;
+    q.tab = (q.where === 'vacc' && q.count === 'many') ? 'vacc' : 'local';
+    if (bar.childNodes.length) host.appendChild(bar);
 
     if (q.tab === 'vacc') {
       /* The cluster half. Same detector, same plots, same bank -- the only
@@ -393,38 +410,13 @@ BARRY.incisor = (function () {
   let vaccList = null;       // what the cluster can reach, per recording
   const picked = new Set();  // gids ticked for a run
 
-  /* The two halves, and which one is showing.
-
-     A tab rather than a switch inside one panel: the local half answers
-     "scan this recording" and the cluster half answers "scan these thirty",
-     and a control that silently changed which question was being asked kept
-     producing the other one's answer.
-
-     The VACC tab is only reachable while VACC Mode is on -- which is what
-     the mode is FOR. It is never the only way to reach something, because
-     everything it does to one recording the local tab also does. */
-  function tabs() {
-    const on = vaccOn();
-    if (!on && q.tab === 'vacc') q.tab = 'local';
-    const bar = el('div', { class: 'inc-tabs' });
-    const mk = (id, label, sub, enabled) => el('button', {
-      class: 'inc-tab' + (q.tab === id ? ' on' : '')
-             + (enabled ? '' : ' locked'),
-      disabled: enabled ? null : 'disabled',
-      title: enabled ? sub
-        : 'Turn VACC Mode on in the bar at the bottom left to run these on '
-          + 'the cluster.',
-      onclick: () => { q.tab = id; paint(); },
-    }, [
-      el('strong', { text: label }),
-      el('span', { text: enabled ? sub : 'VACC Mode is off' }),
-    ]);
-    bar.appendChild(mk('local', 'This computer',
-                       'one recording at a time', true));
-    bar.appendChild(mk('vacc', 'VACC',
-                       'many at once, on the cluster', on));
-    return bar;
-  }
+  /* The two halves were tabs -- "This computer: one recording at a time"
+     and "VACC: many at once" -- which made VACC mean "many" and left no way
+     to say "this one, on the cluster" except a second button inside the
+     local half. Where and how many are two questions now, in the run bar
+     at the top of paint(). What the tabs got right is kept: the cluster
+     half is its own panel, because "run this one" and "run these thirty"
+     have different answers to "what will this cost". */
 
   /* ---------------- which recordings, on the cluster ----------------
 
@@ -787,19 +779,19 @@ BARRY.incisor = (function () {
       return box;
     }
     box.appendChild(selection());
+    /* One primary, for where the bar says this runs. */
     box.appendChild(el('div', { class: 'tk-actions' }, [
-      el('button', {
+      q.where === 'vacc' ? vaccButton() : el('button', {
         class: 'btn', text: job ? 'Scanning…' : 'Scan',
         disabled: job ? 'disabled' : null, onclick: scan,
       }),
-      vaccButton(),
       el('span', { class: 'hint quiet',
         text: est.cached ? 'Already scanned — this will be instant.'
           : 'Detects on every channel. That is not wasteful: the hilus '
             + 'estimate is computed from the per-channel counts, so there '
             + 'is no cheaper way to make it.' }),
     ]));
-    const vs = vaccSentence();
+    const vs = q.where === 'vacc' ? vaccSentence() : null;
     if (vs) box.appendChild(vs);
     box.appendChild(params());
     return box;
@@ -827,7 +819,7 @@ BARRY.incisor = (function () {
     const v = (est && est.vacc) || {};
     const busy = !!job;
     return el('button', {
-      class: 'btn ghost',
+      class: 'btn',
       text: busy ? 'Scanning…' : 'Scan on VACC',
       // Disabled with the reason ON it rather than hidden. A control that
       // vanishes teaches nothing; `canOpen` in sessions.js carries the same
@@ -1847,8 +1839,6 @@ BARRY.incisor = (function () {
   }
 
   async function bank(row) {
-    const who = await BARRY.profile.who();
-    if (!who) return;
     /* Fetched now rather than carried since the scan: out of the same cache
        the scan filled, so this costs a small request and no reading.
 
@@ -1877,66 +1867,67 @@ BARRY.incisor = (function () {
        silently. It used to go in as "Incisor CSC61", which is plenty while
        you are looking at the recording and says nothing at all in a list of
        forty-five — so the name is offered, with the session already in it,
-       at the one moment somebody knows what this set is for. */
-    const nameBox = el('input', {
-      type: 'text', class: 'inc-name',
-      value: BARRY.bankName.suggest(q.row || {}, 'Incisor ' + row.label),
+       at the one moment somebody knows what this set is for.
+
+       Through the one bank dialog (constitution §6e): a new entry asks its
+       name, never lets it go empty, says who it is credited to, and keeps
+       a refusal on screen. Who used to be checked here and, when nobody was
+       set, Bank simply did nothing. */
+    const r = q.row || {};
+    const suggestion = BARRY.bankName.suggest(r, 'Incisor ' + row.label);
+    let id = null;
+    const ok = await BARRY.ui.bankDialog({
+      kind: 'entry',
+      title: 'Bank ' + evs.length + ' candidate(s) from ' + row.label + '?',
+      name: suggestion,
+      what: 'They go in as a detector’s output, not as a curated set — '
+          + 'nothing is decided, and the next step is vetting them in DS '
+          + 'curation.',
+      where: 'Filed under ' + [r.project || 'Unfiled',
+                               r.mouse != null ? 'm' + r.mouse : null,
+                               r.session != null ? 's' + r.session : null]
+        .filter(Boolean).join(' / ') + ' in the Event Bank.',
+      facts: [
+        'Times are on the recording’s own clock, so this set never needs '
+          + 'the concatenation correction.',
+        'Every detection parameter is recorded with them, so the set can '
+          + 'say how it was made.',
+        'Re-running the detector later reuses the ids of candidates at the '
+          + 'same times, so decisions survive.',
+      ],
+      okText: 'Bank them',
+      onBank: async ({ name, note, who }) => {
+        const added = await apiPost('/api/bank/add', {
+          gid: q.gid,
+          // Who this belongs to. Without it the entry is filed under
+          // "Unfiled / m / s" and cannot be found by the animal it came from.
+          project: r.project,
+          mouse: r.mouse,
+          session: r.session,
+          session_key: r.key,
+          session_loose_key: r.loose_key,
+          session_label: r.label,
+          duration_s: r.duration_s,
+          type: 'ds',
+          type_name: 'Dentate spike',
+          name,
+          note: note || undefined,
+          pipeline: 'Incisor (dentate spike)',
+          added_by: who,
+          session_path: q.path,
+          parameters: Object.assign({}, res.params, {
+            channel: row.number, channel_label: row.label,
+          }),
+          events: evs.map((e) => ({
+            start: e.start, channel: e.channel, amplitude: e.amp,
+          })),
+        });
+        id = (added.entry || {}).id || added.id;
+      },
     });
-    const ok = await BARRY.confirm(
-      'Bank ' + evs.length + ' candidate(s) from ' + row.label + '?',
-      el('div', { class: 'fix-facts' }, [
-        el('div', { class: 'field' }, [
-          el('label', { text: 'Call this set' }),
-          nameBox,
-          el('span', { class: 'hint', text:
-            'The session is in it already. Anything you type here is what '
-            + 'the Event Bank lists it under, and it can be changed later.' }),
-        ]),
-        el('p', { text: 'They go in as a detector’s output, not as a '
-            + 'curated set — nothing is decided, and the next step is '
-            + 'vetting them in DS curation.' }),
-        el('ul', { class: 'fix-steps' }, [
-          el('li', { text: 'Times are on the recording’s own clock, so '
-              + 'this set never needs the concatenation correction.' }),
-          el('li', { text: 'Every detection parameter is recorded with them, '
-              + 'so the set can say how it was made.' }),
-          el('li', { text: 'Re-running the detector later reuses the ids of '
-              + 'candidates at the same times, so decisions survive.' }),
-        ]),
-      ]), 'Bank them');
     if (!ok) return;
     banking = true; paint();
     try {
-      const r = q.row || {};
-      const added = await apiPost('/api/bank/add', {
-        gid: q.gid,
-        // Who this belongs to. Without it the entry is filed under
-        // "Unfiled / m / s" and cannot be found by the animal it came from.
-        project: r.project,
-        mouse: r.mouse,
-        session: r.session,
-        session_key: r.key,
-        session_loose_key: r.loose_key,
-        session_label: r.label,
-        duration_s: r.duration_s,
-        type: 'ds',
-        type_name: 'Dentate spike',
-        // What the dialog was left showing. Blank falls back to the
-        // suggestion rather than to nothing: an entry with no name at all
-        // is the one thing worse than a vague one.
-        name: (nameBox.value || '').trim()
-              || BARRY.bankName.suggest(q.row || {}, 'Incisor ' + row.label),
-        pipeline: 'Incisor (dentate spike)',
-        added_by: who,
-        session_path: q.path,
-        parameters: Object.assign({}, res.params, {
-          channel: row.number, channel_label: row.label,
-        }),
-        events: evs.map((e) => ({
-          start: e.start, channel: e.channel, amplitude: e.amp,
-        })),
-      });
-      const id = (added.entry || {}).id || added.id;
       toast(evs.length + ' candidate(s) banked.', 'ok');
 
       /* `entry`, not `entry_id` -- and `replace` said out loud.
@@ -1974,7 +1965,10 @@ BARRY.incisor = (function () {
       });
       await BARRY.curate.enter(q.gid, 'ds');
     } catch (e) {
-      toast('Not banked: ' + e.message, 'err', 9000);
+      // The banking itself happened inside the dialog, which showed any
+      // refusal there. What can fail here is opening the set to vet.
+      toast('Banked, but the curation set could not be opened: '
+            + e.message, 'err', 9000);
     }
     banking = false; paint();
   }
@@ -1999,6 +1993,10 @@ BARRY.incisor = (function () {
     _plotAxis: plotAxis,
     _channelAtX: channelAtX,
     _drawPlots: drawPlots,
+    /* Banking one channel of a given scan, for web/_dev/incbank.html: a
+       real scan does not fit the suite's time, and what is being checked
+       is the dialog and what it sends, not the detector. */
+    _bank: (row, result) => { if (result) res = result; return bank(row); },
     _choose: (key, number) => {
       chosen[key] = number == null ? null : Number(number);
       pushLines(); paint();

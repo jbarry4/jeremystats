@@ -1,0 +1,153 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — uploading to Jarvis Data, from the page</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Upload to VACC, from the page (constitution §6d): the plan first -- what
+   would be sent, where, what is already there, and why a recording cannot
+   go -- then an upload that is started only by the button that says how
+   much it sends, then its progress in the VACC panel.
+
+   NOTHING IS UPLOADED. The frame's `api` answers the plan, the upload and
+   the job from here and records what was asked; the real routes are
+   checked by tools/test_vaccupload.py against a folder on this machine. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 200, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const ready = await untilN(() => typeof W().setView === 'function'
+                                   && W().eval('BARRY.vacc && BARRY.vacc.upload'));
+  check('the application loads', !!ready);
+  if (!ready) { document.title = 'FAIL'; return; }
+  const B = W().eval('BARRY');
+  const ROOT = '/gpfs2/scratch/sakhava1/Jarvis Data';
+  const plan = {
+    ok: true, n: 1, files: 3, bytes: 1000000000, skipped: 1, dest_root: ROOT,
+    shared: { state: 'ok', data_state: 'ok', why: '' },
+    items: [
+      { gid: 'g1', label: 'zz PTEN m1 s1', n_send: 3, n_skip: 1, bytes: 1000000000,
+        dest: ROOT + '/PTEN/M1_Pten/M1ptens1oct2/2023-10-02_16-49-04' },
+      { gid: 'g2', label: 'zz ACTIVE bw10', why: 'Its folders do not name a mouse and a session.' },
+    ],
+    blocked: [{ gid: 'g2', label: 'zz ACTIVE bw10',
+                why: 'Its folders do not name a mouse and a session.' }],
+  };
+  const asked = [];
+  let job = { id: 'zzjob1', status: 'running',
+              members: [{ id: 'g1', label: 'zz PTEN m1 s1', status: 'running',
+                          step: 'CSC1.ncs', done: 0, of: 3 }] };
+  const realApi = W().api;
+  W().api = async (path, opts) => {
+    const body = opts && opts.body ? JSON.parse(opts.body) : null;
+    if (path === '/api/vacc/upload/plan') { asked.push(['plan', body]); return plan; }
+    if (path === '/api/vacc/upload') {
+      asked.push(['upload', body]);
+      return { ok: true, n: 1, job: Object.assign({}, job) };
+    }
+    if (String(path).indexOf('/api/cfc/job/zzjob1') === 0) return { job };
+    return realApi(path, opts);
+  };
+  const md = () => D().getElementById('bigModalBox');
+  const open = () => !D().getElementById('bigModal').classList.contains('hidden');
+  const txt = (n) => (n ? n.textContent : '').replace(/\s+/g, ' ').trim();
+  const btn = (re) => Array.from(md().querySelectorAll('.mf button'))
+    .find((b) => re.test(b.textContent.trim()));
+  try {
+    head('the plan comes first');
+    let p = B.vacc.upload(['g1', 'g2']);
+    await untilN(() => open() && md().querySelector('.vacc-up'), 50, 100);
+    check('it asks for the plan, with the recordings picked',
+          asked[0] && asked[0][0] === 'plan'
+          && JSON.stringify(asked[0][1].gids) === '["g1","g2"]', JSON.stringify(asked));
+    check('the dialog says where they go', txt(md()).indexOf(ROOT) >= 0);
+    check('what each sends, and what is already there',
+          /zz PTEN m1 s1 — 3 file\(s\), .+, 1 already there/.test(txt(md())), txt(md()));
+    check('and why one cannot go', /zz ACTIVE bw10 — Its folders do not name/.test(txt(md())));
+    const up = btn(/^Upload .+ to VACC$/);
+    check('the button says how much it sends', !!up, up && up.textContent);
+    btn(/^Cancel$/).click();
+    await p;
+    check('Cancel uploads nothing', !asked.some((a) => a[0] === 'upload'));
+
+    head('confirmed');
+    p = B.vacc.upload(['g1', 'g2']);
+    await untilN(() => open() && btn(/^Upload/), 50, 100);
+    btn(/^Upload/).click();
+    const id = await p;
+    const sent = asked.find((a) => a[0] === 'upload');
+    check('it starts the upload, confirmed', sent && sent[1].confirm === true,
+          JSON.stringify(sent));
+    check('with only the recordings that can go', sent
+          && JSON.stringify(sent[1].gids) === '["g1"]', sent && sent[1].gids);
+    check('and hands back the job', id === 'zzjob1', id);
+
+    head('its progress, in the VACC panel');
+    await sleep(3300);
+    B.vacc.showVacc();
+    await sleep(150);
+    const box = md().querySelector('.vacc-uploads');
+    check('the panel has the upload', !!box);
+    check('file 1 of 3, and which', box && /file 1 of 3 · CSC1\.ncs/.test(txt(box)), txt(box));
+    W().eval('closeModal()');
+    job = { id: 'zzjob1', status: 'done', members: [{ id: 'g1', label: 'zz PTEN m1 s1',
+            status: 'done', step: '3 sent, 1 already there', done: 3, of: 3 }] };
+    const said = await untilN(() => Array.from(D().querySelectorAll('.toast'))
+      .find((t) => /Uploaded to VACC/.test(t.textContent)), 80, 100);
+    check('when it is done, it says so', !!said);
+
+    head('nothing to send');
+    plan.files = 0; plan.items[0].n_send = 0;
+    asked.length = 0;
+    p = B.vacc.upload(['g1']);
+    await untilN(() => open() && md().querySelector('.vacc-up'), 50, 100);
+    check('everything already there: no upload button, only Close',
+          !btn(/^Upload/) && !!btn(/^Close$/));
+    check('and it says so', /everything already there/.test(txt(md())));
+    btn(/^Close$/).click();
+    await p;
+    check('and nothing is sent', !asked.some((a) => a[0] === 'upload'));
+  } finally {
+    W().api = realApi;
+    try { W().eval('closeModal()'); } catch (e) { /* closed */ }
+  }
+
+  head(bad === 0 ? 'the upload asks first and shows its way' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(
+    out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+  document.title = 'FAIL threw: ' + e.message;
+} })();
+</script>
