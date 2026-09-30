@@ -1,0 +1,244 @@
+{
+  "_at": {
+    "added": "2026-09-30T17:21:08.320572+00:00",
+    "deleted": "2026-09-30T17:52:06.537263+00:00",
+    "id": "2026-09-30T17:21:08.320572+00:00",
+    "kind": "2026-09-30T17:21:08.320572+00:00",
+    "name": "2026-09-30T17:21:08.320572+00:00",
+    "nickname": "2026-09-30T17:52:06.537263+00:00",
+    "schema": "2026-09-30T17:21:08.320572+00:00",
+    "subject": "2026-09-30T17:21:08.320572+00:00",
+    "subject_key": "2026-09-30T17:21:08.320572+00:00",
+    "version": "2026-09-30T17:21:08.320572+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "81d79cfec675:ed0db8dcba99>069f857e4fce:1": [
+        "set",
+        "2026-09-30T17:52:06.537263+00:00"
+      ],
+      "81d79cfec675:ed0db8dcba99>61760b00dc3d:1": [
+        "set",
+        "2026-09-30T17:52:06.537263+00:00"
+      ],
+      "81d79cfec675:ed0db8dcba99>dd8beb78f5a0:1": [
+        "set",
+        "2026-09-30T17:52:06.537263+00:00"
+      ],
+      "81d79cfec675:ed0db8dcba99>f0db187e569d:1": [
+        "set",
+        "2026-09-30T17:52:06.537263+00:00"
+      ]
+    },
+    "versions": {
+      "ed0db8dcba99": [
+        "set",
+        "2026-09-30T17:21:08.320572+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T17:52:06.537263+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T13:20:37-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-09-30T17:39:14+00:00",
+      "by_id": "f0db187e569d",
+      "by_version": 1,
+      "digest": "11835eb703de",
+      "id": "81d79cfec675:ed0db8dcba99>f0db187e569d:1",
+      "version": 1,
+      "version_id": "ed0db8dcba99"
+    },
+    {
+      "at": "2026-09-30T17:39:17+00:00",
+      "by_id": "61760b00dc3d",
+      "by_version": 1,
+      "digest": "11835eb703de",
+      "id": "81d79cfec675:ed0db8dcba99>61760b00dc3d:1",
+      "version": 1,
+      "version_id": "ed0db8dcba99"
+    },
+    {
+      "at": "2026-09-30T17:39:22+00:00",
+      "by_id": "069f857e4fce",
+      "by_version": 1,
+      "digest": "11835eb703de",
+      "id": "81d79cfec675:ed0db8dcba99>069f857e4fce:1",
+      "version": 1,
+      "version_id": "ed0db8dcba99"
+    },
+    {
+      "at": "2026-09-30T17:39:35+00:00",
+      "by_id": "dd8beb78f5a0",
+      "by_version": 1,
+      "digest": "11835eb703de",
+      "id": "81d79cfec675:ed0db8dcba99>dd8beb78f5a0:1",
+      "version": 1,
+      "version_id": "ed0db8dcba99"
+    }
+  ],
+  "deleted": null,
+  "id": "81d79cfec675",
+  "kind": "circuit",
+  "name": "DEWEY r10 s4 Precon4 SPC \u00b7 High tone \u2192 Click \u00b7 state \u00b7 Low gamma",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "band": "gamma_low",
+    "cue_label": "High tone \u2192 Click",
+    "cue_role": "no_food",
+    "cue_type": "HighTone_Click",
+    "gid": "s5e2c6d208fc7",
+    "mouse": 10,
+    "phase": "Precon",
+    "phase_n": 4,
+    "project": "DEWEY",
+    "run": "SPC",
+    "session": 4,
+    "session_label": "DEWEY r10 s4 Precon4 SPC 2026-08-15",
+    "window_kind": "state"
+  },
+  "subject_key": "circuit|s5e2c6d208fc7|HighTone_Click|state|gamma_low",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T13:20:37-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "11835eb703de",
+      "id": "ed0db8dcba99",
+      "inputs": [
+        {
+          "entry": "501bdb304196",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "gamma_low",
+        "by_window": {
+          "cue1": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          },
+          "cue2": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          },
+          "post": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          },
+          "pre": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          }
+        },
+        "cells_possible": 15,
+        "cue_role": "no_food",
+        "cue_type": "HighTone_Click",
+        "grey": [
+          "Right DHC",
+          "Right PER",
+          "Right POR",
+          "Left POR",
+          "Left PER",
+          "Left DHC"
+        ],
+        "kind": "state",
+        "n_absent": 0,
+        "n_cells": 180,
+        "n_grey": 6,
+        "n_pairs": 8,
+        "n_regions": 12,
+        "n_warn": 0,
+        "of": 8
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "bad_channels": [],
+        "band": "gamma_low",
+        "before_s": 1.0,
+        "blocked_regions": [],
+        "channel_rule": "lowest-numbered usable wire",
+        "coherence_mode": "band",
+        "cue_role": "no_food",
+        "high": 55.0,
+        "inputs_hash": "6c1e1b2e6eea",
+        "kind": "state",
+        "low": 30.0,
+        "max_lag_ms": 60.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "raw_cc_filtered": true,
+        "summary_hz": null
+      },
+      "params_hash": "643d18da8270",
+      "v": 1
+    }
+  ]
+}

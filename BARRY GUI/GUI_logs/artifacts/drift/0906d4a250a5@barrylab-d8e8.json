@@ -1,0 +1,422 @@
+{
+  "_at": {
+    "added": "2026-09-30T17:52:07.960329+00:00",
+    "deleted": "2026-09-30T17:52:07.960329+00:00",
+    "id": "2026-09-30T17:52:07.960329+00:00",
+    "kind": "2026-09-30T17:52:07.960329+00:00",
+    "name": "2026-09-30T17:52:07.960329+00:00",
+    "nickname": "2026-09-30T17:52:07.960329+00:00",
+    "schema": "2026-09-30T17:52:07.960329+00:00",
+    "subject": "2026-09-30T17:52:07.960329+00:00",
+    "subject_key": "2026-09-30T17:52:07.960329+00:00",
+    "version": "2026-09-30T17:52:07.960329+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "03128fec5e2c": [
+        "set",
+        "2026-09-30T17:52:07.960329+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T17:52:07.960329+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T13:39:41-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "0906d4a250a5",
+  "kind": "drift",
+  "name": "Precon1 vs Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+  "nickname": "Precon1\u21924 \u00b7 low gamma \u00b7 rest (FP1+FP2)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "analysis": {
+      "bh_scope": "artifact",
+      "contrast": null,
+      "design": "matched",
+      "test": "hk"
+    },
+    "band": "gamma_low",
+    "band_label": "Low gamma",
+    "cue_equivalence": [],
+    "cue_label": "FP1 + FP2, no cue",
+    "cue_type": "none",
+    "left": [
+      {
+        "digest": "ac2003e5b6ec",
+        "gid": "sec4bed944ba0",
+        "id": "1151dce2e905",
+        "kind": "artifact",
+        "name": "DEWEY r3 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r3",
+        "side": "left",
+        "version": 1,
+        "version_id": "d77bd62727b3"
+      },
+      {
+        "digest": "e04b27bfd217",
+        "gid": "s0c6efa477a94",
+        "id": "1e4a8252d8e8",
+        "kind": "artifact",
+        "name": "DEWEY r10 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r10",
+        "side": "left",
+        "version": 1,
+        "version_id": "2029eead81ae"
+      },
+      {
+        "digest": "046e7d44b6b0",
+        "gid": "sce947d33ceb8",
+        "id": "3c3a42377f1d",
+        "kind": "artifact",
+        "name": "DEWEY r6 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r6",
+        "side": "left",
+        "version": 1,
+        "version_id": "576f2417ea48"
+      },
+      {
+        "digest": "015d8b57260b",
+        "gid": "sb3ad74706f07",
+        "id": "5a549f56cfac",
+        "kind": "artifact",
+        "name": "DEWEY r9 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r9",
+        "side": "left",
+        "version": 1,
+        "version_id": "e9448b799ee5"
+      },
+      {
+        "digest": "8ee209cd524b",
+        "gid": "s3fcdbcc678da",
+        "id": "8130958d3832",
+        "kind": "artifact",
+        "name": "DEWEY r11 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r11",
+        "side": "left",
+        "version": 1,
+        "version_id": "e36d62223c70"
+      },
+      {
+        "digest": "b9e9833df070",
+        "gid": "s360e48254222",
+        "id": "8e20e288791b",
+        "kind": "artifact",
+        "name": "DEWEY r7 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r7",
+        "side": "left",
+        "version": 1,
+        "version_id": "b7814b3fb98a"
+      },
+      {
+        "digest": "766c373ae24e",
+        "gid": "s989ca3b5b2d6",
+        "id": "f0e1c4fdfac9",
+        "kind": "artifact",
+        "name": "DEWEY r4 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r4",
+        "side": "left",
+        "version": 1,
+        "version_id": "9175de20124e"
+      },
+      {
+        "digest": "19e1738bb960",
+        "gid": "s234fc080573e",
+        "id": "f6ac86804a99",
+        "kind": "artifact",
+        "name": "DEWEY r8 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r8",
+        "side": "left",
+        "version": 1,
+        "version_id": "1e769c1a14d3"
+      }
+    ],
+    "left_label": "Precon1",
+    "right": [
+      {
+        "digest": "f095fbdf77df",
+        "gid": "s4af2a78d7ab7",
+        "id": "082e7f8b28c9",
+        "kind": "artifact",
+        "name": "DEWEY r9 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r9",
+        "side": "right",
+        "version": 1,
+        "version_id": "a1215e9278dd"
+      },
+      {
+        "digest": "1d58784b27b4",
+        "gid": "sbd33a50b7fec",
+        "id": "4692106ae81a",
+        "kind": "artifact",
+        "name": "DEWEY r11 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r11",
+        "side": "right",
+        "version": 1,
+        "version_id": "c24bfd493dc2"
+      },
+      {
+        "digest": "dd4a1c6bd1cd",
+        "gid": "sc710262dff13",
+        "id": "52785994dff0",
+        "kind": "artifact",
+        "name": "DEWEY r7 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r7",
+        "side": "right",
+        "version": 1,
+        "version_id": "98254f548050"
+      },
+      {
+        "digest": "62056fd8a4d4",
+        "gid": "s7f9b97e294b8",
+        "id": "8ef6629baf47",
+        "kind": "artifact",
+        "name": "DEWEY r3 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r3",
+        "side": "right",
+        "version": 1,
+        "version_id": "0708150127e0"
+      },
+      {
+        "digest": "e97482a143ae",
+        "gid": "sdf092805b0cb",
+        "id": "90b94d371e24",
+        "kind": "artifact",
+        "name": "DEWEY r8 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r8",
+        "side": "right",
+        "version": 1,
+        "version_id": "e286d7559b84"
+      },
+      {
+        "digest": "95326cc1d83b",
+        "gid": "s5e2c6d208fc7",
+        "id": "bb10ec472738",
+        "kind": "artifact",
+        "name": "DEWEY r10 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r10",
+        "side": "right",
+        "version": 1,
+        "version_id": "440b7744d604"
+      },
+      {
+        "digest": "d66e3f45e278",
+        "gid": "s09af032023a9",
+        "id": "c5cce7b3aa80",
+        "kind": "artifact",
+        "name": "DEWEY r4 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r4",
+        "side": "right",
+        "version": 1,
+        "version_id": "9051717632e7"
+      },
+      {
+        "digest": "aaabeeebcf87",
+        "gid": "sc905a9b9e371",
+        "id": "db6529733fe8",
+        "kind": "artifact",
+        "name": "DEWEY r6 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",
+        "rat": "r6",
+        "side": "right",
+        "version": 1,
+        "version_id": "f39f3e91e2ce"
+      }
+    ],
+    "right_label": "Precon4",
+    "window_kind": "rest"
+  },
+  "subject_key": "drift|37fc91a32aed|bf469c27653e|none|rest|an:361bd8da0e98",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T13:39:41-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "1825ecf9832d",
+      "id": "03128fec5e2c",
+      "inputs": [
+        {
+          "digest": "ac2003e5b6ec",
+          "id": "1151dce2e905",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "d77bd62727b3"
+        },
+        {
+          "digest": "e04b27bfd217",
+          "id": "1e4a8252d8e8",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "2029eead81ae"
+        },
+        {
+          "digest": "046e7d44b6b0",
+          "id": "3c3a42377f1d",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "576f2417ea48"
+        },
+        {
+          "digest": "015d8b57260b",
+          "id": "5a549f56cfac",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "e9448b799ee5"
+        },
+        {
+          "digest": "8ee209cd524b",
+          "id": "8130958d3832",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "e36d62223c70"
+        },
+        {
+          "digest": "b9e9833df070",
+          "id": "8e20e288791b",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "b7814b3fb98a"
+        },
+        {
+          "digest": "766c373ae24e",
+          "id": "f0e1c4fdfac9",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "9175de20124e"
+        },
+        {
+          "digest": "19e1738bb960",
+          "id": "f6ac86804a99",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "1e769c1a14d3"
+        },
+        {
+          "digest": "f095fbdf77df",
+          "id": "082e7f8b28c9",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "a1215e9278dd"
+        },
+        {
+          "digest": "1d58784b27b4",
+          "id": "4692106ae81a",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "c24bfd493dc2"
+        },
+        {
+          "digest": "dd4a1c6bd1cd",
+          "id": "52785994dff0",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "98254f548050"
+        },
+        {
+          "digest": "62056fd8a4d4",
+          "id": "8ef6629baf47",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "0708150127e0"
+        },
+        {
+          "digest": "e97482a143ae",
+          "id": "90b94d371e24",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "e286d7559b84"
+        },
+        {
+          "digest": "95326cc1d83b",
+          "id": "bb10ec472738",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "440b7744d604"
+        },
+        {
+          "digest": "d66e3f45e278",
+          "id": "c5cce7b3aa80",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "9051717632e7"
+        },
+        {
+          "digest": "aaabeeebcf87",
+          "id": "db6529733fe8",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "f39f3e91e2ce"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "gamma_low",
+        "bh_scope": "artifact",
+        "cells": 132,
+        "contrast": null,
+        "cue_role": null,
+        "cue_types": [
+          "none"
+        ],
+        "design": "matched",
+        "equivalence": 0,
+        "kind": "rest",
+        "left_k": 8,
+        "pooled_by": "cue_type",
+        "q_lt_05": 0,
+        "rats": 8,
+        "right_k": 8,
+        "test": "hk",
+        "tests": 123
+      },
+      "note": null,
+      "params": {
+        "after_s": null,
+        "analysis_fs": 1000.0,
+        "band": "gamma_low",
+        "before_s": null,
+        "bh_scope": "artifact",
+        "channel_rule": "lowest-numbered usable wire",
+        "coherence_mode": "band",
+        "contrast": null,
+        "cue_equivalence": [],
+        "design": "matched",
+        "high": 55.0,
+        "kind": "rest",
+        "low": 30.0,
+        "max_lag_ms": 60.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "raw_cc_filtered": true,
+        "summary_hz": null,
+        "test": "hk"
+      },
+      "params_hash": "3e492fec856e",
+      "v": 1
+    }
+  ]
+}

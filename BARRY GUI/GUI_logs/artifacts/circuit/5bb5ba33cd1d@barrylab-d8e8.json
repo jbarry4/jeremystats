@@ -1,0 +1,161 @@
+{
+  "_at": {
+    "added": "2026-09-30T17:33:20.443988+00:00",
+    "deleted": "2026-09-30T17:43:39.785707+00:00",
+    "id": "2026-09-30T17:33:20.443988+00:00",
+    "kind": "2026-09-30T17:33:20.443988+00:00",
+    "name": "2026-09-30T17:33:20.443988+00:00",
+    "nickname": "2026-09-30T17:43:39.785707+00:00",
+    "schema": "2026-09-30T17:33:20.443988+00:00",
+    "subject": "2026-09-30T17:33:20.443988+00:00",
+    "subject_key": "2026-09-30T17:33:20.443988+00:00",
+    "version": "2026-09-30T17:33:20.443988+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "5bb5ba33cd1d:2538b08af6e2>dd79da0e5601:1": [
+        "set",
+        "2026-09-30T17:43:39.785707+00:00"
+      ]
+    },
+    "versions": {
+      "2538b08af6e2": [
+        "set",
+        "2026-09-30T17:33:20.443988+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T17:43:39.785707+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T13:33:10-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-09-30T17:38:21+00:00",
+      "by_id": "dd79da0e5601",
+      "by_version": 1,
+      "digest": "a70e654ece25",
+      "id": "5bb5ba33cd1d:2538b08af6e2>dd79da0e5601:1",
+      "version": 1,
+      "version_id": "2538b08af6e2"
+    }
+  ],
+  "deleted": null,
+  "id": "5bb5ba33cd1d",
+  "kind": "circuit",
+  "name": "DEWEY r3 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Theta",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "band": "theta",
+    "cue_label": "FP1 + FP2, no cue",
+    "cue_type": "none",
+    "gid": "s7f9b97e294b8",
+    "mouse": 3,
+    "phase": "Precon",
+    "phase_n": 4,
+    "project": "DEWEY",
+    "run": "SPC",
+    "session": 4,
+    "session_label": "DEWEY r3 s4 Precon4 SPC 2026-04-07",
+    "window_kind": "rest"
+  },
+  "subject_key": "circuit|s7f9b97e294b8|none|rest|theta",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T13:33:10-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "a70e654ece25",
+      "id": "2538b08af6e2",
+      "inputs": [
+        {
+          "entry": "77811b41578d",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "theta",
+        "by_window": {
+          "rest": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          }
+        },
+        "cells_possible": 15,
+        "cue_type": "none",
+        "grey": [
+          "Right RSC",
+          "Right PER",
+          "Right POR",
+          "Left POR",
+          "Left PER",
+          "Left RSC"
+        ],
+        "kind": "rest",
+        "n_absent": 0,
+        "n_cells": 45,
+        "n_grey": 6,
+        "n_pairs": 8,
+        "n_regions": 12,
+        "n_warn": 0,
+        "of": 8
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "bad_by_fp": {
+          "s45b591d5f025": [],
+          "sf792c5a7a388": []
+        },
+        "bad_channels": [],
+        "band": "theta",
+        "before_s": 1.0,
+        "blocked_regions": [
+          "Left PER",
+          "Left POR",
+          "Left RSC",
+          "Right POR",
+          "Right RSC"
+        ],
+        "channel_rule": "lowest-numbered usable wire",
+        "coherence_mode": "band",
+        "high": 12.0,
+        "inputs_hash": "089169b1e2ec",
+        "kind": "rest",
+        "low": 4.0,
+        "max_lag_ms": 500.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "raw_cc_filtered": true,
+        "summary_hz": null
+      },
+      "params_hash": "0a7805f23496",
+      "v": 1
+    }
+  ]
+}

@@ -1,0 +1,422 @@
+{
+  "_at": {
+    "added": "2026-09-30T17:52:08.023517+00:00",
+    "deleted": "2026-09-30T17:52:08.023517+00:00",
+    "id": "2026-09-30T17:52:08.023517+00:00",
+    "kind": "2026-09-30T17:52:08.023517+00:00",
+    "name": "2026-09-30T17:52:08.023517+00:00",
+    "nickname": "2026-09-30T17:52:08.023517+00:00",
+    "schema": "2026-09-30T17:52:08.023517+00:00",
+    "subject": "2026-09-30T17:52:08.023517+00:00",
+    "subject_key": "2026-09-30T17:52:08.023517+00:00",
+    "version": "2026-09-30T17:52:08.023517+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "f726fd4a382d": [
+        "set",
+        "2026-09-30T17:52:08.023517+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T17:52:08.023517+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T13:39:03-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "5c6752a8e273",
+  "kind": "drift",
+  "name": "Precon1 vs Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+  "nickname": "Precon1\u21924 \u00b7 beta \u00b7 rest (FP1+FP2)",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "analysis": {
+      "bh_scope": "artifact",
+      "contrast": null,
+      "design": "matched",
+      "test": "hk"
+    },
+    "band": "beta",
+    "band_label": "Beta",
+    "cue_equivalence": [],
+    "cue_label": "FP1 + FP2, no cue",
+    "cue_type": "none",
+    "left": [
+      {
+        "digest": "57effd7a0001",
+        "gid": "s0c6efa477a94",
+        "id": "0f2806984938",
+        "kind": "artifact",
+        "name": "DEWEY r10 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r10",
+        "side": "left",
+        "version": 1,
+        "version_id": "723cf2ad49dd"
+      },
+      {
+        "digest": "9630ced12f84",
+        "gid": "s360e48254222",
+        "id": "3b776b9fb1e7",
+        "kind": "artifact",
+        "name": "DEWEY r7 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r7",
+        "side": "left",
+        "version": 1,
+        "version_id": "586930af20c0"
+      },
+      {
+        "digest": "ad0d6235f28d",
+        "gid": "sec4bed944ba0",
+        "id": "49ab64bc2a70",
+        "kind": "artifact",
+        "name": "DEWEY r3 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r3",
+        "side": "left",
+        "version": 1,
+        "version_id": "ef81c0a76158"
+      },
+      {
+        "digest": "2fcc71247281",
+        "gid": "s3fcdbcc678da",
+        "id": "55642127f37a",
+        "kind": "artifact",
+        "name": "DEWEY r11 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r11",
+        "side": "left",
+        "version": 1,
+        "version_id": "488cdce48bd6"
+      },
+      {
+        "digest": "090a0b083a7a",
+        "gid": "s989ca3b5b2d6",
+        "id": "8e11689b4d8b",
+        "kind": "artifact",
+        "name": "DEWEY r4 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r4",
+        "side": "left",
+        "version": 1,
+        "version_id": "08760aef39c3"
+      },
+      {
+        "digest": "d490f03e089c",
+        "gid": "sb3ad74706f07",
+        "id": "a16ac97b1099",
+        "kind": "artifact",
+        "name": "DEWEY r9 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r9",
+        "side": "left",
+        "version": 1,
+        "version_id": "8da40943859e"
+      },
+      {
+        "digest": "e2a1e45ead66",
+        "gid": "sce947d33ceb8",
+        "id": "dcd57416ce53",
+        "kind": "artifact",
+        "name": "DEWEY r6 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r6",
+        "side": "left",
+        "version": 1,
+        "version_id": "02060b932819"
+      },
+      {
+        "digest": "d8ad47e38bd8",
+        "gid": "s234fc080573e",
+        "id": "ecb996062215",
+        "kind": "artifact",
+        "name": "DEWEY r8 s1 Precon1 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r8",
+        "side": "left",
+        "version": 1,
+        "version_id": "9eb4f4855fdd"
+      }
+    ],
+    "left_label": "Precon1",
+    "right": [
+      {
+        "digest": "ef72bac12881",
+        "gid": "s4af2a78d7ab7",
+        "id": "1247a683176a",
+        "kind": "artifact",
+        "name": "DEWEY r9 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r9",
+        "side": "right",
+        "version": 1,
+        "version_id": "5be6ff6f7bd8"
+      },
+      {
+        "digest": "b89ba29f4306",
+        "gid": "sc710262dff13",
+        "id": "1fdfc230da40",
+        "kind": "artifact",
+        "name": "DEWEY r7 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r7",
+        "side": "right",
+        "version": 1,
+        "version_id": "932afe82083e"
+      },
+      {
+        "digest": "f8f053ce59e3",
+        "gid": "sc905a9b9e371",
+        "id": "210e3bb07bb1",
+        "kind": "artifact",
+        "name": "DEWEY r6 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r6",
+        "side": "right",
+        "version": 1,
+        "version_id": "2c1ded40c801"
+      },
+      {
+        "digest": "d56a2a10724e",
+        "gid": "s7f9b97e294b8",
+        "id": "3896a272833e",
+        "kind": "artifact",
+        "name": "DEWEY r3 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r3",
+        "side": "right",
+        "version": 1,
+        "version_id": "ac4d4166be26"
+      },
+      {
+        "digest": "87ca70ada605",
+        "gid": "s5e2c6d208fc7",
+        "id": "38b301af8afc",
+        "kind": "artifact",
+        "name": "DEWEY r10 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r10",
+        "side": "right",
+        "version": 1,
+        "version_id": "78926f68bd7c"
+      },
+      {
+        "digest": "593ab7a5c3d1",
+        "gid": "sbd33a50b7fec",
+        "id": "665abcf172bd",
+        "kind": "artifact",
+        "name": "DEWEY r11 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r11",
+        "side": "right",
+        "version": 1,
+        "version_id": "f35841c90a6c"
+      },
+      {
+        "digest": "072efbd5eb63",
+        "gid": "sdf092805b0cb",
+        "id": "805427c602ac",
+        "kind": "artifact",
+        "name": "DEWEY r8 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r8",
+        "side": "right",
+        "version": 1,
+        "version_id": "f9d52aca88c8"
+      },
+      {
+        "digest": "8c22bdb726dc",
+        "gid": "s09af032023a9",
+        "id": "817c2aff4442",
+        "kind": "artifact",
+        "name": "DEWEY r4 s4 Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Beta",
+        "rat": "r4",
+        "side": "right",
+        "version": 1,
+        "version_id": "f604dff0092c"
+      }
+    ],
+    "right_label": "Precon4",
+    "window_kind": "rest"
+  },
+  "subject_key": "drift|2b7faede30f5|f35131150ebe|none|rest|an:361bd8da0e98",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T13:39:03-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "a5f86542440e",
+      "id": "f726fd4a382d",
+      "inputs": [
+        {
+          "digest": "57effd7a0001",
+          "id": "0f2806984938",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "723cf2ad49dd"
+        },
+        {
+          "digest": "9630ced12f84",
+          "id": "3b776b9fb1e7",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "586930af20c0"
+        },
+        {
+          "digest": "ad0d6235f28d",
+          "id": "49ab64bc2a70",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "ef81c0a76158"
+        },
+        {
+          "digest": "2fcc71247281",
+          "id": "55642127f37a",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "488cdce48bd6"
+        },
+        {
+          "digest": "090a0b083a7a",
+          "id": "8e11689b4d8b",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "08760aef39c3"
+        },
+        {
+          "digest": "d490f03e089c",
+          "id": "a16ac97b1099",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "8da40943859e"
+        },
+        {
+          "digest": "e2a1e45ead66",
+          "id": "dcd57416ce53",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "02060b932819"
+        },
+        {
+          "digest": "d8ad47e38bd8",
+          "id": "ecb996062215",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "9eb4f4855fdd"
+        },
+        {
+          "digest": "ef72bac12881",
+          "id": "1247a683176a",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "5be6ff6f7bd8"
+        },
+        {
+          "digest": "b89ba29f4306",
+          "id": "1fdfc230da40",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "932afe82083e"
+        },
+        {
+          "digest": "f8f053ce59e3",
+          "id": "210e3bb07bb1",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "2c1ded40c801"
+        },
+        {
+          "digest": "d56a2a10724e",
+          "id": "3896a272833e",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "ac4d4166be26"
+        },
+        {
+          "digest": "87ca70ada605",
+          "id": "38b301af8afc",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "78926f68bd7c"
+        },
+        {
+          "digest": "593ab7a5c3d1",
+          "id": "665abcf172bd",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "f35841c90a6c"
+        },
+        {
+          "digest": "072efbd5eb63",
+          "id": "805427c602ac",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "f9d52aca88c8"
+        },
+        {
+          "digest": "8c22bdb726dc",
+          "id": "817c2aff4442",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "f604dff0092c"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "beta",
+        "bh_scope": "artifact",
+        "cells": 132,
+        "contrast": null,
+        "cue_role": null,
+        "cue_types": [
+          "none"
+        ],
+        "design": "matched",
+        "equivalence": 0,
+        "kind": "rest",
+        "left_k": 8,
+        "pooled_by": "cue_type",
+        "q_lt_05": 1,
+        "rats": 8,
+        "right_k": 8,
+        "test": "hk",
+        "tests": 123
+      },
+      "note": null,
+      "params": {
+        "after_s": null,
+        "analysis_fs": 1000.0,
+        "band": "beta",
+        "before_s": null,
+        "bh_scope": "artifact",
+        "channel_rule": "lowest-numbered usable wire",
+        "coherence_mode": "band",
+        "contrast": null,
+        "cue_equivalence": [],
+        "design": "matched",
+        "high": 30.0,
+        "kind": "rest",
+        "low": 13.0,
+        "max_lag_ms": 150.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "raw_cc_filtered": true,
+        "summary_hz": null,
+        "test": "hk"
+      },
+      "params_hash": "5a31884a641e",
+      "v": 1
+    }
+  ]
+}

@@ -1,0 +1,242 @@
+{
+  "_at": {
+    "added": "2026-09-30T17:11:41.755022+00:00",
+    "deleted": "2026-09-30T17:43:38.962686+00:00",
+    "id": "2026-09-30T17:11:41.755022+00:00",
+    "kind": "2026-09-30T17:11:41.755022+00:00",
+    "name": "2026-09-30T17:11:41.755022+00:00",
+    "nickname": "2026-09-30T17:43:38.962686+00:00",
+    "schema": "2026-09-30T17:11:41.755022+00:00",
+    "subject": "2026-09-30T17:11:41.755022+00:00",
+    "subject_key": "2026-09-30T17:11:41.755022+00:00",
+    "version": "2026-09-30T17:11:41.755022+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "19bc4561dbaa:7e5080a3aade>2fe5e573a069:1": [
+        "set",
+        "2026-09-30T17:43:38.962686+00:00"
+      ],
+      "19bc4561dbaa:7e5080a3aade>58f82c840272:1": [
+        "set",
+        "2026-09-30T17:43:38.962686+00:00"
+      ],
+      "19bc4561dbaa:7e5080a3aade>83c51767aeb3:1": [
+        "set",
+        "2026-09-30T17:43:38.962686+00:00"
+      ],
+      "19bc4561dbaa:7e5080a3aade>93dd69ce5e16:1": [
+        "set",
+        "2026-09-30T17:43:38.962686+00:00"
+      ]
+    },
+    "versions": {
+      "7e5080a3aade": [
+        "set",
+        "2026-09-30T17:11:41.755022+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T17:43:38.962686+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T13:11:11-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-09-30T17:38:25+00:00",
+      "by_id": "83c51767aeb3",
+      "by_version": 1,
+      "digest": "82c5bbbf8076",
+      "id": "19bc4561dbaa:7e5080a3aade>83c51767aeb3:1",
+      "version": 1,
+      "version_id": "7e5080a3aade"
+    },
+    {
+      "at": "2026-09-30T17:38:28+00:00",
+      "by_id": "93dd69ce5e16",
+      "by_version": 1,
+      "digest": "82c5bbbf8076",
+      "id": "19bc4561dbaa:7e5080a3aade>93dd69ce5e16:1",
+      "version": 1,
+      "version_id": "7e5080a3aade"
+    },
+    {
+      "at": "2026-09-30T17:38:39+00:00",
+      "by_id": "58f82c840272",
+      "by_version": 1,
+      "digest": "82c5bbbf8076",
+      "id": "19bc4561dbaa:7e5080a3aade>58f82c840272:1",
+      "version": 1,
+      "version_id": "7e5080a3aade"
+    },
+    {
+      "at": "2026-09-30T17:38:46+00:00",
+      "by_id": "2fe5e573a069",
+      "by_version": 1,
+      "digest": "82c5bbbf8076",
+      "id": "19bc4561dbaa:7e5080a3aade>2fe5e573a069:1",
+      "version": 1,
+      "version_id": "7e5080a3aade"
+    }
+  ],
+  "deleted": null,
+  "id": "19bc4561dbaa",
+  "kind": "circuit",
+  "name": "DEWEY r6 s1 Precon1 SPC \u00b7 Noise \u2192 High tone \u00b7 state \u00b7 Beta",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "band": "beta",
+    "cue_label": "Noise \u2192 High tone",
+    "cue_role": "food",
+    "cue_type": "Noise_HighTone",
+    "gid": "sce947d33ceb8",
+    "mouse": 6,
+    "phase": "Precon",
+    "phase_n": 1,
+    "project": "DEWEY",
+    "run": "SPC",
+    "session": 1,
+    "session_label": "DEWEY r6 s1 Precon1 SPC 2026-07-22",
+    "window_kind": "state"
+  },
+  "subject_key": "circuit|sce947d33ceb8|Noise_HighTone|state|beta",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T13:11:11-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "82c5bbbf8076",
+      "id": "7e5080a3aade",
+      "inputs": [
+        {
+          "entry": "43df172979f6",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "beta",
+        "by_window": {
+          "cue1": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 28
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 28
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 28
+            }
+          },
+          "cue2": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 25
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 25
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 25
+            }
+          },
+          "post": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 0
+            }
+          },
+          "pre": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 27
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 27
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 28,
+              "warn": 27
+            }
+          }
+        },
+        "cells_possible": 28,
+        "cue_role": "food",
+        "cue_type": "Noise_HighTone",
+        "grey": [
+          "Right DHC",
+          "Right PER",
+          "Right POR",
+          "Left POR"
+        ],
+        "kind": "state",
+        "n_absent": 0,
+        "n_cells": 336,
+        "n_grey": 4,
+        "n_pairs": 7,
+        "n_regions": 12,
+        "n_warn": 240,
+        "of": 7
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "bad_channels": [],
+        "band": "beta",
+        "before_s": 1.0,
+        "blocked_regions": [],
+        "channel_rule": "lowest-numbered usable wire",
+        "coherence_mode": "band",
+        "cue_role": "food",
+        "high": 30.0,
+        "inputs_hash": "46794e51047e",
+        "kind": "state",
+        "low": 13.0,
+        "max_lag_ms": 150.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "raw_cc_filtered": true,
+        "summary_hz": null
+      },
+      "params_hash": "ce507add20a9",
+      "v": 1
+    }
+  ]
+}
