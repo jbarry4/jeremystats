@@ -13,11 +13,11 @@
     "n_channels": "2026-09-04T15:57:01.804687+00:00",
     "project": "2026-09-04T15:57:01.804687+00:00",
     "project_source": "2026-09-04T15:57:01.804687+00:00",
-    "retired": "2026-09-08T18:37:19.993575+00:00",
+    "retired": "2026-09-08T18:37:53.793747+00:00",
     "schema": "2026-09-04T15:57:01.804687+00:00",
     "session": "2026-09-04T15:57:01.804687+00:00",
     "start": "2026-09-04T15:57:01.804687+00:00",
-    "updated": "2026-09-08T18:37:19.993575+00:00"
+    "updated": "2026-09-28T17:56:37.177273+00:00"
   },
   "_keys": {
     "paths": {
@@ -30,11 +30,15 @@
       "BarryLab": [
         "set",
         "2026-09-04T15:57:01.804687+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-09-28T17:56:37.177273+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-08T18:37:19.993575+00:00",
+    "at": "2026-09-28T17:56:37.177273+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -68,16 +72,25 @@
       "path": "Y:\\ProcessedPtenData\\PTENDKOM41\\M41s2nov26\\2024-11-26_14-00-12",
       "root": "Y:/ProcessedPtenData",
       "scan": "scan_894736ef4e"
+    },
+    "barrylab-d8e8": {
+      "at": "2026-09-28T13:56:37-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\ProcessedPtenData\\PTENDKOM41\\M41s2nov26\\2024-11-26_14-00-12",
+      "root": "Y:/ProcessedPtenData/PTENDKOM41",
+      "scan": "scan_231b2e129d"
     }
   },
   "session": 2,
   "start": "2024-11-26T14:00:12",
   "updated": {
-    "at": "2026-09-08T14:37:19-04:00",
+    "app_version": "2026.09.28.1",
+    "at": "2026-09-28T13:56:37-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
-    "machine": "StrawBarry",
+    "machine": "Strawbarry",
     "os": "Windows",
-    "user": "Rain"
+    "user": "Rain Younger"
   }
 }
