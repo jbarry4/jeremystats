@@ -1,0 +1,271 @@
+{
+  "_at": {
+    "added": "2026-09-28T18:52:44.724676+00:00",
+    "by_label": "2026-09-28T18:52:44.724676+00:00",
+    "curation_label": "2026-09-28T18:52:44.724676+00:00",
+    "duration_s": "2026-09-28T18:52:44.724676+00:00",
+    "events": "2026-09-28T18:52:44.724676+00:00",
+    "gid": "2026-09-28T18:52:44.724676+00:00",
+    "id": "2026-09-28T18:52:44.724676+00:00",
+    "label_names": "2026-09-28T18:52:44.724676+00:00",
+    "mouse": "2026-09-28T18:52:44.724676+00:00",
+    "n": "2026-09-28T18:52:44.724676+00:00",
+    "name": "2026-09-28T18:52:44.724676+00:00",
+    "note": "2026-09-28T18:52:44.724676+00:00",
+    "project": "2026-09-28T18:52:44.724676+00:00",
+    "recording_start": "2026-09-28T18:52:44.724676+00:00",
+    "schema": "2026-09-28T18:52:44.724676+00:00",
+    "session": "2026-09-28T18:52:44.724676+00:00",
+    "session_key": "2026-09-28T18:52:44.724676+00:00",
+    "session_label": "2026-09-28T18:52:44.724676+00:00",
+    "session_loose_key": "2026-09-28T18:52:44.724676+00:00",
+    "session_path": "2026-09-28T18:52:44.724676+00:00",
+    "source": "2026-09-28T18:52:44.724676+00:00",
+    "specified": "2026-09-28T18:52:44.724676+00:00",
+    "type": "2026-09-28T18:52:44.724676+00:00",
+    "type_name": "2026-09-28T18:52:44.724676+00:00",
+    "units": "2026-09-28T18:52:44.724676+00:00",
+    "version": "2026-09-28T18:52:44.724676+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "ffac480aa249": [
+        "set",
+        "2026-09-28T18:52:44.724676+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-28T18:52:44.724676+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-28T14:52:44-04:00",
+    "by": "Rain Younger",
+    "machine": "BarryLab"
+  },
+  "by_label": {
+    "unspecified": 15
+  },
+  "curation_label": null,
+  "duration_s": 1211.8016,
+  "events": [
+    {
+      "amplitude": 477.3572,
+      "channel": 37,
+      "start": 79.910648
+    },
+    {
+      "amplitude": 436.3817,
+      "channel": 37,
+      "start": 80.375646
+    },
+    {
+      "amplitude": 429.1235,
+      "channel": 37,
+      "start": 216.741045
+    },
+    {
+      "amplitude": 411.8047,
+      "channel": 37,
+      "start": 246.529914
+    },
+    {
+      "amplitude": 455.0354,
+      "channel": 37,
+      "start": 275.526786
+    },
+    {
+      "amplitude": 442.9118,
+      "channel": 37,
+      "start": 289.233725
+    },
+    {
+      "amplitude": 410.6279,
+      "channel": 37,
+      "start": 409.914194
+    },
+    {
+      "amplitude": 412.4,
+      "channel": 37,
+      "start": 555.610551
+    },
+    {
+      "amplitude": 420.2132,
+      "channel": 37,
+      "start": 858.569216
+    },
+    {
+      "amplitude": 426.5206,
+      "channel": 37,
+      "start": 1038.759422
+    },
+    {
+      "amplitude": 464.4119,
+      "channel": 37,
+      "start": 1111.158103
+    },
+    {
+      "amplitude": 423.0716,
+      "channel": 37,
+      "start": 1111.300102
+    },
+    {
+      "amplitude": 448.8668,
+      "channel": 37,
+      "start": 1150.688929
+    },
+    {
+      "amplitude": 667.6732,
+      "channel": 37,
+      "start": 1151.306926
+    },
+    {
+      "amplitude": 486.8918,
+      "channel": 37,
+      "start": 1202.5847
+    }
+  ],
+  "gid": "s23f920a8e30d",
+  "id": "035930ab27d1",
+  "label_names": {},
+  "mouse": 48,
+  "n": 15,
+  "name": "PTEN_DKO m48 s2 2025-02-04  \u00b7  Incisor CSC37",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": null,
+  "schema": 1,
+  "session": 2,
+  "session_key": "m048_s002_2025-02-04_12-48-12",
+  "session_label": "PTEN_DKO m48 s2 2025-02-04",
+  "session_loose_key": "m048_s002",
+  "session_path": "Y:\\ProcessedPtenData\\PTENKDOM48\\m48s2feb4\\2025-02-04_12-48-12",
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {
+      "abs_thr_uv": 300,
+      "bad_channels_excluded": [
+        59
+      ],
+      "band_hz": [
+        5,
+        100
+      ],
+      "channel": 37,
+      "channel_label": "CSC37",
+      "decimate": 30,
+      "detector": "Incisor",
+      "dist_ms": 100,
+      "estimator": "sd",
+      "even_only": false,
+      "filter_order": 3,
+      "height_sd": 4.5,
+      "invert": true,
+      "lfp_fs": 1000,
+      "n_channels_scanned": 63,
+      "notes": [
+        "Filtered per segment and pooled for the threshold, so the voltage step at each stitch is excluded; Toothy's np.std spans its concatenated trace and includes it.",
+        "Decimated with scipy.signal.decimate in stages; Toothy uses scipy.signal.resample, an FFT method. Measured against Toothy's own code on 300 s of CSC41: the same dentate spikes to within one sample, a 2% difference in the threshold (an FFT resample is a brick wall and decimate is not, so they leave different variance in band), and one event in 193.",
+        "Times are stamped through the record-level breakpoint map, not from a linear axis.",
+        "Channels marked bad on this session were not read at all, so they cannot win the hilus, theta or ripple pick. Toothy keeps them and nulls them out of the estimates afterwards (ephys.py noise_idx); the three answers are the same either way.",
+        "The hilus, theta and ripple channels are derived FROM the detection, not used to produce it. Every event time here is a sample index put through the record timestamps, so choosing a different channel shows a different set of events and moves none of them."
+      ],
+      "ported_from": "Toothy ephys.get_ds_peaks",
+      "probe": "h3",
+      "prom_uv": 0,
+      "wlen_ms": 125
+    },
+    "pipeline": "Incisor (dentate spike)",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "Dentate spike",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-09-28T14:52:44-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 15
+      },
+      "changed": 0,
+      "from_v": null,
+      "gained": 0,
+      "id": "ffac480aa249",
+      "imported": true,
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 15,
+      "note": "Imported from Incisor (dentate spike). 15 candidates, none decided yet.",
+      "snap": [
+        [
+          79.910648,
+          null
+        ],
+        [
+          80.375646,
+          null
+        ],
+        [
+          216.741045,
+          null
+        ],
+        [
+          246.529914,
+          null
+        ],
+        [
+          275.526786,
+          null
+        ],
+        [
+          289.233725,
+          null
+        ],
+        [
+          409.914194,
+          null
+        ],
+        [
+          555.610551,
+          null
+        ],
+        [
+          858.569216,
+          null
+        ],
+        [
+          1038.759422,
+          null
+        ],
+        [
+          1111.158103,
+          null
+        ],
+        [
+          1111.300102,
+          null
+        ],
+        [
+          1150.688929,
+          null
+        ],
+        [
+          1151.306926,
+          null
+        ],
+        [
+          1202.5847,
+          null
+        ]
+      ],
+      "v": 0
+    }
+  ]
+}

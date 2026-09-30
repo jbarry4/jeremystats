@@ -1,0 +1,295 @@
+{
+  "_at": {
+    "assignee": "2026-09-28T18:52:45.889936+00:00",
+    "created": "2026-09-28T18:52:45.558520+00:00",
+    "gid": "2026-09-28T18:52:45.558520+00:00",
+    "imports": "2026-09-28T18:52:45.558520+00:00",
+    "kind": "2026-09-28T18:52:45.558520+00:00",
+    "labels": "2026-09-28T18:52:45.558520+00:00",
+    "name": "2026-09-28T18:52:45.558520+00:00",
+    "open": "2026-09-28T18:52:45.889936+00:00",
+    "opened_at": "2026-09-28T18:52:45.889936+00:00",
+    "opened_by": "2026-09-28T18:52:45.889936+00:00",
+    "schema": "2026-09-28T18:52:45.558520+00:00",
+    "session_label": "2026-09-28T18:52:45.558520+00:00",
+    "source": "2026-09-28T18:52:45.558520+00:00",
+    "updated": "2026-09-28T18:52:45.558520+00:00"
+  },
+  "_keys": {
+    "events": {
+      "e0bbea07706": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "e20759bceb6": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "e20ab49764a": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "e42d7a64eb6": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "e54a5668ecd": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "e5730cdb1f6": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "e7b5e8f783f": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "e89483a2d6a": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "e89848a6155": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "e8c1dca2fd9": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "e9918f8c8b7": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "ec2000a5f51": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "ec7c1300e98": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "ee647cf7515": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ],
+      "ee9051fe413": [
+        "set",
+        "2026-09-28T18:52:45.558520+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-28T18:52:45.889936+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "assignee": "Rain Younger",
+  "created": {
+    "app_version": "2026.09.28.1",
+    "at": "2026-09-28T14:52:45-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "events": [
+    {
+      "id": "e5730cdb1f6",
+      "label": null,
+      "start": 79.910648
+    },
+    {
+      "id": "e42d7a64eb6",
+      "label": null,
+      "start": 80.375646
+    },
+    {
+      "id": "e20ab49764a",
+      "label": null,
+      "start": 216.741045
+    },
+    {
+      "id": "ee9051fe413",
+      "label": null,
+      "start": 246.529914
+    },
+    {
+      "id": "ee647cf7515",
+      "label": null,
+      "start": 275.526786
+    },
+    {
+      "id": "e89483a2d6a",
+      "label": null,
+      "start": 289.233725
+    },
+    {
+      "id": "e0bbea07706",
+      "label": null,
+      "start": 409.914194
+    },
+    {
+      "id": "e89848a6155",
+      "label": null,
+      "start": 555.610551
+    },
+    {
+      "id": "e9918f8c8b7",
+      "label": null,
+      "start": 858.569216
+    },
+    {
+      "id": "ec7c1300e98",
+      "label": null,
+      "start": 1038.759422
+    },
+    {
+      "id": "ec2000a5f51",
+      "label": null,
+      "start": 1111.158103
+    },
+    {
+      "id": "e54a5668ecd",
+      "label": null,
+      "start": 1111.300102
+    },
+    {
+      "id": "e20759bceb6",
+      "label": null,
+      "start": 1150.688929
+    },
+    {
+      "id": "e7b5e8f783f",
+      "label": null,
+      "start": 1151.306926
+    },
+    {
+      "id": "e8c1dca2fd9",
+      "label": null,
+      "start": 1202.5847
+    }
+  ],
+  "gid": "s23f920a8e30d",
+  "imports": [
+    {
+      "at": "2026-09-28T14:52:45-0400",
+      "n": 15,
+      "skipped": 0,
+      "source": {
+        "bank_entry": "035930ab27d1",
+        "by": "Rain Younger",
+        "entry_name": "PTEN_DKO m48 s2 2025-02-04  \u00b7  Incisor CSC37",
+        "kind": "bank version",
+        "pipeline": "Incisor (dentate spike)",
+        "version": 0
+      }
+    }
+  ],
+  "kind": "ds",
+  "labels": [
+    {
+      "color": "#2f9e6e",
+      "good": true,
+      "id": "spike",
+      "keys": [
+        "1",
+        "d"
+      ],
+      "name": "Dentate Spike"
+    },
+    {
+      "color": "#dc2626",
+      "id": "garbage",
+      "keys": [
+        "2",
+        "g"
+      ],
+      "name": "Garbage"
+    },
+    {
+      "color": "#E5A823",
+      "flagged": true,
+      "id": "flag",
+      "keys": [
+        "3",
+        "f"
+      ],
+      "name": "Flag"
+    },
+    {
+      "color": "#8b5cf6",
+      "flagged": true,
+      "id": "review",
+      "keys": [
+        "4",
+        "r"
+      ],
+      "name": "Flag for Deep Review"
+    },
+    {
+      "color": "#1a7f37",
+      "computed": true,
+      "good": true,
+      "id": "ds1",
+      "keys": [],
+      "name": "Dentate Spike (DS1)"
+    },
+    {
+      "color": "#7b3fa0",
+      "computed": true,
+      "good": true,
+      "id": "ds2",
+      "keys": [],
+      "name": "Dentate Spike (DS2)"
+    },
+    {
+      "color": "#b8620a",
+      "computed": true,
+      "good": true,
+      "id": "ds3",
+      "keys": [],
+      "name": "Dentate Spike (DS3)"
+    },
+    {
+      "color": "#1f6feb",
+      "computed": true,
+      "good": true,
+      "id": "ds4",
+      "keys": [],
+      "name": "Dentate Spike (DS4)"
+    },
+    {
+      "color": "#a3155f",
+      "computed": true,
+      "good": true,
+      "id": "ds5",
+      "keys": [],
+      "name": "Dentate Spike (DS5)"
+    }
+  ],
+  "name": "PTEN_DKO m48 s2 2025-02-04  \u00b7  Incisor CSC37",
+  "open": true,
+  "opened_at": "2026-09-28T14:52:45-0400",
+  "opened_by": "Rain Younger",
+  "schema": 1,
+  "session_label": "PTEN_DKO m48 s2 2025-02-04",
+  "source": {
+    "bank_entry": "035930ab27d1",
+    "by": "Rain Younger",
+    "entry_name": "PTEN_DKO m48 s2 2025-02-04  \u00b7  Incisor CSC37",
+    "kind": "bank version",
+    "pipeline": "Incisor (dentate spike)",
+    "version": 0
+  },
+  "updated": {
+    "app_version": "2026.09.28.1",
+    "at": "2026-09-28T14:52:45-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}
