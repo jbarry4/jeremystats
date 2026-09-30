@@ -27,12 +27,49 @@ checks it three ways:
      The breaks are monkeypatches in this process only -- drift.py on disk
      is never touched, so "restore" is simply running without --break.
 
-Run (PowerShell):  python tools\\check_drift.py [--break tau0|pairs|bh]
+  4. WITHIN RAT, HARTUNG-KNAPP, CONTRASTS, BH SCOPE (arc_contracts.md 7.4),
+     each against an independent re-derivation in plain loops (nothing from
+     drift.py; the t tail is the closed-form integer-df series of
+     Abramowitz & Stegun 26.7.3/26.7.4, written here), to 1e-12:
+       - matched + HK and matched + z through the WHOLE build (circuits in,
+         cell out): heterogeneous rats, a rat with n = 1 on each side
+         (pooled SD borrowed), k = 2, near-identical changes (HK factor < 1,
+         said), k = 1 (HK untestable with the reason, z testable);
+       - the PUBLISHED DerSimonian-Laird + Knapp-Hartung example: the BCG
+         trials, `rma(yi, vi, method="DL", data=dat.bcg, knha=TRUE)` in
+         metafor, as printed on slide 88 of W. Viechtbauer's Cochrane
+         Statistical Methods Group training (2016): tau^2 0.3088, estimate
+         -0.7141, se 0.1807, t -3.9520, p 0.0019, CI -1.1078 to -0.3204 --
+         fed through build as 13 "rats" whose change and variance are the
+         trials' log risk ratio and its variance;
+       - matched against independent on a within-rat shift riding on big
+         between-rat baselines (both p shown), and the refusals: a rat on
+         one side only (named), twice on a side, no rat, HK or roles without
+         the matched design;
+       - cue - baseline from the REAL circuit fixture: every derived cell
+         equals a hand per-pair subtraction of the circuit's `values`, a pair
+         missing in either window is dropped and n says so; a transition
+         circuit against its state circuit's pre, and every refusal of a
+         wrong baseline;
+       - food - no-food: a hand difference of changes over four circuits a
+         rat, with a borrowed SD; BH over the whole drift against a hand BH
+         of every tested cell; roles compared instead of pairings; band-mode
+         circuits refused against old ones; a default drift byte-identical to
+         one with the defaults spelled out, and without any new key.
+     Negative controls: `--break hkvar` (DL's SE instead of HK's), `hkdf`
+     (k df instead of k - 1), `pairing` (the right side's rats shifted by
+     one), `borrow` (a pooled SD twice too big), `baseline` (the pre MEAN
+     subtracted instead of each pair's pre), `bhscope` (artifact scope run
+     per panel), `roles` (food and no-food read the wrong way round).
+
+Run (PowerShell):  python tools\\check_drift.py [--break <name>]
 Exit code 1 if anything failed.
 """
+import copy
 import json
 import math
 import os
+import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -284,16 +321,883 @@ def _break(which):
     elif which == "kindparams":
         # Compare every parameter whatever the kind (the old behaviour).
         D.number_params = lambda kind: D.NUMBER_PARAMS
+    elif which == "hkvar":
+        # Hartung-Knapp's t on DL's SE: no rescaling by the scatter.
+        orig_hk = D.hk_test
+
+        def hk_dl(lp, rp, pooled=None):
+            out = orig_hk(lp, rp, pooled)
+            if out.get("p") is not None:
+                se = pooled["se"]
+                out.update(se=se, stat=pooled["mean"] / se,
+                           p=D._t_p(pooled["mean"] / se, out["df"]))
+            return out
+        hk_dl.id, hk_dl.label = "hk", D.hk_test.label
+        D.hk_test = hk_dl
+        D.TESTS["hk"] = hk_dl
+    elif which == "hkdf":
+        orig_hk = D.hk_test
+
+        def hk_k(lp, rp, pooled=None):
+            out = orig_hk(lp, rp, pooled)
+            if out.get("p") is not None:
+                out.update(df=out["df"] + 1,
+                           p=D._t_p(out["stat"], out["df"] + 1))
+            return out
+        hk_k.id, hk_k.label = "hk", D.hk_test.label
+        D.hk_test = hk_k
+        D.TESTS["hk"] = hk_k
+    elif which == "pairing":
+        orig_rats = D._rats
+
+        def shifted(*a, **k):
+            got = orig_rats(*a, **k)
+            rights = [{g: v for g, v in s.items() if g[0] == "right"}
+                      for _, s in got]
+            rights = rights[1:] + rights[:1]
+            return [(rat, dict({g: v for g, v in s.items()
+                                if g[0] == "left"}, **rights[i]))
+                    for i, (rat, s) in enumerate(got)]
+        D._rats = shifted
+    elif which == "borrow":
+        orig_psd = D._pooled_sd
+        D._pooled_sd = lambda ns, sds: (None if orig_psd(ns, sds) is None
+                                        else 2 * orig_psd(ns, sds))
+    elif which == "baseline":
+        orig_bc = D.baseline_contrast
+
+        def by_mean(payload, state=None):
+            out = orig_bc(payload, state)
+            base = payload if payload.get("kind") == "state" else state
+            for dname, w in D.CONTRAST_WINDOWS[payload["kind"]]:
+                for m, panel in out["cells"].get(dname, {}).items():
+                    for key, c in panel.items():
+                        pre = base["cells"]["pre"][m][key]["mean"]
+                        src = {x["pair_id"]: x["v"] for x in
+                               payload["cells"][w][m][key]["values"]}
+                        xs = [src[v["pair_id"]] - pre for v in c["values"]]
+                        c["mean"] = sum(xs) / len(xs)
+            return out
+        D.baseline_contrast = by_mean
+    elif which == "bhscope":
+        orig_opts = D.options
+
+        def per_panel(*a, **k):
+            o = orig_opts(*a, **k)
+            if o["bh_scope"] == "artifact":
+                o = dict(o, bh_scope="panel")
+            return o
+        D.options = per_panel
+    elif which == "roles":
+        orig_build = D.build
+
+        def swapped(L, R, *a, **k):
+            flip = {"food": "no_food", "no_food": "food"}
+
+            def sw(ps):
+                out = []
+                for p in ps:
+                    if p.get("cue_role") in flip:
+                        p = dict(p, cue_role=flip[p["cue_role"]])
+                    out.append(p)
+                return out
+            return orig_build(sw(L), sw(R), *a, **k)
+        D.build = swapped
     else:
         raise SystemExit("unknown --break %r" % which)
     print("*** NEGATIVE CONTROL: drift.%s broken (%s) -- checks below "
           "SHOULD fail ***\n" % ({"tau0": "_dl_tau2", "pairs": "pool",
                                   "bh": "_bh", "vid": "_ref_get",
-                                  "kindparams": "number_params"}[which],
+                                  "kindparams": "number_params",
+                                  "hkvar": "hk_test", "hkdf": "hk_test",
+                                  "pairing": "_rats",
+                                  "borrow": "_pooled_sd",
+                                  "baseline": "baseline_contrast",
+                                  "bhscope": "options",
+                                  "roles": "build"}[which],
                                  which))
 
 
 # ---------------------------------------------------------------------------
+# 7.4 references: plain loops, nothing imported from drift.py.
+# ---------------------------------------------------------------------------
+
+def t2p(t, df):
+    """Two-sided p of Student's t on an integer df, from the finite closed
+    forms of Abramowitz & Stegun 26.7.3 (odd df) and 26.7.4 (even df):
+    A(t|df) = P(|T| < t), p = 1 - A."""
+    th = math.atan(abs(t) / math.sqrt(df))
+    c = math.cos(th)
+    s = math.sin(th)
+    if df % 2 == 1:
+        tot = 0.0
+        if df > 1:
+            term = c
+            tot = c
+            for j in range(1, (df - 3) // 2 + 1):
+                term = term * (2.0 * j) / (2.0 * j + 1.0) * c * c
+                tot = tot + term
+        a = 2.0 / math.pi * (th + s * tot)
+    else:
+        term = 1.0
+        tot = 1.0
+        for j in range(1, (df - 2) // 2 + 1):
+            term = term * (2.0 * j - 1.0) / (2.0 * j) * c * c
+            tot = tot + term
+        a = s * tot
+    return 1.0 - a
+
+
+def nms(vals):
+    """n, mean, sample SD (None under 2) -- by hand."""
+    n = len(vals)
+    m = 0.0
+    for v in vals:
+        m = m + v
+    m = m / n
+    if n < 2:
+        return n, m, None
+    ss = 0.0
+    for v in vals:
+        ss = ss + (v - m) * (v - m)
+    return n, m, math.sqrt(ss / (n - 1))
+
+
+def rclose(a, b, tol=1e-12):
+    """Equal to a RELATIVE tolerance -- the right test for p and q, which
+    run down to 1e-30, where an absolute 1e-12 would pass anything."""
+    if a is None or b is None:
+        return a is None and b is None
+    return a == b or abs(a - b) <= tol * max(abs(a), abs(b))
+
+
+def ref_rats(changes, test):
+    """changes: [(rat, d, v)]. DerSimonian-Laird over rats, then z or HK.
+    A v of None (nothing to borrow an SD from) -> plain mean, untestable."""
+    k = len(changes)
+    if any(v is None for _, _, v in changes):
+        mu = 0.0
+        for _, d, _ in changes:
+            mu = mu + d
+        return {"delta": mu / k, "tau2": None, "se_dl": None, "k": k,
+                "se": None, "stat": None, "df": None, "p": None,
+                "deltas": [(r, d, None, None) for r, d, _ in changes]}
+    t2 = 0.0
+    if k > 1:
+        W = WY = W2 = 0.0
+        for _, d, v in changes:
+            W = W + 1.0 / v
+            WY = WY + d / v
+            W2 = W2 + 1.0 / (v * v)
+        yb = WY / W
+        Q = 0.0
+        for _, d, v in changes:
+            Q = Q + (d - yb) * (d - yb) / v
+        t2 = (Q - (k - 1)) / (W - W2 / W)
+        if t2 < 0:
+            t2 = 0.0
+    S = SY = 0.0
+    for _, d, v in changes:
+        S = S + 1.0 / (v + t2)
+        SY = SY + d / (v + t2)
+    mu = SY / S
+    out = {"delta": mu, "tau2": t2, "se_dl": math.sqrt(1.0 / S), "k": k,
+           "deltas": [(r, d, math.sqrt(v), (1.0 / (v + t2)) / S)
+                      for r, d, v in changes]}
+    if test == "z":
+        z = mu / math.sqrt(1.0 / S)
+        out.update(se=math.sqrt(1.0 / S), stat=z, df=None,
+                   p=2.0 * stats.norm.sf(abs(z)))
+    elif k < 2:
+        out.update(se=None, stat=None, df=None, p=None)
+    else:
+        ss = 0.0
+        for _, d, v in changes:
+            ss = ss + (1.0 / (v + t2)) * (d - mu) * (d - mu)
+        var = ss / ((k - 1) * S)
+        if var <= 0:
+            out.update(se=None, stat=None, df=None, p=None)
+            return out
+        t = mu / math.sqrt(var)
+        out.update(se=math.sqrt(var), stat=t, df=k - 1, p=t2p(t, k - 1),
+                   factor=ss / (k - 1))
+    return out
+
+
+def _psd(stats_):
+    num = 0.0
+    den = 0
+    for n, m, s in stats_:
+        if s is not None and n >= 2:
+            num = num + (n - 1) * s * s
+            den = den + (n - 1)
+    return math.sqrt(num / den) if den else None
+
+
+def _var(n, s, sp):
+    if s is not None and n >= 2:
+        return s * s / n
+    if sp is None:
+        return None
+    return sp * sp / n
+
+
+def _add(*vs):
+    tot = 0.0
+    for v in vs:
+        if v is None:
+            return None
+        tot = tot + v
+    return tot
+
+
+def ref_matched(spec, test):
+    """spec: [(rat, left values, right values)] -- the matched design."""
+    Ls = [nms(lv) for _, lv, _ in spec]
+    Rs = [nms(rv) for _, _, rv in spec]
+    spL, spR = _psd(Ls), _psd(Rs)
+    ch = []
+    for i, (rat, _, _) in enumerate(spec):
+        d = Rs[i][1] - Ls[i][1]
+        v = _add(_var(Ls[i][0], Ls[i][2], spL), _var(Rs[i][0], Rs[i][2], spR))
+        ch.append((rat, d, v))
+    return ref_rats(ch, test)
+
+
+def ref_roles(spec, test):
+    """spec: [(rat, {(side, role): values})] -- food - no-food change."""
+    groups = [(s, r) for r in ("food", "no_food") for s in ("left", "right")]
+    st = {g: [nms(vals[g]) for _, vals in spec] for g in groups}
+    sp = {g: _psd(st[g]) for g in groups}
+    ch = []
+    for i, (rat, _) in enumerate(spec):
+        f = st[("right", "food")][i][1] - st[("left", "food")][i][1]
+        o = st[("right", "no_food")][i][1] - st[("left", "no_food")][i][1]
+        v = _add(*[_var(st[g][i][0], st[g][i][2], sp[g]) for g in groups])
+        ch.append((rat, f - o, v))
+    return ref_rats(ch, test)
+
+
+def hand_bh(ps):
+    idx = [i for i, p in enumerate(ps) if p is not None]
+    m = len(idx)
+    srt = sorted(idx, key=lambda i: ps[i])
+    q = [None] * len(ps)
+    run_min = 1.0
+    for r in range(m, 0, -1):
+        run_min = min(run_min, ps[srt[r - 1]] * m / r)
+        q[srt[r - 1]] = min(1.0, run_min)
+    return q
+
+
+KEY = "Right ACC|Right OFC"
+WIN, MET = "cue1", "coherence"
+
+
+def rat_ref(side, rat, gid, role=None):
+    aid = "%s-%s%s" % (side[0], rat, "-" + role if role else "")
+    return {"artifact_id": aid, "version": 1, "version_id": "v" + aid,
+            "digest": "d" + aid, "name": gid, "rat": rat}
+
+
+def mk_matched(spec, key=KEY, w=WIN, m=MET):
+    """[(rat, left values, right values)] -> L, R, lrefs, rrefs. The one
+    cell under test holds exactly these values; every other cell gets a
+    rat-specific level, change and spread, so rats differ everywhere (with
+    one level for all, every rat's change in the other cells is the same
+    number and HK is -- rightly -- untestable there)."""
+    L, R, lr, rr = [], [], [], []
+    for i, (rat, lv, rv) in enumerate(spec):
+        lev = 0.2 + 0.05 * i
+        for side, vals, P, refs, sh in (("left", lv, L, lr, 0.0),
+                                        ("right", rv, R, rr,
+                                         0.01 * ((i * 7) % 5) + 0.002 * i)):
+            gid = "%s-%s" % (side[0].upper(), rat)
+            # A cell- and rat-specific change on the right, so the panels'
+            # p differ and BH has something to reorder.
+            fx = None if side == "left" else (
+                lambda w_, m_, a_, b_, i=i: (((sum(ord(ch) for ch in
+                                                   w_ + m_ + a_ + b_)
+                                               * (i + 3)) % 9) - 4) * 0.004)
+            P.append(circuit(gid, lev + sh,
+                             per_pair=[d * (0.6 + 0.15 * ((i + len(side)) % 4))
+                                       for d in DEV8],
+                             raw_cells={(w, m, key): vals}, effect=fx))
+            refs.append(rat_ref(side, rat, gid))
+    return L, R, lr, rr
+
+
+def pair_vals(mean, sd):
+    """Two values with exactly this mean and sample SD."""
+    h = sd / math.sqrt(2.0)
+    return [mean - h, mean + h]
+
+
+def cmp_cell(c, ref, tol=1e-12):
+    """(ok, detail): a built cell against a reference dict."""
+    got = [("delta", c.get("delta"), ref["delta"]),
+           ("tau2", c.get("tau2"), ref["tau2"]),
+           ("se", c.get("se"), ref["se"]),
+           ("p", c.get("p"), ref["p"])]
+    stat = c.get("t") if ref.get("df") is not None else c.get("z")
+    got.append(("stat", stat, ref["stat"]))
+    bad = []
+    for nm, a, b in got:
+        if a is None and b is None:
+            continue
+        # delta, tau2, se, p: absolute 1e-12. The statistic: RELATIVE 1e-12
+        # -- it can be in the hundreds, and it is what p is a monotone
+        # function of. (p is not compared relatively: the reference's
+        # closed form is 1 - A, which cancels for tiny p -- measured 3e-11
+        # relative at p = 4e-5 and 1e-7 at p = 1e-9 -- so a relative p test
+        # would be testing the reference, not drift.)
+        if nm == "stat":
+            if not rclose(a, b):
+                bad.append("%s %r vs %r" % (nm, a, b))
+        elif a is None or b is None or abs(a - b) > tol * max(1.0, abs(b)):
+            bad.append("%s %r vs %r" % (nm, a, b))
+    if (ref.get("df") if ref.get("p") is not None else None) \
+            != (c.get("df") if c.get("p") is not None else None):
+        bad.append("df %r vs %r" % (c.get("df"), ref.get("df")))
+    if len(ref["deltas"]) != len(c.get("deltas") or []):
+        bad.append("%d rats vs %d" % (len(c.get("deltas") or []),
+                                      len(ref["deltas"])))
+    for (r, d, se, w), dd in zip(ref["deltas"], c.get("deltas") or []):
+        if dd["rat"] != r or abs(dd["delta"] - d) > tol \
+                or ((se is None) != (dd["se"] is None)) \
+                or (se is not None and abs(dd["se"] - se) > tol) \
+                or ((w is None) != (dd.get("weight") is None)) \
+                or (w is not None and abs(dd["weight"] - w) > tol):
+            bad.append("rat %s: %r vs %r" % (r, dd, (d, se, w)))
+            break
+    return not bad, "; ".join(bad)
+
+
+def load_fixture(name):
+    path = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "web", "_dev", "fixtures", name)
+    with open(path, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def shift_circuit(base, gid, i, off, rng):
+    """A schema-valid synthetic recording from a real circuit: every value
+    v -> v + off + a per-cell wobble + seeded per-pair noise (so rats'
+    changes differ); n, mean, SD recomputed by hand."""
+    P = copy.deepcopy(base)
+    P["source"] = dict(P["source"], gid=gid, session_label=gid)
+    k = 0
+    for w in P["windows"]:
+        for m in P["methods"]:
+            for c in P["cells"][w][m].values():
+                k += 1
+                o = off + ((k * 7 + i * 3) % 5 - 2) * 0.004 + 0.001 * i
+                for x in c["values"]:
+                    x["v"] = x["v"] + o + rng.gauss(0, 0.01)
+                n, mu, sd = nms([x["v"] for x in c["values"]])
+                c["mean"], c["sd"] = mu, sd
+    return P
+
+
+def within_rat_checks():
+    print("\n4. Within rat, Hartung-Knapp, contrasts, BH scope "
+          "(arc_contracts.md 7.4)")
+    rng = random.Random(20260929)
+
+    def rvals(mu, sd, n):
+        return [mu + rng.gauss(0, sd) for _ in range(n)]
+
+    print("   the published DL + Knapp-Hartung example (metafor BCG, "
+          "knha=TRUE, method=DL)")
+    bcg = [(4, 119, 11, 128), (6, 300, 29, 274), (3, 228, 11, 209),
+           (62, 13536, 248, 12619), (33, 5036, 47, 5761),
+           (180, 1361, 372, 1079), (8, 2537, 10, 619),
+           (505, 87886, 499, 87892), (29, 7470, 45, 7232),
+           (17, 1699, 65, 1600), (186, 50448, 141, 27197),
+           (5, 2493, 3, 2338), (27, 16886, 29, 17825)]
+    spec = []
+    for j, (tp, tn, cp, cn) in enumerate(bcg):
+        yi = math.log((tp / (tp + tn)) / (cp / (cp + cn)))
+        vi = 1 / tp - 1 / (tp + tn) + 1 / cp - 1 / (cp + cn)
+        # left n=2 mean 0, right n=2 mean yi, each SD sqrt(vi): the rat's
+        # change is yi and its variance vi/2 + vi/2 = vi, exactly.
+        spec.append(("r%d" % (j + 1), pair_vals(0.0, math.sqrt(vi)),
+                     pair_vals(yi, math.sqrt(vi))))
+    L, R, lr, rr = mk_matched(spec)
+    b = D.build(L, R, lr, rr, ("before", "after"), design="matched",
+                test="hk")
+    c = b["cells"][WIN][MET][KEY]
+    tcrit = stats.t.ppf(0.975, 12)
+    lo, hi = c["delta"] - tcrit * c["se"], c["delta"] + tcrit * c["se"]
+    ck("BCG through build: tau2 %.4f est %.4f se %.4f t %.4f df %s p %.4f "
+       "CI %.4f..%.4f  [published 0.3088 / -0.7141 / 0.1807 / -3.9520 / 12 "
+       "/ 0.0019 / -1.1078..-0.3204]"
+       % (c["tau2"], c["delta"], c["se"], c["t"], c["df"], c["p"], lo, hi),
+       round(c["tau2"], 4) == 0.3088 and round(c["delta"], 4) == -0.7141
+       and round(c["se"], 4) == 0.1807 and round(c["t"], 4) == -3.9520
+       and c["df"] == 12 and round(c["p"], 4) == 0.0019
+       and round(lo, 4) == -1.1078 and round(hi, 4) == -0.3204)
+    ref = ref_matched(spec, "hk")
+    ok, why = cmp_cell(c, ref)
+    ck("  and equal to the hand implementation to 1e-12 (HK factor %.4f)"
+       % ref["factor"], ok, why)
+
+    print("\n   matched against a hand implementation, through build "
+          "(tol 1e-12)")
+    cases = {
+        "heterogeneous rats, n 3-8":
+            [("r%d" % i, rvals(0.2 + 0.1 * i, 0.03 + 0.01 * i, 3 + i),
+              rvals(0.25 + 0.1 * i + 0.02 * (i % 3), 0.02 + 0.015 * i, 8 - i))
+             for i in range(6)],
+        "a rat with n = 1 on the right, another on the left (pooled SD)":
+            [("r3", rvals(0.30, 0.04, 6), [0.41]),
+             ("r4", [0.22], rvals(0.30, 0.05, 7)),
+             ("r6", rvals(0.35, 0.03, 8), rvals(0.36, 0.06, 5)),
+             ("r7", rvals(0.28, 0.05, 4), rvals(0.33, 0.02, 8))],
+        "k = 2": [("r8", rvals(0.30, 0.05, 7), rvals(0.40, 0.04, 6)),
+                  ("r9", rvals(0.50, 0.03, 5), rvals(0.52, 0.05, 8))],
+        "near-identical changes (HK factor < 1)":
+            [("r%d" % i, [0.1 * i + d for d in (-0.05, 0.0, 0.05)],
+              [0.1 * i + 0.02 + 0.0001 * i + d for d in (-0.05, 0.0, 0.05)])
+             for i in range(5)],
+    }
+    for name, spec in cases.items():
+        L, R, lr, rr = mk_matched(spec)
+        for test in ("hk", "z"):
+            b = D.build(L, R, lr, rr, ("P1", "P4"), design="matched",
+                        test=test)
+            c = b["cells"][WIN][MET][KEY]
+            ref = ref_matched(spec, test)
+            ok, why = cmp_cell(c, ref)
+            extra = (" factor %.3f" % ref["factor"]) if test == "hk" else ""
+            ck("%s, %s: delta %.5f se %.5f %s %.3f p %.5g k %d%s"
+               % (name, test, ref["delta"], ref["se"],
+                  "t" if test == "hk" else "z", ref["stat"], ref["p"],
+                  ref["k"], extra), ok, why)
+        if "n = 1" in name:
+            ck("  the n = 1 rats are used with a borrowed-SD warning each",
+               sum(1 for s in c["warn"] if "borrowed" in s) == 2
+               and c["k"] == 4, c["warn"])
+        if "factor < 1" in name:
+            bh_ = D.build(L, R, lr, rr, ("P1", "P4"), design="matched",
+                          test="hk")
+            ch_ = bh_["cells"][WIN][MET][KEY]
+            ck("  the HK factor is below 1 (%.3g) and the HK SE is SMALLER "
+               "than DL's (%.3g < %.3g) -- and the result says so"
+               % (ch_["hk_factor"], ch_["se"], ch_["se_dl"]),
+               ch_["hk_factor"] < 1 and ch_["se"] < ch_["se_dl"]
+               and D.HK_NOTE in bh_["notes"])
+
+    spec = [("r5", rvals(0.30, 0.04, 6), rvals(0.40, 0.03, 7))]
+    L, R, lr, rr = mk_matched(spec)
+    b = D.build(L, R, lr, rr, ("P1", "P4"), design="matched", test="hk")
+    c = b["cells"][WIN][MET][KEY]
+    ck("k = 1 with HK: not tested, and why: %s" % c["why"],
+       c["p"] is None and c["t"] is None and not c["testable"]
+       and "two" in (c["why"] or "") and c["delta"] is not None)
+    bz = D.build(L, R, lr, rr, ("P1", "P4"), design="matched", test="z")
+    cz = bz["cells"][WIN][MET][KEY]
+    ok, why = cmp_cell(cz, ref_matched(spec, "z"))
+    ck("k = 1 with z: tested on the one rat's own SE, and warned", ok
+       and any(D.K1_RAT_SAY in s for s in cz["warn"]), why)
+    ck("the t tail: drift's p against A&S's closed form, df 1..12, t in "
+       "0.1..9 (max |diff| %.2g)" % max(
+           abs(D._t_p(t, df) - t2p(t, df)) for df in range(1, 13)
+           for t in (0.1, 0.7, 1.5, 2.2, 3.9, 9.0)),
+       max(abs(D._t_p(t, df) - t2p(t, df)) for df in range(1, 13)
+           for t in (0.1, 0.7, 1.5, 2.2, 3.9, 9.0)) < 1e-12)
+
+    print("\n   matched is more powerful than independent on a within-rat "
+          "change")
+    levels = [0.15, 0.62, 0.31, 0.80, 0.45, 0.22, 0.70, 0.38]
+    spec = [("r%d" % (i + 3), rvals(lev, 0.02, 8),
+             rvals(lev + 0.03, 0.02, 8)) for i, lev in enumerate(levels)]
+    L, R, lr, rr = mk_matched(spec)
+    ind = D.build(L, R, lr, rr, ("P1", "P4"))
+    mhk = D.build(L, R, lr, rr, ("P1", "P4"), design="matched", test="hk",
+                  bh_scope="artifact")
+    mz = D.build(L, R, lr, rr, ("P1", "P4"), design="matched", test="z")
+    ci, ch, cz = (x["cells"][WIN][MET][KEY] for x in (ind, mhk, mz))
+    print("   8 rats, baselines 0.15..0.80, every rat +0.03 on the right, "
+          "pair noise SD 0.02:")
+    print("     independent (z):  delta %.4f  se %.4f  p %.3g"
+          % (ci["delta"], ci["se"], ci["p"]))
+    print("     matched, z:       delta %.4f  se %.4f  p %.3g"
+          % (cz["delta"], cz["se"], cz["p"]))
+    print("     matched, HK:      delta %.4f  se %.4f  t %.2f on %d df  "
+          "p %.3g" % (ch["delta"], ch["se"], ch["t"], ch["df"], ch["p"]))
+    ck("matched HK finds it (p %.2g < .001) where independent does not "
+       "(p %.2g > .2)" % (ch["p"], ci["p"]), ch["p"] < 0.001 and ci["p"] > 0.2)
+    ck("the result says it in words: %r" % mhk["analysis_say"],
+       mhk["analysis_say"].startswith(
+           "within-rat, 8 rats; Hartung–Knapp t on 7 df; BH across all "
+           "windows and methods"))
+    ck("the payload carries design/test/bh_scope/contrast/pooled_by and "
+       "the rats paired", mhk["design"] == "matched"
+       and mhk["test"]["id"] == "hk" and mhk["bh_scope"] == "artifact"
+       and mhk["contrast"] is None and mhk["pooled_by"] == "cue_type"
+       and [m["rat"] for m in mhk["matched"]]
+       == ["r%d" % (i + 3) for i in range(8)]
+       and all(m["left"]["artifact_id"] == "l-" + m["rat"]
+               and m["right"]["artifact_id"] == "r-" + m["rat"]
+               for m in mhk["matched"]))
+    ck("each HK cell has t, df, hk_factor and per-rat deltas",
+       all(c.get("t") is not None and c.get("df") == 7
+           and c.get("hk_factor") is not None and len(c["deltas"]) == 8
+           for *_, c in cells_of(mhk)))
+
+    print("\n   BH across the whole drift")
+    every = [(w, m, k) for w in mhk["windows"] for m in mhk["methods"]
+             for k in mhk["cells"][w][m]]
+    hq = hand_bh([mhk["cells"][w][m][k]["p"] for w, m, k in every])
+    ck("q equals a hand BH over all %d tested cells of %d panels "
+       "(relative 1e-12)"
+       % (sum(1 for x in hq if x is not None),
+          len(mhk["windows"]) * len(mhk["methods"])),
+       all(rclose(mhk["cells"][w][m][k]["q"], q)
+           for (w, m, k), q in zip(every, hq)))
+    mpan = D.build(L, R, lr, rr, ("P1", "P4"), design="matched", test="hk")
+    ndiff = sum(1 for w, m, k in every
+                if not rclose(mpan["cells"][w][m][k]["q"],
+                              mhk["cells"][w][m][k]["q"], 1e-9))
+    ck("  and it is not per-panel BH by another name (%d of %d q differ)"
+       % (ndiff, len(every)), ndiff > 0)
+    ck("  the payload counts the family (%s tests)" % mhk.get("bh_tests"),
+       mhk.get("bh_tests") == sum(1 for x in hq if x is not None))
+
+    print("\n   refusals of the matched design")
+    one = [x for x in spec if x[0] != "r5"]
+    Lx, Rx, lrx, rrx = mk_matched(spec)
+    k5 = [i for i, r in enumerate(rrx) if r["rat"] == "r5"][0]
+    ok, why = D.compatible(Lx, Rx[:k5] + Rx[k5 + 1:], lrx,
+                           rrx[:k5] + rrx[k5 + 1:], design="matched")
+    s = next((x for x in why if "r5" in x), "")
+    ck("a rat on one side only is refused, named: %s" % s,
+       not ok and "only in the left group" in s)
+    dup = circuit("R-r3b", 0.3)
+    ok, why = D.compatible(Lx, Rx + [dup], lrx,
+                           rrx + [rat_ref("right", "r3", "R-r3b", "again")],
+                           design="matched")
+    s = next((x for x in why if "r3 is in the right group 2 times" in x), "")
+    ck("a rat twice on a side is refused (its own artifact, so only the "
+       "rat rule catches it): %s" % s, not ok and bool(s) and len(why) == 1,
+       why)
+    ok, why = D.compatible(Lx, Rx, [dict(r, rat=None) for r in lrx], rrx,
+                           design="matched")
+    ck("a member with no rat is refused", not ok
+       and any("which rat" in x for x in why))
+    ok, why = D.compatible(Lx, Rx, lrx, rrx, test="hk")
+    ck("Hartung-Knapp without the matched design is refused: %s"
+       % next((x for x in why if "Hartung" in x), ""),
+       not ok and any("Hartung" in x for x in why))
+    try:
+        D.build(Lx, Rx, lrx, rrx, ("a", "b"), design="paired")
+        ck("an unknown design is refused", False)
+    except D.DriftError as e:
+        ck("an unknown design is refused: %s" % e, "design" in str(e))
+    _ = one
+
+    print("\n   cue - baseline, from the real circuit fixture "
+          "(J7 s1, Click -> High tone)")
+    S7 = load_fixture("circuit_s360e48254222.json")
+    der = D.baseline_contrast(S7)
+    n_cells = n_dropped_cells = n_dropped_pairs = n_absent = 0
+    bad = []
+    for dname, w in (("cue1-pre", "cue1"), ("cue2-pre", "cue2"),
+                     ("post-pre", "post")):
+        for m in S7["methods"]:
+            for key, cell in S7["cells"][w][m].items():
+                pre = {}
+                pc = S7["cells"]["pre"][m].get(key)
+                for x in (pc or {}).get("values") or []:
+                    pre[x["pair_id"]] = x["v"]
+                diffs = [x["v"] - pre[x["pair_id"]] for x in cell["values"]
+                         if x["pair_id"] in pre]
+                got = der["cells"][dname][m].get(key)
+                if not diffs:
+                    n_absent += 1
+                    if got is not None:
+                        bad.append("%s %s %s should be absent" % (dname, m,
+                                                                 key))
+                    continue
+                n_cells += 1
+                n, mu, sd = nms(diffs)
+                if n < len(cell["values"]) or n < len(pre):
+                    n_dropped_cells += 1
+                    n_dropped_pairs += max(len(cell["values"]),
+                                           len(pre)) - n
+                of = cell["of"]
+                warn = ("usable in %d of %d pairs" % (n, of)
+                        if n < of / 2.0 else None)
+                if got is None or got["n"] != n \
+                        or abs(got["mean"] - mu) > 1e-12 \
+                        or ((sd is None) != (got["sd"] is None)) \
+                        or (sd is not None and abs(got["sd"] - sd) > 1e-12) \
+                        or got["warn"] != warn or got["of"] != of:
+                    bad.append("%s %s %s: %r vs n %d mean %r sd %r"
+                               % (dname, m, key, got and {
+                                   k: got[k] for k in ("n", "mean", "sd")},
+                                  n, mu, sd))
+    ck("every derived cell equals a hand per-pair subtraction (%d cells, "
+       "tol 1e-12)" % n_cells, not bad and n_cells > 0,
+       "; ".join(bad[:3]))
+    ck("  pairs missing in either window are dropped and n says so (%d "
+       "cells lost %d pairs; %d cells with no common pair are absent)"
+       % (n_dropped_cells, n_dropped_pairs, n_absent),
+       n_dropped_cells > 0 and not bad)
+    ck("  windows are %s, the grey regions carried" % der["windows"],
+       der["windows"] == ["cue1-pre", "cue2-pre", "post-pre"]
+       and der["grey"] == sorted(S7["grey"]))
+
+    # A transition circuit takes its pre from the state circuit.
+    tr = copy.deepcopy(S7)
+    tr["kind"] = "transition"
+    tr["params"] = dict(tr["params"], kind="transition", before_s=1.0,
+                        after_s=2.0)
+    tr["windows"] = ["onset", "switch", "offset"]
+    tr["cells"] = {nw: copy.deepcopy(S7["cells"][ow]) for nw, ow in
+                   (("onset", "cue1"), ("switch", "cue2"), ("offset", "post"))}
+    for w in tr["windows"]:
+        for m in tr["methods"]:
+            for c in tr["cells"][w][m].values():
+                for x in c["values"]:
+                    x["v"] = x["v"] + 0.01 * x["pair_id"]
+                c["n"], c["mean"], c["sd"] = nms([x["v"] for x in c["values"]])
+    base = copy.deepcopy(S7)
+    base["grey"] = sorted(set(base["grey"]) | {"Right DHC"})
+    dt = D.baseline_contrast(tr, base)
+    bad, n_t = [], 0
+    for dname, w in (("onset-pre", "onset"), ("switch-pre", "switch"),
+                     ("offset-pre", "offset")):
+        for m in tr["methods"]:
+            for key, cell in tr["cells"][w][m].items():
+                if "Right DHC" in key.split("|"):
+                    if key in dt["cells"][dname][m]:
+                        bad.append("%s should be grey" % key)
+                    continue
+                pre = {x["pair_id"]: x["v"] for x in
+                       (base["cells"]["pre"][m].get(key) or {})
+                       .get("values") or []}
+                diffs = [x["v"] - pre[x["pair_id"]] for x in cell["values"]
+                         if x["pair_id"] in pre]
+                got = dt["cells"][dname][m].get(key)
+                if not diffs:
+                    continue
+                n_t += 1
+                n, mu, sd = nms(diffs)
+                if got is None or got["n"] != n or abs(got["mean"] - mu) > 1e-12:
+                    bad.append("%s %s %s" % (dname, m, key))
+    ck("transition: onset/switch/offset minus the STATE circuit's pre, per "
+       "pair (%d cells); a region grey in the baseline is grey here"
+       % n_t, not bad and n_t > 0 and "Right DHC" in dt["grey"],
+       "; ".join(bad[:3]))
+
+    def refused_base(bp, word):
+        Lt = [tr]
+        Rt = [dict(copy.deepcopy(tr), source=dict(tr["source"],
+                                                  gid="other-gid"))]
+        rb = copy.deepcopy(S7)
+        rb["source"] = dict(rb["source"], gid="other-gid")
+        ok, why = D.compatible(Lt, Rt, refs(Lt, "a"), refs(Rt, "b"),
+                               contrast="baseline",
+                               baselines={"left": [bp], "right": [rb]})
+        s = next((x for x in why if word in x), "")
+        return (not ok) and bool(s), s or "; ".join(why) or "accepted"
+    ok, s = refused_base(None, "none was given")
+    ck("a transition member with no baseline is refused: %s" % s, ok)
+    other = copy.deepcopy(S7)
+    other["source"] = dict(other["source"], gid="elsewhere")
+    ok, s = refused_base(other, "recording")
+    ck("a baseline from another recording is refused: %s" % s, ok)
+    moved = copy.deepcopy(S7)
+    moved["pairs"] = [dict(p, opener_t=p["opener_t"] + 30.0)
+                      for p in moved["pairs"]]
+    ok, s = refused_base(moved, "not the same cue pairs")
+    ck("a baseline whose pairs open at other moments is refused: %s" % s, ok)
+    bandb = copy.deepcopy(S7)
+    bandb["params"] = dict(bandb["params"], band="theta",
+                           coherence_mode="band")
+    ok, s = refused_base(bandb, "band")
+    ck("a baseline of another band is refused: %s" % s, ok)
+    Lt = [tr]
+    rb = copy.deepcopy(S7)
+    rb["source"] = dict(rb["source"], gid="other-gid")
+    Rt = [dict(copy.deepcopy(tr), source=dict(tr["source"], gid="other-gid"))]
+    ok, why = D.compatible(Lt, Rt, refs(Lt, "a"), refs(Rt, "b"),
+                           contrast="baseline",
+                           baselines={"left": [copy.deepcopy(S7)],
+                                      "right": [rb]})
+    ck("  (the right baselines are accepted)", ok, "; ".join(why))
+    rest = copy.deepcopy(S7)
+    rest["kind"], rest["windows"] = "rest", ["rest"]
+    ok, why = D.compatible([rest], [copy.deepcopy(rest)], refs([rest], "a"),
+                           refs([rest], "b"), contrast="baseline")
+    ck("rest circuits have no baseline contrast: %s"
+       % next((x for x in why if "Rest" in x), ""),
+       not ok and any("Rest" in x for x in why))
+
+    print("\n   cue - baseline through build: matched, HK, real-fixture "
+          "rats")
+    rats = ["r%d" % i for i in (3, 4, 6, 7)]
+    Lb = [shift_circuit(S7, "L-" + r, i, 0.0, rng)
+          for i, r in enumerate(rats)]
+    Rb = [shift_circuit(S7, "R-" + r, i + 5, 0.02, rng)
+          for i, r in enumerate(rats)]
+    lrb = [rat_ref("left", r, "L-" + r) for r in rats]
+    rrb = [rat_ref("right", r, "R-" + r) for r in rats]
+    bb = D.build(Lb, Rb, lrb, rrb, ("P1", "P4"), design="matched",
+                 test="hk", bh_scope="artifact", contrast="baseline")
+    checked, bad = 0, []
+    for dname, w in (("cue1-pre", "cue1"), ("post-pre", "post")):
+        for m in ("coherence", "amp_cc"):
+            for key, c in bb["cells"][dname][m].items():
+                spec = []
+                for r, pl, pr in zip(rats, Lb, Rb):
+                    sides = []
+                    for P in (pl, pr):
+                        pre = {x["pair_id"]: x["v"] for x in
+                               (P["cells"]["pre"][m].get(key) or {})
+                               .get("values") or []}
+                        src = (P["cells"][w][m].get(key) or {}).get(
+                            "values") or []
+                        sides.append([x["v"] - pre[x["pair_id"]] for x in src
+                                      if x["pair_id"] in pre])
+                    spec.append((r, sides[0], sides[1]))
+                if any(not a or not b_ for _, a, b_ in spec):
+                    continue
+                ok, why = cmp_cell(c, ref_matched(spec, "hk"))
+                checked += 1
+                if not ok:
+                    bad.append("%s %s %s: %s" % (dname, m, key, why))
+    ck("%d cue - baseline cells equal the hand per-pair subtraction then "
+       "the hand matched HK" % checked, checked > 20 and not bad,
+       "; ".join(bad[:2]))
+    ck("  the payload says contrast baseline, and the note on wires",
+       bb["contrast"] == "baseline" and bb["windows"]
+       == ["cue1-pre", "cue2-pre", "post-pre"]
+       and any("wire" in n for n in bb["notes"])
+       and "each window minus the baseline" in bb["analysis_say"])
+
+    print("\n   food - no-food: four circuits a rat")
+    spec = []
+    for i, r in enumerate(["r3", "r4", "r6", "r7", "r8"]):
+        vals = {}
+        for s, role, mu in (("left", "food", 0.3), ("right", "food", 0.36),
+                            ("left", "no_food", 0.32),
+                            ("right", "no_food", 0.34)):
+            n = 1 if (r == "r6" and s == "right" and role == "food") \
+                else 4 + (i + len(role)) % 4
+            vals[(s, role)] = rvals(mu + 0.05 * i, 0.03 + 0.005 * i, n)
+        spec.append((r, vals))
+    Lr, Rr, lrr, rrr = [], [], [], []
+    for r, vals in spec:
+        for s, P, refs_ in (("left", Lr, lrr), ("right", Rr, rrr)):
+            gid = "%s-%s" % (s[0].upper(), r)
+            for role in ("food", "no_food"):
+                ct = "Click_HighTone" if role == "food" else "Noise_LowTone"
+                c = circuit(gid, 0.3, cue_type=ct,
+                            raw_cells={(WIN, MET, KEY): vals[(s, role)]})
+                c["cue_role"] = role
+                c["role_source"] = {"sessions": ["con-" + r]}
+                P.append(c)
+                refs_.append(rat_ref(s, r, gid, role))
+    rb_ = D.build(Lr, Rr, lrr, rrr, ("P1", "P4"), design="matched",
+                  test="hk", contrast="roles")
+    c = rb_["cells"][WIN][MET][KEY]
+    ref = ref_roles(spec, "hk")
+    ok, why = cmp_cell(c, ref)
+    ck("D = food change - no-food change, per rat, equals the hand "
+       "difference of changes (D %.5f, se %.5f, t %.3f on %d df; r6 borrows "
+       "an SD)" % (ref["delta"], ref["se"], ref["stat"], ref["df"]),
+       ok and any("r6" in s and "borrowed" in s for s in c["warn"]), why)
+    ck("  each rat's D carries its two changes",
+       all(close(d["food"] - d["no_food"], d["delta"]) for d in c["deltas"]))
+    ck("  the cell's left/right are the pooled no-food and food changes, "
+       "and the payload says so", "no-food" in rb_["cell_sides"]["left"]
+       and "food" in rb_["cell_sides"]["right"]
+       and c["left"]["k"] == 5 and c["right"]["k"] == 5)
+    ck("  matched rows per rat and role, members carry role and source",
+       len(rb_["matched"]) == 10 and rb_["pooled_by"] == "cue_role"
+       and all(m.get("role_source") for m in rb_["left"]["members"]))
+    ok, why = D.compatible(Lr[:-1], Rr, lrr[:-1], rrr, design="matched",
+                           contrast="roles")
+    ck("a rat missing one of its four is refused, naming what: %s"
+       % next((x for x in why if "missing" in x), why),
+       not ok and any("r8 is missing its no-food pair on the left" in x
+                      for x in why))
+    ok, why = D.compatible(Lr, Rr, lrr, rrr, contrast="roles")
+    ck("roles without the matched design is refused",
+       not ok and any("matched" in x for x in why))
+
+    print("\n   compared by cue role (7.2)")
+    food_L = [p for p in Lr if p["cue_role"] == "food"]
+    food_R = [p for p in Rr if p["cue_role"] == "food"]
+    fl = [r for r, p in zip(lrr, Lr) if p["cue_role"] == "food"]
+    fr = [r for r, p in zip(rrr, Rr) if p["cue_role"] == "food"]
+    food_R[1] = dict(food_R[1], cue_type="HighTone_Noise",
+                     cue_label="High tone → Noise")
+    ok, why = D.compatible(food_L, food_R, fl, fr, design="matched")
+    ck("every member with a role: pairings are not compared, a rat whose "
+       "food pair changed pairing between days is: %s"
+       % next((x for x in why if "within a rat" in x), why),
+       not ok and len(why) == 1 and "within a rat" in why[0])
+    food_R[1] = dict(food_R[1], cue_type="Click_HighTone",
+                     cue_label="Click → High tone")
+    for p in food_L[:2]:
+        p["cue_type"] = "LowTone_Click"
+    for p in food_R[:2]:
+        p["cue_type"] = "LowTone_Click"
+    fb = D.build(food_L, food_R, fl, fr, ("P1", "P4"), design="matched",
+                 test="hk")
+    ck("two pairings under one role are compared, pooled_by cue_role, "
+       "labelled '%s'" % fb["cue_label"], fb["pooled_by"] == "cue_role"
+       and fb["cue_role"] == "food" and fb["cue_label"] == "food pair"
+       and "the food pair of each rat" in fb["analysis_say"])
+    mixed = [dict(food_L[0])]
+    mixed[0].pop("cue_role")
+    ok, why = D.compatible(mixed + food_L[1:], food_R, fl, fr,
+                           design="matched")
+    ck("some with a role and some without is refused: %s"
+       % next((x for x in why if "some do not" in x), why),
+       not ok and any("some do not" in x for x in why))
+    ok, why = D.compatible(food_L, [p for p in Rr if p["cue_role"]
+                                    == "no_food"], fl,
+                           [r for r, p in zip(rrr, Rr)
+                            if p["cue_role"] == "no_food"], design="matched")
+    ck("food against no-food (not the roles contrast) is refused naming "
+       "cue_role", not ok and any("cue_role" in x for x in why))
+
+    print("\n   band mode, and the defaults")
+    bandc = circuit("R0", .3, params={"band": "theta",
+                                      "coherence_mode": "band",
+                                      "raw_cc_filtered": True})
+    Lp = [circuit("L%d" % i, v) for i, v in enumerate([.25, .3, .35])]
+    ok, why = D.compatible(Lp, [bandc], refs(Lp, "a"), refs([bandc], "b"))
+    ck("a theta band circuit against old ones (same low/high/max_lag) is "
+       "refused naming coherence_mode: %s"
+       % next((x for x in why if "coherence_mode" in x), ""),
+       not ok and any("coherence_mode" in x for x in why))
+    Rp = [circuit("R%d" % i, v) for i, v in enumerate([.3, .33, .4])]
+    d0 = D.build(Lp, Rp, refs(Lp, "a"), refs(Rp, "b"), ("l", "r"))
+    d1 = D.build(Lp, Rp, refs(Lp, "a"), refs(Rp, "b"), ("l", "r"),
+                 design="independent", test="z", bh_scope="panel",
+                 contrast=None)
+    ck("a default drift is byte-identical to one with the defaults spelled "
+       "out, and has none of the new keys",
+       json.dumps(d0, sort_keys=True) == json.dumps(d1, sort_keys=True)
+       and not any(k in d0 for k in ("design", "bh_scope", "contrast",
+                                     "pooled_by", "matched",
+                                     "analysis_say"))
+       and "id" not in d0["test"])
+    try:
+        json.dumps(mhk, allow_nan=False)
+        json.dumps(rb_, allow_nan=False)
+        json.dumps(bb, allow_nan=False)
+        ck("matched, roles and baseline payloads are strict JSON", True)
+    except ValueError as e:
+        ck("matched, roles and baseline payloads are strict JSON", False,
+           str(e))
+
 
 def main():
     if "--break" in sys.argv:
@@ -674,6 +1578,13 @@ def main():
         ck("untestable payload is strict JSON", True)
     except ValueError as e:
         ck("payload is strict JSON", False, str(e))
+
+    try:
+        within_rat_checks()
+    except Exception as exc:                             # noqa: BLE001
+        import traceback
+        traceback.print_exc()
+        ck("section 4 CRASHED: %s" % exc, False)
 
     print()
     if FAILED:

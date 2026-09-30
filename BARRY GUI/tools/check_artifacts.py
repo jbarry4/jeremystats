@@ -133,6 +133,26 @@ def _run(tmp):
     check("a subject missing its key parts is refused",
           raises(lambda: S.create("circuit", {"gid": "harness-x"}, {})))
 
+    # -- a torn snapshot: the computer went off between rename and bytes ----
+    with open(snap, "w", encoding="utf-8") as fh:
+        fh.write("")
+    try:
+        S._write_snap(aid, 1, v1["digest"], circuit_payload())
+        with open(snap, "r", encoding="utf-8") as fh:
+            back = json.load(fh)
+        torn_ok = A.digest(back) == v1["digest"]
+    except Exception as exc:                              # noqa: BLE001
+        torn_ok, back = False, str(exc)
+    check("a torn (unreadable) snapshot is written again, not refused",
+          torn_ok, str(back)[:120])
+    with open(snap, "w", encoding="utf-8") as fh:
+        json.dump(circuit_payload(scale=9.0), fh)
+    check("a READABLE snapshot with other content is still refused",
+          raises(lambda: S._write_snap(aid, 1, v1["digest"],
+                                       circuit_payload())))
+    os.remove(snap)
+    S._write_snap(aid, 1, v1["digest"], circuit_payload())
+
     # -- digest / confirmed ----------------------------------------------------
     mtime = os.path.getmtime(snap)
     same = circuit_payload()
@@ -399,6 +419,50 @@ def sync_checks():
               not got["artifacts"] and not got["artifact_snapshots"]
               and fake.requests == before,
               "%d requests" % (fake.requests - before))
+
+        # The tables appear WHILE Jarvis is running (migration 18 run from the
+        # dashboard). Found 2026-09-28: the absent answer used to mark every
+        # artifact sent, so nothing went up until one changed locally.
+        class Missing(FakeCloud):
+            missing = True
+
+            def select_all(self, table, query=""):
+                self.requests += 1
+                if self.missing:
+                    raise Exception("404 PGRST205 Could not find the table "
+                                    "'public.%s'" % table)
+                return FakeCloud.select_all(self, table, query)
+        dd = tempfile.mkdtemp(prefix="jarvis-artifacts-sync-d-")
+        try:
+            shards._MACHINE = "sync-d"
+            SD = A.Artifacts(dd, FakeStore())
+            late = Missing()
+            cd = _sync_for(SD, late)
+            SD.create("circuit", dict(SUBJ, gid="s-sync-late"),
+                      circuit_payload())
+            _push(cd, late)                      # the tables are missing
+            n0 = late.requests
+            late.missing = False                 # ...and now they exist
+            again = cd.rows_artifacts()
+            check("sync: after 'table missing', it does not ask again at once",
+                  not again["artifacts"] and late.requests == n0,
+                  "%d requests" % (late.requests - n0))
+            cd._art_absent_until = 0.0           # the retry interval passes
+            got2 = cd.rows_artifacts()
+            check("sync: once the tables exist, it sends with nothing "
+                  "changed here", len(got2["artifacts"]) == 1
+                  and len(got2["artifact_snapshots"]) == 1,
+                  "%d / %d" % (len(got2["artifacts"]),
+                               len(got2["artifact_snapshots"])))
+            # The old rule, reproduced: the absent answer marked the store's
+            # signature as sent. The check above must be able to tell.
+            cd._art_sent_sig = cd._art_pending_sig = SD.signature()
+            SD.cloud_dirty = False
+            old = cd.rows_artifacts()
+            check("sync: CONTROL -- under the old rule nothing would be sent",
+                  not old["artifacts"])
+        finally:
+            shutil.rmtree(dd, ignore_errors=True)
         # A snapshot that arrives altered is a conflict, not a file.
         vid = va[-1]["id"]
         key = (x["id"], vid)
@@ -458,6 +522,25 @@ def negative_controls():
                 lambda: setattr(A.Artifacts, "_active_cites", real_active))
 
     real_snap = A.Artifacts._write_snap
+
+    def refusing_torn(self, aid, v, dig, payload):
+        """The rule before 2026-09-30: any file there that is not this
+        answer -- unreadable included -- is refused."""
+        path = self.snap_path(aid, v, dig)
+        if os.path.isfile(path):
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    have = json.load(fh)
+            except (OSError, ValueError):
+                have = None
+            if have is None or A.digest(have) != dig:
+                raise A.ArtifactError("refused (old rule)")
+        return real_snap(self, aid, v, dig, payload)
+    expect_fail("a torn snapshot is refused (the old rule)",
+                ["a torn (unreadable) snapshot is written again, not "
+                 "refused"],
+                lambda: setattr(A.Artifacts, "_write_snap", refusing_torn),
+                lambda: setattr(A.Artifacts, "_write_snap", real_snap))
 
     def rewriting(self, aid, v, dig, payload):
         path = self.snap_path(aid, v, dig)

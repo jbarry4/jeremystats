@@ -32,13 +32,28 @@ import math
 import re
 
 from . import probes
+# The bands (arc_contracts.md 7.1) are Coupling's: it is the module that
+# computes in them. Only the table is read here -- ids, edges, labels.
+from .coupling import BAND_LABELS, BAND_ORDER, BANDS  # noqa: F401
 
 SCHEMA = "arc.circuit/1"
 
 STATE_WINDOWS = ("pre", "cue1", "cue2", "post")
 TRANSITION_WINDOWS = ("onset", "switch", "offset")
-KINDS = ("state", "transition")
-_CANONICAL_WINDOWS = {"state": STATE_WINDOWS, "transition": TRANSITION_WINDOWS}
+#: A rest circuit (arc_contracts.md 7.3) has ONE window, and its samples are
+#: the day's no-cue epochs rather than cue pairs.
+REST_WINDOWS = ("rest",)
+KINDS = ("state", "transition", "rest")
+_CANONICAL_WINDOWS = {"state": STATE_WINDOWS, "transition": TRANSITION_WINDOWS,
+                      "rest": REST_WINDOWS}
+
+#: A rest circuit's cue type: there is no cue.
+REST_CUE_TYPE = "none"
+REST_CUE_LABEL = "FP1 + FP2, no cue"
+
+#: What a cue role can be (arc_contracts.md 7.2): the pairing whose second
+#: cue the rat later hears before food, and the one it never does.
+CUE_ROLES = ("food", "no_food")
 
 DEFAULT_METHODS = ("coherence", "raw_cc", "amp_cc")
 
@@ -75,7 +90,12 @@ _ARROWS = ("→", "->", "=>")
 # seconds so the two spellings cannot disagree by a factor of a thousand.
 _NUMBER_PARAMS = ("analysis_fs", "low", "high", "summary_hz", "max_lag_s",
                   "nperseg", "noverlap", "nfft", "pad_s", "before_s",
-                  "after_s", "notch_hz", "methods", "kind")
+                  "after_s", "notch_hz", "methods", "kind",
+                  # A band result and a classic one at the same edges are
+                  # different measurements (a band mean against one bin, a
+                  # band-passed raw_cc against a broadband one). Absent on a
+                  # classic result, so classic against classic is unchanged.
+                  "band", "coherence_mode", "raw_cc_filtered")
 
 
 class CircuitError(ValueError):
@@ -96,6 +116,8 @@ _TYPE_BY_PAIR = {(_norm_cue(a), _norm_cue(b)): k
 
 def cue_label(cue_type):
     """"High tone -> Low Tone" (with a real arrow) for a cue type key."""
+    if cue_type == REST_CUE_TYPE:
+        return REST_CUE_LABEL
     got = CUE_TYPES.get(cue_type)
     if not got:
         raise CircuitError("%r is not a cue type. The cue types are %s."
@@ -239,7 +261,12 @@ def _check_inputs(pair_results, kind, cue_type):
     if kind not in KINDS:
         raise CircuitError("The kind has to be one of %s, not %r."
                            % (", ".join(KINDS), kind))
-    if cue_type not in CUE_TYPES:
+    if kind == "rest":
+        # No cue, so no cue type: the samples are epochs of FP1 and FP2.
+        if cue_type != REST_CUE_TYPE:
+            raise CircuitError("A rest circuit has no cue, so its cue type is "
+                               "%r, not %r." % (REST_CUE_TYPE, cue_type))
+    elif cue_type not in CUE_TYPES:
         raise CircuitError("%r is not a cue type. The cue types are %s."
                            % (cue_type, ", ".join(sorted(CUE_TYPES))))
     if not pair_results:
@@ -256,9 +283,11 @@ def _check_inputs(pair_results, kind, cue_type):
                            "circuit counts each cue pair once."
                            % ", ".join(str(d) for d in dup))
 
-    # One cue type, and the one asked for.
+    # One cue type, and the one asked for. (A rest epoch has none: its
+    # label is where it was cut, "FP1 @ 123.0 s".)
     wrong = [(r.get("pair_id"), r.get("label"), cue_type_of(r))
-             for r in pair_results if cue_type_of(r) != cue_type]
+             for r in pair_results
+             if kind != "rest" and cue_type_of(r) != cue_type]
     if wrong:
         raise CircuitError(
             "A %s circuit takes only %s pairs, and %d of the %d given %s "
@@ -291,17 +320,17 @@ def _check_inputs(pair_results, kind, cue_type):
     # The kind. A result that says its kind must say this one; one that
     # does not is judged by its windows only when they are exactly the
     # OTHER kind's names. Otherwise the names are taken as they come.
-    other = [k for k in KINDS if k != kind][0]
     for r in pair_results:
         said = r.get("kind") or (r.get("params") or {}).get("kind")
         if said is not None and said != kind:
             raise CircuitError(
                 "%s was measured as %s, and this is a %s circuit. A circuit "
                 "is one analysis kind." % (_pair_name(r), said, kind))
-    if tuple(wins0) == _CANONICAL_WINDOWS[other]:
-        raise CircuitError(
-            "These pairs carry the %s windows (%s), and this is a %s "
-            "circuit." % (other, ", ".join(wins0), kind))
+    for other in KINDS:
+        if other != kind and tuple(wins0) == _CANONICAL_WINDOWS[other]:
+            raise CircuitError(
+                "These pairs carry the %s windows (%s), and this is a %s "
+                "circuit." % (other, ", ".join(wins0), kind))
 
     # One set of parameters.
     p0 = _result_params(first)
@@ -342,7 +371,8 @@ def _check_params(params, p0):
         return
     want = {k: params[k] for k in ("analysis_fs", "low", "high",
                                    "summary_hz", "pad_s", "notch_hz",
-                                   "before_s", "after_s")
+                                   "before_s", "after_s", "band",
+                                   "coherence_mode", "raw_cc_filtered")
             if k in params}
     if params.get("max_lag_ms") is not None:
         want["max_lag_s"] = float(params["max_lag_ms"]) / 1000.0
@@ -392,19 +422,32 @@ def _warn(n, of):
 # The build
 # --------------------------------------------------------------------------
 def build(pair_results, probe, kind, cue_type, params, source,
-          of=None, computed_on=None):
+          of=None, computed_on=None, cue_role=None, role_source=None):
     """The circuit payload (contract section 3) for one recording.
 
     `pair_results` are `coupling.pair_connectivity` outputs, one per cue
-    pair of `cue_type`, all of `kind`. `probe` is `histo.probe_sanity`
-    for the rat. `params` is `coupling.read_params` output (or None to
-    take them from the results); `source` is {gid, session_label,
-    bank_entry, bank_version}.
+    pair of `cue_type`, all of `kind` -- ONE band's, for a band run
+    (`coupling.split_bands`). `probe` is `histo.probe_sanity` for the rat.
+    `params` is `coupling.read_params` output (or None to take them from
+    the results); `source` is {gid, session_label, bank_entry,
+    bank_version}, plus `fp` and `clipping` for a rest circuit.
 
     `of` is how many cue pairs of this type the recording has. It defaults
     to the number given; pass it when some pairs could not be run, so the
     warnings count against the recording and not against what survived.
+
+    Section 7 additions, each present ONLY when it applies, so a classic
+    circuit's payload -- and so its digest -- is what it always was:
+    `band` (the band id, when the results are a band's), `cue_role` and
+    `role_source` (arc_contracts.md 7.2), and for `kind="rest"` the epochs
+    as `pairs` ({pair_id, label}) with `cue_type` "none".
     """
+    if cue_role is not None and cue_role not in CUE_ROLES:
+        raise CircuitError("A cue role is %s, not %r."
+                           % (" or ".join(CUE_ROLES), cue_role))
+    if cue_role is not None and kind == "rest":
+        raise CircuitError("A rest circuit has no cue, so it has no cue "
+                           "role.")
     pair_results = list(pair_results or [])
     wins, p0 = _check_inputs(pair_results, kind, cue_type)
     _check_params(params, p0)
@@ -485,12 +528,32 @@ def build(pair_results, probe, kind, cue_type, params, source,
         "max_lag_ms": (None if p0["max_lag_s"] is None
                        else round(p0["max_lag_s"] * 1000.0, 6)),
         "notch_hz": p0["notch_hz"], "pad_s": p0["pad_s"]}
+    if not params and p0.get("band") is not None:
+        pout.update(band=p0["band"], coherence_mode=p0.get("coherence_mode"),
+                    raw_cc_filtered=p0.get("raw_cc_filtered"))
+    # Only a transition run has boundary lengths. (Was `kind == "state"`
+    # while there were two kinds; a rest run has none either.)
     pout.update(kind=kind,
-                before_s=None if kind == "state" else before_s,
-                after_s=None if kind == "state" else after_s)
+                before_s=None if kind != "transition" else before_s,
+                after_s=None if kind != "transition" else after_s)
 
     src = dict(source or {})
-    return {
+    source_out = {"gid": src.get("gid"),
+                  "session_label": src.get("session_label"),
+                  "bank_entry": src.get("bank_entry"),
+                  "bank_version": src.get("bank_version")}
+    # A rest circuit says which no-cue recordings it read, and what the
+    # clipping measurement found in each epoch (arc_contracts.md 7.3).
+    for k in ("fp", "clipping"):
+        if k in src:
+            source_out[k] = src[k]
+    if kind == "rest":
+        pairs_out = [{"pair_id": r["pair_id"], "label": r.get("label")}
+                     for r in results]
+    else:
+        pairs_out = [{"pair_id": r["pair_id"], "label": r.get("label"),
+                      "opener_t": _opener_t(r, before_s)} for r in results]
+    out = {
         "schema": SCHEMA,
         "kind": kind,
         "cue_type": cue_type,
@@ -499,19 +562,22 @@ def build(pair_results, probe, kind, cue_type, params, source,
         "methods": methods,
         "region_order": order,
         "regions": regions,
-        "pairs": [{"pair_id": r["pair_id"], "label": r.get("label"),
-                   "opener_t": _opener_t(r, before_s)} for r in results],
+        "pairs": pairs_out,
         "n_pairs": n_given,
         "cells": cells,
         "region_usable": region_usable,
         "grey": grey,
         "params": pout,
-        "source": {"gid": src.get("gid"),
-                   "session_label": src.get("session_label"),
-                   "bank_entry": src.get("bank_entry"),
-                   "bank_version": src.get("bank_version")},
+        "source": source_out,
         "computed_on": dict(computed_on or {"kind": "local"}),
     }
+    band = pout.get("band")
+    if band is not None:
+        out["band"] = band
+    if cue_role is not None:
+        out["cue_role"] = cue_role
+        out["role_source"] = role_source
+    return out
 
 
 def summary(payload):
@@ -533,7 +599,8 @@ def summary(payload):
             n_cells += len(got)
             n_warn += warn
             n_absent += possible - len(got)
-    return {
+    extra = {k: payload[k] for k in ("band", "cue_role") if k in payload}
+    return dict(extra, **{
         "kind": payload.get("kind"),
         "cue_type": payload.get("cue_type"),
         "n_pairs": payload.get("n_pairs"),
@@ -546,21 +613,38 @@ def summary(payload):
         "cells_possible": possible,
         "n_cells": n_cells, "n_warn": n_warn, "n_absent": n_absent,
         "by_window": per,
-    }
+    })
 
 
 # --------------------------------------------------------------------------
 # Naming (contract section 2)
 # --------------------------------------------------------------------------
-def subject_key(gid, cue_type, kind):
-    return "circuit|%s|%s|%s" % (gid, cue_type, kind)
+def subject_key(gid, cue_type, kind, band=None):
+    """The one artifact a recording x cue type x kind (x band) files under.
+
+    `|<band>` is appended only when a band is given, so every circuit made
+    before bands existed keeps the key it was filed under."""
+    key = "circuit|%s|%s|%s" % (gid, cue_type, kind)
+    return key if band is None else key + "|" + str(band)
+
+
+def band_label(band):
+    """Theta / Beta / Low gamma, or the id itself for one not in the table."""
+    return BAND_LABELS.get(band, str(band))
 
 
 def name_for(subject):
     """"DEWEY r4 s1 Precon1 SPC · High tone → Low Tone ·
     state" from a circuit subject. Parts that are not known are left out
-    rather than written as None."""
+    rather than written as None.
+
+    A band circuit ends " · Theta" (Beta, Low gamma). A rest circuit leaves
+    the run out -- its subject is the day's SPC recording so it matches the
+    cue circuits of that day, but it was computed from FP1 and FP2, and a
+    name saying SPC would say otherwise -- and names the cue part
+    "FP1 + FP2, no cue"."""
     s = subject or {}
+    rest = s.get("window_kind") == "rest"
     head = []
     if s.get("project"):
         head.append(str(s["project"]))
@@ -571,16 +655,18 @@ def name_for(subject):
     if s.get("phase"):
         head.append("%s%s" % (s["phase"], "" if s.get("phase_n") is None
                               else s["phase_n"]))
-    if s.get("run"):
+    if s.get("run") and not rest:
         head.append(str(s["run"]))
     if not head and s.get("session_label"):
         head.append(str(s["session_label"]))
     parts = [" ".join(head)] if head else []
     ct = s.get("cue_type")
-    if ct in CUE_TYPES:
+    if ct in CUE_TYPES or ct == REST_CUE_TYPE:
         parts.append(cue_label(ct))
     elif ct:
         parts.append(str(ct))
     if s.get("window_kind"):
         parts.append(str(s["window_kind"]))
+    if s.get("band"):
+        parts.append(band_label(s["band"]))
     return " · ".join(parts)

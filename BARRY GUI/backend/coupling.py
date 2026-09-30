@@ -156,7 +156,28 @@ METHODS = ("coherence", "raw_cc", "amp_cc")
 #: Order of the bandpass `amp_cc` runs before taking an envelope. Fourth
 #: order Butterworth, run forwards and backwards, so the band has no phase
 #: response at all -- see `bandpass` for why that is not optional here.
-BAND_ORDER = 4
+#:
+#: This was called BAND_ORDER until the bands below arrived; that name now
+#: means the order the bands are listed in (arc_contracts.md 7.1), which is
+#: the reading a person reaching for "the band order" of a circuit expects.
+BUTTER_ORDER = 4
+
+#: The three bands a circuit can be computed in (arc_contracts.md 7.1). The
+#: lag bound is about two cycles of the slowest frequency in the band: a
+#: peak further out than that is a peak between two different cycles, and
+#: a wider search only gives max(|r|) more chances to find noise.
+#:
+#: Low gamma stops at 55 Hz, below the 60 Hz mains line and clear of the
+#: notch's shoulder -- see "Mains is inside the band" above.
+BANDS = {
+    "theta": {"id": "theta", "low": 4.0, "high": 12.0, "max_lag_ms": 500.0},
+    "beta": {"id": "beta", "low": 13.0, "high": 30.0, "max_lag_ms": 150.0},
+    "gamma_low": {"id": "gamma_low", "low": 30.0, "high": 55.0,
+                  "max_lag_ms": 60.0},
+}
+BAND_ORDER = ("theta", "beta", "gamma_low")
+#: How each band is written for a person (circuit names, the panel).
+BAND_LABELS = {"theta": "Theta", "beta": "Beta", "gamma_low": "Low gamma"}
 
 
 class CouplingError(Exception):
@@ -298,7 +319,7 @@ def notch(x, fs, hz=NOTCH_HZ, harmonics=NOTCH_HARMONICS, bw_hz=NOTCH_BW_HZ):
     return y, lines
 
 
-def bandpass(x, fs, low=LOW_FREQ, high=HIGH_FREQ, order=BAND_ORDER):
+def bandpass(x, fs, low=LOW_FREQ, high=HIGH_FREQ, order=BUTTER_ORDER):
     """Zero-phase Butterworth band, as second-order sections.
 
     `sosfiltfilt` rather than `filtfilt` on a transfer function: a
@@ -521,6 +542,161 @@ def metrics(a, b, fs=ANALYSIS_FS, notch_hz=NOTCH_HZ, low=LOW_FREQ,
     # amp_cc --------------------------------------------------------------
     ea = envelope(a, fs, low, high)
     eb = envelope(b, fs, low, high)
+    lags2, r2 = _xcorr_coeff(ea, eb, fs, max_lag_s)
+    val2, lag2 = _peak(lags2, r2)
+    out["amp_cc"] = {
+        "summary": {
+            "value": round(val2, 6),
+            "abs": round(abs(val2), 6),
+            "x": round(lag2, 3),
+            "x_unit": "ms",
+            "what": "peak |r| of the %g-%g Hz envelopes within +/-%g ms"
+                    % (low, high, max_lag_s * 1000.0),
+            "lag_note": "positive means the first region follows the second",
+        },
+        "curve": _curve(lags2, r2, "ms", "r") if curves else None,
+    }
+    return out
+
+
+# --------------------------------------------------------------------------
+# The three methods, in a band (arc_contracts.md 7.1)
+# --------------------------------------------------------------------------
+# `metrics` above is the cluster's: coherence READ AT one frequency, `raw_cc`
+# on the broadband trace, `amp_cc` on the theta envelope. Asked in three
+# bands, two of those stop answering the question:
+#
+#   * coherence at 8 Hz says nothing about beta, and one bin of a 0.5 Hz
+#     grid is a noisy estimate of a 17 Hz-wide band. In a band it is the
+#     MEAN of the Welch curve over every bin in [low, high], ends included.
+#   * `raw_cc` on the unfiltered trace is the same number in every band --
+#     the band never touches it. In a band it is the cross-correlation of the
+#     two BAND-PASSED traces (the same zero-phase Butterworth `amp_cc` uses),
+#     so it can say whether the band's own oscillations line up, and at what
+#     lag.
+#   * `amp_cc` is already a band measurement and is unchanged: the envelope
+#     of that band, peak |r| within the band's own lag bound.
+#
+# Everything around them is shared with `metrics` so a band result and a
+# classic one are the same measurement up to those two changes: the same
+# notch run first, the same Welch segments, the same `_xcorr_coeff`, the same
+# refusals. The notched traces and each band's filtered traces are made ONCE
+# per region per window by `_BandCache` below, not once per region pair --
+# the arithmetic is identical and a region sits in eleven pairs.
+COHERENCE_MODE_BAND = "band"
+
+
+def band_coherence(f, cxy, low, high):
+    """Mean magnitude-squared coherence over [low, high] Hz, and its bins.
+
+    Both ends included. The Welch grid here is 0.5 Hz and lands on whole
+    and half hertz, so 4-12 Hz is seventeen bins; the tolerance is only so a
+    grid that is not exactly representable cannot drop an end bin silently.
+    """
+    f = np.asarray(f, dtype=np.float64)
+    keep = (f >= float(low) - 1e-6) & (f <= float(high) + 1e-6)
+    if not keep.any():
+        raise CouplingError(
+            "No coherence bin falls inside %g-%g Hz on a %g Hz grid, so there "
+            "is nothing to average." % (low, high,
+                                        float(f[1] - f[0]) if f.size > 1
+                                        else float("nan")))
+    return float(np.mean(np.asarray(cxy, dtype=np.float64)[keep])), \
+        int(keep.sum())
+
+
+class _BandCache(object):
+    """One window's per-region signals, prepared once: notched, then
+    band-passed and enveloped per band on first use. A failure is kept and
+    raised again each time it is asked for, so every region pair it touches
+    is refused with the same sentence."""
+
+    def __init__(self, fs, notch_hz, harmonics=NOTCH_HARMONICS):
+        self.fs = float(fs)
+        self.notch_hz = notch_hz
+        self.harmonics = harmonics
+        self._got = {}
+
+    def _get(self, key, make):
+        if key not in self._got:
+            try:
+                self._got[key] = (make(), None)
+            except CouplingError as exc:
+                self._got[key] = (None, exc)
+        val, exc = self._got[key]
+        if exc is not None:
+            raise exc
+        return val
+
+    def notched(self, name, sig):
+        return self._get(("n", name), lambda: notch(
+            np.asarray(sig, dtype=np.float64), self.fs, self.notch_hz,
+            self.harmonics)[0])
+
+    def banded(self, name, sig, low, high):
+        return self._get(("b", name, low, high), lambda: bandpass(
+            self.notched(name, sig), self.fs, low, high))
+
+    def envelope(self, name, sig, low, high):
+        return self._get(("e", name, low, high), lambda: envelope(
+            self.notched(name, sig), self.fs, low, high))
+
+
+def band_metrics(a, b, spec, fs=ANALYSIS_FS, notch_hz=NOTCH_HZ, curves=True,
+                 harmonics=NOTCH_HARMONICS, cache=None, names=("a", "b"),
+                 coherence=None):
+    """The three methods between two signals in ONE band.
+
+    `spec` is a `band_spec` ({id, low, high, max_lag_ms}). Same shape as
+    `metrics` -- `{coherence, raw_cc, amp_cc}` each with `summary` and
+    `curve` -- so everything that reads one reads the other. `coherence`
+    may be the (f, Cxy) already computed for this pair: it does not depend
+    on the band, so a pair asked about three bands estimates it once.
+    """
+    a, b = _check_pair(a, b)
+    cache = cache or _BandCache(fs, notch_hz, harmonics)
+    na_, nb_ = names
+    low, high = float(spec["low"]), float(spec["high"])
+    max_lag_s = float(spec["max_lag_ms"]) / 1000.0
+    na = cache.notched(na_, a)
+    nb = cache.notched(nb_, b)
+    if coherence is None:
+        coherence = coherence_curve(na, nb, fs)
+    f, cxy = coherence
+    val, n_bins = band_coherence(f, cxy, low, high)
+    out = {
+        "coherence": {
+            "summary": {
+                "value": round(val, 6),
+                "x": None,
+                "x_unit": "Hz",
+                "what": "mean coherence over %g–%g Hz" % (low, high),
+                "n_bins": n_bins,
+            },
+            "curve": _curve(f, cxy, "Hz", "coherence") if curves else None,
+        },
+    }
+
+    ba = cache.banded(na_, a, low, high)
+    bb = cache.banded(nb_, b, low, high)
+    lags, r = _xcorr_coeff(ba, bb, fs, max_lag_s)
+    val, lag = _peak(lags, r)
+    out["raw_cc"] = {
+        "summary": {
+            "value": round(val, 6),
+            "abs": round(abs(val), 6),
+            "x": round(lag, 3),
+            "x_unit": "ms",
+            "what": "peak |r| of the %g–%g Hz band-passed signals within "
+                    "+/-%g ms, and where it sat"
+                    % (low, high, max_lag_s * 1000.0),
+            "lag_note": "positive means the first region follows the second",
+        },
+        "curve": _curve(lags, r, "ms", "r") if curves else None,
+    }
+
+    ea = cache.envelope(na_, a, low, high)
+    eb = cache.envelope(nb_, b, low, high)
     lags2, r2 = _xcorr_coeff(ea, eb, fs, max_lag_s)
     val2, lag2 = _peak(lags2, r2)
     out["amp_cc"] = {
@@ -826,20 +1002,28 @@ CLIP_WINDOW_NAMES = tuple(spark.CLIP_WINDOWS)
 TRANSITION_WINDOW_NAMES = tuple(spark.TRANSITION_WINDOWS)
 WINDOW_KINDS = tuple(spark.KINDS)
 
+#: The rest window (arc_contracts.md 7.3): one 10 s epoch of FP1 or FP2,
+#: named `rest` in every epoch, so the epochs are the samples of one window
+#: exactly as cue pairs are the samples of `pre`.
+REST_WINDOW_NAMES = tuple(spark.REST_WINDOWS)
+
 
 def windows_of(kind="state"):
     """The window names of one kind of analysis, in order.
 
-    State is the four chunks of a pair; transition is the three boundaries.
-    Anything else is refused rather than defaulted, because a run made in
-    the wrong kind of window is a matrix labelled with the wrong question.
+    State is the four chunks of a pair; transition is the three boundaries;
+    rest is one epoch of a no-cue recording. Anything else is refused rather
+    than defaulted, because a run made in the wrong kind of window is a
+    matrix labelled with the wrong question.
     """
     if kind == "state":
         return CLIP_WINDOW_NAMES
     if kind == "transition":
         return TRANSITION_WINDOW_NAMES
-    raise CouplingError("There is no %r kind of analysis; it is state or "
-                        "transition." % (kind,))
+    if kind == "rest":
+        return REST_WINDOW_NAMES
+    raise CouplingError("There is no %r kind of analysis; it is state, "
+                        "transition or rest." % (kind,))
 
 
 def _exclude_map(exclude, windows):
@@ -1351,21 +1535,120 @@ def params_for(kind="state"):
     return [p for p in PARAMS if p.get("kind") in (None, kind)]
 
 
+#: The body keys a band replaces. In band mode they are not read from the
+#: body at all: the band says the edges and the lag, and there is no single
+#: frequency coherence is read at.
+_BAND_OWNS = ("low", "high", "max_lag_ms", "summary_hz")
+
+
+def _band_number(pid, raw, band_id):
+    """One of a band's own numbers, checked against the same limits PARAMS
+    puts on the field it replaces. Refused, never clamped."""
+    spec = _PARAM_BY_ID[pid]
+    try:
+        val = float(raw)
+    except (TypeError, ValueError):
+        raise CouplingError("The %s band's %s: %r is not a number."
+                            % (band_id, spec["name"].lower(), raw))
+    if not np.isfinite(val):
+        raise CouplingError("The %s band's %s has to be a finite number."
+                            % (band_id, spec["name"].lower()))
+    lo, hi = spec.get("min"), spec.get("max")
+    if (lo is not None and val < lo) or (hi is not None and val > hi):
+        raise CouplingError("The %s band's %s has to be between %g and %g "
+                            "%s, not %g." % (band_id, spec["name"].lower(),
+                                             lo, hi, spec["unit"], val))
+    return val
+
+
+def band_spec(band, analysis_fs=ANALYSIS_FS):
+    """One band as `{id, low, high, max_lag_ms}`, from its id or a dict.
+
+    A dict may carry its own `low`, `high` and `max_lag_ms`; anything it
+    leaves out is the named band's. The id has to be one of BANDS -- a
+    circuit's name and its artifact's key are made from it, and an id
+    nobody defined is a label nobody can read. Refuses, never clamps.
+    """
+    if isinstance(band, dict):
+        bid = band.get("id") or band.get("band")
+        over = band
+    else:
+        bid, over = band, {}
+    bid = str(bid or "").strip()
+    if bid not in BANDS:
+        raise CouplingError(
+            "%r is not a band. The bands are %s." % (
+                bid or band, ", ".join("%s (%g–%g Hz)" % (
+                    b, BANDS[b]["low"], BANDS[b]["high"])
+                    for b in BAND_ORDER)))
+    out = dict(BANDS[bid])
+    for pid in ("low", "high", "max_lag_ms"):
+        if over.get(pid) is not None:
+            out[pid] = _band_number(pid, over[pid], bid)
+    nyq = float(analysis_fs) / 2.0
+    if not out["low"] < out["high"]:
+        raise CouplingError("The %s band's low edge (%g Hz) has to be below "
+                            "its high edge (%g Hz)."
+                            % (bid, out["low"], out["high"]))
+    if out["high"] >= nyq:
+        raise CouplingError("The %s band's high edge (%g Hz) has to be below "
+                            "half the analysis rate (%g Hz)."
+                            % (bid, out["high"], nyq))
+    return out
+
+
+def band_ids(bands):
+    """The band ids a caller asked for, checked, in the order asked, no
+    repeats. None stays None: no bands is the classic single-band run."""
+    if bands is None:
+        return None
+    if isinstance(bands, (str, dict)):
+        bands = [bands]
+    specs = [band_spec(b) for b in bands]
+    if not specs:
+        raise CouplingError("No bands were asked for. Name at least one of "
+                            "%s, or leave `bands` out for the classic run."
+                            % ", ".join(BAND_ORDER))
+    seen = [s["id"] for s in specs]
+    dup = sorted({b for b in seen if seen.count(b) > 1})
+    if dup:
+        raise CouplingError("The %s band is asked for twice. One band is one "
+                            "circuit." % ", ".join(dup))
+    return specs
+
+
 def read_params(body, measured_pad_s=None, kind="state",
-                measured_transition=None):
+                measured_transition=None, band=None):
     """The run's parameters, from what the panel sent. Refuses, never clamps.
 
     `measured_pad_s` is the baseline the clipping was measured over for
     this recording, when the bank says. A longer baseline would read data
     nobody checked, so it is the ceiling whatever PARAMS says.
 
-    `kind` is "state" or "transition". For a transition run
+    `kind` is "state", "transition" or "rest". For a transition run
     `measured_transition` is `(before_s, after_s)` as the bank says the
     transition clipping was measured, and each is the ceiling on its own
     length for the same reason. The baseline bound applies only to a state
     run, and the transition bounds only to a transition run: each kind
     reads only its own windows.
+
+    `band` (an id or a `band_spec` dict) makes these ONE band's parameters
+    (arc_contracts.md 7.1): today's output with `low`, `high` and
+    `max_lag_ms` from the band, `summary_hz` None (a band's coherence is
+    the mean over the band, read at no one frequency), and `band`,
+    `coherence_mode: "band"`, `raw_cc_filtered: true` added. Without it
+    the output is exactly what it always was.
     """
+    if band is not None:
+        spec = band_spec(band)
+        rest = {k: v for k, v in (body or {}).items()
+                if k not in _BAND_OWNS}
+        out = read_params(rest, measured_pad_s, kind, measured_transition)
+        out.update(low=float(spec["low"]), high=float(spec["high"]),
+                   max_lag_ms=float(spec["max_lag_ms"]), summary_hz=None,
+                   band=spec["id"], coherence_mode=COHERENCE_MODE_BAND,
+                   raw_cc_filtered=True)
+        return out
     windows_of(kind)
     body = body or {}
     out = default_params()
@@ -1560,8 +1843,23 @@ def pair_connectivity(folder, pair, regions=None, exclude_by_channel=(),
                       pad_s=spark.CLIP_PAD_S, curves=False, progress=None,
                       blocked_regions=None, summary_hz=SUMMARY_HZ,
                       kind="state", before_s=spark.TRANSITION_BEFORE_S,
-                      after_s=spark.TRANSITION_AFTER_S):
+                      after_s=spark.TRANSITION_AFTER_S, bands=None):
     """One cue pair: four windows, 66 region pairs, three methods each.
+
+    `bands` (arc_contracts.md 7.1) is a list of bands -- ids or `band_spec`
+    dicts. Each wire is read and decimated ONCE, and the three methods are
+    computed in every band from that one read (`band_metrics`). The answer
+    is then `{"bands": {band id: <exactly this function's classic output,
+    for that band>}, "band_order": [...], ...the keys the bands share}`, so
+    `circuit.build`, `sanity_from_run` and the CSV read one band's result
+    as they read a classic one. `low`, `high`, `max_lag_s` and `summary_hz`
+    are ignored in band mode: each band carries its own. Without `bands`
+    nothing here changes: one band, from those four arguments.
+
+    `kind="rest"` is one no-cue epoch (arc_contracts.md 7.3): `pair` is
+    `{pair_id, label, t0, t1}` and the one window is `rest`, cut from those
+    two times -- see `spark.rest_windows`. Everything else is the same
+    engine.
 
     `kind="transition"` runs the same thing in the pair's three transition
     windows instead -- `spark.transition_windows`, `before_s` ahead of each
@@ -1593,16 +1891,25 @@ def pair_connectivity(folder, pair, regions=None, exclude_by_channel=(),
     windows_of(kind)
     if kind == "transition":
         windows = spark.transition_windows(pair, before_s, after_s)
+    elif kind == "rest":
+        windows = spark.rest_windows(pair)
     else:
         windows = spark.pair_windows(pair, pad_s)
     exclude = (exclude_by_channel if isinstance(exclude_by_channel, dict)
                else sorted({int(c) for c in (exclude_by_channel or [])}))
+    # Checked before a single file is opened: a band that does not exist is
+    # a refusal of the run, not something to find out after the read.
+    specs = band_ids(bands)
 
     got = _signals_for_windows(folder, chan_map, windows, exclude, target_fs,
                                progress=progress, blocked=blocked_regions)
 
     names = list(chan_map.keys())
     pairs_of = region_pairs(names)
+    if specs is not None:
+        return _pair_bands(folder, pair, windows, got, names, pairs_of,
+                           exclude, specs, notch_hz, target_fs, pad_s, curves,
+                           kind, before_s, after_s)
     out_windows = []
     for wname, t0, t1 in windows:
         w = got[wname]
@@ -1635,27 +1942,78 @@ def pair_connectivity(folder, pair, regions=None, exclude_by_channel=(),
             for name in METHODS:
                 row[name] = (m[name] if curves else m[name]["summary"])
             rows.append(row)
-        out_windows.append({
-            "window": wname,
-            "t0": round(float(t0), 6), "t1": round(float(t1), 6),
-            "duration_s": round(float(t1) - float(t0), 6),
-            "fs": w["fs"], "source_fs": w["source_fs"],
-            "n_samples": max((r["n"] for r in w["regions"].values()),
-                             default=0),
-            "regions": {name: {"channel": r.get("channel"),
-                               "channels": r["channels"], "of": r.get("of"),
-                               "spare": r.get("spare") or [],
-                               "passed_over": r.get("passed_over") or [],
-                               "usable": r["usable"],
-                               "blocked": r.get("blocked"),
-                               "why": r["why"], "dropped": r["dropped"]}
-                        for name, r in w["regions"].items()},
-            "pairs": rows,
-            "n_pairs": len(rows),
-            "n_refused": refused,
-        })
+        out_windows.append(_window_out(wname, t0, t1, w, rows, refused))
 
+    return _pair_out(pair, folder, out_windows, names, exclude, notch_hz,
+                     _params_out(target_fs, low, high, max_lag_s, summary_hz,
+                                 pad_s, kind, before_s, after_s))
+
+
+def _window_out(wname, t0, t1, w, rows, refused):
+    """One window of a pair result: where it was cut, which wire each region
+    was measured on, and the region-pair rows. Shared by the classic run and
+    every band of a band run, so the two cannot describe a window apart."""
+    return {
+        "window": wname,
+        "t0": round(float(t0), 6), "t1": round(float(t1), 6),
+        "duration_s": round(float(t1) - float(t0), 6),
+        "fs": w["fs"], "source_fs": w["source_fs"],
+        "n_samples": max((r["n"] for r in w["regions"].values()),
+                         default=0),
+        "regions": {name: {"channel": r.get("channel"),
+                           "channels": r["channels"], "of": r.get("of"),
+                           "spare": r.get("spare") or [],
+                           "passed_over": r.get("passed_over") or [],
+                           "usable": r["usable"],
+                           "blocked": r.get("blocked"),
+                           "why": r["why"], "dropped": r["dropped"]}
+                    for name, r in w["regions"].items()},
+        "pairs": rows,
+        "n_pairs": len(rows),
+        "n_refused": refused,
+    }
+
+
+def _notch_out(notch_hz, target_fs):
     lines = notch_lines(notch_hz, target_fs)
+    return {"hz": float(notch_hz) if notch_hz else None,
+            "applied": bool(lines),
+            "lines_hz": [round(f, 3) for f in lines]}
+
+
+def _params_out(target_fs, low, high, max_lag_s, summary_hz, pad_s, kind,
+                before_s, after_s, band=None):
+    """What a pair result says it was made with. `band` (a band_spec) adds
+    the band's own fields; `summary_hz` is None for a band, whose coherence
+    is read at no single frequency."""
+    out = {
+        "analysis_fs": float(target_fs),
+        "low": float(low), "high": float(high),
+        "max_lag_s": float(max_lag_s),
+        "summary_hz": None if summary_hz is None else float(summary_hz),
+        "nperseg": WELCH_NPERSEG, "noverlap": WELCH_NOVERLAP,
+        "nfft": WELCH_NFFT,
+        "methods": list(METHODS),
+        "pad_s": float(pad_s),
+        # Which question the windows answer. The lengths only for a
+        # transition run: a state run has no boundary windows, and a
+        # number there would be a claim about windows it never cut.
+        "kind": kind,
+        **({"before_s": float(before_s), "after_s": float(after_s)}
+           if kind == "transition" else {}),
+        # Where every one of these came from, carried with the result.
+        # Circuit saves a matrix that has to be able to say what made
+        # it, and a provenance line assembled later is a provenance line
+        # somebody can get wrong.
+        "source": "14 Correlation Data/compute_connectivity_windows.m",
+    }
+    if band is not None:
+        out.update(band=band["id"], coherence_mode=COHERENCE_MODE_BAND,
+                   raw_cc_filtered=True)
+    return out
+
+
+def _pair_out(pair, folder, out_windows, names, exclude, notch_hz, params):
     return {
         "pair_id": pair.get("pair_id"),
         "label": pair.get("label") or "%s -> %s" % (pair.get("opener_label"),
@@ -1664,28 +2022,97 @@ def pair_connectivity(folder, pair, regions=None, exclude_by_channel=(),
         "windows": out_windows,
         "region_order": names,
         "excluded": exclude,
-        "notch": {"hz": float(notch_hz) if notch_hz else None,
-                  "applied": bool(lines),
-                  "lines_hz": [round(f, 3) for f in lines]},
-        "params": {
-            "analysis_fs": float(target_fs),
-            "low": float(low), "high": float(high),
-            "max_lag_s": float(max_lag_s),
-            "summary_hz": float(summary_hz),
-            "nperseg": WELCH_NPERSEG, "noverlap": WELCH_NOVERLAP,
-            "nfft": WELCH_NFFT,
-            "methods": list(METHODS),
-            "pad_s": float(pad_s),
-            # Which question the windows answer. The lengths only for a
-            # transition run: a state run has no boundary windows, and a
-            # number there would be a claim about windows it never cut.
-            "kind": kind,
-            **({"before_s": float(before_s), "after_s": float(after_s)}
-               if kind == "transition" else {}),
-            # Where every one of these came from, carried with the result.
-            # Circuit saves a matrix that has to be able to say what made
-            # it, and a provenance line assembled later is a provenance line
-            # somebody can get wrong.
-            "source": "14 Correlation Data/compute_connectivity_windows.m",
-        },
+        "notch": _notch_out(notch_hz, params["analysis_fs"]),
+        "params": params,
     }
+
+
+def _pair_bands(folder, pair, windows, got, names, pairs_of, exclude, specs,
+                notch_hz, target_fs, pad_s, curves, kind, before_s, after_s):
+    """Every band of one pair from ONE read (`got`). See pair_connectivity.
+
+    Per window, each region's trace is notched once and filtered once per
+    band (`_BandCache`); per region pair, the Welch coherence curve is
+    estimated once and averaged over each band. The rows each band gets are
+    built exactly as the classic run builds them, refusals included.
+    """
+    per_band = {s["id"]: [] for s in specs}
+    for wname, t0, t1 in windows:
+        w = got[wname]
+        cache = _BandCache(w["fs"], notch_hz)
+        rows = {s["id"]: [] for s in specs}
+        refused = {s["id"]: 0 for s in specs}
+        for a_name, b_name in pairs_of:
+            ra, rb = w["regions"][a_name], w["regions"][b_name]
+
+            def base():
+                return {"a": a_name, "b": b_name,
+                        "a_channels": ra["channels"],
+                        "b_channels": rb["channels"]}
+
+            def refuse(bid, why):
+                row = base()
+                row["why"] = why
+                for m in METHODS:
+                    row[m] = None
+                rows[bid].append(row)
+                refused[bid] += 1
+
+            if not ra["usable"] or not rb["usable"]:
+                why = "; ".join(x["why"] for x in (ra, rb) if x.get("why"))
+                for s in specs:
+                    refuse(s["id"], why)
+                continue
+            try:
+                a, b = _check_pair(ra["signal"], rb["signal"])
+                coh = coherence_curve(cache.notched(a_name, a),
+                                      cache.notched(b_name, b), w["fs"])
+            except CouplingError as exc:
+                for s in specs:
+                    refuse(s["id"], str(exc))
+                continue
+            for s in specs:
+                try:
+                    m = band_metrics(a, b, s, w["fs"], notch_hz=notch_hz,
+                                     curves=curves, cache=cache,
+                                     names=(a_name, b_name), coherence=coh)
+                except CouplingError as exc:
+                    refuse(s["id"], str(exc))
+                    continue
+                row = base()
+                row["why"] = None
+                for name in METHODS:
+                    row[name] = (m[name] if curves else m[name]["summary"])
+                rows[s["id"]].append(row)
+        for s in specs:
+            per_band[s["id"]].append(_window_out(wname, t0, t1, w,
+                                                 rows[s["id"]],
+                                                 refused[s["id"]]))
+    out = {
+        "pair_id": pair.get("pair_id"),
+        "label": pair.get("label") or "%s -> %s" % (pair.get("opener_label"),
+                                                    pair.get("closer_label")),
+        "folder": folder,
+        "region_order": names,
+        "excluded": exclude,
+        "notch": _notch_out(notch_hz, target_fs),
+        "kind": kind,
+        "band_order": [s["id"] for s in specs],
+        "bands": {},
+    }
+    for s in specs:
+        params = _params_out(target_fs, s["low"], s["high"],
+                             float(s["max_lag_ms"]) / 1000.0, None, pad_s,
+                             kind, before_s, after_s, band=s)
+        out["bands"][s["id"]] = _pair_out(pair, folder, per_band[s["id"]],
+                                          names, exclude, notch_hz, params)
+    return out
+
+
+def split_bands(result):
+    """{band id: that band's pair result} from a band run's output, or
+    {None: result} for a classic one -- so a caller can walk either."""
+    if isinstance(result, dict) and isinstance(result.get("bands"), dict):
+        return {bid: result["bands"][bid]
+                for bid in (result.get("band_order") or list(result["bands"]))}
+    return {None: result}

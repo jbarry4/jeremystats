@@ -34,6 +34,23 @@ person said two cue types were equivalent -- is carried over from the
 artifact's current version when the same equivalence is asked for again, so
 restating a decision does not read as a new answer.
 
+THE ANALYSIS CHOICES (arc_contracts.md 7.4)
+
+The body may carry `design` ("independent" | "matched"), `test` ("z" |
+"hk"), `bh_scope` ("panel" | "artifact") and `contrast` (null | "baseline"
+| "roles"); absent is today's behaviour, and then nothing here or in the
+payload differs from before. The matched design pairs members by rat
+(`subject.mouse`, as `r<mouse>`; `<project> r<mouse>` when the members span
+projects). For cue - baseline, each TRANSITION member needs the state
+circuit of the same recording, pairing and band: named inline on the member
+(`{id, version_id, baseline: {id, version_id}}`), or in `baseline: {left:
+[{id, version_id, for: <member id>}], right: [...]}`, or -- when neither
+names it -- the one live such circuit in the store, at its current version.
+Either way it is PINNED, listed in the pre-flight, filed as an input with
+`role: "baseline"`, and cited. A non-default drift's subject carries
+`analysis` (and `baseline` pins), so it is a different artifact from the
+default drift of the same circuits, never a version of it.
+
 THE NODE
 
 `run_node` is what `vacc_run.py` calls for `tool == "drift"`: the circuit
@@ -108,8 +125,16 @@ def say_s(s):
 def params_digest(params, kind):
     """The analysis parameters that change a circuit's numbers FOR ITS KIND,
     as 8 hex characters. Two circuits with the same digest can be compared
-    on parameters; `drift.compatible` is still the test."""
+    on parameters; `drift.compatible` is still the test.
+
+    The band-mode fields (drift.MODE_PARAMS) join only when set, so a
+    circuit made before bands keeps the digest it always had, and a theta
+    band circuit -- the same low/high/max_lag as the old default -- does
+    not read as the same analysis."""
     keep = {k: (params or {}).get(k) for k in drift.number_params(kind)}
+    for k in drift.MODE_PARAMS:
+        if (params or {}).get(k) is not None:
+            keep[k] = params[k]
     blob = json.dumps(keep, sort_keys=True, default=str)
     return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:8]
 
@@ -123,7 +148,18 @@ def _vrow_out(row, kind, current_id):
             "n_grey": n.get("n_grey"),
             "params_digest": params_digest(row.get("params"), kind),
             "confirmed": len(row.get("confirmed") or []),
-            "current": row.get("id") == current_id}
+            "current": row.get("id") == current_id,
+            "band": n.get("band"), "cue_role": n.get("cue_role")}
+
+
+def _band_label(band):
+    if band in (None, ""):
+        return None
+    try:
+        from . import circuit
+        return circuit.band_label(band)
+    except Exception:                                    # noqa: BLE001
+        return str(band)
 
 
 def _group(s):
@@ -161,6 +197,9 @@ def members(host, kind=None, cue_type=None, chosen=None):
                       key=lambda v: (-(v["v"] or 0), v["at"] or ""))
         curo = next((v for v in vers if v["current"]), vers[0] if vers
                     else {})
+        band = subj.get("band") if subj.get("band") is not None \
+            else curo.get("band")
+        role = subj.get("cue_role") or curo.get("cue_role")
         rows.append({
             "artifact_id": s["id"], "name": s.get("name"),
             "nickname": s.get("nickname"),
@@ -178,6 +217,8 @@ def members(host, kind=None, cue_type=None, chosen=None):
             "here": curo.get("here"),
             "cited": s.get("cited_active") or 0,
             "versions": vers,
+            "band": band, "band_label": _band_label(band),
+            "cue_role": role,
         })
     rows.sort(key=lambda r: (r["group"], str(r.get("session") or ""),
                              r.get("cue_type") or "", r.get("kind") or ""))
@@ -195,7 +236,7 @@ def members(host, kind=None, cue_type=None, chosen=None):
                      None) if vid else None
             v = v or {"params_digest": r["params_digest"]}
             sig = {"kind": r["kind"], "cue_type": r["cue_type"],
-                   "cue_label": r["cue_label"],
+                   "cue_label": r["cue_label"], "cue_role": r["cue_role"],
                    "params_digest": v["params_digest"], "name":
                    r.get("nickname") or r.get("name")}
             break
@@ -212,7 +253,17 @@ def members(host, kind=None, cue_type=None, chosen=None):
         if r["params_digest"] != sig["params_digest"]:
             why.append("it was made at other analysis parameters than %s"
                        % sig["name"])
-        cue = r["cue_type"] != sig["cue_type"]
+        if r.get("cue_role") and sig.get("cue_role"):
+            # Both carry a role (7.2): the role is what is compared, the
+            # counterbalanced pairing is not.
+            cue = False
+            if r["cue_role"] != sig["cue_role"]:
+                why.append("it is the %s and the chosen ones are the %s"
+                           % (drift.ROLE_SAY.get(r["cue_role"], r["cue_role"]),
+                              drift.ROLE_SAY.get(sig["cue_role"],
+                                                 sig["cue_role"])))
+        else:
+            cue = r["cue_type"] != sig["cue_type"]
         if cue:
             why.append("it is %s and the chosen ones are %s"
                        % (r["cue_label"], sig["cue_label"]))
@@ -282,6 +333,7 @@ def _pin(host, ref, side):
                 "side": side},
         "name": rec.get("name"), "nickname": rec.get("nickname"),
         "gid": subj.get("gid"), "payload": payload,
+        "subject": subj, "asked": ref,
     }
 
 
@@ -293,20 +345,171 @@ def _pins(host, refs, side):
 
 
 def _drift_refs(pins):
-    """What drift.build is handed as refs (and names members by)."""
-    return [{"artifact_id": p["ref"]["id"], "version": p["ref"]["version"],
+    """What drift.build is handed as refs (and names members by). `rat`
+    rides along for the within-rat design; the default build never reads
+    it, so a default drift's payload is unchanged."""
+    out = []
+    for p in pins:
+        r = {"artifact_id": p["ref"]["id"], "version": p["ref"]["version"],
              "version_id": p["ref"]["version_id"],
              "digest": p["ref"]["digest"],
-             "name": p["nickname"] or p["name"]} for p in pins]
+             "name": p.get("nickname") or p.get("name")}
+        if p.get("rat") is not None:
+            r["rat"] = p["rat"]
+        out.append(r)
+    return out
 
 
-def _n_cells(payloads):
+def _label_rats(*groups):
+    """Each pin's rat, from its circuit's subject: `r<mouse>`, and
+    `<project> r<mouse>` when the pins span more than one project -- mouse
+    numbers restart per project, so r7 of two projects is two animals."""
+    pins = [p for g in groups for p in (g or [])]
+    projects = {(p.get("subject") or {}).get("project") for p in pins}
+    for p in pins:
+        s = p.get("subject") or {}
+        if s.get("mouse") in (None, ""):
+            p["rat"] = None
+        elif len(projects) > 1:
+            p["rat"] = "%s r%s" % (s.get("project"), s["mouse"])
+        else:
+            p["rat"] = "r%s" % s["mouse"]
+
+
+def _band_of(pin):
+    s = pin.get("subject") or {}
+    if s.get("band") is not None:
+        return s["band"]
+    P = pin.get("payload") or {}
+    return P.get("band") if P.get("band") is not None \
+        else (P.get("params") or {}).get("band")
+
+
+def _opts(body):
+    """The analysis choices (arc_contracts.md 7.4) from the body, validated;
+    absent is today's behaviour."""
+    b = body or {}
+    try:
+        return drift.options(b.get("design"), b.get("test"),
+                             b.get("bh_scope"), b.get("contrast"))
+    except drift.DriftError as exc:
+        raise DriftRunError(" ".join(exc.reasons), 400, reasons=exc.reasons)
+
+
+def _asked_baselines(body, side):
+    """Baselines named in the body for one side: `baseline` (or
+    `baselines`) as {left: [...], right: [...]} or a flat list; each
+    {id, version_id, for?}. {member id: ref} for those with `for`, and the
+    rest as a list to match by recording."""
+    got = (body or {}).get("baseline")
+    if got is None:
+        got = (body or {}).get("baselines")
+    if isinstance(got, dict):
+        got = got.get(side) or []
+    by_for, loose = {}, []
+    for r in got or []:
+        if not isinstance(r, dict):
+            continue
+        if r.get("for"):
+            by_for[str(r["for"])] = r
+        else:
+            loose.append(r)
+    return by_for, loose
+
+
+def _baselines(host, body, left, right):
+    """cue - baseline: for each TRANSITION member, the state circuit of the
+    same recording, pairing and band, pinned -- as the body names it (inline
+    on the member as `baseline`, or in `baseline` with `for`), else the one
+    live such circuit in the store (its current version). Returns
+    ({"left": [pin | None], "right": [...]}, [sentences])."""
+    out, why = {"left": [], "right": []}, []
+    store = None
+    for side, pins in (("left", left), ("right", right)):
+        by_for, loose = _asked_baselines(body, side)
+        loose_pins = [_pin(host, r, side) for r in loose]
+        for p in pins:
+            P = p["payload"] or {}
+            if P.get("kind") != "transition":
+                out[side].append(None)
+                continue
+            asked = (p.get("asked") or {}).get("baseline") \
+                or by_for.get(p["ref"]["id"])
+            got = None
+            if asked:
+                got = _pin(host, asked, side)
+            else:
+                band = _band_of(p)
+                hits = [b for b in loose_pins
+                        if (b["payload"] or {}).get("kind") == "state"
+                        and b["gid"] == p["gid"]
+                        and (b["payload"] or {}).get("cue_type")
+                        == P.get("cue_type") and _band_of(b) == band]
+                if not hits and not loose:
+                    if store is None:
+                        store = [s for s in host.artifacts.list(kind="circuit")
+                                 if not s.get("deleted")]
+                    hits = []
+                    for s in store:
+                        subj = s.get("subject") or {}
+                        cur = s.get("current") or {}
+                        sb = subj.get("band") if subj.get("band") is not None \
+                            else (cur.get("n_summary") or {}).get("band")
+                        if (subj.get("window_kind") == "state"
+                                and subj.get("gid") == p["gid"]
+                                and subj.get("cue_type") == P.get("cue_type")
+                                and sb == band):
+                            hits.append(s)
+                    if len(hits) > 1:
+                        why.append(
+                            "%s: there are %d state circuits of that "
+                            "recording, pairing and band to take the baseline "
+                            "from (%s); name the one to use." % (
+                                p.get("nickname") or p.get("name"), len(hits),
+                                ", ".join(h.get("nickname") or h.get("name")
+                                          for h in hits)))
+                        hits = []
+                    elif hits:
+                        hits = [_pin(host, {"id": hits[0]["id"],
+                                            "version_id": (hits[0].get(
+                                                "current") or {}).get("id")},
+                                     side)]
+                got = hits[0] if len(hits) == 1 else None
+            if got is not None:
+                got["ref"] = dict(got["ref"], role="baseline",
+                                  **{"for": p["ref"]["id"]})
+            out[side].append(got)
+    return out, why
+
+
+def _base_payloads(bases):
+    if not bases:
+        return None
+    return {s: [None if b is None else b["payload"] for b in bases.get(s, [])]
+            for s in ("left", "right")}
+
+
+def _base_refs(bases):
+    if not bases:
+        return None
+    return {s: [None if b is None else _drift_refs([b])[0]
+                for b in bases.get(s, [])] for s in ("left", "right")}
+
+
+def _base_list(bases):
+    return [b for s in ("left", "right") for b in (bases or {}).get(s, [])
+            if b is not None]
+
+
+def _n_cells(payloads, contrast=None):
     if not payloads:
         return 0
     first = payloads[0]
     n = len(first.get("region_order") or [])
-    return (n * (n - 1) // 2 * len(first.get("windows") or [])
-            * len(first.get("methods") or []))
+    wins = len(first.get("windows") or [])
+    if contrast == "baseline":
+        wins = len(drift.CONTRAST_WINDOWS.get(first.get("kind"), ()))
+    return (n * (n - 1) // 2 * wins * len(first.get("methods") or []))
 
 
 def _suggest(left, right):
@@ -392,35 +595,87 @@ def check(host, body):
     body = body or {}
     left = _pins(host, body.get("left"), "left")
     right = _pins(host, body.get("right"), "right")
+    _label_rats(left, right)
     L = [p["payload"] for p in left]
     R = [p["payload"] for p in right]
     eq = body.get("cue_equivalence") or []
     try:
         eq = drift.clean_equivalence(eq)
+        opts = drift.options(body.get("design"), body.get("test"),
+                             body.get("bh_scope"), body.get("contrast"))
     except drift.DriftError as exc:
         return {"compatible": False, "reasons": exc.reasons,
                 "cue_only": False, "suggest": [], "cue_types": [],
                 "warn": [], "cost": cost(host, len(L) + len(R), 0),
                 "members": _members_out(left, right)}
+    bases, bwhy = ({}, [])
+    if opts["contrast"] == "baseline":
+        bases, bwhy = _baselines(host, body, left, right)
+    kw = dict(design=opts["design"], contrast=opts["contrast"],
+              baselines=_base_payloads(bases), test=opts["test"])
     ok, reasons = drift.compatible(L, R, _drift_refs(left),
-                                   _drift_refs(right), eq)
+                                   _drift_refs(right), eq, **kw)
+    if bwhy:
+        ok, reasons = False, bwhy + reasons
     cue_only, suggest = False, []
     if not ok and L and R:
         trial = _suggest(left, right)
         if trial:
             ok2, _r2 = drift.compatible(L, R, _drift_refs(left),
-                                        _drift_refs(right), eq + trial)
-            cue_only = ok2
-            suggest = trial if ok2 else []
+                                        _drift_refs(right), eq + trial, **kw)
+            cue_only = ok2 and not bwhy
+            suggest = trial if cue_only else []
     warn = []
     for side, pins in (("left", left), ("right", right)):
         if len(pins) == 1:
             warn.append("The %s group is %s." % (side, drift.K1_SAY))
-    return {"compatible": ok, "reasons": reasons, "cue_only": cue_only,
-            "suggest": suggest, "cue_types": _cue_rows(left, right),
-            "equivalence": eq, "warn": warn,
-            "cost": cost(host, len(L) + len(R), _n_cells(L + R)),
-            "members": _members_out(left, right)}
+    out = {"compatible": ok, "reasons": reasons, "cue_only": cue_only,
+           "suggest": suggest, "cue_types": _cue_rows(left, right),
+           "equivalence": eq, "warn": warn,
+           "cost": cost(host, len(L) + len(R) + len(_base_list(bases)),
+                        _n_cells(L + R, opts["contrast"])),
+           "members": _members_out(left, right)}
+    # The analysis choices, as the result will state them, and -- before
+    # anything is computed -- the rats the matched design pairs and the
+    # baseline circuits a transition member will read.
+    role = None
+    roles = {P.get("cue_role") for P in L + R}
+    if len(roles) == 1 and None not in roles and opts["contrast"] != "roles":
+        role = next(iter(roles))
+    rats = sorted({p.get("rat") for p in left + right
+                   if p.get("rat") is not None}, key=drift._natkey)
+    out["options"] = opts
+    out["analysis_say"] = drift.say_analysis(
+        opts, rats=len(rats) if opts["design"] == "matched" else None,
+        role=role)
+    if opts["design"] == "matched":
+        out["matched"] = _matched_preview(left, right, opts["contrast"])
+    if opts["contrast"] == "baseline":
+        out["baselines"] = [dict(b["ref"], name=b.get("nickname")
+                                 or b.get("name"), gid=b.get("gid"))
+                            for b in _base_list(bases)]
+    return out
+
+
+def _matched_preview(left, right, contrast):
+    """[{rat, cue_role?, left: name, right: name}] -- who is paired with
+    whom, said before it runs."""
+    by = {}
+    for side, pins in (("left", left), ("right", right)):
+        for p in pins:
+            role = (p["payload"] or {}).get("cue_role") \
+                if contrast == "roles" else None
+            by.setdefault((p.get("rat"), role), {})[side] = dict(
+                p["ref"], name=p.get("nickname") or p.get("name"))
+    rows = []
+    for (rat, role) in sorted(by, key=lambda k: (drift._natkey(k[0]),
+                                                 str(k[1]))):
+        row = {"rat": rat, "left": by[(rat, role)].get("left"),
+               "right": by[(rat, role)].get("right")}
+        if role:
+            row["cue_role"] = role
+        rows.append(row)
+    return rows
 
 
 def _members_out(left, right):
@@ -467,17 +722,28 @@ def prepare(host, body):
                                      for s, g in (("left", left),
                                                   ("right", right))
                                      if not g])
+    _label_rats(left, right)
     L = [p["payload"] for p in left]
     R = [p["payload"] for p in right]
     prov = _prov(host)
+    opts = _opts(body)
     try:
         eq = drift.clean_equivalence(body.get("cue_equivalence") or [])
     except drift.DriftError as exc:
         raise DriftRunError(" ".join(exc.reasons), 400, reasons=exc.reasons)
     eq = [dict(e, by=e.get("by") or prov.get("user") or "not recorded",
                at=e.get("at") or _now()) for e in eq]
+    bases, bwhy = ({}, [])
+    if opts["contrast"] == "baseline":
+        bases, bwhy = _baselines(host, body, left, right)
     ok, reasons = drift.compatible(L, R, _drift_refs(left),
-                                   _drift_refs(right), eq)
+                                   _drift_refs(right), eq,
+                                   design=opts["design"],
+                                   contrast=opts["contrast"],
+                                   baselines=_base_payloads(bases),
+                                   test=opts["test"])
+    if bwhy:
+        ok, reasons = False, bwhy + reasons
     if not ok:
         raise DriftRunError("These two groups cannot be compared. "
                             + " ".join(reasons), 409, reasons=reasons)
@@ -499,14 +765,65 @@ def prepare(host, body):
         "window_kind": first.get("kind"),
         "cue_equivalence": [{"from": e["from"], "to": e["to"]} for e in eq],
     }
+    inputs = [p["ref"] for p in left] + [p["ref"] for p in right]
+    base_pins = _base_list(bases)
+    # What a non-default drift adds (7.4). Only then: a default drift's
+    # subject -- and so its key and its name -- is what it always was.
+    by_role = all(P.get("cue_role") not in (None, "") for P in L + R)
+    if not drift.is_default(opts) or by_role:
+        subject["analysis"] = dict(opts)
+        roles = sorted({P.get("cue_role") for P in L + R} - {None})
+        if by_role:
+            role = roles[0] if len(roles) == 1 else None
+            subject["cue_role"] = role
+            subject["cue_label"] = (drift.ROLE_SAY.get(role, role) if role
+                                    else "food pair − no-food pair")
+        bands = {_band_of(p) for p in left + right}
+        if len(bands) == 1 and None not in bands:
+            subject["band"] = next(iter(bands))
+            subject["band_label"] = _band_label(subject["band"])
+        if opts["design"] == "matched":
+            for side in ("left", "right"):
+                for ref, p in zip(subject[side], left if side == "left"
+                                  else right):
+                    ref["rat"] = p.get("rat")
+        if base_pins:
+            subject["baseline"] = sorted(
+                ({"id": b["ref"]["id"], "version_id": b["ref"]["version_id"],
+                  "for": b["ref"]["for"], "side": b["ref"]["side"]}
+                 for b in base_pins),
+                key=lambda d: (d["side"], d["for"], d["id"]))
+        # Inputs carry each member's role (7.4), and the baselines read,
+        # marked as such, so each is pinned and cited like a member.
+        inputs = [dict(p["ref"], cue_role=(p["payload"] or {}).get(
+            "cue_role")) if (p["payload"] or {}).get("cue_role") else
+            p["ref"] for p in left + right] + [b["ref"] for b in base_pins]
     from . import artifacts as artifactsmod
     key = artifactsmod.subject_key("drift", subject)
     eq = _carry_equivalence(host, key, eq)
     return {"left": left, "right": right, "L": L, "R": R,
             "left_refs": _drift_refs(left), "right_refs": _drift_refs(right),
             "labels": labels, "cue_equivalence": eq, "subject": subject,
-            "subject_key": key, "n_cells": _n_cells(L + R),
-            "inputs": [p["ref"] for p in left] + [p["ref"] for p in right]}
+            "subject_key": key,
+            "n_cells": _n_cells(L + R, opts["contrast"]),
+            "options": opts, "bases": bases,
+            "baselines": _base_payloads(bases),
+            "baseline_refs": _base_refs(bases),
+            "inputs": inputs}
+
+
+def _build_kw(prep):
+    """The analysis choices and baselines as drift.build takes them --
+    nothing at all for a default drift, so the call is today's call."""
+    o = prep.get("options") or {}
+    if drift.is_default(o):
+        return {}
+    kw = {"design": o["design"], "test": o["test"],
+          "bh_scope": o["bh_scope"], "contrast": o["contrast"]}
+    if o.get("contrast") == "baseline":
+        kw["baselines"] = prep.get("baselines")
+        kw["baseline_refs"] = prep.get("baseline_refs")
+    return kw
 
 
 def build_payload(prep, computed_on, progress=None):
@@ -515,7 +832,7 @@ def build_payload(prep, computed_on, progress=None):
                        prep["right_refs"], prep["labels"],
                        computed_on=computed_on,
                        cue_equivalence=prep["cue_equivalence"],
-                       progress=progress)
+                       progress=progress, **_build_kw(prep))
 
 
 # ==========================================================================
@@ -531,6 +848,10 @@ def file_drift(host, prep, payload, computed_on=None, nickname=None, by=None):
                       test=(payload.get("test") or {}).get("name"),
                       cue_equivalence=[{"from": e["from"], "to": e["to"]}
                                        for e in prep["cue_equivalence"]])
+        if not drift.is_default(prep.get("options")):
+            o = prep["options"]
+            params.update(design=o["design"], test=o["test"],
+                          bh_scope=o["bh_scope"], contrast=o["contrast"])
         rec = arts.put("drift", prep["subject"], payload, params=params,
                        inputs=prep["inputs"], by=by, nickname=nickname)
         nick = (str(nickname).strip() if nickname else "") or None
@@ -603,13 +924,21 @@ def _slim(payload):
 
 
 def node_spec(prep):
-    return {"path": None,
-            "left": [_slim(p) for p in prep["L"]],
-            "right": [_slim(p) for p in prep["R"]],
+    kw = _build_kw(prep)
+    # cue - baseline subtracts per cue pair, so it needs the `values` that
+    # pooling alone never reads: those circuits travel whole.
+    keep = kw.get("contrast") == "baseline"
+    slim = (lambda p: p) if keep else _slim
+    spec = {"path": None,
+            "left": [slim(p) for p in prep["L"]],
+            "right": [slim(p) for p in prep["R"]],
             "left_refs": prep["left_refs"], "right_refs": prep["right_refs"],
             "labels": prep["labels"],
             "cue_equivalence": prep["cue_equivalence"],
             "n_cells": prep["n_cells"]}
+    if kw:
+        spec["options"] = kw
+    return spec
 
 
 def run_node(spec, job):
@@ -619,7 +948,8 @@ def run_node(spec, job):
                           spec["right_refs"], spec["labels"],
                           computed_on={"kind": "vacc"},
                           cue_equivalence=spec.get("cue_equivalence"),
-                          progress=lambda d, o: job.tick(STAGE, d))
+                          progress=lambda d, o: job.tick(STAGE, d),
+                          **(spec.get("options") or {}))
     return {"schema": "arc.drift.node/1", "payload": payload}
 
 

@@ -1,0 +1,643 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Drift: Precon1 → Precon4</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 44vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 56vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Drift's second tab: the Precon1 -> Precon4 analysis, run from a button.
+
+   The analysis takes over an hour and writes the bank and the artifact
+   store, so NOTHING here runs it. Inside the app frame, fetch is wrapped
+   for /api/arc/precon/* only: status answers with a state this harness
+   sets, and every POST is recorded and answered ok. Everything else goes to
+   the real server. The runner, the routes and every refusal are proven by
+   tools/check_preconrun.py; what only a page can get wrong is checked here:
+
+     - the cost is on screen before any Run button exists, and the Run
+       button sends back exactly the plan on screen (`plan_at`)
+     - one primary at a time, last in its bar and right-aligned (measured),
+       and it is whichever step comes next
+     - the run card counts what progress.json says, and its bar is the
+       plan-weighted share (worked out here, not read from the page)
+     - Stop is soft first, then "Stop now"; no primary while it runs
+     - polling runs while something runs and stops when the panel leaves
+     - what it filed lists the run log's drifts, and opens the exact version
+     - an older Jarvis, a stale plan and a failed status all say so
+
+   Negative controls: a second primary injected into the bar is counted as
+   two; an unweighted bar differs from the page's by more than the check's
+   tolerance. The real /api/arc/precon/status is asked once, un-stubbed, so
+   a server without the route is a failure rather than a pass.
+
+   Restores what it touched: the Drift tab remembered in localStorage, the
+   frame's fetch, and the two BARRY functions it stubs for one check. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 250, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { if (fn()) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
+
+/* The page's own words for a duration, worked out again here. */
+function sayS(s) {
+  if (s < 90) return Math.max(1, Math.round(s)) + ' s';
+  if (s < 5400) return Math.round(s / 60) + ' min';
+  return (s / 3600).toFixed(1) + ' h';
+}
+/* The bar: each stage in proportion to its items, weighted by the time the
+   plan gave it (a stage the plan gave nothing weighs one second). */
+function weighted(stages, cost) {
+  const w = { spark: cost.spark_s, circuits: cost.circuit_s, drifts: cost.drift_s };
+  let tot = 0, got = 0;
+  for (const id of ['spark', 'circuits', 'drifts']) {
+    const W = Math.max(w[id] || 0, 1);
+    tot += W;
+    const s = stages[id];
+    if (s) got += W * Math.min(1, (s.done + s.already + s.failed) / s.of);
+  }
+  return got / tot;
+}
+function unweighted(stages) {
+  let got = 0;
+  for (const id of ['spark', 'circuits', 'drifts']) {
+    const s = stages[id];
+    if (s) got += Math.min(1, (s.done + s.already + s.failed) / s.of);
+  }
+  return got / 3;
+}
+
+(async () => { try {
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const win = () => f.contentWindow;
+  const doc = () => f.contentDocument;
+  const $ = (q) => doc().querySelector(q);
+  const $$ = (q) => Array.from(doc().querySelectorAll(q));
+  const errs = [];
+  win().addEventListener('error', (e) => errs.push(
+    e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+  win().addEventListener('unhandledrejection',
+                         (e) => errs.push('rejected: ' + e.reason));
+  await untilN(() => typeof win().setView === 'function');
+  await sleep(700);
+  const ev = (src) => win().eval(src);
+  const val = (expr) => ev('(' + expr + ')');
+
+  /* ---- the stub: /api/arc/precon/* only ----
+     Installed on whichever window the frame holds now, so it can be put
+     back after a reload; `restoreFetch` undoes the latest. */
+  const stub = { status: null, calls: [], fail: false };
+  let restoreFetch = null;
+  function install() {
+    const w = win();
+    const real = w.fetch;
+    const json = (obj, code) => new w.Response(JSON.stringify(obj), {
+      status: code || 200, headers: { 'Content-Type': 'application/json' } });
+    w.fetch = function (url, opts) {
+      const u = String(url);
+      if (u.indexOf('/api/arc/precon/') === 0) {
+        const method = (opts && opts.method) || 'GET';
+        let body = null;
+        try { body = opts && opts.body ? JSON.parse(opts.body) : null; } catch (e) { body = opts.body; }
+        stub.calls.push({ path: u, method: method, body: body, at: Date.now() });
+        if (u === '/api/arc/precon/status') {
+          if (stub.fail) return Promise.resolve(json({ ok: false, error: 'boom (harness)' }, 500));
+          return Promise.resolve(json(Object.assign({ ok: true }, JSON.parse(JSON.stringify(stub.status)))));
+        }
+        return Promise.resolve(json({ ok: true, how: 'soft' }));
+      }
+      return real.apply(this, arguments);
+    };
+    restoreFetch = () => { w.fetch = real; return w.fetch === real; };
+  }
+  install();
+  let savedMode = null;
+  try { savedMode = win().localStorage.getItem('barry.drift.mode'); } catch (e) { /* none */ }
+
+  const FIX = await (await fetch('/_dev/fixtures/precon_plan.json')).json();
+  const base = () => ({ server_started: 'BOOT-H', code_changed: [], busy: null, last: {},
+                        resume: { armed: false, interrupted: false, pending: null, resumes: 0 },
+                        log: { what: null, lines: [] }, plan: null, progress: null,
+                        runlog: null, report: { md: null, csv: null, figures: [] } });
+  const freshPlan = () => Object.assign(JSON.parse(JSON.stringify(FIX)), {
+    at: iso(30), dry_run: true, fresh: true, age_s: 30,
+    server: { base: 'http://127.0.0.1:1', started_at: 'BOOT-H', code_changed: [] } });
+  const host = () => $('#drPrecon');
+  const primaries = (root) => Array.from((root || host()).querySelectorAll('button.btn, a.btn'))
+    .filter((b) => !b.classList.contains('ghost'));
+  const btnText = (t) => Array.from(host().querySelectorAll('button, a'))
+    .find((b) => (b.textContent || '').trim().indexOf(t) === 0);
+  const calls = (path, method) => stub.calls.filter((c) => c.path === path
+                                                     && (!method || c.method === method));
+  async function show(status) {
+    stub.status = status;
+    await ev('BARRY.driftPrecon.refresh()');
+    await sleep(120);
+  }
+  /* Last in its bar, and its right edge on the bar's content edge. */
+  function lastAndRight(b) {
+    if (!b) return false;
+    const bar = b.parentElement, cs = getComputedStyle(bar);
+    const edge = bar.getBoundingClientRect().right - parseFloat(cs.paddingRight)
+                 - parseFloat(cs.borderRightWidth);
+    return bar.lastElementChild === b && Math.abs(edge - b.getBoundingClientRect().right) <= 2;
+  }
+
+  try {
+    /* ---------------------------------------------------------------- */
+    head('the real route');
+    const real = await (await fetch('/api/arc/precon/status')).json();
+    check('this server answers /api/arc/precon/status (un-stubbed)',
+          real.ok === true && 'busy' in real && 'plan' in real && 'progress' in real,
+          JSON.stringify(real).slice(0, 200));
+
+    /* ---------------------------------------------------------------- */
+    head('the tab');
+    stub.status = base();
+    ev('setView("toolkit")');
+    await sleep(300);
+    check('the Drift step opens', val('BARRY.views.toolkit.pick("drift")') === true);
+    // The ToolKit paints twice on the way in; wait for the panel to settle.
+    let node = $('#drModes'), steady = 0;
+    for (let i = 0; i < 120 && steady < 15; i++) {
+      await sleep(100);
+      const now = $('#drModes');
+      steady = (now && now === node && now.isConnected) ? steady + 1 : 0;
+      node = now;
+    }
+    check('the panel has settled', steady >= 15);
+    const segs = $$('#drModes .seg button');
+    check('two tabs: Compare two groups | Precon1 → Precon4',
+          segs.length === 2 && segs[0].textContent === 'Compare two groups'
+          && segs[1].textContent === 'Precon1 → Precon4',
+          segs.map((b) => b.textContent).join(' | '));
+    segs[1].click();
+    await untilN(() => host() && !host().hidden && host().querySelector('.dpc-cost'), 60);
+    check('the Precon tab shows, and Compare hides',
+          host() && !host().hidden && $('#drBuild').hidden === true);
+    check('the tab is remembered for this viewer',
+          win().localStorage.getItem('barry.drift.mode') === 'precon');
+    check('the seg marks it', $$('#drModes .seg button.active').map((b) => b.dataset.mode).join() === 'precon');
+
+    /* ---------------------------------------------------------------- */
+    head('nothing planned: the cost comes first');
+    await show(base());
+    const empty = host().querySelector('.dpc-cost .empty-state');
+    check('an empty state that says what to do next',
+          empty && /Work out the cost first/.test(empty.textContent)
+          && /reading only/.test(empty.textContent), empty && empty.textContent);
+    let P1 = primaries();
+    check('one primary, "Work out the cost"', P1.length === 1
+          && P1[0].textContent === 'Work out the cost', P1.map((b) => b.textContent).join(' | '));
+    check('it is last in its bar and right-aligned (measured)', lastAndRight(P1[0]));
+    check('there is no Run button before the cost is known', !btnText('Run the analysis')
+          && !btnText('Carry on'));
+    // CONTROL: the counter counts a second primary.
+    const extra = win().document.createElement('button');
+    extra.className = 'btn'; extra.textContent = 'intruder';
+    P1[0].parentElement.appendChild(extra);
+    check('CONTROL: a second primary is counted as two', primaries().length === 2);
+    extra.remove();
+
+    const beforePlan = calls('/api/arc/precon/plan', 'POST').length;
+    stub.status = Object.assign(base(), { busy: { what: 'plan', pid: 1, started: iso(1),
+      elapsed_s: 1, orphan: false, stopping: false }, last: { plan: { started: iso(1) } } });
+    P1[0].click();
+    await untilN(() => host().querySelector('.dpc-cost .loader'), 40);
+    check('Work out the cost POSTs /plan once', calls('/api/arc/precon/plan', 'POST').length
+          === beforePlan + 1);
+    check('while it works it out, a loader says reading only',
+          /Working out the cost/.test(host().querySelector('.dpc-cost').textContent)
+          && /nothing is written/.test(host().querySelector('.dpc-cost').textContent));
+    // The loader shows the moment the button is pressed; the poll starts
+    // once the status after the POST says busy. Wait for that, not a guess.
+    await untilN(() => val('BARRY.driftPrecon.state.polling') === true, 40);
+    check('and it polls while it is busy', val('BARRY.driftPrecon.state.polling') === true
+          && val('BARRY.driftPrecon.state.phase') === 'planning');
+
+    /* ---------------------------------------------------------------- */
+    head('planned: the cost, then Run');
+    const plan = freshPlan();
+    await show(Object.assign(base(), { plan: plan, last: { plan: { started: iso(40),
+      ended: iso(30), exit_code: 0 } } }));
+    await untilN(() => !val('BARRY.driftPrecon.state.polling'), 40);
+    check('polling stops once nothing is running', val('BARRY.driftPrecon.state.polling') === false);
+    const lines = $$('#drPrecon .dpc-lines li').map((li) => li.textContent);
+    check('every cost line is on screen, in order (' + lines.length + ')',
+          lines.length === plan.cost.lines.length
+          && lines.every((t, i) => t === plan.cost.lines[i].trim()),
+          lines.length + ' vs ' + plan.cost.lines.length);
+    const want = 'Run the analysis · about ' + sayS(plan.cost.total_s);
+    P1 = primaries();
+    check('one primary: "' + want + '"', P1.length === 1 && P1[0].textContent === want,
+          P1.map((b) => b.textContent).join(' | '));
+    check('it names the same total as the cost lines',
+          lines.some((t) => t.indexOf('Total: about ' + sayS(plan.cost.total_s)) === 0));
+    check('it is last and right-aligned (measured)', lastAndRight(P1[0]));
+    check('"Work out again" is a ghost before it',
+          P1[0].previousElementSibling && P1[0].previousElementSibling.textContent === 'Work out again'
+          && P1[0].previousElementSibling.classList.contains('ghost'));
+    const fold = host().querySelector('details[data-fold="items"]');
+    fold.open = true;
+    await sleep(50);
+    const tables = fold.querySelectorAll('table');
+    check('item by item: 16 recordings, 80 runs, 33 drifts',
+          tables[0].querySelectorAll('tr').length - 1 === plan.spark.length
+          && tables[1].querySelectorAll('tr').length - 1 === plan.circuits.length
+          && fold.querySelectorAll('.dpc-dlist li').length === plan.drifts.length
+          && plan.spark.length === 16 && plan.circuits.length === 80 && plan.drifts.length === 33,
+          [tables[0].querySelectorAll('tr').length - 1, tables[1].querySelectorAll('tr').length - 1,
+           fold.querySelectorAll('.dpc-dlist li').length].join(','));
+    await show(Object.assign(base(), { plan: plan }));
+    check('an open fold stays open across a redraw',
+          host().querySelector('details[data-fold="items"]').open === true);
+    host().querySelector('details[data-fold="items"]').open = false;
+    const roles = host().querySelector('details[data-fold="roles"]');
+    roles.open = true;
+    await sleep(50);
+    check('the food pair of every rat is listed (8)',
+          roles.querySelectorAll('tr').length - 1 === 8
+          && roles.textContent.indexOf(plan.roles[0].food_pair) >= 0);
+    roles.open = false;
+
+    const runBody = Object.assign(base(), { plan: plan,
+      busy: { what: 'run', pid: 2, started: iso(2), elapsed_s: 2, orphan: false, stopping: false },
+      last: { run: { started: iso(2), ended: null, exit_code: null } },
+      progress: { stage: 'spark', item: { n: 1, tag: 'r3 Precon1 (sec4bed944ba0)' },
+                  stages: { spark: { of: 16, done: 0, already: 0, failed: 0, started: iso(2), ended: null } } } });
+    const nRun = calls('/api/arc/precon/run', 'POST').length;
+    stub.status = runBody;
+    primaries()[0].click();
+    await untilN(() => calls('/api/arc/precon/run', 'POST').length > nRun, 40);
+    const sent = calls('/api/arc/precon/run', 'POST').slice(-1)[0];
+    check('Run sends back exactly the plan on screen (plan_at)',
+          sent && sent.body && sent.body.plan_at === plan.at, sent && JSON.stringify(sent.body));
+
+    /* ---------------------------------------------------------------- */
+    head('running');
+    const log30 = Array.from({ length: 30 }, (_, i) => '  line ' + (i + 1));
+    const prog = { stage: 'circuits', item: { n: 15, tag: '[15/80] r7 Precon1 state Noise_LowTone (food pair)' },
+      stages: {
+        spark: { of: 16, done: 16, already: 0, failed: 0, started: iso(420), ended: iso(300) },
+        circuits: { of: 80, done: 11, already: 2, failed: 1, started: iso(300), ended: null } },
+      stopped: null, finished: null };
+    const running = Object.assign(base(), { plan: Object.assign({}, plan, { dry_run: false }),
+      busy: { what: 'run', pid: 2, started: iso(420), elapsed_s: 420, orphan: false, stopping: false },
+      last: { run: { started: iso(420), ended: null, exit_code: null } }, progress: prog,
+      log: { what: 'run', lines: log30 }, runlog: { circuits: 42, drifts: [], failures: [], updated: iso(5) } });
+    await show(running);
+    const card = host().querySelector('.dpc-run');
+    check('the run card says Running', card && /^Running/.test(card.querySelector('.dpc-head strong').textContent));
+    const stageRows = card ? Array.from(card.querySelectorAll('.dpc-stage')) : [];
+    check('three stages', stageRows.length === 3, stageRows.length);
+    const cnt = (id) => (card.querySelector('.dpc-stage[data-stage="' + id + '"] .comod-stage-count') || {}).textContent;
+    check('spark 16 of 16 recordings, done', cnt('spark') === '16 of 16 recordings'
+          && card.querySelector('[data-stage="spark"]').classList.contains('done'), cnt('spark'));
+    check('circuits count done + already + failed: 14 of 80 runs', cnt('circuits') === '14 of 80 runs', cnt('circuits'));
+    check('and says what was already current and what failed',
+          /2 already current/.test(card.querySelector('[data-stage="circuits"]').textContent)
+          && /1 did not complete/.test(card.querySelector('[data-stage="circuits"]').textContent));
+    check('drifts waiting', cnt('drifts') === ''
+          && card.querySelector('[data-stage="drifts"]').classList.contains('waiting'));
+    check('the item in flight is named', (card.querySelector('.dpc-now') || {}).textContent
+          === 'Now: ' + prog.item.tag);
+    /* It fits: Comod's fixed stage columns add to ~550 px and pushed the
+       time past the card in a narrow pane (seen at a 1000 px window). */
+    const overflowing = () => {
+      const cardR = card.getBoundingClientRect().right
+                    - parseFloat(getComputedStyle(card).paddingRight) + 1;
+      return Array.from(card.querySelectorAll('.dpc-stage > *'))
+        .filter((n) => n.getBoundingClientRect().right > cardR);
+    };
+    const over = overflowing();
+    check('the stage rows fit inside the card at ' + Math.round(card.getBoundingClientRect().width)
+          + ' px (measured)', over.length === 0,
+          over.map((n) => (n.className || n.tagName) + ' ' + Math.round(n.getBoundingClientRect().right)).join(', '));
+    // And at a narrow pane, pinned rather than left to the window size.
+    card.style.maxWidth = '480px';
+    await sleep(30);
+    const narrow = overflowing();
+    check('and at 480 px (measured)', narrow.length === 0,
+          narrow.map((n) => (n.className || n.tagName)).join(', '));
+    const rowC = card.querySelector('.dpc-stage[data-stage="circuits"]');
+    rowC.style.gridTemplateColumns = '16px minmax(180px, 1fr) 168px 110px 58px';
+    await sleep(30);
+    check('CONTROL: Comod’s fixed columns overflow at 480 px', overflowing().length > 0);
+    rowC.style.gridTemplateColumns = '';
+    card.style.maxWidth = '';
+    const fill = card.querySelector('.comod-total .comod-bar-fill');
+    const pagePct = parseFloat(fill.style.width);
+    const wantPct = Math.round(100 * weighted(prog.stages, running.plan.cost));
+    check('the bar is the plan-weighted share (' + wantPct + '%)', Math.abs(pagePct - wantPct) <= 1,
+          pagePct + ' vs ' + wantPct);
+    const badPct = Math.round(100 * unweighted(prog.stages));
+    check('CONTROL: an unweighted bar (' + badPct + '%) would be told apart', Math.abs(badPct - pagePct) > 1);
+    const left = running.plan.cost.total_s * (1 - weighted(prog.stages, running.plan.cost));
+    check('time left, by the plan', card.querySelector('.comod-eta').textContent
+          === 'about ' + sayS(left) + ' left, by the plan', card.querySelector('.comod-eta').textContent);
+    check('no primary while it runs', primaries().length === 0,
+          primaries().map((b) => b.textContent).join(' | '));
+    const logBox = card.querySelector('.dpc-log');
+    check('the child’s own words, scrolled to the end', logBox
+          && logBox.textContent.split('\n').length === 30
+          && logBox.scrollTop + logBox.clientHeight >= logBox.scrollHeight - 2);
+    const polls0 = calls('/api/arc/precon/status').length;
+    await sleep(4500);
+    check('it polls status while running (every ~2 s)', calls('/api/arc/precon/status').length - polls0 >= 2,
+          calls('/api/arc/precon/status').length - polls0);
+
+    const stopBtn = btnText('Stop after this item');
+    check('Stop after this item is offered, as a ghost', stopBtn && stopBtn.classList.contains('ghost'));
+    const nStop = calls('/api/arc/precon/stop', 'POST').length;
+    stopBtn.click();
+    await untilN(() => calls('/api/arc/precon/stop', 'POST').length > nStop, 40);
+    const s1 = calls('/api/arc/precon/stop', 'POST').slice(-1)[0];
+    check('it asks for a soft stop', s1 && !(s1.body || {}).hard, JSON.stringify(s1 && s1.body));
+    await show(Object.assign({}, running, { busy: Object.assign({}, running.busy, { stopping: true }) }));
+    check('while stopping: the title says so, and "Stop now" (danger) replaces it',
+          /^Stopping after this item/.test(host().querySelector('.dpc-run .dpc-head strong').textContent)
+          && btnText('Stop now') && btnText('Stop now').classList.contains('danger')
+          && !btnText('Stop after this item'));
+    btnText('Stop now').click();
+    await untilN(() => (calls('/api/arc/precon/stop', 'POST').slice(-1)[0].body || {}).hard === true, 40);
+    check('Stop now asks for a hard stop',
+          (calls('/api/arc/precon/stop', 'POST').slice(-1)[0].body || {}).hard === true);
+
+    /* Leaving the panel stops the poll; coming back starts it again. */
+    await show(running);
+    check('polling (before leaving)', val('BARRY.driftPrecon.state.polling') === true);
+    val('BARRY.views.toolkit.pick("circuit")');
+    await untilN(() => !val('BARRY.driftPrecon.state.polling'), 60);
+    check('leaving the Drift step stops the poll', val('BARRY.driftPrecon.state.polling') === false);
+    val('BARRY.views.toolkit.pick("drift")');
+    await untilN(() => host() && host().isConnected && !host().hidden
+                 && host().querySelector('.dpc-run'), 80);
+    await sleep(900);
+    check('coming back opens the Precon tab again, running, polling',
+          host() && !host().hidden && host().querySelector('.dpc-run')
+          && val('BARRY.driftPrecon.state.polling') === true);
+
+    /* ---------------------------------------------------------------- */
+    head('finished: what it filed, then the report');
+    const drifts = plan.drifts.map((d, i) => Object.assign({}, d, { artifact_id: 'hdrift' + i,
+      version: 1, version_id: 'hv' + i, at: iso(60) }));
+    const doneStages = { spark: Object.assign({}, prog.stages.spark),
+      circuits: { of: 80, done: 80, already: 0, failed: 0, started: iso(300), ended: iso(90) },
+      drifts: { of: 33, done: 33, already: 0, failed: 0, started: iso(90), ended: iso(60) } };
+    const finished = Object.assign(base(), { plan: Object.assign({}, plan, { dry_run: false }),
+      last: { run: { started: iso(420), ended: iso(60), exit_code: 0, killed: false } },
+      progress: { stage: 'drifts', item: null, stages: doneStages, stopped: null, finished: iso(60), failures: [] },
+      log: { what: 'run', lines: ['Done.'] },
+      // The run log is saved with sorted keys, so its order is not the
+      // plan's: hand them over reversed, and expect the plan's order back.
+      runlog: { circuits: 240, drifts: drifts.slice().reverse(), failures: [], finished: iso(60),
+                stopped: null, updated: iso(60) } });
+    await show(finished);
+    await untilN(() => !val('BARRY.driftPrecon.state.polling'), 40);
+    check('the run card says Finished', /^Finished$/.test(host().querySelector('.dpc-run .dpc-head strong').textContent));
+    check('the bar is full', host().querySelector('.dpc-run .comod-bar-fill').style.width === '100%');
+    const links = $$('#drPrecon .dpc-show');
+    check('all 33 drifts are listed, in the plan’s order (the run log’s reversed)',
+          links.length === 33 && links.every((a, i) => a.dataset.ref === drifts[i].artifact_id
+                                             && a.dataset.vid === drifts[i].version_id), links.length);
+    check('grouped by band: theta, beta, low gamma, 11 each',
+          $$('#drPrecon .dpc-band').map((b) => b.querySelectorAll('li').length).join() === '11,11,11'
+          && $$('#drPrecon .dpc-band > .section-label').map((l) => l.textContent.split(' ')[0]).join() === 'Theta,Beta,Low');
+    P1 = primaries();
+    check('one primary: "Write the report", last and right-aligned',
+          P1.length === 1 && P1[0].textContent === 'Write the report' && lastAndRight(P1[0]),
+          P1.map((b) => b.textContent).join(' | '));
+    check('and it is in the card of what was filed', P1[0].closest('.dpc-filed') !== null);
+    check('no Run button without a fresh cost', !btnText('Run the analysis') && !btnText('Carry on'));
+
+    // Opening one: the exact version, drawn by Drift's own renderer below.
+    // BARRY is a const in the frame, not a window property: stub through eval.
+    ev('window.__hAsked = []; window.__hReal = [BARRY.artifacts.payload, BARRY.drift.show];'
+       + 'BARRY.artifacts.payload = async (id, v) => { __hAsked.push([id, v]);'
+       + ' return { payload: { harness: true }, version: 1, version_id: v, digest: "d" }; };'
+       + 'BARRY.drift.show = (p, m) => { __hAsked.push(["show", m.artifact_id, m.version_id]); return true; };');
+    let asked = [];
+    try {
+      links[4].click();
+      await untilN(() => val('window.__hAsked.length') >= 2, 30);
+      asked = JSON.parse(val('JSON.stringify(window.__hAsked)'));
+    } finally {
+      ev('BARRY.artifacts.payload = __hReal[0]; BARRY.drift.show = __hReal[1];'
+         + 'delete window.__hReal; delete window.__hAsked;');
+    }
+    check('restored: the two stubbed functions',
+          val('BARRY.artifacts.payload.toString().indexOf("__hAsked") < 0'
+              + ' && BARRY.drift.show.toString().indexOf("__hAsked") < 0'));
+    check('a drift opens at exactly its filed version',
+          asked.length === 2 && asked[0][0] === drifts[4].artifact_id && asked[0][1] === drifts[4].version_id
+          && asked[1][1] === drifts[4].artifact_id && asked[1][2] === drifts[4].version_id, JSON.stringify(asked));
+
+    const nRep = calls('/api/arc/precon/report', 'POST').length;
+    stub.status = Object.assign({}, finished, { busy: { what: 'report', pid: 3, started: iso(1),
+      elapsed_s: 1, orphan: false, stopping: false } });
+    P1[0].click();
+    await untilN(() => calls('/api/arc/precon/report', 'POST').length > nRep, 40);
+    check('Write the report POSTs /report', calls('/api/arc/precon/report', 'POST').length === nRep + 1);
+    await untilN(() => host().querySelector('.dpc-filed .loader'), 40);
+    check('while it writes, a loader', /Writing the report/.test(host().querySelector('.dpc-filed').textContent));
+    const withReport = Object.assign({}, finished, { report: {
+      md: { name: 'dewey-precon-drift.md', bytes: 2048, at: iso(5) },
+      csv: { name: 'dewey-precon-drift.csv', bytes: 40960, at: iso(5) },
+      figures: ['theta-state-food.png', 'sanity-checks.png'] },
+      last: Object.assign({}, finished.last, { report: { started: iso(8), ended: iso(5), exit_code: 0 } }) });
+    await show(withReport);
+    const md = host().querySelector('a[href="/api/arc/precon/file/md"]');
+    const csv = host().querySelector('a[href="/api/arc/precon/file/csv"]');
+    check('the write-up opens in a new tab', md && md.target === '_blank' && md.textContent === 'Open the write-up');
+    check('the CSV downloads, its size said', csv && csv.textContent === 'Download the CSV (40 KB)',
+          csv && csv.textContent);
+    check('a thumbnail per figure', $$('#drPrecon .dpc-fig img').length === 2);
+    check('the primary is now "Write the report again"',
+          primaries().length === 1 && primaries()[0].textContent === 'Write the report again');
+
+    /* ---------------------------------------------------------------- */
+    head('saying what is wrong');
+    await show(Object.assign(base(), { plan: plan, code_changed: ['drift.py'] }));
+    let go = host().querySelector('[data-go="run"]');
+    check('an older Jarvis: Run is disabled and the card names the file',
+          go && go.disabled && /drift\.py/.test(host().querySelector('.dpc-cost').textContent));
+    await show(Object.assign(base(), { plan: Object.assign({}, plan, { fresh: false,
+      server: { started_at: 'BOOT-OLD' } }) }));
+    go = host().querySelector('[data-go="run"]');
+    check('a plan from a Jarvis since restarted: said, and Run is not offered',
+          /since restarted/.test(host().querySelector('.dpc-cost').textContent)
+          && (!go || go.disabled) && primaries()[0].textContent === 'Work out the cost');
+    await show(Object.assign(base(), { plan: Object.assign({}, plan, { dry_run: false }) }));
+    check('the plan a run wrote is not a cost to run from',
+          /the last run wrote/.test(host().querySelector('.dpc-cost').textContent)
+          && !host().querySelector('[data-go="run"]'));
+    await show(Object.assign(base(), { plan: plan,
+      last: { run: { started: iso(900), ended: iso(800), exit_code: 3 } },
+      progress: { stage: 'circuits', item: null, stages: { spark: doneStages.spark,
+        circuits: { of: 80, done: 20, already: 0, failed: 0, started: iso(700), ended: iso(800) } },
+        stopped: iso(800), finished: iso(800), failures: [] },
+      runlog: { circuits: 60, drifts: [], failures: [], stopped: iso(800), finished: iso(800) } }));
+    check('a stopped run says so, and the next primary is "Carry on"',
+          /^Stopped, as asked/.test(host().querySelector('.dpc-run .dpc-head strong').textContent)
+          && /^Carry on · about /.test(primaries()[0].textContent), primaries()[0] && primaries()[0].textContent);
+    stub.fail = true;
+    await show(stub.status);
+    check('a failed status: said, with Try again',
+          /Could not read where the analysis is/.test(host().textContent)
+          && /boom \(harness\)/.test(host().textContent) && btnText('Try again'));
+    stub.fail = false;
+    stub.status = base();
+    btnText('Try again').click();
+    await untilN(() => /Work out the cost first/.test(host().textContent), 40);
+    check('Try again recovers', /Work out the cost first/.test(host().textContent));
+
+    /* ---------------------------------------------------------------- */
+    head('interrupted: it carries on');
+    const cutProg = { stage: 'circuits', item: null,
+      stages: { spark: doneStages.spark,
+                circuits: { of: 80, done: 30, already: 0, failed: 0, started: iso(900), ended: null } },
+      interrupted: { at: iso(600), why: 'Jarvis restarted (this run began with the Jarvis started A; '
+                     + 'the one answering now started B). This run stops so the new Jarvis can carry it on.',
+                     stage: 'circuits', item: { n: 31, tag: '[31/80] r9 Precon4 state HighTone_Click (food pair)' } },
+      finished: null, failures: [] };
+    const cut = Object.assign(base(), { plan: Object.assign({}, plan, { dry_run: false }),
+      last: { run: { started: iso(900), ended: iso(600), exit_code: 4, killed: false } },
+      resume: { armed: true, interrupted: true, pending: null, resumes: 0, chain_started: iso(900) },
+      progress: cutProg, log: { what: 'run', lines: ['INTERRUPTED: Jarvis restarted'] },
+      runlog: { circuits: 90, drifts: [], failures: [], finished: null, interrupted: cutProg.interrupted } });
+    await show(cut);
+    const rc = () => host().querySelector('.dpc-run');
+    check('the run card says Interrupted', rc() && rc().querySelector('.dpc-head strong').textContent === 'Interrupted');
+    check('it says why, and where it had got to',
+          rc().querySelector('.dpc-cut-why').textContent === cutProg.interrupted.why
+          && rc().textContent.indexOf('It had reached ' + cutProg.interrupted.item.tag) >= 0);
+    check('and that it carries on by itself when Jarvis starts',
+          /carries on by itself the next time Jarvis starts/.test(rc().textContent));
+    const cLeft = cut.plan.cost.total_s * (1 - weighted(cutProg.stages, cut.plan.cost));
+    P1 = primaries();
+    check('one primary: "Carry on now · about ' + sayS(cLeft) + ' left", last and right-aligned',
+          P1.length === 1 && P1[0].textContent === 'Carry on now · about ' + sayS(cLeft) + ' left'
+          && lastAndRight(P1[0]), P1.map((b) => b.textContent).join(' | '));
+    check('"Don’t carry it on" is a ghost before it',
+          P1[0].previousElementSibling && P1[0].previousElementSibling.textContent === 'Don’t carry it on'
+          && P1[0].previousElementSibling.classList.contains('ghost'));
+    check('no Run button beside it, and no "work out the cost again" nag',
+          !btnText('Run the analysis') && !/Work out the cost again/.test(host().textContent));
+    let nPost = calls('/api/arc/precon/resume', 'POST').length;
+    stub.status = running;
+    P1[0].click();
+    await untilN(() => calls('/api/arc/precon/resume', 'POST').length > nPost, 40);
+    check('Carry on now POSTs /resume', calls('/api/arc/precon/resume', 'POST').length === nPost + 1);
+    await show(cut);
+    nPost = calls('/api/arc/precon/forget', 'POST').length;
+    btnText('Don’t carry it on').click();
+    await untilN(() => calls('/api/arc/precon/forget', 'POST').length > nPost, 40);
+    check('Don’t carry it on POSTs /forget', calls('/api/arc/precon/forget', 'POST').length === nPost + 1);
+    await show(Object.assign({}, cut, { code_changed: ['coupling.py'] }));
+    const go2 = host().querySelector('[data-go="resume"]');
+    check('on older code: Carry on is disabled, and it says restart',
+          go2 && go2.disabled && /coupling\.py/.test(rc().textContent));
+    await show(Object.assign({}, cut, { resume: Object.assign({}, cut.resume, { gave_up: { stalls: 3 } }) }));
+    check('given up: it says the last 3 tries filed nothing',
+          /the last 3 tries filed nothing/.test(rc().textContent) && primaries().length === 1);
+    await show(Object.assign({}, cut, { progress: Object.assign({}, cutProg, { interrupted: null }),
+      last: { run: { started: iso(900), ended: null, exit_code: null, lost: true } } }));
+    check('the computer went off: it says nobody saw it end',
+          /nobody saw it end/.test(rc().textContent));
+    await show(Object.assign({}, cut, { resume: Object.assign({}, cut.resume,
+      { pending: { since: iso(2), why: 'Jarvis started again' } }) }));
+    check('carrying on by itself: said, with a loader and no primary',
+          rc().querySelector('.dpc-head strong').textContent === 'Carrying on after an interruption'
+          && rc().querySelector('.loader') && primaries().length === 0);
+    await untilN(() => val('BARRY.driftPrecon.state.polling') === true, 40);
+    check('and it polls until the run has started', val('BARRY.driftPrecon.state.polling') === true);
+    await show(Object.assign({}, running, { resume: { armed: true, interrupted: false, pending: null,
+      resumes: 2, chain_started: iso(3600) } }));
+    check('a run that was carried on says so',
+          /Carried on after 2 interruptions/.test(rc().textContent));
+
+    /* ---------------------------------------------------------------- */
+    head('a page loaded while it runs says so');
+    stub.status = running;
+    await val('BARRY.driftPrecon._notice()');
+    await sleep(100);
+    const toasts = $$('#toasts .toast').map((t) => t.textContent);
+    check('a toast: it is running, how far, and where to look',
+          toasts.some((t) => /analysis is running — circuits 14 of 80/.test(t) && /ToolKit → Drift/.test(t)),
+          toasts.join(' | '));
+
+    /* ---------------------------------------------------------------- */
+    head('a refresh changes nothing');
+    stub.status = running;
+    const nStatus = calls('/api/arc/precon/status').length;
+    f.contentWindow.location.reload();
+    await sleep(300);
+    await untilN(() => win().document.readyState === 'complete' && typeof win().setView === 'function', 150);
+    install();
+    win().addEventListener('error', (e) => errs.push(
+      e.message + ' @' + (e.filename || '').split('/').pop() + ':' + e.lineno));
+    win().addEventListener('unhandledrejection', (e) => errs.push('rejected: ' + e.reason));
+    await sleep(700);
+    ev('setView("toolkit")');
+    await sleep(300);
+    val('BARRY.views.toolkit.pick("drift")');
+    await untilN(() => host() && host().isConnected && !host().hidden && host().querySelector('.dpc-run'), 120);
+    await sleep(900);
+    check('after a reload the Precon tab opens again, and the run is still running',
+          host() && !host().hidden && /^Running/.test(host().querySelector('.dpc-run .dpc-head strong').textContent)
+          && calls('/api/arc/precon/status').length > nStatus);
+    check('and it is polling again', val('BARRY.driftPrecon.state.polling') === true);
+
+    /* ---------------------------------------------------------------- */
+    head('back to Compare');
+    $$('#drModes .seg button')[0].click();
+    await sleep(100);
+    check('Compare shows again, the Precon tab hides',
+          $('#drBuild').hidden === false && host().hidden === true && $('#drGroups').isConnected);
+
+    head('nothing broke on the way');
+    check('no uncaught errors (either side of the reload)', errs.length === 0, errs.join(' | '));
+  } finally {
+    const fetchBack = restoreFetch ? restoreFetch() : false;
+    try {
+      if (savedMode === null) win().localStorage.removeItem('barry.drift.mode');
+      else win().localStorage.setItem('barry.drift.mode', savedMode);
+    } catch (e) { /* none */ }
+    check('restored: the frame’s fetch and the remembered tab',
+          fetchBack && win().localStorage.getItem('barry.drift.mode') === savedMode);
+  }
+
+  say('note', '');
+  say('note', out.querySelectorAll('.ok').length + ' passed, ' + bad + ' failed');
+  document.title = 'driftprecon: ' + out.querySelectorAll('.ok').length
+                 + ' pass ' + bad + ' fail';
+} catch (e) {
+  say('bad', 'CRASH ' + (e && e.message));
+  say('note', String((e && e.stack) || ''));
+  document.title = 'driftprecon CRASH';
+} })();
+</script>

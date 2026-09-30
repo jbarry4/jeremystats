@@ -1,0 +1,220 @@
+{
+  "_at": {
+    "added": "2026-09-30T17:23:39.710415+00:00",
+    "deleted": "2026-09-30T17:39:39.675762+00:00",
+    "id": "2026-09-30T17:23:39.710415+00:00",
+    "kind": "2026-09-30T17:23:39.710415+00:00",
+    "name": "2026-09-30T17:23:39.710415+00:00",
+    "nickname": "2026-09-30T17:39:39.675762+00:00",
+    "schema": "2026-09-30T17:23:39.710415+00:00",
+    "subject": "2026-09-30T17:23:39.710415+00:00",
+    "subject_key": "2026-09-30T17:23:39.710415+00:00",
+    "version": "2026-09-30T17:23:39.710415+00:00"
+  },
+  "_keys": {
+    "cited": {
+      "8f3c4abc23f2:fac64337da12>3becbb099aaf:1": [
+        "set",
+        "2026-09-30T17:39:24.378779+00:00"
+      ],
+      "8f3c4abc23f2:fac64337da12>bbbd64f3e49a:1": [
+        "set",
+        "2026-09-30T17:39:39.675762+00:00"
+      ],
+      "8f3c4abc23f2:fac64337da12>d05449e2cacd:1": [
+        "set",
+        "2026-09-30T17:39:28.279927+00:00"
+      ]
+    },
+    "versions": {
+      "fac64337da12": [
+        "set",
+        "2026-09-30T17:23:39.710415+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T17:39:39.675762+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T13:23:39-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [
+    {
+      "at": "2026-09-30T17:39:24+00:00",
+      "by_id": "3becbb099aaf",
+      "by_version": 1,
+      "digest": "f36d4ae61d0a",
+      "id": "8f3c4abc23f2:fac64337da12>3becbb099aaf:1",
+      "version": 1,
+      "version_id": "fac64337da12"
+    },
+    {
+      "at": "2026-09-30T17:39:28+00:00",
+      "by_id": "d05449e2cacd",
+      "by_version": 1,
+      "digest": "f36d4ae61d0a",
+      "id": "8f3c4abc23f2:fac64337da12>d05449e2cacd:1",
+      "version": 1,
+      "version_id": "fac64337da12"
+    },
+    {
+      "at": "2026-09-30T17:39:39+00:00",
+      "by_id": "bbbd64f3e49a",
+      "by_version": 1,
+      "digest": "f36d4ae61d0a",
+      "id": "8f3c4abc23f2:fac64337da12>bbbd64f3e49a:1",
+      "version": 1,
+      "version_id": "fac64337da12"
+    }
+  ],
+  "deleted": null,
+  "id": "8f3c4abc23f2",
+  "kind": "circuit",
+  "name": "DEWEY r3 s1 Precon1 SPC \u00b7 Click \u2192 Low Tone \u00b7 transition \u00b7 Low gamma",
+  "nickname": null,
+  "schema": "arc.artifact/1",
+  "subject": {
+    "band": "gamma_low",
+    "cue_label": "Click \u2192 Low Tone",
+    "cue_role": "food",
+    "cue_type": "Click_LowTone",
+    "gid": "sec4bed944ba0",
+    "mouse": 3,
+    "phase": "Precon",
+    "phase_n": 1,
+    "project": "DEWEY",
+    "run": "SPC",
+    "session": 1,
+    "session_label": "DEWEY r3 s1 Precon1 SPC 2026-04-04",
+    "window_kind": "transition"
+  },
+  "subject_key": "circuit|sec4bed944ba0|Click_LowTone|transition|gamma_low",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T13:23:39-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "f36d4ae61d0a",
+      "id": "fac64337da12",
+      "inputs": [
+        {
+          "entry": "87ee7177c51a",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "gamma_low",
+        "by_window": {
+          "offset": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          },
+          "onset": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          },
+          "switch": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 15,
+              "warn": 0
+            }
+          }
+        },
+        "cells_possible": 15,
+        "cue_role": "food",
+        "cue_type": "Click_LowTone",
+        "grey": [
+          "Right RSC",
+          "Right PER",
+          "Right POR",
+          "Left POR",
+          "Left PER",
+          "Left RSC"
+        ],
+        "kind": "transition",
+        "n_absent": 0,
+        "n_cells": 135,
+        "n_grey": 6,
+        "n_pairs": 8,
+        "n_regions": 12,
+        "n_warn": 0,
+        "of": 8
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "bad_channels": [],
+        "band": "gamma_low",
+        "before_s": 1.0,
+        "blocked_regions": [
+          "Left PER",
+          "Left POR",
+          "Left RSC",
+          "Right POR",
+          "Right RSC"
+        ],
+        "channel_rule": "lowest-numbered usable wire",
+        "coherence_mode": "band",
+        "cue_role": "food",
+        "high": 55.0,
+        "inputs_hash": "a701babb35e6",
+        "kind": "transition",
+        "low": 30.0,
+        "max_lag_ms": 60.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "raw_cc_filtered": true,
+        "summary_hz": null
+      },
+      "params_hash": "7d980f95377b",
+      "v": 1
+    }
+  ]
+}

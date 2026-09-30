@@ -12100,20 +12100,49 @@ def api_arc_spark_recordings():
                     "scope": scope, "default_scope": ARC_SCOPE})
 
 
+def _spark_pick(entries):
+    """THE Spark entry of a recording, when it has more than one.
+
+    Spark re-banked into whichever entry its listing yielded LAST and Coupling
+    read whichever `for_session` yielded FIRST, so a recording banked twice
+    (early testing on 2026-09-24 did this to r3 and r4 Precon1) had Spark
+    filing into one entry while Circuit read the other -- a re-measurement
+    that never reached the analysis. One rule, used by both: the entry whose
+    clipping was measured, then whose transitions were, then the most recent.
+    """
+    def key(e):
+        params = ((e.get("source") or {}).get("parameters") or {})
+        vers = e.get("versions") or []
+        latest = max([str(v.get("at") or "") for v in vers]
+                     + [str((e.get("added") or {}).get("at") or "")])
+        return (bool(params.get("clip_measured")),
+                bool(params.get("transition_measured")), latest,
+                str(e.get("id") or ""))
+    cands = [e for e in (entries or [])
+             if str(((e.get("source") or {}).get("pipeline")) or "")
+             .startswith(SPARK_PIPELINE)]
+    return max(cands, key=key) if cands else None
+
+
 def _spark_banked():
     """Which recordings already have a Spark entry, and at what version."""
-    out = {}
+    by_gid = {}
     for e in BANK.summaries():
-        src = (e.get("source") or {})
-        if not str(src.get("pipeline") or "").startswith(SPARK_PIPELINE):
-            continue
-        gid = e.get("gid")
-        if not gid:
+        if e.get("gid"):
+            by_gid.setdefault(e["gid"], []).append(e)
+    out = {}
+    for gid, entries in by_gid.items():
+        e = _spark_pick(entries)
+        if e is None:
             continue
         out[gid] = {"id": e.get("id"), "n": e.get("n"),
                     "version": e.get("version"),
                     "versions": len(e.get("versions") or []),
-                    "added": e.get("added"), "name": e.get("name")}
+                    "added": e.get("added"), "name": e.get("name"),
+                    "others": sorted(x.get("id") for x in entries
+                                     if x is not e and str(((x.get("source")
+                                        or {}).get("pipeline")) or "")
+                                     .startswith(SPARK_PIPELINE))}
     return out
 
 
@@ -12131,7 +12160,9 @@ def _spark_read(gid):
         raise SparkRouteError(
             "None of this recording\u2019s paths are reachable from this "
             "machine, so there is nothing to look at.", 409)
-    folder = here[0]
+    # The SPC folder, not here[0]: a DEWEY day's FP1, SPC and FP2 share a
+    # gid, in no reliable order (circuitrun.cued_folder).
+    folder = circuitrunmod.cued_folder(sm, _coupling_entry(gid))
     nev = os.path.join(folder, "Events.nev")
     if not os.path.exists(nev):
         raise SparkRouteError(
@@ -12513,12 +12544,15 @@ def api_arc_spark_regions(gid):
 # would throw all of that away and quietly correlate a window somebody had
 # already decided against.
 def _coupling_entry(gid):
-    """The Spark entry banked against this recording, or None."""
-    for e in BANK.for_session({"gid": gid}):
-        src = (e.get("source") or {})
-        if str(src.get("pipeline") or "").startswith(SPARK_PIPELINE):
-            return BANK.get(e.get("id")) or e
-    return None
+    """The Spark entry banked against this recording, or None -- chosen by
+    the same rule Spark re-banks with (`_spark_pick`), so the two agree."""
+    cands = [BANK.get(e.get("id")) or e
+             for e in BANK.for_session({"gid": gid})
+             # Spark entries always carry their gid; `for_session` also
+             # returns weaker matches (the same rat, another day), which must
+             # never be read as this recording's cue pairs.
+             if e.get("gid") == gid]
+    return _spark_pick(cands)
 
 
 def _coupling_pair(ev, n):
@@ -12832,7 +12866,7 @@ def api_arc_coupling(gid):
                         "Spark on it first."}), 409
     rec = REG.by_gid(gid)
     sm = REG.summary(rec) if rec else {}
-    here = (sm.get("here") or [None])[0]
+    here = circuitrunmod.cued_folder(sm, entry)       # the SPC folder
 
     pairs = []
     for i, ev in enumerate(entry.get("events") or [], start=1):
@@ -12873,7 +12907,7 @@ def api_arc_coupling_run(gid):
                         "No cue pairs are banked for this recording."}), 409
     rec = REG.by_gid(gid)
     sm = REG.summary(rec) if rec else {}
-    here = (sm.get("here") or [None])[0]
+    here = circuitrunmod.cued_folder(sm, entry)       # the SPC folder
     if not here:
         return jsonify({"ok": False, "error":
                         "None of this recording\u2019s paths are reachable "
@@ -13141,6 +13175,44 @@ def _circuit_recordings(wide):
                              run=scope["run"], phase_max=scope["phase_max"])
 
 
+# The day index for rest circuits (arc_contracts.md 7.3): every FP1/FP2 row
+# keyed by (project, rat, phase, phase number), built ONCE from REG.all()
+# and rebuilt only when the session shards change -- REG.by_gid per
+# candidate would be most of a second each.
+_CIRCUIT_DAYS = {"sig": None, "idx": None}
+
+
+def _circuit_day_runs(sm):
+    """The registry's FP1/FP2 rows of the day `sm` (a REG.summary) is on,
+    as summaries (gid, run, label, here, bad_channels, duration_s, start).
+    circuitrun.find_fp checks each folder before using it."""
+    try:
+        sig = REG.store.sessions.signature()
+    except Exception:                                        # noqa: BLE001
+        sig = None
+    if sig is None or sig != _CIRCUIT_DAYS["sig"] \
+            or _CIRCUIT_DAYS["idx"] is None:
+        idx = {}
+        for rec in REG.all():
+            if rec.get("retired") or rec.get("run") not in ("FP1", "FP2"):
+                continue
+            idx.setdefault((rec.get("project"), rec.get("mouse"),
+                            rec.get("phase"), rec.get("phase_n")),
+                           []).append(rec)
+        _CIRCUIT_DAYS.update(sig=sig, idx=idx)
+    key = (sm.get("project"), sm.get("mouse"), sm.get("phase"),
+           sm.get("phase_n"))
+    if None in key[1:]:
+        return []
+    out = []
+    for rec in _CIRCUIT_DAYS["idx"].get(key) or []:
+        s = REG.summary(rec)
+        out.append({k: s.get(k) for k in ("gid", "run", "label", "here",
+                                          "bad_channels", "duration_s",
+                                          "start")})
+    return out
+
+
 CIRCUIT_HOST = circuitrunmod.Host(
     entry=lambda gid: _coupling_entry(gid),
     summary=_circuit_summary,
@@ -13166,6 +13238,7 @@ CIRCUIT_HOST = circuitrunmod.Host(
                                         APP_DIR),
     provenance=lambda: STORE.provenance(),
     activity=lambda rows: STORE.record_activity(rows),
+    day_runs=_circuit_day_runs,
 )
 
 
@@ -13213,8 +13286,14 @@ def api_arc_circuit_plan(gid):
         except ValueError:
             return jsonify({"ok": False, "error":
                             "params is not JSON."}), 400
+    # Section 7: `bands` (a list, or ?bands=theta,beta), and a cue role.
+    bands = body.get("bands")
+    if bands is None and request.args.get("bands"):
+        bands = [b for b in request.args.get("bands").split(",") if b]
     try:
-        got = circuitrunmod.plan(_circuit_host(), gid, cue_type, kind, params)
+        got = circuitrunmod.plan(_circuit_host(), gid, cue_type, kind, params,
+                                 bands, body.get("cue_role"),
+                                 body.get("role_source"))
     except circuitrunmod.CircuitRunError as exc:
         return _circuit_refused(exc)
     except Exception as exc:                                 # noqa: BLE001
@@ -13233,7 +13312,9 @@ def api_arc_circuit_run(gid):
         host = _circuit_host()
         prep = circuitrunmod.prepare(host, gid, body.get("cue_type"),
                                      body.get("kind") or "state",
-                                     body.get("params") or {})
+                                     body.get("params") or {},
+                                     body.get("bands"), body.get("cue_role"),
+                                     body.get("role_source"))
         if where == "vacc":
             job = circuitrunmod.start_vacc(host, prep, body.get("nickname"))
         else:
@@ -13246,10 +13327,12 @@ def api_arc_circuit_run(gid):
         "action": "arc.circuit.run",
         "detail": {"gid": gid, "cue_type": prep["cue_type"],
                    "kind": prep["kind"], "where": where,
-                   "pairs": prep["n_pairs"], "cached": prep["n_cached"]},
+                   "pairs": prep["n_pairs"], "cached": prep["n_cached"],
+                   "bands": prep.get("bands")},
     }])
     return jsonify({"ok": True, "job": job.id, "where": where,
-                    "n_pairs": prep["n_pairs"], "n_cached": prep["n_cached"]})
+                    "n_pairs": prep["n_pairs"], "n_cached": prep["n_cached"],
+                    "bands": prep.get("bands")})
 
 
 @app.route("/api/arc/circuit/batch/plan", methods=["POST"])
@@ -13261,7 +13344,8 @@ def api_arc_circuit_batch_plan():
         got = circuitrunmod.batch_plan(
             _circuit_host(), body.get("gids") or [],
             body.get("cue_types") or "all", body.get("kind") or "state",
-            body.get("params") or {}, body.get("where") or "vacc")
+            body.get("params") or {}, body.get("where") or "vacc",
+            bands=body.get("bands"), roles=body.get("roles"))
     except circuitrunmod.CircuitRunError as exc:
         return _circuit_refused(exc)
     except Exception as exc:                                 # noqa: BLE001
@@ -13279,7 +13363,8 @@ def api_arc_circuit_batch_run():
             _circuit_host(), body.get("gids") or [],
             body.get("cue_types") or "all", body.get("kind") or "state",
             body.get("params") or {}, body.get("where") or "vacc",
-            body.get("concurrency"))
+            body.get("concurrency"), bands=body.get("bands"),
+            roles=body.get("roles"))
     except circuitrunmod.CircuitRunError as exc:
         return _circuit_refused(exc)
     except Exception as exc:                                 # noqa: BLE001
@@ -16265,10 +16350,16 @@ def api_artifact_test_erase():
 # from the artifact store is backend/driftrun.py. These routes are thin.
 #
 #   GET  /api/arc/drift/circuits?kind=&cue_type=&with=<id>[@<vid>],...
-#   POST /api/arc/drift/check   {left, right, cue_equivalence?}
+#   POST /api/arc/drift/check   {left, right, cue_equivalence?, <choices>}
 #   POST /api/arc/drift/run     {left, right, labels, cue_equivalence?,
-#                                where: "local"|"vacc", nickname?}
+#                                where: "local"|"vacc", nickname?, <choices>}
 #        -> {ok, job}; poll /api/cfc/job/<id>, the result on /api/cfc/result
+#   <choices> (arc_contracts.md 7.4; absent = today's behaviour):
+#        design: "independent"|"matched", test: "z"|"hk",
+#        bh_scope: "panel"|"artifact", contrast: null|"baseline"|"roles",
+#        baseline: {left: [{id, version_id, for}], right: [...]} (or inline
+#        on a member as `baseline`) -- the state circuits transition members
+#        take their pre from; pinned, filed with role "baseline", and cited.
 from . import driftrun as driftrunmod                        # noqa: E402
 
 
@@ -16349,12 +16440,191 @@ def api_arc_drift_run():
         return fail("arc/drift/run", exc, 400)
     STORE.record_activity([{
         "action": "arc.drift.run",
-        "detail": {"where": where, "left": len(prep["left"]),
-                   "right": len(prep["right"]),
-                   "equivalence": len(prep["cue_equivalence"])},
+        "detail": dict({"where": where, "left": len(prep["left"]),
+                        "right": len(prep["right"]),
+                        "equivalence": len(prep["cue_equivalence"])},
+                       **(prep.get("options") or {})),
     }])
     return jsonify({"ok": True, "job": job.id, "where": where,
-                    "cells": prep["n_cells"]})
+                    "cells": prep["n_cells"],
+                    "options": prep.get("options")})
+
+
+# The Precon1 -> Precon4 analysis (arc_contracts.md section 7), from the
+# Drift panel's second tab. tools/run_precon_drift.py is the analysis;
+# backend/preconrun.py starts it as a child of this Jarvis (output to a file,
+# never a pipe) and reads back its plan, progress and run log. The child
+# drives THIS server over HTTP, so every artifact lands in Results live.
+#
+#   GET  /api/arc/precon/status          plan, progress, runlog, report files
+#   POST /api/arc/precon/plan            the cost, reading only (~10 s)
+#   POST /api/arc/precon/run   {plan_at} refused unless plan_at is the plan
+#                                        on file and it is fresh: the cost
+#                                        the person saw is the one that runs
+#   POST /api/arc/precon/stop  {hard?}   between items; hard kills the child
+#   POST /api/arc/precon/report          docs/dewey-precon-drift.{md,csv}
+#   POST /api/arc/precon/resume          carry an interrupted run on
+#   POST /api/arc/precon/forget          ... or not, now or at next start
+#   resume_precon(port)                  start.py only: carry it on by
+#                                        itself when Jarvis starts again
+#   GET  /api/arc/precon/file/<md|csv|figure/NAME>
+from . import preconrun as preconrunmod                      # noqa: E402
+
+PRECON = preconrunmod.Runner(APP_DIR, os.path.join(LOGS_DIR, ".cache",
+                                                   "precon"))
+
+
+def _precon_base():
+    return "http://127.0.0.1:%s" % request.environ.get("SERVER_PORT", "8733")
+
+
+def _precon_started(what, detail=None):
+    try:
+        rec = PRECON.start(what, _precon_base())
+    except preconrunmod.PreconRunError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.code
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/precon/" + what, exc, 500)
+    STORE.record_activity([{"action": "arc.precon." + what,
+                            "detail": dict({"pid": rec["pid"]},
+                                           **(detail or {}))}])
+    return jsonify({"ok": True, "started": rec["started"], "pid": rec["pid"],
+                    "status": PRECON.status(_STARTED_AT)})
+
+
+@app.route("/api/arc/precon/status")
+def api_arc_precon_status():
+    try:
+        return jsonify(dict({"ok": True, "server_started": _STARTED_AT,
+                             "code_changed": _code_changed()},
+                            **PRECON.status(_STARTED_AT)))
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/precon/status", exc, 500)
+
+
+@app.route("/api/arc/precon/plan", methods=["POST"])
+def api_arc_precon_plan():
+    return _precon_started("plan")
+
+
+@app.route("/api/arc/precon/run", methods=["POST"])
+def api_arc_precon_run():
+    body = request.get_json(force=True, silent=True) or {}
+    stale = _code_changed()
+    if stale:
+        return jsonify({"ok": False, "error":
+                        "Restart Jarvis first: it is running older code "
+                        "for %s, and the run would use it." % ", ".join(
+                            stale)}), 409
+    plan = PRECON.status(_STARTED_AT).get("plan") or {}
+    if not plan.get("at") or body.get("plan_at") != plan.get("at"):
+        return jsonify({"ok": False, "error":
+                        "Work out the cost first: the run starts only from "
+                        "the plan on screen, and that is not the plan on "
+                        "file."}), 409
+    if not plan.get("dry_run"):
+        return jsonify({"ok": False, "error":
+                        "The plan on file is the one the last run wrote as "
+                        "it started; work out the cost again so it says "
+                        "what is left."}), 409
+    if not plan.get("fresh"):
+        return jsonify({"ok": False, "error":
+                        "That plan was worked out %s; work it out again so "
+                        "the cost is today's." % (
+                            "by a Jarvis that has since restarted"
+                            if (plan.get("server") or {}).get("started_at")
+                            != _STARTED_AT else "hours ago")}), 409
+    return _precon_started("run", {"plan_at": plan["at"], "total_s":
+                                   (plan.get("cost") or {}).get("total_s")})
+
+
+@app.route("/api/arc/precon/stop", methods=["POST"])
+def api_arc_precon_stop():
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        got = PRECON.stop(hard=bool(body.get("hard")))
+    except preconrunmod.PreconRunError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.code
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/precon/stop", exc, 500)
+    STORE.record_activity([{"action": "arc.precon.stop", "detail": got}])
+    return jsonify(dict({"ok": True}, **got))
+
+
+@app.route("/api/arc/precon/report", methods=["POST"])
+def api_arc_precon_report():
+    return _precon_started("report")
+
+
+@app.route("/api/arc/precon/resume", methods=["POST"])
+def api_arc_precon_resume():
+    """Carry an interrupted run on, by hand -- the same run, so the cost is
+    the one already agreed to, less what is filed. Refused on older code,
+    as a run is."""
+    stale = _code_changed()
+    if stale:
+        return jsonify({"ok": False, "error":
+                        "Restart Jarvis first: it is running older code "
+                        "for %s, and the run would use it." % ", ".join(
+                            stale)}), 409
+    try:
+        rec = PRECON.resume(_precon_base(), "carried on by hand after an "
+                                            "interruption")
+    except preconrunmod.PreconRunError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.code
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/precon/resume", exc, 500)
+    STORE.record_activity([{"action": "arc.precon.resume",
+                            "detail": {"pid": rec["pid"],
+                                       "resumes": rec.get("resumes")}}])
+    return jsonify({"ok": True, "started": rec["started"], "pid": rec["pid"],
+                    "status": PRECON.status(_STARTED_AT)})
+
+
+@app.route("/api/arc/precon/forget", methods=["POST"])
+def api_arc_precon_forget():
+    """Do not carry the interrupted run on (at the next start either)."""
+    try:
+        PRECON.forget()
+    except preconrunmod.PreconRunError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), exc.code
+    STORE.record_activity([{"action": "arc.precon.forget", "detail": {}}])
+    return jsonify({"ok": True, "status": PRECON.status(_STARTED_AT)})
+
+
+def resume_precon(port):
+    """Called by start.py once, as Jarvis starts -- and by nothing else, so
+    a harness server or a script importing this module never starts the
+    analysis. If a run was interrupted (Jarvis or the computer stopped
+    while it ran), carry it on in the background once this server answers."""
+    import socket as _socket
+
+    def ready():
+        with _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM) as s:
+            s.settimeout(0.5)
+            return s.connect_ex(("127.0.0.1", int(port))) == 0
+
+    def go():
+        try:
+            PRECON.resume_after_boot("http://127.0.0.1:%d" % int(port),
+                                     ready=ready, say=print)
+        except Exception as exc:                             # noqa: BLE001
+            print("  Analysis: could not carry on the interrupted run: %s"
+                  % exc)
+
+    threading.Thread(target=go, name="precon-resume", daemon=True).start()
+
+
+@app.route("/api/arc/precon/file/<path:which>")
+def api_arc_precon_file(which):
+    path = PRECON.output_path(which)
+    if not path or not os.path.isfile(path):
+        return jsonify({"ok": False, "error": "No such report file: %s. "
+                        "Write the report first." % which}), 404
+    if which == "md":
+        return send_file(path, mimetype="text/plain; charset=utf-8")
+    return send_file(path, as_attachment=(which == "csv"),
+                     download_name=os.path.basename(path))
 # ============================= end of Drift ===============================
 
 

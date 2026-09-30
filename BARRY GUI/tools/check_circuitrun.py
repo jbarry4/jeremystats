@@ -753,8 +753,9 @@ def part_real():
         print("\nnegative controls for the cache")
         prep = CR.prepare(host, FRESH, ct, "state", {})
         pid = prep["pairs"][0]["pair_id"]
-        path = CR.cache_path(FRESH, pid, "state", prep["phash"],
-                             prep["bank_version"])
+        # The key the run uses: the bank version AND this pair's wires
+        # (circuitrun.drop_tag) -- never rebuilt by hand from the version.
+        path = CR.cache_path(*CR._pair_key(prep, pid))
         good = open(path, "r", encoding="utf-8").read()
         bad = json.loads(good)
         bad["pair_id"] = pid + 1000

@@ -1,0 +1,703 @@
+{
+  "_at": {
+    "added": "2026-09-30T17:38:46.589645+00:00",
+    "deleted": "2026-09-30T17:38:46.589645+00:00",
+    "id": "2026-09-30T17:38:46.589645+00:00",
+    "kind": "2026-09-30T17:38:46.589645+00:00",
+    "name": "2026-09-30T17:38:46.589645+00:00",
+    "nickname": "2026-09-30T17:38:46.589645+00:00",
+    "schema": "2026-09-30T17:38:46.589645+00:00",
+    "subject": "2026-09-30T17:38:46.589645+00:00",
+    "subject_key": "2026-09-30T17:38:46.589645+00:00",
+    "version": "2026-09-30T17:38:46.589645+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "b02f15b78c0b": [
+        "set",
+        "2026-09-30T17:38:46.589645+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T17:38:46.589645+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T13:38:46-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "2fe5e573a069",
+  "kind": "drift",
+  "name": "Precon1 vs Precon4 \u00b7 food pair \u00b7 transition \u00b7 Beta \u00b7 cue \u2212 baseline",
+  "nickname": "Precon1\u21924 \u00b7 beta \u00b7 transition \u00b7 food pair \u00b7 cue \u2212 baseline",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "analysis": {
+      "bh_scope": "artifact",
+      "contrast": "baseline",
+      "design": "matched",
+      "test": "hk"
+    },
+    "band": "beta",
+    "band_label": "Beta",
+    "baseline": [
+      {
+        "for": "0a138ab01536",
+        "id": "19bc4561dbaa",
+        "side": "left",
+        "version_id": "7e5080a3aade"
+      },
+      {
+        "for": "0e9510888f06",
+        "id": "034153be0226",
+        "side": "left",
+        "version_id": "3f52bde6144c"
+      },
+      {
+        "for": "14f73f9ff089",
+        "id": "4b766967d3a6",
+        "side": "left",
+        "version_id": "981298065af4"
+      },
+      {
+        "for": "302fab12617c",
+        "id": "ac4cddc01212",
+        "side": "left",
+        "version_id": "a5931a341602"
+      },
+      {
+        "for": "506d29383ab2",
+        "id": "a5125743a1aa",
+        "side": "left",
+        "version_id": "b67fbb042db4"
+      },
+      {
+        "for": "8081610c08ba",
+        "id": "372114868462",
+        "side": "left",
+        "version_id": "1971c7b00de9"
+      },
+      {
+        "for": "db6847f7f94d",
+        "id": "1049b5144a53",
+        "side": "left",
+        "version_id": "ae295830a800"
+      },
+      {
+        "for": "f3908c761f5d",
+        "id": "196ae79391ff",
+        "side": "left",
+        "version_id": "7c43c84d6890"
+      },
+      {
+        "for": "10dc918b813a",
+        "id": "a5b6f60ae635",
+        "side": "right",
+        "version_id": "2d9ab005be1e"
+      },
+      {
+        "for": "41a99f717e35",
+        "id": "e81f11da6f06",
+        "side": "right",
+        "version_id": "76cca20e6645"
+      },
+      {
+        "for": "79a3088ea435",
+        "id": "7894fc235124",
+        "side": "right",
+        "version_id": "69867ec9e5cb"
+      },
+      {
+        "for": "7de8299caab6",
+        "id": "50debad4ca2c",
+        "side": "right",
+        "version_id": "48b2dd277591"
+      },
+      {
+        "for": "c928e25c6cb3",
+        "id": "cef619d3ed76",
+        "side": "right",
+        "version_id": "81f9d950e2f8"
+      },
+      {
+        "for": "d617abb8e9f5",
+        "id": "e4b6d02d8f56",
+        "side": "right",
+        "version_id": "23dddcb442cd"
+      },
+      {
+        "for": "ef43f5ea6a43",
+        "id": "549531cf3b1e",
+        "side": "right",
+        "version_id": "4140199a2fef"
+      },
+      {
+        "for": "f6bbad787cfd",
+        "id": "2df0edeabc22",
+        "side": "right",
+        "version_id": "04f3b2a968e6"
+      }
+    ],
+    "cue_equivalence": [],
+    "cue_label": "food pair",
+    "cue_role": "food",
+    "cue_type": "Noise_HighTone",
+    "left": [
+      {
+        "digest": "96b82ba64024",
+        "gid": "sce947d33ceb8",
+        "id": "0a138ab01536",
+        "kind": "artifact",
+        "name": "DEWEY r6 s1 Precon1 SPC \u00b7 Noise \u2192 High tone \u00b7 transition \u00b7 Beta",
+        "rat": "r6",
+        "side": "left",
+        "version": 1,
+        "version_id": "14b0fa37e219"
+      },
+      {
+        "digest": "512569541897",
+        "gid": "sb3ad74706f07",
+        "id": "0e9510888f06",
+        "kind": "artifact",
+        "name": "DEWEY r9 s1 Precon1 SPC \u00b7 High tone \u2192 Click \u00b7 transition \u00b7 Beta",
+        "rat": "r9",
+        "side": "left",
+        "version": 1,
+        "version_id": "9974d9f31731"
+      },
+      {
+        "digest": "3eb81ed83f8e",
+        "gid": "s0c6efa477a94",
+        "id": "14f73f9ff089",
+        "kind": "artifact",
+        "name": "DEWEY r10 s1 Precon1 SPC \u00b7 Low Tone \u2192 Noise \u00b7 transition \u00b7 Beta",
+        "rat": "r10",
+        "side": "left",
+        "version": 1,
+        "version_id": "fa948533ceb6"
+      },
+      {
+        "digest": "264aee9bf7a7",
+        "gid": "s234fc080573e",
+        "id": "302fab12617c",
+        "kind": "artifact",
+        "name": "DEWEY r8 s1 Precon1 SPC \u00b7 Click \u2192 High tone \u00b7 transition \u00b7 Beta",
+        "rat": "r8",
+        "side": "left",
+        "version": 1,
+        "version_id": "d322e7171e99"
+      },
+      {
+        "digest": "90c453b85d81",
+        "gid": "s989ca3b5b2d6",
+        "id": "506d29383ab2",
+        "kind": "artifact",
+        "name": "DEWEY r4 s1 Precon1 SPC \u00b7 High tone \u2192 Noise \u00b7 transition \u00b7 Beta",
+        "rat": "r4",
+        "side": "left",
+        "version": 1,
+        "version_id": "a4d5b7049620"
+      },
+      {
+        "digest": "bce67ecab005",
+        "gid": "sec4bed944ba0",
+        "id": "8081610c08ba",
+        "kind": "artifact",
+        "name": "DEWEY r3 s1 Precon1 SPC \u00b7 Click \u2192 Low Tone \u00b7 transition \u00b7 Beta",
+        "rat": "r3",
+        "side": "left",
+        "version": 1,
+        "version_id": "0e399c956827"
+      },
+      {
+        "digest": "c9c406c92925",
+        "gid": "s3fcdbcc678da",
+        "id": "db6847f7f94d",
+        "kind": "artifact",
+        "name": "DEWEY r11 s1 Precon1 SPC \u00b7 Low Tone \u2192 Click \u00b7 transition \u00b7 Beta",
+        "rat": "r11",
+        "side": "left",
+        "version": 1,
+        "version_id": "1220750697db"
+      },
+      {
+        "digest": "567c9db0c899",
+        "gid": "s360e48254222",
+        "id": "f3908c761f5d",
+        "kind": "artifact",
+        "name": "DEWEY r7 s1 Precon1 SPC \u00b7 Noise \u2192 Low Tone \u00b7 transition \u00b7 Beta",
+        "rat": "r7",
+        "side": "left",
+        "version": 1,
+        "version_id": "56fcc205964c"
+      }
+    ],
+    "left_label": "Precon1",
+    "right": [
+      {
+        "digest": "9905608379e6",
+        "gid": "sbd33a50b7fec",
+        "id": "10dc918b813a",
+        "kind": "artifact",
+        "name": "DEWEY r11 s4 Precon4 SPC \u00b7 Low Tone \u2192 Click \u00b7 transition \u00b7 Beta",
+        "rat": "r11",
+        "side": "right",
+        "version": 1,
+        "version_id": "9138e9641bc6"
+      },
+      {
+        "digest": "3889cb63baef",
+        "gid": "s7f9b97e294b8",
+        "id": "41a99f717e35",
+        "kind": "artifact",
+        "name": "DEWEY r3 s4 Precon4 SPC \u00b7 Click \u2192 Low Tone \u00b7 transition \u00b7 Beta",
+        "rat": "r3",
+        "side": "right",
+        "version": 1,
+        "version_id": "0f1ec4044623"
+      },
+      {
+        "digest": "0b2edd2f2cf8",
+        "gid": "sc905a9b9e371",
+        "id": "79a3088ea435",
+        "kind": "artifact",
+        "name": "DEWEY r6 s4 Precon4 SPC \u00b7 Noise \u2192 High tone \u00b7 transition \u00b7 Beta",
+        "rat": "r6",
+        "side": "right",
+        "version": 1,
+        "version_id": "36efd6f07653"
+      },
+      {
+        "digest": "9068c765fcab",
+        "gid": "s4af2a78d7ab7",
+        "id": "7de8299caab6",
+        "kind": "artifact",
+        "name": "DEWEY r9 s4 Precon4 SPC \u00b7 High tone \u2192 Click \u00b7 transition \u00b7 Beta",
+        "rat": "r9",
+        "side": "right",
+        "version": 1,
+        "version_id": "06ddfe10f4cb"
+      },
+      {
+        "digest": "9cc3f071e5d2",
+        "gid": "s5e2c6d208fc7",
+        "id": "c928e25c6cb3",
+        "kind": "artifact",
+        "name": "DEWEY r10 s4 Precon4 SPC \u00b7 Low Tone \u2192 Noise \u00b7 transition \u00b7 Beta",
+        "rat": "r10",
+        "side": "right",
+        "version": 1,
+        "version_id": "6fc15b0716fb"
+      },
+      {
+        "digest": "af9f923bed7f",
+        "gid": "s09af032023a9",
+        "id": "d617abb8e9f5",
+        "kind": "artifact",
+        "name": "DEWEY r4 s4 Precon4 SPC \u00b7 High tone \u2192 Noise \u00b7 transition \u00b7 Beta",
+        "rat": "r4",
+        "side": "right",
+        "version": 1,
+        "version_id": "c8ff8db6e914"
+      },
+      {
+        "digest": "b1586f236d25",
+        "gid": "sc710262dff13",
+        "id": "ef43f5ea6a43",
+        "kind": "artifact",
+        "name": "DEWEY r7 s4 Precon4 SPC \u00b7 Noise \u2192 Low Tone \u00b7 transition \u00b7 Beta",
+        "rat": "r7",
+        "side": "right",
+        "version": 1,
+        "version_id": "a952242c9e18"
+      },
+      {
+        "digest": "dab4564b686c",
+        "gid": "sdf092805b0cb",
+        "id": "f6bbad787cfd",
+        "kind": "artifact",
+        "name": "DEWEY r8 s4 Precon4 SPC \u00b7 Click \u2192 High tone \u00b7 transition \u00b7 Beta",
+        "rat": "r8",
+        "side": "right",
+        "version": 1,
+        "version_id": "52e9c2fd410d"
+      }
+    ],
+    "right_label": "Precon4",
+    "window_kind": "transition"
+  },
+  "subject_key": "drift|e5798fc0b88d|c0d1139d0db8|Noise_HighTone|transition|an:83961e158a82",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T13:38:46-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "0b68cccd2df5",
+      "id": "b02f15b78c0b",
+      "inputs": [
+        {
+          "cue_role": "food",
+          "digest": "96b82ba64024",
+          "id": "0a138ab01536",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "14b0fa37e219"
+        },
+        {
+          "cue_role": "food",
+          "digest": "512569541897",
+          "id": "0e9510888f06",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "9974d9f31731"
+        },
+        {
+          "cue_role": "food",
+          "digest": "3eb81ed83f8e",
+          "id": "14f73f9ff089",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "fa948533ceb6"
+        },
+        {
+          "cue_role": "food",
+          "digest": "264aee9bf7a7",
+          "id": "302fab12617c",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "d322e7171e99"
+        },
+        {
+          "cue_role": "food",
+          "digest": "90c453b85d81",
+          "id": "506d29383ab2",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "a4d5b7049620"
+        },
+        {
+          "cue_role": "food",
+          "digest": "bce67ecab005",
+          "id": "8081610c08ba",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "0e399c956827"
+        },
+        {
+          "cue_role": "food",
+          "digest": "c9c406c92925",
+          "id": "db6847f7f94d",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "1220750697db"
+        },
+        {
+          "cue_role": "food",
+          "digest": "567c9db0c899",
+          "id": "f3908c761f5d",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "56fcc205964c"
+        },
+        {
+          "cue_role": "food",
+          "digest": "9905608379e6",
+          "id": "10dc918b813a",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "9138e9641bc6"
+        },
+        {
+          "cue_role": "food",
+          "digest": "3889cb63baef",
+          "id": "41a99f717e35",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "0f1ec4044623"
+        },
+        {
+          "cue_role": "food",
+          "digest": "0b2edd2f2cf8",
+          "id": "79a3088ea435",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "36efd6f07653"
+        },
+        {
+          "cue_role": "food",
+          "digest": "9068c765fcab",
+          "id": "7de8299caab6",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "06ddfe10f4cb"
+        },
+        {
+          "cue_role": "food",
+          "digest": "9cc3f071e5d2",
+          "id": "c928e25c6cb3",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "6fc15b0716fb"
+        },
+        {
+          "cue_role": "food",
+          "digest": "af9f923bed7f",
+          "id": "d617abb8e9f5",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "c8ff8db6e914"
+        },
+        {
+          "cue_role": "food",
+          "digest": "b1586f236d25",
+          "id": "ef43f5ea6a43",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "a952242c9e18"
+        },
+        {
+          "cue_role": "food",
+          "digest": "dab4564b686c",
+          "id": "f6bbad787cfd",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "52e9c2fd410d"
+        },
+        {
+          "digest": "82c5bbbf8076",
+          "for": "0a138ab01536",
+          "id": "19bc4561dbaa",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "left",
+          "version": 1,
+          "version_id": "7e5080a3aade"
+        },
+        {
+          "digest": "c7b576474470",
+          "for": "0e9510888f06",
+          "id": "034153be0226",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "left",
+          "version": 1,
+          "version_id": "3f52bde6144c"
+        },
+        {
+          "digest": "fb9cc1f6b330",
+          "for": "14f73f9ff089",
+          "id": "4b766967d3a6",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "left",
+          "version": 1,
+          "version_id": "981298065af4"
+        },
+        {
+          "digest": "10b443365d53",
+          "for": "302fab12617c",
+          "id": "ac4cddc01212",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "left",
+          "version": 1,
+          "version_id": "a5931a341602"
+        },
+        {
+          "digest": "6e58b693c5a4",
+          "for": "506d29383ab2",
+          "id": "a5125743a1aa",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "left",
+          "version": 1,
+          "version_id": "b67fbb042db4"
+        },
+        {
+          "digest": "9759cf4d57fa",
+          "for": "8081610c08ba",
+          "id": "372114868462",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "left",
+          "version": 1,
+          "version_id": "1971c7b00de9"
+        },
+        {
+          "digest": "cfefbd71c722",
+          "for": "db6847f7f94d",
+          "id": "1049b5144a53",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "left",
+          "version": 1,
+          "version_id": "ae295830a800"
+        },
+        {
+          "digest": "c37f02d057ea",
+          "for": "f3908c761f5d",
+          "id": "196ae79391ff",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "left",
+          "version": 1,
+          "version_id": "7c43c84d6890"
+        },
+        {
+          "digest": "465e1a65599b",
+          "for": "10dc918b813a",
+          "id": "a5b6f60ae635",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "right",
+          "version": 1,
+          "version_id": "2d9ab005be1e"
+        },
+        {
+          "digest": "ee12fd5f6955",
+          "for": "41a99f717e35",
+          "id": "e81f11da6f06",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "right",
+          "version": 1,
+          "version_id": "76cca20e6645"
+        },
+        {
+          "digest": "62ee4cdcbd1a",
+          "for": "79a3088ea435",
+          "id": "7894fc235124",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "right",
+          "version": 1,
+          "version_id": "69867ec9e5cb"
+        },
+        {
+          "digest": "df74e1101ba2",
+          "for": "7de8299caab6",
+          "id": "50debad4ca2c",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "right",
+          "version": 1,
+          "version_id": "48b2dd277591"
+        },
+        {
+          "digest": "03598f81a6cc",
+          "for": "c928e25c6cb3",
+          "id": "cef619d3ed76",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "right",
+          "version": 1,
+          "version_id": "81f9d950e2f8"
+        },
+        {
+          "digest": "ec26431715ad",
+          "for": "d617abb8e9f5",
+          "id": "e4b6d02d8f56",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "right",
+          "version": 1,
+          "version_id": "23dddcb442cd"
+        },
+        {
+          "digest": "4f0e6355bf68",
+          "for": "ef43f5ea6a43",
+          "id": "549531cf3b1e",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "right",
+          "version": 1,
+          "version_id": "4140199a2fef"
+        },
+        {
+          "digest": "aa181b06ca73",
+          "for": "f6bbad787cfd",
+          "id": "2df0edeabc22",
+          "kind": "artifact",
+          "role": "baseline",
+          "side": "right",
+          "version": 1,
+          "version_id": "04f3b2a968e6"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "beta",
+        "bh_scope": "artifact",
+        "cells": 396,
+        "contrast": "baseline",
+        "cue_role": "food",
+        "cue_types": [
+          "Noise_HighTone",
+          "HighTone_Click",
+          "LowTone_Noise",
+          "Click_HighTone",
+          "HighTone_Noise",
+          "Click_LowTone",
+          "LowTone_Click",
+          "Noise_LowTone"
+        ],
+        "design": "matched",
+        "equivalence": 0,
+        "kind": "transition",
+        "left_k": 8,
+        "pooled_by": "cue_role",
+        "q_lt_05": 0,
+        "rats": 8,
+        "right_k": 8,
+        "test": "hk",
+        "tests": 369
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "band": "beta",
+        "before_s": 1.0,
+        "bh_scope": "artifact",
+        "channel_rule": "lowest-numbered usable wire",
+        "coherence_mode": "band",
+        "contrast": "baseline",
+        "cue_equivalence": [],
+        "design": "matched",
+        "high": 30.0,
+        "kind": "transition",
+        "low": 13.0,
+        "max_lag_ms": 150.0,
+        "notch_hz": 60.0,
+        "raw_cc_filtered": true,
+        "summary_hz": null,
+        "test": "hk"
+      },
+      "params_hash": "072b2ccf6bdd",
+      "v": 1
+    }
+  ]
+}

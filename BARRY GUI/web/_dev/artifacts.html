@@ -355,6 +355,34 @@ const subj = (gid, mouse) => ({ gid, project: 'HARNESS', mouse, session: 1,
     check('a search that matches nothing says what to do next',
           empty && /Clear the search/.test(empty.textContent), empty && empty.textContent);
 
+    head('6b. A new artifact appears while you look');
+    /* Asked for 2026-09-29: during a batch, each circuit is openable as soon
+       as it is filed. Nothing here calls reload -- the list has to notice by
+       itself -- and the detail pane being read must not be repainted. */
+    const search2 = D.querySelector('.art-list input[type="search"]');
+    if (search2) {
+      search2.value = '';
+      search2.dispatchEvent(new W.Event('input', { bubbles: true }));
+      search2.blur();
+    }
+    await until(() => D.querySelector('.art-row'));
+    ev('BARRY.artifacts.open(' + JSON.stringify(A.id) + ')');
+    await until(() => D.querySelector('#artDetail .art-versions'));
+    const markHost = D.querySelector('#artDetail');
+    const mark = D.createElement('i');
+    mark.className = 'harness-mark';
+    if (markHost) markHost.appendChild(mark);
+    const late = await mk({ kind: 'circuit', subject: subj(GID_A + '-late', 903),
+                            payload: circuit(4), params: { low: 4, high: 12 } });
+    const L = late.artifact || {};
+    if (L.id) made.push(L.id);
+    check('a circuit is filed while the list is open', late.ok, late.error);
+    const row = await until(() => D.querySelector('.art-row[data-id="' + L.id + '"]'),
+                            250, 100);
+    check('its row appears without a reload', !!row);
+    check('and the detail being read was not repainted',
+          !!D.querySelector('#artDetail .harness-mark'));
+
     head('7. Results fixes on the real catalogue');
     const cat = await getj('/api/results?refresh=1');
     const rows = cat.results || [];

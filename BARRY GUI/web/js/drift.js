@@ -104,6 +104,7 @@ BARRY.drift = (function () {
     busy: false, job: null, jobStop: null,
     shown: null, shownErr: null,
     pickVer: {},             // artifact id -> the version id chosen in the picker
+    mode: null,              // 'build' | 'precon' -- which tab is open
   };
   /* How a drift is being looked at, shared by every drift on screen. */
   const view = { side: 'delta', win: {}, method: 'coherence', edge: 'q',
@@ -116,16 +117,63 @@ BARRY.drift = (function () {
     host = host || document.getElementById('tkResult');
     if (!host) return;
     if (BARRY.circuit && BARRY.circuit.loadRegions) BARRY.circuit.loadRegions();
+    const precon = modeNow() === 'precon';
     host.appendChild(el('div', { class: 'arc-spark dr-panel' }, [
-      el('div', { class: 'card dr-groups', id: 'drGroups' }),
-      el('div', { class: 'card dr-pre', id: 'drPre' }),
-      el('div', { class: 'card dr-pick', id: 'drPick' }),
-      el('div', { id: 'drRun' }),
+      modeBar(),
+      el('div', { class: 'dr-body', id: 'drBuild', hidden: precon ? 'hidden' : null }, [
+        el('div', { class: 'card dr-groups', id: 'drGroups' }),
+        el('div', { class: 'card dr-pre', id: 'drPre' }),
+        el('div', { class: 'card dr-pick', id: 'drPick' }),
+        el('div', { id: 'drRun' }),
+      ]),
+      el('div', { class: 'dr-body dpc', id: 'drPrecon', hidden: precon ? null : 'hidden' }),
       el('div', { id: 'drShown' }),
     ]));
     render();
+    if (precon) BARRY.driftPrecon.paint(document.getElementById('drPrecon'));
     if (st.rows === null && !st.rowsErr) loadRows();
     else if (st.rowsKey !== chosenKey()) loadRows();
+  }
+
+  /* Two tabs: the comparison you build yourself, and the Precon1 -> Precon4
+     analysis (driftprecon.js), which files its own circuits and drifts.
+     Which one is open is remembered per viewer; a drift shown below belongs
+     to the tab that showed it. */
+  const MODES = [['build', 'Compare two groups'], ['precon', 'Precon1 → Precon4']];
+  const MODE_KEY = 'barry.drift.mode';
+  function modeNow() {
+    if (!st.mode) {
+      try { st.mode = localStorage.getItem(MODE_KEY) || 'build'; } catch (e) { st.mode = 'build'; }
+    }
+    if (st.mode === 'precon' && !BARRY.driftPrecon) st.mode = 'build';
+    return MODES.some(([id]) => id === st.mode) ? st.mode : 'build';
+  }
+  function modeBar() {
+    const now = modeNow();
+    return el('div', { class: 'dr-modes', id: 'drModes' }, [
+      el('div', { class: 'seg' }, MODES.map(([id, label]) => el('button', {
+        class: now === id ? 'active' : '', 'data-mode': id, text: label,
+        onclick: () => setMode(id) }))),
+      el('span', { class: 'hint', text: now === 'precon'
+        ? 'The whole analysis for DEWEY r3–r11: it makes the circuits and the drifts itself.'
+        : 'Put circuits in two groups and see what differs between them.' }),
+    ]);
+  }
+  function setMode(id) {
+    if (!MODES.some(([m]) => m === id) || id === modeNow()) return;
+    st.mode = id;
+    try { localStorage.setItem(MODE_KEY, id); } catch (e) { /* per-viewer only */ }
+    log('arc.drift.mode', { mode: id });
+    const bar = document.getElementById('drModes');
+    if (bar) bar.replaceWith(modeBar());
+    const build = document.getElementById('drBuild');
+    const pre = document.getElementById('drPrecon');
+    if (build) build.hidden = id !== 'build';
+    if (pre) {
+      pre.hidden = id !== 'precon';
+      if (id === 'precon') BARRY.driftPrecon.paint(pre);
+    }
+    renderShown();
   }
 
   function render() {
@@ -779,7 +827,7 @@ BARRY.drift = (function () {
     const host = document.getElementById('drShown');
     if (!host) return;
     host.innerHTML = '';
-    if (!st.shown) return;
+    if (!st.shown || (st.shown.by || 'build') !== modeNow()) return;
     const card = el('div', { class: 'card dr-shown' });
     const inner = el('div', { class: 'dr-host' });
     card.appendChild(inner);
@@ -834,7 +882,8 @@ BARRY.drift = (function () {
                    sideLine(P, 'left', c), sideLine(P, 'right', c),
                    'Δ (right − left) ' + fmt(c.delta, 4)
                    + (c.se != null ? ', SE ' + fmt(c.se, 4) : '')
-                   + (c.z != null ? ', z ' + fmt(c.z, 2) : '')
+                   + (c.t != null ? ', t ' + fmt(c.t, 2) + ' on ' + c.df + ' df'
+                      : c.z != null ? ', z ' + fmt(c.z, 2) : '')
                    + ', p ' + fmtP(c.p) + ', q ' + fmtP(c.q)
                    + (c.testable ? '' : ' — not tested')];
     if ((c.warn || []).length) lines.push('', 'Warnings:', ...c.warn.map((w) => '• ' + w));
@@ -919,6 +968,41 @@ BARRY.drift = (function () {
     ]);
   }
 
+  /* The members of a within-rat drift, one row per rat: its left circuit
+     and its right one, each a link to exactly the version compared. Listed
+     by rat because that is the unit -- the pairs are what was differenced. */
+  function refLink(m) {
+    if (!m) return el('span', { class: 'hint', text: 'none' });
+    return el('a', { href: '#', class: 'art-link dr-link', 'data-ref': m.artifact_id,
+      'data-vid': m.version_id || '', 'data-v': String(m.version),
+      title: 'Open exactly this circuit version in Results'
+             + (m.digest ? ' (digest ' + m.digest + ')' : ''),
+      text: (m.name || m.artifact_id) + ' · v' + m.version,
+      onclick: (e) => {
+        e.preventDefault();
+        if (BARRY.artifacts && BARRY.artifacts.open) {
+          BARRY.artifacts.open(m.artifact_id, m.version_id || m.version);
+        }
+      } });
+  }
+  function matchedLinks(P) {
+    const L = (P.left || {}).label || 'left', R = (P.right || {}).label || 'right';
+    return el('div', { class: 'dr-matched' }, [
+      el('span', { class: 'dr-side-h', text: plural((P.matched || []).length, 'pairing')
+        + ' by rat · ' + L + ' → ' + R }),
+      el('table', { class: 'art-params dr-matched-t' }, [el('tbody', {}, [
+        el('tr', {}, ['rat', P.contrast === 'roles' ? 'pair' : null, L, R]
+          .filter((h) => h !== null).map((h) => el('th', { text: h }))),
+      ].concat((P.matched || []).map((row) => el('tr', {}, [
+        el('td', { text: row.rat }),
+        P.contrast === 'roles'
+          ? el('td', { text: row.cue_role === 'food' ? 'food pair' : 'other pair' }) : null,
+        el('td', {}, [refLink(row.left)]),
+        el('td', {}, [refLink(row.right)]),
+      ].filter(Boolean)))))]),
+    ]);
+  }
+
   function headBlock(ctx) {
     const P = ctx.P, m = ctx.meta;
     const on = P.computed_on || {};
@@ -938,7 +1022,19 @@ BARRY.drift = (function () {
       m.new_version === false ? el('span', { class: 'flagchip mat',
                                              text: 'confirmed — same numbers' }) : null,
     ].filter(Boolean))];
-    kids.push(el('div', { class: 'dr-sides-mem' }, [memberLinks(P, 'left'), memberLinks(P, 'right')]));
+    /* What was asked, in words, before anything else: "within-rat, 8 rats;
+       Hartung-Knapp t on 7 df; BH across all windows and methods". A
+       matched drift and an independent one draw the same matrix and mean
+       different things, so this is not left to the method line at the
+       bottom. */
+    if (P.analysis_say) {
+      kids.push(el('p', { class: 'dr-analysis', text: P.analysis_say
+        + (P.contrast === 'baseline' ? ' · each cue window minus its baseline'
+           : P.contrast === 'roles' ? ' · food pair change minus the other pair’s'
+           : '') }));
+    }
+    kids.push((P.matched || []).length ? matchedLinks(P)
+      : el('div', { class: 'dr-sides-mem' }, [memberLinks(P, 'left'), memberLinks(P, 'right')]));
     const notes = [];
     if ((P.cue_equivalence || []).length) {
       notes.push(el('p', { class: 'dr-note dr-eqnote', text: 'Cue pairings treated as '
@@ -1270,8 +1366,20 @@ BARRY.drift = (function () {
           html: '<svg viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg>' }),
       ]),
       el('p', { class: 'cir-detail-say dr-detail-say', text: 'Δ ' + fmt(c.delta, 4)
-        + (c.se != null ? ' · SE ' + fmt(c.se, 4) : '') + (c.z != null ? ' · z ' + fmt(c.z, 2) : '')
+        + (c.se != null ? ' · SE ' + fmt(c.se, 4) : '')
+        + (c.t != null ? ' · t ' + fmt(c.t, 2) + ' on ' + c.df + ' df'
+           : c.z != null ? ' · z ' + fmt(c.z, 2) : '')
         + ' · p ' + fmtP(c.p) + ' · q ' + fmtP(c.q) + (c.testable ? '' : ' · not tested') }),
+      /* Within-rat: the rats' own changes ARE the data the test is on, so
+         they come first -- one row per rat, with its weight in the pool. */
+      (c.deltas || []).length ? el('table', { class: 'art-params dr-deltas' }, [el('tbody', {}, [
+        el('tr', {}, ['rat', 'Δ', 'SE', 'pairs', 'weight'].map((h) => el('th', { text: h }))),
+      ].concat(c.deltas.map((d) => el('tr', {}, [
+        el('td', { text: d.rat }), el('td', { text: fmt(d.delta, 4) }),
+        el('td', { text: d.se == null ? 'none' : fmt(d.se, 4) }),
+        el('td', { text: d.n == null ? '—' : String(d.n) }),
+        el('td', { text: d.weight == null ? '—' : (100 * d.weight).toFixed(0) + '%' }),
+      ]))))]) : null,
       el('div', { class: 'dr-dsides' }, [table('left'), table('right')]),
       (c.warn || []).length ? el('ul', { class: 'dr-cwarn' }, c.warn.map((w) => el('li', { text: w }))) : null,
     ].filter(Boolean)));
@@ -1390,7 +1498,11 @@ BARRY.drift = (function () {
       return ctx.side === 'delta' ? deltaEdgeKeys(ctx, t) : null;
     },
     _view: view,
-    _show: (payload, meta) => { st.shown = { payload: payload, meta: meta || {} }; renderShown(); return true; },
+    /* Show a filed drift below, in the tab that asked (driftprecon.js). */
+    show: (payload, meta) => { st.shown = { payload: payload, meta: meta || {}, by: modeNow() }; renderShown(); return true; },
+    setMode,
+    get mode() { return modeNow(); },
+    _show: (payload, meta) => { st.shown = { payload: payload, meta: meta || {}, by: modeNow() }; renderShown(); return true; },
     _clear: () => { st.left = []; st.right = []; st.eq = []; st.check = null; st.shown = null;
                     st.nickname = ''; st.labels = { left: 'Left', right: 'Right' };
                     if (document.getElementById('drGroups')) render(); },

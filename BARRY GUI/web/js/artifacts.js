@@ -171,6 +171,49 @@ BARRY.artifacts = (function () {
     if (host && host.isConnected) paint(host);
   }
 
+  /* New artifacts appear while you look.
+
+     A batch files a circuit every minute or so, and the ask (2026-09-29)
+     was that each one be openable in Results as soon as it is filed -- not
+     after a reload. `reload()` is the wrong tool for that: it repaints the
+     detail pane and puts up a skeleton, which would blink under somebody
+     reading an artifact every time another landed. So this asks for the
+     list quietly, and redraws ONLY the list, ONLY when something in it
+     changed (an id, a version, a nickname), keeping the scroll position.
+
+     Every 10 s, and only while the list is actually on screen and the tab
+     is visible -- a timer for a view nobody is looking at is just requests.
+     It also skips a tick while somebody is typing in the list, because
+     redrawing the search field under the caret loses the focus. */
+  const REFRESH_MS = 10000;
+  const listKey = (rs) => (rs || []).map((r) => r.id + ':' + (r.version || '')
+    + ':' + (r.nickname || '') + ':' + (r.deleted ? 'x' : '')).join('|');
+  let refreshing = false;
+  async function refreshQuietly() {
+    if (refreshing || rows === null || failed) return;
+    const side = host && host.querySelector('.art-list');
+    if (!side || !side.isConnected || side.offsetParent === null) return;
+    if (document.hidden) return;
+    if (document.activeElement && side.contains(document.activeElement)
+        && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    refreshing = true;
+    try {
+      const got = await list();
+      if (listKey(got) === listKey(rows)) return;
+      const top = side.scrollTop;
+      rows = got;
+      paintList(side);
+      side.scrollTop = top;
+    } catch (e) {
+      /* A missed refresh costs nothing; the next tick asks again. */
+    } finally {
+      refreshing = false;
+    }
+  }
+  setInterval(refreshQuietly, REFRESH_MS);
+  /* And at once when a stage says it filed something. */
+  window.addEventListener('barry:artifact', () => { refreshQuietly(); });
+
   function paintList(side) {
     side = side || (host && host.querySelector('.art-list'));
     if (!side) return;
