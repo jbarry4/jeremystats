@@ -1,7 +1,7 @@
 {
   "_at": {
-    "added": "2026-09-30T17:43:38.804766+00:00",
-    "deleted": "2026-09-30T17:43:38.804766+00:00",
+    "added": "2026-09-30T17:37:55.469237+00:00",
+    "deleted": "2026-09-30T22:08:30.463388+00:00",
     "id": "2026-09-30T17:43:38.804766+00:00",
     "kind": "2026-09-30T17:43:38.804766+00:00",
     "name": "2026-09-30T17:43:38.804766+00:00",
@@ -20,7 +20,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-30T17:43:38.804766+00:00",
+    "at": "2026-09-30T22:08:30.463388+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -30,7 +30,10 @@
     "machine": "Bluebarry"
   },
   "cited": [],
-  "deleted": null,
+  "deleted": {
+    "at": "2026-09-30T15:18:09-04:00",
+    "by": "precon_pooled: superseded by the pooled analysis (both pairings)"
+  },
   "id": "7c36bd57b4d9",
   "kind": "drift",
   "name": "Precon1 vs Precon4 \u00b7 no-food pair \u00b7 state \u00b7 Theta \u00b7 cue \u2212 baseline",
