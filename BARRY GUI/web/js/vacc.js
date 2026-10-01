@@ -66,12 +66,27 @@ BARRY.vacc = (function () {
   /* ---- what the cluster can reach -------------------------------------- */
   async function loadKnows(force) {
     if (!force && knows && (Date.now() - knowsAt) < KNOWS_TTL) return knows;
-    try {
-      const got = await api('/api/vacc/knows');
+    const take = (got) => {
       knows = got.knows || {};
-      knowsAt = Date.now();
       BARRY.vacc.counts = got.counts || {};
       BARRY.vacc.drives = got.drives || {};
+    };
+    /* Last time's answer first, from this browser (web/js/stash.js), so the
+       VACC marks on the Sessions cards and the Everything VACC Knows view
+       are there while the live answer comes -- only when there is nothing
+       yet, and never waited on. `knowsAt` stays 0, so the live answer is
+       still asked for and replaces it. */
+    let liveDone = false;
+    const live = api('/api/vacc/knows').finally(() => { liveDone = true; });
+    if (!knows) {
+      const was = await BARRY.stash.get('vacc-knows');
+      if (was && was.value && !liveDone && !knows) take(was.value);
+    }
+    try {
+      const got = await live;
+      take(got);
+      knowsAt = Date.now();
+      BARRY.stash.put('vacc-knows', got);
     } catch (e) {
       knows = knows || {};
     }

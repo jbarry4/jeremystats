@@ -65,6 +65,9 @@ REPO_ROOT = os.path.abspath(os.path.join(APP_DIR, ".."))
 LOGS_DIR = os.path.join(APP_DIR, "GUI_logs")
 
 app = Flask(__name__, static_folder=None)
+# Large JSON answers gzipped for a browser that asks (backend/gzipjson.py).
+from . import gzipjson as _gzipjson  # noqa: E402
+_gzipjson.install(app)
 
 STORE = store.Store(LOGS_DIR, auto_stage=False)
 
@@ -15582,15 +15585,73 @@ def _my_names():
             out.add(STORE.provenance()["machine"])
     except Exception:                                    # noqa: BLE001
         pass
-    # And whatever the device table says this id has been called.
-    if CLOUD.cloud.configured:
+    # And whatever the device table says this id has been called -- from
+    # the last answer, never waited for. See `_cloud_names`.
+    out |= _cloud_names(mid)
+    return {n for n in out if n}
+
+
+# What the cloud's device table says this machine has been called.
+#
+# `_my_names` is on the path of every registry answer, and it used to ask
+# Supabase directly: measured 2026-09-30 at 19.8 s of a 23.3 s /api/registry,
+# on every request, because once the registry has been built live the warm
+# cache builds it live every time. The Sessions view, Everything Jarvis
+# Knows and every tool that lists recordings waited on it. Constitution 11:
+# no cloud call on the path to drawing a view.
+#
+# So it is a remembered fact: the last answer, on disk so a restart has it
+# at once, refreshed in the background at most every ten minutes and never
+# waited on. The names only widen which older labels count as this machine;
+# a few minutes' staleness costs nothing, and a device table that has never
+# answered leaves the local spellings, which are the ones that matter.
+_CLOUD_NAMES = {"at": 0.0, "names": None, "busy": False}
+_CLOUD_NAMES_TTL = 600.0
+
+
+def _cloud_names_path():
+    return os.path.join(LOGS_DIR, ".cache", "machine_names.json")
+
+
+def _cloud_names(mid):
+    st = _CLOUD_NAMES
+    if st["names"] is None:
         try:
-            for m in (CLOUD.cloud.select("machines", limit=200) or []):
-                if m.get("id") == mid and m.get("hostname"):
-                    out.add(m["hostname"])
+            with open(_cloud_names_path(), "r", encoding="utf-8") as fh:
+                got = json.load(fh)
+            st["names"] = set(got.get("names") or [])
+            st["at"] = float(got.get("at") or 0.0)
+        except Exception:                                # noqa: BLE001
+            st["names"] = set()
+    if (CLOUD.cloud.configured and not st["busy"]
+            and time.time() - st["at"] > _CLOUD_NAMES_TTL):
+        st["busy"] = True
+        threading.Thread(target=_refresh_cloud_names, args=(mid,),
+                         daemon=True, name="barry-machine-names").start()
+    return set(st["names"])
+
+
+def _refresh_cloud_names(mid):
+    st = _CLOUD_NAMES
+    try:
+        names = set()
+        for m in (CLOUD.cloud.select("machines", limit=200) or []):
+            if m.get("id") == mid and m.get("hostname"):
+                names.add(m["hostname"])
+        st["names"], st["at"] = names, time.time()
+        try:
+            os.makedirs(os.path.dirname(_cloud_names_path()), exist_ok=True)
+            tmp = _cloud_names_path() + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump({"at": st["at"], "names": sorted(names)}, fh)
+            os.replace(tmp, _cloud_names_path())
         except Exception:                                # noqa: BLE001
             pass
-    return {n for n in out if n}
+    except Exception:                                    # noqa: BLE001
+        # Unreachable: try again after the same interval, not on every call.
+        st["at"] = time.time()
+    finally:
+        st["busy"] = False
 
 
 def _real_host(machine_id):

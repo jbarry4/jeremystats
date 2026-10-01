@@ -100,14 +100,24 @@ BARRY.views.sessions = (function () {
        enough that switching filters does not re-ask, short enough that a
        check you just ran shows up. */
     if (!force && continuity && Date.now() - continuityAt < 30000) return;
-    try {
-      const res = await api('/api/health/summary');
-      continuity = (res && res.sessions) || {};
-      continuityAt = Date.now();
-    } catch (e) {
-      continuity = continuity || {};
-    }
+    /* One request in flight, shared. `onShow` runs twice on the way up,
+       and each call used to ask on its own: two health summaries at boot,
+       competing with the catalogue read for the same server. */
+    if (contPending) return contPending;
+    contPending = (async () => {
+      try {
+        const res = await api('/api/health/summary');
+        continuity = (res && res.sessions) || {};
+        continuityAt = Date.now();
+      } catch (e) {
+        continuity = continuity || {};
+      } finally {
+        contPending = null;
+      }
+    })();
+    return contPending;
   }
+  let contPending = null;
 
   /* Which of the listed recordings this scan actually found.
 
@@ -118,6 +128,10 @@ BARRY.views.sessions = (function () {
      finds. Refreshing costs you the brightening, not the list. */
   const foundNow = new Set();
   let knownLoaded = false;
+  // When the list on screen is last time's (web/js/stash.js), from when;
+  // and whether the live read then failed, which is worth saying.
+  let staleAt = null;
+  let staleFailed = false;
 
   const RECENT_KEY = 'barry.roots';
   const LAST_KEY = 'barry.lastSessions';
@@ -320,20 +334,57 @@ BARRY.views.sessions = (function () {
       if (bones) bones();
     };
 
+    /* Draw last time's list while this one comes (web/js/stash.js).
+
+       The live read starts first and is never waited on for this: the
+       stash answers in a few milliseconds or not at all. If the live answer
+       is already here by then, last time's is not drawn -- there would be
+       nothing to gain from a flash of the old list. What is drawn from it
+       is marked as last time's in the line above the list, and replaced
+       row for row, with the scroll kept, when the live answer lands. */
+    let liveDone = false;
+    const live = api('/api/registry').finally(() => { liveDone = true; });
+    let shownStale = false;
+    let cleared = false;
+    const clear = () => { if (!cleared) { cleared = true; done(); } };
+    if (!sessions.length && !quiet) {
+      const was = await BARRY.stash.get('registry');
+      if (was && was.value && !liveDone) {
+        clear();
+        staleAt = was.at || 0;
+        applyRegistry(was.value, true);
+        shownStale = true;
+      }
+    }
+
     let reg;
     try {
-      reg = await api('/api/registry');
+      reg = await live;
     } catch (e) {
       // An older server: the page still works, but the bones must not stay.
-      done();
+      clear();
+      if (shownStale) { staleFailed = true; renderTree(); return; }
       if (sub) sub.textContent = '';
       renderTree();
       return;
     }
-    done();
+    clear();
+    const back = shownStale ? BARRY.keepScroll($('#sessTree')) : null;
+    if (shownStale) sessions = sessions.filter((x) => !x._stale);
+    staleAt = null;
+    staleFailed = false;
+    BARRY.stash.put('registry', reg);
+    applyRegistry(reg, false);
+    if (back) back();
+  }
+
+  /* One catalogue answer onto the list: the live one, or -- `stale` --
+     last time's from this browser, whose rows are marked so the live
+     answer replaces them rather than being taken for duplicates. */
+  function applyRegistry(reg, stale) {
     /* What was actually read, so the next cold open can state the size of
        the job before it starts rather than after it finishes. */
-    rememberScale(reg.total);
+    if (!stale) rememberScale(reg.total);
     /* The lab's projects, whether or not any are on screen right now.
        Without this the project filter's options appear and disappear as
        the list is narrowed by something else, which makes it look broken
@@ -371,6 +422,7 @@ BARRY.views.sessions = (function () {
       .filter((r) => !have.has(r.gid))
       .map(fromRegistry)
       .filter((x) => !x.path || !seenPath.has(x.path));
+    if (stale) extra.forEach((x) => { x._stale = true; });
     if (!extra.length) { renderTree(); return; }
     sessions = sessions.concat(extra);
     if (!tree.length) {
@@ -1398,7 +1450,14 @@ BARRY.views.sessions = (function () {
           ? '  ·  ' + nFound + ' found by this scan' : '')
       + (query ? '  ·  matching "' + query + '"' : '')
       + (avail === 'open' ? '  ·  only what opens here' : '')
-      + (picked.size ? '  ·  ' + picked.size + ' selected' : '');
+      + (picked.size ? '  ·  ' + picked.size + ' selected' : '')
+      + (staleAt != null
+          ? (staleFailed
+              ? '  ·  as of ' + BARRY.stash.ago(staleAt)
+                + ' — the catalogue could not be read just now'
+              : '  ·  as of ' + BARRY.stash.ago(staleAt)
+                + ', reading the latest\u2026')
+          : '');
     renderPickBar();
 
     if (!visible.length) {

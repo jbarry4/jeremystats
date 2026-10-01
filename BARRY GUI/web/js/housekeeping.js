@@ -111,11 +111,29 @@ BARRY.views.housekeeping = (function () {
   }
 
   async function load(backfill) {
+    /* Last time's catalogue first, from this browser (web/js/stash.js), so
+       the view draws at once instead of waiting for the whole answer; the
+       live one replaces it when it lands. Only when nothing is on screen
+       yet, and only if the stash answers before the live read does. */
+    let liveDone = false;
+    const live = api('/api/registry' + (backfill ? '?backfill=1' : ''))
+      .finally(() => { liveDone = true; });
+    if (!data) {
+      const was = await BARRY.stash.get('registry');
+      if (was && was.value && !liveDone) {
+        data = was.value;
+        staleAt = was.at || 0;
+        openNewBranches();
+        render();
+      }
+    }
     try {
-      data = await api('/api/registry' + (backfill ? '?backfill=1' : ''));
+      data = await live;
+      staleAt = null;
+      BARRY.stash.put('registry', data);
     } catch (e) {
       toast('Could not read the registry: ' + e.message, 'err', 8000);
-      data = { tree: [], projects: [], total: 0 };
+      if (staleAt == null) data = { tree: [], projects: [], total: 0 };
     }
     /* A branch Jarvis has not seen before starts open.
 
@@ -141,6 +159,9 @@ BARRY.views.housekeeping = (function () {
       }
     }
   }
+
+  // When what is drawn is last time's catalogue (see `load`), from when.
+  let staleAt = null;
 
   async function onShow() {
     // "Everything Jarvis knows" is this view's own scope. Reset it, or
@@ -214,6 +235,10 @@ BARRY.views.housekeeping = (function () {
     }
 
     host.appendChild(toolbar());
+    if (staleAt != null) {
+      host.appendChild(el('p', { class: 'hint hk-stale',
+        text: 'As of ' + BARRY.stash.ago(staleAt) + ' — reading the latest…' }));
+    }
     if (!scanned) {
       host.appendChild(el('p', { class: 'hint hk-remembered-note',
         text: 'Everything below is what Jarvis remembers. Scan a drive and '

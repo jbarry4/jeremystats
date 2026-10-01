@@ -1234,6 +1234,41 @@ devices` (1 s) during Pipeline, `/api/toolfeed/bad` during Results.
   devices and sync fill in after the view is up; the view does not wait for
   them.
 
+### A list draws at once, then fills in
+
+"It should all load, but it shouldn't wait until everything is there to
+show me something." Measured on the Sessions catalogue, 2026-09-30: the
+first card took **24.7 s**, Everything Jarvis Knows **20 s** more, and
+drawing all 519 cards took 56 ms -- every second of the wait was answers,
+not drawing. So:
+
+- **Last time's answer first.** A view whose answer is large keeps it in
+  this browser (`BARRY.stash`, web/js/stash.js, IndexedDB) and draws it
+  while the live one comes, marked *as of 4 min ago, reading the latest…*,
+  then swaps the live one in row for row with the scroll kept. The first
+  card now appears after **72–120 ms** however long the live read takes.
+  The Sessions catalogue, Everything Jarvis Knows and the VACC answer do
+  this. The stash is never waited on (it gives up after 400 ms), never the
+  truth, and every failure is "nothing stashed". The server's warm cache
+  does the same at boot, but it is stamped with the code version, so the
+  first open after every update builds live -- the stash covers that.
+- **Nothing slow on the answer's path.** The 20 s was one Supabase call
+  (`_my_names`, a `select machines`) inside every registry answer; it is a
+  remembered fact now, refreshed in the background. The health summary
+  scanned its folder once per record (432 scans, 1.7 s) and now once
+  (0.012 s); it was also asked twice at boot and is now shared while in
+  flight. A request at boot that takes seconds slows every other one the
+  page makes at the same moment, so it is a cost to all of them.
+- **Large JSON is compressed.** Answers over 64 kB are gzipped for a
+  browser that asks (backend/gzipjson.py): the catalogue goes 2.2 MB →
+  101 kB, which is the difference on a laptop over the VPN.
+- **Drawing is not the cost, so it is not chunked.** All of a list is
+  built at once (30–60 ms for 519 cards) and the rows off screen are not
+  laid out (`content-visibility`, sessions.js), which is what "load as you
+  scroll" would buy. Search and filters run over the whole list in memory,
+  so a search finds what is not on screen yet. Chunk a list only when a
+  measurement says building it is the wait.
+
 ### One request per question
 
 Results and Misc make **61–66 requests per visit**, one per thumbnail.

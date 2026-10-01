@@ -333,6 +333,10 @@ const hd = (t) => p('\n== ' + t + ' ==');
     + '    });'
     + '  }'
     + '  return f.apply(this, arguments); }; })()');
+  /* A COLD open: nothing kept in this browser. With last time's catalogue
+     stashed (web/js/stash.js) the view draws that instead of bones --
+     catstash.html checks that case. */
+  await run("BARRY.stash.forget('registry')");
   run('BARRY.views.sessions._forget()');
   run("setView('sessions')");
   run('BARRY.views.sessions.onShow()');
@@ -368,6 +372,7 @@ const hd = (t) => p('\n== ' + t + ' ==');
     + '    return Promise.reject(new Error("harness: no"));'
     + '  }'
     + '  return f.apply(this, arguments); }; })()');
+  await run("BARRY.stash.forget('registry')");
   run('BARRY.views.sessions._forget()');
   run('BARRY.views.sessions.onShow()');
   await sleep(1400);
