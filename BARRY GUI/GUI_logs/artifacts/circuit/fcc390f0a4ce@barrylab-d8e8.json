@@ -1,0 +1,450 @@
+{
+  "_at": {
+    "added": "2026-09-30T14:02:12.986479+00:00",
+    "deleted": "2026-09-30T14:02:12.986479+00:00",
+    "id": "2026-09-30T14:02:12.986479+00:00",
+    "kind": "2026-09-30T14:02:12.986479+00:00",
+    "name": "2026-09-30T14:02:12.986479+00:00",
+    "nickname": "2026-09-30T14:02:12.986479+00:00",
+    "schema": "2026-09-30T14:02:12.986479+00:00",
+    "subject": "2026-09-30T14:02:12.986479+00:00",
+    "subject_key": "2026-09-30T14:02:12.986479+00:00",
+    "version": "2026-09-30T14:02:12.986479+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "1610e9b78a09": [
+        "set",
+        "2026-09-30T14:02:12.986479+00:00"
+      ],
+      "e0a7167a4530": [
+        "set",
+        "2026-09-30T14:02:12.986479+00:00"
+      ],
+      "e705c0f6917d": [
+        "set",
+        "2026-09-30T14:02:12.986479+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T14:02:12.986479+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T09:26:20-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": {
+    "at": "2026-09-30T09:36:37-04:00",
+    "by": "cleanup: a check that stopped before its own cleanup"
+  },
+  "id": "fcc390f0a4ce",
+  "kind": "circuit",
+  "name": "DEWEY r7 s3 Precon3 SPC \u00b7 Click \u2192 High tone \u00b7 state",
+  "nickname": "check_circuitrun",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "cue_label": "Click \u2192 High tone",
+    "cue_type": "Click_HighTone",
+    "gid": "s6a38e45cf331",
+    "mouse": 7,
+    "phase": "Precon",
+    "phase_n": 3,
+    "project": "DEWEY",
+    "run": "SPC",
+    "session": 3,
+    "session_label": "DEWEY r7 s3 Precon3 SPC 2026-07-25",
+    "window_kind": "state"
+  },
+  "subject_key": "circuit|s6a38e45cf331|Click_HighTone|state",
+  "version": 3,
+  "versions": [
+    {
+      "app_version": "2026.09.29.1",
+      "at": "2026-09-30T09:26:20-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "confirmed": [
+        {
+          "app_version": "2026.09.29.1",
+          "at": "2026-09-30T09:26:21-04:00",
+          "by": "Shahriar Tafti",
+          "commit": "875d1b4e",
+          "machine": "Bluebarry",
+          "note": null,
+          "params_hash": "ee44fcc92762"
+        }
+      ],
+      "digest": "bda3fc4677a4",
+      "id": "e0a7167a4530",
+      "inputs": [
+        {
+          "entry": "1132146f20d3",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "by_window": {
+          "cue1": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          },
+          "cue2": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          },
+          "post": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          },
+          "pre": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          }
+        },
+        "cells_possible": 36,
+        "cue_type": "Click_HighTone",
+        "grey": [
+          "Right POR",
+          "Left POR",
+          "Left PER"
+        ],
+        "kind": "state",
+        "n_absent": 0,
+        "n_cells": 432,
+        "n_grey": 3,
+        "n_pairs": 8,
+        "n_regions": 12,
+        "n_warn": 0,
+        "of": 8
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "bad_channels": [],
+        "before_s": 1.0,
+        "blocked_regions": [
+          "Right POR"
+        ],
+        "channel_rule": "lowest-numbered usable wire",
+        "high": 12.0,
+        "inputs_hash": "4d96f1e0db3f",
+        "kind": "state",
+        "low": 4.0,
+        "max_lag_ms": 500.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "summary_hz": 8.0
+      },
+      "params_hash": "ee44fcc92762",
+      "v": 1
+    },
+    {
+      "app_version": "2026.09.29.1",
+      "at": "2026-09-30T09:27:02-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "ad73a3b02229",
+      "id": "e705c0f6917d",
+      "inputs": [
+        {
+          "entry": "1132146f20d3",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "by_window": {
+          "cue1": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          },
+          "cue2": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          },
+          "post": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          },
+          "pre": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          }
+        },
+        "cells_possible": 36,
+        "cue_type": "Click_HighTone",
+        "grey": [
+          "Right POR",
+          "Left POR",
+          "Left PER"
+        ],
+        "kind": "state",
+        "n_absent": 0,
+        "n_cells": 432,
+        "n_grey": 3,
+        "n_pairs": 8,
+        "n_regions": 12,
+        "n_warn": 0,
+        "of": 8
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "bad_channels": [],
+        "before_s": 1.0,
+        "blocked_regions": [
+          "Right POR"
+        ],
+        "channel_rule": "lowest-numbered usable wire",
+        "high": 12.0,
+        "inputs_hash": "a978e2d1a188",
+        "kind": "state",
+        "low": 4.0,
+        "max_lag_ms": 500.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "summary_hz": 6.0
+      },
+      "params_hash": "26184242323f",
+      "v": 2
+    },
+    {
+      "app_version": "2026.09.29.1",
+      "at": "2026-09-30T09:27:45-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "875d1b4e",
+      "digest": "bda3fc4677a4",
+      "id": "1610e9b78a09",
+      "inputs": [
+        {
+          "entry": "1132146f20d3",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "by_window": {
+          "cue1": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          },
+          "cue2": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          },
+          "post": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          },
+          "pre": {
+            "amp_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "coherence": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            },
+            "raw_cc": {
+              "absent": 0,
+              "cells": 36,
+              "warn": 0
+            }
+          }
+        },
+        "cells_possible": 36,
+        "cue_type": "Click_HighTone",
+        "grey": [
+          "Right POR",
+          "Left POR",
+          "Left PER"
+        ],
+        "kind": "state",
+        "n_absent": 0,
+        "n_cells": 432,
+        "n_grey": 3,
+        "n_pairs": 8,
+        "n_regions": 12,
+        "n_warn": 0,
+        "of": 8
+      },
+      "note": null,
+      "params": {
+        "after_s": 2.0,
+        "analysis_fs": 1000.0,
+        "bad_channels": [],
+        "before_s": 1.0,
+        "blocked_regions": [
+          "Right POR"
+        ],
+        "channel_rule": "lowest-numbered usable wire",
+        "high": 12.0,
+        "inputs_hash": "4d96f1e0db3f",
+        "kind": "state",
+        "low": 4.0,
+        "max_lag_ms": 500.0,
+        "notch_hz": 60.0,
+        "pad_s": 10.0,
+        "summary_hz": 8.0
+      },
+      "params_hash": "ee44fcc92762",
+      "v": 3
+    }
+  ]
+}
