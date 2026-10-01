@@ -1068,7 +1068,7 @@
         target: '.tk-result',
         placement: 'top',
         note: 'Labels are stored against CSC numbers, not row indices, so '
-            + 'toggling even-only cannot shift them.',
+            + 'a missing channel file cannot shift them.',
       },
       {
         title: 'And it follows the recording, not the folder',

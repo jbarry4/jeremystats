@@ -1200,7 +1200,7 @@ BARRY.spotter = (function () {
     ctx.restore();
   }
 
-  /* A reopen replaces the session object -- toggling even-only does it --
+  /* A reopen replaces the session object -- toggling invert does it --
      and a mode holding the old one keeps painting into a detached tree. */
   function rebind(next) {
     if (!next || !set_) return;

@@ -354,8 +354,12 @@ def apply_filters(x, fs, notch_hz=None, band=None, notch_q=NOTCH_Q):
 
 def _spec_fingerprint(spec):
     keep = ("channels", "bad_channels", "llw_s", "prc", "notch_hz", "band",
-            "even_only", "invert", "path")
-    return {k: spec.get(k) for k in keep}
+            "invert", "path")
+    out = {k: spec.get(k) for k in keep}
+    # Constant since even-only reading was removed (2026-10), and kept so a
+    # key computed before then still finds its entry.
+    out["even_only"] = False
+    return out
 
 
 def cache_key(spec, report=None):

@@ -299,7 +299,7 @@ BARRY.incisor = (function () {
     const args = new URLSearchParams({
       csc: q.path,
       panes: JSON.stringify([{ panel: 'csd' }]),
-      even: '1',
+      sel: 'even',
       span: '5',
       chrome: 'notabs,noheads',
       role: 'incisor',
@@ -904,18 +904,12 @@ BARRY.incisor = (function () {
 
     /* How the file is read and how the probe is laid out. Neither changes
        when an event happened; both change which channels there were. */
-    const scheme = p.channel_scheme || null;
     box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
       text: 'Probe configuration: ' + (p.probe_name || p.probe || 'H3')
-          + '  ·  ' + (p.even_only ? 'even-numbered channels only'
-                                        : 'every channel')
+          + '  ·  every channel'
           + (p.n_csc_files ? ' of ' + p.n_csc_files + ' CSC files' : '')
           + '  ·  ' + (p.invert ? 'inverted, the lab convention'
                                      : 'not inverted') }));
-    if (scheme && scheme.why) {
-      box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
-        text: 'Chosen by measurement: ' + scheme.why + '.' }));
-    }
 
     box.appendChild(chanEditor(all, bad));
     return box;
@@ -1748,10 +1742,9 @@ BARRY.incisor = (function () {
     /* What it opens on, before it opens.
 
        It is a starting point and all three can be changed in the window,
-       but two of them are worth knowing in advance: on a probe where every
-       channel carries signal, even-only shows half the contacts, and a pick
-       on an odd channel then appears as a marked band at its own depth
-       rather than as a line on a lane. Better said here than discovered
+       but two of them are worth knowing in advance: the even channels
+       are half the contacts, and a pick on an odd channel then appears as
+       a marked band at its own depth rather than as a line on a lane. Better said here than discovered
        there. */
     box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
       text: 'It opens on a CSD of the even-numbered channels over five '

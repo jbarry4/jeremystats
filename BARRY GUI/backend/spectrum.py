@@ -120,7 +120,9 @@ def cache_key(spec):
         "t1": round(float(spec.get("t1") or 0.0), 3),
         "fmax": round(float(spec.get("fmax") or DEFAULT_FMAX), 3),
         "segment_s": round(float(spec.get("segment_s") or 8.0), 3),
-        "even_only": bool(spec.get("even_only")),
+        # Constant since even-only reading was removed (2026-10), and kept
+        # so a key computed before then still finds its entry.
+        "even_only": False,
         # Both change the numbers, so both change the key. A cached curve
         # with the mains still in it is not the same answer.
         "line_hz": round(float(spec.get("line_hz") or 0.0), 3),

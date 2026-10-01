@@ -705,9 +705,12 @@ def cache_key(spec):
     """
     keep = {k: spec.get(k) for k in (
         "path", "channels", "t0", "t1", "f_lo", "f_hi", "sub_s", "win_s",
-        "step_s", "line_hz", "even_only", "invert",
+        "step_s", "line_hz", "invert",
         "peak_width_limits", "max_n_peaks", "min_peak_height",
         "aperiodic_mode") if spec.get(k) is not None}
+    # Constant since even-only reading was removed (2026-10), and kept so a
+    # key computed before then still finds its entry.
+    keep["even_only"] = False
     blob = json.dumps(keep, sort_keys=True, default=str)
     return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
 

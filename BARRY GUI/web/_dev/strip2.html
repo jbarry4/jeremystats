@@ -214,8 +214,10 @@ async function until(fn, ms) {
   check('escape closes it', !$('.ctl-pop'));
   btn('More').click();
   await sleep(300);
-  check('More holds the read options',
-        $$('.ctl-pop .toggle').length === 2,
+  // One since even-only reading was removed: Invert polarity.
+  check('More holds the read option',
+        $$('.ctl-pop .toggle').length === 1
+        && /Invert polarity/.test($$('.ctl-pop .toggle')[0].textContent),
         $$('.ctl-pop .toggle').map((t) => t.textContent).join(' | '));
   check('and the on-disk actions',
         $$('.ctl-pop button').some((b) => /Show in folder/.test(b.textContent))

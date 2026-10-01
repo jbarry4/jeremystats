@@ -430,7 +430,7 @@ def regions_for(probe_id, channels, bad=()):
     honest answer rather than one group called "all".
 
     `bad` is CSC NUMBERS to leave out -- numbers, never row indices, because
-    an index moves the moment somebody toggles even-only. Excluded channels
+    an index moves the moment a channel file goes missing. Excluded channels
     are reported as well as dropped: a region down to its last wire is still
     usable and a region down to none is not, and the caller can only tell
     those apart if it is told.

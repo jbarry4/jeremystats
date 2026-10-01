@@ -108,12 +108,12 @@ def main():
     print("  here   : %s" % local)
     print("  cluster: %s" % remote)
 
-    sess = csc.open_session(local, even_only=False, invert=True)
+    sess = csc.open_session(local, invert=True)
     report = continuity.check(local)
 
     def spec_for(channels):
         return {"path": local, "channels": list(channels), "invert": True,
-                "even_only": False, "band": list(incisor.DS_BAND),
+                "band": list(incisor.DS_BAND),
                 "height_sd": incisor.DS_HEIGHT_SD,
                 "abs_uv": incisor.DS_ABS_THR_UV,
                 "dist_ms": incisor.DS_DIST_MS, "prom_uv": incisor.DS_PROM_UV,

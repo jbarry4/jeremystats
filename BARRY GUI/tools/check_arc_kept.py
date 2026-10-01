@@ -197,8 +197,7 @@ def main(argv):
     # A clipped wire that is the lowest usable one in its region, for one
     # state window and one transition window.
     bad = {int(c) for c in (sm.get("bad_channels") or [])}
-    present = {int(n) for n, _p in nlx.list_csc_files(got["path"],
-                                                      even_only=False)}
+    present = {int(n) for n, _p in nlx.list_csc_files(got["path"])}
     rat, probe = A._coupling_probe(sm)
     blocked = A._coupling_blocked(probe)
     cmap = coupling.dewey_map()

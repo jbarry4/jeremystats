@@ -143,8 +143,7 @@ BARRY.strata = (function () {
     sess = await BARRY.views.xplore.open(path);
     if (!sess) return false;
 
-    // The channel order as it is right now: even-only and missing files both
-    // change it, so it is sent on every visit rather than trusted from the
+    // The channel order as it is right now: a missing file changes it, so it is sent on every visit rather than trusted from the
     // first one.
     const channels = sess.info.channels.map((c) => c.number);
     let started;

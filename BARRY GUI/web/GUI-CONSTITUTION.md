@@ -454,7 +454,12 @@ A mode holding the old one keeps painting into a detached tree.
 Read `README.md § Session identity` before touching these.
 
 - **Stored by CSC channel number, never by row index.** An index shifts the
-  moment somebody toggles even-only.
+  moment a channel file goes missing.
+- **Every channel is read.** There is no even-channels-only read any more,
+  and none is to be added back: picking the even channels is a selection,
+  made in the `Ch` menu, not a second way of opening a recording. A read
+  that is sometimes half the files makes every index into it mean two
+  things.
 - Identity is **mouse + session + the recording start time from the Neuralynx
   header** — not the path, which differs per machine. Matching is tiered:
   exact, then strong (mouse+session, unambiguous), then weak (nearest start).

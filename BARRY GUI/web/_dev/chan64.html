@@ -80,15 +80,10 @@ async function until(fn, ms = 60000) {
 
   W.eval("setView('xplore')");
   await sleep(250);
-  /* Even-only off, explicitly.
-
-     A 64-channel recording opened even-only draws 32 -- the list keeps all
-     64 but the window request drops the odd ones, so the pane shows half of
-     them and the control reads "Ch32/64". This harness is about all
-     sixty-four being on screen at once, which is only a question when they
-     all are. */
+  /* Every channel is read; this harness is about all sixty-four being on
+     screen at once. */
   const sess = await W.eval('BARRY.views.xplore.open('
-    + JSON.stringify(path) + ', {evenOnly:false})');
+    + JSON.stringify(path) + ')');
   await until(() => D.querySelector('.pane-canvas-host canvas'));
   /* Let the open settle before rearranging the panes.
 

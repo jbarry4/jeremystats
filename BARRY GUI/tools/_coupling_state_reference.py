@@ -825,7 +825,7 @@ def _signals_for_windows(folder, chan_map, windows, exclude=(),
     # this clipped is most of the data.
     ex = _exclude_map(exclude, windows)
     every = set.intersection(*ex.values()) if ex else set()
-    files = dict(nlx.list_csc_files(folder, even_only=False))
+    files = dict(nlx.list_csc_files(folder))
     origin = nlx.recording_start_us(folder)
     if origin is None:
         raise CouplingError(

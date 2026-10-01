@@ -85,20 +85,16 @@ def emit(obj):
 def _session(req):
     """The recording this request is about, opened once and kept.
 
-    `even_only` is passed through as None when the caller did not say, which
-    is what makes `nlx.channel_scheme` decide -- see `csc.open_session`. The
-    key carries it either way so that forcing it opens a second entry rather
-    than quietly reusing the first.
+    An `even_only` from a Jarvis older than this file is ignored: every
+    channel is read, the same as on the machine that asked.
     """
     from backend import csc
 
     path = req.get("path") or ""
-    even = req.get("even_only")
-    even = None if even is None else bool(even)
     invert = bool(req.get("invert", True))
-    key = "%s|%s|%s" % (path, even, invert)
+    key = "%s|%s" % (path, invert)
     if key not in _SESSIONS:
-        sess = csc.open_session(path, even_only=even, invert=invert)
+        sess = csc.open_session(path, invert=invert)
         if not sess.get("ok"):
             return None, sess
         _SESSIONS[key] = sess

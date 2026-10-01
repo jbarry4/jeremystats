@@ -3592,7 +3592,7 @@ BARRY.arc = (function () {
        until somebody left the mode and came back.
 
        Everything here is by CSC NUMBER, never by row index: the pane's
-       row list changes the moment somebody toggles even-only, and an
+       row list changes the moment a channel file goes missing, and an
        index would then name a different channel with perfect confidence.
        ---------------------------------------------------------------- */
     clean: {
@@ -4153,11 +4153,11 @@ BARRY.arcmode = (function () {
 
   /* Which channels the pane is actually drawing.
    *
-   * Read off the pane rather than off the recording: even-only and the
-   * channel ticks both change it, and a flagged channel nobody can see is
-   * worth saying out loud rather than leaving as a stretch that never
-   * appears. Odd channels in particular -- an even-only pane holds none of
-   * them, and every stretch on CSC17 would silently have nowhere to go. */
+   * Read off the pane rather than off the recording: the channel ticks
+   * change it, and a flagged channel nobody can see is worth saying out
+   * loud rather than leaving as a stretch that never appears. Odd channels
+   * in particular -- a pane on the Even preset holds none of them, and
+   * every stretch on CSC17 would silently have nowhere to go. */
   function paneRows() {
     try {
       const XF = BARRY.views.xplore.state;
@@ -4671,8 +4671,8 @@ BARRY.arcmode = (function () {
               + '. This pane is not drawing ' + (missing.length === 1
                 ? 'that channel' : 'those channels')
               + ' — tick ' + (missing.length === 1 ? 'it' : 'them')
-              + ' in the channel list, or turn even-only off, to see the '
-              + 'stretches. The decision holds either way.' }));
+              + ' in the channel list to see the stretches. The decision '
+              + 'holds either way.' }));
     }
     return el('div', { class: 'arc-chan-box' }, kids);
   }
@@ -4957,7 +4957,7 @@ BARRY.arcmode = (function () {
     exit,
     draw,
     goTo,
-    /* Toggling even-only reopens the recording and replaces the session
+    /* Toggling invert reopens the recording and replaces the session
        object. The panel is repainted with it, because which channels the
        pane draws has just changed and the panel says so out loud. */
     rebind: (s) => { sess = s; if (kind) render(); },

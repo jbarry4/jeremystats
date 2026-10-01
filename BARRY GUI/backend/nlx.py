@@ -124,7 +124,7 @@ def recording_start_us(folder):
     disk per session. This reads the header and the first 1,044-byte record
     and stops.
     """
-    files = list_csc_files(folder, even_only=False)
+    files = list_csc_files(folder)
     if not files:
         return None
     _num, path = files[0]
@@ -822,13 +822,8 @@ def _window_gaps(report, recs, fs, t_start, actual_t0):
         report["gap_s"] += float(resid[i] / 1e6)
 
 
-def list_csc_files(folder: str, even_only: bool = False):
-    """List CSC*.ncs in `folder`, numerically sorted.
-
-    `even_only` skips the odd-numbered channels. It used to default to True,
-    described as the lab default -- and on the 64-channel probe that silently
-    halved every recording. Whether the odd channels are real is a question
-    about the recording, so ask channel_scheme(); this does what it is told.
+def list_csc_files(folder: str):
+    """List CSC*.ncs in `folder`, numerically sorted: every channel.
 
     Returns a list of (channel_number, full_path).
     """
@@ -842,8 +837,6 @@ def list_csc_files(folder: str, even_only: bool = False):
         if not m:
             continue
         num = int(m.group(1))
-        if even_only and num % 2 != 0:
-            continue
         seq = int(m.group(2) or 0)
         # One entry per channel: the first part is the channel. Later parts
         # are continuations and are reported by csc_parts() rather than
@@ -890,116 +883,15 @@ def _ls(d):
 
 
 # --------------------------------------------------------------------------
-# Which channels a recording actually uses
+# Every channel, always
 # --------------------------------------------------------------------------
-# Two rigs, two answers. On the older one a 32-channel probe was wired to the
-# even AD channels and the odd ones carried nothing, so loading every file
-# meant thirty-two flat traces. On the 64-channel probe every file is real,
-# and skipping the odd ones means looking at half the shank.
-#
-# `even_only=True` used to be the default, and on this repo's recordings it
-# was wrong every time:
-#
-#     CSC1  std  982     CSC2  std  644
-#     CSC31 std 1101     CSC32 std  835
-#     CSC63 std  606     CSC64 std  602
-#
-# Half of every recording loaded, and a channel list of 32 looks perfectly
-# plausible, so nothing ever said so. There is no default that is right for
-# both rigs -- so measure instead of assuming.
-FLAT_ADC = 5.0          # a standard deviation this small is not a signal
-SAMPLE_RECORDS = 8      # ~4000 samples per channel is plenty to tell
-
-
-def _sample_ncs(path, n_rec=SAMPLE_RECORDS, skip_rec=200):
-    """A few thousand raw samples from part-way into a file.
-
-    Raw ADC counts, unfiltered and unscaled: the question is "is anything
-    connected here", not "what does it look like", and reading whole files to
-    answer it would cost a minute per recording.
-    """
-    try:
-        recs = np.fromfile(path, dtype=RECORD_DTYPE, count=n_rec,
-                           offset=HEADER_BYTES + skip_rec * RECORD_DTYPE.itemsize)
-    except (OSError, ValueError):
-        return np.empty(0, dtype="<i2")
-    if recs.size == 0:
-        return np.empty(0, dtype="<i2")
-    return recs["samples"].reshape(-1)
-
-
-def channel_scheme(folder, probe=4):
-    """Does this recording use every channel, or only the even ones?
-
-    Returns the measurement, not just a verdict -- somebody will eventually
-    want to see why rather than take it on trust.
-    """
-    files = list_csc_files(folder, even_only=False)
-    if not files:
-        return {"scheme": "all", "n_files": 0, "why": "no CSC files here"}
-
-    odd = [(n, p) for n, p in files if n % 2]
-    even = [(n, p) for n, p in files if not n % 2]
-    if not odd:
-        return {"scheme": "all", "n_files": len(files), "odd_files": 0,
-                "why": "there are no odd-numbered channels to skip"}
-
-    def pick(seq):
-        if len(seq) <= probe:
-            return seq
-        step = max(1, len(seq) // probe)
-        return seq[::step][:probe]
-
-    by_num = dict(files)
-    odd_sd, even_sd, flat, dup = [], [], 0, 0
-    for num, path in pick(odd):
-        vals = _sample_ncs(path)
-        if vals.size < 2:
-            continue
-        sd = float(np.std(vals))
-        odd_sd.append(sd)
-        if sd < FLAT_ADC:
-            flat += 1
-            continue
-        # The other way an odd channel turns up unused: not flat, but an
-        # exact copy of the AD channel next to it.
-        for other in (num + 1, num - 1):
-            if other in by_num:
-                twin = _sample_ncs(by_num[other])
-                if twin.size == vals.size and np.array_equal(twin, vals):
-                    dup += 1
-                    break
-    for _num, path in pick(even):
-        vals = _sample_ncs(path)
-        if vals.size >= 2:
-            even_sd.append(float(np.std(vals)))
-
-    odd_med = float(np.median(odd_sd)) if odd_sd else 0.0
-    even_med = float(np.median(even_sd)) if even_sd else 0.0
-    unused = flat + dup
-
-    if odd_sd and unused >= (len(odd_sd) + 1) // 2:
-        scheme = "even"
-        why = ("the odd channels carry nothing -- %d of %d sampled were flat "
-               "or an exact copy of their neighbour -- so this is a "
-               "32-channel probe on 64 inputs" % (unused, len(odd_sd)))
-    else:
-        scheme = "all"
-        why = ("every channel carries signal (odd median %.0f ADC counts "
-               "against even %.0f), so all %d are real"
-               % (odd_med, even_med, len(files)))
-
-    return {
-        "scheme": scheme,
-        "n_files": len(files),
-        "odd_files": len(odd),
-        "odd_std": round(odd_med, 1),
-        "even_std": round(even_med, 1),
-        "odd_flat": flat,
-        "odd_duplicated": dup,
-        "sampled": len(odd_sd),
-        "why": why,
-    }
+# There used to be a second way to read a recording: the even-numbered
+# channels only, for an older rig whose 32-channel probe sat on the even AD
+# inputs and left the odd ones empty -- and `channel_scheme` measured the odd
+# channels to decide which way a recording was read. It was removed in
+# 2026-10. A channel list that is sometimes half the files makes every index
+# into it mean two things, and choosing even channels is a selection, which
+# Xplorefinder's channel menu already makes without reading anything less.
 
 # --------------------------------------------------------------------------
 # VT (video tracking) files -- position, not video

@@ -591,17 +591,6 @@ def api_discover_cancel(job_id):
 # ==========================================================================
 # CSC / Xplorefinder sessions
 # ==========================================================================
-def _even_only_arg(body):
-    """None when the caller did not say, so the recording decides.
-
-    `bool(body.get("even_only", True))` turned "not specified" into "yes,
-    skip the odd channels", which is how half of every 64-channel recording
-    went unlooked-at. Absent now means absent.
-    """
-    v = (body or {}).get("even_only")
-    return None if v is None else bool(v)
-
-
 def _scheme_path(path):
     """Is this an id rather than a place -- `demo:` or `vacc:`.
 
@@ -615,11 +604,17 @@ def _scheme_path(path):
                                       or vacciomod.is_vacc(path))
 
 
-def _session_for(path, even_only=None, invert=True):
-    key = "%s|%s|%s" % (path if _scheme_path(path) else os.path.abspath(path),
-                        even_only, invert)
+def _session_for(path, invert=True):
+    """The recording at `path`, opened once per process and kept.
+
+    Every channel is read. An `even_only` in a request from a page older
+    than this server is ignored rather than refused: there is one way to
+    read a recording now, and a stale tab asking for the other one gets it.
+    """
+    key = "%s|%s" % (path if _scheme_path(path) else os.path.abspath(path),
+                     invert)
     if key not in _SESSIONS:
-        sess = csc.open_session(path, even_only=even_only, invert=invert)
+        sess = csc.open_session(path, invert=invert)
         if not sess.get("ok"):
             return None, sess
         if len(_SESSIONS) >= MAX_CACHED_SESSIONS:
@@ -651,7 +646,6 @@ def _gid_for_path(path):
 
 def _body_session(body):
     sess, err = _session_for(body.get("path", ""),
-                             _even_only_arg(body),
                              bool(body.get("invert", True)))
     # The gid, here, rather than only when somebody happened to come through
     # /api/csc/open first.
@@ -671,8 +665,7 @@ def _body_session(body):
 def api_csc_open():
     body = request.get_json(force=True) or {}
     path = body.get("path", "")
-    sess, err = _session_for(path, _even_only_arg(body),
-                             bool(body.get("invert", True)))
+    sess, err = _session_for(path, bool(body.get("invert", True)))
     if err:
         return jsonify(err), 400
 
@@ -721,23 +714,6 @@ def api_csc_open():
     except Exception as exc:                               # noqa: BLE001
         STORE.record_error("registry/ensure", str(exc), None, {"path": path})
     stored, how = STORE.get_session(identity)
-
-    # Honour a remembered even-only, when the caller did not say.
-    #
-    # Which channels a probe is on is a fact about the recording, not a view
-    # preference, so it is stored with the session -- but the identity that
-    # finds that record needs the file open first, and by then it has been
-    # opened with the measured default. So: if nothing was asked for and the
-    # record remembers something different, open it again the right way.
-    # _session_for caches, so this costs one extra header read the first
-    # time a recording is opened in a process and nothing after that.
-    if _even_only_arg(body) is None and stored:
-        want = (stored.get("view_state") or {}).get("even_only")
-        if want is not None and bool(want) != bool(sess.get("even_only")):
-            again, err2 = _session_for(path, bool(want),
-                                       bool(body.get("invert", True)))
-            if not err2 and again:
-                sess = again
 
     out = {k: v for k, v in sess.items() if k != "channels"}
     # A demo has no stored record, so its gid comes off the identity. Every
@@ -1514,7 +1490,6 @@ def _spectrum_spec(body, sess):
         "t1": min(t1, dur) if dur else t1,
         "fmax": float(body.get("fmax") or spectrummod.DEFAULT_FMAX),
         "segment_s": float(body.get("segment_s") or 8.0),
-        "even_only": bool(sess.get("even_only")),
         # Mains. `None` means "not said", which is 60 Hz here; an explicit
         # 0 means somebody turned it off and wants the interference shown.
         "line_hz": (spectrummod.LINE_HZ if body.get("line_hz") is None
@@ -1624,7 +1599,6 @@ def _panorama_spec(body, sess):
                        else "log"),
         "cmap": str(body.get("cmap") or "jet"),
         "scale": ("linear" if body.get("scale") == "linear" else "log10"),
-        "even_only": bool(sess.get("even_only")),
         # Mains. `None` means "not said", which is 60 Hz here; an explicit 0
         # means somebody turned it off and wants the interference shown.
         "line_hz": (spectrummod.LINE_HZ if body.get("line_hz") is None
@@ -2052,7 +2026,7 @@ def api_horizon_for_recording(gid):
                           "this machine, so there is nothing to read.")
         return jsonify(out)
 
-    sess, err = _session_for(here, None, True)
+    sess, err = _session_for(here, True)
     if err:
         out["blocked"] = (err.get("error")
                           if isinstance(err, dict) else str(err))
@@ -3139,7 +3113,6 @@ def _incisor_spec(body, sess):
         "path": sess.get("path"),
         "channels": kept,
         "invert": bool(sess.get("invert", True)),
-        "even_only": bool(sess.get("even_only")),
         "estimator": (body.get("estimator") or "sd"),
         # Carried so the answer can say what it left out, rather than
         # quietly returning a shorter list than it was asked for. `channels`
@@ -3656,7 +3629,7 @@ def _incisor_prepare(member, body, force):
     if not local:
         raise RuntimeError("this machine cannot open the recording to read "
                            "its channel list")
-    sess, err = _session_for(local, None, True)
+    sess, err = _session_for(local, True)
     if err:
         raise RuntimeError((err or {}).get("error") or "could not open it")
     if not sess.get("gid"):
@@ -3762,7 +3735,7 @@ def _file_batch_answer(tool, t, out):
     """File one answer of a resumed batch the way the live batch does."""
     key = (t.get("resume") or {}).get("key") or t.get("key")
     spec = t.get("spec_local") or {}
-    sess, err = _session_for(spec.get("path"), None, True)
+    sess, err = _session_for(spec.get("path"), True)
     if err or not sess:
         raise RuntimeError("could not open %s to file its answer"
                            % spec.get("path"))
@@ -3952,7 +3925,7 @@ def _braces_session(rec):
             "The registry knows %s(%s) but has no folder recorded for it on "
             "any machine, so there is nothing to read. Scan the folder it "
             "lives in." % (named, gid))
-    sess, err = _session_for(path, None, True)
+    sess, err = _session_for(path, True)
     if err:
         raise ValueError(
             "The recording this set came from could not be opened here (%s). "
@@ -4178,7 +4151,6 @@ def _doppler_spec(body, sess):
         "path": sess.get("path"),
         "channels": kept,
         "invert": bool(sess.get("invert", True)),
-        "even_only": bool(sess.get("even_only")),
         "bad_channels": sorted(bad),
         "excluded": [{"index": i, "number": int(by_index[i]["number"]),
                       "label": by_index[i].get("label")} for i in dropped],
@@ -4445,7 +4417,7 @@ def _doppler_prepare(member, body, force):
     if not local:
         raise RuntimeError("this machine cannot open the recording to read "
                            "its channel list")
-    sess, err = _session_for(local, None, True)
+    sess, err = _session_for(local, True)
     if err:
         raise RuntimeError((err or {}).get("error") or "could not open it")
     if not sess.get("gid"):
@@ -8802,7 +8774,6 @@ def api_figure_export():
     sessions, problems = {}, []
     for sid, spec in (body.get("sessions") or {}).items():
         sess, err = _session_for(spec.get("path", ""),
-                                 _even_only_arg(spec),
                                  bool(spec.get("invert", True)))
         if err:
             problems.append("%s: %s" % (sid, err.get("error")))
@@ -8875,7 +8846,6 @@ def api_figure_preview():
     sessions = {}
     for sid, spec in (body.get("sessions") or {}).items():
         sess, err = _session_for(spec.get("path", ""),
-                                 _even_only_arg(spec),
                                  bool(spec.get("invert", True)))
         if not err:
             sessions[sid] = sess
@@ -12651,8 +12621,7 @@ def api_arc_spark_clipping(gid):
     # clipping, and a panel that did not say so read "nothing is excluded"
     # over a recording missing half its wires.
     bad = sorted(int(c) for c in (sm.get("bad_channels") or []))
-    present = sorted(int(n) for n, _p in nlx.list_csc_files(got["path"],
-                                                            even_only=False))
+    present = sorted(int(n) for n, _p in nlx.list_csc_files(got["path"]))
     # ONE read of every channel, two answers: the state windows and the
     # transition windows are cut from the same slice of each file.
     read_stats = {}

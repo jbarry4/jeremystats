@@ -96,7 +96,7 @@ def assess(path, contents):
     useful than pretending it is fine or pretending it is not there.
     """
     ncs = contents.get("ncs") or []
-    loadable = nlx.list_csc_files(path, even_only=False)
+    loadable = nlx.list_csc_files(path)
     parts = nlx.csc_parts(path)
 
     n_named = len(ncs)

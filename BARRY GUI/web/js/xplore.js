@@ -96,12 +96,6 @@ BARRY.views.xplore = (function () {
     try {
       info = await apiPost('/api/csc/open', {
         path,
-        /* Deliberately absent unless somebody chose. `!== false` meant
-           "true unless told otherwise", which forced even-only on every
-           recording -- so half of every 64-channel probe never loaded and
-           a channel list of 32 looked entirely plausible. Absent lets the
-           recording answer for itself. */
-        even_only: opts.evenOnly === undefined ? undefined : !!opts.evenOnly,
         invert: opts.invert !== false,
       });
     } catch (e) {
@@ -122,10 +116,6 @@ BARRY.views.xplore = (function () {
       t0: 0, span: Math.min(10, Math.max(0.05, dur)),
       gain: 1, hp: 0, lp: 0, notch: 0,
       normalize: 'shared',
-      // What the server actually settled on, not what we guessed.
-      evenOnly: info.even_only !== undefined ? !!info.even_only
-                                             : !!opts.evenOnly,
-      channelScheme: info.channel_scheme || null,
       nCscFiles: info.n_csc_files || null,
       invert: opts.invert !== false,
       spacing: 50,
@@ -2165,7 +2155,7 @@ BARRY.views.xplore = (function () {
     sess.overviewReq = true;
     try {
       const res = await apiPost('/api/csc/overview', {
-        path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+        path: sess.path, invert: sess.invert,
         channel: firstSel(sess), bins: 700,
       });
       if (res.ok) sess.overview = res;
@@ -2313,7 +2303,7 @@ BARRY.views.xplore = (function () {
       sess.bandReq[ch] = key;
       try {
         const res = await apiPost('/api/csc/overview', {
-          path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+          path: sess.path, invert: sess.invert,
           channel: ch, bins: 700,
           profile: 'band', band: { lo: b.lo, hi: b.hi },
           measure: sess.stripMeasure || 'abs',
@@ -4493,8 +4483,10 @@ BARRY.views.xplore = (function () {
       }),
     ]));
 
-    // Neuralynx polarity is inverted by lab convention, and the probe sits on
-    // the even channels -- but both need to be switchable.
+    // Neuralynx polarity is inverted by lab convention, and switchable.
+    // There was an "Even channels only" here too: it read half the files,
+    // and picking the even channels is what the Ch menu's Even does without
+    // reading any less. Removed 2026-10.
     if (sess.info.source === 'ncs') {
       rows.push(popRow('Read as', [
         el('label', {
@@ -4507,8 +4499,8 @@ BARRY.views.xplore = (function () {
               sess.invert = e.target.checked;
               BARRY.activity.log('read.invert', { invert: sess.invert }, sess);
               closeMenu();
-              // Same as even-only below: this decides what the samples mean,
-              // so every window reading this file needs it.
+              // This decides what the samples mean, so every window
+              // reading this file needs it.
               publishFacts(sess);
               queueSaveState(sess);
               reopenSameView(sess);
@@ -4516,30 +4508,10 @@ BARRY.views.xplore = (function () {
           }),
           el('span', { text: 'Invert polarity' }),
         ]),
-        el('label', {
-          class: 'toggle sm' + (sess.evenOnly ? ' on' : ''),
-          title: 'Probe channels are the even CSC numbers',
-        }, [
-          el('input', {
-            type: 'checkbox', checked: sess.evenOnly ? 'checked' : null,
-            onchange: (e) => {
-              sess.evenOnly = e.target.checked;
-              BARRY.activity.log('read.evenOnly',
-                                 { evenOnly: sess.evenOnly }, sess);
-              closeMenu();
-              // Every other window is reading the same file and has to be
-              // told, and it has to outlive the session being closed.
-              publishFacts(sess);
-              queueSaveState(sess);
-              reopenSameView(sess);
-            },
-          }),
-          el('span', { text: 'Even channels only' }),
-        ]),
       ]));
       rows.push(el('p', { class: 'ctl-pop-note',
-        text: 'Either of these reopens the recording, because both change '
-            + 'what gets read off disk.' }));
+        text: 'This reopens the recording, because it changes what gets '
+            + 'read off disk.' }));
     }
 
     rows.push(popRow('Jump', [
@@ -6232,7 +6204,7 @@ BARRY.views.xplore = (function () {
       const t1 = P.whole ? (sess.info.duration_s || w.t0 + w.span) : w.t0 + w.span;
       try {
         const res = await apiPost('/api/spikes/detect', {
-          path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+          path: sess.path, invert: sess.invert,
           t0, t1, channels: Array.from(sess.sel).sort((a, b) => a - b),
           bad_channels: Array.from(sess.bad),
           highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
@@ -6437,7 +6409,7 @@ BARRY.views.xplore = (function () {
 
   /* Re-read a session after a read option changed, without losing your place.
 
-     Invert and even-only change how the file is decoded, so the session has to
+     Invert changes how the file is decoded, so the session has to
      be reopened -- but throwing away the window, gain and filters every time
      someone toggles polarity would be unusable. */
   /* What a reopen has to work out again, because it describes the file or
@@ -6445,16 +6417,14 @@ BARRY.views.xplore = (function () {
 
      This used to be the other way round -- a list of things to keep -- and
      it had drifted: curation and StrataScope state were not on it, so
-     toggling even-only in the middle of labelling silently threw away the
+     toggling a read option in the middle of labelling silently threw away the
      dentate spike marks you were making. A deny-list cannot drift the same
      way, because a field added later is carried over by default, which is
      the safe direction to be wrong in. */
   const REDERIVED_ON_REOPEN = new Set([
     'id',        // its handle in XF.sessions; the new one owns the slot
     'info',      // channels, duration, fs -- the reason for reopening
-    'sel',       // channel INDICES, and the indices shift with even-only
-    'win',       // samples already fetched, for the old channel set
-    'evenOnly',  // the thing being changed
+    'win',       // samples already fetched, read the old way
   ]);
 
   async function reopenSameView(sess) {
@@ -6463,13 +6433,18 @@ BARRY.views.xplore = (function () {
     const wasStrata = !!(BARRY.strata && BARRY.strata.active);
 
     const reopened = await openSession(sess.path, {
-      evenOnly: sess.evenOnly, invert: sess.invert, replace: sess.id,
+      invert: sess.invert, replace: sess.id,
     });
     if (!reopened) return;
     for (const k of Object.keys(sess)) {
       if (REDERIVED_ON_REOPEN.has(k)) continue;
       reopened[k] = sess[k];
     }
+    /* The selection comes across: every channel is read both times, so an
+       index means the same wire. Only what is no longer there is dropped --
+       a file can have gone missing between the two reads. */
+    const nNow = reopened.info.channels.length;
+    reopened.sel = new Set(Array.from(sess.sel).filter((i) => i < nNow));
     panes.forEach((p, i) => { if (p) XF.panes[i] = { ...p, sessionId: reopened.id }; });
 
     /* The modes hold their own reference to the session object. Without
@@ -6478,8 +6453,8 @@ BARRY.views.xplore = (function () {
     if (wasCurating && BARRY.curate.rebind) BARRY.curate.rebind(reopened);
     if (wasStrata && BARRY.strata.rebind) BARRY.strata.rebind(reopened);
 
-    /* A reopen only ever happens because even-only or invert changed, and
-       both are now part of the saved state. Saving here rather than at each
+    /* A reopen only ever happens because invert changed, and it is part
+       of the saved state. Saving here rather than at each
        call site means it cannot be forgotten by a new one -- including the
        path where another window told us to change. */
     queueSaveState(reopened);
@@ -6923,7 +6898,7 @@ BARRY.views.xplore = (function () {
     const px = Math.max(200, Math.floor((pane._canvas ? pane._canvas.clientWidth : 900) - 70));
     try {
       const win = await apiPost('/api/csc/window', {
-        path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+        path: sess.path, invert: sess.invert,
         t0: sess.t0, t1: sess.t0 + sess.span,
         channels: paneChans(pane, sess),
         px, highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
@@ -6949,7 +6924,6 @@ BARRY.views.xplore = (function () {
                 filterWords(sess),
                 sess.bad.size ? sess.bad.size + ' bad marked' : null,
                 sess.invert ? 'inverted' : null,
-                sess.evenOnly ? 'even only' : null,
                ].filter(Boolean).join('  \u00b7  '),
         // The trace is a min/max envelope unless somebody said otherwise,
         // and that decides whether waveform shape can be read off it.
@@ -7007,7 +6981,7 @@ BARRY.views.xplore = (function () {
       const spec = panelSpec(index, pane, sess);
       if (!spec) return;
       apiPost('/api/panel/prewarm', {
-        path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+        path: sess.path, invert: sess.invert,
         spec, times: times.slice(0, 48), limit: 12,
       }).catch(() => { /* speculative: a failure is not worth saying */ });
     }, 400);
@@ -7022,7 +6996,7 @@ BARRY.views.xplore = (function () {
   function panelSpec(index, pane, sess) {
     if (!pane || !sess) return null;
     const spec = {
-      path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+      path: sess.path, invert: sess.invert,
       panel: pane.panel, t0: sess.t0, t1: sess.t0 + sess.span,
       channels: paneChans(pane, sess),
       // Rows to draw faintly. Sent even when empty so a cached render from
@@ -8342,9 +8316,8 @@ BARRY.views.xplore = (function () {
         value: {
           bad: Array.from(sess.bad).sort((a, b) => a - b),
           // How the file has to be read, not how you want to look at it.
-          // A window reading 32 channels while another reads 64 is two
+          // A window reading it inverted while another does not is two
           // windows disagreeing about what the recording is.
-          evenOnly: !!sess.evenOnly,
           invert: !!sess.invert,
           // Same reasoning: what an unchecked channel does, and how visible
           // the marks are, are facts about this recording's display that
@@ -8509,17 +8482,16 @@ BARRY.views.xplore = (function () {
         }
       }
 
-      /* Even-only and invert change which samples are read, so applying one
-         means reopening the recording rather than redrawing it.
+      /* Invert changes which samples are read, so applying it means
+         reopening the recording rather than redrawing it.
 
          Compared before acting, and only ever acted on when it differs --
          that is what stops two windows reopening each other in a loop. The
          reopen deliberately does not publish; the window that was clicked
-         already did. */
-      const wantEven = !!v.evenOnly, wantInv = !!v.invert;
-      if (v.evenOnly !== undefined
-          && (wantEven !== !!sess.evenOnly || wantInv !== !!sess.invert)) {
-        sess.evenOnly = wantEven;
+         already did. An `evenOnly` from a window older than this one is
+         ignored: there is one way to read a recording now. */
+      const wantInv = !!v.invert;
+      if (v.invert !== undefined && wantInv !== !!sess.invert) {
         sess.invert = wantInv;
         // Fire and forget: pollLink is not the place to wait on a reopen.
         reopenSameView(sess);
@@ -8667,10 +8639,9 @@ BARRY.views.xplore = (function () {
           // The frequency band and whether it is locked. Without these the
           // band was remembered by nothing and every reopen went back to
           // the built-in 20.
-          // How the file is read. Not a view preference: getting either
-          // wrong makes every panel wrong, and they were being forgotten
-          // the moment a recording was closed.
-          even_only: !!sess.evenOnly,
+          // How the file is read. Not a view preference: getting it
+          // wrong makes every panel wrong, and it was being forgotten the
+          // moment a recording was closed.
           invert: !!sess.invert,
           // What an unchecked channel does, and how visible the marks are.
           // Both are display choices somebody made on purpose about this
@@ -9460,8 +9431,8 @@ BARRY.views.xplore = (function () {
        a drag, and the tail of a refresh that has just awaited a fetch -- and
        any of them can fire after the pane's session has been closed or
        swapped. One hands over `sessionOf(p)`, which is null by then, and the
-       whole thing threw. Reproduced every run by ticking even-only, which
-       reopens the session while the panes are still redrawing.
+       whole thing threw. Reproduced every run by ticking a read option,
+       which reopens the session while the panes are still redrawing.
 
        Here rather than at each call site: with no session there is nothing
        to draw wherever the call came from, and the next timer somebody adds
@@ -10788,11 +10759,21 @@ BARRY.views.xplore = (function () {
        cross-window test has to be able to trigger without hunting for a
        button that moves depending on the pane's height. */
     toggleBad: (number, sess) => toggleBad(sess || active(), number),
-    /* Even-only and invert change what is read off disk, so a harness that
-       wants to test them syncing between windows has to be able to set them
-       the way the toggle does -- publish, then reopen. Exposed for
-       web/_dev/evensync.html. */
+    /* Invert changes what is read off disk, so a harness that wants to
+       test it syncing between windows has to be able to set it the way the
+       toggle does -- publish, then reopen. */
     publishFacts: (sess) => publishFacts(sess || active()),
+    /* A channel preset by name -- 'even', 'odd', 'first', 'second',
+       'good', 'all' -- the Ch menu's buttons without the menu. For a deep
+       link: Incisor's traces window opens on the even channels this way,
+       now that there is no even-only read to open it with. */
+    select: (kind, sess) => {
+      const s = sess || active();
+      if (!s) return;
+      quickSelect(s, kind);
+      render();
+      refreshSession(s);
+    },
     publishCuration: (sess, pointer) => publishCuration(sess, pointer),
     /* StrataScope's way of telling the other windows what it has. Exposed
        rather than reached for, because the sheet lives in strata.js and the

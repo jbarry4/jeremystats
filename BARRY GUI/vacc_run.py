@@ -198,8 +198,7 @@ def run_tool(tool, spec, bundle, job, csc):
         from backend import circuitrun
         return circuitrun.run_node(spec, job)
 
-    session = csc.open_session(path, even_only=bool(spec.get("even_only")),
-                               invert=bool(spec.get("invert", True)))
+    session = csc.open_session(path, invert=bool(spec.get("invert", True)))
 
     if tool == "incisor":
         from backend import incisor

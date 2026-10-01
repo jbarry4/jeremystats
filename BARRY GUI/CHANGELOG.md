@@ -15,6 +15,42 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.01.6 - Every channel, always: even-only reading is gone
+
+### Removed
+
+- **"Even channels only"** in Xplorefinder's More menu, and everything
+  behind it:
+  - the server's even read;
+  - the measurement that switched it on by itself for a 32-channel probe on
+    64 inputs (`nlx.channel_scheme`);
+  - the remembered choice per recording;
+  - the cross-window sync;
+  - the `?even=` deep link.
+
+  Every recording is read whole. To look at the even channels, use **Even**
+  in the Ch menu. It is a selection, so no channel indices change.
+
+### Changed
+
+- **Incisor's traces window** opens on the even channels with `?sel=even`, a
+  selection, rather than an even read. Any `?sel=` preset works on a deep
+  link, and an old `?even=1` link is read as `?sel=even`.
+- **Rebuilding a figure made from an even-only read** carries its channel
+  picks across by CSC number into the full channel list, and says so in the
+  plan. Those picks counted positions among the even channels only.
+- **Reopening after Invert** keeps the channel selection. It used to be
+  re-derived, because an even-only toggle moved every index.
+- **Caches.** Spectrum, Panorama, Doppler, Incisor and prewarm cache keys
+  still contain `even_only: false`, as a constant, so results cached
+  before this change are still found.
+- **Older clients.** A request or cluster call that still sends `even_only`
+  is ignored, not refused.
+
+Harness `_dev/evensync.html` is deleted, since what it tested no longer
+exists. The harnesses that opened recordings with `evenOnly: false`, or
+toggled even-only, now open them plainly.
+
 ## 2026.10.01.5 - A dual array's two panes are one recording
 
 ### Fixed

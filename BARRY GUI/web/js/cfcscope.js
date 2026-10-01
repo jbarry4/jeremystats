@@ -267,7 +267,6 @@ BARRY.cfc = (function () {
     const chan = firstChannel();
     return {
       path: sess.path,
-      evenOnly: sess.evenOnly,
       invert: sess.invert,
       label: (sess.info && sess.info.label) || sess.path,
       t0: sess.t0,

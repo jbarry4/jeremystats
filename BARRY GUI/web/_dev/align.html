@@ -26,10 +26,13 @@ async function until(fn, ms) {
   const sess = new URLSearchParams(location.search).get('session');
 
   setView('xplore');
-  const evenOnly = new URLSearchParams(location.search).get('all') !== '1';
-  const opened = await B.views.xplore.open(sess, { evenOnly });
+  // `?all=1` measures every channel; otherwise the even ones, the way it
+  // was measured when there was an even-only read.
+  const every = new URLSearchParams(location.search).get('all') === '1';
+  const opened = await B.views.xplore.open(sess);
   await until(() => D().querySelector('.pane-canvas-host canvas'), 25000);
-  if (!evenOnly && opened) {
+  if (!every && opened) B.views.xplore.select('even', opened);
+  if (every && opened) {
     // Saved view state remembers a subset; show every channel so the compact
     // lane path is what gets measured.
     opened.sel = new Set(opened.info.channels.map((c) => c.index));

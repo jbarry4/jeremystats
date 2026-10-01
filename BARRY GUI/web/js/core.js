@@ -3777,16 +3777,14 @@ BARRY.init = async function init() {
   const settling = [];
 
   if (cscPath && BARRY.views.xplore) {
-    /* `?even=1` forces the even-channel read, `?even=0` forces the whole
-       list, and no `even` at all leaves the recording to answer for itself
-       -- which is the default, because neither answer is right for both
-       rigs. Incisor's traces window asks for even, because a CSD wants one
-       line of contacts and that is what the 32-channel probe on 64 inputs
-       is. */
-    const evenArg = params.get('even');
-    const openOpts = evenArg == null ? undefined
-      : { evenOnly: evenArg !== '0' && evenArg !== 'false' };
-    settling.push(BARRY.views.xplore.open(cscPath, openOpts).then((sess) => {
+    /* `?sel=even` (or odd, first, second, good) opens on that channel
+       preset. Every channel is read either way; this is the Ch menu's
+       button, pressed on arrival. Incisor's traces window asks for even,
+       because a CSD wants one line of contacts. An old link's `?even=1`
+       is read as `?sel=even`. */
+    const selArg = params.get('sel')
+      || (/^(1|true)$/.test(params.get('even') || '') ? 'even' : null);
+    settling.push(BARRY.views.xplore.open(cscPath).then((sess) => {
       if (!sess) return;
       const t0 = parseFloat(params.get('t0'));
       const span = parseFloat(params.get('span'));
@@ -3801,6 +3799,9 @@ BARRY.init = async function init() {
       const panel = params.get('panel');
       if (panel && BARRY.views.xplore.state.panes[0]) {
         BARRY.views.xplore.state.panes[0].panel = panel;
+      }
+      if (selArg && BARRY.views.xplore.select) {
+        BARRY.views.xplore.select(selArg, sess);
       }
       BARRY.views.xplore.onShow();
       /* Loaded behind whatever is on screen. Said once, quietly: a

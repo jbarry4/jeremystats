@@ -100,10 +100,8 @@ const post = (u, b) => fetch(u, { method: 'POST',
   if (path) {
     say('');
     say('=== exporting a figure with a full recipe ===', 'hd');
-    // An even-only session has no CSC 3, so pick a number off the real
-    // inventory rather than inventing one.
-    const opened = await post('/api/csc/open',
-      { path, even_only: true, invert: true });
+    // Pick a number off the real inventory rather than inventing one.
+    const opened = await post('/api/csc/open', { path, invert: true });
     /* How this recording was being looked at before the harness touched it.
        Written back at the end -- see the last section. */
     var wasIdentity = opened.identity || {};
@@ -132,7 +130,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
       // rendering works lands in Results/_scratch and not in the gallery.
       // Forty-five "rebuild harness_*.png" were committed before this.
       body: JSON.stringify({ layout, format: 'png', dpi: 110, lane: 'scratch',
-        sessions: { default: { path, even_only: true, invert: true } } }),
+        sessions: { default: { path, invert: true } } }),
     });
     check('the export succeeded', res.ok, 'HTTP ' + res.status
           + (res.ok ? '' : ' ' + (await res.text()).slice(0, 160)));
@@ -170,7 +168,11 @@ const post = (u, b) => fetch(u, { method: 'POST',
     check('and the event marks', r.event_count === 2, String(r.event_count));
     check('and how the session was opened',
           (r.sessions || {}).default
-          && r.sessions.default.even_only === true,
+          && r.sessions.default.invert === true,
+          JSON.stringify(r.sessions));
+    check('with no even-only in it -- every channel is read now',
+          (r.sessions || {}).default
+          && !('even_only' in r.sessions.default),
           JSON.stringify(r.sessions));
     for (const s of plan.steps || []) {
       say('  ' + s.status.padEnd(8) + s.title.padEnd(32)

@@ -165,7 +165,7 @@ BARRY.views.comod = (function () {
 
   function body() {
     return {
-      path: ctx.path, even_only: ctx.evenOnly, invert: ctx.invert,
+      path: ctx.path, invert: ctx.invert,
       channel: q.channel, t0: q.t0, t1: q.t1,
       slow_lo: q.slow_lo, slow_hi: q.slow_hi, slow_step: q.slow_step,
       slow_bw: q.slow_bw || q.slow_step,

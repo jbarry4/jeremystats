@@ -189,8 +189,8 @@ let restore = null;   // {path, was} -- put back in the finally, regardless
   ck('it names the probe configuration',
      /Probe configuration:/.test(text())
      && text().indexOf(base.plan.probe_name) >= 0, text().slice(0, 180));
-  ck('it says whether the channels are read whole or even-only',
-     /even-numbered channels only|every channel/.test(text()),
+  ck('it says every channel is read',
+     /every channel/.test(text()) && !/even-numbered channels only/.test(text()),
      text().slice(0, 180));
   ck('it counts what will be read against the whole probe',
      text().indexOf(nAll + ' of ' + nProbe) >= 0, text().slice(0, 120));
@@ -222,18 +222,19 @@ let restore = null;   // {path, was} -- put back in the finally, regardless
   try { panes = JSON.parse(u.searchParams.get('panes') || '[]'); } catch (e) {}
   ck('the pane is a CSD', (panes[0] || {}).panel === 'csd',
      JSON.stringify(panes));
-  ck('it asks for the even channels', u.searchParams.get('even') === '1',
-     String(u.searchParams.get('even')));
+  ck('it asks for the even channels, as a selection',
+     u.searchParams.get('sel') === 'even' && !u.searchParams.has('even'),
+     u.search);
   ck('and a five second window', u.searchParams.get('span') === '5',
      String(u.searchParams.get('span')));
   ck('on the recording the panel is on',
      u.searchParams.get('csc') === path, String(u.searchParams.get('csc')));
   /* The window is a real pop-up and a harness cannot open one, so the other
      half of the arrangement is checked where it lives: the deep link only
-     means anything if the app reads `even` off it. */
+     means anything if the app reads `sel` off it. */
   const coreSrc = await (await fetch('/js/core.js')).text();
-  ck('and the app reads ?even off a deep link',
-     /params\.get\('even'\)/.test(coreSrc), 'core.js ignores it');
+  ck('and the app reads ?sel off a deep link',
+     /params\.get\('sel'\)/.test(coreSrc), 'core.js ignores it');
 
   head('Marking one more bad removes it from processing');
   const victim = (base.channels || []).find((c) => !c.bad);

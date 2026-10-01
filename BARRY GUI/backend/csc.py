@@ -41,7 +41,7 @@ def describe_path(path):
         return {"ok": False, "error": "Path not found: " + path}
 
     if os.path.isdir(path):
-        ncs_all = nlx.list_csc_files(path, even_only=False)
+        ncs_all = nlx.list_csc_files(path)
         mats = [f for f in sorted(os.listdir(path)) if f.lower().endswith(".mat")]
         if ncs_all:
             return {"ok": True, "kind": "ncs_folder", "path": path,
@@ -58,28 +58,25 @@ def describe_path(path):
     return {"ok": False, "error": "Unsupported file type: " + ext}
 
 
-def open_session(path, even_only=None, invert=True):
+def open_session(path, invert=True):
     """Open a session and return its channel inventory + timing metadata.
 
     A "demo:" path is a recording that is not on disk -- see demo.py. It
     exists so the Guide works on a laptop with nothing mounted, and it goes
     through the same code as everything else from here on.
 
-    `even_only=None` means "work it out", which is the default because
-    neither answer is right for both rigs. See nlx.channel_scheme: the old
-    32-channel probe left its odd AD channels empty, the 64-channel probe
-    fills all of them, and assuming either one silently halves or doubles
-    what anybody looks at. True or False still forces it.
+    Every channel is read. There was an even-channels-only read; see the
+    note in nlx.py on why it went.
     """
     if demo.is_demo(path):
-        return demo.open_session(path, even_only, invert)
+        return demo.open_session(path, invert)
     # A "vacc:" path is a recording on the cluster and not on this disk --
     # see vaccio.py. Here rather than in the route, so that every caller of
     # open_session gets it: the exporter, the panel renderer and the health
     # check all reach a recording through this function and none of them
     # should have to know where it is.
     if vaccio.is_vacc(path):
-        return vaccio.open_session(path, even_only=even_only, invert=invert)
+        return vaccio.open_session(path, invert=invert)
 
     info = describe_path(path)
     if not info.get("ok"):
@@ -87,10 +84,10 @@ def open_session(path, even_only=None, invert=True):
 
     kind = info["kind"]
     if kind == "ncs_folder":
-        return _open_ncs_folder(info["path"], even_only, invert)
+        return _open_ncs_folder(info["path"], invert)
     if kind == "ncs_file":
         folder = os.path.dirname(info["path"])
-        sess = _open_ncs_folder(folder, even_only, invert)
+        sess = _open_ncs_folder(folder, invert)
         if sess.get("ok"):
             return sess
         return _open_single_ncs(info["path"], invert)
@@ -105,15 +102,8 @@ def open_session(path, even_only=None, invert=True):
     return {"ok": False, "error": "Unrecognized session type."}
 
 
-def _open_ncs_folder(folder, even_only, invert):
-    scheme = None
-    if even_only is None:
-        scheme = nlx.channel_scheme(folder)
-        even_only = (scheme["scheme"] == "even")
-    files = nlx.list_csc_files(folder, even_only=even_only)
-    if not files:
-        files = nlx.list_csc_files(folder, even_only=False)
-        even_only = False
+def _open_ncs_folder(folder, invert):
+    files = nlx.list_csc_files(folder)
     if not files:
         return {"ok": False, "error": "No CSC*.ncs in " + folder}
 
@@ -162,11 +152,8 @@ def _open_ncs_folder(folder, even_only, invert):
         "ok": True, "source": "ncs", "path": folder,
         "name": os.path.basename(folder.rstrip("\\/")) or folder,
         "fs": float(fs), "adbitvolts": float(adbv), "duration_s": float(duration),
-        "even_only": bool(even_only), "invert": bool(invert),
-        # How the channel list was arrived at, so it is visible rather than
-        # assumed. `decided` is None when the caller forced it.
-        "channel_scheme": scheme,
-        "n_csc_files": len(nlx.list_csc_files(folder, even_only=False)),
+        "invert": bool(invert),
+        "n_csc_files": len(files),
         "channels": channels, "units": "microvolts",
     }
 
@@ -189,7 +176,7 @@ def _open_single_ncs(path, invert):
         "ok": True, "source": "ncs", "path": os.path.dirname(path),
         "name": os.path.basename(path),
         "fs": float(fs), "adbitvolts": float(adbv),
-        "duration_s": float(duration), "even_only": False, "invert": invert,
+        "duration_s": float(duration), "invert": invert,
         "channels": [{"index": 0, "number": num, "label": os.path.basename(path),
                       "file": path, "bad": False}],
         "units": "microvolts",
@@ -349,7 +336,7 @@ def _open_mat(path):
         "ok": True, "source": "mat", "path": path,
         "name": os.path.basename(path), "fs": float(fs),
         "duration_s": float(n_samp / fs) if fs else 0.0,
-        "even_only": False, "invert": False, "channels": channels,
+        "invert": False, "channels": channels,
         "units": "microvolts", "mat_var": p["var"], "n_samples": int(n_samp),
     }
 
