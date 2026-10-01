@@ -10436,6 +10436,46 @@ div.cir-m, .cir-m > summary {
                border-radius: var(--r-4); background: var(--bg); }
 .dpc-fig span { overflow-wrap: anywhere; }
 
+/* ---- The Monolith (driftmono.js): five steps, one primary ---- */
+.dmo-step-head { align-items: center; }
+.dmo-n { display: inline-flex; align-items: center; justify-content: center;
+         width: 22px; height: 22px; border-radius: var(--r-pill);
+         border: 1px solid var(--line); color: var(--text-3);
+         font: 600 var(--fs-11) var(--mono); flex: none; }
+.dmo-n.next { border-color: var(--accent-line); color: var(--accent);
+              background: var(--accent-soft); }
+.dmo-n.done { border-color: var(--ok); color: var(--ok); background: var(--ok-soft); }
+.dmo-step .dpc-head .hint { overflow-wrap: anywhere; min-width: 0; }
+.dmo-now { margin: 0 0 var(--sp-4); font-size: var(--fs-12); color: var(--text-2);
+           overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.dmo-bar { margin-top: var(--sp-4); }
+.dmo-bar .comod-eta { white-space: normal; }
+.dmo-where { display: flex; align-items: center; flex-wrap: wrap;
+             gap: var(--sp-6) var(--sp-10); margin: var(--sp-4) 0 var(--sp-8); }
+.dmo-k { font-size: var(--fs-11); color: var(--text-3); }
+.dmo-where-say { margin: 0; flex: 1 1 280px; font-size: var(--fs-11);
+                 overflow-wrap: anywhere; min-width: 0; }
+.dmo-cost { margin: var(--sp-4) 0; font-size: var(--fs-12); color: var(--text);
+            overflow-wrap: anywhere; max-width: 92ch; }
+.dmo-ok { margin: var(--sp-4) 0; font-size: var(--fs-12); color: var(--ok); }
+.dmo-days td.dmo-cell { display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+.dmo-dot { font: var(--fs-10) var(--mono); padding: 1px var(--sp-6);
+           border-radius: var(--r-pill); border: 1px solid var(--line);
+           color: var(--text-3); }
+.dmo-dot.complete { border-color: var(--ok); color: var(--ok); background: var(--ok-soft); }
+.dmo-dot.partial { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+.dmo-dot.missing { border-style: dashed; }
+.dmo-poll { margin-top: var(--sp-8); }
+.dmo-tally { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin: var(--sp-4) 0; }
+.dmo-chip { font-size: var(--fs-11); padding: 1px var(--sp-8); border-radius: var(--r-pill);
+            border: 1px solid var(--line); color: var(--text-2);
+            font-variant-numeric: tabular-nums; }
+.dmo-chip.done { border-color: var(--ok); color: var(--ok); }
+.dmo-chip.running { border-color: var(--accent-line); color: var(--accent); }
+.dmo-chip.failed { border-color: var(--err); color: var(--err); }
+.dmo-log { max-height: 10em; margin: var(--sp-4) 0 var(--sp-8); }
+.dmo-art p { margin: 0 0 var(--sp-6); overflow-wrap: anywhere; }
+
 /* ---- "Use in Drift", from Results ---- */
 .dr-use .mb .seg { margin-top: var(--sp-4); }
 
@@ -11798,6 +11838,109 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .rc-bulk tr.ready td:first-child { font-weight: 600; }
 .rc-bulk td.dim { color: var(--text-3); }
 .rc-done-list { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+
+/* ---- Root Canal, Pooled (ROOTCANAL-POOL-SPEC.md) --------------------------
+   The same space and flat views as Single, drawn by the same code; these
+   are the parts only a pool has. Tokens only, and nothing truncated: long
+   labels wrap. */
+.rc-viewbar { display: flex; flex-wrap: wrap; align-items: center;
+              gap: var(--sp-6) var(--sp-12); flex: none; }
+.rc-viewbar .hint { margin: 0; min-width: 0; flex: 1 1 260px; }
+.seg.rc-viewseg { flex: none; }
+.rc-shelf, .rc-members { display: flex; flex-direction: column;
+                         gap: var(--sp-6); flex: none; }
+.rc-shelf-empty, .rc-pool-empty { padding: var(--sp-8) 0; }
+.rc-shelf-list .bm-row.rc-shelf-row { align-items: center; flex-wrap: wrap; }
+.rc-shelf-row .person-what { flex: 1 1 160px; min-width: 0; }
+.cur-set.rc-pool-card { flex: none; }
+.stat-chip.rc-unbanked { flex: none; }
+.rc-pool-cands { width: 100%; }
+.rc-pool-cands td, .rc-pool-cands th { font-size: var(--fs-115);
+                                       padding: var(--sp-2) var(--sp-6); }
+.rc-pool-cands tr.on td { color: var(--text); font-weight: 600; }
+.rc-pool-cands td .flagchip { margin-right: var(--sp-4); }
+.rc-pool-pick { flex: none; }
+.rc-types { display: flex; flex-wrap: wrap; gap: var(--sp-6) var(--sp-16); }
+.rc-type { display: inline-flex; flex-wrap: wrap; align-items: center;
+           gap: var(--sp-4) var(--sp-8); }
+.rc-type-k { font-family: var(--mono); font-size: var(--fs-115);
+             color: var(--text); flex: none; }
+.rc-in.rc-type-in { width: 150px; font-family: inherit; }
+.btn.rc-pool-run, .btn.rc-save { white-space: normal; text-align: left;
+                                 max-width: 100%; }
+.rc-pool-top { align-items: flex-start; }
+.rc-scale { margin: 0; }
+.stat-chip.rc-switch-count { flex: none; }
+.rc-pool-ctl { display: flex; flex-wrap: wrap; align-items: center;
+               gap: var(--sp-6) var(--sp-16); }
+.rc-colour, .rc-focus { font-size: var(--fs-12); max-width: 100%; }
+.rc-calls { font-family: var(--mono); }
+
+/* The legend's swatches: class colours are the semantic tokens; the
+   categorical ones arrive as `var(--cN)` on the element. */
+.rc-pool-legend { row-gap: var(--sp-4); }
+.rc-lg-h { font-size: var(--fs-105); color: var(--text-3); font-weight: 600; }
+.rc-lg-m.rc-lg-same { background: var(--text-2); }
+.rc-lg-m.rc-lg-d2i { background: var(--warn); }
+.rc-lg-m.rc-lg-i2d { background: var(--accent); }
+.rc-lg-m.rc-lg-cat { border-radius: var(--r-pill); }
+.rc-lg-m.rc-lg-tri { border-radius: 0;
+                     clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.rc-lg-m.rc-lg-itri { border-radius: 0;
+                      clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.rc-lg-m.rc-lg-faint { opacity: .25; background: var(--text-2); }
+.rc-lg-note { margin: 0; font-size: var(--fs-10); flex: 1 1 100%; }
+.rc-ev-why.rc-ev-away { color: var(--text-2); }
+
+/* Clear vs blur. */
+.rc-gmm, .rc-switch { display: flex; flex-direction: column;
+                      gap: var(--sp-8); flex: none; }
+.rc-gmm > .hint { margin: 0; max-width: 100ch; }
+.rc-gmm-row { display: grid; gap: var(--sp-12);
+              grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.rc-gmm-b { display: flex; flex-direction: column; gap: var(--sp-4);
+            min-width: 0; padding: var(--sp-8) var(--sp-10);
+            background: var(--bg-2); border: 1px solid var(--line);
+            border-radius: var(--radius-sm); }
+.rc-gmm-b.rc-gmm-focus { border-color: var(--accent-line); }
+.rc-gmm-b.rc-gmm-pool { border-color: var(--line); }
+.rc-verdict { margin: 0; font-size: var(--fs-125); color: var(--text); }
+.rc-gmm-tab { width: max-content; max-width: 100%; }
+.rc-gmm-tab th, .rc-gmm-tab td { font-size: var(--fs-115);
+  padding: var(--sp-2) var(--sp-10); text-align: right;
+  font-variant-numeric: tabular-nums; }
+.rc-gmm-tab th:first-child { text-align: left; }
+.rc-gmm-tab.rc-gmm-comp th { text-align: right; }
+.rc-hists { display: grid; gap: var(--sp-10);
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.rc-canvas.rc-hist { flex: none; }
+
+/* Identity switches. */
+.rc-sw-top { display: flex; flex-wrap: wrap; align-items: center;
+             gap: var(--sp-8) var(--sp-16); }
+.rc-crosstab { width: max-content; }
+.rc-crosstab th, .rc-crosstab td { font-size: var(--fs-12);
+  padding: var(--sp-2) var(--sp-12); text-align: right;
+  font-variant-numeric: tabular-nums; }
+.rc-crosstab td.rc-sw-off { color: var(--warn); font-weight: 600; }
+.rc-sw-rate { margin: 0; flex: 1 1 260px; min-width: 0;
+              font-size: var(--fs-12); }
+.rc-sw-tables { display: grid; gap: var(--sp-12);
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.rc-sw-t { display: flex; flex-direction: column; gap: var(--sp-4);
+           min-width: 0; overflow-x: auto; }
+.rc-sw-tab { width: 100%; }
+.rc-sw-tab th, .rc-sw-tab td { font-size: var(--fs-11);
+  padding: var(--sp-2) var(--sp-6); text-align: right;
+  font-variant-numeric: tabular-nums; }
+.rc-sw-tab th:first-child, .rc-sw-tab td:first-child { text-align: left; }
+.rc-sw-tab tr.on td { font-weight: 600; }
+.mini.rc-focus-row { white-space: normal; text-align: left; }
+.rc-pool-refused { margin: 0; }
+.stat-chip.rc-gmm-support { align-self: flex-start; }
+.rc-gmm-tab.rc-gmm-agree th { white-space: normal; max-width: 34ch; }
+.rc-gmm-tab.rc-gmm-x th:first-child { white-space: normal; }
+.rc-ev-cell.rc-hist-split { align-self: start; }
 
 /* Nothing here animates except the loader, which carries its own
    reduced-motion rule; the bar's width transition is stopped here. */

@@ -395,6 +395,74 @@ register_kind("drift", _drift_key, _drift_name, _drift_summary,
               _drift_gids, "drift")
 
 
+# The Monolith (backend/monolith.py): one sweep of every coupling measure,
+# 1-55 Hz, pooled over rats. One artifact per analysis; each build of it is
+# a version. The payload is what the page needs to say what it shows -- the
+# points of interest, the counts, what went in -- and names the data files
+# beside it by digest; the arrays themselves are tens of megabytes and stay
+# on the machine that built them.
+def _monolith_key(subject):
+    _need(subject, ("analysis",), "monolith")
+    return "monolith|%s" % subject["analysis"]
+
+
+def _monolith_name(subject):
+    return subject.get("name") or "Monolith · %s" % subject["analysis"]
+
+
+def _monolith_summary(payload):
+    p = payload or {}
+    c = p.get("counts") or {}
+    return {"rats": len(p.get("rats") or []),
+            "tested": c.get("tested"), "p05": c.get("p05"),
+            "points": len((p.get("top") or {}).get("raw") or [])}
+
+
+def _monolith_gids(subject):
+    return [g for g in (subject.get("gids") or []) if g]
+
+
+register_kind("monolith", _monolith_key, _monolith_name, _monolith_summary,
+              _monolith_gids, "monolith")
+
+
+# Root Canal's Pooled view (backend/rootcanalpool.py): several recordings'
+# Root Canal answers pooled and re-clustered, asking whether dentate spikes
+# and IEDs are two groups or one spectrum. A pool is its own subject: its key
+# is a MINTED `pool_key`, not derived from the members, because the same
+# members pooled twice on purpose -- two different questions somebody wants
+# to keep apart -- must be two artifacts. Saving the same pool again with
+# other members or overrides is a version of it. The person's label is the
+# artifact's nickname, and the name is worked out from what is in it.
+def _rcpool_key(subject):
+    _need(subject, ("pool_key",), "Root Canal pool")
+    return "rootcanal_pool|%s" % subject["pool_key"]
+
+
+def _rcpool_name(subject):
+    return subject.get("name") or "Root Canal pool"
+
+
+def _rcpool_summary(payload):
+    p = payload or {}
+    mem = p.get("members") or []
+    g = p.get("gmm") or {}
+    return {"members": len(mem),
+            "unbanked": sum(1 for m in mem if not m.get("banked")),
+            "events": p.get("n"),
+            "mice": len({m.get("mouse_key") for m in mem}),
+            "delta_bic": g.get("delta"),
+            "switch_rate": (p.get("switches") or {}).get("rate")}
+
+
+def _rcpool_gids(subject):
+    return [g for g in (subject.get("gids") or []) if g]
+
+
+register_kind("rootcanal_pool", _rcpool_key, _rcpool_name, _rcpool_summary,
+              _rcpool_gids, "Root Canal pool")
+
+
 def subject_key(kind, subject):
     if kind not in KINDS:
         raise ArtifactError(

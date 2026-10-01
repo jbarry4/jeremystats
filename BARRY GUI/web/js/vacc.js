@@ -959,55 +959,126 @@ BARRY.vacc = (function () {
   const bytes = (n) => (typeof fmtBytes === 'function' ? fmtBytes(n || 0)
                                                        : (n || 0) + ' B');
 
+  /* Where it goes is asked every time, Scratch first (2026-10-01): the
+     lab's shared Jarvis Data, or Temp, the lab's gpfs3tmp space, which
+     takes any number of files and is purged on a schedule. Each choice is
+     planned on its own, because what is already there differs between
+     them, and the button says what the chosen one would send. */
+  const DEST_SAY = {
+    scratch: 'The lab’s shared space, Jarvis Data. Processing space: VACC may clear it, and this is never the only copy.',
+    temp: 'The lab’s temporary space (gpfs3tmp). Takes any number of files, and is purged on a schedule.',
+  };
+
   async function upload(gids) {
     const want = (gids || []).filter(Boolean);
     if (!want.length) {
       toast('None of those is a registered recording.', 'warn');
       return null;
     }
-    let plan;
+    const plans = {};
+    let dest = 'scratch';
     try {
       toast('Working out what would be sent…', null, 2500);
-      plan = await apiPost('/api/vacc/upload/plan', { gids: want });
+      plans[dest] = await apiPost('/api/vacc/upload/plan', { gids: want, dest });
     } catch (e) {
       toast(e.message, 'err', 9000);
       return null;
     }
-    const ready = (plan.items || []).filter((i) => !i.why);
-    const body = el('div', { class: 'vacc-up' }, [
-      el('p', { text: 'To ' + (plan.dest_root || 'Jarvis Data') + ', as '
-          + 'project / mouse / recording. A file already there at the same '
-          + 'size is skipped, so uploading again sends only what is missing. '
-          + 'The copy here is only read.' }),
-      (plan.shared || {}).why ? el('p', { class: 'warn-line',
-                                          text: plan.shared.why }) : null,
-      el('ul', { class: 'fix-steps' }, ready.map((i) => el('li', { text:
-        i.label + ' — ' + (i.n_send
-          ? i.n_send + ' file(s), ' + bytes(i.bytes)
-            + (i.n_skip ? ', ' + i.n_skip + ' already there' : '')
-          : 'everything already there') }))
-        .concat((plan.blocked || []).map((i) => el('li', {
-          class: 'vacc-up-no', text: i.label + ' — ' + i.why })))),
-      el('p', { class: 'hint', text: 'Scratch is processing space: VACC may '
-          + 'clear it without notice, and this is never the only copy.' }),
-    ].filter(Boolean));
-    if (!plan.files) {
-      await BARRY.confirm('Upload to VACC', body, 'Close');
-      return null;
-    }
+    const dests = plans[dest].dests && plans[dest].dests.length ? plans[dest].dests
+      : [{ id: 'scratch', label: 'Scratch', root: plans[dest].dest_root }];
+    const box = el('div', { class: 'vacc-up' });
+    let asking = false;
+    const okBtn = () => {
+      const mb = box.closest('.mb');
+      const mf = mb && mb.nextElementSibling;
+      return mf ? mf.lastElementChild : null;
+    };
+    const draw = () => {
+      const plan = plans[dest];
+      box.innerHTML = '';
+      box.appendChild(el('div', { class: 'vacc-up-where' }, [
+        el('span', { class: 'vacc-k', text: 'Upload to' }),
+        el('div', { class: 'seg', role: 'radiogroup' }, dests.map((d) => el('button', {
+          class: d.id === dest ? 'active' : '', 'data-dest': d.id, role: 'radio',
+          'aria-checked': d.id === dest ? 'true' : 'false', text: d.label || d.id,
+          disabled: asking ? 'disabled' : null,
+          onclick: () => choose(d.id) }))),
+      ]));
+      const d = dests.find((x) => x.id === dest) || {};
+      box.appendChild(el('p', { class: 'hint', text: (d.say || DEST_SAY[dest] || '') }));
+      if (asking || !plan) {
+        box.appendChild(el('p', { class: 'hint', text: 'Working out what ' + (d.label || dest)
+          + ' already holds…' }));
+      } else {
+        const ready = (plan.items || []).filter((i) => !i.why);
+        box.appendChild(el('p', { text: 'To ' + (plan.dest_root || d.root || 'Jarvis Data') + ', as '
+            + 'project / mouse / recording. A file already there at the same '
+            + 'size is skipped, so uploading again sends only what is missing. '
+            + 'The copy here is only read.' }));
+        if ((plan.shared || {}).why && dest === 'scratch') {
+          box.appendChild(el('p', { class: 'warn-line', text: plan.shared.why }));
+        }
+        box.appendChild(el('ul', { class: 'fix-steps' }, ready.map((i) => el('li', { text:
+          i.label + ' — ' + (i.n_send
+            ? i.n_send + ' file(s), ' + bytes(i.bytes)
+              + (i.n_skip ? ', ' + i.n_skip + ' already there' : '')
+            : 'everything already there') }))
+          .concat((plan.blocked || []).map((i) => el('li', {
+            class: 'vacc-up-no', text: i.label + ' — ' + i.why })))));
+        if (!plan.files) {
+          box.appendChild(el('p', { class: 'hint', text: 'Nothing to send to '
+            + (d.label || dest) + ': everything is already there.' }));
+        }
+      }
+      const b = okBtn();
+      if (b) {
+        const n = plan && !asking ? plan.files : 0;
+        b.disabled = n ? null : 'disabled';
+        b.textContent = n ? 'Upload ' + bytes(plan.bytes) + ' to ' + (d.label || dest)
+                          : 'Nothing to upload';
+      }
+    };
+    const choose = async (id) => {
+      if (id === dest || asking) return;
+      dest = id;
+      if (!plans[id]) {
+        asking = true;
+        draw();
+        try {
+          plans[id] = await apiPost('/api/vacc/upload/plan', { gids: want, dest: id });
+        } catch (e) {
+          asking = false;
+          toast(e.message, 'err', 9000);
+          dest = 'scratch';
+          draw();
+          return;
+        }
+        asking = false;
+      }
+      draw();
+    };
+    draw();
     let started = null;
-    const ok = await BARRY.confirm('Upload to VACC', body,
-      'Upload ' + bytes(plan.bytes) + ' to VACC', false, async () => {
+    const first = plans[dest];
+    const asked = BARRY.confirm('Upload to VACC', box,
+      first.files ? 'Upload ' + bytes(first.bytes) + ' to Scratch' : 'Nothing to upload',
+      false, async () => {
+        const plan = plans[dest];
+        if (!plan || !plan.files) throw new Error('Nothing to send there.');
         started = await apiPost('/api/vacc/upload', {
-          gids: ready.filter((i) => i.n_send).map((i) => i.gid), confirm: true });
+          gids: (plan.items || []).filter((i) => !i.why && i.n_send).map((i) => i.gid),
+          dest, confirm: true });
       });
+    draw();               // the dialog is up now: the button can be reached
+    const ok = await asked;
     if (!ok || !started || !started.job) return null;
     track(started.job);
     /* Names the place it is actually showing, which is the pad somebody
        is already looking at -- they picked the recordings there. It used
        to say "the VACC panel", which opens from the command palette and
        nowhere else. */
-    toast('Uploading ' + started.n + ' recording(s) to VACC. Progress is '
+    toast('Uploading ' + started.n + ' recording(s) to VACC ('
+          + ((dests.find((x) => x.id === dest) || {}).label || dest) + '). Progress is '
           + 'under Everything VACC knows.', 'ok', 7000);
     return started.job.id;
   }
@@ -1108,6 +1179,12 @@ BARRY.vacc = (function () {
            get nUploads() { return uploads.size; },
 
            upload, _uploads: uploads,
+           /* Hand in a job snapshot as if a poll had returned it.
+              `track` is internal -- it also starts the timer -- and the
+              upload harness needs to drive the display without a cluster
+              and without three seconds between frames. Same path the real
+              poll takes, so what is tested is what runs. */
+           feed: (snap) => { uploads.set(snap.id, snap); uploadsChanged(); },
            open, pathFor, watch,
            offerSignIn, showSignIn, signOut,
            get last() { return last; },

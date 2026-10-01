@@ -191,9 +191,9 @@ function unweighted(stages) {
     }
     check('the panel has settled', steady >= 15);
     const segs = $$('#drModes .seg button');
-    check('two tabs: Compare two groups | Precon1 → Precon4',
-          segs.length === 2 && segs[0].textContent === 'Compare two groups'
-          && segs[1].textContent === 'Precon1 → Precon4',
+    check('three tabs: Compare two groups | Precon1 → Precon4 | Monolith',
+          segs.length === 3 && segs[0].textContent === 'Compare two groups'
+          && segs[1].textContent === 'Precon1 → Precon4' && segs[2].textContent === 'Monolith',
           segs.map((b) => b.textContent).join(' | '));
     segs[1].click();
     await untilN(() => host() && !host().hidden && host().querySelector('.dpc-cost'), 60);
@@ -635,6 +635,12 @@ function unweighted(stages) {
   say('note', out.querySelectorAll('.ok').length + ' passed, ' + bad + ' failed');
   document.title = 'driftprecon: ' + out.querySelectorAll('.ok').length
                  + ' pass ' + bad + ' fail';
+  // The app in the frame polls for as long as it is open, and every poll is
+  // a real request -- which holds Edge's virtual time to the wall clock, so
+  // the runner's 600 s budget became 600 s of waiting and the page TIMED OUT
+  // at 280 s with every check passed. Empty the frame and the page goes idle:
+  // virtual time runs out at once and the dump is taken.
+  document.getElementById('app').src = 'about:blank';
 } catch (e) {
   say('bad', 'CRASH ' + (e && e.message));
   say('note', String((e && e.stack) || ''));

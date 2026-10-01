@@ -66,7 +66,7 @@ const NL = String.fromCharCode(10);
 const ENTRY = '46fd29a77cc7';
 
 (async () => {
-  let W = null, D = null, ev = null;
+  let W = null, D = null, ev = null, viewWas;
   try {
   const frame = document.getElementById('app');
   await new Promise((r) => frame.addEventListener('load', r, { once: true }));
@@ -116,6 +116,13 @@ const ENTRY = '46fd29a77cc7';
   /* ================================================================== */
   head('THE DENTIST HAS FIVE STEPS, AND THIS IS THE FOURTH');
 
+  /* SINGLE, said rather than assumed. The Single | Pooled choice is
+     remembered per viewer, and the pooled harness runs in the same browser
+     profile; a suite that inherited "pooled" would be checking a different
+     view. What was remembered is put back at the end. */
+  viewWas = ev('(function(){ try { return localStorage.getItem('
+                     + '"barry.rootcanal.view"); } catch (e) { return null; } })()');
+  ev('BARRY.rootcanal._setView("single")');
   ev('setView("toolkit")');
   await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
   const dentist = Array.from(D().querySelectorAll('.tk-bundle'))
@@ -1041,6 +1048,12 @@ const ENTRY = '46fd29a77cc7';
            + ' delete W.__rcFetch; } if (W.__rcLog) { BARRY.activity.log ='
            + ' W.__rcLog; delete W.__rcLog; } })()');
         ev('BARRY.rootcanal._closeXplore()');
+        if (typeof viewWas !== 'undefined') {
+          ev('(function(v){ try { if (v == null) localStorage.removeItem('
+             + '"barry.rootcanal.view"); else localStorage.setItem('
+             + '"barry.rootcanal.view", v); } catch (e) {} })('
+             + JSON.stringify(viewWas) + ')');
+        }
         ev('BARRY.rootcanal._clearFlips()');
         ev('BARRY.rootcanal._resetCentres()');
         ev('(function(){ var C = window.CanvasRenderingContext2D.prototype;'
@@ -1052,5 +1065,7 @@ const ENTRY = '46fd29a77cc7';
   say('');
   say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
   document.title = 'rootcanal: ' + pass + ' ok, ' + fail + ' fail';
+  /* Unloaded, or headless Edge never dumps and the runner says TIMED OUT. */
+  try { document.getElementById('app').src = 'about:blank'; } catch (e) { /* ok */ }
 })();
 </script></body></html>

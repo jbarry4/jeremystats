@@ -132,20 +132,23 @@ BARRY.drift = (function () {
     host = host || document.getElementById('tkResult');
     if (!host) return;
     if (BARRY.circuit && BARRY.circuit.loadRegions) BARRY.circuit.loadRegions();
-    const precon = modeNow() === 'precon';
+    const mode = modeNow();
+    const precon = mode === 'precon';
     host.appendChild(el('div', { class: 'arc-spark dr-panel' }, [
       modeBar(),
-      el('div', { class: 'dr-tab', id: 'drBuild', hidden: precon ? 'hidden' : null }, [
+      el('div', { class: 'dr-tab', id: 'drBuild', hidden: mode === 'build' ? null : 'hidden' }, [
         el('div', { class: 'card dr-groups', id: 'drGroups' }),
         el('div', { class: 'card dr-pre', id: 'drPre' }),
         el('div', { class: 'card dr-pick', id: 'drPick' }),
         el('div', { id: 'drRun' }),
       ]),
       el('div', { class: 'dr-tab dpc', id: 'drPrecon', hidden: precon ? null : 'hidden' }),
+      el('div', { class: 'dr-tab dpc dmo', id: 'drMono', hidden: mode === 'mono' ? null : 'hidden' }),
       el('div', { id: 'drShown' }),
     ]));
     render();
     if (precon) BARRY.driftPrecon.paint(document.getElementById('drPrecon'));
+    if (mode === 'mono') BARRY.driftMono.paint(document.getElementById('drMono'));
     if (st.rows === null && !st.rowsErr) loadRows();
     else if (st.rowsKey !== chosenKey()) loadRows();
   }
@@ -154,13 +157,15 @@ BARRY.drift = (function () {
      analysis (driftprecon.js), which files its own circuits and drifts.
      Which one is open is remembered per viewer; a drift shown below belongs
      to the tab that showed it. */
-  const MODES = [['build', 'Compare two groups'], ['precon', 'Precon1 → Precon4']];
+  const MODES = [['build', 'Compare two groups'], ['precon', 'Precon1 → Precon4'],
+                 ['mono', 'Monolith']];
   const MODE_KEY = 'barry.drift.mode';
   function modeNow() {
     if (!st.mode) {
       try { st.mode = localStorage.getItem(MODE_KEY) || 'build'; } catch (e) { st.mode = 'build'; }
     }
     if (st.mode === 'precon' && !BARRY.driftPrecon) st.mode = 'build';
+    if (st.mode === 'mono' && !BARRY.driftMono) st.mode = 'build';
     return MODES.some(([id]) => id === st.mode) ? st.mode : 'build';
   }
   function modeBar() {
@@ -171,7 +176,9 @@ BARRY.drift = (function () {
         onclick: () => setMode(id) }))),
       el('span', { class: 'hint', text: now === 'precon'
         ? 'The whole analysis for DEWEY r3–r11: it makes the circuits and the drifts itself.'
-        : 'Put circuits in two groups and see what differs between them.' }),
+        : now === 'mono'
+          ? 'Every measure from 1 to 55 Hz, Precon1 → Precon4, on the VACC: upload, check, run, fetch, view.'
+          : 'Put circuits in two groups and see what differs between them.' }),
     ]);
   }
   function setMode(id) {
@@ -183,10 +190,15 @@ BARRY.drift = (function () {
     if (bar) bar.replaceWith(modeBar());
     const build = document.getElementById('drBuild');
     const pre = document.getElementById('drPrecon');
+    const mono = document.getElementById('drMono');
     if (build) build.hidden = id !== 'build';
     if (pre) {
       pre.hidden = id !== 'precon';
       if (id === 'precon') BARRY.driftPrecon.paint(pre);
+    }
+    if (mono) {
+      mono.hidden = id !== 'mono';
+      if (id === 'mono') BARRY.driftMono.paint(mono);
     }
     renderShown();
   }

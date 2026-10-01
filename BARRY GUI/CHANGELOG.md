@@ -15,6 +15,143 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.01.2 - The Monolith: every measure, 1–55 Hz, on the VACC
+
+### Added
+
+- **The Monolith** (Drift → Monolith). The Precon1 → Precon4 change, measured
+  at every whole hertz from 1 to 55 Hz (a band of ±15% around each, never
+  narrower than ±0.5 Hz, cut at 55 Hz so none reaches the 60 Hz notch), plus
+  theta, beta and low gamma as their own rows. It uses fourteen measures:
+  - coherence and imaginary coherence;
+  - raw and envelope cross-correlation (lag up to two cycles);
+  - amplitude r at zero lag, and orthogonalised envelope r;
+  - PLV, PPC, PLI, wPLI and debiased wPLI;
+  - spectral Granger both ways, and its net.
+
+  It also measures each region's own power and the phase–amplitude coupling
+  between and within regions. The windows are the four 10 s states, plus
+  the three transitions: −3/+3 s for bands up to 12 Hz, and −1/+2 s above.
+  Rats are pooled exactly as the Precon drifts were: raw and minus FP, at
+  least five rats, DerSimonian–Laird with Hartung–Knapp. **Every p is
+  uncorrected, and every page says so**, beside how many entries chance
+  alone would give.
+- **Five steps, one button each**: Upload, Check VACC status, Run VACC job,
+  Fetch, View Monolith Artifact. Only the next step's button is the primary
+  one. Each step works like this:
+  - The upload sends the 48 folders (each rat-day's SPC, FP1 and FP2) as
+    Cheetah recorded them: every CSC* file however it is named, the video
+    (VT*.nvt/.mp4/.smi), Events.nev and Cheetah's logs. Anything processed
+    into the folders afterwards (a .mat, a figure, a CSV, a results folder)
+    stays here. In these 48 folders nothing was processed, so all 2,439
+    files go: 250 GB. It goes six files at a time (measured at about
+    80 MB/s; one stream is about 10). Pressing it again carries on from
+    where it stopped. A manifest made under any other file rule is made
+    again rather than used.
+  - The check lists both places in one call and compares them file by file
+    with the copy here.
+  - The run is one slurm array: 144 tasks, one per rat-day × kind × band
+    chunk, at most 100 at once, on the short partition. Each task runs its
+    own copy of the code.
+  - The fetch happens only when pressed. The answers come home in one
+    stream and are pooled here, then filed as a `monolith` artifact.
+- **The page** (`/monolith.html`) has these parts:
+  - a node-edge circuit;
+  - to its right, the layer flip, state or transition, the window, a slider
+    over every frequency with theta, beta and low gamma to snap to, the
+    measure, the significance slider (stricter to the right), Granger
+    arrows and node power;
+  - the top 10 points of interest, expanding to 50. Each snaps the view to
+    itself. They are ranked by how many rats moved the same way and then by
+    p, with at most three per region pair. An entry within 2 Hz in the same
+    window and measure as one already listed is the same finding, and is
+    listed under it;
+  - a strip showing where in the spectrum things pass;
+  - PAC grids, and a PAC circuit for any cell.
+- **The ghost.** Click an edge and it lifts out of the circuit, turning
+  until its two regions sit level. Click it and it opens into one edge per
+  rat; a rat opens into its two days; a day opens into every cue pair (and,
+  minus FP, every rest epoch). Hovering anything gives its numbers, down to
+  the wires each cue pair was read on. The whole drill-down is one request.
+  That request recomputes the entry with the scalar drift functions, and
+  says whether they agree with the arrays.
+
+### Changed
+
+- **Upload to VACC asks where, every time**: Scratch (Jarvis Data) is
+  chosen to start with, and Temp (`/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp`,
+  any number of files, purged on a schedule) is the other choice. Each is
+  planned on its own, and the button says which one it is uploading to.
+  Copies in Temp are found by the inventory, like copies in Jarvis Data.
+  Files go six at a time.
+
+### Checked
+
+- `tools/check_sweep.py` (47): the engine on signals whose answers are
+  known:
+  - The named bands equal `coupling.band_metrics`.
+  - Raw cc in a 1 Hz band equals coupling's own cross-correlation.
+  - Volume conduction fools coherence and PLV, and none of the lag-blind
+    measures.
+  - PPC and debiased wPLI average zero on independent noise. PLV does not.
+  - Granger matches a VAR's closed form in one direction, and is near zero
+    in the other.
+  - PAC is found at its cell and in the right direction.
+- `tools/check_sweep_real.py` (8): one real cue pair through the node code.
+  - The 765 named-band numbers equal the circuits'.
+  - Every region is read on the circuits' wire.
+  - The slow windows' clipping is measured on the node, and no lost wire is
+    read.
+- `tools/check_monolith.py` (108): the pooling is `drift.pool_rats` +
+  `hk_test` entry by entry. What Cheetah recorded goes -- every CSC* file
+  (oddly named ones included), the video, the events, the logs -- and a
+  .mat or a figure put into the folder on disk never reaches the cluster.
+  It also covers the folder and task logic, the
+  submit script, the poll and re-run, a build end to end with a planted
+  change, and every route with the cluster stood in for.
+  CONTROL: with no change at all and real-sized days, 5.5% of entries come
+  out p < .05.
+- `tools/test_vaccupload.py`: the Scratch-or-Temp choice, and parallel
+  streams.
+- Harnesses: `monolith.html` (54) and `driftmono.html` (44) are new;
+  `vaccupload.html` (21) and `driftprecon.html` (89) are updated for the
+  destination choice and the third tab.
+- A harness with the app in a frame now empties the frame when it is done.
+  The app's polling held Edge's virtual time to the wall clock, so
+  `driftprecon.html` timed out at 280 s with every check passed.
+- A run is refused on older code only when the code is the Monolith's own
+  (`monolith.CODE`, checked against what a run really imports). An edit to
+  another tool does not block it.
+
+## 2026.10.01.1 - Upload progress is where the upload was started
+
+### Fixed
+
+- **"Progress is in the VACC panel" pointed at a room with no door.** That
+  panel opens from the command palette and nowhere else -- the rail chip
+  toggles the mode, it does not open anything -- so somebody told to go and
+  look had nowhere to go. The upload is started from Sessions, with the
+  recordings picked there, so the progress now appears there: an **Uploads**
+  section in the cluster pad, above the tab strip, because an upload is
+  about the pad rather than about which way you are looking at the
+  recordings.
+
+- **It did not move.** `pollUploads` updated its map every three seconds and
+  redrew nothing, so even the status panel showed whatever was true when it
+  opened. A progress display that does not progress is worse than none,
+  because it reads as stuck. Watchers are notified once per tick -- three
+  recordings finishing in the same three seconds is one redraw, not three --
+  and the panel redraws itself as well.
+
+### Changed
+
+- **One renderer, two places.** `BARRY.vacc.uploadsBox()` builds a fresh
+  node per call, so the status panel and the Sessions pad can both hold one
+  and say the same words. A second copy of the wording is a second copy to
+  keep in step, and the two would drift on the first change.
+
+- The toast names the place it is actually showing.
+
 ## 2026.09.30.3 - Nobody at Jarvis, nothing sent to the cloud
 
 ### Changed

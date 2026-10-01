@@ -174,6 +174,15 @@ def run_tool(tool, spec, bundle, job, csc):
         from backend import driftrun
         return driftrun.run_node(spec, job)
 
+    if tool == "sweep":
+        # The Monolith (backend/monolith.py). One rat-day, one kind, some
+        # bands: `sweep.run_node` reads every cue pair or rest epoch the
+        # spec lists -- through coupling's own reader, so the wires are the
+        # circuits' wires -- and writes its arrays beside this run. The
+        # answer that comes back here is only where they are.
+        from backend import sweep
+        return sweep.run_node(spec, job)
+
     path = spec.get("path")
     if not path or not os.path.isdir(path):
         raise IOError("the recording is not readable here: %r" % (path,))
