@@ -15,6 +15,53 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.01.5 - A dual array's two panes are one recording
+
+### Fixed
+
+- **The uV scale moves both arrays.** Dragging or typing it redrew only the
+  pane the strip was built from, so a dual implant's second array stayed at
+  the old scale until its next read. With nothing pinned, each array was
+  drawn at its own automatic scale, side by side, and the strip showed one
+  of them. Now one number is used for every pane of a recording: the larger
+  of the arrays' automatic scales, or the pinned one. Pinning, unpinning and
+  a CSD's colour scale reach every pane too.
+- **A tab puts its recording on screen, in its layout.** Clicking a tab
+  only changed which recording the controls applied to. A dual implant's two
+  panes stayed up under an H3 recording's tab, and the probe control said
+  H3 over them. The only fix was to pick H3 and then the probe again. Opening,
+  switching and closing now go through one rule: a probe that splits the
+  array gets a pane per column; anything else leaving that layout gets one
+  pane; otherwise your arrangement is kept.
+- **Closing a tab leaves a working layout.** Closing the recording whose
+  columns were up left empty panes and could leave a zoom pointing at
+  nothing. What is left now goes back on screen in its own layout.
+- **Opening a recording into a probe layout.** It went into one of the
+  columns and left the other showing half of the first recording.
+- **One pane cannot draw another's read.** A pane replaced while its read
+  was in flight still wrote the shared window when the read arrived. That is
+  how an H3 pane could come up showing one column's channels. Reads for a
+  pane that is gone are now dropped, and stopped when the pane is disposed.
+  Changing the layout disposes the old panes, where before it left their
+  listeners and observers running.
+- **Two opens of one recording make one tab,** even while the first open is
+  still in flight.
+- **Marking a channel bad in the Ch menu shows at once.** The button kept
+  saying "ok" until the menu was closed and opened again. Ticking a channel
+  now updates the count at the top as well.
+- **The layout buttons leave no column behind.** A pane could keep its
+  "Array 2" label after leaving the probe layout.
+
+### Added
+
+- **1st half and 2nd half** in the Ch menu, by file order. On a dual implant
+  each is one array. A probe column with none of its channels selected now
+  says so and draws nothing. Before, it fell back to drawing all of its
+  channels.
+
+Harness: `_dev/xfdual.html`, 37 checks. Against the committed code it fails
+6 and then stops.
+
 ## 2026.10.01.2 - The Monolith: every measure, 1–55 Hz, on the VACC
 
 ### Added
