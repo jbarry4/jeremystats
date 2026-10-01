@@ -15,6 +15,29 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.30.3 - Nobody at Jarvis, nothing sent to the cloud
+
+### Changed
+
+- **After ten minutes with nobody using Jarvis, all background syncing
+  stops.** That means no key, click, scroll or mouse movement in any Jarvis
+  window. Nothing is pulled or pushed, there is no heartbeat, no figure
+  sweep, and no polls from the page: the tool feed, the presence list and a
+  curation set's beat all stop. It used to slow down to one check every half
+  hour. Now it makes no requests at all, so a rig left on overnight or a
+  laptop with its lid shut costs nothing.
+- **The first key or mouse movement afterwards catches up at once.** One pull
+  for what colleagues did meanwhile, one push for anything a job wrote while
+  nobody was there, then the usual pace. **Sync now** works throughout.
+- **While somebody is using the page, colleagues' changes arrive within a
+  minute** even when nothing is being written here. Reading counts, not just
+  editing.
+- A curation set whose window has sat untouched for ten minutes stops being
+  reported as held, a few minutes later, so a colleague can take it.
+- The Sync panel says when sync is paused and why.
+
+---
+
 ## 2026.09.30.1 - Bands, rest circuits, within-rat Drift, and clipping restored
 
 ### Fixed

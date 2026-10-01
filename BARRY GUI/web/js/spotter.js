@@ -215,15 +215,23 @@ BARRY.spotter = (function () {
     beatOthers = []; toldAbout = new Set();
     beat(true);
     if (beatTimer) clearInterval(beatTimer);
-    beatTimer = setInterval(() => { if (!document.hidden) beat(false); },
+    beatTimer = setInterval(() => { if (!away()) beat(false); },
                             PRESENCE_BEAT);
     return true;
   }
 
-  /* Back in front: say so at once, rather than up to a minute later. */
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && beatTimer && set_) beat(false);
-  });
+  /* As in curate.js: no beat while hidden or with nobody here for ten
+     minutes, and one at once when somebody comes back. */
+  function away() {
+    return BARRY.idle ? BARRY.idle.away() : document.hidden;
+  }
+  if (BARRY.idle) {
+    BARRY.idle.onWake(() => { if (beatTimer && set_) beat(false); });
+  } else {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && beatTimer && set_) beat(false);
+    });
+  }
 
   /* Make the set from the bank entry, unless one is already there.
 

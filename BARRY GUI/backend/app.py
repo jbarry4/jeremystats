@@ -17511,13 +17511,19 @@ PULL_GROWTH = 2.0        # doubling, so it reaches the ceiling in four
 # floor comes back the moment another machine's change does.
 PULL_SOLO = 60
 
-# Nobody is looking. Every poller in the page stops when the window is
-# hidden, so a server that has heard nothing from a browser for ten minutes
-# has nobody in front of it -- a rig left on overnight, a laptop lid shut.
-# The pull then backs off to half an hour, and the first request from a
-# browser brings it straight back.
-AWAY_AFTER = 600
-PULL_AWAY = 1800
+# Somebody has touched the page this recently: they are reading it, so what
+# a colleague does should reach them within PULL_SOLO rather than on the
+# quiet schedule.
+LOOKING_S = 120
+
+# Nobody has used Jarvis for this long: ALL passive syncing stops -- no
+# pull, no scheduled push, no heartbeat, no figure sweep. Not a slower
+# schedule: none. A rig left on overnight or a laptop with its lid shut
+# costs nothing at all. The page says the moment somebody moves the mouse
+# or presses a key (BARRY.idle in core.js, POST /api/cloud/active), and the
+# loop catches up at once: one pull and one push of whatever piled up.
+# "Sync now" works throughout.
+IDLE_AFTER = 600
 
 # When a write happened, so a push can follow it promptly. Set by the
 # after_request hook rather than by each route: there are about ninety routes
@@ -17526,8 +17532,13 @@ _push_wanted = [0.0]
 # When the person at this machine last did something (a write they caused;
 # not a timer). Holds the pull at PULL_SOLO rather than letting it back off.
 _user_active = [0.0]
-# When a browser last asked this server anything at all.
+# When a browser last asked this server anything at all. Only the fallback
+# for a page loaded before BARRY.idle existed; see _last_human.
 _ui_seen = [time.time()]
+# When the page last said somebody moved the mouse or pressed a key
+# (POST /api/cloud/active), and whether any page ever has.
+_human_seen = [time.time()]
+_human_beacons = [False]
 # The pull interval the loop is on, and why -- shown in the Cloud panel so
 # "why is it pulling so often" has an answer on screen.
 _cloud_pace = {"pull_s": PULL_EVERY, "why": "starting"}
@@ -17546,8 +17557,28 @@ _NOT_SHARED_WRITES = (
     "/api/prefs",
 )
 # Written by a timer rather than by somebody doing something, so they say
-# nothing about whether anybody is working.
-_TIMER_WRITES = ("/api/presence/",)
+# nothing about whether anybody is working. A client error report can fire
+# from a timer as easily as from a click, so it does not count either.
+_TIMER_WRITES = ("/api/presence/", "/api/errors/client")
+
+
+def _last_human():
+    """When somebody last used this Jarvis: a key, the mouse, or a write
+    they caused.
+
+    The page's own polls are not a person -- a ToolKit left open on a rig
+    polls all night -- so once any page has reported input (BARRY.idle), only
+    input counts. A page loaded before that existed never reports it, and
+    for that one any request stands in, so an old tab does not stop sync
+    under somebody who is using it.
+    """
+    seen = _human_seen[0] if _human_beacons[0] else _ui_seen[0]
+    return max(seen, _user_active[0])
+
+
+def cloud_idle():
+    """Has nobody used Jarvis for IDLE_AFTER seconds?"""
+    return time.time() - _last_human() >= IDLE_AFTER
 
 
 def cloud_touch():
@@ -17601,7 +17632,7 @@ def _cloud_loop():
     next_pull = next_push = next_files = 0.0
     retry_at = 0.0
     idle_pull = float(PULL_EVERY)   # grows while nothing is happening
-    away = False
+    paused = False
     while True:
         try:
             cfg = CLOUD.cloud.reload()
@@ -17616,12 +17647,24 @@ def _cloud_loop():
                 continue
             base = max(5, int(cfg.get("interval") or PULL_EVERY))
 
-            # Somebody came back to a machine that had been left alone:
-            # catch up now, not at the end of a half-hour wait.
-            if away and now - _ui_seen[0] < AWAY_AFTER:
-                away = False
+            # Nobody has used Jarvis for IDLE_AFTER: nothing at all is asked
+            # of the cloud until somebody does (see IDLE_AFTER).
+            if cloud_idle():
+                if not paused:
+                    paused = True
+                    _cloud_pace.update(pull_s=None, why=(
+                        "paused -- nobody has used Jarvis for %d minutes; "
+                        "the next click or key catches up"
+                        % (IDLE_AFTER // 60)))
+                time.sleep(2)
+                continue
+            if paused:
+                # Back. Catch up now: one pull for what arrived while
+                # nobody was here, one push for anything written by a job
+                # that ran on meanwhile, and the figure sweep.
+                paused = False
                 idle_pull = float(base)
-                next_pull = min(next_pull, now)
+                next_pull = next_push = next_files = now
 
             # A write since the last push brings the next one forward.
             wrote = _push_wanted[0]
@@ -17649,18 +17692,19 @@ def _cloud_loop():
                     arrived = bool(_cloud_last.get("ok")) and (
                         _cloud_last.get("pulled") or 0) > 0
                     working = t - _user_active[0] < 300
+                    looking = t - _last_human() < LOOKING_S
                     if arrived:
                         idle_pull = float(base)
                         why = "a change arrived from another machine"
-                    elif working:
+                    elif working or looking:
                         idle_pull = float(max(base, PULL_SOLO))
-                        why = "somebody is working here"
+                        why = ("somebody is working here" if working
+                               else "somebody is using Jarvis")
                     else:
-                        away = t - _ui_seen[0] >= AWAY_AFTER
-                        ceiling = PULL_AWAY if away else PULL_MAX
-                        idle_pull = min(ceiling,
+                        idle_pull = min(PULL_MAX,
                                         max(base, idle_pull * PULL_GROWTH))
-                        why = "nobody is looking" if away else "quiet"
+                        why = ("quiet; pauses after %d minutes with nobody "
+                               "here" % (IDLE_AFTER // 60))
                     next_pull = t + idle_pull
                     _cloud_pace.update(pull_s=int(idle_pull), why=why)
                 if due_push:
@@ -17740,7 +17784,8 @@ def _note_local_write(resp):
     Here rather than in each route: there are about ninety that write, and
     one place they all pass through. Three separate facts come out of it:
 
-    - a browser asked something -- somebody is looking (any /api/ request);
+    - a browser asked something (any /api/ request) -- only a fallback for
+      pages that predate BARRY.idle; see _last_human;
     - the person did something -- a successful write that no timer sent;
     - there is shared data to push soon -- a write another machine reads.
 
@@ -19002,10 +19047,29 @@ def api_cloud_status():
                          if k in ("requests", "failed", "bytes", "covers_s")},
         "pull_interval_s": _cloud_pace.get("pull_s"),
         "pace": _cloud_pace.get("why"),
+        "idle": cloud_idle(),
+        "idle_after_s": IDLE_AFTER,
     }
     if request.args.get("ping") and CLOUD.cloud.configured:
         out["ping"] = CLOUD.cloud.ping()
     return jsonify(out)
+
+
+@app.route("/api/cloud/active", methods=["POST"])
+def api_cloud_active():
+    """Somebody moved the mouse or pressed a key in a Jarvis page.
+
+    Sent by BARRY.idle (core.js) at most once a minute while somebody is
+    using the page, and at once when they come back after IDLE_AFTER. It is
+    what keeps background sync running, and what restarts it: after
+    IDLE_AFTER with no word from here, the loop asks the cloud nothing.
+    Local only -- this request never reaches Supabase.
+    """
+    was_idle = cloud_idle()
+    _human_seen[0] = time.time()
+    _human_beacons[0] = True
+    return jsonify({"ok": True, "was_idle": was_idle,
+                    "idle_after_s": IDLE_AFTER})
 
 
 @app.route("/api/cloud/sync", methods=["POST"])

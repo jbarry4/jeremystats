@@ -202,15 +202,24 @@ BARRY.curate = (function () {
     toldTaken = false;
     beat(true);
     if (beatTimer) clearInterval(beatTimer);
-    beatTimer = setInterval(() => { if (!document.hidden) beat(false); },
+    beatTimer = setInterval(() => { if (!away()) beat(false); },
                             PRESENCE_BEAT);
     return true;
   }
 
-  /* Back in front: say so at once, rather than up to a minute later. */
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && beatTimer && set_) beat(false);
-  });
+  /* Hidden, or nobody at the keyboard for ten minutes (BARRY.idle): stop
+     saying somebody is in this set, because nobody is. The TTL frees it for
+     a colleague; coming back says so at once rather than a minute later. */
+  function away() {
+    return BARRY.idle ? BARRY.idle.away() : document.hidden;
+  }
+  if (BARRY.idle) {
+    BARRY.idle.onWake(() => { if (beatTimer && set_) beat(false); });
+  } else {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && beatTimer && set_) beat(false);
+    });
+  }
 
   /* One beat: where we are, and who else is here.
 
