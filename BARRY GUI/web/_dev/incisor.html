@@ -230,6 +230,13 @@ async function pickShortest() {
        JSON.stringify(after));
   }
 
+  /* Unload the app before finishing. The page is done, but the app frame
+     keeps requests in flight, and headless Edge only dumps once its
+     VIRTUAL clock runs out -- which stands still while a request is
+     pending. So a page with every check passed never dumped, and the
+     runner reported it as TIMED OUT with nothing to show. */
+  A.src = 'about:blank';
+  await sleep(200);
   head(bad ? bad + ' problem(s)' : 'All good.');
   document.title = bad ? 'incisor: ' + bad + ' FAILED' : 'incisor: passed';
 } catch (e) {

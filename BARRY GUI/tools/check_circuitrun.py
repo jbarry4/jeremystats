@@ -644,10 +644,17 @@ def part_real():
               [c["cue_type"] for c in row.get("cue_types") or []]
               and all(c["cue_type"] in circuit.CUE_TYPES
                       for c in row["cue_types"]), row.get("cue_types"))
+        # Only a circuit this check could file over, or delete in its
+        # cleanup: a classic one (no band). The Precon analysis filed band
+        # circuits on SEED (r7 Precon1) on 2026-09-30; their subject keys end
+        # in the band, so nothing here can touch them, and refusing on them
+        # would have made this check unrunnable for as long as they exist.
         for gid in (FRESH, SEED):
-            if rows.get(gid, {}).get("circuits"):
-                check("PRECONDITION: %s has no real circuit artifact" % gid,
-                      False, rows[gid]["circuits"])
+            mine = [c for c in (rows.get(gid, {}).get("circuits") or [])
+                    if c.get("band") in (None, "")]
+            if mine:
+                check("PRECONDITION: %s has no real classic circuit artifact"
+                      % gid, False, mine)
                 return
         pre_ok = True
         ct = row["cue_types"][0]["cue_type"]

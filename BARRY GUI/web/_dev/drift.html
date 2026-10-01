@@ -57,6 +57,7 @@ const post = async (url, body) => (await fetch(url, {
 
 const TAG = 'harness-drift-page-' + Date.now().toString(16);
 const made = { circuits: [], drifts: [] };
+let modeBefore = null;
 
 /* The same derivation tools/check_driftrun.py uses: every value
    v -> v*scale + off plus a small per-cell wobble, mean and SD recomputed,
@@ -145,6 +146,13 @@ const sigOf = (q) => q == null ? 0 : q < 0.001 ? 3 : q < 0.01 ? 2 : q < 0.05 ? 1
     ev('setView("toolkit")');
     await sleep(300);
     check('the Drift step opens', val('BARRY.views.toolkit.pick("drift")') === true);
+    /* Drift has two tabs and remembers the last one per viewer. This page
+       is about "Compare two groups", so it says so rather than assuming it
+       -- a run of driftprecon.html killed mid-way once left the Precon tab
+       remembered, and every check below read the wrong tab. Put back in
+       the finally. */
+    modeBefore = val('BARRY.drift.mode');
+    ev('BARRY.drift.setMode("build")');
     /* The ToolKit renders twice -- once on show, once when its session list
        lands -- and the second rebuilds this panel. Wait until the host has
        stopped being replaced before touching it (memory: ToolKit renders
@@ -428,9 +436,123 @@ const sigOf = (q) => q == null ? 0 : q < 0.001 ? 3 : q < 0.01 ? 2 : q < 0.05 ? 1
     ev('window.barryDrift._clear()');
 
     /* ---------------------------------------------------------------- */
+    /* ---------------------------------------------------------------- */
+    head('a pooled drift: raw / minus FP, and a slider stricter to the right');
+    /* Against a real pooled drift (tools/precon_pooled.py) if this machine
+       has one; if not, said, and nothing here counts as a pass. */
+    const list = await (await fetch('/api/artifacts?kind=drift')).json();
+    const pooledRec = (list.artifacts || []).find((a) => !a.deleted
+      && ((a.subject || {}).cue_type === 'pooled'));
+    if (!pooledRec) {
+      say('note', 'No pooled drift on this machine: these checks were not run.');
+    } else {
+      const got = await (await fetch('/api/artifacts/' + pooledRec.id + '/payload')).json();
+      const PP = got.payload;
+      /* A panel with points of interest in BOTH layers, so nothing below
+         can pass by drawing nothing. */
+      const tiered = (L, w, m) => Object.values(((((L === 'raw' ? PP : PP.layers[L]) || {}).cells || {})[w] || {})[m] || {})
+        .filter((c) => c.tier === 1 || c.tier === 2).length;
+      let pw = null, pm = null;
+      for (const w of PP.windows) for (const m of PP.methods) {
+        if (!pw && tiered('raw', w, m) && tiered('minus_fp', w, m)) { pw = w; pm = m; }
+      }
+      check('PRECONDITION: a panel with points of interest in both layers', !!pw);
+      ev('BARRY.drift._view.layer = "raw"; BARRY.drift._view.sig = null; BARRY.drift._view.edge = "q"; BARRY.drift._view.side = "delta";'
+         + 'BARRY.drift._view.win[' + JSON.stringify(PP.kind) + '] = ' + JSON.stringify(pw) + '; BARRY.drift._view.method = ' + JSON.stringify(pm) + ';');
+      ev('window.__pp = ' + JSON.stringify(PP) + ';');
+      ev('BARRY.drift._show(window.__pp, { artifact_id: ' + JSON.stringify(pooledRec.id) + ', version: 1 })');
+      await untilN(() => $('.dr-host svg') && $('.dr-host .dr-layers'), 60);
+      const ph = () => $('.dr-host');
+      const vw = val('window.barryDrift._view');
+      const winNow = (PP.windows.indexOf((vw.win || {})[PP.kind]) >= 0) ? vw.win[PP.kind] : PP.windows[0];
+      const methNow = PP.methods.indexOf(vw.method) >= 0 ? vw.method : PP.methods[0];
+      const layerCells = (L) => ((((L === 'raw' ? PP : PP.layers[L]) || {}).cells || {})[winNow] || {})[methNow] || {};
+      const drawn = () => $$('.dr-host svg .cir-edge').map((e) => e.dataset.key).sort();
+      const wantOf = (L, pass) => Object.keys(layerCells(L)).filter((k) => pass(layerCells(L)[k])).sort();
+      const layerBtns = $$('.dr-host .dr-layers button').map((b) => b.dataset.layer);
+      check('the drift offers Raw and Minus FP', layerBtns.join() === 'raw,minus_fp', layerBtns.join());
+      const poi = (c) => c.tier === 1 || c.tier === 2;
+      check('by default it draws the points of interest and survivors (' + drawn().length + ')',
+            drawn().length > 0 && JSON.stringify(drawn()) === JSON.stringify(wantOf('raw', poi)),
+            drawn().length + ' drawn vs ' + wantOf('raw', poi).length);
+      const counts = [];
+      for (let lv = 0; lv <= 4; lv++) {
+        const r = $('.dr-host .dr-sig-range');
+        r.value = String(lv);
+        r.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+        await sleep(60);
+        counts.push(drawn().length);
+      }
+      check('moving the slider right never draws more edges (' + counts.join(' ≥ ') + ')',
+            counts.every((n, i) => i === 0 || n <= counts[i - 1]), counts.join(','));
+      const r2 = $('.dr-host .dr-sig-range');
+      r2.value = '2'; r2.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+      await sleep(60);
+      check('at q < .05 it draws exactly the survivors',
+            JSON.stringify(drawn()) === JSON.stringify(wantOf('raw', (c) => c.q != null && c.q < 0.05)));
+      r2.value = '1'; r2.dispatchEvent(new (win().Event)('input', { bubbles: true }));
+      await sleep(60);
+      $$('.dr-host .dr-layers button').find((b) => b.dataset.layer === 'minus_fp').click();
+      await untilN(() => $('.dr-host .dr-layer-say'), 40);
+      check('Minus FP draws the minus-FP layer’s entries, not the raw ones',
+            drawn().length > 0 && JSON.stringify(drawn()) === JSON.stringify(wantOf('minus_fp', poi))
+            && JSON.stringify(wantOf('minus_fp', poi)) !== JSON.stringify(wantOf('raw', poi)),
+            drawn().length + ' drawn vs ' + wantOf('minus_fp', poi).length);
+      check('  and says it is showing minus FP',
+            /minus FP/i.test(($('.dr-host .dr-layer-say') || {}).textContent || ''));
+      const dashed = $$('.dr-host svg .cir-edge').filter((e) => (e.getAttribute('stroke-dasharray') || '') !== '');
+      const tier2 = wantOf('minus_fp', (c) => c.tier === 2);
+      check('points of interest are drawn dashed, survivors solid',
+            dashed.length === tier2.length, dashed.length + ' dashed vs ' + tier2.length + ' of interest');
+      ev('BARRY.drift._view.layer = "raw"; BARRY.drift._view.sig = null; delete window.__pp;');
+
+      /* In Results: one scroll, nothing cut off (reported 2026-09-30: the
+         viewer scrolled inside the page and cut the ring off). Measured:
+         no box between the ring and the page scrolls on its own. */
+      ev('BARRY.artifacts.open(' + JSON.stringify(pooledRec.id) + ')');
+      await untilN(() => $('#artDetail .art-view[data-viewer="registered"] .cir-ring'), 300);
+      await sleep(400);
+      const clippers = (node) => {
+        const out = [];
+        for (let n = node && node.parentElement; n && n !== doc().body; n = n.parentElement) {
+          const cs = win().getComputedStyle(n);
+          if (/(auto|scroll|hidden)/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 1) {
+            out.push((n.id ? '#' + n.id : '') + '.' + String(n.className).split(' ').join('.'));
+          }
+        }
+        return out;
+      };
+      const ring = $('#artDetail .art-view .cir-ring');
+      const view = $('#artDetail .art-view');
+      const inner = clippers(ring).filter((c) => /art-view|art-detail|dr-|cir-/.test(c));
+      check('in Results the drift has no scroll box of its own (one scroll)',
+            ring && inner.length === 0 && win().getComputedStyle(view).maxHeight === 'none',
+            inner.join(' | ') + ' max-height ' + (view && win().getComputedStyle(view).maxHeight));
+      // CONTROL: the old rule back on the box, and the check sees it.
+      view.style.maxHeight = '60vh'; view.style.overflow = 'auto';
+      await sleep(50);
+      check('CONTROL: with the old 60vh cap it is a box scrolling inside the page',
+            clippers(ring).some((c) => /art-view/.test(c)));
+      view.style.maxHeight = ''; view.style.overflow = '';
+      const folds = $$('#artDetail .dr-side-fold');
+      const sumL = ((folds[0] || {}).querySelector ? folds[0].querySelector('summary') : null);
+      const nL = ((PP.left || {}).members || []).length;
+      const ratsL = new Set(((PP.left || {}).members || []).map((m) => m.rat)).size;
+      check('the long member lists are folded shut, saying what they hold',
+            folds.length >= 2 && !folds[0].open && sumL
+            && sumL.textContent.indexOf(nL + ' circuits from ' + ratsL + ' rats, both cue pairings') >= 0,
+            sumL && sumL.textContent);
+      check('  and the rest circuits the minus-FP layer read are listed too',
+            folds.some((f) => f.dataset.side === 'rest'
+              && f.querySelectorAll('.dr-link').length === (PP.rest || []).length));
+    }
+
     head('nothing broke on the way');
     check('no uncaught errors', errs.length === 0, errs.join(' | '));
   } finally {
+    if (modeBefore && modeBefore !== 'build') {
+      try { ev('BARRY.drift.setMode(' + JSON.stringify(modeBefore) + ')'); } catch (e) { /* frame gone */ }
+    }
     /* Drifts first: they cite the circuits, and a cited circuit version
        cannot be deleted. */
     const e1 = made.drifts.length

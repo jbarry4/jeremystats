@@ -3213,9 +3213,28 @@ BARRY.views.sessions = (function () {
     }
   }
 
+  /* Subscribed once, at the first paint, and never again.
+
+     Subscribing inside the paint would add a watcher per repaint, and the
+     watcher repaints -- which is a loop that grows by one every three
+     seconds. Guarded by a flag rather than by removing and re-adding,
+     because this view lives for the life of the page. */
+  let upWired = false;
+
+  function wireUploads() {
+    if (upWired || !BARRY.vacc || !BARRY.vacc.onUploads) return;
+    upWired = true;
+    BARRY.vacc.onUploads(() => {
+      // Only when this pad is the one on screen. A list nobody is looking
+      // at is redrawn when they next open it, which costs nothing.
+      if (mode === 'vacc') paintVacc();
+    });
+  }
+
   function paintVacc() {
     const host = $('#vaccBody');
     if (!host || mode !== 'vacc') return;
+    wireUploads();
     // Before the clear, always. These are the real nodes, not copies --
     // `innerHTML = ''` on a host holding them destroys them.
     parkList();
@@ -3247,6 +3266,28 @@ BARRY.views.sessions = (function () {
     ].filter(Boolean)));
 
     if (!vCounts && !vCountsLoading) loadVaccCounts();
+
+    /* What is being sent, right here.
+
+       The upload is started from this view -- the recordings were picked
+       here -- and it used to report progress only in the VACC status
+       panel, which opens from the command palette and nowhere else. So
+       somebody told "progress is in the VACC panel" had been sent to a room
+       with no door.
+
+       Above the tabs rather than inside one, because an upload is about the
+       pad and not about which way you happen to be looking at the
+       recordings. Drawn by `BARRY.vacc.uploadsBox`, which is the same
+       renderer the status panel uses: one set of words, two places that
+       show them. */
+    if (BARRY.vacc && BARRY.vacc.nUploads) {
+      const up = BARRY.vacc.uploadsBox();
+      if (up) {
+        const card = el('div', { class: 'card' });
+        card.appendChild(up);
+        host.appendChild(card);
+      }
+    }
 
     /* Two ways of looking at the same cluster, and they answer different
        questions.

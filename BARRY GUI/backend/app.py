@@ -2381,6 +2381,19 @@ def _incisor_recall(sess, key):
             out = json.load(fh)
     except Exception:                                    # noqa: BLE001
         return None
+    # JSON turned every channel key into a string, and every reader looks
+    # them up by the channel's integer index -- so a scan recalled from disk
+    # answered "no candidates" on every channel. Keyed back to integers
+    # here, once, rather than in every reader.
+    rows = out.get("_rows")
+    if isinstance(rows, dict):
+        fixed = {}
+        for k, v in rows.items():
+            try:
+                fixed[int(k)] = v
+            except (TypeError, ValueError):
+                fixed[k] = v
+        out["_rows"] = fixed
     # Back into memory, so the next channel change does not read disk again.
     incisormod.cache_put(key, out)
     return out
@@ -3283,6 +3296,44 @@ def api_incisor_events():
     evs = incisormod.events_for(hit, index)
     return jsonify({"ok": True, "channel": index, "n": len(evs),
                     "events": evs})
+
+
+@app.route("/api/incisor/union", methods=["POST"])
+def api_incisor_union():
+    """Every chosen channel's candidates in one set, each spike once.
+
+    Out of the scan already run, so it answers in milliseconds and the panel
+    can show the count for any pool of channels BEFORE anything is banked.
+    `with_events` is off by default: the count is asked for on every change
+    of the pool, and the events only when somebody extracts them.
+    """
+    body = request.get_json(force=True) or {}
+    sess, err = _body_session(body)
+    if err:
+        return jsonify(err), 400
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _incisor_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/union", exc, 400, {"path": body.get("path")})
+    ekey = incisormod.cache_key(spec, rep)
+    hit = incisormod.cache_get(ekey) or _incisor_recall(sess, ekey)
+    if hit is None:
+        return jsonify({"ok": False,
+                        "error": "That scan is not on this machine. "
+                                 "Run it again."}), 409
+    try:
+        evs, summary = incisormod.union(
+            hit, body.get("pool") or [],
+            tol_ms=float(body.get("tol_ms") or incisormod.UNION_TOL_MS),
+            hilus=body.get("hilus"),
+            dist_ms=spec.get("dist_ms"))
+    except (TypeError, ValueError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    out = dict(summary, ok=True)
+    if body.get("with_events"):
+        out["events"] = evs
+    return jsonify(out)
 
 
 @app.route("/api/incisor/scan", methods=["POST"])
@@ -16511,6 +16562,46 @@ def api_arc_drift_run():
                     "options": prep.get("options")})
 
 
+# The pooled within-rat drift (backend/driftpool.py): both cue pairings of
+# each rat-day as one set of cue pairs, raw and minus FP.
+#   POST /api/arc/drift/pooled/run {band, kind, cue: [{id, version_id, rat,
+#        day}], rest: [...], nickname?} -> the filed drift, synchronously
+#        (a few seconds: every number is read from the circuits' payloads).
+from . import driftpool as driftpoolmod                      # noqa: E402
+
+
+@app.route("/api/arc/drift/pooled/run", methods=["POST"])
+def api_arc_drift_pooled_run():
+    body = request.get_json(force=True, silent=True) or {}
+    band, kind = body.get("band"), body.get("kind")
+    if band not in ("theta", "beta", "gamma_low") or kind not in (
+            "state", "transition"):
+        return jsonify({"ok": False, "error": "Say band (theta, beta, "
+                        "gamma_low) and kind (state, transition)."}), 400
+    try:
+        got = driftpoolmod.file_pooled(
+            DRIFT_HOST, body.get("cue") or [], body.get("rest") or [], band,
+            kind, nickname=body.get("nickname"),
+            by=(STORE.provenance() or {}).get("user"))
+    except driftrunmod.DriftRunError as exc:
+        return _drift_refused(exc)
+    except driftpoolmod.PoolError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 409
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/drift/pooled/run", exc, 400)
+    P = got.pop("payload")
+    got["tiers"] = {layer: {"tested": L.get("bh_tests"),
+                            "tier1": sum(p["tier1"] for byw in
+                                         L["panels"].values()
+                                         for p in byw.values()),
+                            "tier2": sum(p["tier2"] for byw in
+                                         L["panels"].values()
+                                         for p in byw.values())}
+                    for layer, L in (("raw", P),
+                                     ("minus_fp", P["layers"]["minus_fp"]))}
+    return jsonify(got)
+
+
 # The Precon1 -> Precon4 analysis (arc_contracts.md section 7), from the
 # Drift panel's second tab. tools/run_precon_drift.py is the analysis;
 # backend/preconrun.py starts it as a child of this Jarvis (output to a file,
@@ -16528,7 +16619,7 @@ def api_arc_drift_run():
 #   POST /api/arc/precon/forget          ... or not, now or at next start
 #   resume_precon(port)                  start.py only: carry it on by
 #                                        itself when Jarvis starts again
-#   GET  /api/arc/precon/file/<md|csv|figure/NAME>
+#   GET  /api/arc/precon/file/<page|csv|figure/NAME>
 from . import preconrun as preconrunmod                      # noqa: E402
 
 PRECON = preconrunmod.Runner(APP_DIR, os.path.join(LOGS_DIR, ".cache",
@@ -16682,8 +16773,8 @@ def api_arc_precon_file(which):
     if not path or not os.path.isfile(path):
         return jsonify({"ok": False, "error": "No such report file: %s. "
                         "Write the report first." % which}), 404
-    if which == "md":
-        return send_file(path, mimetype="text/plain; charset=utf-8")
+    if which == "page":
+        return send_file(path, mimetype="text/html; charset=utf-8")
     return send_file(path, as_attachment=(which == "csv"),
                      download_name=os.path.basename(path))
 # ============================= end of Drift ===============================

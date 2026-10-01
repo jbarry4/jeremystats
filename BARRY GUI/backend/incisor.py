@@ -1000,8 +1000,137 @@ def events_for(out, index):
     `run` keeps them all -- they were all detected -- but only ships the
     chosen channel's. This is how the panel gets another one without the
     recording being read again.
+
+    Either kind of key. A scan in memory is keyed by the channel's integer
+    index; one recalled from disk comes back through JSON, where every key
+    is a string -- and looked up by integer, every channel of every recalled
+    scan answered with nothing, so "Bank and vet" said "no candidates on
+    that channel" about a channel the scan had found fifty-two on.
     """
-    return (out.get("_rows") or {}).get(int(index)) or []
+    rows = out.get("_rows") or {}
+    return rows.get(int(index)) or rows.get(str(int(index))) or []
+
+
+# EXTRACT ALL ------------------------------------------------------------
+#
+# Which channel is the hilus decides how many dentate spikes there are:
+# CSC34 finds 50, CSC35 55, CSC36 53, and each is a different fifty-odd.
+# Every channel was detected on separately and every list is already in the
+# scan, so the union costs nothing to take. What it needs is a rule for when
+# two channels saw the SAME spike.
+#
+# MEASURED, on twelve saved scans (131,198 events, each against the nearest
+# event on the adjacent scanned channel):
+#
+#     0-1 ms   86.3%      the same spike, one sample apart at 1 kHz
+#     1-2 ms    3.3%
+#     2-100 ms  1.2%      almost nothing
+#     100+ ms   9.2%      a different event: the next spike, or none
+#
+# So the same spike lands within two milliseconds on its neighbours, and
+# there is a clean gap from there to the detector's own 100 ms spacing. Any
+# tolerance in that gap gives the same answer near the hilus -- pooling the
+# hilus and three channels either side, 5 ms and 25 ms differ by about 1%.
+# 25 ms sits in the middle of the gap.
+#
+# The tolerance is capped at the detector's `dist_ms`. Within ONE channel
+# two peaks closer than that cannot both exist, so a wider window could only
+# merge two genuinely separate spikes -- and grouping is anchored on each
+# group's first event, never chained, so a run of events cannot creep along
+# the recording and swallow each other.
+#
+# WHICH CHANNELS is the question that matters, and it has no natural
+# answer. The union grows steadily with the width of the pool -- 740 on the
+# hilus, 774 with three channels either side, 1072 across all sixty -- and
+# on one recording 201 on the hilus became 971 across every channel. The
+# far channels are not seeing more dentate spikes; they are seeing their
+# own events. That is why the count is offered BEFORE anything is banked,
+# for whatever pool somebody chooses.
+#
+# ONE TIME PER SPIKE: the detection where it was LARGEST. That is the
+# channel it is best seen on, and the peak Braces will align it to anyway;
+# the times on its neighbours differ by the millisecond measured above.
+UNION_TOL_MS = 25.0
+
+
+def union(out, indices, tol_ms=UNION_TOL_MS, hilus=None, dist_ms=None):
+    """Every candidate on `indices`, each spike once.
+
+    Returns `(events, summary)`. Each event is the largest detection in its
+    group, with `channel` naming where that was and `seen_on` how many of
+    the pooled channels detected it. The summary says where the spikes came
+    from, so a panel can say what the union ADDS before anyone banks it.
+    """
+    cap = float(dist_ms if dist_ms is not None else DS_DIST_MS)
+    tol = float(tol_ms)
+    if not 0.0 < tol <= cap:
+        raise ValueError(
+            "The merge window has to be more than 0 and at most %g ms -- "
+            "the detector's own minimum spacing. Within one channel two "
+            "peaks closer than that cannot both exist, so a wider window "
+            "could only merge two separate spikes." % cap)
+    want = sorted({int(i) for i in (indices or [])})
+    if not want:
+        raise ValueError("Which channels? Pick at least one to pool.")
+
+    flat = []
+    for i in want:
+        for e in events_for(out, i):
+            try:
+                t = float(e["start"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            flat.append((t, abs(float(e.get("amp") or 0.0)), i, e))
+    flat.sort(key=lambda x: x[0])
+
+    tol_s = tol / 1000.0
+    groups, cur, start = [], [], None
+    for item in flat:
+        if cur and item[0] - start > tol_s:
+            groups.append(cur)
+            cur = []
+        if not cur:
+            start = item[0]
+        cur.append(item)
+    if cur:
+        groups.append(cur)
+
+    hil = int(hilus) if hilus is not None else None
+    events, sole, seen = [], {}, {}
+    only_off = 0
+    for g in groups:
+        best = max(g, key=lambda x: x[1])
+        chans = sorted({x[2] for x in g})
+        ev = dict(best[3])
+        # `channel` is the detector's own field and holds the CSC NUMBER,
+        # the same as a single-channel bank stores; `index` is the scan's
+        # position for it. Kept apart -- mixing the two puts a spike on the
+        # wrong row, which is the one thing a channel field is for.
+        ev["index"] = best[2]
+        ev["seen_on"] = len(chans)
+        events.append(ev)
+        seen[len(chans)] = seen.get(len(chans), 0) + 1
+        if len(chans) == 1:
+            sole[chans[0]] = sole.get(chans[0], 0) + 1
+        if hil is not None and hil not in chans:
+            only_off += 1
+
+    return events, {
+        "n": len(events),
+        "n_detections": len(flat),
+        "channels": want,
+        "tol_ms": tol,
+        "hilus": hil,
+        "n_hilus": len(events_for(out, hil)) if hil is not None else None,
+        # The number that answers "what does this add": spikes the hilus
+        # channel alone would have missed.
+        "only_off_hilus": only_off if hil is not None else None,
+        # Spikes only ONE pooled channel saw, by channel. A channel that
+        # contributes many of these is seeing its own events, not the
+        # hilus's -- the far-channel effect, visible before banking.
+        "sole_by_channel": {str(k): v for k, v in sorted(sole.items())},
+        "by_seen_on": {str(k): v for k, v in sorted(seen.items())},
+    }
 
 
 def _params(spec, plan):

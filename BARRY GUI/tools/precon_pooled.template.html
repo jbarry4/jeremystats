@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Precon Pooled Circuits</title>
+<style>
+:root {
+  --bg: #f7f7f4; --surface: #ffffff; --ink: #16181b; --ink-2: #474c54; --ink-3: #767b84;
+  --line: #e2e1db; --line-2: #cfcec7; --chip: #efeee9; --focus: #d99a00;
+  --up: #c63a39; --down: #1c5cab; --node: #2c3e50; --node-grey: #c9c8c1; --ring: #e7e6e0;
+  --t1: #16181b; --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace; --r: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #191c20; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+    --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933;
+    --up: #f2807e; --down: #6aa5f2; --node: #d7dbe0; --node-grey: #3a3f46; --ring: #24272c; --t1: #f3f4f5;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #191c20; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+  --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933;
+  --up: #f2807e; --down: #6aa5f2; --node: #d7dbe0; --node-grey: #3a3f46; --ring: #24272c; --t1: #f3f4f5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+main { max-width: 1240px; margin: 0 auto; padding: 28px 16px 60px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 17px; margin: 0 0 8px; }
+p { margin: 0 0 10px; }
+.lede { color: var(--ink-2); max-width: 80ch; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; margin: 14px 0; }
+.muted { color: var(--ink-3); }
+.small { font-size: 13px; }
+.num { font-variant-numeric: tabular-nums; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: flex-end; }
+.ctl { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ctl > span { font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.seg { display: flex; flex-wrap: wrap; gap: 3px; background: var(--chip); padding: 3px; border-radius: var(--r); max-width: 100%; }
+.seg button { font: inherit; font-size: 13.5px; border: 0; background: transparent; color: var(--ink-2); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line); }
+.flip button { font-size: 14.5px; padding: 7px 14px; }
+button:focus-visible, .edge:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+.circ { position: relative; }
+.circ svg { width: 100%; height: auto; display: block; }
+.edge { cursor: pointer; fill: none; stroke-linecap: round; }
+.edge.dim { opacity: .18; }
+.edge.sel { filter: drop-shadow(0 0 3px var(--focus)); }
+.node-l { font: 12px var(--sans); fill: var(--ink-2); }
+.node-l.grey { fill: var(--ink-3); }
+.slider { width: min(420px, 100%); }
+.slider input { width: 100%; accent-color: var(--ink); }
+.ticks { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-3); margin-top: 2px; gap: 4px; }
+.ticks span { flex: 1; text-align: center; }
+.ticks span:first-child { text-align: left; }
+.ticks span:last-child { text-align: right; }
+.readout { font-size: 13px; color: var(--ink-2); margin-top: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--ink-2); margin-top: 6px; }
+.legend i { display: inline-block; width: 26px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 6px; }
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line-2);
+       border-radius: var(--r); padding: 8px 10px; font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,.16); max-width: 320px; display: none; }
+.tip b { display: block; }
+ol.top { margin: 0; padding-left: 0; list-style: none; }
+ol.top li { border-top: 1px solid var(--line); padding: 8px 4px; cursor: pointer; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 8px; }
+ol.top li:first-child { border-top: 0; }
+ol.top li:hover { background: var(--chip); }
+ol.top li.sel { background: color-mix(in srgb, var(--focus) 14%, transparent); }
+ol.top .rk { font: 600 13px var(--mono); color: var(--ink-3); padding-top: 2px; }
+ol.top .pr { font-weight: 600; overflow-wrap: anywhere; }
+ol.top .bs { grid-column: 2; font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+ol.top .wh { grid-column: 2; font-size: 12.5px; color: var(--ink-3); overflow-wrap: anywhere; }
+.chip { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 10px; margin-left: 6px; vertical-align: 1px; background: var(--chip); color: var(--ink-2); }
+.chip.t1 { background: var(--t1); color: var(--surface); }
+.chip.t2 { border: 1px solid var(--ink-3); background: transparent; }
+.chip.below { font-style: italic; }
+#detail svg { display: block; width: 100%; min-width: 560px; height: auto; }
+.dwrap { overflow-x: auto; }
+table.w { border-collapse: collapse; font-size: 13px; width: 100%; margin-top: 10px; }
+table.w th, table.w td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+table.w th:first-child, table.w td:first-child { text-align: left; }
+.twrap { overflow-x: auto; }
+.foot { font-size: 13px; color: var(--ink-3); }
+.foot code { font-family: var(--mono); font-size: 12px; }
+.empty { color: var(--ink-3); font-size: 14px; padding: 18px 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Precon1 → Precon4, both cue pairings pooled</h1>
+  <p class="lede" id="lede"></p>
+  <div class="card" id="verdict"></div>
+
+  <div class="card">
+    <div class="controls">
+      <div class="ctl"><span>Layer</span><div class="seg flip" id="layer" role="group" aria-label="Raw or minus FP"></div></div>
+      <div class="ctl"><span>Band</span><div class="seg" id="band" role="group" aria-label="Band"></div></div>
+      <div class="ctl"><span>Method</span><div class="seg" id="method" role="group" aria-label="Method"></div></div>
+    </div>
+    <div class="controls" style="margin-top:10px">
+      <div class="ctl" style="flex:1 1 100%"><span>Window</span><div class="seg" id="window" role="group" aria-label="Window"></div></div>
+    </div>
+    <div class="controls" style="margin-top:12px">
+      <div class="ctl slider"><span>Show edges — more significant →</span>
+        <input type="range" id="sig" min="0" max="4" step="1" aria-label="Significance: right is stricter">
+        <div class="ticks" aria-hidden="true"><span>every tested</span><span>of interest</span><span>q &lt; .05</span><span>q &lt; .01</span><span>q &lt; .001</span></div>
+      </div>
+    </div>
+    <p class="readout" id="readout"></p>
+  </div>
+
+  <div class="layout">
+    <div class="card circ">
+      <h2 id="ctitle"></h2>
+      <div id="circ"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="card">
+      <h2 id="toptitle"></h2>
+      <p class="small muted" id="topsay"></p>
+      <ol class="top" id="top"></ol>
+    </div>
+  </div>
+
+  <div class="card" id="detailcard">
+    <h2 id="dtitle">One entry</h2>
+    <p class="small muted" id="dsub">Click an edge, or an entry in the top 10, to see each rat's change and the same region pair in every window.</p>
+    <div id="detail"></div>
+  </div>
+
+  <div class="card foot" id="foot"></div>
+</main>
+<div class="tip" id="tip" role="status"></div>
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+'use strict';
+(function () {
+  const D = JSON.parse(document.getElementById('data').textContent);
+  const $ = (id) => document.getElementById(id);
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, kids) => {
+    const n = document.createElement(tag);
+    for (const k in (attrs || {})) {
+      const v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === 'text') n.textContent = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    }
+    for (const c of [].concat(kids || [])) if (c != null) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    return n;
+  };
+  const sv = (tag, attrs, text) => {
+    const n = document.createElementNS(NS, tag);
+    for (const k in (attrs || {})) if (attrs[k] != null) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const f3 = (v) => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(3);
+  const fp = (v) => v == null ? '—' : (v < 0.001 ? v.toExponential(1) : v.toFixed(3));
+  const pairName = (k) => k.split('|').join(' – ');
+
+  const LAYERS = [['raw', 'Raw'], ['minus_fp', 'Minus FP']];
+  const BANDS = [['theta', 'Theta 4–12 Hz'], ['beta', 'Beta 13–30 Hz'], ['gamma_low', 'Low gamma 30–55 Hz']];
+  const METHODS = [['coherence', 'Coherence'], ['raw_cc', 'Raw cross-correlation'], ['amp_cc', 'Envelope cross-correlation']];
+  const WINDOWS = [['pre', 'Baseline', 'state'], ['cue1', 'Cue 1', 'state'], ['cue2', 'Cue 2', 'state'], ['post', 'After cue 2', 'state'],
+                   ['onset', 'Cue 1 onset', 'transition'], ['switch', 'Cue 1 → cue 2', 'transition'], ['offset', 'Cue 2 offset', 'transition']];
+  const LEVELS = [
+    ['every tested entry', (c) => c.p != null],
+    ['points of interest and survivors', (c) => c.tier === 1 || c.tier === 2],
+    ['survivors, q < .05', (c) => c.tier === 1],
+    ['q < .01', (c) => c.q != null && c.q < 0.01],
+    ['q < .001', (c) => c.q != null && c.q < 0.001],
+  ];
+  const say = (list, id) => (list.find((x) => x[0] === id) || [])[1] || id;
+  const winOf = (id) => WINDOWS.find((w) => w[0] === id);
+
+  const st = { layer: 'raw', band: 'theta', method: 'coherence', window: 'cue1', level: 1, sel: null };
+  try { Object.assign(st, JSON.parse(localStorage.getItem('precon-pooled-view') || '{}')); } catch (e) { /* none */ }
+  const remember = () => { try { localStorage.setItem('precon-pooled-view', JSON.stringify(st)); } catch (e) { /* none */ } };
+
+  const driftOf = (band, kind) => D.drifts.find((d) => d.band === band && d.kind === kind);
+  const cellsOf = (layer, band, win, method) => {
+    const d = driftOf(band, winOf(win)[2]);
+    return d ? (((d.layers[layer] || {}).cells || {})[win] || {})[method] || {} : {};
+  };
+
+  /* ---- controls ---- */
+  function seg(host, list, key) {
+    const h = $(host); h.innerHTML = '';
+    for (const [id, name] of list) {
+      h.appendChild(el('button', { type: 'button', 'aria-pressed': String(st[key] === id), text: name,
+        onclick: () => { st[key] = id; remember(); renderAll(); } }));
+    }
+  }
+  $('sig').addEventListener('input', (e) => { st.level = Number(e.target.value); remember(); renderCircuit(); renderReadout(); });
+
+  /* ---- the circuit ---- */
+  const tip = $('tip');
+  function showTip(evt, k, c) {
+    tip.innerHTML = '';
+    tip.appendChild(el('b', { text: pairName(k) }));
+    tip.appendChild(el('div', { class: 'muted', text: say(BANDS, st.band) + ' · ' + say(WINDOWS, st.window) + ' · ' + say(METHODS, st.method) + ' · ' + say(LAYERS, st.layer) }));
+    tip.appendChild(el('div', { class: 'num', text: 'change ' + f3(c.d) + (c.se != null ? '  (SE ' + c.se.toFixed(3) + ')' : '') }));
+    tip.appendChild(el('div', { class: 'num', text: 't(' + c.df + ') = ' + (c.t == null ? '—' : c.t.toFixed(2)) + ',  p = ' + fp(c.p) + ',  q = ' + fp(c.q) }));
+    tip.appendChild(el('div', { text: c.same + ' of ' + c.k + ' rats moved this way' + (c.tier === 1 ? ' · survives' : c.tier === 2 ? ' · point of interest' : '') }));
+    tip.style.display = 'block'; moveTip(evt);
+  }
+  function moveTip(evt) {
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = evt.clientX + 14, y = evt.clientY + 14;
+    if (x + w > innerWidth - 8) x = Math.max(8, innerWidth - w - 8);
+    if (y + h > innerHeight - 8) y = Math.max(8, evt.clientY - h - 14);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  const hideTip = () => { tip.style.display = 'none'; };
+
+  function renderCircuit() {
+    const host = $('circ'); host.innerHTML = '';
+    const cells = cellsOf(st.layer, st.band, st.window, st.method);
+    const pass = LEVELS[st.level][1];
+    const keys = Object.keys(cells).filter((k) => cells[k].p != null);
+    const shown = keys.filter((k) => pass(cells[k]));
+    const max = Math.max(1e-9, ...keys.map((k) => Math.abs(cells[k].d || 0)));
+    $('ctitle').textContent = say(BANDS, st.band) + ' · ' + say(WINDOWS, st.window) + ' · ' + say(METHODS, st.method) + ' · ' + say(LAYERS, st.layer);
+    const W = 640, H = 600, cx = W / 2, cy = H / 2 + 6, R = 208;
+    const order = D.region_order;
+    const pos = {};
+    order.forEach((r, i) => {
+      const a = -Math.PI / 2 + (i + 0.5) * (2 * Math.PI / order.length);
+      pos[r] = { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a), a };
+    });
+    const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img',
+      'aria-label': 'Circuit: ' + shown.length + ' edges drawn of ' + keys.length + ' tested' });
+    svg.appendChild(sv('circle', { cx, cy, r: R, fill: 'none', stroke: css('--ring'), 'stroke-width': 1 }));
+    // Largest last, so the strong edges sit on top.
+    shown.sort((a, b) => Math.abs(cells[a].d) - Math.abs(cells[b].d));
+    for (const k of shown) {
+      const c = cells[k], [a, b] = k.split('|');
+      if (!pos[a] || !pos[b]) continue;
+      const pa = pos[a], pb = pos[b];
+      const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
+      const qx = cx + (mx - cx) * 0.35, qy = cy + (my - cy) * 0.35;
+      const w = 1.4 + 6.5 * Math.abs(c.d) / max;
+      const col = c.d >= 0 ? css('--up') : css('--down');
+      const path = sv('path', { d: 'M' + pa.x + ',' + pa.y + ' Q' + qx + ',' + qy + ' ' + pb.x + ',' + pb.y,
+        class: 'edge' + (st.sel && st.sel.pair === k ? ' sel' : ''), stroke: col, 'stroke-width': w.toFixed(2),
+        'stroke-opacity': c.tier === 1 ? 1 : c.tier === 2 ? 0.8 : 0.35,
+        'stroke-dasharray': c.tier === 2 ? '7 4' : null, tabindex: '0',
+        'aria-label': pairName(k) + ', change ' + f3(c.d) + ', q ' + fp(c.q) });
+      path.addEventListener('mouseenter', (e) => showTip(e, k, c));
+      path.addEventListener('mousemove', moveTip);
+      path.addEventListener('mouseleave', hideTip);
+      const pick = () => { st.sel = { pair: k, band: st.band, window: st.window, method: st.method }; renderCircuit(); renderDetail(); renderTop(); };
+      path.addEventListener('click', pick);
+      path.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+      svg.appendChild(path);
+    }
+    const grey = new Set(D.grey || []);
+    for (const r of order) {
+      const p = pos[r], g = grey.has(r);
+      const deg = keys.filter((k) => k.split('|').indexOf(r) >= 0 && shown.indexOf(k) >= 0).length;
+      svg.appendChild(sv('circle', { cx: p.x, cy: p.y, r: g ? 7 : 9 + Math.min(5, deg),
+        fill: g ? 'none' : css('--node'), stroke: g ? css('--node-grey') : css('--surface'), 'stroke-width': g ? 2 : 2 }));
+      const lx = cx + (R + 26) * Math.cos(p.a), ly = cy + (R + 26) * Math.sin(p.a);
+      const anchor = Math.abs(Math.cos(p.a)) < 0.2 ? 'middle' : (Math.cos(p.a) > 0 ? 'start' : 'end');
+      svg.appendChild(sv('text', { x: lx, y: ly + 4, 'text-anchor': anchor, class: 'node-l' + (g ? ' grey' : '') }, r + (g ? ' (not placed)' : '')));
+    }
+    host.appendChild(svg);
+    if (!keys.length) host.appendChild(el('p', { class: 'empty', text: 'Nothing was tested in this view: no region pair had at least ' + D.min_rats + ' rats.' }));
+    else if (!shown.length) host.appendChild(el('p', { class: 'empty', text: 'No edge passes “' + LEVELS[st.level][0] + '” here. Move the slider left to see weaker ones.' }));
+    const lg = $('legend'); lg.innerHTML = '';
+    lg.appendChild(el('span', {}, [el('i', { style: 'border-color:' + css('--up') }), 'stronger on Precon4']));
+    lg.appendChild(el('span', {}, [el('i', { style: 'border-color:' + css('--down') }), 'weaker on Precon4']));
+    lg.appendChild(el('span', {}, [el('i', { style: 'border-color:' + css('--ink') }), 'solid: survives (q < .05)']));
+    lg.appendChild(el('span', {}, [el('i', { style: 'border-color:' + css('--ink') + ';border-top-style:dashed' }), 'dashed: point of interest']));
+    lg.appendChild(el('span', { text: 'Thicker is a bigger change. Grey rings: regions with no usable placement.' }));
+  }
+
+  function renderReadout() {
+    const cells = cellsOf(st.layer, st.band, st.window, st.method);
+    const keys = Object.keys(cells).filter((k) => cells[k].p != null);
+    const n = keys.filter((k) => LEVELS[st.level][1](cells[k])).length;
+    $('sig').value = String(st.level);
+    $('readout').textContent = 'Showing ' + n + ' of ' + keys.length + ' tested region pairs: ' + LEVELS[st.level][0] + '. Drag right for stricter.';
+  }
+
+  /* ---- the top 10 of the current layer ---- */
+  function renderTop() {
+    const list = (D.top || {})[st.layer] || [];
+    $('toptitle').textContent = 'Top 10 · ' + say(LAYERS, st.layer);
+    $('topsay').textContent = 'One entry per region pair, across every band, window and method; ranked by its strongest entry. Where it stands out lists every entry that survives or is of interest.';
+    const ol = $('top'); ol.innerHTML = '';
+    list.forEach((t, i) => {
+      const b = t.best;
+      const chip = t.below_line ? el('span', { class: 'chip below', text: 'below the line' })
+        : el('span', { class: 'chip ' + (b.tier === 1 ? 't1' : 't2'), text: b.tier === 1 ? 'survives' : 'of interest' });
+      const where = t.where.filter((c) => !(c.band === b.band && c.window === b.window && c.method === b.method));
+      const li = el('li', { class: st.sel && st.sel.pair === t.pair ? 'sel' : null, tabindex: '0',
+        onclick: () => go(t), onkeydown: (e) => { if (e.key === 'Enter') go(t); } }, [
+        el('span', { class: 'rk', text: String(i + 1) }),
+        el('span', { class: 'pr' }, [pairName(t.pair), chip]),
+        el('span', { class: 'bs num', text: say(BANDS, b.band) + ' · ' + say(WINDOWS, b.window) + ' · ' + say(METHODS, b.method)
+          + ': ' + f3(b.delta) + ', q ' + fp(b.q) + ', p ' + fp(b.p) + ', ' + b.same_direction + '/' + b.k + ' rats' }),
+        where.length ? el('span', { class: 'wh', text: 'Also: ' + where.map((c) => say(BANDS, c.band).split(' ')[0].toLowerCase()
+          + ' ' + say(WINDOWS, c.window).toLowerCase() + ' ' + say(METHODS, c.method).split(' ')[0].toLowerCase()
+          + ' (' + f3(c.delta) + ')').join('; ') }) : null,
+      ]);
+      ol.appendChild(li);
+    });
+    if (!list.length) ol.appendChild(el('li', { class: 'empty', text: 'Nothing was tested.' }));
+  }
+  function go(t) {
+    const b = t.best;
+    Object.assign(st, { band: b.band, window: b.window, method: b.method });
+    if (!LEVELS[st.level][1]({ p: b.p, q: b.q, tier: b.tier })) st.level = 0;
+    st.sel = { pair: t.pair, band: b.band, window: b.window, method: b.method };
+    remember(); renderAll();
+    $('detailcard').scrollIntoView({ block: 'nearest' });
+  }
+
+  /* ---- one entry: each rat, and the pair in every window ---- */
+  function renderDetail() {
+    const host = $('detail'); host.innerHTML = '';
+    if (!st.sel) return;
+    const s = st.sel;
+    const c = cellsOf(st.layer, s.band, s.window, s.method)[s.pair];
+    $('dtitle').textContent = pairName(s.pair);
+    $('dsub').textContent = say(BANDS, s.band) + ' · ' + say(WINDOWS, s.window) + ' · ' + say(METHODS, s.method) + ' · ' + say(LAYERS, st.layer)
+      + (c ? ' — change ' + f3(c.d) + ', t(' + c.df + ') = ' + (c.t == null ? '—' : c.t.toFixed(2)) + ', p ' + fp(c.p) + ', q ' + fp(c.q)
+        + ', ' + c.same + ' of ' + c.k + ' rats this way.' : ' — not tested in this layer.');
+    if (c) {
+      const rats = Object.keys(c.rats || {});
+      const max = Math.max(1e-9, ...rats.map((r) => Math.abs(c.rats[r])));
+      const W = 720, H = 86, l = 40, r = 40, X = (v) => l + (v + max) / (2 * max) * (W - l - r);
+      const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Each rat’s change for this entry' });
+      svg.appendChild(sv('line', { x1: X(0), x2: X(0), y1: 8, y2: H - 22, stroke: css('--line-2') }));
+      svg.appendChild(sv('text', { x: X(0), y: H - 6, 'text-anchor': 'middle', 'font-size': 11, fill: css('--ink-3') }, '0'));
+      svg.appendChild(sv('text', { x: X(-max), y: H - 6, 'font-size': 11, fill: css('--ink-3') }, f3(-max)));
+      svg.appendChild(sv('text', { x: X(max), y: H - 6, 'text-anchor': 'end', 'font-size': 11, fill: css('--ink-3') }, f3(max)));
+      rats.forEach((rat, i) => {
+        const v = c.rats[rat], y = 22 + (i % 2) * 18;
+        svg.appendChild(sv('circle', { cx: X(v), cy: y, r: 6, fill: v >= 0 ? css('--up') : css('--down'), 'fill-opacity': 0.8 }));
+        svg.appendChild(sv('text', { x: X(v), y: y - 9, 'text-anchor': 'middle', 'font-size': 10.5, fill: css('--ink-2') }, rat));
+      });
+      if (c.d != null) svg.appendChild(sv('line', { x1: X(c.d), x2: X(c.d), y1: 8, y2: H - 22, stroke: css('--ink'), 'stroke-width': 2.5 }));
+      host.appendChild(el('div', { class: 'dwrap' }, [svg]));
+    }
+    const t = el('table', { class: 'w' });
+    t.appendChild(el('tr', {}, ['window', 'change', 't', 'p', 'q', 'rats this way', ''].map((h) => el('th', { text: h }))));
+    for (const [w, name] of WINDOWS) {
+      const x = cellsOf(st.layer, s.band, w, s.method)[s.pair];
+      t.appendChild(el('tr', {}, [el('td', { text: name }),
+        el('td', { class: 'num', text: x ? f3(x.d) : '—' }), el('td', { class: 'num', text: x && x.t != null ? x.t.toFixed(2) : '—' }),
+        el('td', { class: 'num', text: x ? fp(x.p) : '—' }), el('td', { class: 'num', text: x ? fp(x.q) : '—' }),
+        el('td', { class: 'num', text: x && x.p != null ? x.same + '/' + x.k : (x && x.why) || '—' }),
+        el('td', { text: x ? (x.tier === 1 ? 'survives' : x.tier === 2 ? 'of interest' : '') : '' })]));
+    }
+    host.appendChild(el('p', { class: 'small muted', style: 'margin-top:12px', text: 'The same region pair in every window (' + say(BANDS, s.band) + ', ' + say(METHODS, s.method) + ', ' + say(LAYERS, st.layer) + '):' }));
+    host.appendChild(el('div', { class: 'twrap' }, [t]));
+  }
+
+  function renderText() {
+    $('lede').textContent = D.analysis_say;
+    const v = $('verdict'); v.innerHTML = '';
+    const count = (layer, tier) => D.drifts.reduce((n, d) => {
+      const L = d.layers[layer]; let m = 0;
+      for (const w in L.cells) for (const me in L.cells[w]) for (const k in L.cells[w][me]) if (L.cells[w][me][k].tier === tier) m++;
+      return n + m; }, 0);
+    const tests = (layer) => D.drifts.reduce((n, d) => n + (d.layers[layer].bh_tests || 0), 0);
+    for (const [id, name] of LAYERS) {
+      v.appendChild(el('p', {}, [el('strong', { text: name + ': ' }),
+        count(id, 1) + ' of ' + tests(id) + ' tested entries survive (q < .05); ' + count(id, 2) + ' more are points of interest.']));
+    }
+    v.appendChild(el('p', { class: 'small muted', text: 'Points of interest are for sifting: q < .25 or p < .01, with most rats moving the same way. They are leads to explore, not findings. ' + (D.layer_say || {}).minus_fp + '.' }));
+    const f = $('foot'); f.innerHTML = '';
+    f.appendChild(el('p', { text: 'Made ' + D.made + ' by tools/precon_pooled.py. Every entry is in docs/dewey-precon-pooled.csv. The drifts, each viewable in Jarvis Results:' }));
+    f.appendChild(el('p', {}, D.drifts.map((d, i) => [i ? ' · ' : '', el('code', { text: d.artifact_id + ' v' + d.version }), ' ' + d.nickname]).flat()));
+  }
+
+  function renderAll() {
+    seg('layer', LAYERS, 'layer'); seg('band', BANDS, 'band'); seg('method', METHODS, 'method');
+    seg('window', WINDOWS.map((w) => [w[0], w[1]]), 'window');
+    renderCircuit(); renderReadout(); renderTop(); renderDetail();
+  }
+  renderText();
+  if (!st.sel && ((D.top || {})[st.layer] || []).length) {
+    const b = D.top[st.layer][0];
+    st.sel = { pair: b.pair, band: b.best.band, window: b.best.window, method: b.best.method };
+    Object.assign(st, { band: b.best.band, window: b.best.window, method: b.best.method });
+  }
+  renderAll();
+  try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll); } catch (e) { /* old browser */ }
+})();
+</script>
+</body>
+</html>

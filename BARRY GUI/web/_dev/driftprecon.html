@@ -465,14 +465,14 @@ function unweighted(stages) {
     await untilN(() => host().querySelector('.dpc-filed .loader'), 40);
     check('while it writes, a loader', /Writing the report/.test(host().querySelector('.dpc-filed').textContent));
     const withReport = Object.assign({}, finished, { report: {
-      md: { name: 'dewey-precon-drift.md', bytes: 2048, at: iso(5) },
-      csv: { name: 'dewey-precon-drift.csv', bytes: 40960, at: iso(5) },
+      page: { name: 'dewey-precon-pooled.html', bytes: 2048, at: iso(5) },
+      csv: { name: 'dewey-precon-pooled.csv', bytes: 40960, at: iso(5) },
       figures: ['theta-state-food.png', 'sanity-checks.png'] },
       last: Object.assign({}, finished.last, { report: { started: iso(8), ended: iso(5), exit_code: 0 } }) });
     await show(withReport);
-    const md = host().querySelector('a[href="/api/arc/precon/file/md"]');
+    const md = host().querySelector('a[href="/api/arc/precon/file/page"]');
     const csv = host().querySelector('a[href="/api/arc/precon/file/csv"]');
-    check('the write-up opens in a new tab', md && md.target === '_blank' && md.textContent === 'Open the write-up');
+    check('the circuits page opens in a new tab', md && md.target === '_blank' && md.textContent === 'Open the circuits page');
     check('the CSV downloads, its size said', csv && csv.textContent === 'Download the CSV (40 KB)',
           csv && csv.textContent);
     check('a thumbnail per figure', $$('#drPrecon .dpc-fig img').length === 2);

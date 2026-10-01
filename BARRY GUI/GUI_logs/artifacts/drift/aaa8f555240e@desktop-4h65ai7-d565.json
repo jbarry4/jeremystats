@@ -1,0 +1,1371 @@
+{
+  "_at": {
+    "added": "2026-09-30T19:18:18.981139+00:00",
+    "deleted": "2026-09-30T20:28:37.749307+00:00",
+    "id": "2026-09-30T19:18:18.981139+00:00",
+    "kind": "2026-09-30T19:18:18.981139+00:00",
+    "name": "2026-09-30T19:18:18.981139+00:00",
+    "nickname": "2026-09-30T19:18:18.981139+00:00",
+    "schema": "2026-09-30T19:18:18.981139+00:00",
+    "subject": "2026-09-30T19:18:18.981139+00:00",
+    "subject_key": "2026-09-30T19:18:18.981139+00:00",
+    "version": "2026-09-30T20:28:37.749307+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "19f27f10f6e9": [
+        "set",
+        "2026-09-30T20:28:37.749307+00:00"
+      ],
+      "c7ed83bc3504": [
+        "set",
+        "2026-09-30T19:18:18.981139+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-30T20:28:37.749307+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-30T15:18:18-04:00",
+    "by": "precon_pooled",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "aaa8f555240e",
+  "kind": "drift",
+  "name": "Precon1 vs Precon4 \u00b7 both cue pairings \u00b7 state \u00b7 beta 13\u201330 Hz",
+  "nickname": "Precon1\u21924 \u00b7 beta \u00b7 state \u00b7 both pairings",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "analysis": {
+      "bh_scope": "artifact",
+      "contrast": null,
+      "design": "matched",
+      "layers": [
+        "raw",
+        "minus_fp"
+      ],
+      "min_rats": 5,
+      "pool": "pairings",
+      "rest": [
+        "0f2806984938@723cf2ad49dd",
+        "1247a683176a@5be6ff6f7bd8",
+        "1fdfc230da40@932afe82083e",
+        "210e3bb07bb1@2c1ded40c801",
+        "3896a272833e@ac4d4166be26",
+        "38b301af8afc@78926f68bd7c",
+        "3b776b9fb1e7@586930af20c0",
+        "49ab64bc2a70@ef81c0a76158",
+        "55642127f37a@488cdce48bd6",
+        "665abcf172bd@f35841c90a6c",
+        "805427c602ac@f9d52aca88c8",
+        "817c2aff4442@f604dff0092c",
+        "8e11689b4d8b@08760aef39c3",
+        "a16ac97b1099@8da40943859e",
+        "dcd57416ce53@02060b932819",
+        "ecb996062215@9eb4f4855fdd"
+      ],
+      "test": "hk"
+    },
+    "band": "beta",
+    "band_label": "beta 13\u201330 Hz",
+    "cue_equivalence": [],
+    "cue_label": "both cue pairings",
+    "cue_type": "pooled",
+    "left": [
+      {
+        "digest": "c7b576474470",
+        "gid": "sb3ad74706f07",
+        "id": "034153be0226",
+        "kind": "artifact",
+        "name": "DEWEY r9 s1 Precon1 SPC \u00b7 High tone \u2192 Click \u00b7 state \u00b7 Beta",
+        "rat": "r9",
+        "side": "left",
+        "version": 1,
+        "version_id": "3f52bde6144c"
+      },
+      {
+        "digest": "cfefbd71c722",
+        "gid": "s3fcdbcc678da",
+        "id": "1049b5144a53",
+        "kind": "artifact",
+        "name": "DEWEY r11 s1 Precon1 SPC \u00b7 Low Tone \u2192 Click \u00b7 state \u00b7 Beta",
+        "rat": "r11",
+        "side": "left",
+        "version": 1,
+        "version_id": "ae295830a800"
+      },
+      {
+        "digest": "c37f02d057ea",
+        "gid": "s360e48254222",
+        "id": "196ae79391ff",
+        "kind": "artifact",
+        "name": "DEWEY r7 s1 Precon1 SPC \u00b7 Noise \u2192 Low Tone \u00b7 state \u00b7 Beta",
+        "rat": "r7",
+        "side": "left",
+        "version": 1,
+        "version_id": "7c43c84d6890"
+      },
+      {
+        "digest": "82c5bbbf8076",
+        "gid": "sce947d33ceb8",
+        "id": "19bc4561dbaa",
+        "kind": "artifact",
+        "name": "DEWEY r6 s1 Precon1 SPC \u00b7 Noise \u2192 High tone \u00b7 state \u00b7 Beta",
+        "rat": "r6",
+        "side": "left",
+        "version": 1,
+        "version_id": "7e5080a3aade"
+      },
+      {
+        "digest": "9759cf4d57fa",
+        "gid": "sec4bed944ba0",
+        "id": "372114868462",
+        "kind": "artifact",
+        "name": "DEWEY r3 s1 Precon1 SPC \u00b7 Click \u2192 Low Tone \u00b7 state \u00b7 Beta",
+        "rat": "r3",
+        "side": "left",
+        "version": 1,
+        "version_id": "1971c7b00de9"
+      },
+      {
+        "digest": "fb9cc1f6b330",
+        "gid": "s0c6efa477a94",
+        "id": "4b766967d3a6",
+        "kind": "artifact",
+        "name": "DEWEY r10 s1 Precon1 SPC \u00b7 Low Tone \u2192 Noise \u00b7 state \u00b7 Beta",
+        "rat": "r10",
+        "side": "left",
+        "version": 1,
+        "version_id": "981298065af4"
+      },
+      {
+        "digest": "1a3cab37f48c",
+        "gid": "s3fcdbcc678da",
+        "id": "7d6a3705a57d",
+        "kind": "artifact",
+        "name": "DEWEY r11 s1 Precon1 SPC \u00b7 High tone \u2192 Noise \u00b7 state \u00b7 Beta",
+        "rat": "r11",
+        "side": "left",
+        "version": 1,
+        "version_id": "50d549069403"
+      },
+      {
+        "digest": "3a20dea36868",
+        "gid": "sec4bed944ba0",
+        "id": "7e1b7ee977ec",
+        "kind": "artifact",
+        "name": "DEWEY r3 s1 Precon1 SPC \u00b7 Noise \u2192 High tone \u00b7 state \u00b7 Beta",
+        "rat": "r3",
+        "side": "left",
+        "version": 1,
+        "version_id": "0b45a6b6d7fb"
+      },
+      {
+        "digest": "23116f8afc0f",
+        "gid": "sb3ad74706f07",
+        "id": "8471e3dfb065",
+        "kind": "artifact",
+        "name": "DEWEY r9 s1 Precon1 SPC \u00b7 Low Tone \u2192 Noise \u00b7 state \u00b7 Beta",
+        "rat": "r9",
+        "side": "left",
+        "version": 1,
+        "version_id": "ca03a04c0c59"
+      },
+      {
+        "digest": "6e58b693c5a4",
+        "gid": "s989ca3b5b2d6",
+        "id": "a5125743a1aa",
+        "kind": "artifact",
+        "name": "DEWEY r4 s1 Precon1 SPC \u00b7 High tone \u2192 Noise \u00b7 state \u00b7 Beta",
+        "rat": "r4",
+        "side": "left",
+        "version": 1,
+        "version_id": "b67fbb042db4"
+      },
+      {
+        "digest": "10b443365d53",
+        "gid": "s234fc080573e",
+        "id": "ac4cddc01212",
+        "kind": "artifact",
+        "name": "DEWEY r8 s1 Precon1 SPC \u00b7 Click \u2192 High tone \u00b7 state \u00b7 Beta",
+        "rat": "r8",
+        "side": "left",
+        "version": 1,
+        "version_id": "a5931a341602"
+      },
+      {
+        "digest": "b2cbd7cf0668",
+        "gid": "sce947d33ceb8",
+        "id": "c237d1613c9d",
+        "kind": "artifact",
+        "name": "DEWEY r6 s1 Precon1 SPC \u00b7 Click \u2192 Low Tone \u00b7 state \u00b7 Beta",
+        "rat": "r6",
+        "side": "left",
+        "version": 1,
+        "version_id": "e57962bb81e3"
+      },
+      {
+        "digest": "154023e2855c",
+        "gid": "s360e48254222",
+        "id": "c7061fd64349",
+        "kind": "artifact",
+        "name": "DEWEY r7 s1 Precon1 SPC \u00b7 Click \u2192 High tone \u00b7 state \u00b7 Beta",
+        "rat": "r7",
+        "side": "left",
+        "version": 1,
+        "version_id": "c58a4790f4a6"
+      },
+      {
+        "digest": "62494190b4bb",
+        "gid": "s0c6efa477a94",
+        "id": "cae515003662",
+        "kind": "artifact",
+        "name": "DEWEY r10 s1 Precon1 SPC \u00b7 High tone \u2192 Click \u00b7 state \u00b7 Beta",
+        "rat": "r10",
+        "side": "left",
+        "version": 1,
+        "version_id": "c6b3daea159a"
+      },
+      {
+        "digest": "32d67ac5cfcb",
+        "gid": "s234fc080573e",
+        "id": "ed474a537904",
+        "kind": "artifact",
+        "name": "DEWEY r8 s1 Precon1 SPC \u00b7 Noise \u2192 Low Tone \u00b7 state \u00b7 Beta",
+        "rat": "r8",
+        "side": "left",
+        "version": 1,
+        "version_id": "15f2d20509bf"
+      },
+      {
+        "digest": "f060895be2dd",
+        "gid": "s989ca3b5b2d6",
+        "id": "ff6f679e09d6",
+        "kind": "artifact",
+        "name": "DEWEY r4 s1 Precon1 SPC \u00b7 Low Tone \u2192 Click \u00b7 state \u00b7 Beta",
+        "rat": "r4",
+        "side": "left",
+        "version": 1,
+        "version_id": "9a4b80948879"
+      }
+    ],
+    "left_label": "Precon1",
+    "right": [
+      {
+        "digest": "aa181b06ca73",
+        "gid": "sdf092805b0cb",
+        "id": "2df0edeabc22",
+        "kind": "artifact",
+        "name": "DEWEY r8 s4 Precon4 SPC \u00b7 Click \u2192 High tone \u00b7 state \u00b7 Beta",
+        "rat": "r8",
+        "side": "right",
+        "version": 1,
+        "version_id": "04f3b2a968e6"
+      },
+      {
+        "digest": "df74e1101ba2",
+        "gid": "s4af2a78d7ab7",
+        "id": "50debad4ca2c",
+        "kind": "artifact",
+        "name": "DEWEY r9 s4 Precon4 SPC \u00b7 High tone \u2192 Click \u00b7 state \u00b7 Beta",
+        "rat": "r9",
+        "side": "right",
+        "version": 1,
+        "version_id": "48b2dd277591"
+      },
+      {
+        "digest": "4f0e6355bf68",
+        "gid": "sc710262dff13",
+        "id": "549531cf3b1e",
+        "kind": "artifact",
+        "name": "DEWEY r7 s4 Precon4 SPC \u00b7 Noise \u2192 Low Tone \u00b7 state \u00b7 Beta",
+        "rat": "r7",
+        "side": "right",
+        "version": 1,
+        "version_id": "4140199a2fef"
+      },
+      {
+        "digest": "7d78eb7a96b8",
+        "gid": "sdf092805b0cb",
+        "id": "664e9185f60e",
+        "kind": "artifact",
+        "name": "DEWEY r8 s4 Precon4 SPC \u00b7 Noise \u2192 Low Tone \u00b7 state \u00b7 Beta",
+        "rat": "r8",
+        "side": "right",
+        "version": 1,
+        "version_id": "40b8757b2e2b"
+      },
+      {
+        "digest": "77600e603926",
+        "gid": "s09af032023a9",
+        "id": "686da9e8f7b2",
+        "kind": "artifact",
+        "name": "DEWEY r4 s4 Precon4 SPC \u00b7 Low Tone \u2192 Click \u00b7 state \u00b7 Beta",
+        "rat": "r4",
+        "side": "right",
+        "version": 1,
+        "version_id": "0bb46dd5b264"
+      },
+      {
+        "digest": "1dbe4d70505a",
+        "gid": "s5e2c6d208fc7",
+        "id": "6a2e637cf32d",
+        "kind": "artifact",
+        "name": "DEWEY r10 s4 Precon4 SPC \u00b7 High tone \u2192 Click \u00b7 state \u00b7 Beta",
+        "rat": "r10",
+        "side": "right",
+        "version": 1,
+        "version_id": "e4298c4fef47"
+      },
+      {
+        "digest": "cc2d14b00d4f",
+        "gid": "s4af2a78d7ab7",
+        "id": "738235b6cb84",
+        "kind": "artifact",
+        "name": "DEWEY r9 s4 Precon4 SPC \u00b7 Low Tone \u2192 Noise \u00b7 state \u00b7 Beta",
+        "rat": "r9",
+        "side": "right",
+        "version": 1,
+        "version_id": "7a5e8eb62699"
+      },
+      {
+        "digest": "8d31f4d23a22",
+        "gid": "s7f9b97e294b8",
+        "id": "748e60b2c50e",
+        "kind": "artifact",
+        "name": "DEWEY r3 s4 Precon4 SPC \u00b7 Noise \u2192 High tone \u00b7 state \u00b7 Beta",
+        "rat": "r3",
+        "side": "right",
+        "version": 1,
+        "version_id": "607aa036e2e8"
+      },
+      {
+        "digest": "62ee4cdcbd1a",
+        "gid": "sc905a9b9e371",
+        "id": "7894fc235124",
+        "kind": "artifact",
+        "name": "DEWEY r6 s4 Precon4 SPC \u00b7 Noise \u2192 High tone \u00b7 state \u00b7 Beta",
+        "rat": "r6",
+        "side": "right",
+        "version": 1,
+        "version_id": "69867ec9e5cb"
+      },
+      {
+        "digest": "a221c3f79167",
+        "gid": "sc710262dff13",
+        "id": "81bcfd5a44a3",
+        "kind": "artifact",
+        "name": "DEWEY r7 s4 Precon4 SPC \u00b7 Click \u2192 High tone \u00b7 state \u00b7 Beta",
+        "rat": "r7",
+        "side": "right",
+        "version": 1,
+        "version_id": "c5ae6a5eb089"
+      },
+      {
+        "digest": "a729dcc5eb37",
+        "gid": "sbd33a50b7fec",
+        "id": "9b6ec6b4cbc8",
+        "kind": "artifact",
+        "name": "DEWEY r11 s4 Precon4 SPC \u00b7 High tone \u2192 Noise \u00b7 state \u00b7 Beta",
+        "rat": "r11",
+        "side": "right",
+        "version": 1,
+        "version_id": "d14bf9823d4f"
+      },
+      {
+        "digest": "465e1a65599b",
+        "gid": "sbd33a50b7fec",
+        "id": "a5b6f60ae635",
+        "kind": "artifact",
+        "name": "DEWEY r11 s4 Precon4 SPC \u00b7 Low Tone \u2192 Click \u00b7 state \u00b7 Beta",
+        "rat": "r11",
+        "side": "right",
+        "version": 1,
+        "version_id": "2d9ab005be1e"
+      },
+      {
+        "digest": "bf25464a22b3",
+        "gid": "sc905a9b9e371",
+        "id": "cc3e940fa926",
+        "kind": "artifact",
+        "name": "DEWEY r6 s4 Precon4 SPC \u00b7 Click \u2192 Low Tone \u00b7 state \u00b7 Beta",
+        "rat": "r6",
+        "side": "right",
+        "version": 1,
+        "version_id": "afcf9a42ed27"
+      },
+      {
+        "digest": "03598f81a6cc",
+        "gid": "s5e2c6d208fc7",
+        "id": "cef619d3ed76",
+        "kind": "artifact",
+        "name": "DEWEY r10 s4 Precon4 SPC \u00b7 Low Tone \u2192 Noise \u00b7 state \u00b7 Beta",
+        "rat": "r10",
+        "side": "right",
+        "version": 1,
+        "version_id": "81f9d950e2f8"
+      },
+      {
+        "digest": "ec26431715ad",
+        "gid": "s09af032023a9",
+        "id": "e4b6d02d8f56",
+        "kind": "artifact",
+        "name": "DEWEY r4 s4 Precon4 SPC \u00b7 High tone \u2192 Noise \u00b7 state \u00b7 Beta",
+        "rat": "r4",
+        "side": "right",
+        "version": 1,
+        "version_id": "23dddcb442cd"
+      },
+      {
+        "digest": "ee12fd5f6955",
+        "gid": "s7f9b97e294b8",
+        "id": "e81f11da6f06",
+        "kind": "artifact",
+        "name": "DEWEY r3 s4 Precon4 SPC \u00b7 Click \u2192 Low Tone \u00b7 state \u00b7 Beta",
+        "rat": "r3",
+        "side": "right",
+        "version": 1,
+        "version_id": "76cca20e6645"
+      }
+    ],
+    "right_label": "Precon4",
+    "window_kind": "state"
+  },
+  "subject_key": "drift|ac7a716e5e79|f005a20f26fb|pooled|state|an:32173b16e2b9",
+  "version": 2,
+  "versions": [
+    {
+      "app_version": "2026.09.30.1",
+      "at": "2026-09-30T15:18:18-04:00",
+      "by": "precon_pooled",
+      "commit": "1714e44f",
+      "digest": "dd4cebae8678",
+      "id": "c7ed83bc3504",
+      "inputs": [
+        {
+          "digest": "ec26431715ad",
+          "id": "e4b6d02d8f56",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "23dddcb442cd"
+        },
+        {
+          "digest": "77600e603926",
+          "id": "686da9e8f7b2",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "0bb46dd5b264"
+        },
+        {
+          "digest": "62494190b4bb",
+          "id": "cae515003662",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "c6b3daea159a"
+        },
+        {
+          "digest": "fb9cc1f6b330",
+          "id": "4b766967d3a6",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "981298065af4"
+        },
+        {
+          "digest": "10b443365d53",
+          "id": "ac4cddc01212",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "a5931a341602"
+        },
+        {
+          "digest": "32d67ac5cfcb",
+          "id": "ed474a537904",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "15f2d20509bf"
+        },
+        {
+          "digest": "154023e2855c",
+          "id": "c7061fd64349",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "c58a4790f4a6"
+        },
+        {
+          "digest": "c37f02d057ea",
+          "id": "196ae79391ff",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "7c43c84d6890"
+        },
+        {
+          "digest": "1a3cab37f48c",
+          "id": "7d6a3705a57d",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "50d549069403"
+        },
+        {
+          "digest": "cfefbd71c722",
+          "id": "1049b5144a53",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "ae295830a800"
+        },
+        {
+          "digest": "df74e1101ba2",
+          "id": "50debad4ca2c",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "48b2dd277591"
+        },
+        {
+          "digest": "cc2d14b00d4f",
+          "id": "738235b6cb84",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "7a5e8eb62699"
+        },
+        {
+          "digest": "1dbe4d70505a",
+          "id": "6a2e637cf32d",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "e4298c4fef47"
+        },
+        {
+          "digest": "03598f81a6cc",
+          "id": "cef619d3ed76",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "81f9d950e2f8"
+        },
+        {
+          "digest": "ee12fd5f6955",
+          "id": "e81f11da6f06",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "76cca20e6645"
+        },
+        {
+          "digest": "8d31f4d23a22",
+          "id": "748e60b2c50e",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "607aa036e2e8"
+        },
+        {
+          "digest": "6e58b693c5a4",
+          "id": "a5125743a1aa",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "b67fbb042db4"
+        },
+        {
+          "digest": "f060895be2dd",
+          "id": "ff6f679e09d6",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "9a4b80948879"
+        },
+        {
+          "digest": "c7b576474470",
+          "id": "034153be0226",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "3f52bde6144c"
+        },
+        {
+          "digest": "23116f8afc0f",
+          "id": "8471e3dfb065",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "ca03a04c0c59"
+        },
+        {
+          "digest": "a729dcc5eb37",
+          "id": "9b6ec6b4cbc8",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "d14bf9823d4f"
+        },
+        {
+          "digest": "465e1a65599b",
+          "id": "a5b6f60ae635",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "2d9ab005be1e"
+        },
+        {
+          "digest": "a221c3f79167",
+          "id": "81bcfd5a44a3",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "c5ae6a5eb089"
+        },
+        {
+          "digest": "4f0e6355bf68",
+          "id": "549531cf3b1e",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "4140199a2fef"
+        },
+        {
+          "digest": "bf25464a22b3",
+          "id": "cc3e940fa926",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "afcf9a42ed27"
+        },
+        {
+          "digest": "62ee4cdcbd1a",
+          "id": "7894fc235124",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "69867ec9e5cb"
+        },
+        {
+          "digest": "b2cbd7cf0668",
+          "id": "c237d1613c9d",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "e57962bb81e3"
+        },
+        {
+          "digest": "82c5bbbf8076",
+          "id": "19bc4561dbaa",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "7e5080a3aade"
+        },
+        {
+          "digest": "aa181b06ca73",
+          "id": "2df0edeabc22",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "04f3b2a968e6"
+        },
+        {
+          "digest": "7d78eb7a96b8",
+          "id": "664e9185f60e",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "40b8757b2e2b"
+        },
+        {
+          "digest": "9759cf4d57fa",
+          "id": "372114868462",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "1971c7b00de9"
+        },
+        {
+          "digest": "3a20dea36868",
+          "id": "7e1b7ee977ec",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "0b45a6b6d7fb"
+        },
+        {
+          "digest": "8c22bdb726dc",
+          "id": "817c2aff4442",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "f604dff0092c"
+        },
+        {
+          "digest": "57effd7a0001",
+          "id": "0f2806984938",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "723cf2ad49dd"
+        },
+        {
+          "digest": "d8ad47e38bd8",
+          "id": "ecb996062215",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "9eb4f4855fdd"
+        },
+        {
+          "digest": "9630ced12f84",
+          "id": "3b776b9fb1e7",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "586930af20c0"
+        },
+        {
+          "digest": "2fcc71247281",
+          "id": "55642127f37a",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "488cdce48bd6"
+        },
+        {
+          "digest": "ef72bac12881",
+          "id": "1247a683176a",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "5be6ff6f7bd8"
+        },
+        {
+          "digest": "87ca70ada605",
+          "id": "38b301af8afc",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "78926f68bd7c"
+        },
+        {
+          "digest": "d56a2a10724e",
+          "id": "3896a272833e",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "ac4d4166be26"
+        },
+        {
+          "digest": "090a0b083a7a",
+          "id": "8e11689b4d8b",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "08760aef39c3"
+        },
+        {
+          "digest": "d490f03e089c",
+          "id": "a16ac97b1099",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "8da40943859e"
+        },
+        {
+          "digest": "593ab7a5c3d1",
+          "id": "665abcf172bd",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "f35841c90a6c"
+        },
+        {
+          "digest": "b89ba29f4306",
+          "id": "1fdfc230da40",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "932afe82083e"
+        },
+        {
+          "digest": "f8f053ce59e3",
+          "id": "210e3bb07bb1",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "2c1ded40c801"
+        },
+        {
+          "digest": "e2a1e45ead66",
+          "id": "dcd57416ce53",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "02060b932819"
+        },
+        {
+          "digest": "072efbd5eb63",
+          "id": "805427c602ac",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "f9d52aca88c8"
+        },
+        {
+          "digest": "ad0d6235f28d",
+          "id": "49ab64bc2a70",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "ef81c0a76158"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "beta",
+        "bh_scope": "artifact",
+        "cells": 528,
+        "contrast": null,
+        "cue_role": null,
+        "cue_types": [
+          "HighTone_Noise",
+          "LowTone_Click",
+          "HighTone_Click",
+          "LowTone_Noise",
+          "Click_HighTone",
+          "Noise_LowTone",
+          "Click_LowTone",
+          "Noise_HighTone"
+        ],
+        "design": "matched",
+        "equivalence": 0,
+        "kind": "state",
+        "left_k": 16,
+        "pooled_by": "pairings pooled",
+        "q_lt_05": 0,
+        "rats": 8,
+        "right_k": 16,
+        "test": "hk",
+        "tests": 300
+      },
+      "note": null,
+      "params": {
+        "band": "beta",
+        "bh_scope": "artifact",
+        "design": "matched",
+        "kind": "state",
+        "layers": [
+          "raw",
+          "minus_fp"
+        ],
+        "min_rats": 5,
+        "pool": "pairings",
+        "test": "hk",
+        "tiers": {
+          "point_of_interest": {
+            "majority": true,
+            "p": 0.01,
+            "q": 0.25
+          },
+          "survives": {
+            "q": 0.05
+          }
+        }
+      },
+      "params_hash": "691f3ccb818c",
+      "v": 1
+    },
+    {
+      "app_version": "2026.09.30.2",
+      "at": "2026-09-30T16:28:37-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "1714e44f",
+      "digest": "0a33f6e6433d",
+      "id": "19f27f10f6e9",
+      "inputs": [
+        {
+          "digest": "fb9cc1f6b330",
+          "id": "4b766967d3a6",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "981298065af4"
+        },
+        {
+          "digest": "62494190b4bb",
+          "id": "cae515003662",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "c6b3daea159a"
+        },
+        {
+          "digest": "1dbe4d70505a",
+          "id": "6a2e637cf32d",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "e4298c4fef47"
+        },
+        {
+          "digest": "03598f81a6cc",
+          "id": "cef619d3ed76",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "81f9d950e2f8"
+        },
+        {
+          "digest": "cfefbd71c722",
+          "id": "1049b5144a53",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "ae295830a800"
+        },
+        {
+          "digest": "1a3cab37f48c",
+          "id": "7d6a3705a57d",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "50d549069403"
+        },
+        {
+          "digest": "a729dcc5eb37",
+          "id": "9b6ec6b4cbc8",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "d14bf9823d4f"
+        },
+        {
+          "digest": "465e1a65599b",
+          "id": "a5b6f60ae635",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "2d9ab005be1e"
+        },
+        {
+          "digest": "9759cf4d57fa",
+          "id": "372114868462",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "1971c7b00de9"
+        },
+        {
+          "digest": "3a20dea36868",
+          "id": "7e1b7ee977ec",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "0b45a6b6d7fb"
+        },
+        {
+          "digest": "8d31f4d23a22",
+          "id": "748e60b2c50e",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "607aa036e2e8"
+        },
+        {
+          "digest": "ee12fd5f6955",
+          "id": "e81f11da6f06",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "76cca20e6645"
+        },
+        {
+          "digest": "6e58b693c5a4",
+          "id": "a5125743a1aa",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "b67fbb042db4"
+        },
+        {
+          "digest": "f060895be2dd",
+          "id": "ff6f679e09d6",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "9a4b80948879"
+        },
+        {
+          "digest": "77600e603926",
+          "id": "686da9e8f7b2",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "0bb46dd5b264"
+        },
+        {
+          "digest": "ec26431715ad",
+          "id": "e4b6d02d8f56",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "23dddcb442cd"
+        },
+        {
+          "digest": "82c5bbbf8076",
+          "id": "19bc4561dbaa",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "7e5080a3aade"
+        },
+        {
+          "digest": "b2cbd7cf0668",
+          "id": "c237d1613c9d",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "e57962bb81e3"
+        },
+        {
+          "digest": "62ee4cdcbd1a",
+          "id": "7894fc235124",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "69867ec9e5cb"
+        },
+        {
+          "digest": "bf25464a22b3",
+          "id": "cc3e940fa926",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "afcf9a42ed27"
+        },
+        {
+          "digest": "c37f02d057ea",
+          "id": "196ae79391ff",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "7c43c84d6890"
+        },
+        {
+          "digest": "154023e2855c",
+          "id": "c7061fd64349",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "c58a4790f4a6"
+        },
+        {
+          "digest": "4f0e6355bf68",
+          "id": "549531cf3b1e",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "4140199a2fef"
+        },
+        {
+          "digest": "a221c3f79167",
+          "id": "81bcfd5a44a3",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "c5ae6a5eb089"
+        },
+        {
+          "digest": "10b443365d53",
+          "id": "ac4cddc01212",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "a5931a341602"
+        },
+        {
+          "digest": "32d67ac5cfcb",
+          "id": "ed474a537904",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "15f2d20509bf"
+        },
+        {
+          "digest": "aa181b06ca73",
+          "id": "2df0edeabc22",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "04f3b2a968e6"
+        },
+        {
+          "digest": "7d78eb7a96b8",
+          "id": "664e9185f60e",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "40b8757b2e2b"
+        },
+        {
+          "digest": "c7b576474470",
+          "id": "034153be0226",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "3f52bde6144c"
+        },
+        {
+          "digest": "23116f8afc0f",
+          "id": "8471e3dfb065",
+          "kind": "artifact",
+          "side": "left",
+          "version": 1,
+          "version_id": "ca03a04c0c59"
+        },
+        {
+          "digest": "df74e1101ba2",
+          "id": "50debad4ca2c",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "48b2dd277591"
+        },
+        {
+          "digest": "cc2d14b00d4f",
+          "id": "738235b6cb84",
+          "kind": "artifact",
+          "side": "right",
+          "version": 1,
+          "version_id": "7a5e8eb62699"
+        },
+        {
+          "digest": "57effd7a0001",
+          "id": "0f2806984938",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "723cf2ad49dd"
+        },
+        {
+          "digest": "87ca70ada605",
+          "id": "38b301af8afc",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "78926f68bd7c"
+        },
+        {
+          "digest": "2fcc71247281",
+          "id": "55642127f37a",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "488cdce48bd6"
+        },
+        {
+          "digest": "593ab7a5c3d1",
+          "id": "665abcf172bd",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "f35841c90a6c"
+        },
+        {
+          "digest": "ad0d6235f28d",
+          "id": "49ab64bc2a70",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "ef81c0a76158"
+        },
+        {
+          "digest": "d56a2a10724e",
+          "id": "3896a272833e",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "ac4d4166be26"
+        },
+        {
+          "digest": "090a0b083a7a",
+          "id": "8e11689b4d8b",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "08760aef39c3"
+        },
+        {
+          "digest": "8c22bdb726dc",
+          "id": "817c2aff4442",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "f604dff0092c"
+        },
+        {
+          "digest": "e2a1e45ead66",
+          "id": "dcd57416ce53",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "02060b932819"
+        },
+        {
+          "digest": "f8f053ce59e3",
+          "id": "210e3bb07bb1",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "2c1ded40c801"
+        },
+        {
+          "digest": "9630ced12f84",
+          "id": "3b776b9fb1e7",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "586930af20c0"
+        },
+        {
+          "digest": "b89ba29f4306",
+          "id": "1fdfc230da40",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "932afe82083e"
+        },
+        {
+          "digest": "d8ad47e38bd8",
+          "id": "ecb996062215",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "9eb4f4855fdd"
+        },
+        {
+          "digest": "072efbd5eb63",
+          "id": "805427c602ac",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "f9d52aca88c8"
+        },
+        {
+          "digest": "d490f03e089c",
+          "id": "a16ac97b1099",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "8da40943859e"
+        },
+        {
+          "digest": "ef72bac12881",
+          "id": "1247a683176a",
+          "kind": "artifact",
+          "role": "reference",
+          "side": "reference",
+          "version": 1,
+          "version_id": "5be6ff6f7bd8"
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "band": "beta",
+        "bh_scope": "artifact",
+        "cells": 528,
+        "contrast": null,
+        "cue_role": null,
+        "cue_types": [
+          "LowTone_Noise",
+          "HighTone_Click",
+          "LowTone_Click",
+          "HighTone_Noise",
+          "Click_LowTone",
+          "Noise_HighTone",
+          "Noise_LowTone",
+          "Click_HighTone"
+        ],
+        "design": "matched",
+        "equivalence": 0,
+        "kind": "state",
+        "left_k": 16,
+        "pooled_by": "pairings pooled",
+        "q_lt_05": 0,
+        "rats": 8,
+        "right_k": 16,
+        "test": "hk",
+        "tests": 300
+      },
+      "note": null,
+      "params": {
+        "band": "beta",
+        "bh_scope": "artifact",
+        "design": "matched",
+        "kind": "state",
+        "layers": [
+          "raw",
+          "minus_fp"
+        ],
+        "min_rats": 5,
+        "pool": "pairings",
+        "test": "hk",
+        "tiers": {
+          "point_of_interest": {
+            "majority": true,
+            "p": 0.01,
+            "q": 0.25
+          },
+          "survives": {
+            "q": 0.05
+          }
+        }
+      },
+      "params_hash": "691f3ccb818c",
+      "v": 2
+    }
+  ]
+}

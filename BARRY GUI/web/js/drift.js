@@ -108,7 +108,22 @@ BARRY.drift = (function () {
   };
   /* How a drift is being looked at, shared by every drift on screen. */
   const view = { side: 'delta', win: {}, method: 'coherence', edge: 'q',
-                 q: 0.05, abs: {}, sideThr: {}, sel: null };
+                 q: 0.05, abs: {}, sideThr: {}, sel: null,
+                 layer: 'raw', sig: null };
+
+  /* The significance slider: five nested levels, stricter to the right.
+     A drift that carries tiers (driftpool.py) says "of interest" at the
+     second step; any other drift says p < .05 there. `view.q` stays the q
+     threshold in force for the three q steps. */
+  const SIG_LEVELS = (P) => [
+    ['every tested entry', (c) => c.p != null, null],
+    P && P.tiers ? ['points of interest and survivors', (c) => c.tier === 1 || c.tier === 2, null]
+                 : ['p < .05', (c) => c.p != null && c.p < 0.05, null],
+    ['q < .05', (c) => c.q != null && c.q < 0.05, 0.05],
+    ['q < .01', (c) => c.q != null && c.q < 0.01, 0.01],
+    ['q < .001', (c) => c.q != null && c.q < 0.001, 0.001],
+  ];
+  const sigLevel = (P) => (view.sig != null ? view.sig : (P && P.tiers ? 1 : 2));
 
   /* ------------------------------------------------------------------
      Painting
@@ -120,13 +135,13 @@ BARRY.drift = (function () {
     const precon = modeNow() === 'precon';
     host.appendChild(el('div', { class: 'arc-spark dr-panel' }, [
       modeBar(),
-      el('div', { class: 'dr-body', id: 'drBuild', hidden: precon ? 'hidden' : null }, [
+      el('div', { class: 'dr-tab', id: 'drBuild', hidden: precon ? 'hidden' : null }, [
         el('div', { class: 'card dr-groups', id: 'drGroups' }),
         el('div', { class: 'card dr-pre', id: 'drPre' }),
         el('div', { class: 'card dr-pick', id: 'drPick' }),
         el('div', { id: 'drRun' }),
       ]),
-      el('div', { class: 'dr-body dpc', id: 'drPrecon', hidden: precon ? null : 'hidden' }),
+      el('div', { class: 'dr-tab dpc', id: 'drPrecon', hidden: precon ? null : 'hidden' }),
       el('div', { id: 'drShown' }),
     ]));
     render();
@@ -857,8 +872,14 @@ BARRY.drift = (function () {
     return ((P.grey_detail || {})[region] || [])
       .map((d) => d.side + ': ' + d.member + ' (' + d.why + ')').join('\n');
   }
-  function panelOf(ctx) { return ((ctx.P.cells || {})[ctx.win] || {})[ctx.method] || {}; }
-  function absentOf(ctx) { return ((ctx.P.absent || {})[ctx.win] || {})[ctx.method] || {}; }
+  /* A drift with a second layer (driftpool.py: minus FP) is read through
+     the one the viewer chose; any other drift is its own only layer. */
+  function layerOf(ctx) {
+    const L = ctx.P.layers || {};
+    return (view.layer !== 'raw' && L[view.layer]) ? L[view.layer] : ctx.P;
+  }
+  function panelOf(ctx) { return ((layerOf(ctx).cells || {})[ctx.win] || {})[ctx.method] || {}; }
+  function absentOf(ctx) { return ((layerOf(ctx).absent || {})[ctx.win] || {})[ctx.method] || {}; }
   function maxAbsDelta(ctx) {
     let m = 0;
     for (const c of Object.values(panelOf(ctx))) {
@@ -913,7 +934,15 @@ BARRY.drift = (function () {
                   side: view.side, sel: view.sel };
     host.__dr = ctx;
     host.appendChild(headBlock(ctx));
+    const layers = P.layers ? [['raw', 'Raw']].concat(Object.keys(P.layers).map((k) =>
+      [k, k === 'minus_fp' ? 'Minus FP' : k])) : null;
+    if (layers && !layers.some(([k]) => k === view.layer)) view.layer = 'raw';
     host.appendChild(el('div', { class: 'arc-cp-controls cir-controls dr-controls' }, [
+      layers ? el('div', { class: 'seg dr-layers', role: 'group', 'aria-label': 'Raw or minus FP' },
+        layers.map(([k, t]) => el('button', {
+          class: k === view.layer ? 'active' : '', 'data-layer': k, text: t,
+          title: (P.layer_say || {})[k] || null,
+          onclick: () => { view.layer = k; renderDrift(host, P, meta); } }))) : null,
       el('div', { class: 'seg dr-wins' }, P.windows.map((w) => el('button', {
         class: w === ctx.win ? 'active' : '', 'data-win': w, text: say(w),
         onclick: () => { view.win[kind] = w; renderDrift(host, P, meta); } }))),
@@ -928,7 +957,11 @@ BARRY.drift = (function () {
           title: s === 'delta' ? 'Right minus left, with its test'
                                : 'The ' + s + ' group’s pooled circuit',
           onclick: () => { view.side = s; renderDrift(host, P, meta); } }))),
-    ]));
+    ].filter(Boolean)));
+    if (layers && view.layer !== 'raw') {
+      host.appendChild(el('p', { class: 'hint dr-layer-say', text: 'Showing '
+        + ((P.layer_say || {})[view.layer] || view.layer) + '.' }));
+    }
     const body = el('div', { class: 'cir-body dr-body' });
     const left = el('div', { class: 'cir-left' });
     const right = el('div', { class: 'cir-right' });
@@ -945,13 +978,40 @@ BARRY.drift = (function () {
     return ctx;
   }
 
+  /* A side's circuits, each a link to exactly the version read. A pooled
+     drift (driftpool.py) has two circuits per recording -- one per cue
+     pairing -- and says so; a long list folds shut under that sentence,
+     so the drift itself is not pushed a screen down. */
+  const FOLD_OVER = 8;
   function memberLinks(P, side) {
     const g = P[side] || {};
-    return el('div', { class: 'dr-side-mem', 'data-side': side }, [
-      el('span', { class: 'dr-side-h', text: (g.label || side) + ' · '
-        + plural((g.members || []).length, 'recording')
-        + ((g.members || []).length === 1 ? ' — ' + K1_SAY : '') }),
-      el('ul', { class: 'dr-refs' }, (g.members || []).map((m) => el('li', {}, [
+    const mem = g.members || [];
+    const pooled = P.cue_type === 'pooled';
+    const rats = new Set(mem.map((m) => m.rat).filter((r) => r != null));
+    const say = (g.label || side) + ' · ' + (pooled
+      ? plural(mem.length, 'circuit') + ' from ' + plural(rats.size, 'rat')
+        + ', both cue pairings'
+      : plural(mem.length, 'recording') + (mem.length === 1 ? ' — ' + K1_SAY : ''));
+    const list = refList(mem);
+    if (mem.length <= FOLD_OVER) {
+      return el('div', { class: 'dr-side-mem', 'data-side': side }, [
+        el('span', { class: 'dr-side-h', text: say }), list]);
+    }
+    return el('details', { class: 'dr-side-mem dr-side-fold', 'data-side': side }, [
+      el('summary', { class: 'dr-side-h', text: say + ' — show them' }), list]);
+  }
+  /* The rest (FP1 + FP2) circuits a minus-FP layer subtracted. */
+  function restLinks(P) {
+    const rest = P.rest || [];
+    if (!rest.length) return null;
+    return el('details', { class: 'dr-side-mem dr-side-fold', 'data-side': 'rest' }, [
+      el('summary', { class: 'dr-side-h', text: 'Minus FP subtracted ' + plural(rest.length, 'rest circuit')
+        + ' (FP1 + FP2, one per rat and day) — show them' }),
+      refList(rest.map((r) => Object.assign({ artifact_id: r.id, name: r.rat + ' ' + r.day + ' rest' }, r))),
+    ]);
+  }
+  function refList(mem) {
+    return el('ul', { class: 'dr-refs' }, mem.map((m) => el('li', {}, [
         el('a', { href: '#', class: 'art-link dr-link', 'data-ref': m.artifact_id,
                   'data-vid': m.version_id || '', 'data-v': String(m.version),
                   title: 'Open exactly this circuit version in Results'
@@ -964,8 +1024,7 @@ BARRY.drift = (function () {
                     }
                   } }),
         el('span', { class: 'hint', text: m.n_pairs != null ? ' ' + plural(m.n_pairs, 'cue pair') : '' }),
-      ]))),
-    ]);
+      ])));
   }
 
   /* The members of a within-rat drift, one row per rat: its left circuit
@@ -1035,6 +1094,8 @@ BARRY.drift = (function () {
     }
     kids.push((P.matched || []).length ? matchedLinks(P)
       : el('div', { class: 'dr-sides-mem' }, [memberLinks(P, 'left'), memberLinks(P, 'right')]));
+    const rest = restLinks(P);
+    if (rest) kids.push(rest);
     const notes = [];
     if ((P.cue_equivalence || []).length) {
       notes.push(el('p', { class: 'dr-note dr-eqnote', text: 'Cue pairings treated as '
@@ -1196,9 +1257,11 @@ BARRY.drift = (function () {
      which compares it with its own reading of the payload. */
   function deltaEdgeKeys(ctx, t) {
     const cells = panelOf(ctx);
+    const lv = SIG_LEVELS(ctx.P);
     return presentKeys(ctx).filter((k) => {
       const c = cells[k];
       if (t.mode === 'q') return c.q != null && c.q < t.v;
+      if (t.mode === 'lvl') return lv[t.level][1](c);
       return isFinite(c.delta) && Math.abs(c.delta) >= t.v;
     });
   }
@@ -1209,7 +1272,11 @@ BARRY.drift = (function () {
     const scale = maxAbsDelta(ctx);
     const fam = ctx.method + '|' + ctx.side;
     const thr = () => {
-      if (delta && view.edge === 'q') return { mode: 'q', v: view.q, auto: false };
+      if (delta && view.edge === 'q') {
+        const lvl = sigLevel(P), q = SIG_LEVELS(P)[lvl][2];
+        if (q != null) { view.q = q; return { mode: 'q', v: q, level: lvl, auto: false }; }
+        return { mode: 'lvl', level: lvl, auto: false };
+      }
       if (delta) {
         if (view.abs[fam] != null) return { mode: 'abs', v: view.abs[fam], auto: false };
         return { mode: 'abs', auto: true, v: Math.floor(median(presentKeys(ctx)
@@ -1225,7 +1292,7 @@ BARRY.drift = (function () {
       return { key: k, a: a, b: b, v: v,
                c: { n: (c.left || {}).n + (c.right || {}).n, warn: (c.warn || []).length },
                mag: delta ? Math.min(1, Math.abs(v) / scale) : Math.min(1, Math.abs(v)),
-               dash: c.testable ? null : '5 3',
+               dash: !c.testable ? '5 3' : (c.tier === 2 ? '7 4' : null),
                attrs: { 'data-q': c.q == null ? '' : String(c.q), 'data-sig': String(sigOf(c.q)) } };
     };
     return {
@@ -1252,7 +1319,8 @@ BARRY.drift = (function () {
       caption: (rc, t, edges, total) => (delta ? 'Δ ' : ((P[ctx.side] || {}).label || ctx.side) + ' · ')
         + (METHOD_NAME[ctx.method] || ctx.method) + ' · ' + say(ctx.win) + ' · '
         + (t.mode === 'q' ? 'q < ' + String(t.v).replace(/^0/, '')
-                          : '|' + (delta ? 'Δ' : 'value') + '| ≥ ' + fmt(t.v, 3))
+           : t.mode === 'lvl' ? SIG_LEVELS(P)[t.level][0]
+           : '|' + (delta ? 'Δ' : 'value') + '| ≥ ' + fmt(t.v, 3))
         + ' · ' + edges.length + ' of ' + total + ' edges',
       hint: delta ? 'Edges are coloured by the sign of Δ and thicker with |Δ|; '
         + 'dashed = shown but not tested. Hover for the numbers, click for the recordings.'
@@ -1270,31 +1338,43 @@ BARRY.drift = (function () {
     const kids = [el('span', { class: 'section-label', text: 'Draw edges' })];
     if (delta) {
       kids.push(el('div', { class: 'seg dr-edge-mode' }, [
-        ...SIG.slice().reverse().map(([lv, , word]) => el('button', {
-          class: view.edge === 'q' && view.q === lv ? 'active' : '', 'data-q': String(lv),
-          text: word, onclick: () => { view.edge = 'q'; view.q = lv; repaint(); } })),
+        el('button', { class: view.edge === 'q' ? 'active' : '', 'data-mode': 'sig',
+          text: 'By significance', onclick: () => { view.edge = 'q'; repaint(); } }),
         el('button', { class: view.edge === 'abs' ? 'active' : '', 'data-q': 'abs',
-          text: '|Δ| ≥', title: 'Every cell whose delta is at least this big, '
-                                          + 'tested or not',
+          text: 'By size', title: 'Every entry whose change is at least this big, tested or not',
           onclick: () => { view.edge = 'abs'; repaint(); } }),
+      ]));
+    }
+    if (delta && view.edge === 'q') {
+      const lv = SIG_LEVELS(ctx.P), cur = sigLevel(ctx.P);
+      kids.push(el('div', { class: 'dr-sig' }, [
+        el('input', { type: 'range', class: 'cir-thr dr-sig-range', min: '0', max: String(lv.length - 1),
+          step: '1', value: String(cur), 'aria-label': 'Significance: right is stricter',
+          'aria-valuetext': lv[cur][0],
+          oninput: (e) => { view.sig = Number(e.target.value); repaint(); } }),
+        el('div', { class: 'dr-sig-ticks', 'aria-hidden': 'true' }, lv.map(([name], i) => el('span', {
+          class: i === cur ? 'on' : null,
+          text: i === 0 ? 'every tested' : (i === 1 && ctx.P.tiers ? 'of interest' : name) }))),
       ]));
     }
     if (!delta || view.edge === 'abs') {
       const max = delta ? scale : 1;
       kids.push(el('input', { type: 'range', class: 'cir-thr dr-thr', min: '0',
         max: String(max), step: String(max / 100), value: String(t.v),
-        'aria-label': 'Edge threshold',
+        'aria-label': delta ? 'Size of change: right is bigger' : 'Strength: right is stronger',
         oninput: (e) => {
           const v = Number(e.target.value);
           if (delta) view.abs[fam] = v; else view.sideThr[fam] = v;
           repaint();
         } }));
-      kids.push(el('span', { class: 'cir-thr-v', text: '|' + fmt(t.v, 3) + '|' }));
+      kids.push(el('span', { class: 'cir-thr-v', text: '≥ ' + fmt(t.v, 3) }));
     }
     kids.push(el('span', { class: 'hint cir-thr-say dr-thr-say', text: edges.length + ' of '
-      + total + ' drawn · ' + (t.mode === 'q'
-        ? 'the cells whose q is below ' + String(t.v).replace(/^0/, '')
-        : (t.auto ? 'the median, until you move it' : 'by size, not by test')) }));
+      + total + ' drawn · ' + (t.mode === 'q' || t.mode === 'lvl'
+        ? SIG_LEVELS(ctx.P)[t.level != null ? t.level : sigLevel(ctx.P)][0]
+          + ' — drag right for stricter'
+        : (t.auto ? 'the median, until you move it' : (delta ? 'by size, not by test — drag right for bigger'
+                                                           : 'drag right for stronger'))) }));
     return el('div', { class: 'cir-thr-row dr-thr-row' }, kids);
   }
 
@@ -1498,6 +1578,7 @@ BARRY.drift = (function () {
       return ctx.side === 'delta' ? deltaEdgeKeys(ctx, t) : null;
     },
     _view: view,
+    _sigLevels: (P) => SIG_LEVELS(P).map((x) => x[0]),
     /* Show a filed drift below, in the tab that asked (driftprecon.js). */
     show: (payload, meta) => { st.shown = { payload: payload, meta: meta || {}, by: modeNow() }; renderShown(); return true; },
     setMode,

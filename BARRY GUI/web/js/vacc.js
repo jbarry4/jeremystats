@@ -932,6 +932,29 @@ BARRY.vacc = (function () {
      how much will be sent. */
   const uploads = new Map();          // job id -> the latest snapshot
   let upTimer = null;
+  /* Who wants to know when that changes.
+
+     A set rather than a single callback: the modal and the Sessions pad can
+     both be showing uploads, and whichever was wired second must not
+     silently replace the first. Each returns its own remover so a view that
+     is torn down stops being called -- `leak.html` counts listeners across
+     rebuilds for exactly this reason. */
+  const upWatchers = new Set();
+
+  function onUploads(fn) {
+    if (typeof fn !== 'function') return () => {};
+    upWatchers.add(fn);
+    return () => upWatchers.delete(fn);
+  }
+
+  function uploadsChanged() {
+    /* The modal first, if it is open, because it is the one that was
+       already claiming to show this. */
+    reopen();
+    for (const fn of upWatchers) {
+      try { fn(); } catch (e) { /* a watcher must not stop the others */ }
+    }
+  }
 
   const bytes = (n) => (typeof fmtBytes === 'function' ? fmtBytes(n || 0)
                                                        : (n || 0) + ' B');
@@ -980,14 +1003,19 @@ BARRY.vacc = (function () {
       });
     if (!ok || !started || !started.job) return null;
     track(started.job);
-    toast('Uploading ' + started.n + ' recording(s) to VACC. Progress is in '
-          + 'the VACC panel.', 'ok', 7000);
+    /* Names the place it is actually showing, which is the pad somebody
+       is already looking at -- they picked the recordings there. It used
+       to say "the VACC panel", which opens from the command palette and
+       nowhere else. */
+    toast('Uploading ' + started.n + ' recording(s) to VACC. Progress is '
+          + 'under Everything VACC knows.', 'ok', 7000);
     return started.job.id;
   }
 
   function track(snap) {
     uploads.set(snap.id, snap);
     if (!upTimer) upTimer = setInterval(pollUploads, 3000);
+    uploadsChanged();
   }
 
   async function pollUploads() {
@@ -1011,6 +1039,9 @@ BARRY.vacc = (function () {
         }
       } catch (e) { /* the next tick asks again */ }
     }
+    /* Said once per tick, not once per job: three recordings finishing in
+       the same three seconds is one redraw, not three. */
+    uploadsChanged();
     if (![...uploads.values()].some((s) => s.status === 'running')) {
       clearInterval(upTimer);
       upTimer = null;
@@ -1073,6 +1104,9 @@ BARRY.vacc = (function () {
   }
 
   return { init, status, showVacc, loadKnows, of, canRead, words, mark,
+           uploadsBox, onUploads,
+           get nUploads() { return uploads.size; },
+
            upload, _uploads: uploads,
            open, pathFor, watch,
            offerSignIn, showSignIn, signOut,

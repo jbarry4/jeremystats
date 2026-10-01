@@ -596,16 +596,17 @@ def run(tmp):
     resume_checks(tmp, child, runner, docs)
 
     print("report files")
-    check("md, csv and figures are the only files served",
-          r.output_path("md").endswith("dewey-precon-drift.md")
-          and r.output_path("csv").endswith("dewey-precon-drift.csv")
+    check("the page, the csv and figures are the only files served",
+          r.output_path("page").endswith("dewey-precon-pooled.html")
+          and r.output_path("csv").endswith("dewey-precon-pooled.csv")
           and r.output_path("figure/a.png").endswith("a.png")
           and r.output_path("figure/a.svg") is not None)
     check("nothing else is (paths, other types)",
           all(r.output_path(w) is None for w in (
-              "runlog", "../app.py", "figure/../../x.png",
+              "runlog", "md", "../app.py", "figure/../../x.png",
               "figure/a.txt", "figure/", "figure/sub/a.png")))
-    with open(os.path.join(docs, "dewey-precon-drift", "b.png"), "wb") as fh:
+    os.makedirs(r.figures, exist_ok=True)
+    with open(os.path.join(r.figures, "b.png"), "wb") as fh:
         fh.write(b"\x89PNG")
     check("figures are listed", r.report_files()["figures"] == ["b.png"])
 
@@ -699,19 +700,19 @@ def run(tmp):
         wait_idle(A.PRECON)
         check("the route's run stopped with exit 3",
               A.PRECON.status()["last"]["run"]["exit_code"] == 3)
-        g = C.get("/api/arc/precon/file/md")
+        g = C.get("/api/arc/precon/file/page")
         check("a missing report file is a 404 that says what to do",
               g.status_code == 404 and "Write the report" in
               g.get_json()["error"])
-        with open(os.path.join(docs, "dewey-precon-drift.md"), "w",
+        with open(os.path.join(docs, "dewey-precon-pooled.html"), "w",
                   encoding="utf-8") as fh:
-            fh.write("# report →\n")
-        with open(os.path.join(docs, "dewey-precon-drift.csv"), "w",
+            fh.write("<!doctype html><title>page →</title>\n")
+        with open(os.path.join(docs, "dewey-precon-pooled.csv"), "w",
                   encoding="utf-8") as fh:
             fh.write("band,kind\n")
-        g = C.get("/api/arc/precon/file/md")
-        check("the write-up is served as text",
-              g.status_code == 200 and g.mimetype == "text/plain"
+        g = C.get("/api/arc/precon/file/page")
+        check("the circuits page is served as a page",
+              g.status_code == 200 and g.mimetype == "text/html"
               and "→" in g.get_data(as_text=True), g.status_code)
         g.close()
         g = C.get("/api/arc/precon/file/csv")
@@ -728,7 +729,7 @@ def run(tmp):
               s["log"]["what"] == "report"
               and s["log"]["lines"][-1] == "report written", s["log"])
         check("report files are listed with their sizes",
-              s["report"]["md"]["bytes"] > 0 and s["report"]["csv"]
+              s["report"]["page"]["bytes"] > 0 and s["report"]["csv"]
               and s["report"]["figures"] == ["b.png"], s["report"])
         g = C.post("/api/arc/precon/resume", json={})
         check("resume with nothing interrupted is refused (409)",

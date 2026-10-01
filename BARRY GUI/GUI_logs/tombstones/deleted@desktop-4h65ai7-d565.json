@@ -2180,6 +2180,10 @@
         "set",
         "2026-09-21T16:09:31.919455+00:00"
       ],
+      "session:s288ddefe4f6c": [
+        "set",
+        "2026-09-30T23:52:25.374904+00:00"
+      ],
       "session:s2980e4675a37": [
         "set",
         "2026-09-11T18:40:54.706415+00:00"
@@ -2552,6 +2556,10 @@
         "set",
         "2026-09-23T13:09:32.763580+00:00"
       ],
+      "session:s87b38b261735": [
+        "set",
+        "2026-09-30T23:56:56.226825+00:00"
+      ],
       "session:s89a5254ca5a2": [
         "set",
         "2026-09-10T21:32:41.364807+00:00"
@@ -2612,6 +2620,10 @@
         "set",
         "2026-09-18T19:33:10.173451+00:00"
       ],
+      "session:s9693b09979f7": [
+        "set",
+        "2026-09-30T23:52:24.615543+00:00"
+      ],
       "session:s96c776f67cdd": [
         "set",
         "2026-09-09T07:20:59.261261+00:00"
@@ -2636,6 +2648,10 @@
         "set",
         "2026-09-14T14:59:30.933863+00:00"
       ],
+      "session:s998e7ba29d70": [
+        "set",
+        "2026-09-30T23:52:23.598035+00:00"
+      ],
       "session:s99945547a2f0": [
         "set",
         "2026-09-18T19:24:15.779145+00:00"
@@ -2643,6 +2659,10 @@
       "session:s9a2db8c53e47": [
         "set",
         "2026-09-18T19:39:19.400629+00:00"
+      ],
+      "session:s9af553b58e44": [
+        "set",
+        "2026-09-30T23:52:10.481673+00:00"
       ],
       "session:s9b0bc1c585f7": [
         "set",
@@ -2755,6 +2775,10 @@
       "session:sb1153cc77b07": [
         "set",
         "2026-09-21T13:23:12.011877+00:00"
+      ],
+      "session:sb2f867f27ea1": [
+        "set",
+        "2026-09-30T23:52:08.614494+00:00"
       ],
       "session:sb30a6d0d1e34": [
         "set",
@@ -2996,6 +3020,10 @@
         "set",
         "2026-09-18T17:25:31.878595+00:00"
       ],
+      "session:se2126ae68ea7": [
+        "set",
+        "2026-10-01T00:09:20.630190+00:00"
+      ],
       "session:se32fc5b8416f": [
         "set",
         "2026-09-10T00:01:42.047039+00:00"
@@ -3092,6 +3120,10 @@
         "set",
         "2026-09-09T22:19:40.353235+00:00"
       ],
+      "session:sfc58efb0655e": [
+        "set",
+        "2026-09-30T23:52:09.321494+00:00"
+      ],
       "session:sfe24ff6003b6": [
         "set",
         "2026-09-23T13:09:32.763580+00:00"
@@ -3103,7 +3135,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-29T18:04:53.700386+00:00",
+    "at": "2026-10-01T00:09:20.630190+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -7376,6 +7408,14 @@
       "synced": true,
       "synced_at": "2026-09-21T12:09:31-0400"
     },
+    "session:s288ddefe4f6c": {
+      "at": "2026-09-30T19:52:25-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s288ddefe4f6c",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": false
+    },
     "session:s2980e4675a37": {
       "at": "2026-09-11T14:39:29-0400",
       "by": "desktop-4h65ai7-d565",
@@ -8213,6 +8253,14 @@
       "synced": true,
       "synced_at": "2026-09-23T09:09:32-0400"
     },
+    "session:s87b38b261735": {
+      "at": "2026-09-30T19:56:56-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s87b38b261735",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": false
+    },
     "session:s89a5254ca5a2": {
       "at": "2026-09-10T17:32:30-0400",
       "by": "desktop-4h65ai7-d565",
@@ -8348,6 +8396,14 @@
       "synced": true,
       "synced_at": "2026-09-18T15:33:10-0400"
     },
+    "session:s9693b09979f7": {
+      "at": "2026-09-30T19:52:24-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9693b09979f7",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": false
+    },
     "session:s96c776f67cdd": {
       "at": "2026-09-09T03:20:52-0400",
       "by": "desktop-4h65ai7-d565",
@@ -8402,6 +8458,14 @@
       "synced": true,
       "synced_at": "2026-09-14T10:59:30-0400"
     },
+    "session:s998e7ba29d70": {
+      "at": "2026-09-30T19:52:23-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s998e7ba29d70",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": false
+    },
     "session:s99945547a2f0": {
       "at": "2026-09-18T15:23:42-0400",
       "by": "desktop-4h65ai7-d565",
@@ -8419,6 +8483,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-18T15:39:19-0400"
+    },
+    "session:s9af553b58e44": {
+      "at": "2026-09-30T19:52:10-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s9af553b58e44",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": false
     },
     "session:s9b0bc1c585f7": {
       "at": "2026-09-09T18:10:54-0400",
@@ -8671,6 +8743,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-21T09:23:12-0400"
+    },
+    "session:sb2f867f27ea1": {
+      "at": "2026-09-30T19:52:08-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sb2f867f27ea1",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": false
     },
     "session:sb30a6d0d1e34": {
       "at": "2026-09-11T13:46:22-0400",
@@ -9212,6 +9292,14 @@
       "synced": true,
       "synced_at": "2026-09-18T13:25:31-0400"
     },
+    "session:se2126ae68ea7": {
+      "at": "2026-09-30T20:09:20-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "se2126ae68ea7",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": false
+    },
     "session:se32fc5b8416f": {
       "at": "2026-09-09T20:01:39-0400",
       "by": "desktop-4h65ai7-d565",
@@ -9418,6 +9506,14 @@
       "note": "forgotten in housekeeping",
       "synced": true,
       "synced_at": "2026-09-09T18:19:40-0400"
+    },
+    "session:sfc58efb0655e": {
+      "at": "2026-09-30T19:52:09-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "sfc58efb0655e",
+      "kind": "session",
+      "note": "forgotten in housekeeping",
+      "synced": false
     },
     "session:sfe24ff6003b6": {
       "at": "2026-09-23T09:09:19-0400",

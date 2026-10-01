@@ -78,6 +78,23 @@ BARRY.incisor = (function () {
   let savingBad = false; // a bad-channel change on its way to the record
   let editorOpen = false;// the channel editor, kept open across repaints
 
+  /* Extract all. `pool` is the range somebody chose, as channel INDICES at
+     either end; null means "around the hilus", which follows the hilus
+     pick as it moves. The count is asked of the server on every change and
+     comes back in milliseconds, out of the scan already run. */
+  let pool = null;
+  let tolMs = 25;
+  let unionRes = null;
+  let unionKey = '';
+  let unionSeq = 0;
+  /* Three scanned channels either side of the hilus. Not a natural width
+     -- there is none: measured on fourteen recordings the union grows
+     steadily as the pool widens, 740 on the hilus, 774 at three either
+     side, 1072 across all sixty. Three either side is where the extra
+     spikes are still ones the hilus's own neighbours saw, and it is a
+     default, shown with its count, not a decision. */
+  const POOL_EITHER_SIDE = 3;
+
   const round2 = (v) => Math.round((v || 0) * 100) / 100;
   const human = (s) => (s == null ? ''
     : s < 1 ? 'a moment' : s < 90 ? Math.round(s) + ' s'
@@ -113,6 +130,7 @@ BARRY.incisor = (function () {
 
   function reset() {
     est = null; res = null; chosen = {}; banking = false;
+    pool = null; unionRes = null; unionKey = '';
     if (poll) { clearInterval(poll); poll = null; }
     job = null;
   }
@@ -203,6 +221,7 @@ BARRY.incisor = (function () {
   function adopt(out) {
     res = out;
     chosen = {};
+    pool = null; unionRes = null; unionKey = '';
     const known = (est && est.known) || {};
     for (const r of ROLES) {
       const pick = (out.picked || {})[r.key];
@@ -1835,7 +1854,257 @@ BARRY.incisor = (function () {
         text: 'Banks them as an UNCURATED set and opens DS curation. '
             + 'Nothing is decided by this.' }),
     ]));
+    const all = unionBlock();
+    if (all) box.appendChild(all);
     return box;
+  }
+
+  /* ==================================================================
+     Extract all
+     ==================================================================
+     Which channel is the hilus decides how many dentate spikes there
+     are -- CSC34 finds 50, CSC35 55, CSC36 53, each a different fifty-odd
+     -- and every channel's list is already in the scan. So this pools a
+     range of them and keeps each spike once, and says how many that is
+     BEFORE anything is banked.
+
+     The same spike lands within two milliseconds on its neighbours
+     (measured: 89.6% of 131,198 nearest-neighbour pairs), with almost
+     nothing between there and the detector's 100 ms spacing, so the merge
+     window barely matters near the hilus and 25 ms sits in the gap. The
+     RANGE is what matters, and that is why it is a choice with a number
+     beside it. See `incisor.union`. */
+  function scannedGood() {
+    return (res.channels || []).filter((c) => !c.bad);
+  }
+
+  function poolRange() {
+    const list = scannedGood();
+    if (!list.length) return [];
+    let ia, ib;
+    if (pool) {
+      ia = list.findIndex((c) => c.index === pool.from);
+      ib = list.findIndex((c) => c.index === pool.to);
+    }
+    if (!pool || ia < 0 || ib < 0) {
+      const k = list.findIndex(
+        (c) => Number(c.number) === Number(chosen.hilus));
+      const at = k < 0 ? 0 : k;
+      ia = Math.max(0, at - POOL_EITHER_SIDE);
+      ib = Math.min(list.length - 1, at + POOL_EITHER_SIDE);
+    }
+    return list.slice(Math.min(ia, ib), Math.max(ia, ib) + 1);
+  }
+
+  function hilusRow() {
+    return (res.channels || []).find(
+      (c) => Number(c.number) === Number(chosen.hilus)) || null;
+  }
+
+  function unionBody(withEvents) {
+    const h = hilusRow();
+    return body({
+      pool: poolRange().map((c) => c.index),
+      tol_ms: tolMs,
+      hilus: h ? h.index : null,
+      with_events: !!withEvents,
+    });
+  }
+
+  /* Asked once per distinct question: paint() runs often, and the key is
+     what stops a repaint from turning into a request. A sequence number
+     drops an answer that arrives after a newer question was asked. */
+  function refreshUnion() {
+    const b = unionBody(false);
+    const key = JSON.stringify([q.path, b.pool, b.tol_ms, b.hilus,
+                                b.channels, b.height_sd, b.abs_uv,
+                                b.dist_ms, b.wlen_ms, b.estimator]);
+    if (key === unionKey) return;
+    unionKey = key;
+    unionRes = null;
+    const seq = ++unionSeq;
+    apiPost('/api/incisor/union', b).then((got) => {
+      if (seq !== unionSeq) return;
+      unionRes = got; paint();
+    }).catch((e) => {
+      if (seq !== unionSeq) return;
+      unionRes = { ok: false, error: e.message }; paint();
+    });
+  }
+
+  function unionSentence(range) {
+    if (!unionRes) return el('p', { class: 'hint quiet', text: 'Counting…' });
+    if (!unionRes.ok) {
+      return el('p', { class: 'warn-line',
+                       text: unionRes.error || 'That could not be counted.' });
+    }
+    const lab = {};
+    for (const c of (res.channels || [])) lab[c.index] = c.label;
+    const u = unionRes;
+    const span = range[0].label
+      + (range.length > 1 ? '–' + range[range.length - 1].label : '');
+    const h = hilusRow();
+    const inRange = h && range.some((c) => c.index === h.index);
+    const bits = [];
+    bits.push(el('strong', { text: u.n + ' candidate' + (u.n === 1 ? '' : 's') }));
+    bits.push(document.createTextNode(
+      ' across ' + span + ' (' + range.length + ' channel'
+      + (range.length === 1 ? '' : 's') + ')'
+      + (inRange && u.only_off_hilus != null
+        ? ': the ' + u.n_hilus + ' on ' + h.label + ', plus '
+          + u.only_off_hilus + ' that ' + h.label + ' alone missed.'
+        : '.')));
+    const out = [el('p', { class: 'inc-union-count' }, bits)];
+
+    const allSaw = (u.by_seen_on || {})[String(range.length)] || 0;
+    const sole = u.sole_by_channel || {};
+    const soleN = Object.values(sole).reduce((a, b) => a + b, 0);
+    const top = Object.entries(sole).sort((a, b) => b[1] - a[1])[0];
+    const more = [];
+    if (range.length > 1) {
+      more.push(allSaw + ' were seen on every channel in the range');
+    }
+    if (soleN) {
+      more.push(soleN + ' on one channel only'
+        + (top ? ', most of those on ' + (lab[top[0]] || ('#' + top[0]))
+                 + ' (' + top[1] + ')' : ''));
+    }
+    if (more.length) {
+      out.push(el('p', { class: 'hint quiet',
+        text: more.join('; ') + '. Where several channels saw a spike, its '
+            + 'time comes from the one it was largest on. A channel that '
+            + 'contributes many spikes nobody else saw is seeing its own '
+            + 'events, not the hilus’s — narrow the range to leave it out.'
+      }));
+    }
+    if (!inRange && h) {
+      out.push(el('p', { class: 'hint warn',
+        text: 'The hilus you picked, ' + h.label + ', is not in this range.' }));
+    }
+    return out;
+  }
+
+  function unionBlock() {
+    const list = scannedGood();
+    const range = poolRange();
+    if (!list.length || !range.length) return null;
+    refreshUnion();
+
+    const lo = range[0].index;
+    const hi = range[range.length - 1].index;
+    const pickEnd = (which) => el('select', {
+      'aria-label': which === 'from' ? 'first channel' : 'last channel',
+      onchange: (e) => {
+        const v = parseInt(e.target.value, 10);
+        pool = { from: which === 'from' ? v : lo, to: which === 'to' ? v : hi };
+        paint();
+      },
+    }, list.map((c) => el('option', {
+      value: c.index,
+      selected: c.index === (which === 'from' ? lo : hi) ? 'selected' : null,
+      text: c.label + '  — ' + Number((res.n_by_channel || {})[String(c.index)] || 0),
+    })));
+
+    const everyOn = range.length === list.length;
+    const n = unionRes && unionRes.ok ? unionRes.n : null;
+    const wrap = el('div', { class: 'inc-union' }, [
+      el('div', { class: 'section-label',
+                  text: 'Or extract all — a range of channels, each spike once' }),
+      el('div', { class: 'inc-role-head inc-union-row' }, [
+        el('span', { class: 'hint', text: 'from' }), pickEnd('from'),
+        el('span', { class: 'hint', text: 'to' }), pickEnd('to'),
+        el('button', {
+          class: 'btn ghost sm' + (!pool ? ' on' : ''),
+          text: 'Around the hilus',
+          title: 'The hilus and ' + POOL_EITHER_SIDE + ' scanned channels '
+               + 'either side of it, following the hilus if you move it.',
+          onclick: () => { pool = null; paint(); },
+        }),
+        el('button', {
+          class: 'btn ghost sm' + (everyOn && pool ? ' on' : ''),
+          text: 'Every scanned channel',
+          title: 'All of them. Far from the hilus this mostly adds events '
+               + 'of those channels’ own, not dentate spikes the hilus '
+               + 'missed — the count says how many.',
+          onclick: () => {
+            pool = { from: list[0].index, to: list[list.length - 1].index };
+            paint();
+          },
+        }),
+        el('label', { class: 'hint inc-union-tol' }, [
+          document.createTextNode('same spike within ±'),
+          el('input', {
+            type: 'number', min: '1', max: String(q.dist_ms || 100),
+            step: '1', value: String(tolMs),
+            title: 'Two channels saw the same spike when their peaks are '
+                 + 'this close. Measured: the same spike lands within 2 ms '
+                 + 'on its neighbours, and almost nothing lands between '
+                 + 'there and the detector’s ' + (q.dist_ms || 100)
+                 + ' ms spacing, so near the hilus this barely matters.',
+            onchange: (e) => {
+              const v = Math.max(1, Math.min(Number(q.dist_ms || 100),
+                                             Number(e.target.value) || 25));
+              tolMs = v; paint();
+            },
+          }),
+          document.createTextNode(' ms'),
+        ]),
+      ]),
+    ].concat(unionSentence(range)));
+
+    wrap.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', {
+        class: 'btn',
+        text: banking ? 'Banking…'
+          : (n == null ? 'Extract all…' : 'Extract all ' + n + '…'),
+        disabled: (banking || !n) ? 'disabled' : null,
+        onclick: extractAll,
+      }),
+      el('span', { class: 'hint quiet',
+        text: 'One uncurated set, the same way as a single channel.' }),
+    ]));
+    return wrap;
+  }
+
+  async function extractAll() {
+    const range = poolRange();
+    if (!range.length) return;
+    let got;
+    banking = true; paint();
+    try {
+      got = await apiPost('/api/incisor/union', unionBody(true));
+    } catch (e) {
+      toast('Those candidates are no longer cached — run the scan again. ('
+            + e.message + ')', 'err', 9000);
+      return;
+    } finally {
+      banking = false; paint();
+    }
+    const evs = got.events || [];
+    if (!evs.length) { toast('No candidates in that range.', 'warn'); return; }
+    const span = range[0].label
+      + (range.length > 1 ? '–' + range[range.length - 1].label : '');
+    const h = hilusRow();
+    await bankSet(evs, {
+      label: span,
+      title: 'Bank ' + evs.length + ' candidate(s) from ' + span + '?',
+      what: 'Pooled from ' + range.length + ' channels, each spike once: '
+          + 'where several channels saw it, the time is from the channel '
+          + 'it was largest on, and that channel is recorded on the event.',
+      params: {
+        channel: 'union',
+        channel_label: span,
+        pool: range.map((c) => c.number),
+        pool_labels: range.map((c) => c.label),
+        hilus_channel: h ? h.number : null,
+        union_tol_ms: got.tol_ms,
+        union: {
+          n: got.n, n_detections: got.n_detections,
+          n_hilus: got.n_hilus, only_off_hilus: got.only_off_hilus,
+          by_seen_on: got.by_seen_on, sole_by_channel: got.sole_by_channel,
+        },
+      },
+    });
   }
 
   async function bank(row) {
@@ -1862,6 +2131,17 @@ BARRY.incisor = (function () {
       banking = false; paint();
     }
     if (!evs.length) { toast('No candidates on that channel.', 'warn'); return; }
+    await bankSet(evs, {
+      label: row.label,
+      title: 'Bank ' + evs.length + ' candidate(s) from ' + row.label + '?',
+      params: { channel: row.number, channel_label: row.label },
+    });
+  }
+
+  /* One banking path for a channel and for a range: the same dialog, the
+     same record, the same hand-off to DS curation. Two copies of this
+     would drift, and the second one would be the one nobody tested. */
+  async function bankSet(evs, how) {
 
     /* What this set will be called, chosen here rather than assembled
        silently. It used to go in as "Incisor CSC61", which is plenty while
@@ -1874,15 +2154,16 @@ BARRY.incisor = (function () {
        a refusal on screen. Who used to be checked here and, when nobody was
        set, Bank simply did nothing. */
     const r = q.row || {};
-    const suggestion = BARRY.bankName.suggest(r, 'Incisor ' + row.label);
+    const suggestion = BARRY.bankName.suggest(r, 'Incisor ' + how.label);
     let id = null;
     const ok = await BARRY.ui.bankDialog({
       kind: 'entry',
-      title: 'Bank ' + evs.length + ' candidate(s) from ' + row.label + '?',
+      title: how.title,
       name: suggestion,
       what: 'They go in as a detector’s output, not as a curated set — '
           + 'nothing is decided, and the next step is vetting them in DS '
-          + 'curation.',
+          + 'curation.'
+          + (how.what ? ' ' + how.what : ''),
       where: 'Filed under ' + [r.project || 'Unfiled',
                                r.mouse != null ? 'm' + r.mouse : null,
                                r.session != null ? 's' + r.session : null]
@@ -1915,9 +2196,7 @@ BARRY.incisor = (function () {
           pipeline: 'Incisor (dentate spike)',
           added_by: who,
           session_path: q.path,
-          parameters: Object.assign({}, res.params, {
-            channel: row.number, channel_label: row.label,
-          }),
+          parameters: Object.assign({}, res.params, how.params),
           events: evs.map((e) => ({
             start: e.start, channel: e.channel, amplitude: e.amp,
           })),
@@ -1984,6 +2263,15 @@ BARRY.incisor = (function () {
        a way to mark a channel bad -- three things a harness has to read
        without a mouse or a pop-up blocker in the way. */
     _roles: () => ROLES.map((r) => r.key),
+    /* Extract all, without a mouse: the range as it stands, setting it,
+       and the answer the panel is showing. */
+    _union: () => ({ pool, tolMs, unionRes,
+                     range: res ? poolRange().map((c) => c.index) : [] }),
+    _setPool: (from, to) => {
+      pool = (from == null) ? null : { from, to }; paint();
+    },
+    _setTol: (ms) => { tolMs = ms; paint(); },
+    _extractAll: extractAll,
     _traceUrl: traceUrl,
     _setBad: setBadSet,
     _refresh: refreshEstimate,

@@ -526,7 +526,7 @@ BARRY.driftPrecon = (function () {
   function filedCard(S, phase) {
     const R = S.runlog;
     const rep = S.report || {};
-    if (!R && !rep.md && phase !== 'reporting') return null;
+    if (!R && !rep.page && phase !== 'reporting') return null;
     // In the plan's order: the run log is saved with sorted keys.
     const order = ((S.plan || {}).drifts || []).map((d) => d.key);
     const rank = (d) => { const i = order.indexOf(d.key); return i < 0 ? order.length : i; };
@@ -560,17 +560,17 @@ BARRY.driftPrecon = (function () {
     const L = (S.last || {}).report;
     if (phase === 'reporting') {
       card.appendChild(loader('Writing the report', 'the write-up, a CSV of every drift cell, and a figure per drift'));
-    } else if (rep.md || rep.csv) {
-      card.appendChild(el('div', { class: 'section-label', text: 'The report · written ' + clock((rep.md || rep.csv).at) }));
+    } else if (rep.page || rep.csv) {
+      card.appendChild(el('div', { class: 'section-label', text: 'The report · written ' + clock((rep.page || rep.csv).at) }));
       card.appendChild(el('div', { class: 'dpc-files' }, [
-        rep.md ? el('a', { class: 'btn ghost sm', href: '/api/arc/precon/file/md', target: '_blank',
-                           rel: 'noopener', text: 'Open the write-up' }) : null,
+        rep.page ? el('a', { class: 'btn ghost sm', href: '/api/arc/precon/file/page', target: '_blank',
+                             rel: 'noopener', text: 'Open the circuits page' }) : null,
         rep.csv ? el('a', { class: 'btn ghost sm', href: '/api/arc/precon/file/csv',
                             text: 'Download the CSV (' + Math.max(1, Math.round(rep.csv.bytes / 1024)) + ' KB)' }) : null,
-        el('span', { class: 'hint', text: 'docs/' + (rep.md || rep.csv).name.replace(/\.(md|csv)$/, '') + '.md, .csv and figures' }),
+        el('span', { class: 'hint', text: 'docs/' + (rep.page || rep.csv).name.replace(/\.(html|csv)$/, '') + '.html and .csv' }),
       ]));
       if ((rep.figures || []).length) {
-        const stamp = encodeURIComponent((rep.md || rep.csv).at || '');
+        const stamp = encodeURIComponent((rep.page || rep.csv).at || '');
         card.appendChild(fold('figs', plural(rep.figures.length, 'figure'), el('div', { class: 'dpc-figs' },
           rep.figures.map((f) => el('a', { href: '/api/arc/precon/file/figure/' + encodeURIComponent(f),
             target: '_blank', rel: 'noopener', class: 'dpc-fig', title: f }, [
@@ -647,7 +647,7 @@ BARRY.driftPrecon = (function () {
       bits.push(el('button', { class: 'btn ghost', text: 'Work out the cost',
                                disabled: off ? 'disabled' : null, onclick: workOut }));
       bits.push(el('button', { class: 'btn dpc-go', 'data-go': 'report',
-        text: rep.md ? 'Write the report again' : 'Write the report',
+        text: rep.page ? 'Write the report again' : 'Write the report',
         disabled: off ? 'disabled' : null, onclick: report }));
     }
     return el('div', { class: 'head-actions dpc-actions' }, [

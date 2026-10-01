@@ -38,7 +38,7 @@ p { margin: 0 0 10px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
         padding: 16px 18px; margin: 14px 0; }
 .verdict { border-left: 4px solid var(--ink-3); }
-.verdict strong { display: block; font-size: 16px; margin-bottom: 4px; }
+.verdict > strong { display: block; font-size: 16px; margin-bottom: 4px; }
 .leads { margin: 8px 0 0; padding-left: 18px; }
 .leads li { margin: 3px 0; }
 .muted { color: var(--ink-3); }
@@ -58,7 +58,7 @@ button:focus-visible, .cell:focus-visible, th button:focus-visible { outline: 2p
 .mx h3 { font-size: 14px; margin: 0 0 2px; }
 .mx .tally { font-size: 12px; color: var(--ink-3); margin: 0 0 8px; }
 .mxwrap { overflow-x: auto; }
-table.m { border-collapse: separate; border-spacing: 2px; }
+table.m { border-collapse: separate; border-spacing: 4px; }
 table.m th { font: 11px/1.2 var(--mono); color: var(--ink-3); font-weight: 500; white-space: nowrap; }
 table.m th.row { text-align: right; padding-right: 4px; }
 table.m th.col { height: 58px; vertical-align: bottom; padding: 0; }
@@ -68,19 +68,20 @@ table.m th.col span { display: inline-block; transform: rotate(-55deg); transfor
         position: relative; display: block; }
 .cell.none { background: transparent; cursor: default; }
 .cell.untested { background: repeating-linear-gradient(135deg, var(--untested) 0 4px, var(--hatch) 4px 6px); }
-.cell.p05 { box-shadow: inset 0 0 0 2px var(--mark); }
-.cell.q05 { box-shadow: inset 0 0 0 4px var(--mark); }
-.cell.sel { outline: 2px solid var(--focus); outline-offset: 1px; }
+.cell.p05 { outline: 2px solid var(--mark); outline-offset: 1px; }
+.cell.q05 { outline: 4px solid var(--mark); outline-offset: 1px; }
+.cell.sel { box-shadow: inset 0 0 0 3px var(--focus); }
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
 .bar { width: 180px; height: 10px; border-radius: 5px; }
 .barlab { display: flex; justify-content: space-between; width: 180px; font: 11px var(--mono); color: var(--ink-3); }
-.key { display: inline-flex; align-items: center; gap: 6px; }
+.key { display: inline-flex; align-items: center; gap: 12px; }
 .key i { width: 16px; height: 16px; border-radius: 3px; display: inline-block; background: var(--mid); }
 .tip { position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink);
        border: 1px solid var(--line-2); border-radius: var(--r); padding: 8px 10px; font-size: 13px;
        box-shadow: 0 6px 24px rgba(0,0,0,.14); max-width: 300px; display: none; }
 .tip b { display: block; margin-bottom: 2px; }
-#detail svg { display: block; width: 100%; height: auto; }
+.dwrap { overflow-x: auto; }
+#detail svg { display: block; width: 100%; min-width: 760px; height: auto; }
 .dl { font-size: 13px; }
 .twrap { overflow-x: auto; }
 table.t { border-collapse: collapse; width: 100%; font-size: 13px; }
@@ -295,8 +296,9 @@ table.t tr:hover td { background: var(--chip); }
       el('div', { class: 'barlab' }, [el('span', { text: f3(-max) }), el('span', { text: '0' }), el('span', { text: f3(max) })]),
     ]));
     lg.appendChild(el('span', { class: 'small', text: 'Mean Precon4 − Precon1 change, one scale for every panel in this view. Red is stronger coupling on Precon4.' }));
-    lg.appendChild(el('span', { class: 'key' }, [el('i', { style: 'box-shadow: inset 0 0 0 2px var(--mark)' }), 'p < .05']));
-    lg.appendChild(el('span', { class: 'key' }, [el('i', { style: 'box-shadow: inset 0 0 0 4px var(--mark)' }), 'q < .05 (none)']));
+    lg.appendChild(el('span', { class: 'key' }, [el('i', { style: 'outline: 2px solid var(--mark); outline-offset: 1px' }), 'p < .05']));
+    lg.appendChild(el('span', { class: 'key' }, [el('i', { style: 'outline: 4px solid var(--mark); outline-offset: 1px' }), 'q < .05 (none)']));
+    lg.appendChild(el('span', { class: 'key' }, [el('i', { style: 'box-shadow: inset 0 0 0 3px var(--focus)' }), 'the pair shown below']));
     lg.appendChild(el('span', { class: 'key' }, [el('i', { style: 'background: repeating-linear-gradient(135deg, var(--untested) 0 4px, var(--hatch) 4px 6px)' }), 'fewer than 3 rats, not tested']));
   }
 
@@ -318,7 +320,9 @@ table.t tr:hover td { background: var(--chip); }
     let max = 0;
     for (const x of rows) for (const r of D.rats) if (x.e.per_rat[r] != null) max = Math.max(max, Math.abs(x.e.per_rat[r]));
     max = max || 1;
-    const W = 860, lw = 190, rw = 170, rowH = 22, top = 26, H = top + rows.length * rowH + 10;
+    const longest = rows.reduce((n, x) => Math.max(n, levelName(x.L).length), 0);
+    const lw = Math.max(170, Math.ceil(longest * 7.2) + 24);
+    const W = lw + 520, rw = 170, rowH = 22, top = 26, H = top + rows.length * rowH + 10;
     const X = (v) => lw + (v + max) / (2 * max) * (W - lw - rw);
     const ns = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(ns, 'svg');
@@ -350,7 +354,7 @@ table.t tr:hover td { background: var(--chip); }
       add('text', { x: W - rw + 12, y: y + 4, 'font-size': 12, fill: sig ? C('--ink') : C('--ink-3'), 'font-family': 'ui-monospace, monospace' },
         x.e.k < 3 ? x.e.k + ' rats, not tested' : f3(x.e.mean) + '  p ' + fp(x.e.p) + '  ' + x.e.pos + '/' + x.e.k);
     });
-    host.appendChild(svg);
+    host.appendChild(el('div', { class: 'dwrap' }, [svg]));
   }
 
   /* ---- the table of the current view ---- */
@@ -368,8 +372,9 @@ table.t tr:hover td { background: var(--chip); }
       return (va - vb) * sortDir;
     });
     $('ttitle').textContent = 'Every region pair · ' + (VIEWS.find((v) => v[0] === viewNow) || [])[1] + ' (' + rows.length + ' rows)';
+    const one = levels.length === 1;
     const cols = [['level', 'view'], ['pair', 'region pair'], ['k', 'rats'], ['mean', 'mean Δ'], ['se', 'SE'], ['t', 't'],
-                  ['p', 'p'], ['q', 'q'], ['pos', 'rats up']];
+                  ['p', 'p'], ['q', 'q'], ['pos', 'rats up']].filter((c) => !(one && c[0] === 'level'));
     const t = $('table'); t.innerHTML = '';
     t.appendChild(el('thead', {}, [el('tr', {}, cols.map(([k, name]) => el('th', { scope: 'col', 'aria-sort': sortKey === k ? (sortDir > 0 ? 'ascending' : 'descending') : 'none' }, [
       el('button', { type: 'button', text: name + (sortKey === k ? (sortDir > 0 ? ' ↑' : ' ↓') : ''),
@@ -379,7 +384,7 @@ table.t tr:hover td { background: var(--chip); }
       const e = x.e;
       tb.appendChild(el('tr', { class: e.p != null && e.p < 0.05 ? 'p05' : null,
         onclick: () => { selected = e.pair; renderGrid(); renderDetail(); document.getElementById('detailcard').scrollIntoView({ block: 'nearest' }); } }, [
-        el('td', { text: levelName(x.L) }), el('td', { text: pairName(e.pair) }),
+        one ? null : el('td', { text: levelName(x.L) }), el('td', { text: pairName(e.pair) }),
         el('td', { class: 'num', text: String(e.k) }), el('td', { class: 'num', text: e.k ? f3(e.mean) : '—' }),
         el('td', { class: 'num', text: e.se == null ? '—' : e.se.toFixed(3) }),
         el('td', { class: 'num', text: e.t == null ? '—' : e.t.toFixed(2) }),

@@ -1,7 +1,7 @@
 {
   "_at": {
     "added": "2026-09-30T17:39:41.995052+00:00",
-    "deleted": "2026-09-30T17:39:41.995052+00:00",
+    "deleted": "2026-09-30T19:18:09.440458+00:00",
     "id": "2026-09-30T17:39:41.995052+00:00",
     "kind": "2026-09-30T17:39:41.995052+00:00",
     "name": "2026-09-30T17:39:41.995052+00:00",
@@ -20,7 +20,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-30T17:39:41.995052+00:00",
+    "at": "2026-09-30T19:18:09.440458+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -30,7 +30,10 @@
     "machine": "Bluebarry"
   },
   "cited": [],
-  "deleted": null,
+  "deleted": {
+    "at": "2026-09-30T15:18:09-04:00",
+    "by": "precon_pooled: superseded by the pooled analysis (both pairings)"
+  },
   "id": "0906d4a250a5",
   "kind": "drift",
   "name": "Precon1 vs Precon4 \u00b7 FP1 + FP2, no cue \u00b7 rest \u00b7 Low gamma",

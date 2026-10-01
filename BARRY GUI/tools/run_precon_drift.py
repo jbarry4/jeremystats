@@ -102,7 +102,9 @@ BEFORE_S, AFTER_S = 1.0, 2.0                        # transition windows
 STATE_WINDOWS = ("pre", "cue1", "cue2", "post")
 TRANSITION_WINDOWS = ("onset", "switch", "offset")
 ALL_WINDOWS = STATE_WINDOWS + TRANSITION_WINDOWS
-DRIFT_FIELDS = {"design": "matched", "test": "hk", "bh_scope": "artifact"}
+DRIFT_FIELDS = {"design": "matched", "test": "hk", "bh_scope": "artifact",
+                "pool": "pairings", "layers": ["raw", "minus_fp"],
+                "min_rats": 5}
 STAGES = ("spark", "circuits", "drifts")
 
 #: Seconds, used ONLY where no route has said: a transition plan refused
@@ -556,33 +558,21 @@ def circuit_key(gid, cue_type, kind, band):
     return "%s|%s|%s|%s" % (gid, cue_type, kind, band)
 
 
-def drift_key(band, kind, role, contrast):
-    return "%s|%s|%s|%s" % (band, kind, role or "-", contrast or "raw")
+def drift_key(band, kind):
+    return "%s|%s|pooled" % (band, kind)
 
 
-def drift_nickname(band, kind, role, contrast):
-    head = "Precon1\u21924 \u00b7 %s \u00b7 " % BAND_SAY[band]
-    if kind == REST:
-        return head + "rest (FP1+FP2)"
-    if contrast == "roles":
-        return head + "%s \u00b7 food \u2212 no-food (sanity)" % kind
-    nick = head + "%s \u00b7 %s" % (kind, ROLE_SAY[role])
-    if contrast == "baseline":
-        nick += " \u00b7 cue \u2212 baseline"
-    return nick
+def drift_nickname(band, kind):
+    return "Precon1\u21924 \u00b7 %s \u00b7 %s \u00b7 both pairings" % (
+        BAND_SAY[band], kind)
 
 
 def drift_plan():
-    """Every drift this analysis files, in the order it files them."""
-    out = []
-    for band in BAND_ORDER:
-        for kind in CUE_KINDS:
-            for role in ROLES:
-                out.append((band, kind, role, None))
-                out.append((band, kind, role, "baseline"))
-            out.append((band, kind, None, "roles"))
-        out.append((band, REST, None, None))
-    return out
+    """Every drift this analysis files, in the order it files them: one per
+    band x window type, both cue pairings pooled per rat-day, each carrying
+    the raw change and the minus-FP change (backend/driftpool.py). The
+    role-split design (food pair / no-food pair) was retired 2026-09-30."""
+    return [(band, kind) for band in BAND_ORDER for kind in CUE_KINDS]
 
 
 # ==========================================================================
@@ -1136,154 +1126,92 @@ def run_circuits(api, items, roles, bands, log, recs, allow_unmeasured=False):
 # ==========================================================================
 # Stage 3: drifts
 # ==========================================================================
-def _ref(c):
-    return {"id": c["artifact_id"], "version_id": c["version_id"]}
+def pooled_refs(log, band, kind):
+    """The circuits one pooled drift reads, from the run log: every cue
+    circuit of this band and window type (both pairings, both days) and
+    every rest circuit of this band, each at the version the log pinned."""
+    cue, rest = [], []
+    for c in (log["circuits"] or {}).values():
+        if c.get("band") != band or not c.get("artifact_id") \
+                or c.get("problem"):
+            continue
+        r = {"id": c["artifact_id"], "version_id": c.get("version_id"),
+             "rat": "r%d" % int(c["rat"]), "day": DAY_LABEL[int(c["day"])]}
+        if c.get("kind") == kind:
+            cue.append(r)
+        elif c.get("kind") == REST:
+            rest.append(r)
+    key = lambda r: (r["rat"], r["day"], r["id"])  # noqa: E731
+    return sorted(cue, key=key), sorted(rest, key=key)
 
 
-def _find(log, recs, rat, day, kind, band, role, roles):
-    gid = recs[(rat, day)]["gid"]
-    if kind == REST:
-        ct = REST_CUE_TYPE
-    else:
-        ct = next(t for t, r in roles[rat]["roles"].items() if r == role)
-    return log["circuits"].get(circuit_key(gid, ct, kind, band))
-
-
-def drift_body(log, recs, roles, band, kind, role, contrast, rats=RATS):
-    """The drift route body, or (None, [missing]) when circuits are absent."""
-    left, right, missing = [], [], []
-    base_l, base_r = [], []
-    use_roles = ROLES if contrast == "roles" else (role,)
-    for rat in rats:
-        for rl in use_roles:
-            for day, side, base in ((DAYS[0], left, base_l),
-                                    (DAYS[1], right, base_r)):
-                c = _find(log, recs, rat, day, kind, band, rl, roles)
-                if not c or c.get("problem"):
-                    missing.append("r%d %s %s %s%s" % (
-                        rat, DAY_LABEL[day], kind, band,
-                        (" " + rl) if rl else ""))
-                    continue
-                ref = _ref(c)
-                if contrast == "baseline" and kind == "transition":
-                    # The pre window of the SAME recording, pairing and band
-                    # STATE circuit, pinned as an extra input (7.4).
-                    s = _find(log, recs, rat, day, "state", band, rl, roles)
-                    if not s:
-                        missing.append("r%d %s state %s %s (baseline)"
-                                       % (rat, DAY_LABEL[day], band, rl))
-                        continue
-                    ref = dict(ref, baseline=_ref(s))
-                    base.append(dict(_ref(s), role="baseline",
-                                     **{"for": c["artifact_id"]}))
-                side.append(ref)
-    if missing:
-        return None, missing
-    body = dict(DRIFT_FIELDS, left=left, right=right,
-                labels={"left": DAY_LABEL[DAYS[0]],
-                        "right": DAY_LABEL[DAYS[1]]},
-                contrast=contrast, where="local",
-                nickname=drift_nickname(band, kind, role, contrast))
-    if base_l or base_r:
-        body["baseline"] = {"left": base_l, "right": base_r}
-    return body, []
-
-
-def _inputs_of(body):
-    ids = []
-    for side in ("left", "right"):
-        for r in body.get(side) or []:
-            ids.append(r["version_id"])
-            if r.get("baseline"):
-                ids.append(r["baseline"]["version_id"])
-    return sorted(ids)
+def _pins_of(cue, rest):
+    return sorted(r["version_id"] for r in cue + rest)
 
 
 def run_drifts(api, log, recs, roles, bands, kinds, rats=RATS):
     todo = [d for d in drift_plan() if d[0] in bands and d[1] in kinds]
     say("")
-    say("STAGE 3 -- drifts (%d)" % len(todo))
+    say("STAGE 3 -- drifts (%d, both cue pairings pooled; raw and minus FP)"
+        % len(todo))
     failures = []
-    made_ids = {}
-    for key0, rec0 in log["drifts"].items():
-        if rec0.get("artifact_id"):
-            made_ids.setdefault(rec0["artifact_id"], key0)
     PROG.stage("drifts", len(todo))
-    for n, (band, kind, role, contrast) in enumerate(todo, start=1):
-        key = drift_key(band, kind, role, contrast)
-        nick = drift_nickname(band, kind, role, contrast)
+    for n, (band, kind) in enumerate(todo, start=1):
+        key = drift_key(band, kind)
+        nick = drift_nickname(band, kind)
         tag = "[%d/%d] %s" % (n, len(todo), nick)
         if stop_asked("drifts", tag, log):
             break
         api.same_boot()     # a Jarvis restarted between items ends the run
         PROG.item(n, tag, len(failures))
-        body, missing = drift_body(log, recs, roles, band, kind, role,
-                                   contrast, rats)
-        if body is None:
-            why = "circuits missing: " + ", ".join(missing[:6]) + (
-                " and %d more" % (len(missing) - 6) if len(missing) > 6
-                else "")
+        cue, rest = pooled_refs(log, band, kind)
+        if not cue:
+            why = "no %s %s circuit is in the run log" % (band, kind)
             say("  ! %s: %s" % (tag, why))
             failures.append((tag, why))
             continue
+        have = {(r["rat"], r["day"]) for r in cue}
+        short = ["r%d %s" % (rat, DAY_LABEL[day]) for rat in rats
+                 for day in DAYS if ("r%d" % rat, DAY_LABEL[day]) not in have]
+        if short:
+            say("  . %s: no circuit for %s -- those rats sit out"
+                % (tag, ", ".join(short)))
         was = log["drifts"].get(key)
         if was and was.get("artifact_id") and was.get("inputs") == \
-                _inputs_of(body):
+                _pins_of(cue, rest):
             PROG.outcome("already")
             say("  = %s: already filed from these circuit versions (%s v%s)"
                 % (tag, was["artifact_id"], was.get("version")))
             continue
-        try:
-            chk = api.post("/api/arc/drift/check", body, write=False,
-                           timeout=600)
-        except ApiError as exc:
-            say("  ! %s: the check refused: %s" % (tag, exc))
-            failures.append((tag, str(exc)))
-            log.event("drifts", "%s: check refused: %s" % (tag, exc))
-            continue
-        if not chk.get("compatible"):
-            why = "not comparable: " + " ".join(chk.get("reasons") or [])
-            say("  ! %s: %s" % (tag, why))
-            failures.append((tag, why))
-            log.event("drifts", "%s: %s" % (tag, why))
-            continue
         t0 = time.time()
         try:
-            started = api.post("/api/arc/drift/run", body, timeout=600)
-            res, _snap = wait_job(api, started["job"], tag)
+            res = api.post("/api/arc/drift/pooled/run", {
+                "band": band, "kind": kind, "cue": cue, "rest": rest,
+                "nickname": nick}, timeout=600)
         except (ApiError, Refused) as exc:
             say("  ! %s: %s" % (tag, exc))
             failures.append((tag, str(exc)))
             log.event("drifts", "%s: %s" % (tag, exc))
             continue
-        aid = res.get("artifact_id")
-        other = made_ids.get(aid)
-        if other and other != key:
-            why = ("the drift route filed this as a version of %s (%s): the "
-                   "drift subject does not tell the two apart" % (
-                       aid, other))
-            say("  ! %s: %s" % (tag, why))
-            failures.append((tag, why))
-            log.event("drifts", "%s: %s" % (tag, why))
-        made_ids[aid] = key
-        pay = res.get("payload") or {}
+        tiers = res.get("tiers") or {}
         log["drifts"][key] = {
-            "band": band, "kind": kind, "role": role,
-            "contrast": contrast or None, "nickname": nick,
-            "artifact_id": aid, "version": res.get("version"),
+            "band": band, "kind": kind, "role": None, "contrast": "pooled",
+            "pooled": True, "nickname": nick,
+            "artifact_id": res.get("artifact_id"),
+            "version": res.get("version"),
             "version_id": res.get("version_id"),
             "digest": res.get("digest"), "name": res.get("name"),
-            "new_version": res.get("new_version"),
-            "design": pay.get("design"), "test": pay.get("test"),
-            "bh_scope": pay.get("bh_scope"),
-            "pooled_by": pay.get("pooled_by"),
-            "inputs": _inputs_of(body), "at": now(),
+            "new_version": res.get("new_version"), "tiers": tiers,
+            "inputs": _pins_of(cue, rest), "at": now(),
             "seconds": round(time.time() - t0, 1)}
         log.save()
-        say("  + %s: %s v%s%s (%s)" % (
-            tag, aid, res.get("version"),
-            "" if res.get("new_version") else " (confirmed)",
-            say_s(time.time() - t0)))
+        raw, fp = tiers.get("raw") or {}, tiers.get("minus_fp") or {}
+        say("  + %s: %s v%s%s -- raw %s survive, %s of interest; minus FP "
+            "%s, %s (%s)" % (tag, res.get("artifact_id"), res.get("version"),
+                             "" if res.get("new_version") else " (confirmed)",
+                             raw.get("tier1"), raw.get("tier2"),
+                             fp.get("tier1"), fp.get("tier2"),
+                             say_s(time.time() - t0)))
     PROG.end_stage(len(failures))
     return failures
 
@@ -1388,8 +1316,9 @@ def cost_plan(api, recs, roles, spark_rows, items, bands, kinds, stages):
     drifts = [d for d in drift_plan() if d[0] in bands and d[1] in kinds]
     drift_s = len(drifts) * DRIFT_S if "drifts" in stages else 0.0
     if "drifts" in stages:
-        lines.append("Drifts: %d (matched by rat, Hartung-Knapp, BH per band "
-                     "across windows and methods); about %s." % (
+        lines.append("Drifts: %d (both cue pairings pooled per rat-day; "
+                     "raw and minus FP; matched by rat, Hartung-Knapp, BH "
+                     "across each drift); about %s." % (
                          len(drifts), say_s(drift_s)))
     total = spark_s + circuit_s + drift_s
     lines.append("Total: about %s." % say_s(total))
@@ -1436,7 +1365,7 @@ def plan_record(base, health, recs, roles, spark_rows, cost, bands, stages,
                      for it in cost["items"]],
         "n_circuit_artifacts": len(cost["items"]) * len(bands),
         "drifts": [{"key": drift_key(*d), "band": d[0], "kind": d[1],
-                    "role": d[2], "contrast": d[3],
+                    "role": None, "contrast": "pooled",
                     "nickname": drift_nickname(*d)} for d in cost["drifts"]],
     }
 
@@ -1697,8 +1626,8 @@ def main(argv=None):
                     it["rat"], DAY_LABEL[it["day"]], it["kind"],
                     it["cue_type"], it["cue_role"] or "-", it["units_todo"],
                     say_s(it["seconds"]), it["plan"]))
-        for band, kind, role, contrast in cost["drifts"]:
-            say("  drift    %s" % drift_nickname(band, kind, role, contrast))
+        for band, kind in cost["drifts"]:
+            say("  drift    %s" % drift_nickname(band, kind))
         say("")
         say("Nothing was written (%d requests, all reads)." % api.n)
         return 0

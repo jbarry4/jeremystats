@@ -38,9 +38,85 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.09.30.2 - Incisor can extract every channel's spikes, each once
+
+### Added
+
+- **Extract all**, in Incisor's bank step. Which channel is the hilus
+  decides how many dentate spikes there are — CSC34 finds 50, CSC35 55,
+  CSC36 53, each a different fifty-odd — and every channel's list was
+  already in the scan. This pools a RANGE of channels and keeps each
+  spike once, and the count is on screen before anything is banked,
+  recounted in milliseconds from the scan every time the range moves.
+
+  The range defaults to the hilus and three scanned channels either
+  side, and follows the hilus if it moves; "Every scanned channel" is one
+  click. Where several channels saw a spike, its time is taken from the
+  one it was LARGEST on, and that channel is recorded on the event. The
+  set banks through the same dialog and the same record as a single
+  channel, marked as a union, with the range, the merge window and the
+  counts in its parameters.
+
+### Measured rather than assumed
+
+- **When two channels saw the same spike.** On twelve saved scans,
+  131,198 events against the nearest event on the adjacent channel:
+  89.6% within 2 ms, 1.2% anywhere from 2 to 100 ms. So there is a clean
+  gap, and near the hilus any merge window in it gives the same answer
+  — 5 ms and 25 ms differ by about 1%. 25 ms is the default, and a
+  window past the detector's own 100 ms spacing is refused: within one
+  channel two peaks that close cannot both exist, so a wider window
+  could only merge two separate spikes.
+
+- **The range is what matters, and it has no natural width.** On
+  fourteen recordings the union grows steadily as the pool widens: 740
+  on the hilus, 774 at three either side, 1,072 across all sixty. On one
+  recording 201 became 971 across every channel. The far channels are
+  seeing their own events, not dentate spikes the hilus missed — which
+  is why the count, and how many spikes only one channel saw, is shown
+  before banking rather than after.
+
+### Fixed
+
+- **A scan recalled from disk had no events on any channel.** JSON turns
+  every channel key into a string and every reader looked channels up by
+  integer, so after a restart "Bank and vet" said "no candidates on that
+  channel" about a channel the scan had found fifty-two on. Re-keyed once,
+  on recall.
+
+- **`incisor.html` never finished under the runner**, and neither did
+  the new harness: every check passed, but the app frame kept requests in
+  flight, headless Edge only dumps once its virtual clock runs out, and
+  that clock stands still while a request is pending. Both now unload
+  the app when they are done. `incisor.html` is 20 ok for the first time.
+
+### Checked
+
+- `tools/check_incisor_union.py`: 16 checks against all 53 saved scans
+  with rows — the recall fix, and on every scan that the union is the
+  hilus's count plus what it missed, never fewer than the busiest channel
+  nor more than all of them, every time once and in order, each kept time
+  a real detection on the channel it names. It fails against the old
+  integer-only lookup ("0 of 52").
+- `web/_dev/incisorunion.html`: 25 checks through the real panel, the
+  count matched against a recount from each channel's own list, with the
+  bank write intercepted. Removing the count from the panel fails 2.
+
 ## 2026.09.30.1 - Bands, rest circuits, within-rat Drift, and clipping restored
 
 ### Fixed
+
+- A drift or circuit opened in Results sat in a box capped at 60% of the
+  screen, which scrolled inside the page and cut the circuit off. Only the
+  raw-JSON view keeps a box of its own now. A pooled drift's long member
+  lists (16 circuits a side, once wrongly called "16 recordings") fold shut,
+  and its rest circuits are listed.
+- The Drift viewer's matrix and ring stacked into one column in wide
+  windows: the Precon tab's `.dr-body` rule overrode the viewer's
+  `.cir-body .dr-body` grid. The tab containers are now `.dr-tab`.
+- `check_circuitrun` refused to run once the Precon analysis had filed band
+  circuits on its seed recording. It now refuses only classic circuits, the
+  only kind it files or deletes.
 
 The first real Precon1 → Precon4 run turned up five problems. Each has a
 check in `tools/check_precon_repairs.py`, with a control.
@@ -142,6 +218,46 @@ check in `tools/check_precon_repairs.py`, with a control.
 - The run log, the runner's state and artifact payloads are now flushed to
   disk before each rename, so a power cut can't leave them empty. A torn
   payload file is rewritten instead of blocking its version for good.
+- **The Precon analysis, both cue pairings pooled** (`backend/driftpool.py`,
+  `tools/precon_pooled.py`). This replaces the role-split drifts.
+  - Six drifts, one per band × window type.
+  - Each rat-day is every cue pair of both pairings, blind to type. Each
+    rat's Precon4 − Precon1 change is pooled over rats, precision-weighted
+    (DerSimonian–Laird), with Hartung–Knapp t and BH across each drift. An
+    entry needs at least 5 rats.
+  - Each drift carries a second layer, **minus FP**: that day's FP1 + FP2
+    rest is subtracted before the change.
+  - Two tiers: "survives" is q < .05. "Point of interest" is q < .25 or
+    p < .01, with a simple majority of rats moving the same way.
+  - The old 33 drifts were soft-deleted, and their report was archived to
+    `GUI_logs/.cache/precon_archive_*`.
+  - `docs/dewey-precon-pooled.html` shows the node-edge circuit of any band,
+    window and method, with raw / minus FP, a significance slider (right is
+    stricter), and a top 10 per layer, one entry per region pair.
+  - The Precon tab's Run and Write the report now make these, through
+    `POST /api/arc/drift/pooled/run`.
+  - `tools/check_driftpool.py` checks known answers, pooling blind to type,
+    the FP arithmetic, the 5-rat rule, the tiers, input order, and a null
+    control.
+- **Drift's viewer:** a raw / minus-FP flip on drifts that carry layers.
+  Edges are now drawn by a significance slider that is stricter to the
+  right, or by size. A single circuit's slider says it's strength, not
+  significance.
+- **The Precon change, averaged** (`tools/precon_average.py`). The drifts
+  test each cell on its own; this asks whether each region pair's coupling
+  changed on average.
+  - For each rat, the mean of its Precon4 − Precon1 changes over a set of
+    cells, then those per-rat means tested across rats: t on k − 1 df,
+    Benjamini–Hochberg across region pairs.
+  - The sets: everything; by band, method, state or transition, window and
+    cue pair; rest; and cue sessions minus rest.
+  - It reads only the 15 raw-change drifts, digest-checked. The
+    cue − baseline and food − no-food drifts are made from the same numbers,
+    so they'd be counted twice.
+  - It writes `docs/dewey-precon-average.{html,csv,json}`. The `.html` is a
+    self-contained page with every view, every region pair and every rat.
+  - `tools/check_precon_average.py` checks known answers, recomputes the
+    real run another way, and has a random-sign control.
 
 ## 2026.09.29.1 - The cloud asks only when something changed
 

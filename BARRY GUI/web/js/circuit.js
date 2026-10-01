@@ -2029,16 +2029,21 @@ BARRY.circuit = (function () {
     const slider = el('input', {
       type: 'range', class: 'cir-thr', min: '0', max: '1', step: '0.01',
       value: String(t.v),
-      'aria-label': 'Edge threshold',
+      'aria-label': 'Coupling strength: right is stronger',
       oninput: (e) => {
         pref.thr[ctx.method] = Number(e.target.value);
         paintRingOnly(ctx);
       },
     });
+    /* Strength, not significance: one recording has no test to be
+       significant by. Said so, because a slider on a circuit reads as one
+       (asked 2026-09-30: "as we increase it, it becomes more sigfig"). */
     box.appendChild(el('div', { class: 'cir-thr-row' }, [
-      el('span', { class: 'section-label', text: 'Draw edges at or above' }),
+      el('span', { class: 'section-label', text: 'Coupling strength — stronger →' }),
       slider,
-      el('span', { class: 'cir-thr-v', text: '|' + t.v.toFixed(2) + '|' }),
+      el('span', { class: 'cir-thr-v', text: '≥ ' + t.v.toFixed(2) }),
+      el('span', { class: 'hint cir-thr-say cir-thr-note',
+                   text: 'One recording: strength, not significance. A drift tests it.' }),
       el('span', { class: 'hint cir-thr-say', text: edges.length + ' of '
         + total + ' drawn' + (t.auto ? ' \u00b7 the median, until you move it'
                                      : '') }),

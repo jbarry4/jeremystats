@@ -8004,6 +8004,18 @@ body.aid-window .xf-tabs { display: none !important; }
 .inc-role-head .btn.ghost.on {
   color: var(--accent); border-color: var(--accent-line);
 }
+/* Extract all: a block of its own under the single-channel bank, reusing the
+   role row's layout for its two ends and its buttons. */
+.inc-union { margin-top: var(--sp-12); padding-top: var(--sp-10);
+             border-top: 1px solid var(--bg-2); }
+.inc-union-row { margin-bottom: var(--sp-6); }
+.inc-union-count { margin: var(--sp-6) 0 var(--sp-4); }
+.inc-union-tol { display: inline-flex; align-items: center; gap: var(--sp-4); }
+.inc-union-tol input {
+  width: 5em; font: inherit; font-size: var(--fs-115); padding: 2px 6px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg-2); color: var(--text);
+}
 .inc-role-head select {
   font: inherit; font-size: var(--fs-115); padding: 2px 6px;
   border: 1px solid var(--line); border-radius: var(--radius-sm);
@@ -10274,6 +10286,8 @@ div.cir-m, .cir-m > summary {
 .dr-side-mem { min-width: 0; }
 .dr-side-h { display: block; font-size: var(--fs-10); color: var(--text-3);
              margin-bottom: var(--sp-2); }
+.dr-side-fold > summary { cursor: pointer; }
+.dr-side-fold[open] > summary { margin-bottom: var(--sp-4); }
 .dr-refs { list-style: none; margin: 0; padding: 0;
            font-size: var(--fs-105); }
 .dr-refs li { margin: var(--sp-2) 0; overflow-wrap: anywhere; }
@@ -10331,15 +10345,29 @@ div.cir-m, .cir-m > summary {
 .dr-deltas { margin: var(--sp-6) 0 var(--sp-8); }
 .dr-deltas td, .dr-deltas th { font-variant-numeric: tabular-nums; }
 
+/* ---- a drift's edges: significance on a slider, stricter to the right ---- */
+.dr-sig { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 220px; flex: 1 1 260px; max-width: 420px; }
+.dr-sig-range { width: 100%; }
+.dr-sig-ticks { display: flex; justify-content: space-between; gap: var(--sp-4);
+                font-size: var(--fs-10); color: var(--text-3); }
+.dr-sig-ticks span { flex: 1; text-align: center; overflow-wrap: anywhere; }
+.dr-sig-ticks span:first-child { text-align: left; }
+.dr-sig-ticks span:last-child { text-align: right; }
+.dr-sig-ticks span.on { color: var(--text); font-weight: 600; }
+.dr-layer-say { margin: var(--sp-4) 0 0; }
+
 /* ---- the two tabs: Compare two groups | Precon1 -> Precon4 ----
    Each tab's body is a column of cards with the panel's own gap, so hiding
    one leaves the other laid out exactly as it was. */
 .dr-modes { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-10); }
 .dr-modes .hint { margin: 0; }
-.dr-body { display: flex; flex-direction: column; gap: var(--sp-12);
-           align-items: stretch; min-width: 0; }
-.dr-body[hidden] { display: none; }
-.dr-body > .card { margin: 0; }
+/* `.dr-tab`, not `.dr-body`: the drift RENDERER's body is `.cir-body
+   .dr-body`, a grid, and a `.dr-body` rule here made it a column -- the
+   matrix and the ring stacked instead of side by side. */
+.dr-tab { display: flex; flex-direction: column; gap: var(--sp-12);
+          align-items: stretch; min-width: 0; }
+.dr-tab[hidden] { display: none; }
+.dr-tab > .card { margin: 0; }
 
 /* ---- Precon1 -> Precon4 (driftprecon.js) ---- */
 .dpc-head { display: flex; align-items: baseline; flex-wrap: wrap;
@@ -11831,9 +11859,14 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
 .art-refs li { overflow-wrap: anywhere; }
 .art-refs .art-vn { margin-right: var(--sp-6); }
 .art-link { color: var(--accent); }
+/* No height of its own: a registered viewer (a drift, a circuit) grows with
+   the page, so there is one scroll, not a box scrolling inside the page and
+   cutting the ring off (reported 2026-09-30). Only the raw JSON, which can
+   run to thousands of lines, gets its own scrolling box. */
 .art-view { border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
             padding: var(--sp-10); background: var(--bg-2); min-height: 60px;
-            overflow: auto; max-height: 60vh; }
+            min-width: 0; }
+.art-view[data-viewer="json"] { overflow: auto; max-height: 60vh; }
 .art-actions { display: flex; align-items: center; gap: var(--sp-8);
                justify-content: flex-end; margin-top: var(--sp-8); flex-wrap: wrap; }
 .art-actions .spacer { flex: 1; }

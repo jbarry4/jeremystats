@@ -15,7 +15,11 @@ Three things it runs:
   run     --yes --plan-json --progress --stop-file: the three stages. The
           cost is re-planned by the run itself and written before anything
           runs. Resumable: what is current is skipped (the runlog says).
-  report  tools/precon_drift_report.py: docs/dewey-precon-drift.md, .csv
+  report  tools/precon_pooled.py --page-only: docs/dewey-precon-pooled.html
+          (the node-edge circuits, raw and minus FP, and both top 10s) and
+          its .csv of every entry. The role-split report
+          (tools/precon_drift_report.py, .md + figures) was retired
+          2026-09-30 with the role-split drifts.
           and the figures, from the runlog and the snapshots on disk.
 
 The child's output goes to a FILE, never a pipe: a pipe nobody drains fills
@@ -214,13 +218,14 @@ class Runner(object):
         self.scripts = dict({"drift": os.path.join(tools,
                                                    "run_precon_drift.py"),
                              "report": os.path.join(tools,
-                                                    "precon_drift_report.py")},
+                                                    "precon_pooled.py")},
                             **(scripts or {}))
         docs = docs_dir or os.path.join(app_dir, "docs")
         self.runlog = os.path.join(docs, "dewey-precon-drift.runlog.json")
-        self.outputs = {"md": os.path.join(docs, "dewey-precon-drift.md"),
-                        "csv": os.path.join(docs, "dewey-precon-drift.csv")}
-        self.figures = os.path.join(docs, "dewey-precon-drift")
+        self.outputs = {"page": os.path.join(docs,
+                                             "dewey-precon-pooled.html"),
+                        "csv": os.path.join(docs, "dewey-precon-pooled.csv")}
+        self.figures = os.path.join(docs, "dewey-precon-pooled-figures")
         self.plan_path = os.path.join(state_dir, "plan.json")
         self.progress_path = os.path.join(state_dir, "progress.json")
         self.stop_path = os.path.join(state_dir, "stop")
@@ -248,7 +253,7 @@ class Runner(object):
                          "--progress", self.progress_path,
                          "--stop-file", self.stop_path]
         if what == "report":
-            return py + [self.scripts["report"]]
+            return py + [self.scripts["report"], "--page-only"]
         raise PreconRunError("%r is not something this runs (%s)."
                              % (what, ", ".join(WHATS)), 400)
 
