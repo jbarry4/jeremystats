@@ -854,6 +854,73 @@ def _filter(x, p, fs):
                        padlen=max(0, n - 1))
 
 
+# THE CSD'S FILTER IS THE DENTATE-SPIKE ONE, not the fit filter.
+#
+# The fit filter (1-100 Hz by default) is what the amplitude and half-width
+# are measured on. The CSD is a picture of WHERE a dentate spike's sink is,
+# and the Dentist already has one filter for that: X-ray's, which is
+# Braces' 60 Hz notch followed by Toothy's 5-100 Hz detection band
+# (`braces._notch`, then `incisor._filtered`'s band and order).
+#
+# MEASURED, on the 18 recordings with a cached read here, a dozen events
+# each, through this module's own event view: on the fit filter the share
+# of CSD power at 55-65 Hz had a median of 5% across recordings and reached
+# 72-78% on some (PTEN m1 s2, m1 s8). The voltage stack beside it carried
+# 1-5% on most -- which is why the traces looked clean and the CSD did not.
+# A CSD is a second difference across contacts, and mains that differs a
+# little from one contact to the next survives it where it cancels by eye
+# in the traces. That is the memory "mains is inside the DS band", seen
+# from the other side.
+CSD_BAND = tuple(incisor.DS_BAND)          # 5-100 Hz, Toothy's ds_freq
+CSD_ORDER = incisor.DS_ORDER
+CSD_LINE_HZ = braces.LINE_HZ               # 60 Hz
+CSD_LINE_Q = braces.LINE_Q
+
+
+def _line_out(y, fs, f0=CSD_LINE_HZ):
+    """Take the mains out of each row by FITTING it, not by notching it.
+
+    X-ray notches the continuous recording, where a 2 Hz-wide IIR notch has
+    all the time it needs. A snippet does not: that notch takes ~160 ms to
+    settle and the snippet is +-250 ms, so the part that is measured sits
+    inside its transient. Measured on a pure 60 Hz sine through the notch
+    on this snippet: less than 20 dB taken out. On the real reads it left
+    9-13% of the 5-100 Hz power at 60 Hz on PTEN m1's noisiest contacts,
+    which is what striped the CSD.
+
+    Mains is one frequency for the whole snippet -- 30 cycles of it -- so its
+    amplitude and phase are a two-number least-squares fit, and subtracting
+    the fitted sine takes it out with no ringing at all. A 50 ms dentate
+    spike projects on a 30-cycle sinusoid by almost nothing, so the event is
+    left where it was.
+    """
+    if not (0 < f0 < 0.95 * (fs / 2.0)):
+        return y
+    n = y.shape[-1]
+    t = np.arange(n) / float(fs)
+    B = np.vstack([np.cos(2 * np.pi * f0 * t), np.sin(2 * np.pi * f0 * t),
+                   np.ones(n)]).T                          # [n x 3]
+    coef, *_ = np.linalg.lstsq(B, y.T, rcond=None)         # [3 x rows]
+    return y - (B[:, :2] @ coef[:2]).T
+
+
+def _ds_filter(x, fs):
+    """The dentate-spike filter, on a snippet: mains out, then band-pass.
+
+    The band-pass is padded the way `_filter` is -- an even extension a
+    snippet long -- for the same reason. The mains is fitted out first; see
+    `_line_out` for why it is not notched.
+    """
+    y = np.nan_to_num(np.asarray(x, dtype=np.float64))
+    n = y.shape[-1]
+    pad = max(0, n - 1)
+    y = _line_out(y, fs)
+    nyq = fs / 2.0
+    sos = butter(CSD_ORDER, [CSD_BAND[0] / nyq, min(CSD_BAND[1], nyq * 0.99)
+                             / nyq], btype="band", output="sos")
+    return sosfiltfilt(sos, y, axis=-1, padtype="even", padlen=pad)
+
+
 def _bad_rows(got, extra=()):
     want = {int(n) for n in (got.get("bad") or {})} | {int(n) for n in extra}
     return np.array([int(n) in want for n in got["nums"]], dtype=bool)
@@ -956,6 +1023,18 @@ def hf_db(got, p):
             "least two. Widen it to %.0f Hz or more."
             % (_g(p.band_lo), _g(p.band_hi), got.get("hf_win_ms") or HF_WIN_MS,
                step, 2 * step))
+    # A FLAT WINDOW HAS NO POWER, whatever the float says. v5's rule is NaN
+    # where either side is not positive; a contact pinned to the amplifier's
+    # rail for a whole window is a constant, whose band power is zero and
+    # comes out of Welch as float noise -- measured, 5e-26 uV^2 on PTEN m13
+    # s17 at 2958.924 s, where the baseline sat at +2000 uV, which made that
+    # event +279 dB and the loudest thing in a pool of 2761. Anything nine
+    # orders of magnitude below the read's typical window is that zero, and
+    # is treated as one: no answer on that contact, rather than infinity.
+    for P_ in (pe, pb):
+        typical = np.nanmedian(np.where(P_ > 0, P_, np.nan))
+        if np.isfinite(typical):
+            P_[P_ < typical * 1e-9] = 0.0
     D = dspcahf._db(pe, pb)
     D[:, _bad_rows(got)] = np.nan
     ok = np.isfinite(D).any(axis=1)
@@ -1146,7 +1225,8 @@ def partial_sentence(n, why, cross_ms):
     parts = []
     for key in AXES:
         if why.get(key):
-            txt = _WHY[key] % _g(cross_ms) if "%s" in _WHY[key] else _WHY[key]
+            at = cross_ms if isinstance(cross_ms, str) else _g(cross_ms)
+            txt = _WHY[key] % at if "%s" in _WHY[key] else _WHY[key]
             parts.append(txt if len(why) == 1 else "%d %s" % (why[key], txt))
     return "%d assigned on 2 of 3 axes (%s)" % (n, "; ".join(parts))
 
@@ -1266,15 +1346,15 @@ def event_view(got, p, i):
              "uv_per_contact": float(scale / g),
              "contact": nums[w]}
 
-    # The CSD down the column the max contact is in, on the fit filter. Bad
-    # contacts are repaired from their neighbours rather than dropped, for
-    # the reason `braces.repair` gives: a second difference needs an even
-    # grid.
+    # The CSD down the column the max contact is in, on the DENTATE-SPIKE
+    # filter (see `_ds_filter`), not the fit filter. Bad contacts are
+    # repaired from their neighbours rather than dropped, for the reason
+    # `braces.repair` gives: a second difference needs an even grid.
     runs = got.get("runs") or [{"rows": list(range(n_ch)), "numbers": nums}]
     run = next((ru for ru in runs if w in ru["rows"]), runs[0])
     rows = list(run["rows"])
     chans = [{"number": nums[k]} for k in rows]
-    lfp = np.nan_to_num(yf[rows][:, idx])
+    lfp = _ds_filter(snip[i][rows], fs)[:, idx]
     lfp = braces.repair(lfp, chans, {nums[k]: "bad" for k in rows if bad[k]})
     dp = dspca.Params(probe=got.get("probe"))
     csd = dspca.toothy_csd(lfp, float(got.get("spacing_um") or 50.0), dp)[1]
@@ -1284,7 +1364,12 @@ def event_view(got, p, i):
                "nums": [nums[k] for k in rows],
                "clim": [-lim, lim],
                "unit": "A/m³",
-               "contact": nums[w]}
+               "contact": nums[w],
+               "filter": "%g–%g Hz, %g Hz mains taken out (the dentate-"
+                         "spike band)"
+                         % (CSD_BAND[0], CSD_BAND[1], CSD_LINE_HZ),
+               "band": [float(CSD_BAND[0]), float(CSD_BAND[1])],
+               "notch_hz": float(CSD_LINE_HZ)}
 
     return {"i": i, "t": float(got["t"][i]),
             "trace": trace, "spectrum": spectrum, "stack": stack,

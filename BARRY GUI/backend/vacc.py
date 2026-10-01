@@ -193,6 +193,8 @@ def load_config(logs_dir):
         # everybody else reaches with their own netid (constitution §6d).
         # Lab-wide, so from the tracked vacc.json; these are its defaults.
         "shared": _shared_of(cfg),
+        # The lab's temporary space: the other place an upload may go.
+        "temp": _temp_of(cfg),
         "places": list(cfg.get("places") or []),
         "enabled": bool(cfg.get("enabled", True)),
         "needs_netid": not netid,
@@ -965,7 +967,9 @@ def places(cfg):
     # is then found the way any other is, by looking, by identity. Covered by
     # scratch already when the account's scratch is the shared one.
     data = ((cfg.get("shared") or {}).get("data_path") or "").rstrip("/")
-    for p in ([data] if data else []) + list(cfg.get("places") or []):
+    # Temp too: a recording uploaded there is found the same way.
+    temp = ((cfg.get("temp") or {}).get("data_path") or "").rstrip("/")
+    for p in ([data] if data else []) + ([temp] if temp else [])             + list(cfg.get("places") or []):
         p = str(p or "").rstrip("/")
         if not p or p in out:
             continue
@@ -1260,6 +1264,48 @@ SHARED_DEFAULT = {
     "ondemand": "https://ondemand.vacc.uvm.edu/pun/sys/dashboard/files/fs/"
                 "/gpfs2/scratch/sakhava1",
 }
+
+
+#: The lab's temporary space on the cluster (gpfs3tmp). It takes any number
+#: of files, which scratch's quota does not always, and it is purged on a
+#: schedule -- so it is somewhere to put copies for a run, never the only
+#: copy of anything. An upload asks every time which of the two it goes to.
+TEMP_DEFAULT = {
+    "root": "/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp",
+    "owner": "Shahriar",
+    "ondemand": "https://ondemand.vacc.uvm.edu/pun/sys/dashboard/files/fs/"
+                "/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp",
+}
+
+
+def _temp_of(cfg):
+    got = dict(TEMP_DEFAULT)
+    got.update({k: v for k, v in (cfg.get("temp") or {}).items() if v})
+    got["data_path"] = str(got.get("root") or "").rstrip("/")
+    return got
+
+
+def upload_roots(cfg):
+    """Where an upload may go: {"scratch": ..., "temp": ...}, scratch first.
+
+    Each is {id, label, root (the folder recordings are mirrored under),
+    say, ondemand}."""
+    sh = cfg.get("shared") or _shared_of(cfg)
+    tp = cfg.get("temp") or _temp_of(cfg)
+    out = {}
+    if sh.get("data_path"):
+        out["scratch"] = {
+            "id": "scratch", "label": "Scratch",
+            "root": sh["data_path"], "ondemand": sh.get("ondemand") or "",
+            "say": "The lab's shared space (Jarvis Data). Processing space: "
+                   "VACC may clear it, and this is never the only copy."}
+    if tp.get("data_path"):
+        out["temp"] = {
+            "id": "temp", "label": "Temp",
+            "root": tp["data_path"], "ondemand": tp.get("ondemand") or "",
+            "say": "The lab's temporary space (gpfs3tmp). Takes any number "
+                   "of files, and is purged on a schedule."}
+    return out
 
 
 def _shared_of(cfg):

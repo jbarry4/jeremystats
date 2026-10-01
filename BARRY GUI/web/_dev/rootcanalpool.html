@@ -1,0 +1,568 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rootcanalpool: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre;flex:none}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Root Canal, Pooled, driven through the real interface
+   (ROOTCANAL-POOL-SPEC.md).
+
+   It pools THREE REAL SINGLES: two recordings of PTEN m1 and one of PTEN m2,
+   the smallest that are cached here, so the fit is seconds and there are
+   two mice and (after an override) two types to colour and focus by.
+
+   IT WRITES NOTHING. Pooling reads cached Root Canal reads; the save POST
+   is answered from here, and so is the reopen of the "saved" pool, so no
+   artifact is written. A mouse-type override is a pool's own, held in the
+   panel and never sent anywhere that keeps it. The view choice is put back
+   as it was found, and the frame is unloaded at the end -- without that,
+   headless Edge never dumps and the runner reports TIMED OUT.
+
+   Run under PowerShell. Under Bash, Edge dumps nothing and every suite
+   reads clean. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(70), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const eq = (name, got, want) =>
+  ok(name, JSON.stringify(got) === JSON.stringify(want),
+     'wanted ' + JSON.stringify(want) + ', got ' + JSON.stringify(got));
+const note = (s) => say('  note ' + s, 'dim');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+const NL = String.fromCharCode(10);
+
+(async () => {
+  let W = null, D = null, ev = null, viewWas;
+  const A = document.getElementById('app');
+  try {
+  await new Promise((r) => A.addEventListener('load', r, { once: true }));
+  W = A.contentWindow;
+  ev = (c) => W.eval(c);
+  D = () => A.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+  const RC = 'BARRY.rootcanal';
+  const P = () => ev(RC + '._pool()');
+  const geom = () => ev(RC + '._geom()');
+  const tok = (n) => ev('BARRY.token(' + JSON.stringify(n) + ')');
+  viewWas = ev('(function(){ try { return localStorage.getItem('
+               + '"barry.rootcanal.view"); } catch (e) { return null; } })()');
+
+  // Canvas text, with the canvas it went on.
+  ev('(function(){ var C = window.CanvasRenderingContext2D.prototype;'
+     + ' if (!C.__rcpOrig) { C.__rcpOrig = C.fillText;'
+     + ' C.fillText = function(t) { (window.__rcp = window.__rcp || [])'
+     + '.push([this.canvas && this.canvas.id || "", String(t)]);'
+     + ' return C.__rcpOrig.apply(this, arguments); }; }'
+     + ' window.__rcp = []; })()');
+  const drawn = () => {
+    ev('window.__rcp = []');
+    ev(RC + '._draw()');
+    const out = {};
+    for (const [id, t] of JSON.parse(ev('JSON.stringify(window.__rcp)'))) {
+      (out[id] = out[id] || []).push(t);
+    }
+    return out;
+  };
+  const hasS = (txt, id, str) => (txt[id] || []).some((t) => t.indexOf(str) >= 0);
+
+  const pointer = (type, id, x, y) => {
+    const cv = D().getElementById(id);
+    const r = cv.getBoundingClientRect();
+    cv.dispatchEvent(new W.PointerEvent(type, {
+      bubbles: true, cancelable: true, button: 0, pointerId: 9,
+      buttons: type === 'pointerup' ? 0 : 1, pointerType: 'mouse',
+      clientX: r.left + cv.clientLeft + x, clientY: r.top + cv.clientTop + y }));
+  };
+
+  /* Every request the panel makes for a pool fit, and the save and the
+     reopen answered from here. Wrapped once, for the frame's fetch only,
+     and put back in the finally. */
+  ev('(function(){ var W = window; if (W.__rcpFetch) return;'
+     + ' W.__rcpFetch = W.fetch; W.__rcpFits = 0; W.__rcpSent = [];'
+     + ' W.__rcpReply = {}; W.__rcpLog = BARRY.activity.log;'
+     + ' BARRY.activity.log = function(){};'
+     + ' W.fetch = function(u, o) { var s = String(u);'
+     + '  if (s.indexOf("/api/rootcanal/pool/fit") >= 0) W.__rcpFits++;'
+     + '  var hit = null;'
+     + '  if (s.indexOf("/api/rootcanal/pool/save") >= 0) hit = "save";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/harness-") >= 0) hit = "open";'
+     + '  if (hit) { W.__rcpSent.push([hit, JSON.parse((o && o.body) || "{}")]);'
+     + '   var r = W.__rcpReply[hit] || { status: 500, body: { ok: false,'
+     + '     error: "harness: no reply" } };'
+     + '   return Promise.resolve(new Response(JSON.stringify(r.body),'
+     + '     { status: r.status, headers: { "Content-Type": "application/json" } })); }'
+     + '  return W.__rcpFetch.apply(this, arguments); }; })()');
+  const sent = () => JSON.parse(ev('JSON.stringify(window.__rcpSent)'));
+
+  /* ================================================================== */
+  head('THE BAR: SINGLE | POOLED, REMEMBERED');
+
+  ev(RC + '._setView("single")');
+  ev('setView("toolkit")');
+  await until(() => D().querySelector('.tk-bundle'), 10000, 'the ToolKit');
+  const rcStep = Array.from(D().querySelectorAll('.tk-step'))
+    .find((b) => /Root Canal/.test(b.textContent));
+  ok('Root Canal is a step of The Dentist', !!rcStep);
+  if (rcStep) rcStep.click();
+  await until(() => D().querySelector('.rc-viewseg'), 10000, 'the bar');
+  const segBtns = Array.from(D().querySelectorAll('.rc-viewseg button'));
+  eq('a bar under the header, Single | Pooled',
+     segBtns.map((b) => b.textContent), ['Single', 'Pooled']);
+  ok('built as the shared seg control', !!D().querySelector('.seg.rc-viewseg'));
+  ok('directly under the step header',
+     !!D().querySelector('.step-head + .rc-viewbar'));
+  const pooledBtn = segBtns.find((b) => b.textContent === 'Pooled');
+  if (pooledBtn) pooledBtn.click();
+  await until(() => D().querySelector('.rc-members'), 20000, 'the pooled view');
+  eq('pressing Pooled opens the pooled view', ev(RC + '._viewMode()'), 'pooled');
+  eq('and the choice is remembered for this viewer',
+     ev('localStorage.getItem("barry.rootcanal.view")'), 'pooled');
+  ok('the Single workbench is not drawn under it',
+     !D().querySelector('.rc-choose') && !D().querySelector('.rc-controls'));
+
+  /* ================================================================== */
+  head('WHAT CAN JOIN A POOL');
+
+  const cands = (await get('/api/rootcanal/pool/candidates')).singles || [];
+  ok('the server offers singles to pool', cands.length > 0,
+     cands.length + ' candidates');
+  const rows = () => Array.from(D().querySelectorAll('.rc-pool-cands tbody tr'));
+  eq('every one is listed', rows().length, cands.length);
+  ok('each says whether it is banked',
+     rows().every((r) => /banked|not banked/.test(r.textContent)));
+  const unb = cands.filter((c) => !c.banked).length;
+  eq('the unbanked ones say so', rows().filter((r) =>
+     /not banked/.test(r.textContent)).length, unb);
+  ok('saved pools have a shelf, which says what fills it when empty',
+     !!D().querySelector('.rc-shelf')
+     && (D().querySelectorAll('.rc-shelf-row').length > 0
+         || /No pool has been saved/.test(D().querySelector('.rc-shelf').textContent)));
+
+  // Three small singles, two mice.
+  const by = (lab) => cands.find((c) => c.session_label === lab);
+  let picks = [by('PTEN m1 s2 2023-10-02'), by('PTEN m1 s8 2023-10-05'),
+               by('PTEN m2 s3 2024-01-23')].filter(Boolean);
+  if (picks.length < 3) {
+    note('the three named singles are not all here; taking the three smallest');
+    picks = cands.filter((c) => c.here !== false).slice()
+      .sort((a, b) => (a.n || 0) - (b.n || 0)).slice(0, 3);
+  }
+  const mice = Array.from(new Set(picks.map((c) => c.mouse_key)));
+  for (const c of picks) {
+    const box = D().querySelector('.rc-pool-cands tr[data-key="' + c.key + '"] input');
+    ok('ticking ' + c.session_label, !!box);
+    if (box) { box.click(); await sleep(60); }
+  }
+  eq('three members are in the pool', P().sel.map((m) => m.key),
+     picks.map((c) => c.key));
+  const body0 = ev(RC + '._poolBody()');
+  const sp = ev(RC + '._fitBody()');
+  ok('an unbanked member is pinned to Single’s settings as they stand',
+     body0.members.filter((m) => m.params).every((m) =>
+       m.params.lo_hz === sp.lo_hz && m.params.band_lo === sp.band_lo
+       && m.params.cross_ms === sp.cross_ms),
+     JSON.stringify(body0.members[0]));
+  const unbChip = D().querySelector('.rc-pool-card .rc-unbanked');
+  eq('the pool says how many members are not banked',
+     unbChip && unbChip.textContent,
+     picks.filter((c) => !c.banked).length + ' members not banked');
+  ok('and why that matters, on the chip',
+     !!unbChip && /only be rebuilt while those reads are on this machine/
+       .test(unbChip.getAttribute('title') || ''));
+
+  /* A mouse type typed for one mouse wins over the registry's. */
+  const m2 = mice[mice.length - 1];
+  const tIn = D().querySelector('.rc-type-in[data-mouse="' + m2 + '"]');
+  ok('each mouse in the pool has a type field', !!tIn
+     && D().querySelectorAll('.rc-type-in').length === mice.length);
+  ok('with the types in use offered as suggestions',
+     !!tIn && tIn.getAttribute('list') === 'rcTypeList'
+     && D().querySelectorAll('#rcTypeList option').length >= 1);
+  if (tIn) {
+    tIn.value = 'harness type';
+    tIn.dispatchEvent(new W.Event('change', { bubbles: true }));
+  }
+  eq('the override is the pool’s', P().types[m2], 'harness type');
+  ok('and it waits for Pool to be pressed', P().dirty === true);
+
+  /* ================================================================== */
+  head('POOLED');
+
+  const run = D().querySelector('.rc-pool-run');
+  ok('the button says what it will do', !!run
+     && run.textContent === 'Pool 3 recordings', run && run.textContent);
+  ok('and is the primary while there is nothing pooled',
+     !!run && !run.classList.contains('ghost'));
+  if (run) run.click();
+  await until(() => D().querySelector('.rc-busy.on'), 3000, 'the waiting line');
+  ok('a waiting line while it pools', /Pooling 3 recordings/.test(
+     (D().querySelector('.rc-busy') || {}).textContent || ''));
+  await until(() => P().fit && P().fit.ok !== undefined && !P().fitting,
+              120000, 'the pool');
+  const f = P().fit;
+  ok('the pool is fitted', !!(f && f.ok), f && f.error);
+  if (!f || !f.ok) throw new Error('no pool: ' + (f && f.error));
+  eq('one answer, three members', f.members.length, 3);
+  ok('every dot belongs to one of them',
+     f.events.every((e) => e.m >= 0 && e.m < 3));
+  say('       ' + f.n + ' events: ' + JSON.stringify(f.counts) + '  switched '
+      + f.switches.switched, 'dim');
+  ok('the override reached every event of that mouse',
+     f.events.filter((e) => e.mouse_key === m2)
+       .every((e) => e.mouse_type === 'harness type'));
+  ok('the scale is said, in a line', /pooled raw units, z-scored once/
+     .test((D().querySelector('.rc-scale') || {}).textContent || ''));
+  ok('the rule is said', (D().querySelector('.rc-pool-top .rc-rule') || {})
+     .textContent === f.rule);
+  ok('the bench card names the pool not yet saved',
+     /A pool not saved yet/.test((D().querySelector('.rc-pool-card') || {})
+       .textContent || ''));
+
+  await until(() => geom().space && geom().space.pts.length === f.n, 8000,
+              'the space');
+  let g = geom();
+  eq('the space holds every pooled dot', g.space.pts.length, f.n);
+  for (const id of ['rcFlatAH', 'rcFlatAP', 'rcFlatHP']) {
+    ok(id + ' holds every one too', g.flats[id] && g.flats[id].pts.length === f.n);
+  }
+  ok('drawn by the same renderer as Single: same canvases, same marks',
+     !!D().getElementById('rcSpace')
+     && g.space.pts.every((p) => ['dot', 'square', 'hollow'].includes(p.mark)));
+
+  /* ================================================================== */
+  head('COLOUR BY, AND ITS LEGENDS');
+
+  const evAt = (i) => f.events[i];
+  const legend = () => (D().querySelector('.rc-pool-legend') || {}).textContent || '';
+  ev(RC + '._poolColour("pool")');
+  g = geom();
+  ok('pooled call: DS and IED in their own tokens',
+     g.space.pts.every((p) => {
+       const e = evAt(p.i);
+       return !e.cls_pool || p.fill === tok(e.cls_pool === 'ied' ? '--err' : '--ok');
+     }));
+  ok('with a legend saying so', /pooled call:/.test(legend())
+     && /DS/.test(legend()) && /IED/.test(legend()));
+  ev(RC + '._poolColour("single")');
+  g = geom();
+  ok('single call: each dot in its own member’s call',
+     g.space.pts.every((p) => {
+       const e = evAt(p.i);
+       return !e.cls_single || p.fill === tok(e.cls_single === 'ied' ? '--err' : '--ok');
+     }));
+  ev(RC + '._poolColour("switches")');
+  g = geom();
+  ok('switches: DS→IED, IED→DS and unchanged, each its own token',
+     g.space.pts.every((p) => {
+       const e = evAt(p.i);
+       if (!e.cls_pool || !e.cls_single) return true;
+       const want = !e.switched ? '--text-2'
+         : e.cls_single === 'ds' ? '--warn' : '--accent';
+       return p.fill === tok(want);
+     }));
+  ok('and the legend names all three', /unchanged/.test(legend())
+     && /DS → IED/.test(legend()) && /IED → DS/.test(legend()));
+  for (const [mode, n] of [['recording', 3], ['mouse', mice.length], ['type', 2]]) {
+    ev(RC + '._poolColour(' + JSON.stringify(mode) + ')');
+    g = geom();
+    const fills = new Set(g.space.pts.filter((p) => p.mark !== 'hollow')
+      .map((p) => p.fill));
+    eq(mode + ': one colour per ' + mode, fills.size, n);
+    eq('and one legend entry each', D().querySelectorAll(
+       '.rc-pool-legend .rc-lg-cat').length, n);
+  }
+  ok('a switched dot is ringed in every colour mode', ['pool', 'single',
+     'switches', 'recording', 'mouse', 'type'].every((mode) => {
+    ev(RC + '._poolColour(' + JSON.stringify(mode) + ')');
+    return geom().space.pts.every((p) => p.ringed === !!evAt(p.i).switched);
+  }));
+  ok('the legend names the ring', /ringed: switched/.test(legend()));
+  note('three members fit inside the four-colour palette, so the shape change '
+       + 'past it is not exercised here');
+  ev(RC + '._poolColour("pool")');
+
+  /* ================================================================== */
+  head('FOCUS: ONE MOUSE BRIGHT, THE REST FAINT');
+
+  const fits0 = ev('window.__rcpFits');
+  ev(RC + '._poolFocus({ mouse_key: ' + JSON.stringify(mice[0]) + ' })');
+  g = geom();
+  ok('the focused mouse’s dots stay bright',
+     g.space.pts.filter((p) => evAt(p.i).mouse_key === mice[0])
+       .every((p) => p.alpha === 1));
+  ok('and every other dot goes faint',
+     g.space.pts.filter((p) => evAt(p.i).mouse_key !== mice[0])
+       .every((p) => p.alpha < 0.3));
+  ok('in the flat views too',
+     g.flats.rcFlatAP.pts.filter((p) => evAt(p.i).mouse_key !== mice[0])
+       .every((p) => p.alpha < 0.3));
+  await until(() => ev('window.__rcpFits') > fits0 && !P().fitting
+                    && P().fit.gmm_focus, 120000, 'the focused test');
+  const ff = P().fit;
+  ok('the server is asked for that mouse’s own test',
+     ev('window.__rcpFits') > fits0);
+  ok('and it appears beside the pool-wide one',
+     !!D().querySelector('.rc-gmm-pool') && !!D().querySelector('.rc-gmm-focus'));
+  ok('clearly labelled as that mouse’s', new RegExp(mice[0].replace('|', '\\|'))
+     .test((D().querySelector('.rc-gmm-focus') || {}).textContent || ''));
+  ok('the legend says what is faint', /faint: outside mouse/.test(legend()));
+
+  /* ================================================================== */
+  head('CLEAR VS BLUR');
+
+  const gm = ff.gmm || {};
+  const gmText = (D().querySelector('.rc-gmm-pool') || {}).textContent || '';
+  ok('the verdict sentence is on screen', !!gm.verdict && gmText.indexOf(gm.verdict) >= 0,
+     gmText.slice(0, 160));
+  ok('with BIC for one group, two groups, and ΔBIC',
+     /BIC, one group/.test(gmText) && /BIC, two groups/.test(gmText)
+     && gmText.indexOf(Number(gm.delta).toFixed(1)) >= 0);
+  ok('and both components’ weights and means',
+     D().querySelectorAll('.rc-gmm-pool .rc-gmm-comp tbody tr').length === 2);
+  /* A big ΔBIC alone misleads: two Gaussians fit a skewed cloud too. The
+     agreement between the components and the DS/IED call sits beside it. */
+  const ag = gm.agree;
+  if (ag && ag.ari != null) {
+    ok('the agreement with the DS / IED call is beside ΔBIC, labelled',
+       /agreement with the DS \/ IED call \(adjusted Rand, 1 = same split, 0 = chance\)/
+         .test(gmText) && gmText.indexOf(Number(ag.ari).toFixed(2)) >= 0,
+       gmText.slice(0, 260));
+    const xc = Array.from(D().querySelectorAll('.rc-gmm-pool .rc-gmm-x tbody td'))
+      .map((td) => Number(td.textContent));
+    eq('with the k-means × component crosstab', xc,
+       [ag.crosstab.ds.ds_like, ag.crosstab.ds.ied_like,
+        ag.crosstab.ied.ds_like, ag.crosstab.ied.ied_like]);
+  } else {
+    note('this pool’s GMM carries no agreement (' + JSON.stringify(ag) + ')');
+  }
+  ok('the split-axis histogram sits beside the verdict',
+     !!D().querySelector('.rc-gmm-row .rc-hist-split #rcHistS'));
+  ok('the verdict is whole, never cut', !!gm.verdict
+     && (D().querySelector('.rc-gmm-pool .rc-verdict') || {}).textContent === gm.verdict);
+  ok('and the caveat that it is evidence, not proof',
+     /evidence, not proof/.test((D().querySelector('.rc-gmm') || {}).textContent || ''));
+  let txt = drawn();
+  ok('a histogram per axis, labelled',
+     hasS(txt, 'rcHistA', 'max amplitude · µV') && hasS(txt, 'rcHistH', 'half-width · ms')
+     && hasS(txt, 'rcHistF', 'Hz power · dB re baseline'),
+     JSON.stringify([txt.rcHistA, txt.rcHistF]).slice(0, 200));
+  ok('each with its count axis named',
+     ['rcHistA', 'rcHistH', 'rcHistF', 'rcHistS'].every((id) => hasS(txt, id, 'events')));
+  ok('and the split axis, with 0 between the centres and its two sides',
+     hasS(txt, 'rcHistS', 'split axis') && hasS(txt, 'rcHistS', 'DS side')
+     && hasS(txt, 'rcHistS', 'IED side'));
+  const hA = geom().hist.rcHistA;
+  eq('split by pooled call: every placed dot with an amplitude counted once',
+     hA.ds + hA.ied, ff.events.filter((e) => e.cls_pool && e.amp_uV != null).length);
+
+  /* ================================================================== */
+  head('IDENTITY SWITCHES');
+
+  const sw = ff.switches;
+  const ct = Array.from(D().querySelectorAll('.rc-crosstab tbody td'))
+    .map((td) => Number(td.textContent));
+  eq('the crosstab is the server’s', ct,
+     [sw.crosstab.ds.ds, sw.crosstab.ds.ied, sw.crosstab.ied.ds, sw.crosstab.ied.ied]);
+  ok('and the rate is said', (D().querySelector('.rc-sw-rate') || {}).textContent
+     .indexOf(sw.switched + ' of ' + sw.n) === 0);
+  const tabs = Array.from(D().querySelectorAll('.rc-sw-t'));
+  eq('a table per recording, per mouse and per type',
+     tabs.map((t) => t.querySelectorAll('tbody tr').length),
+     [sw.by_member.length, sw.by_mouse.length, sw.by_type.length]);
+  const typeRow = tabs[2] && Array.from(tabs[2].querySelectorAll('.rc-focus-row'))
+    .find((b) => b.textContent === 'harness type');
+  ok('each row focuses what it is about', !!typeRow);
+  if (typeRow) typeRow.click();
+  eq('pressing the type row focuses that type', P().focus,
+     { mouse_type: 'harness type' });
+  g = geom();
+  ok('and only its dots stay bright', g.space.pts.every((p) =>
+     (evAt(p.i).mouse_type === 'harness type') === (p.alpha === 1)));
+  const memRow = tabs[0] && tabs[0].querySelector('.rc-focus-row');
+  if (memRow) memRow.click();
+  ok('a recording row focuses that recording', !!(P().focus && P().focus.member));
+  ev(RC + '._poolFocus(null)');
+  await until(() => !P().fitting, 120000, 'the refit without a focus');
+  ok('clearing the focus brightens everything',
+     geom().space.pts.every((p) => p.alpha === 1));
+
+  /* ================================================================== */
+  head('CLICK A DOT');
+
+  g = geom();
+  const lone = g.flats.rcFlatAP.pts.find((p) => !p.edge && g.flats.rcFlatAP.pts
+    .every((o) => o === p || Math.hypot(o.x - p.x, o.y - p.y) > 8));
+  ok('a dot to press', !!lone);
+  if (lone) {
+    pointer('pointerdown', 'rcFlatAP', lone.x, lone.y);
+    pointer('pointerup', 'rcFlatAP', lone.x, lone.y);
+    await until(() => P().evFor === lone.i && P().evData, 30000, 'the event');
+    eq('it picks that dot', P().picked, lone.i);
+    ok('and opens it from its own recording', P().evData.ok !== false
+       && !!P().evData.trace, JSON.stringify(P().evData).slice(0, 160));
+    const pb = (D().querySelector('.rc-pickbar') || {}).textContent || '';
+    const mem = P().fit.members[evAt(lone.i).m];
+    ok('the bar names its recording and both calls',
+       pb.indexOf(mem.session_label) >= 0 && /pooled (DS|IED), single (DS|IED)/.test(pb),
+       pb.slice(0, 160));
+    ok('with Open in Xplorefinder', /Open in Xplorefinder/.test(pb));
+    await sleep(150);
+    ok('the four event pictures are drawn', !!geom().ev.trace && !!geom().ev.stack);
+  }
+  // A banked member read elsewhere: no request, a sentence.
+  const live = P().fit.members[0];
+  const keepBody = live.event_body;
+  live.event_body = null;
+  const other = P().fit.events.findIndex((e) => e.m === 0);
+  ev(RC + '._poolPick(' + other + ')');
+  await until(() => D().querySelector('.rc-ev-away'), 5000, 'the sentence');
+  ok('a member whose read is not here says so, in a sentence',
+     /not on this machine/.test((D().querySelector('.rc-ev-away') || {}).textContent || ''));
+  live.event_body = keepBody;
+
+  /* ================================================================== */
+  head('SAVE (INTERCEPTED; NO ARTIFACT IS WRITTEN)');
+
+  const saveBtn = () => D().querySelector('.rc-save');
+  eq('the save button names what it will do', saveBtn() && saveBtn().textContent,
+     'Save as new pool…');
+  ev(RC + '._poolSave()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-name'), 5000,
+              'the dialog');
+  const nameIn = D().querySelector('#bigModal .bank-dlg-name');
+  ok('it is the one bank dialog, asking for a label', !!nameIn);
+  eq('which starts empty: there is no default label', nameIn && nameIn.value, '');
+  const okBtn = () => Array.from(D().querySelectorAll('#bigModal .mf button'))
+    .find((b) => /Save pool/.test(b.textContent));
+  ok('its primary says what it does, last', !!okBtn()
+     && okBtn() === Array.from(D().querySelectorAll('#bigModal .mf button')).pop());
+  if (okBtn()) okBtn().click();
+  await sleep(400);
+  ok('an empty label is refused, and the dialog stays',
+     !!D().querySelector('#bigModal:not(.hidden) .bank-dlg-name')
+     && !sent().some(([k]) => k === 'save'));
+  ev('window.__rcpReply.save = ' + JSON.stringify({ status: 200, body: {
+    ok: true, artifact_id: 'harness-art', version: 1, confirmed: false,
+    name: 'Root Canal pool · PTEN · 3 recordings, 2 mice', nickname: 'harness pool' } }));
+  if (nameIn) nameIn.value = 'harness pool';
+  if (okBtn()) okBtn().click();
+  await until(() => sent().some(([k]) => k === 'save'), 8000, 'the save');
+  const sv = (sent().find(([k]) => k === 'save') || [])[1] || {};
+  eq('one save would go out, under the label typed', sv.nickname, 'harness pool');
+  eq('with the members', (sv.members || []).map((m) => m.key), picks.map((c) => c.key));
+  eq('the overrides', sv.mouse_types, { [m2]: 'harness type' });
+  ok('and the focus', 'focus' in sv);
+  ok('as a new pool', sv.artifact_id === null);
+  await until(() => saveBtn() && /v2/.test(saveBtn().textContent), 5000, 'the new label');
+  eq('after saving, the button says the next version',
+     saveBtn() && saveBtn().textContent, 'Save as v2 of ‘harness pool’');
+  ok('and the bench card carries the label and version',
+     /harness pool/.test(D().querySelector('.rc-pool-card').textContent)
+     && /v1/.test(D().querySelector('.rc-pool-card').textContent));
+
+  /* ================================================================== */
+  head('REOPEN: THE SAVED PAYLOAD, WITH NO REFIT');
+
+  const pay = JSON.parse(JSON.stringify(P().fit));
+  pay.members = P().fit.members;
+  pay.mouse_types = { [m2]: 'harness type' };
+  pay.focus = { mouse_key: mice[0] };
+  delete pay.ok;
+  ev('window.__rcpReply.open = ' + JSON.stringify({ status: 200, body: {
+    ok: true, artifact: { artifact_id: 'harness-art', version: 1,
+                          nickname: 'harness pool', name: 'Root Canal pool' },
+    payload: pay } }));
+  ev(RC + '._poolClose()');
+  ok('closing puts the pool down', !P().fit && !P().sel.length);
+  const fitsBefore = ev('window.__rcpFits');
+  await ev(RC + '._poolOpen("harness-art")');
+  ok('reopening fetches no fit', ev('window.__rcpFits') === fitsBefore);
+  ok('and says it is as saved', P().saved === true
+     && /as saved: nothing refitted/.test(D().querySelector('.rc-pool-card').textContent));
+  eq('the members are restored', P().sel.map((m) => m.key), picks.map((c) => c.key));
+  eq('the overrides', P().types, { [m2]: 'harness type' });
+  eq('and the focus', P().focus, { mouse_key: mice[0] });
+  eq('every dot is drawn from the payload', geom().space.pts.length, pay.events.length);
+  eq('the save button carries on from the version opened',
+     saveBtn() && saveBtn().textContent, 'Save as v2 of ‘harness pool’');
+
+  /* ================================================================== */
+  head('NOTHING IS CUT OFF');
+
+  const res = D().getElementById('tkResult');
+  ok('the panel does not scroll sideways', res.scrollWidth <= res.clientWidth + 1,
+     res.scrollWidth + ' in ' + res.clientWidth);
+  const clipped = Array.from(D().querySelectorAll('.rc-pool-work *, .rc-members *'))
+    .filter((e) => e.children.length === 0 && e.textContent.trim()
+                   && e.scrollWidth > e.clientWidth + 1
+                   && W.getComputedStyle(e).overflow !== 'visible');
+  ok('no text is clipped', !clipped.length,
+     clipped.slice(0, 3).map((e) => e.textContent).join(' | '));
+  ok('and nothing ends in an ellipsis', !Array.from(D().querySelectorAll('.rc-pool-work *'))
+     .some((e) => W.getComputedStyle(e).textOverflow === 'ellipsis'));
+  ok('every picture is drawn at the size it is shown',
+     ev(RC + '._mismatched()') === false);
+
+  /* ================================================================== */
+  head('BACK TO SINGLE');
+
+  const singleBtn = Array.from(D().querySelectorAll('.rc-viewseg button'))
+    .find((b) => b.textContent === 'Single');
+  if (singleBtn) singleBtn.click();
+  eq('Single is one press away', ev(RC + '._viewMode()'), 'single');
+  ok('and its panel comes back', !D().querySelector('.rc-members'));
+
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+    for (const ln of String((err && err.stack) || '').split(NL).slice(0, 5)) {
+      say('       ' + ln, 'dim');
+    }
+  } finally {
+    try {
+      if (ev) {
+        ev('(function(){ var W = window; if (W.__rcpFetch) { W.fetch = W.__rcpFetch;'
+           + ' delete W.__rcpFetch; } if (W.__rcpLog) { BARRY.activity.log ='
+           + ' W.__rcpLog; delete W.__rcpLog; } })()');
+        ev('try { closeModal(); } catch (e) {}');
+        ev('BARRY.rootcanal._poolClose()');
+        ev('(function(v){ try { if (v == null) localStorage.removeItem('
+           + '"barry.rootcanal.view"); else localStorage.setItem('
+           + '"barry.rootcanal.view", v); } catch (e) {} })('
+           + JSON.stringify(viewWas == null ? null : viewWas) + ')');
+        ev('(function(){ var C = window.CanvasRenderingContext2D.prototype;'
+           + ' if (C.__rcpOrig) { C.fillText = C.__rcpOrig; delete C.__rcpOrig; } })()');
+      }
+    } catch (e) { /* the frame may be gone */ }
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'rootcanalpool: ' + pass + ' ok, ' + fail + ' fail';
+  // Unloaded, or headless Edge never dumps and the runner says TIMED OUT.
+  try { A.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

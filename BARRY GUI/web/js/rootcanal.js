@@ -146,6 +146,29 @@ BARRY.rootcanal = (function () {
 
   const bulk = { on: false, plan: null, pick: {}, job: null, poll: null };
 
+  /* SINGLE OR POOLED, remembered per viewer. Browser storage, because it is
+     a convenience of the person looking and nothing else reads it; wrapped,
+     because a browser set to block site data throws on the accessor. */
+  const VIEW_KEY = 'barry.rootcanal.view';
+  let viewMode = (() => {
+    try { return localStorage.getItem(VIEW_KEY) === 'pooled' ? 'pooled' : 'single'; }
+    catch (e) { return 'single'; }
+  })();
+
+  /* The pool, while one is open. See "POOLED" below. */
+  const pool = {
+    cands: null, candsErr: null,
+    sel: [],            // [{ key, params? }] -- params only for unbanked
+    types: {},          // mouse_key -> type: the overrides, never the defaults
+    focus: null,        // { mouse_key } | { mouse_type } | { member } | null
+    colour: 'pool',
+    fit: null, fitting: false, gen: 0, lastBody: null, dirty: false,
+    evs: null, evsFor: null,
+    picked: null, evData: null, evFor: null, evGen: 0, evBusy: false,
+    shelf: null, shelfErr: null, open: null, saved: false,
+    fitErr: null,       // the server's sentence when it refused the members
+  };
+
   /* The 3D view. Yaw about the vertical, then pitch about the screen's
      horizontal.
 
@@ -167,6 +190,7 @@ BARRY.rootcanal = (function () {
      ================================================================== */
   async function paint() {
     render();
+    if (viewMode === 'pooled') { await loadPool(); return; }
     if (!cands) await loadCandidates();
   }
 
@@ -518,11 +542,14 @@ BARRY.rootcanal = (function () {
   let zmapFor = null;
 
   function scaling() {
-    if (zmapFor === fit) return zmap;
-    zmapFor = fit;
+    const S = scene();
+    const evs = (S && S.events) || [];
+    if (zmapFor === evs) return zmap;
+    zmapFor = evs;
+    const cents = (S && S.fitCentres) || [];
     zmap = [0, 1, 2].map((a) => {
       let n = 0, sz = 0, sr = 0, szz = 0, szr = 0;
-      for (const e of ((fit && fit.events) || [])) {
+      for (const e of evs) {
         const r = e[KEYS[a]], z = (e.z || [])[a];
         if (!isFinite(r) || r == null || z == null || !isFinite(z)) continue;
         n += 1; sz += z; sr += r; szz += z * z; szr += z * r;
@@ -535,7 +562,7 @@ BARRY.rootcanal = (function () {
         }
       }
       // Two centres carry both too, which is enough for a line.
-      const cs = (fit && fit.centres) || [];
+      const cs = cents;
       if (cs.length === 2) {
         const z0 = (cs[0].z || [])[a], z1 = (cs[1].z || [])[a];
         const r0 = (cs[0].raw || [])[a], r1 = (cs[1].raw || [])[a];
@@ -601,7 +628,8 @@ BARRY.rootcanal = (function () {
        forces the layout, so drawing here draws at the size they will have.
        The frame's pass stays as a second chance for anything that moves
        once the fonts arrive. */
-    if (q.read && fit && fit.ok && document.getElementById('rcSpace')) {
+    if (scene() && document.getElementById('rcSpace')
+        && (viewMode === 'pooled' || q.read)) {
       drawAll();
     }
     watchSize();
@@ -612,6 +640,8 @@ BARRY.rootcanal = (function () {
     if (!box) return;
     box.innerHTML = '';
     box.appendChild(intro());
+    box.appendChild(viewBar());
+    if (viewMode === 'pooled') { paintPool(box); return; }
     if (!cands) { box.appendChild(loading('Reading the event bank')); return; }
     if (!cands.length) { box.appendChild(nothing()); return; }
     box.appendChild(modeSwitch());
@@ -967,6 +997,7 @@ BARRY.rootcanal = (function () {
      of the job said -- not a stepLoader, because a fit is one request that
      has either returned or not. Always in the tree, so it can be swapped. */
   function busyLine() {
+    if (viewMode === 'pooled') return poolBusyLine();
     const n = fit && fit.ok ? fit.n : null;
     const what = fitting
       ? 'Fitting' + (n ? ' ' + n + ' events' : '')
@@ -1001,6 +1032,9 @@ BARRY.rootcanal = (function () {
 
   function hfLabel(p) {
     const pp = p || shownParams();
+    // A pool can hold members measured in different bands, so it says its
+    // own: the server's axis label, never one reconstructed here.
+    if (pp && pp.hf_label) return pp.hf_label;
     return hz(pp.band_lo) + '–' + hz(pp.band_hi) + ' Hz power · dB re baseline';
   }
 
@@ -1284,7 +1318,7 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'rc-pane rc-space-pane' }, [
       el('div', { class: 'rc-pane-head' }, [
         el('strong', { text: 'The space' }),
-        modeChip(),
+        viewMode === 'pooled' ? poolChip() : modeChip(),
         el('span', { class: 'hint', text:
           'z-scored · drag to turn · wheel to zoom · double-click to reset' }),
       ]),
@@ -1302,8 +1336,10 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'rc-pane rc-flats-pane' }, [
       el('div', { class: 'rc-pane-head' }, [
         el('strong', { text: 'Flat views' }),
-        modeChip(),
-        el('span', { class: 'hint', text: 'raw units · drag a centre to move it' }),
+        viewMode === 'pooled' ? poolChip() : modeChip(),
+        el('span', { class: 'hint', text: viewMode === 'pooled'
+          ? 'pooled raw units · click a dot to open it'
+          : 'raw units · drag a centre to move it' }),
       ]),
       el('div', { class: 'rc-flats' }, FLATS.map(([id]) =>
         el('canvas', { class: 'rc-canvas rc-flat', id }))),
@@ -1331,10 +1367,13 @@ BARRY.rootcanal = (function () {
       el('canvas', { class: 'rc-canvas rc-ev', id }),
     ]);
     const why = eventWhy(e);
+    const away = viewMode === 'pooled' ? poolEventNote() : null;
     return el('div', { class: 'rc-pane rc-event' }, [
+      away ? el('p', { class: 'rc-ev-why rc-ev-away', text: away }) : null,
       why ? el('p', { class: 'rc-ev-why', text: why }) : null,
       el('div', { class: 'rc-ev-grid' }, [
-        cell('rcTrace', 'Max-amp contact', 'CSC' + e.contact + ', the fit filter'),
+        cell('rcTrace', 'Max-amp contact', (e.contact != null
+          ? 'CSC' + e.contact : 'the contact the read names') + ', the fit filter'),
         cell('rcSpec', 'Spectrum', 'event against its baseline'),
         cell('rcStack', 'Every contact', 'max contact marked'),
         cell('rcCsd', 'CSD', 'the fit filter, down the probe'),
@@ -1355,7 +1394,7 @@ BARRY.rootcanal = (function () {
   };
 
   function eventWhy(e) {
-    const cross = hz(shownParams().cross_ms);
+    const cross = hz(crossFor(e));
     const miss = (e.missing || []).map((k2) =>
       (MISSING_WORDS[k2] || (() => k2 + ' is missing'))(cross));
     if (e.cls == null) {
@@ -1392,8 +1431,20 @@ BARRY.rootcanal = (function () {
   }
 
   function pickedEvent() {
+    if (viewMode === 'pooled') return poolPicked();
     if (picked == null || !fit || !fit.ok) return null;
     return (fit.events || []).find((x) => x.i === picked) || null;
+  }
+
+  /* The half-width search the picked event was measured with: Single's
+     setting, or the pooled member's own. */
+  function crossFor(e) {
+    if (viewMode === 'pooled') {
+      const pp = (poolMember(e) || {}).pin || {};
+      const pr = pp.params || {};
+      return Number(pr.cross_ms) || CROSS_V1;
+    }
+    return Number(shownParams().cross_ms) || CROSS_V1;
   }
 
   function fmt(v, d) {
@@ -1416,6 +1467,7 @@ BARRY.rootcanal = (function () {
   }
 
   function step(d) {
+    if (viewMode === 'pooled') { poolStep(d); return; }
     if (!fit || !fit.ok) return;
     const evs = fit.events || [];
     if (!evs.length) return;
@@ -1953,14 +2005,49 @@ BARRY.rootcanal = (function () {
 
   const GEOM = { space: null, flats: {}, ev: {} };
 
+  /* ==================================================================
+     THE SCENE: what the one drawing path draws.
+
+     Single and Pooled show the same space and the same three flat views,
+     and they are drawn by the same functions -- `drawSpace`, `drawFlat`,
+     `drawMark`, the picking and the stepping. What differs is handed in
+     here: the events, the centres, the colour each dot takes, how bright
+     it is, whether it is ringed, what a click does. Two copies of a
+     renderer is how two views of one thing stop agreeing (constitution
+     §6c), so there is one, and each view says what it wants of it.
+
+     Single's scene is its fit as it always was: coloured by class, ringed
+     where a class was set by hand, a centre draggable. Pooled's is built in
+     `poolScene`, below.
+     ================================================================== */
+  function scene() {
+    if (viewMode === 'pooled') return poolScene();
+    if (!fit || !fit.ok) return null;
+    return {
+      kind: 'single',
+      events: fit.events || [],
+      centres: centresShown(),
+      fitCentres: fit.centres || [],
+      params: shownParams(),
+      picked,
+      fill: (e) => colOf(e.cls),
+      shape: () => null,
+      alpha: () => 1,
+      ringed: (e) => !!e.flipped,
+      draggable: true,
+      onPick: setPicked,
+    };
+  }
+
   function drawAll() {
     drawMain();
     drawEvent();
+    if (viewMode === 'pooled') drawPoolHists();
     watchSize();
   }
 
   function drawMain() {
-    if (!fit || !fit.ok) return;
+    if (!scene()) return;
     // Fixed heights first, then the one that stretches to meet them.
     for (const [id, xa, ya] of FLATS) drawFlat(id, xa, ya);
     drawSpace();
@@ -2028,25 +2115,44 @@ BARRY.rootcanal = (function () {
     return e.partial ? 'square' : 'dot';
   }
 
-  function drawMark(g, k, x, y, r, e, kind, alpha) {
+  /* `S` is the scene: it says the colour, the shape a categorical colour
+     falls back to once the palette has run out, and whether the dot is
+     ringed. Square (two of three axes), hollow (not placed) and the wide
+     outline mean the same thing in every scene and every colour mode. */
+  function drawMark(g, k, x, y, r, e, kind, alpha, S) {
+    const sc = S || scene();
+    const fill = sc ? sc.fill(e) : colOf(e.cls);
+    const alt = kind === 'dot' && sc ? sc.shape(e) : null;
     g.globalAlpha = alpha == null ? 1 : alpha;
     if (kind === 'hollow') {
       g.beginPath();
       g.arc(x, y, r, 0, 6.2832);
-      g.strokeStyle = e.cls ? colOf(e.cls) : k.dim;
+      g.strokeStyle = e.cls ? fill : k.dim;
       g.lineWidth = 1.2;
       g.stroke();
     } else if (kind === 'square') {
       const s2 = r * 0.95;
-      g.fillStyle = colOf(e.cls);
+      g.fillStyle = fill;
       g.fillRect(x - s2, y - s2, 2 * s2, 2 * s2);
       g.strokeStyle = k.text;
       g.lineWidth = 1;
       g.strokeRect(x - s2, y - s2, 2 * s2, 2 * s2);
+    } else if (alt === 'tri' || alt === 'itri') {
+      const up = alt === 'tri' ? 1 : -1, t2 = r * 1.25;
+      g.beginPath();
+      g.moveTo(x, y - up * t2);
+      g.lineTo(x + t2 * 0.9, y + up * t2 * 0.7);
+      g.lineTo(x - t2 * 0.9, y + up * t2 * 0.7);
+      g.closePath();
+      g.fillStyle = fill;
+      g.fill();
+      g.strokeStyle = k.bg;
+      g.lineWidth = 0.7;
+      g.stroke();
     } else {
       g.beginPath();
       g.arc(x, y, r, 0, 6.2832);
-      g.fillStyle = colOf(e.cls);
+      g.fillStyle = fill;
       g.fill();
       g.strokeStyle = k.bg;
       g.lineWidth = 0.7;
@@ -2061,7 +2167,7 @@ BARRY.rootcanal = (function () {
       g.stroke();
       g.setLineDash([]);
     }
-    if (e.flipped) {
+    if (sc ? sc.ringed(e) : e.flipped) {
       g.beginPath();
       g.arc(x, y, r + (e.wide ? 4.4 : 2.6), 0, 6.2832);
       g.strokeStyle = k.warn;
@@ -2073,12 +2179,13 @@ BARRY.rootcanal = (function () {
 
   function drawSpace() {
     const s = sized('rcSpace', 380, true);
-    if (!s || !fit || !fit.ok) return;
+    const S = scene();
+    if (!s || !S) return;
     const k = ink();
     const g = s.g;
-    const evs = fit.events || [];
-    const cs = centresShown();
-    const p = shownParams();
+    const evs = S.events;
+    const cs = S.centres;
+    const p = S.params;
 
     // The extent is a SPHERE, so turning the view never rescales it.
     let R = 2.2;
@@ -2133,9 +2240,11 @@ BARRY.rootcanal = (function () {
       const zz = zOf(e, floor);
       const P = toScreen(zz.z);
       const mk = markOf(e, zz.hollow);
-      items.push({ d: P.d, kind: 'e', e, P, hollow: zz.hollow, mk });
+      const al = S.alpha(e);
+      items.push({ d: P.d, kind: 'e', e, P, hollow: zz.hollow, mk, al });
       pts.push({ i: e.i, x: P.x, y: P.y, depth: P.d, hollow: zz.hollow,
-                 r: 3.4, mark: mk, wide: !!e.wide }); 
+                 r: 3.4, mark: mk, wide: !!e.wide, alpha: al,
+                 fill: S.fill(e), shape: S.shape(e), ringed: S.ringed(e) });
     }
     const cpts = [];
     for (const c of cs) {
@@ -2153,7 +2262,8 @@ BARRY.rootcanal = (function () {
         const e = it.e;
         const near = shade(it.d);
         const r = 2.6 + 1.4 * near;
-        drawMark(g, k, it.P.x, it.P.y, r, e, it.mk, 0.45 + 0.55 * near);
+        drawMark(g, k, it.P.x, it.P.y, r, e, it.mk,
+                 (0.45 + 0.55 * near) * it.al, S);
       } else {
         drawCentre(g, k, it.c, it.P.x, it.P.y);
       }
@@ -2161,8 +2271,8 @@ BARRY.rootcanal = (function () {
 
     // The picked one, on top of everything, in all four views.
     let pickedAt = null;
-    if (picked != null) {
-      const pp = pts.find((x) => x.i === picked);
+    if (S.picked != null) {
+      const pp = pts.find((x) => x.i === S.picked);
       if (pp) {
         ring(g, k, pp.x, pp.y);
         pickedAt = { x: pp.x, y: pp.y };
@@ -2263,7 +2373,8 @@ BARRY.rootcanal = (function () {
 
   function flatRange(a, extra) {
     let lo = Infinity, hi = -Infinity;
-    for (const e of (fit.events || [])) {
+    const S = scene();
+    for (const e of ((S && S.events) || [])) {
       const v = e[KEYS[a]];
       if (v == null || !isFinite(v)) continue;
       lo = Math.min(lo, v); hi = Math.max(hi, v);
@@ -2280,15 +2391,16 @@ BARRY.rootcanal = (function () {
 
   function drawFlat(id, xa, ya) {
     const s = sized(id, 180);
-    if (!s || !fit || !fit.ok) return;
+    const S = scene();
+    if (!s || !S) return;
     const k = ink();
     const g = s.g;
-    const p = shownParams();
-    const cs = centresShown();
+    const p = S.params;
+    const cs = S.centres;
     /* The range is the fit's, not the drag's. A centre dragged to the edge
        would otherwise stretch the axes under the pointer as it went, and
        the drop would land somewhere other than where it was let go. */
-    const fcs = ((fit.centres) || []);
+    const fcs = S.fitCentres || [];
     const xr = flatRange(xa, fcs.map((c) => (c.raw || [])[xa]));
     const yr = flatRange(ya, fcs.map((c) => (c.raw || [])[ya]));
     const x0 = FPAD.l, x1 = s.w - FPAD.r, y0 = FPAD.t, y1 = s.h - FPAD.b;
@@ -2330,7 +2442,7 @@ BARRY.rootcanal = (function () {
     let unm = 0;
     g.save();
     g.beginPath(); g.rect(x0, y0, x1 - x0, y1 - y0); g.clip();
-    for (const e of (fit.events || [])) {
+    for (const e of S.events) {
       const vx = e[KEYS[xa]], vy = e[KEYS[ya]];
       const hx = vx != null && isFinite(vx), hy = vy != null && isFinite(vy);
       const x = hx ? X(vx) : x0 + 3;
@@ -2341,9 +2453,11 @@ BARRY.rootcanal = (function () {
       const hollow = e.cls == null;
       const mk = markOf(e, hollow);
       if (!hx || !hy) unm += 1;
-      drawMark(g, k, x, y, 3.2, e, mk, hollow ? 1 : 0.9);
+      const al = S.alpha(e);
+      drawMark(g, k, x, y, 3.2, e, mk, (hollow ? 1 : 0.9) * al, S);
       pts.push({ i: e.i, x, y, hollow, mark: mk, wide: !!e.wide,
-                 edge: !hx || !hy });
+                 edge: !hx || !hy, alpha: al, fill: S.fill(e),
+                 ringed: S.ringed(e) });
     }
     g.restore();
     const cpts = [];
@@ -2356,8 +2470,8 @@ BARRY.rootcanal = (function () {
       cpts.push({ k: c.k, x, y, cls: c.cls });
     }
     let pickedAt = null;
-    if (picked != null) {
-      const pp = pts.find((x) => x.i === picked);
+    if (S.picked != null) {
+      const pp = pts.find((x) => x.i === S.picked);
       if (pp) { ring(g, k, pp.x, pp.y); pickedAt = { x: pp.x, y: pp.y }; }
     }
 
@@ -2420,7 +2534,7 @@ BARRY.rootcanal = (function () {
   function drawEvent() {
     const e = pickedEvent();
     if (!e) return;
-    const d = evData;
+    const d = viewMode === 'pooled' ? pool.evData : evData;
     const ok = d && d.ok !== false;
     drawTrace(ok ? d.trace : null, e, d);
     drawSpec(ok ? d.spectrum : null, d);
@@ -2526,7 +2640,7 @@ BARRY.rootcanal = (function () {
        drawing a half-width that was never measured. The server's own flags
        when it sends them; otherwise a crossing sitting on the search's
        edge is the one that was not found. */
-    const cross = Number(shownParams().cross_ms) || CROSS_V1;
+    const cross = crossFor(e);
     const atEdge = (ms) => ms == null || !isFinite(ms)
                            || Math.abs(ms) >= cross - 0.75;
     const unres = !!(t.unresolved || e.partial && (e.missing || [])
@@ -2855,12 +2969,15 @@ BARRY.rootcanal = (function () {
     const id = e.target && e.target.id;
     if (e.button !== 0) return;
     if (id !== 'rcSpace' && FLAT_IDS.indexOf(id) < 0) return;
-    if (!fit || !fit.ok) return;
+    const S = scene();
+    if (!S) return;
     const cv = e.target;
     const at = local(e, cv);
     press = { id, x: at.x, y: at.y, yaw: view.yaw, pitch: view.pitch,
               moved: false, centre: null };
-    if (id !== 'rcSpace') {
+    // A centre is taken hold of only where the view says it can be moved:
+    // Single's override. The pooled centres are the pool's k-means'.
+    if (id !== 'rcSpace' && S.draggable) {
       const c = centreAt(id, at.x, at.y);
       if (c) press.centre = c.k;
     }
@@ -2913,7 +3030,8 @@ BARRY.rootcanal = (function () {
       if (!p.moved) {
         const at = local(e, cv);
         const i = pickSpace(at.x, at.y);
-        if (i != null) setPicked(i);
+        const S = scene();
+        if (i != null && S) S.onPick(i);
       }
       return;
     }
@@ -2931,12 +3049,13 @@ BARRY.rootcanal = (function () {
     if (!p.moved) {
       const at = local(e, cv);
       const i = pickFlat(p.id, at.x, at.y);
-      if (i != null) setPicked(i);
+      const S = scene();
+      if (i != null && S) S.onPick(i);
     }
   }
 
   function onWheel(e) {
-    if (!e.target || e.target.id !== 'rcSpace' || !fit || !fit.ok) return;
+    if (!e.target || e.target.id !== 'rcSpace' || !scene()) return;
     e.preventDefault();
     view.zoom = Math.max(0.4, Math.min(8, view.zoom * Math.exp(-e.deltaY * 0.0015)));
     drawSpace();
@@ -2948,7 +3067,8 @@ BARRY.rootcanal = (function () {
   }
 
   function onKey(e) {
-    if (!q.read || !fit || !fit.ok) return;
+    if (!scene()) return;
+    if (viewMode !== 'pooled' && !q.read) return;
     if (!document.getElementById('rcSpace')) return;
     const box = host();
     if (!box || !box.offsetParent) return;
@@ -2980,7 +3100,8 @@ BARRY.rootcanal = (function () {
      itself as soon as it is not.
      ================================================================== */
   const CANVAS_IDS = ['rcSpace', 'rcFlatAH', 'rcFlatAP', 'rcFlatHP',
-                      'rcTrace', 'rcSpec', 'rcStack', 'rcCsd'];
+                      'rcTrace', 'rcSpec', 'rcStack', 'rcCsd',
+                      'rcHistA', 'rcHistH', 'rcHistF', 'rcHistS'];
   let sizeWatch = null;
   let sizeTick = null;
   let redrawSoon = null;
@@ -2998,7 +3119,7 @@ BARRY.rootcanal = (function () {
   }
 
   function redrawIfNeeded() {
-    if (redrawing || press || !fit || !fit.ok || !mismatched()) return;
+    if (redrawing || press || !scene() || !mismatched()) return;
     redrawing = true;
     try { drawAll(); } finally { redrawing = false; }
   }
@@ -3052,17 +3173,43 @@ BARRY.rootcanal = (function () {
   /* Where the recording is, from THIS machine. Registry rows carry `here`,
      the paths reachable from here -- not `path`, which is not a field and
      reads as undefined for every recording. */
-  async function recordingPath() {
+  async function recordingPath(gid) {
     const tk = BARRY.views.toolkit;
     if (!tk) return null;
     try { if (tk.loadRegistry) await tk.loadRegistry(); } catch (e) { /* below */ }
+    const want = gid || q.gid;
     const row = (tk.registryRows ? tk.registryRows() : [])
-      .find((r) => r.gid === q.gid);
+      .find((r) => r.gid === want);
     return (row && (row.here || [])[0]) || null;
   }
 
-  function xUrl(path, t) {
+  /* Which recording the window is about, its events, and the one being
+     looked at. In Pooled that is the picked dot's member: a pool is many
+     recordings, and the window shows one of them at a time. */
+  function xTarget() {
+    if (viewMode === 'pooled') {
+      const e = poolPicked();
+      const m = e ? poolMember(e) : null;
+      if (!e || !m) return null;
+      const pr = (m.pin || {}).params || {};
+      return {
+        gid: m.gid, now: e,
+        evs: poolEvents().filter((x) => x.m === e.m),
+        lo: pr.lo_hz != null ? pr.lo_hz : DEF.lo_hz,
+        hi: pr.hi_hz != null ? pr.hi_hz : DEF.hi_hz,
+      };
+    }
+    const e = pickedEvent();
+    if (!e || !fit || !fit.ok) return null;
     const p = shownParams();
+    return { gid: q.gid, now: e, evs: fit.events || [], lo: p.lo_hz,
+             hi: p.hi_hz };
+  }
+
+  function xUrl(path, t) {
+    const xt = xTarget() || {};
+    const p = { lo_hz: xt.lo != null ? xt.lo : DEF.lo_hz,
+                hi_hz: xt.hi != null ? xt.hi : DEF.hi_hz };
     const args = new URLSearchParams({
       csc: path,
       panes: JSON.stringify([{ panel: 'traces' }, { panel: 'csd' }]),
@@ -3078,14 +3225,15 @@ BARRY.rootcanal = (function () {
   }
 
   async function openInXplore() {
-    const e = pickedEvent();
+    const xt = xTarget();
+    const e = xt && xt.now;
     if (!e) return false;
     if (xOpen()) {
       try { xWin.focus(); } catch (err) { /* not important */ }
       pushXplore();
       return true;
     }
-    const path = await recordingPath();
+    const path = await recordingPath(xt.gid);
     if (!path) {
       toast('None of this recording’s paths are reachable from this machine, '
             + 'so there is nothing to look at.', 'err', 9000);
@@ -3098,7 +3246,8 @@ BARRY.rootcanal = (function () {
             + 'then press “Open in Xplorefinder” again.', 'err', 9000);
       return false;
     }
-    BARRY.activity.log('rootcanal.xplore', { gid: q.gid, t: e.t, cls: e.cls });
+    BARRY.activity.log('rootcanal.xplore', { gid: xt.gid, t: e.t, cls: e.cls,
+                                             pooled: viewMode === 'pooled' });
     /* WAITED FOR, not assumed. The window is a whole application booting
        and reading the recording before it has anything to put a mark on. */
     const until = Date.now() + 60000;
@@ -3114,22 +3263,23 @@ BARRY.rootcanal = (function () {
      its max contact drawn across the panes. Returns whether it landed, so
      the opener can keep waiting rather than believing it worked. */
   function pushXplore() {
-    if (!xOpen() || !fit || !fit.ok) return false;
+    const xt = xTarget();
+    if (!xOpen() || !xt) return false;
     let xf = null;
     try { xf = xWin.barryXplore; } catch (e) { return false; }
     if (!xf || !xf.current) return false;
     let sess = null;
     try { sess = xf.current(); } catch (e) { return false; }
     if (!sess) return false;
-    const evs = fit.events || [];
-    const at = picked == null ? -1 : evs.findIndex((e) => e.i === picked);
+    const evs = xt.evs;
+    const at = evs.indexOf(xt.now);
     const now = at >= 0 ? evs[at] : null;
     try {
       sess.curationMarks = {
         kind: 'rootcanal',
         index: Math.max(0, at),
         at: now ? now.t : null,
-        gid: q.gid,
+        gid: xt.gid,
         labels: [
           { id: 'DS', name: 'DS', color: colOf('ds') },
           { id: 'IED', name: 'IED', color: colOf('ied') },
@@ -3156,6 +3306,1308 @@ BARRY.rootcanal = (function () {
       return false;
     }
     return true;
+  }
+
+  /* ==================================================================
+     POOLED (ROOTCANAL-POOL-SPEC.md; every decision in it is the user's)
+
+     The question: do dentate spikes and IEDs form two clear clusters, or
+     one ambiguous spectrum -- across recordings, by mouse and by mouse
+     type, and for any one mouse on its own.
+
+     What joins a pool is a Root Canal single: a BANKED result, which
+     already holds every event's numbers and reads no recording, or an
+     UNBANKED read cached on this machine, fitted at the settings it is
+     added with. The pool pools the raw numbers and z-scores them ONCE,
+     clusters them once, and keeps every event's own single call beside
+     the pooled one -- which is what makes "did pooling change its mind"
+     a count rather than an impression.
+
+     Nothing in here writes to the Event Bank. A pool is saved as a Jarvis
+     artifact of its own, under a label somebody types.
+     ================================================================== */
+  function setView(mode) {
+    const want = mode === 'pooled' ? 'pooled' : 'single';
+    viewMode = want;
+    try { localStorage.setItem(VIEW_KEY, want); } catch (e) { /* fine */ }
+    press = null;
+    render();
+    if (want === 'pooled') loadPool();
+    else if (!cands) loadCandidates();
+  }
+
+  /* The bar, under the header: one choice between two views of the tool,
+     which is what a seg is for (constitution §2). */
+  function viewBar() {
+    return el('div', { class: 'rc-viewbar' }, [
+      BARRY.ui.seg([
+        ['single', 'Single', 'One recording: read it, split it, bank it.'],
+        ['pooled', 'Pooled', 'Many recordings in one space: two clear groups, '
+                           + 'or one spectrum?'],
+      ], viewMode, setView, { extra: 'rc-viewseg' }),
+      el('span', { class: 'hint', text: viewMode === 'pooled'
+        ? 'Root Canal singles pooled into one space. Nothing here is banked; '
+          + 'a pool is saved under a label of its own.'
+        : 'One aligned set at a time, banked as the next version of that set.' }),
+    ]);
+  }
+
+  async function loadPool() {
+    const jobs = [];
+    if (!pool.cands) {
+      jobs.push(api('/api/rootcanal/pool/candidates').then((got) => {
+        pool.cands = got.singles || [];
+        pool.candsErr = null;
+      }).catch((e) => {
+        pool.cands = [];
+        pool.candsErr = e.message;
+        reportClientError('rootcanal.pool.candidates', e.message,
+                          String(e && e.stack));
+      }));
+    }
+    if (!pool.shelf) jobs.push(loadShelf(true));
+    await Promise.all(jobs);
+    if (viewMode === 'pooled') render();
+  }
+
+  async function loadShelf(quiet) {
+    try {
+      const got = await api('/api/rootcanal/pools');
+      pool.shelf = got.pools || [];
+      pool.shelfErr = null;
+    } catch (e) {
+      pool.shelf = [];
+      pool.shelfErr = e.message;
+    }
+    if (!quiet && viewMode === 'pooled') swap('.rc-shelf', shelfCard());
+  }
+
+  const candOf = (key) => (pool.cands || []).find((c) => c.key === key) || null;
+
+  /* The settings an unbanked member is fitted at: Single's, as they stand.
+     Stated on the members card, because a pool whose members were fitted at
+     different settings without saying so is not one question. */
+  function singleParams() {
+    const out = {};
+    for (const k2 of PKEYS) out[k2] = Number(q[k2]);
+    return out;
+  }
+
+  function typeFor(mk, fallback) {
+    return pool.types[mk] || fallback || '';
+  }
+
+  function toggleMember(key, on) {
+    const c = candOf(key);
+    const have = pool.sel.findIndex((m) => m.key === key);
+    if (on && have < 0) {
+      pool.sel.push(c && !c.banked ? { key, params: singleParams() } : { key });
+      pool.fitErr = null;
+    } else if (!on && have >= 0) {
+      pool.sel.splice(have, 1);
+    } else {
+      return;
+    }
+    pool.dirty = true;
+    render();
+  }
+
+  function setType(mk, value, fallback) {
+    const v = String(value || '').trim();
+    if (!v || v === (fallback || '')) delete pool.types[mk];
+    else pool.types[mk] = v;
+    pool.dirty = true;
+    render();
+  }
+
+  function serverFocus() {
+    const f = pool.focus;
+    if (!f) return null;
+    if (f.mouse_key) return { mouse_key: f.mouse_key };
+    if (f.mouse_type) return { mouse_type: f.mouse_type };
+    return null;            // a member focus is a dimming, not a second test
+  }
+
+  function poolBody() {
+    return {
+      members: pool.sel.map((m) => (m.params ? { key: m.key, params: m.params }
+                                             : { key: m.key })),
+      mouse_types: Object.assign({}, pool.types),
+      focus: serverFocus(),
+    };
+  }
+
+  async function runPool() {
+    if (!pool.sel.length) {
+      toast('Tick at least one recording to pool.', 'warn', 5000);
+      return null;
+    }
+    const mine = ++pool.gen;
+    const body = poolBody();
+    pool.lastBody = body;
+    pool.fitting = true;
+    tickBusy();
+    let got;
+    try {
+      got = await apiPost('/api/rootcanal/pool/fit', body);
+    } catch (e) {
+      if (mine !== pool.gen) return null;
+      pool.fitting = false;
+      /* A REFUSAL IS ABOUT THE MEMBERS, so it is said beside them -- members
+         measured over different HF bands, most often, which cannot share
+         one power axis. The picture that was on screen stays: it is still
+         the answer for the members it was drawn from. */
+      pool.fitErr = e.message;
+      if (!pool.fit || !pool.fit.ok) pool.fit = { ok: false, error: e.message };
+      toast(e.message, 'err', 10000);
+      render();
+      return null;
+    }
+    if (mine !== pool.gen) return null;
+    pool.fitting = false;
+    pool.fitErr = null;
+    pool.fit = got;
+    pool.saved = false;
+    pool.dirty = false;
+    pool.evs = null;
+    if (pool.picked != null && pool.picked >= (got.events || []).length) {
+      pool.picked = null;
+    }
+    pool.evData = null;
+    pool.evFor = null;
+    BARRY.activity.log('rootcanal.pool_fit', {
+      members: body.members.length, focus: body.focus,
+    });
+    render();
+    if (pool.picked != null) loadPoolEvent();
+    return got;
+  }
+
+  /* The pool's events, in the shape the shared renderer draws: `i` is the
+     dot's place in the pool, `cls` the POOLED call, and the single call
+     and the switch carried beside it. Built once per answer. */
+  function poolEvents() {
+    const f = pool.fit;
+    if (!f || !f.ok) return [];
+    if (pool.evsFor === f && pool.evs) return pool.evs;
+    pool.evsFor = f;
+    pool.evs = (f.events || []).map((e, j) => Object.assign({}, e, {
+      i: j, src_i: e.i,
+      cls: e.cls_pool != null ? e.cls_pool : null,
+      flipped: false,
+      missing: e.missing || KEYS.filter((k2) => e[k2] == null || !isFinite(e[k2])),
+    }));
+    return pool.evs;
+  }
+
+  function poolMember(e) {
+    return e && pool.fit && pool.fit.ok ? (pool.fit.members || [])[e.m] || null
+                                        : null;
+  }
+
+  /* ---------- colour by ---------- */
+  const COLOURS = [
+    ['pool', 'pooled call'], ['single', 'single call'], ['switches', 'switches'],
+    ['recording', 'recording'], ['mouse', 'mouse'], ['type', 'mouse type'],
+  ];
+  /* The categorical palette is the theme's own (`--c1`..`--c4`, what
+     `BARRY.hues` hands out once its neutral is dropped). Past four the
+     colours come round again, and the SHAPE changes each time they do, so
+     the fifth recording is not the first one's twin. */
+  const CAT_N = 4;
+  const CAT_SHAPES = [null, 'tri', 'itri'];
+  const CAT_SHAPE_WORDS = ['circle', 'triangle', 'inverted triangle'];
+
+  function catKey(e, mode) {
+    if (mode === 'recording') {
+      const m = poolMember(e);
+      return m ? m.key : String(e.m);
+    }
+    if (mode === 'mouse') return e.mouse_key || '?';
+    if (mode === 'type') return e.mouse_type || 'no type';
+    return null;
+  }
+
+  function catName(key, mode) {
+    if (mode === 'recording') {
+      const m = ((pool.fit && pool.fit.members) || []).find((x) => x.key === key);
+      return m ? memberName(m) : key;
+    }
+    return key;
+  }
+
+  /* Worked out once per answer and mode: every dot asks for its colour on
+     every draw, and a list rebuilt per dot is a pool's events squared. */
+  let catMemo = { fit: null, mode: null, list: [], at: new Map() };
+
+  function catList(mode) {
+    if (['recording', 'mouse', 'type'].indexOf(mode) < 0) return [];
+    if (catMemo.fit === pool.fit && catMemo.mode === mode) return catMemo.list;
+    let list;
+    if (mode === 'recording') {
+      list = ((pool.fit && pool.fit.members) || []).map((m) => m.key);
+    } else {
+      const seen = new Set();
+      for (const e of poolEvents()) seen.add(catKey(e, mode));
+      list = Array.from(seen).sort((a, b) => String(a).localeCompare(String(b)));
+    }
+    catMemo = { fit: pool.fit, mode, list,
+                at: new Map(list.map((k2, j) => [k2, j])) };
+    return list;
+  }
+
+  function catStyle(key, mode) {
+    catList(mode);
+    const at = Math.max(0, catMemo.at.has(key) ? catMemo.at.get(key) : 0);
+    return { fill: tok('--c' + ((at % CAT_N) + 1)),
+             shape: CAT_SHAPES[Math.floor(at / CAT_N) % CAT_SHAPES.length],
+             at };
+  }
+
+  function switchKind(e) {
+    if (e.cls_pool == null || e.cls_single == null) return 'none';
+    if (!e.switched) return 'same';
+    return e.cls_single === 'ds' ? 'd2i' : 'i2d';
+  }
+
+  function poolFill(e) {
+    const mode = pool.colour;
+    if (mode === 'single') return colOf(e.cls_single);
+    if (mode === 'switches') {
+      const sk = switchKind(e);
+      return sk === 'd2i' ? tok('--warn') : sk === 'i2d' ? tok('--accent')
+           : tok('--text-2');
+    }
+    if (mode === 'recording' || mode === 'mouse' || mode === 'type') {
+      return catStyle(catKey(e, mode), mode).fill;
+    }
+    return colOf(e.cls_pool);
+  }
+
+  function poolShape(e) {
+    const mode = pool.colour;
+    if (mode === 'recording' || mode === 'mouse' || mode === 'type') {
+      return catStyle(catKey(e, mode), mode).shape;
+    }
+    return null;
+  }
+
+  /* ---------- focus ---------- */
+  function inFocus(e) {
+    const f = pool.focus;
+    if (!f) return true;
+    if (f.mouse_key) return e.mouse_key === f.mouse_key;
+    if (f.mouse_type) return e.mouse_type === f.mouse_type;
+    if (f.member) { const m = poolMember(e); return !!m && m.key === f.member; }
+    return true;
+  }
+
+  function focusName(f) {
+    const g = f || pool.focus;
+    if (!g) return '';
+    if (g.mouse_key) return 'mouse ' + g.mouse_key;
+    if (g.mouse_type) return 'type ' + g.mouse_type;
+    if (g.member) {
+      const m = ((pool.fit && pool.fit.members) || []).find((x) => x.key === g.member);
+      return m ? memberName(m) : g.member;
+    }
+    return '';
+  }
+
+  /* The dim goes on at once; the focused mouse's own GMM line is the
+     server's, so a mouse or a type is asked for again. A recording focus is
+     a dimming only -- the spec's second test is per mouse and per type. */
+  const focusSoon = debounce(() => {
+    if (pool.fit && pool.fit.ok && !pool.dirty) runPool();
+  }, 600);
+
+  function setFocus(f) {
+    const had = serverFocus();
+    pool.focus = f && (f.mouse_key || f.mouse_type || f.member) ? f : null;
+    render();
+    /* The dim is immediate; the focused test is the server's and a cold pool
+       is half a minute, so it waits for the choice to settle and says it is
+       running. Only when the question changed: a recording focus asks the
+       server nothing new. */
+    if (JSON.stringify(had) !== JSON.stringify(serverFocus())) focusSoon();
+  }
+
+  function setColour(mode) {
+    if (!COLOURS.some(([id]) => id === mode)) return;
+    pool.colour = mode;
+    swap('.rc-legend', poolLegend());
+    drawMain();
+  }
+
+  /* ---------- the scene the shared renderer draws ---------- */
+  function poolScene() {
+    const f = pool.fit;
+    if (!f || !f.ok) return null;
+    const ax = (f.axes || [])[2] || {};
+    return {
+      kind: 'pooled',
+      events: poolEvents(),
+      centres: (f.centres || []).map((c, k2) => ({
+        k: k2, cls: c.cls, n: c.n, z: (c.z || []).slice(),
+        raw: (c.raw || []).slice() })),
+      fitCentres: f.centres || [],
+      params: { hf_label: ax.label ? ax.label + (ax.unit ? ' · ' + ax.unit : '')
+                                   : hfLabel(DEF) },
+      picked: pool.picked,
+      fill: poolFill,
+      shape: poolShape,
+      alpha: (e) => (inFocus(e) ? 1 : 0.12),
+      /* Ringed where pooling changed its mind, in every colour mode. */
+      ringed: (e) => !!e.switched,
+      draggable: false,
+      onPick: poolPick,
+    };
+  }
+
+  function poolPicked() {
+    if (pool.picked == null) return null;
+    const e = poolEvents()[pool.picked];
+    if (!e) return null;
+    const tr = pool.evFor === pool.picked && pool.evData && pool.evData.trace;
+    return Object.assign({}, e, { contact: tr ? tr.contact : null,
+                                  polarity: tr ? tr.polarity : null });
+  }
+
+  function poolPick(j) {
+    const evs = poolEvents();
+    if (!evs[j]) return;
+    pool.picked = j;
+    swap('.rc-pickbar', poolPickBar());
+    swap('.rc-event', eventPane());
+    drawAll();
+    loadPoolEvent();
+    pushXplore();
+  }
+
+  function poolStep(d) {
+    const evs = poolEvents();
+    if (!evs.length) return;
+    const at = pool.picked == null ? (d > 0 ? -1 : 0) : pool.picked;
+    poolPick(((at + d) % evs.length + evs.length) % evs.length);
+  }
+
+  /* The click panel, for a pooled dot: the same /api/rootcanal/event Single
+     calls, with that member's entry, read and settings. A banked member
+     whose read was made on another machine has its numbers here and its
+     trace there -- said in a sentence, never left as an empty panel. */
+  function eventBodyFor(e) {
+    const m = poolMember(e);
+    if (!m) return null;
+    if (m.event_body) return Object.assign({}, m.event_body, { i: e.src_i });
+    const pin = m.pin || {};
+    return Object.assign({ entry_id: m.entry_id }, pin.params || {}, {
+      read: pin.read || null,
+      from_version: pin.from_version !== undefined ? pin.from_version
+                   : (pin.ds_version !== undefined ? pin.ds_version : null),
+      i: e.src_i,
+    });
+  }
+
+  function memberHere(m) {
+    if (!m) return false;
+    // The server's own word: no request body means no read here to ask.
+    if (Object.prototype.hasOwnProperty.call(m, 'event_body')
+        && m.event_body == null) return false;
+    if (m.here === false) return false;
+    const c = candOf(m.key);
+    return !(c && c.here === false);
+  }
+
+  const AWAY = 'This member’s read is not on this machine: it was banked '
+             + 'from a read made elsewhere, so its pooled numbers are here and '
+             + 'its trace is not. Open it in Single on the machine that read it.';
+
+  function poolEventNote() {
+    const e = poolPicked();
+    if (!e) return null;
+    const m = poolMember(e);
+    if (m && !memberHere(m)) return AWAY;
+    if (pool.evFor === pool.picked && pool.evData && pool.evData.ok === false) {
+      return pool.evData.error;
+    }
+    return null;
+  }
+
+  const loadPoolEvent = debounce(async function loadPoolEvent_() {
+    const j = pool.picked;
+    const e = poolPicked();
+    if (!e) return;
+    const m = poolMember(e);
+    if (!memberHere(m)) {
+      pool.evData = { ok: false, error: AWAY };
+      pool.evFor = j;
+      swap('.rc-event', eventPane());
+      drawEvent();
+      return;
+    }
+    const mine = ++pool.evGen;
+    pool.evBusy = true;
+    tickBusy();
+    let got;
+    try {
+      got = await apiPost('/api/rootcanal/event', eventBodyFor(e));
+    } catch (err) {
+      if (mine !== pool.evGen) return;
+      got = { ok: false, error: 'Its trace could not be read here: '
+                                + err.message };
+    }
+    if (mine !== pool.evGen) return;
+    pool.evBusy = false;
+    pool.evData = got;
+    pool.evFor = j;
+    tickBusy();
+    swap('.rc-pickbar', poolPickBar());
+    swap('.rc-event', eventPane());
+    drawEvent();
+  }, 70);
+
+  /* ---------- the page ---------- */
+  function memberName(m) {
+    return (m.session_label || m.entry_id || m.key)
+      + (m.banked ? '' : ' (not banked)');
+  }
+
+  function unbankedOf(members) {
+    return (members || []).filter((m) => m && m.banked === false).length;
+  }
+
+  function unbankedChip(n) {
+    if (!n) return null;
+    return BARRY.ui.chip(n + ' member' + (n === 1 ? '' : 's') + ' not banked', {
+      kind: 'warn', extra: 'rc-unbanked',
+      title: 'An unbanked member is a Root Canal read cached on this machine, '
+           + 'fitted at the settings it was added with -- not a banked result. '
+           + 'The pool can only be rebuilt while those reads are on this '
+           + 'machine.' });
+  }
+
+  function poolBusyLine() {
+    const what = pool.fitting
+      ? 'Pooling ' + pool.sel.length + ' recording' + (pool.sel.length === 1 ? '' : 's')
+        + ' — one z-score across the pool, one k-means, the 1-vs-2 GMM test'
+      : pool.evBusy ? 'Reading that event from its own recording'
+      : null;
+    if (!what) return el('div', { class: 'rc-busy' });
+    return el('div', { class: 'rc-busy on' }, [loader(what)]);
+  }
+
+  function paintPool(box) {
+    if (!pool.cands && !pool.candsErr) {
+      box.appendChild(loading('Reading what can be pooled',
+                              'banked Root Canal results and reads cached here'));
+      return;
+    }
+    box.appendChild(shelfCard());
+    if (pool.open || pool.fit || pool.sel.length) box.appendChild(openPoolCard());
+    box.appendChild(membersCard());
+    /* Always in the tree, so the first pool -- half a minute cold -- has a
+       line to say so in. Before, it only existed inside the workbench, and
+       there is no workbench until something has been pooled. */
+    box.appendChild(poolBusyLine());
+    const w = poolWork();
+    if (w) box.appendChild(w);
+  }
+
+  /* The saved pools: the shelf. Opening one restores its members, its
+     overrides and its focus, and draws what was saved -- no refit, no
+     recording read. */
+  function shelfCard() {
+    const kids = [el('div', { class: 'section-label', text: 'Saved pools' })];
+    if (!pool.shelf) {
+      kids.push(el('p', { class: 'hint', text: 'Reading the saved pools…' }));
+    } else if (pool.shelfErr) {
+      kids.push(el('p', { class: 'hint rc-warn', text:
+        'The saved pools could not be read: ' + pool.shelfErr }));
+    } else if (!pool.shelf.length) {
+      kids.push(el('div', { class: 'empty-state rc-shelf-empty' }, [
+        el('p', { text: 'No pool has been saved yet. Tick recordings below, '
+                      + 'pool them, and save the pool under a label.' }),
+      ]));
+    } else {
+      kids.push(el('div', { class: 'bm-list rc-shelf-list' }, pool.shelf.map((p) => {
+        const id = p.artifact_id || p.id;
+        const on = !!(pool.open && pool.open.artifact_id === id);
+        return el('div', { class: 'bm-row rc-shelf-row' + (on ? ' on' : '') }, [
+          el('span', { class: 'mk-name', text: p.nickname || p.name || id }),
+          p.version != null ? el('span', { class: 'flagchip',
+                                           text: 'v' + p.version }) : null,
+          el('span', { class: 'flagchip', text: (p.n_members != null ? p.n_members
+                                                  : (p.n || 0)) + ' recordings' }),
+          unbankedChip(p.n_unbanked || 0),
+          el('span', { class: 'person-what', text: p.name || '' }),
+          BARRY.ui.button({ kind: 'mini', text: on ? 'Open' : 'Open',
+            title: 'Reopen it as it was saved. Nothing is refitted and no '
+                 + 'recording is read.',
+            onclick: () => openSaved(id) }),
+        ].filter(Boolean));
+      })));
+    }
+    return el('div', { class: 'card rc-shelf' }, kids);
+  }
+
+  function nextPoolVersion() {
+    const v = pool.open && Number(pool.open.version);
+    return isFinite(v) && v > 0 ? v + 1 : 2;
+  }
+
+  /* The button says what it will do: a new pool, or the next version of
+     the one that is open. */
+  function saveLabel() {
+    return pool.open
+      ? 'Save as v' + nextPoolVersion() + ' of ‘' + pool.open.nickname + '’'
+      : 'Save as new pool…';
+  }
+
+  /* The pool that is open, on the bench: what it is called, which version,
+     how many recordings and mice, and whether any of it is unbanked. */
+  function openPoolCard() {
+    const f = pool.fit && pool.fit.ok ? pool.fit : null;
+    const members = f ? (f.members || []) : pool.sel.map((m) => candOf(m.key))
+      .filter(Boolean);
+    const mice = new Set(members.map((m) => m.mouse_key).filter(Boolean));
+    const nUnb = f ? unbankedOf(members)
+                   : pool.sel.filter((m) => { const c = candOf(m.key);
+                                              return c && !c.banked; }).length;
+    const primarySave = !pool.dirty && !!f;
+    return BARRY.ui.workbenchCard({
+      title: pool.open ? pool.open.nickname : 'A pool not saved yet',
+      extra: 'rc-pool-card',
+      chips: [
+        BARRY.ui.chip(pool.open ? 'v' + pool.open.version : 'not saved',
+                      { flag: true }),
+        pool.saved ? BARRY.ui.chip('as saved: nothing refitted', { flag: true })
+                   : null,
+        pool.dirty ? BARRY.ui.chip('changed: pool again to see it',
+                                   { flag: true, kind: 'warn' }) : null,
+        unbankedChip(nUnb),
+      ].filter(Boolean),
+      count: members.length + ' recording' + (members.length === 1 ? '' : 's')
+             + ' · ' + mice.size + ' mice',
+      owner: { name: (pool.open && pool.open.by) || null },
+      when: pool.open && pool.open.updated ? String(pool.open.updated) : null,
+      actions: [
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Close this pool',
+          title: 'Puts it down. Closing saves nothing and costs nothing; a '
+               + 'saved pool is on the shelf above.',
+          onclick: closePool }),
+        BARRY.ui.button({ kind: primarySave ? 'primary' : 'ghost', size: 'sm',
+          text: saveLabel(), extra: 'rc-save',
+          disabled: !pool.sel.length,
+          title: 'Saved as a Jarvis artifact, refitted on the server from its '
+               + 'members. Nothing goes to the Event Bank.',
+          onclick: saveDialog }),
+      ],
+    });
+  }
+
+  /* Which recordings, and what type each mouse is. */
+  function membersCard() {
+    const kids = [el('div', { class: 'section-label', text: 'Recordings in the pool' })];
+    if (pool.candsErr) {
+      kids.push(el('p', { class: 'hint rc-warn', text:
+        'What can be pooled could not be read: ' + pool.candsErr }));
+    }
+    const sp = singleParams();
+    kids.push(el('p', { class: 'hint', text:
+      'A banked result reads no recording. An unbanked one is a Root Canal '
+      + 'read cached on this machine, fitted at Single’s settings as they '
+      + 'stand when it is ticked: ' + hz(sp.lo_hz) + '–' + hz(sp.hi_hz)
+      + ' Hz, ±' + hz(sp.win_ms) + ' ms, half-width ±' + hz(sp.cross_ms)
+      + ' ms, ' + hz(sp.band_lo) + '–' + hz(sp.band_hi) + ' Hz. Only sets '
+      + 'that have been through Braces are offered.' }));
+    const cs = pool.cands || [];
+    if (!cs.length && !pool.candsErr) {
+      kids.push(el('div', { class: 'empty-state rc-pool-empty' }, [
+        el('p', { text: 'Nothing can be pooled yet. Bank a set in Single, or '
+                      + 'read one there: a read cached on this machine can '
+                      + 'join a pool before it is banked.' }),
+      ]));
+    }
+    const sel = new Set(pool.sel.map((m) => m.key));
+    if (cs.length) {
+      kids.push(el('table', { class: 'tbl rc-pool-cands' }, [
+        el('thead', {}, [el('tr', {}, ['', 'recording', 'mouse', 'type',
+                                       'kind', 'events']
+          .map((t) => el('th', { text: t })))]),
+        el('tbody', {}, cs.map((c) => {
+          const can = c.banked || c.here !== false;
+          return el('tr', { class: sel.has(c.key) ? 'on' : null,
+                            'data-key': c.key }, [
+            el('td', {}, [el('input', {
+              type: 'checkbox', class: 'rc-pool-pick',
+              checked: sel.has(c.key) ? 'checked' : null,
+              disabled: can ? null : 'disabled',
+              title: can ? '' : 'Its read is not on this machine, and it is '
+                              + 'not banked, so there is nothing to pool.',
+              onchange: (ev2) => toggleMember(c.key, ev2.target.checked),
+            })]),
+            el('td', { text: c.session_label || c.entry_id }),
+            el('td', { text: c.mouse_key || '' }),
+            el('td', { text: typeFor(c.mouse_key, c.mouse_type) }),
+            el('td', {}, [
+              c.banked
+                ? BARRY.ui.chip('banked' + (c.version ? ' v' + c.version : ''),
+                                { flag: true })
+                : BARRY.ui.chip('not banked', { flag: true, kind: 'warn' }),
+              c.here === false
+                ? BARRY.ui.chip('read elsewhere', { flag: true,
+                    title: 'Its numbers can be pooled; its traces cannot be '
+                         + 'opened on this machine.' })
+                : null,
+            ].filter(Boolean)),
+            /* The set's size. Its DS/IED counts are not drawn here: an
+               unbanked read is fitted when it is pooled, not to draw a list. */
+            el('td', { text: String(c.n != null ? c.n : '') }),
+          ]);
+        })),
+      ]));
+    }
+    // Members of an opened pool that this machine does not offer.
+    const missing = pool.sel.filter((m) => !candOf(m.key));
+    if (missing.length) {
+      kids.push(el('p', { class: 'hint rc-warn', text:
+        missing.length + ' member' + (missing.length === 1 ? '' : 's')
+        + ' of this pool ' + (missing.length === 1 ? 'is' : 'are') + ' not among '
+        + 'what this machine can pool. They stay in the pool as saved; pooling '
+        + 'again here would need them.' }));
+    }
+
+    /* Mouse type, per mouse in the pool: the registry's filing unless
+       somebody says otherwise, free text with the types already in use as
+       suggestions. The override is the pool's, not the registry's. */
+    const mice = new Map();
+    for (const m of pool.sel) {
+      const c = candOf(m.key);
+      if (c && c.mouse_key && !mice.has(c.mouse_key)) mice.set(c.mouse_key, c);
+    }
+    if (mice.size) {
+      const inUse = new Set();
+      for (const c of cs) if (c.mouse_type) inUse.add(c.mouse_type);
+      for (const k2 of Object.keys(pool.types)) inUse.add(pool.types[k2]);
+      kids.push(el('div', { class: 'section-label', text: 'Mouse type' }));
+      kids.push(el('datalist', { id: 'rcTypeList' },
+        Array.from(inUse).sort().map((t) => el('option', { value: t }))));
+      kids.push(el('div', { class: 'rc-types' }, Array.from(mice.entries())
+        .map(([mk, c]) => el('label', { class: 'rc-type' }, [
+          el('span', { class: 'rc-type-k', text: mk }),
+          el('input', {
+            type: 'text', class: 'rc-in rc-type-in', list: 'rcTypeList',
+            value: typeFor(mk, c.mouse_type), 'data-mouse': mk,
+            title: 'The registry files this mouse as “' + (c.mouse_type || 'no '
+                 + 'type') + '”. Type another to override it in this pool.',
+            onchange: (ev2) => setType(mk, ev2.target.value, c.mouse_type),
+          }),
+          pool.types[mk]
+            ? el('span', { class: 'hint', text: 'set here; the registry says '
+                                                + (c.mouse_type || 'nothing') })
+            : el('span', { class: 'hint', text: 'from the registry' }),
+        ]))));
+    }
+
+    const nMice = mice.size;
+    if (pool.fitErr) {
+      kids.push(el('p', { class: 'hint rc-warn rc-pool-refused',
+                          text: 'Not pooled: ' + pool.fitErr }));
+    }
+    kids.push(BARRY.ui.actions([
+      el('span', { class: 'hint', text: pool.sel.length + ' recording'
+        + (pool.sel.length === 1 ? '' : 's') + ' ticked, ' + nMice + ' mice'
+        + (pool.dirty && pool.fit ? ' — changed since the picture below' : '') }),
+      BARRY.ui.button({
+        kind: (pool.dirty || !pool.fit) ? 'primary' : 'ghost',
+        text: 'Pool ' + pool.sel.length + ' recording'
+              + (pool.sel.length === 1 ? '' : 's'),
+        extra: 'rc-pool-run',
+        disabled: !pool.sel.length || pool.fitting,
+        title: 'One z-score over the pooled raw numbers, one k-means, and the '
+             + '1-vs-2 group test. Banked members read no recording.',
+        onclick: runPool,
+      }),
+    ]));
+    return el('div', { class: 'card rc-members' }, kids);
+  }
+
+  function poolChip() {
+    const f = pool.fit && pool.fit.ok ? pool.fit : null;
+    const n = f ? (f.members || []).length : 0;
+    return el('span', {
+      class: 'rc-chip' + (pool.dirty ? ' rc-chip-stale' : ''),
+      title: pool.dirty ? 'The members or the types have changed since this '
+                        + 'picture. Pool again to see them.'
+                        : 'What this picture pools, and on what scale.',
+      text: 'pooled raw · ' + n + ' recording' + (n === 1 ? '' : 's')
+            + (pool.dirty ? '  (pool again)' : ''),
+    });
+  }
+
+  function poolWork() {
+    const f = pool.fit;
+    if (!f) return null;
+    if (!f.ok) {
+      return el('div', { class: 'rc-work' }, [
+        el('div', { class: 'card rc-err' }, [
+          el('strong', { text: 'That pool could not be fitted' }),
+          el('p', { class: 'hint', text: f.error }),
+        ]),
+      ]);
+    }
+    return el('div', { class: 'rc-work rc-pool-work' }, [
+      poolTop(),
+      poolPickBar(),
+      poolLegend(),
+      el('div', { class: 'rc-main' }, [spacePane(), flatsPane(), eventPane()]),
+      gmmPanel(),
+      switchPanel(),
+    ]);
+  }
+
+  const pct = (r) => (r == null || !isFinite(r) ? '—'
+                      : (100 * r).toFixed(1) + '%');
+
+  function poolTop() {
+    const f = pool.fit;
+    const c = f.counts || {};
+    const sw = f.switches || {};
+    const colour = el('select', { class: 'rc-colour',
+      onchange: (e) => setColour(e.target.value) },
+      COLOURS.map(([id, nm]) => el('option', { value: id, text: nm,
+        selected: pool.colour === id ? 'selected' : null })));
+    const mice = Array.from(new Set(poolEvents().map((e) => e.mouse_key)
+      .filter(Boolean))).sort();
+    const types = Array.from(new Set(poolEvents().map((e) => e.mouse_type)
+      .filter(Boolean))).sort();
+    const cur = pool.focus ? (pool.focus.mouse_key ? 'mouse_key:' + pool.focus.mouse_key
+      : pool.focus.mouse_type ? 'mouse_type:' + pool.focus.mouse_type
+      : 'member:' + pool.focus.member) : '';
+    const opt = (v, t) => el('option', { value: v, text: t,
+                                         selected: cur === v ? 'selected' : null });
+    const focus = el('select', { class: 'rc-focus',
+      onchange: (e) => {
+        const v = e.target.value;
+        const at = v.indexOf(':');
+        if (!v) { setFocus(null); return; }
+        const kind = v.slice(0, at), val = v.slice(at + 1);
+        setFocus({ [kind]: val });
+      } }, [
+      opt('', 'nothing: every dot bright'),
+      el('optgroup', { label: 'a mouse' }, mice.map((m) => opt('mouse_key:' + m, m))),
+      el('optgroup', { label: 'a mouse type' }, types.map((t) => opt('mouse_type:' + t, t))),
+      el('optgroup', { label: 'a recording' }, (f.members || []).map((m) =>
+        opt('member:' + m.key, memberName(m)))),
+    ]);
+    return el('div', { class: 'card rc-why rc-pool-top' }, [
+      el('div', { class: 'rc-why-t' }, [
+        el('p', { class: 'rc-rule', text: f.rule || '' }),
+        el('p', { class: 'hint rc-scale', text:
+          'Scale: pooled raw units, z-scored once across the whole pool — so '
+          + 'differences in size between mice stay visible, impedance and '
+          + 'placement included.' }),
+        el('div', { class: 'chip-row' }, [
+          chipC('DS ' + (c.ds || 0), 'ds'),
+          chipC('IED ' + (c.ied || 0), 'ied'),
+          c.unmeasured ? BARRY.ui.chip(c.unmeasured + ' not measured') : null,
+          c.partial ? BARRY.ui.chip(c.partial + ' on 2 of 3 axes', { kind: 'warn' })
+                    : null,
+          c.wide ? BARRY.ui.chip(c.wide + ' by the widened search', { kind: 'warn' })
+                 : null,
+          BARRY.ui.chip((sw.switched || 0) + ' of ' + (sw.n || 0) + ' switched ('
+                        + pct(sw.rate) + ')', { kind: sw.switched ? 'warn' : null,
+                                               extra: 'rc-switch-count' }),
+          BARRY.ui.chip(f.n_used + ' of ' + f.n + ' clustered on all three axes'),
+        ].filter(Boolean)),
+      ]),
+      el('div', { class: 'rc-pool-ctl' }, [
+        BARRY.ui.field({ label: 'Colour by', control: colour, inline: true }),
+        BARRY.ui.field({ label: 'Focus', control: focus, inline: true }),
+      ]),
+    ]);
+  }
+
+  function poolPickBar() {
+    const e = poolPicked();
+    if (!e) {
+      return el('div', { class: 'card rc-pickbar' }, [
+        el('span', { class: 'hint', text:
+          'Click a dot in any view to open that event from its own recording. '
+          + '← and → step through the pool.' }),
+      ]);
+    }
+    const m = poolMember(e);
+    const n = poolEvents().length;
+    return el('div', { class: 'card rc-pickbar' }, [
+      el('strong', { text: 'Event ' + (pool.picked + 1) + ' of ' + n }),
+      el('span', { class: 'hint', text:
+        (m ? memberName(m) : '') + '  ·  ' + (e.mouse_key || '') + ' ('
+        + (e.mouse_type || 'no type') + ')  ·  t = ' + fmt(e.t, 3) + ' s  ·  '
+        + fmt(e.amp_uV, 0) + ' µV  ·  ' + (e.hw_ms == null || !isFinite(e.hw_ms)
+          ? 'half-width unresolved' : fmt(e.hw_ms, 1) + ' ms') + '  ·  '
+        + (e.hf_db == null || !isFinite(e.hf_db) ? 'no HF' : fmt(e.hf_db, 1) + ' dB') }),
+      el('span', { class: 'hint rc-calls', text:
+        'pooled ' + (e.cls_pool ? e.cls_pool.toUpperCase() : '—') + ', single '
+        + (e.cls_single ? e.cls_single.toUpperCase() : '—') }),
+      e.switched ? BARRY.ui.chip('switched', { kind: 'warn' }) : null,
+      e.partial ? BARRY.ui.chip('2 of 3 axes', { kind: 'warn' }) : null,
+      e.wide ? BARRY.ui.chip('widened search', { kind: 'warn' }) : null,
+      el('span', { class: 'spacer' }),
+      BARRY.ui.actions([
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: '◀ prev',
+                          title: 'The previous event in the pool. Or ←.',
+                          onclick: () => poolStep(-1) }),
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'next ▶',
+                          title: 'The next event in the pool. Or →.',
+                          onclick: () => poolStep(+1) }),
+        BARRY.ui.button({ kind: 'ghost', size: 'sm',
+          text: 'Open in Xplorefinder',
+          disabled: !memberHere(m),
+          title: memberHere(m)
+            ? 'That recording at this event, in a window of its own that '
+              + 'follows as you step.'
+            : AWAY,
+          onclick: openInXplore }),
+      ], { extra: 'rc-acts' }),
+    ].filter(Boolean));
+  }
+
+  /* One legend per colour mode, and the marks, which mean the same in all
+     of them. Tokens only: the swatch is a class, or a palette token. */
+  function poolLegend() {
+    const item = (cls, text, style) => el('span', { class: 'rc-lg' }, [
+      el('i', { class: 'rc-lg-m ' + cls, style: style || null }),
+      el('span', { text })]);
+    const mode = pool.colour;
+    const kids = [el('span', { class: 'rc-lg-h', text: (COLOURS.find(
+      ([id]) => id === mode) || [0, ''])[1] + ':' })];
+    if (mode === 'pool' || mode === 'single') {
+      kids.push(item('rc-lg-ds', 'DS'), item('rc-lg-ied', 'IED'));
+    } else if (mode === 'switches') {
+      kids.push(item('rc-lg-same', 'unchanged'),
+                item('rc-lg-d2i', 'DS → IED when pooled'),
+                item('rc-lg-i2d', 'IED → DS when pooled'));
+    } else {
+      const list = catList(mode);
+      list.forEach((key, at) => {
+        const shape = CAT_SHAPES[Math.floor(at / CAT_N) % CAT_SHAPES.length];
+        kids.push(item('rc-lg-cat' + (shape ? ' rc-lg-' + shape : ''),
+                       catName(key, mode),
+                       'background: var(--c' + ((at % CAT_N) + 1) + ')'));
+      });
+      if (list.length > CAT_N) {
+        kids.push(el('span', { class: 'hint rc-lg-note', text:
+          'The theme has ' + CAT_N + ' colours for this; past them the '
+          + 'colours come round again and the shape changes each time ('
+          + CAT_SHAPE_WORDS.join(', ') + ').' }));
+      }
+    }
+    kids.push(item('rc-lg-flip', 'ringed: switched'),
+              item('rc-lg-square', 'on 2 of 3 axes'),
+              item('rc-lg-wide', 'half-width by the widened search'),
+              item('rc-lg-hollow', 'not measured'),
+              item('rc-lg-centre', 'pooled centre'));
+    if (pool.focus) kids.push(item('rc-lg-faint', 'faint: outside ' + focusName()));
+    return el('div', { class: 'rc-legend rc-pool-legend' }, kids);
+  }
+
+  /* ---------- clear vs blur ---------- */
+  function gmmBlock(g, title, cls) {
+    const kids = [el('strong', { text: title })];
+    const finiteN = (v) => v != null && isFinite(v);
+    if (!g || !(finiteN(g.bic1) && finiteN(g.bic2))) {
+      /* Fewer than twenty complete events and the server says so in a
+         sentence instead of numbers: two components fitted to a dozen
+         points is a number that means nothing. */
+      kids.push(el('p', { class: 'rc-verdict', text: (g && (g.verdict
+        || g.sentence || g.reason || g.error))
+        || 'Not enough complete events here for the test.' }));
+      return el('div', { class: 'rc-gmm-b' + (cls ? ' ' + cls : '') }, kids);
+    }
+    kids.push(el('p', { class: 'rc-verdict', text: g.verdict || '' }));
+    if (g.support) {
+      kids.push(BARRY.ui.chip(g.support, { extra: 'rc-gmm-support' }));
+    }
+    const num = (v) => (v == null || !isFinite(v) ? '—' : Number(v).toFixed(1));
+    kids.push(el('table', { class: 'tbl rc-gmm-tab' }, [
+      el('tbody', {}, [
+        el('tr', {}, [el('th', { text: 'BIC, one group' }), el('td', { text: num(g.bic1) })]),
+        el('tr', {}, [el('th', { text: 'BIC, two groups' }), el('td', { text: num(g.bic2) })]),
+        el('tr', {}, [el('th', { text: 'ΔBIC = BIC1 − BIC2' }),
+                      el('td', { text: num(g.delta) })]),
+        el('tr', {}, [el('th', { text: 'complete events' }),
+                      el('td', { text: String(g.n != null ? g.n : '—') })]),
+      ]),
+    ]));
+    /* WHETHER THE TWO COMPONENTS ARE THE TWO KINDS OF EVENT. A large ΔBIC
+       says two Gaussians fit better than one; it does not say they are the
+       DS/IED split -- two Gaussians fit a skewed cloud too. The adjusted
+       Rand index between the components and the k-means call says which,
+       and it sits beside ΔBIC so neither is read without the other. */
+    const ag = g.agree;
+    if (ag && ag.ari != null && isFinite(ag.ari)) {
+      kids.push(el('table', { class: 'tbl rc-gmm-tab rc-gmm-agree' }, [
+        el('tbody', {}, [el('tr', {}, [
+          el('th', { text: 'agreement with the DS / IED call (adjusted Rand, '
+                         + '1 = same split, 0 = chance)' }),
+          el('td', { text: Number(ag.ari).toFixed(2) }),
+        ])]),
+      ]));
+      const x = ag.crosstab || {};
+      const n2 = (a, b) => String(((x[a] || {})[b]) || 0);
+      kids.push(el('table', { class: 'tbl rc-gmm-tab rc-gmm-x' }, [
+        el('thead', {}, [el('tr', {}, ['k-means call ↓  GMM component →',
+                                       'DS-like', 'IED-like']
+          .map((t) => el('th', { text: t })))]),
+        el('tbody', {}, [
+          el('tr', {}, [el('th', { text: 'DS' }), el('td', { text: n2('ds', 'ds_like') }),
+                        el('td', { text: n2('ds', 'ied_like') })]),
+          el('tr', {}, [el('th', { text: 'IED' }), el('td', { text: n2('ied', 'ds_like') }),
+                        el('td', { text: n2('ied', 'ied_like') })]),
+        ]),
+      ]));
+    }
+    const ws = g.weights || [], ms = g.means_raw || [];
+    if (ws.length) {
+      kids.push(el('table', { class: 'tbl rc-gmm-tab rc-gmm-comp' }, [
+        el('thead', {}, [el('tr', {}, ['component', 'weight', 'amp · µV',
+                                       'half-width · ms', 'HF · dB']
+          .map((t) => el('th', { text: t })))]),
+        el('tbody', {}, ws.map((w, j) => el('tr', {}, [
+          el('td', { text: String(j + 1) }),
+          el('td', { text: pct(w) }),
+          el('td', { text: fmt((ms[j] || [])[0], 0) }),
+          el('td', { text: fmt((ms[j] || [])[1], 1) }),
+          el('td', { text: fmt((ms[j] || [])[2], 1) }),
+        ]))),
+      ]));
+    }
+    return el('div', { class: 'rc-gmm-b' + (cls ? ' ' + cls : '') }, kids);
+  }
+
+  const HISTS = [
+    ['rcHistA', 0, 'Max amplitude'],
+    ['rcHistH', 1, 'Half-width'],
+    ['rcHistF', 2, 'HF power'],
+    ['rcHistS', 's', 'The split axis'],
+  ];
+
+  function gmmPanel() {
+    const f = pool.fit;
+    const fg = pool.focus && (pool.focus.mouse_key || pool.focus.mouse_type);
+    return el('div', { class: 'card rc-gmm' }, [
+      el('div', { class: 'section-label', text: 'Two clear groups, or one spectrum?' }),
+      el('div', { class: 'rc-gmm-row' }, [
+        gmmBlock(f.gmm, 'The whole pool', 'rc-gmm-pool'),
+        /* The visual check the sentence points at, right beside it: two
+           humps either side of 0 is two groups; one hump cut by it is one. */
+        histCell('rcHistS', 'The split axis', 'rc-hist-split'),
+        fg ? (pool.fitting || (f.gmm_focus === undefined)
+              ? el('div', { class: 'rc-gmm-b rc-gmm-focus' }, [
+                  el('strong', { text: 'Focused: ' + focusName() + ' alone' }),
+                  loader('Testing ' + focusName() + ' on its own'),
+                ])
+              : gmmBlock(f.gmm_focus, 'Focused: ' + focusName() + ' alone',
+                         'rc-gmm-focus'))
+           : null,
+      ].filter(Boolean)),
+      el('p', { class: 'hint', text:
+        'A Gaussian mixture with one component against one with two, compared '
+        + 'by BIC on the complete events in the pooled z-space; a positive ΔBIC '
+        + 'favours two groups. BIC compares Gaussian shapes: one skewed cloud '
+        + 'can earn two components, so this is evidence, not proof.' }),
+      el('div', { class: 'rc-hists' }, HISTS.filter(([id]) => id !== 'rcHistS')
+        .map(([id, , title]) => histCell(id, title))),
+    ]);
+  }
+
+  function histCell(id, title, extra) {
+    return el('div', { class: 'rc-ev-cell' + (extra ? ' ' + extra : '') }, [
+      el('div', { class: 'rc-ev-t' }, [
+        el('strong', { text: title }),
+        el('span', { class: 'hint', text: 'split by pooled call' }),
+      ]),
+      el('canvas', { class: 'rc-canvas rc-hist', id }),
+    ]);
+  }
+
+  /* A histogram per axis, and one along the line through the two k-means
+     centres: the visual half of the question. Two groups make two humps on
+     that line; one spectrum makes one, cut in the middle. */
+  function drawPoolHists() {
+    const f = pool.fit;
+    if (!f || !f.ok) return;
+    const evs = poolEvents();
+    const S = poolScene();
+    const split = ((f.split_axis || {}).values) || [];
+    for (const [id, a] of HISTS) {
+      const vals = a === 's' ? evs.map((e, j) => split[j]) : evs.map((e) => e[KEYS[a]]);
+      const xl = a === 's' ? 'split axis · z, 0 midway between the two centres'
+                           : axisLabel(a, S.params);
+      drawHist(id, vals, evs.map((e) => e.cls_pool), xl, a === 's');
+    }
+  }
+
+  function drawHist(id, vals, cls, xl, isSplit) {
+    const s = sized(id, 150);
+    if (!s) return;
+    const k = ink();
+    const g = s.g;
+    const fin = [];
+    vals.forEach((v, j) => {
+      if (v != null && isFinite(v) && cls[j]) fin.push([Number(v), cls[j]]);
+    });
+    let lo = Infinity, hi = -Infinity;
+    for (const [v] of fin) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    if (!isFinite(lo)) { lo = 0; hi = 1; }
+    if (!(hi > lo)) hi = lo + 1;
+    const NB = 24;
+    const w = (hi - lo) / NB;
+    const ds = new Array(NB).fill(0), ied = new Array(NB).fill(0);
+    for (const [v, c] of fin) {
+      const b = Math.min(NB - 1, Math.max(0, Math.floor((v - lo) / w)));
+      if (c === 'ied') ied[b] += 1; else ds[b] += 1;
+    }
+    const top = Math.max(1, Math.max.apply(null, ds.concat(ied)));
+    // The axes and both labels first, whatever there is to draw: an empty
+    // histogram still says what it would have shown.
+    const F = frame(s, k, [lo, hi], [0, top * 1.08], xl, 'events');
+    if (!fin.length) {
+      g.fillStyle = k.dim;
+      g.font = FONT(9.5);
+      g.fillText('no events with a value here', F.x0 + 6, F.y0 + 14);
+    }
+    for (const [arr, col] of [[ds, colOf('ds')], [ied, colOf('ied')]]) {
+      g.fillStyle = col;
+      g.strokeStyle = col;
+      for (let b = 0; b < NB; b++) {
+        if (!arr[b]) continue;
+        const x0 = F.X(lo + b * w), x1 = F.X(lo + (b + 1) * w);
+        const y = F.Y(arr[b]);
+        g.globalAlpha = 0.45;
+        g.fillRect(x0, y, Math.max(1, x1 - x0 - 0.5), F.y1 - y);
+        g.globalAlpha = 1;
+        g.lineWidth = 1;
+        g.strokeRect(x0, y, Math.max(1, x1 - x0 - 0.5), F.y1 - y);
+      }
+    }
+    g.font = FONT(9);
+    if (isSplit) {
+      /* 0 is the midpoint between the two centres; the DS centre is on the
+         negative side and the IED one on the positive. Two humps either
+         side of the line is two groups; one hump cut by it is one. */
+      if (lo < 0 && hi > 0) {
+        g.strokeStyle = k.text;
+        g.lineWidth = 1;
+        g.setLineDash([3, 3]);
+        g.beginPath(); g.moveTo(F.X(0), F.y0); g.lineTo(F.X(0), F.y1); g.stroke();
+        g.setLineDash([]);
+      }
+      g.fillStyle = colOf('ds');
+      g.textAlign = 'left';
+      g.fillText('← DS side', F.x0 + 4, F.y0 + 11);
+      g.fillStyle = colOf('ied');
+      g.textAlign = 'right';
+      g.fillText('IED side →', F.x1 - 4, F.y0 + 11);
+      g.textAlign = 'left';
+    } else {
+      g.fillStyle = colOf('ds');
+      g.fillText('DS', F.x1 - 44, F.y0 + 11);
+      g.fillStyle = colOf('ied');
+      g.fillText('IED', F.x1 - 24, F.y0 + 11);
+    }
+    GEOM.hist = GEOM.hist || {};
+    GEOM.hist[id] = { xl, yl: 'events', n: fin.length, lo, hi,
+                      ds: ds.reduce((x, y) => x + y, 0),
+                      ied: ied.reduce((x, y) => x + y, 0) };
+  }
+
+  /* ---------- identity switches ---------- */
+  function switchPanel() {
+    const sw = (pool.fit && pool.fit.switches) || {};
+    const ct = sw.crosstab || {};
+    const cell = (a, b) => String(((ct[a] || {})[b]) || 0);
+    const rowsOf = (list, keyOf, nameOf, focusOf, isOn) => (list || []).map((r) => {
+      const on = isOn(r);
+      return el('tr', { class: on ? 'on' : null }, [
+        el('td', {}, [BARRY.ui.button({ kind: 'mini', text: nameOf(r),
+          extra: 'rc-focus-row',
+          title: on ? 'Focused. Press again to clear the focus.'
+                    : 'Focus this one: its dots stay bright and the rest go faint.',
+          onclick: () => setFocus(on ? null : focusOf(r)) })]),
+        el('td', { text: String(r.n != null ? r.n : '') }),
+        el('td', { text: String(r.switched != null ? r.switched : '') }),
+        el('td', { text: pct(r.rate) }),
+        el('td', { text: String(r.ds_to_ied != null ? r.ds_to_ied : '') }),
+        el('td', { text: String(r.ied_to_ds != null ? r.ied_to_ds : '') }),
+      ]);
+    });
+    const table = (title, rows) => el('div', { class: 'rc-sw-t' }, [
+      el('strong', { text: title }),
+      el('table', { class: 'tbl rc-sw-tab' }, [
+        el('thead', {}, [el('tr', {}, ['', 'events', 'switched', 'rate',
+                                       'DS → IED', 'IED → DS']
+          .map((t) => el('th', { text: t })))]),
+        el('tbody', {}, rows),
+      ]),
+    ]);
+    const f = pool.focus || {};
+    const members = (pool.fit && pool.fit.members) || [];
+    return el('div', { class: 'card rc-switch' }, [
+      el('div', { class: 'section-label', text:
+        'Identity switches: each event’s own call against the pooled one' }),
+      el('div', { class: 'rc-sw-top' }, [
+        el('table', { class: 'tbl rc-crosstab' }, [
+          el('thead', {}, [el('tr', {}, ['single ↓  pooled →', 'DS', 'IED']
+            .map((t) => el('th', { text: t })))]),
+          el('tbody', {}, [
+            el('tr', {}, [el('th', { text: 'DS' }), el('td', { text: cell('ds', 'ds') }),
+                          el('td', { class: 'rc-sw-off', text: cell('ds', 'ied') })]),
+            el('tr', {}, [el('th', { text: 'IED' }),
+                          el('td', { class: 'rc-sw-off', text: cell('ied', 'ds') }),
+                          el('td', { text: cell('ied', 'ied') })]),
+          ]),
+        ]),
+        el('p', { class: 'rc-sw-rate', text: (sw.switched || 0) + ' of '
+          + (sw.n || 0) + ' events (' + pct(sw.rate) + ') changed class when '
+          + 'pooled. The two off the diagonal are the switches; each switched '
+          + 'dot is ringed in every colour mode.' }),
+      ]),
+      el('div', { class: 'rc-sw-tables' }, [
+        table('By recording', rowsOf(sw.by_member, (r) => r.key, (r) => {
+          const m = members.find((x) => x.key === r.key);
+          return m ? memberName(m) : r.key;
+        }, (r) => ({ member: r.key }), (r) => f.member === r.key)),
+        table('By mouse', rowsOf(sw.by_mouse, (r) => r.mouse_key,
+          (r) => r.mouse_key, (r) => ({ mouse_key: r.mouse_key }),
+          (r) => f.mouse_key === r.mouse_key)),
+        table('By mouse type', rowsOf(sw.by_type, (r) => r.mouse_type,
+          (r) => r.mouse_type || 'no type', (r) => ({ mouse_type: r.mouse_type }),
+          (r) => f.mouse_type === r.mouse_type)),
+      ]),
+    ]);
+  }
+
+  /* ---------- saving, and the shelf ---------- */
+  /* Saved through the one bank dialog (constitution §6e), with its no-empty
+     -name rule: the LABEL is the artifact's nickname and is required; the
+     name is the server's, from what is in the pool. The server refits from
+     the members -- it never trusts a picture -- and a re-save that changes
+     nothing is a confirmation, not a version. */
+  function saveDialog() {
+    if (!pool.sel.length) return Promise.resolve(null);
+    const members = pool.fit && pool.fit.ok ? (pool.fit.members || []) : [];
+    const nUnb = members.length ? unbankedOf(members)
+      : pool.sel.filter((m) => { const c = candOf(m.key); return c && !c.banked; }).length;
+    const what = el('div', { class: 'rc-ask' }, [
+      el('p', { text: pool.open
+        ? 'Saves this pool as v' + nextPoolVersion() + ' of ‘' + pool.open.nickname
+          + '’. If nothing about it has changed since v' + pool.open.version
+          + ', that version is confirmed instead and no new one is made.'
+        : 'Saves this pool as a new Jarvis artifact, under the label you give '
+          + 'it here.' }),
+      el('ul', {}, [
+        el('li', { text: pool.sel.length + ' recording(s), each pinned: a banked '
+          + 'one by its version and result, an unbanked one by its read, its '
+          + 'settings and the rows they produced.' }),
+        el('li', { text: 'Refitted on the server from those members, then every '
+          + 'dot, the centres, the group test and the switch tables are kept, so '
+          + 'it reopens with no recording read.' }),
+        nUnb ? el('li', { class: 'rc-warn', text: nUnb + ' member(s) are not '
+          + 'banked: the pool can only be rebuilt while their reads are on this '
+          + 'machine.' }) : null,
+        el('li', { text: 'Nothing is written to the Event Bank.' }),
+      ].filter(Boolean)),
+    ]);
+    let rep = null;
+    return BARRY.ui.bankDialog({
+      kind: 'entry',
+      title: pool.open ? 'Save v' + nextPoolVersion() + ' of ‘' + pool.open.nickname + '’'
+                       : 'Save this pool',
+      name: pool.open ? pool.open.nickname : '',
+      what,
+      okText: pool.open ? 'Save as v' + nextPoolVersion() : 'Save pool',
+      onBank: async ({ name, note }) => {
+        const nick = String(name || '').trim();
+        if (!nick) throw new Error('A pool needs a label to be saved under.');
+        rep = await apiPost('/api/rootcanal/pool/save', {
+          artifact_id: pool.open ? pool.open.artifact_id : null,
+          nickname: nick,
+          members: poolBody().members,
+          mouse_types: Object.assign({}, pool.types),
+          focus: pool.focus,
+          note: note || '',
+        });
+      },
+    }).then((ok) => {
+      if (!ok || !rep) return null;
+      afterSave(rep);
+      return rep;
+    });
+  }
+
+  function afterSave(rep) {
+    pool.open = {
+      artifact_id: rep.artifact_id, version: rep.version,
+      nickname: rep.nickname, name: rep.name,
+      by: (pool.open && pool.open.by) || null, updated: null,
+    };
+    toast(rep.confirmed
+      ? 'Nothing has changed since v' + rep.version + ' of ‘' + rep.nickname
+        + '’, so that version is confirmed rather than a new one made.'
+      : 'Saved as v' + rep.version + ' of ‘' + rep.nickname + '’.',
+      rep.confirmed ? 'warn' : 'ok', 8000);
+    BARRY.activity.log('rootcanal.pool_save', {
+      artifact: rep.artifact_id, version: rep.version, confirmed: !!rep.confirmed,
+    });
+    pool.shelf = null;
+    loadShelf();
+    render();
+  }
+
+  async function openSaved(id, version) {
+    let got;
+    try {
+      got = await api('/api/rootcanal/pool/' + encodeURIComponent(id)
+                      + (version != null ? '?version=' + encodeURIComponent(version)
+                                         : ''));
+    } catch (e) {
+      toast('That pool could not be opened: ' + e.message, 'err', 9000);
+      return null;
+    }
+    const pay = got.payload || {};
+    const art = got.artifact || {};
+    pool.fit = Object.assign({ ok: true }, pay);
+    pool.saved = true;
+    pool.dirty = false;
+    pool.evs = null;
+    pool.picked = null;
+    pool.evData = null;
+    pool.evFor = null;
+    pool.sel = (pay.members || []).map((m) => (m.banked === false
+      ? { key: m.key, params: (m.pin || {}).params || singleParams() }
+      : { key: m.key }));
+    pool.types = Object.assign({}, pay.mouse_types || {});
+    pool.focus = pay.focus || null;
+    pool.open = {
+      artifact_id: art.artifact_id || art.id || id,
+      version: art.version != null ? art.version : pay.version,
+      nickname: art.nickname || '', name: art.name || '',
+      by: art.by || (art.added || {}).by || null,
+      updated: art.updated || null,
+    };
+    BARRY.activity.log('rootcanal.pool_open', { artifact: pool.open.artifact_id,
+                                                version: pool.open.version });
+    render();
+    return got;
+  }
+
+  function closePool() {
+    pool.sel = []; pool.types = {}; pool.focus = null;
+    pool.fit = null; pool.evs = null; pool.saved = false; pool.dirty = false;
+    pool.open = null; pool.picked = null; pool.evData = null; pool.evFor = null;
+    render();
   }
 
   /* Published as a real property so the OTHER window can drive this one.
@@ -3192,7 +4644,7 @@ BARRY.rootcanal = (function () {
        dot and both centres in the space and in each flat view, the axes and
        their labels, and the picked dot in each. */
     _geom: () => JSON.parse(JSON.stringify({
-      space: GEOM.space, ev: GEOM.ev,
+      space: GEOM.space, ev: GEOM.ev, hist: GEOM.hist || {},
       flats: Object.keys(GEOM.flats).reduce((acc, id) => {
         const f = GEOM.flats[id];
         acc[id] = { id, xa: f.xa, ya: f.ya, w: f.w, h: f.h, xr: f.xr,
@@ -3270,6 +4722,23 @@ BARRY.rootcanal = (function () {
     _tickBulk: () => (swap('.rc-bulk-card', bulkCard())
                       || swap('.rc-mode', modeSwitch())),
     _endBulk: () => { bulk.job = null; bulk.on = false; render(); },
+    /* Pooled, for web/_dev/rootcanalpool.html. */
+    _setView: setView,
+    _viewMode: () => viewMode,
+    _pool: () => pool,
+    _poolLoad: loadPool,
+    _poolToggle: (key, on) => toggleMember(key, on),
+    _poolRun: runPool,
+    _poolBody: () => poolBody(),
+    _poolColour: setColour,
+    _poolFocus: setFocus,
+    _poolType: setType,
+    _poolPick: poolPick,
+    _poolSave: saveDialog,
+    _poolSaveLabel: saveLabel,
+    _poolOpen: openSaved,
+    _poolClose: closePool,
+    _poolCats: (mode) => catList(mode || pool.colour),
     _reset: () => {
       cands = null; q.entry = null; q.gid = null; q.from_version = null;
       forget();

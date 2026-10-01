@@ -7,6 +7,10 @@ The far side is a folder on this machine (vaccupload.LocalRemote), the
 registry is stood in for with one fake recording, and the real ssh path is
 checked by standing in for Popen -- so what it WOULD run and stream is
 checked, and nothing is sent anywhere. The local recording is only read.
+
+Where it goes is asked (2026-10-01): Scratch (Jarvis Data) or Temp (the
+lab's gpfs3tmp space), mirrored the same way under either; anything else is
+refused. Files go several at a time, and the first failure stops the rest.
 """
 import os
 import shutil
@@ -157,6 +161,48 @@ def main():
     check("and the file streamed in, not on the command line",
           runs[0]["data"] == open(os.path.join(local, "sub", "note.txt"), "rb").read())
 
+    print("\nseveral at a time, and temp")
+    par = os.path.join(work, "par")
+    pr = U.LocalRemote(par)
+    seen_par = []
+    plp = U.plan_one(pr, local, dest)
+    got = U.send(pr, local, dest, plan=plp, on_bytes=seen_par.append, streams=3)
+    landed = pr.sizes(dest)
+    check("three streams: every file lands, at its size",
+          got["sent"] == 4 and landed == {r: n for r, n, _f in U.local_files(local)},
+          (got, landed))
+    check("and every byte is counted once", sum(seen_par) == plp["bytes"],
+          (sum(seen_par), plp["bytes"]))
+
+    class Breaks(U.LocalRemote):
+        def put(self, full, rdir, rel, on_bytes=None, check=None):
+            if rel == "CSC2.ncs":
+                raise U.UploadError("the cluster refused CSC2.ncs: test")
+            return U.LocalRemote.put(self, full, rdir, rel, on_bytes, check)
+
+    brk = Breaks(os.path.join(work, "brk"))
+    try:
+        U.send(brk, local, dest, streams=3)
+        raised = None
+    except U.UploadError as exc:
+        raised = str(exc)
+    check("a file that fails stops the upload with its reason",
+          raised and "CSC2.ncs" in raised, raised)
+    check("and is not left looking whole", "CSC2.ncs" not in brk.sizes(dest),
+          brk.sizes(dest))
+
+    roots = vacc.upload_roots(cfg)
+    check("two places to go, scratch first",
+          list(roots) == ["scratch", "temp"]
+          and roots["temp"]["root"] == "/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp",
+          roots)
+    tdest = U.destination(cfg, rec, local, roots["temp"]["root"])
+    check("under temp it is mirrored the same way",
+          tdest == "/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp/ProjX/M7_Foo/"
+                   "M7s3oct2/2024-01-02_10-00-00", tdest)
+    check("and identifies as the same recording",
+          ids.identify(tdest).get("key") == ids.identify(local).get("key"))
+
     print("\nthe routes")
     shutil.rmtree(far, ignore_errors=True)
     added, soon = [], []
@@ -199,6 +245,31 @@ def main():
         check("NO path went into the registry", not added, added)
         check("and the inventory is asked to look at Jarvis Data",
               soon == [cfg["shared"]["data_path"]], soon)
+
+        r = c.post("/api/vacc/upload/plan", json={"gids": ["zz-gid-7"],
+                                                  "dest": "elsewhere"})
+        check("a place that is neither is refused", r.status_code == 400
+              and "scratch or temp" in (r.get_json() or {}).get("error", ""),
+              r.get_json())
+        tplan = c.post("/api/vacc/upload/plan", json={"gids": ["zz-gid-7"],
+                                                      "dest": "temp"}).get_json()
+        check("planned for temp: temp's folder, all four still to send",
+              tplan["ok"] and tplan["dest"] == "temp"
+              and tplan["items"][0]["dest"] == tdest and tplan["files"] == 4
+              and [d["id"] for d in tplan["dests"]] == ["scratch", "temp"], tplan)
+        soon[:] = []
+        r = c.post("/api/vacc/upload", json={"gids": ["zz-gid-7"], "dest": "temp",
+                                             "confirm": True})
+        jid = r.get_json()["job"]["id"]
+        t0 = time.time()
+        while cfc.get(jid).status == "running" and time.time() - t0 < 30:
+            time.sleep(0.05)
+        job = cfc.get(jid)
+        check("uploaded to temp", job.status == "done"
+              and len(U.LocalRemote(far).sizes(tdest)) == 4
+              and (job.result or {}).get("dest") == "temp", (job.status, job.result))
+        check("and the inventory is asked to look at temp",
+              soon == ["/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp"], soon)
     finally:
         appmod.REG.all = real["all"]
         appmod.REG.add_path = real["add_path"]

@@ -19,7 +19,9 @@
 /* Upload to VACC, from the page (constitution §6d): the plan first -- what
    would be sent, where, what is already there, and why a recording cannot
    go -- then an upload that is started only by the button that says how
-   much it sends, then its progress in the VACC panel.
+   much it sends, then its progress in the VACC panel. Where it goes is
+   asked every time: Scratch is chosen to start with, Temp is planned on
+   its own when picked, and the upload goes where the dialog said.
 
    NOTHING IS UPLOADED. The frame's `api` answers the plan, the upload and
    the job from here and records what was asked; the real routes are
@@ -64,6 +66,13 @@ async function untilN(fn, tries = 200, gap = 100) {
     blocked: [{ gid: 'g2', label: 'zz ACTIVE bw10',
                 why: 'Its folders do not name a mouse and a session.' }],
   };
+  const TEMP = '/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp';
+  plan.dests = [{ id: 'scratch', label: 'Scratch', root: ROOT },
+                { id: 'temp', label: 'Temp', root: TEMP }];
+  const tplan = JSON.parse(JSON.stringify(plan));
+  tplan.dest = 'temp'; tplan.dest_root = TEMP; tplan.bytes = 2000000000;
+  tplan.items[0].dest = TEMP + '/PTEN/M1_Pten/M1ptens1oct2/2023-10-02_16-49-04';
+  tplan.items[0].n_skip = 0; tplan.items[0].n_send = 4; tplan.files = 4;
   const asked = [];
   let job = { id: 'zzjob1', status: 'running',
               members: [{ id: 'g1', label: 'zz PTEN m1 s1', status: 'running',
@@ -71,7 +80,10 @@ async function untilN(fn, tries = 200, gap = 100) {
   const realApi = W().api;
   W().api = async (path, opts) => {
     const body = opts && opts.body ? JSON.parse(opts.body) : null;
-    if (path === '/api/vacc/upload/plan') { asked.push(['plan', body]); return plan; }
+    if (path === '/api/vacc/upload/plan') {
+      asked.push(['plan', body]);
+      return body && body.dest === 'temp' ? tplan : plan;
+    }
     if (path === '/api/vacc/upload') {
       asked.push(['upload', body]);
       return { ok: true, n: 1, job: Object.assign({}, job) };
@@ -88,18 +100,46 @@ async function untilN(fn, tries = 200, gap = 100) {
     head('the plan comes first');
     let p = B.vacc.upload(['g1', 'g2']);
     await untilN(() => open() && md().querySelector('.vacc-up'), 50, 100);
-    check('it asks for the plan, with the recordings picked',
+    check('it asks for the plan, with the recordings picked, for Scratch',
           asked[0] && asked[0][0] === 'plan'
-          && JSON.stringify(asked[0][1].gids) === '["g1","g2"]', JSON.stringify(asked));
+          && JSON.stringify(asked[0][1].gids) === '["g1","g2"]'
+          && asked[0][1].dest === 'scratch', JSON.stringify(asked));
+    const seg = md().querySelector('.vacc-up-where .seg');
+    const segOn = () => seg && seg.isConnected ? seg : md().querySelector('.vacc-up-where .seg');
+    check('it asks where: Scratch and Temp, Scratch chosen',
+          !!seg && txt(seg) === 'ScratchTemp'
+          && segOn().querySelector('.active').dataset.dest === 'scratch', seg && txt(seg));
     check('the dialog says where they go', txt(md()).indexOf(ROOT) >= 0);
     check('what each sends, and what is already there',
           /zz PTEN m1 s1 — 3 file\(s\), .+, 1 already there/.test(txt(md())), txt(md()));
     check('and why one cannot go', /zz ACTIVE bw10 — Its folders do not name/.test(txt(md())));
-    const up = btn(/^Upload .+ to VACC$/);
+    const up = btn(/^Upload .+ to Scratch$/);
     check('the button says how much it sends', !!up, up && up.textContent);
     btn(/^Cancel$/).click();
     await p;
     check('Cancel uploads nothing', !asked.some((a) => a[0] === 'upload'));
+
+    head('Temp, when it is picked');
+    p = B.vacc.upload(['g1', 'g2']);
+    await untilN(() => open() && md().querySelector('.vacc-up-where'), 50, 100);
+    asked.length = 0;
+    md().querySelector('.vacc-up-where [data-dest="temp"]').click();
+    await untilN(() => /Upload .+ to Temp/.test(txt(md())), 50, 100);
+    check('picking Temp plans Temp on its own',
+          asked.length === 1 && asked[0][1].dest === 'temp', JSON.stringify(asked));
+    check('the dialog says the Temp folder and what it would send',
+          txt(md()).indexOf(TEMP) >= 0 && /zz PTEN m1 s1 — 4 file\(s\)/.test(txt(md())),
+          txt(md()));
+    const tsize = W().fmtBytes ? W().fmtBytes(2000000000) : null;
+    check('the button says Temp, and the Temp size', !!btn(/^Upload .+ to Temp$/)
+          && (!tsize || btn(/^Upload .+ to Temp$/).textContent === 'Upload ' + tsize + ' to Temp'),
+          (btn(/^Upload/) || {}).textContent);
+    btn(/^Upload/).click();
+    await p;
+    const tsent = asked.find((a) => a[0] === 'upload');
+    check('the upload goes to Temp', tsent && tsent[1].dest === 'temp'
+          && tsent[1].confirm === true, JSON.stringify(tsent));
+    asked.length = 0;
 
     head('confirmed');
     p = B.vacc.upload(['g1', 'g2']);
@@ -107,8 +147,8 @@ async function untilN(fn, tries = 200, gap = 100) {
     btn(/^Upload/).click();
     const id = await p;
     const sent = asked.find((a) => a[0] === 'upload');
-    check('it starts the upload, confirmed', sent && sent[1].confirm === true,
-          JSON.stringify(sent));
+    check('it starts the upload, confirmed, to Scratch', sent
+          && sent[1].confirm === true && sent[1].dest === 'scratch', JSON.stringify(sent));
     check('with only the recordings that can go', sent
           && JSON.stringify(sent[1].gids) === '["g1"]', sent && sent[1].gids);
     check('and hands back the job', id === 'zzjob1', id);
@@ -132,10 +172,11 @@ async function untilN(fn, tries = 200, gap = 100) {
     asked.length = 0;
     p = B.vacc.upload(['g1']);
     await untilN(() => open() && md().querySelector('.vacc-up'), 50, 100);
-    check('everything already there: no upload button, only Close',
-          !btn(/^Upload/) && !!btn(/^Close$/));
+    check('everything already there: no upload, the button says so and is off',
+          !btn(/^Upload/) && !!btn(/^Nothing to upload$/)
+          && !!btn(/^Nothing to upload$/).disabled);
     check('and it says so', /everything already there/.test(txt(md())));
-    btn(/^Close$/).click();
+    btn(/^Cancel$/).click();
     await p;
     check('and nothing is sent', !asked.some((a) => a[0] === 'upload'));
   } finally {

@@ -35,6 +35,7 @@ from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                bracesset as brsetmod,
                dspca,
                rootcanal,
+               rootcanalpool,
                guides as guidesmod,
                versions as versionsmod,
                panorama as panoramamod,
@@ -7201,14 +7202,32 @@ def _rootcanal_load(gid, rh):
     return got
 
 
-def _rootcanal_setup(body):
+def _rootcanal_setup(body, pinned=False):
     """Entry, question, read hash and arrays for a fit-shaped request.
 
     Raises with a sentence when the set has not been read at these
     settings, rather than reading it: a fit that quietly started minutes of
     disk work would make Recompute the slowest control in the panel.
+
+    `pinned` (the click panel, given a `read`): the read named IS the set.
+    A pooled member is pinned to the read its numbers came from, and after
+    a commit the entry's live set is a different, cleaned list -- matching
+    the read against it would refuse every banked member's events. The
+    event index then means the read's own row, which is what the pool's
+    `i` is.
     """
     rec = _dspca_entry(body.get("entry_id"))
+    if pinned and body.get("read"):
+        gid, rh = rec.get("gid"), body["read"]
+        if not ROOTCANAL.has_cached(gid, rh, ".npz"):
+            raise rootcanal.RootCanalError(
+                "This member's read is not on this machine -- it was read "
+                "somewhere else -- so its traces cannot be shown here. Its "
+                "numbers are in the pool; to see its traces, read the set "
+                "on this machine in Single.")
+        got = _rootcanal_load(gid, rh)
+        stamps = [{"t": float(t)} for t in got["t"]]
+        return rec, _rootcanal_params(body, rec, stamps), got, rh, stamps
     src_v = body.get("from_version")
     stamps, _n_all = _dspca_stamps(rec, src_v)
     if not stamps:
@@ -7593,7 +7612,8 @@ def api_rootcanal_event():
     Arrays only; the browser draws."""
     body = request.get_json(force=True) or {}
     try:
-        _rec, p, got, _rh, _stamps = _rootcanal_setup(body)
+        _rec, p, got, _rh, _stamps = _rootcanal_setup(
+            body, pinned=bool(body.get("read")))
         if body.get("i") is None:
             raise rootcanal.RootCanalError("Say which event (i).")
         view = rootcanal.event_view(got, p, int(body.get("i")))
@@ -8098,6 +8118,331 @@ def api_rootcanal_batch():
     }])
     return jsonify({"ok": True, "job": job.snapshot(), "n": len(items),
                     "skipped": skipped})
+
+
+# --------------------------------------------------------------------------
+# Root Canal, Pooled -- one cloud or two, across recordings
+# --------------------------------------------------------------------------
+# The arithmetic is in backend/rootcanalpool.py, with the reasons. These
+# routes assemble the members (banked results from the results bank, which
+# read no recording; unbanked reads fitted from the cache on this machine),
+# hand them over, and file a saved pool as a Jarvis Artifact of kind
+# `rootcanal_pool`. NOTHING here writes to the Event Bank, ever: banking stays
+# per recording, in Single.
+
+
+def _rootcanal_reg_index():
+    """gid -> what the registry files it under, from ONE read of REG.all().
+
+    One read for the whole list: `REG.by_gid` re-stats every shard at about
+    0.7 s a call, so a lookup per candidate would be most of a minute to
+    draw a picker.
+    """
+    out = {}
+    try:
+        for r in (REG.all() or []):
+            g = r.get("gid")
+            if g and g not in out:
+                out[g] = {"project": r.get("project"),
+                          "cohort": r.get("cohort") or sessreg.cohort_of(r),
+                          "paths": list(r.get("paths") or [])}
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("rootcanal/pool-registry",
+                           "Could not index the registry, so mouse types fall "
+                           "back to the project: %s" % exc, None)
+    return out
+
+
+def _rootcanal_who(gid, project, mouse, reg):
+    """(project, mouse_key, mouse_type) for one recording.
+
+    The registry's project where it knows the recording -- it is the filing
+    the type is defined by -- and the bank entry's otherwise. The key is
+    project AND mouse number, never the number alone: see
+    `rootcanalpool.mouse_key`.
+    """
+    row = reg.get(gid) or {}
+    proj = row.get("project") or project or "Unfiled"
+    if proj == sessreg.UNFILED and project:
+        proj = project
+    return (proj, rootcanalpool.mouse_key(proj, mouse, gid),
+            rootcanalpool.mouse_type_of(proj, row.get("cohort"),
+                                        row.get("paths")))
+
+
+def _rootcanal_fit_part(params):
+    """Just the fit settings out of a params dict, whatever else it holds."""
+    params = params or {}
+    return {k: params[k] for k in rootcanal.Params.FIT_KEYS if k in params}
+
+
+def _rootcanal_pool_candidates():
+    """Every Root Canal single that could join a pool, banked or not.
+
+    Banked: each classification in the results bank. Unbanked: each cached
+    read of a Braces-aligned DS set -- found through the read records the
+    read route files, and through the live set's own read name, which is how
+    a read made before those records existed is still found. A recording
+    with both appears twice, as two candidates, because they are two
+    different answers about it.
+    """
+    reg = _rootcanal_reg_index()
+    out = []
+    records = list(ROOTCANAL.all() or [])
+    for r in records:
+        if r.get("kind") != "classification":
+            continue
+        gid, ph = r.get("gid"), r.get("params_hash")
+        ent = BANK.get(r.get("entry_id")) or {}
+        proj, mk, mt = _rootcanal_who(gid, ent.get("project"),
+                                      ent.get("mouse"), reg)
+        rh = r.get("read")
+        out.append({
+            "key": "b:%s:%s" % (gid, ph),
+            "entry_id": r.get("entry_id"),
+            "session_label": r.get("session_label")
+            or ent.get("session_label"),
+            "gid": gid, "project": proj, "mouse": ent.get("mouse"),
+            "mouse_key": mk, "mouse_type": mt,
+            "n": r.get("n"), "banked": True,
+            "version": r.get("ds_version"), "params_hash": ph,
+            "read": rh,
+            "here": bool(rh and ROOTCANAL.has_cached(gid, rh, ".npz")),
+            "counts": r.get("counts") or {},
+        })
+    reads = {}
+    for r in records:
+        if r.get("kind") == "read" and r.get("entry_id"):
+            reads.setdefault(r["entry_id"], {})[r.get("params_hash")] = \
+                r.get("n_events")
+    for rec in BANK.all():
+        if (rec.get("type") or "") != "ds" or not rec.get("aligned"):
+            continue
+        if not rec.get("specified") or not _n_good(rec):
+            continue
+        gid = rec.get("gid")
+        have = dict(reads.get(rec["id"]) or {})
+        try:
+            stamps, _n = _dspca_stamps(rec, None)
+            if stamps:
+                live = rootcanal.Params(
+                    entry_id=rec["id"],
+                    stamps_hash=rootcanal.stamps_hash(stamps)).read_hash()
+                have.setdefault(live, len(stamps))
+        except Exception:                                # noqa: BLE001
+            pass
+        proj, mk, mt = _rootcanal_who(gid, rec.get("project"),
+                                      rec.get("mouse"), reg)
+        for rh, n in sorted(have.items(), key=lambda kv: str(kv[0])):
+            if not rh or not ROOTCANAL.has_cached(gid, rh, ".npz"):
+                continue
+            out.append({
+                "key": "u:%s:%s" % (rec["id"], rh),
+                "entry_id": rec["id"],
+                "session_label": rec.get("session_label") or rec.get("name"),
+                "gid": gid, "project": proj, "mouse": rec.get("mouse"),
+                "mouse_key": mk, "mouse_type": mt,
+                "n": n, "banked": False, "version": None,
+                "params_hash": None, "read": rh, "here": True,
+                # Not fitted yet: an unbanked single's counts depend on the
+                # settings it is added with, and fitting every cached read to
+                # draw a list would be seconds per row.
+                "counts": {},
+            })
+    out.sort(key=lambda c: (str(c.get("project")), str(c.get("mouse_key")),
+                            str(c.get("session_label")), not c["banked"]))
+    return out
+
+
+def _rootcanal_pool_members(want):
+    """The members a pool request names, as rows `fit_pool` can use.
+
+    Banked ones are read out of their result record and touch nothing else.
+    Unbanked ones are fitted from their cached read at the settings they
+    were added with (Single's defaults where none are given), and pinned by
+    the digest of what that produced.
+    """
+    if not want:
+        raise rootcanalpool.PoolError(
+            "A pool needs at least one member. Add a recording.")
+    cands = {c["key"]: c for c in _rootcanal_pool_candidates()}
+    out = []
+    for w in want:
+        key = (w or {}).get("key")
+        c = cands.get(key)
+        if not c:
+            raise rootcanalpool.PoolError(
+                "%s is not a Root Canal result or a cached read on this "
+                "machine any more, so it cannot be pooled. Take it out, or "
+                "read that set again in Single." % (key or "A member"))
+        gid, rh = c["gid"], c.get("read")
+        if c["banked"]:
+            rec = ROOTCANAL.get(gid, c["params_hash"]) or {}
+            rows = rootcanalpool.rows_from_record(rec)
+            fitp = _rootcanal_fit_part(rec.get("params"))
+            p = rootcanal.Params(**fitp)
+            pin = {"ds_version": c.get("version"),
+                   "params_hash": c["params_hash"], "read": rh,
+                   "params": p.fit_params(),
+                   "rows_digest": rootcanalpool.rows_digest(rows)}
+        else:
+            p = rootcanal.Params(entry_id=c["entry_id"],
+                                 **_rootcanal_fit_part(w.get("params")))
+            got = _rootcanal_load(gid, rh)
+            rows = rootcanalpool.rows_from_fit(rootcanal.fit(got, p))
+            pin = {"read": rh, "params": p.fit_params(),
+                   "rows_digest": rootcanalpool.rows_digest(rows)}
+        here = bool(rh and ROOTCANAL.has_cached(gid, rh, ".npz"))
+        out.append(dict(
+            c, rows=rows, pin=pin, here=here,
+            band=[p.band_lo, p.band_hi],
+            # The click panel's request, ready but for `i`: POST it to
+            # /api/rootcanal/event with the event's `i` added. The read is
+            # pinned, so it opens the read this member's numbers came from
+            # even after the set has moved on. Null when the read is not on
+            # this machine (a banked member read elsewhere).
+            event_body=(dict(p.fit_params(), entry_id=c["entry_id"], read=rh)
+                        if here else None)))
+    return out
+
+
+def _rootcanal_pool_fit(body):
+    members = _rootcanal_pool_members(body.get("members") or [])
+    res = rootcanalpool.fit_pool(members, body.get("mouse_types") or {},
+                                 body.get("focus"))
+    return members, res
+
+
+@app.route("/api/rootcanal/pool/candidates")
+def api_rootcanal_pool_candidates():
+    """What can join a pool: banked Root Canal results and cached reads of
+    Braces-aligned DS sets, each marked. Nothing from The Storm."""
+    try:
+        return jsonify({"ok": True, "singles": _rootcanal_pool_candidates()})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-candidates", exc, 400)
+
+
+@app.route("/api/rootcanal/pool/fit", methods=["POST"])
+def api_rootcanal_pool_fit():
+    """Pool the members, re-cluster, and test one group against two."""
+    body = request.get_json(force=True) or {}
+    try:
+        _members, res = _rootcanal_pool_fit(body)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-fit", exc, 400,
+                    {"members": [m.get("key") for m in
+                                 (body.get("members") or [])]})
+    return jsonify(dict(res, ok=True))
+
+
+@app.route("/api/rootcanal/pool/save", methods=["POST"])
+def api_rootcanal_pool_save():
+    """File a pool as an artifact, or as the next version of one.
+
+    REFITTED HERE, from the members and overrides alone -- a payload sent
+    by the browser is never what is filed, because a saved pool has to be
+    exactly what these members produce. Saving the same answer again is a
+    confirmation on the version that already holds it (`add_version` sees
+    the identical digest), not a new version.
+    """
+    body = request.get_json(force=True) or {}
+    nick = str(body.get("nickname") or "").strip()
+    if not nick:
+        return jsonify({
+            "ok": False,
+            "error": "A pool needs a label before it can be saved -- the "
+                     "name it will be found by on the shelf. Give it one."}), 400
+    try:
+        members, res = _rootcanal_pool_fit(body)
+        pins = [dict(m["pin"], key=m["key"], entry_id=m["entry_id"],
+                     banked=bool(m["banked"])) for m in members]
+        note = (str(body.get("note") or "").strip() or None)
+        mt = body.get("mouse_types") or {}
+        focus = body.get("focus") or None
+        aid = body.get("artifact_id")
+        if aid:
+            have = ARTIFACTS.get(aid)
+            if not have or have.get("kind") != "rootcanal_pool":
+                raise rootcanalpool.PoolError(
+                    "There is no saved Root Canal pool %s to add a version "
+                    "to. Save it as a new pool instead." % aid)
+            pool_key = (have.get("subject") or {}).get("pool_key")
+            before = have.get("version")
+            out = ARTIFACTS.add_version(
+                aid, rootcanalpool.payload_of(res, pool_key, mt, focus),
+                params=res["params"], inputs=pins, note=note)
+            if nick != out.get("nickname"):
+                out = ARTIFACTS.set_nickname(aid, nick)
+            confirmed = out.get("version") == before
+        else:
+            name = rootcanalpool.pool_name(members)
+            pool_key = uuid.uuid4().hex
+            subject = {"pool_key": pool_key, "name": name,
+                       "projects": sorted({str(m.get("project"))
+                                           for m in members}),
+                       "gids": sorted({m.get("gid") for m in members
+                                       if m.get("gid")}),
+                       "n_recordings": len({m.get("gid") for m in members}),
+                       "n_mice": len({m["mouse_key"] for m in members})}
+            out = ARTIFACTS.create(
+                "rootcanal_pool", subject,
+                rootcanalpool.payload_of(res, pool_key, mt, focus),
+                params=res["params"], inputs=pins, name=name, nickname=nick,
+                note=note)
+            confirmed = False
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-save", exc, 400,
+                    {"artifact_id": body.get("artifact_id")})
+    STORE.record_activity([{
+        "action": "rootcanal.pool.save",
+        "detail": {"artifact": out.get("id"), "version": out.get("version"),
+                   "confirmed": confirmed, "members": len(members)},
+    }])
+    return jsonify({"ok": True, "artifact_id": out.get("id"),
+                    "version": out.get("version"), "confirmed": confirmed,
+                    "name": out.get("name"), "nickname": out.get("nickname")})
+
+
+@app.route("/api/rootcanal/pools")
+def api_rootcanal_pools():
+    """The shelf: every saved pool, newest first."""
+    try:
+        rows = ARTIFACTS.list(kind="rootcanal_pool")
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pools", exc, 400)
+    out = []
+    for r in rows:
+        cur = r.get("current") or {}
+        ns = cur.get("n_summary") or {}
+        out.append(dict(r, artifact_id=r.get("id"),
+                        n_members=ns.get("members"),
+                        n_unbanked=ns.get("unbanked"),
+                        updated=cur.get("at")))
+    out.sort(key=lambda r: str(r.get("updated") or ""), reverse=True)
+    return jsonify({"ok": True, "pools": out})
+
+
+@app.route("/api/rootcanal/pool/<artifact_id>")
+def api_rootcanal_pool_one(artifact_id):
+    """One saved pool's payload, which the panel draws as it is -- no
+    refit, and no recording read."""
+    version = request.args.get("version") or None
+    try:
+        rec = ARTIFACTS.summary(artifact_id)
+        if not rec or rec.get("kind") != "rootcanal_pool":
+            raise rootcanalpool.PoolError(
+                "There is no saved Root Canal pool %s." % artifact_id)
+        payload = ARTIFACTS.payload(artifact_id, version)
+        if payload is None:
+            raise rootcanalpool.PoolError(
+                "That version of the pool was saved on another machine and "
+                "its contents have not reached this one yet.")
+        _r, row = ARTIFACTS.payload_version(artifact_id, version)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool", exc, 400, {"artifact_id": artifact_id})
+    return jsonify({"ok": True, "artifact": rec, "version": row.get("v"),
+                    "payload": payload})
 
 
 @app.route("/api/cfc/cache")
@@ -16777,6 +17122,306 @@ def api_arc_precon_file(which):
         return send_file(path, mimetype="text/html; charset=utf-8")
     return send_file(path, as_attachment=(which == "csv"),
                      download_name=os.path.basename(path))
+# ==========================================================================
+# The Monolith (backend/monolith.py) -- the 1-55 Hz sweep, from the Drift
+# panel's third tab (web/js/driftmono.js), viewed on web/monolith.html.
+#
+#   GET  /api/arc/monolith/status                  where each step is
+#   POST /api/arc/monolith/upload/plan  {dest}     what would go (one listing)
+#   POST /api/arc/monolith/upload  {dest, confirm} starts the upload
+#   POST /api/arc/monolith/check                   both places, and the run
+#   POST /api/arc/monolith/run  {confirm}          submit, or run again
+#   POST /api/arc/monolith/cancel  {confirm}       scancel the run
+#   POST /api/arc/monolith/fetch  {confirm}        bring home, build, file
+#   POST /api/arc/monolith/stop                    stop the upload or fetch
+#   POST /api/arc/monolith/forget                  drop an interrupted note
+#   GET  /api/arc/monolith/data/<name>             summary, or a layer's .f32
+#   GET  /api/arc/monolith/entry?what&layer&at     one entry, all the way down
+# ==========================================================================
+from . import monolith as monolithmod                        # noqa: E402
+
+monolithmod.configure(LOGS_DIR)
+# The far side, for tools/check_monolith.py: a folder on this machine
+# (vaccupload.LocalRemote) and a fake login node, so every route runs with
+# no cluster. None in a running Jarvis.
+MONO_REMOTE = None
+MONO_SSH = None
+MONO_FETCH = None
+
+
+def _mono_cfg():
+    cfg = vaccmod.load_config(LOGS_DIR)
+    if not cfg.get("configured"):
+        raise monolithmod.MonolithError(
+            "No VACC account is set up on this machine. Set one up in the "
+            "VACC panel first.", 400)
+    return cfg
+
+
+def _mono_remote(cfg):
+    return MONO_REMOTE(cfg) if MONO_REMOTE else vaccuploadmod.SshRemote(cfg)
+
+
+def _mono_refused(exc):
+    return jsonify({"ok": False, "error": str(exc)}), getattr(exc, "code", 400)
+
+
+def _mono_status():
+    cfg = vaccmod.load_config(LOGS_DIR)
+    try:
+        vst = vaccmod.status()
+    except Exception:                                        # noqa: BLE001
+        vst = {}
+    return monolithmod.status(cfg if cfg.get("netid") else None, vst)
+
+
+@app.route("/api/arc/monolith/status")
+def api_arc_monolith_status():
+    try:
+        return jsonify(dict(_mono_status(), code_changed=[
+            n for n in _code_changed() if n in monolithmod.CODE]))
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/status", exc, 500)
+
+
+@app.route("/api/arc/monolith/upload/plan", methods=["POST"])
+def api_arc_monolith_upload_plan():
+    """What uploading to Scratch or Temp would send. Works out what goes
+    (the manifest) the first time, then lists the cluster once. Sends
+    nothing."""
+    body = request.get_json(force=True) or {}
+    try:
+        cfg = _mono_cfg()
+        dest = body.get("dest") or "scratch"
+        if dest not in vaccmod.upload_roots(cfg):
+            raise monolithmod.MonolithError("An upload goes to scratch or "
+                                            "temp, not %r." % dest)
+        man = monolithmod.ensure_manifest(_circuit_host(), cfg,
+                                          rebuild=bool(body.get("rebuild")))
+        plan = monolithmod.upload_plan(man, dest, _mono_remote(cfg))
+        monolithmod.save_state(upload_plan=dict(
+            plan, rows=None, manifest=man.get("digest")))
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/upload-plan", exc, 500)
+    return jsonify({"ok": True, "plan": plan,
+                    "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/upload", methods=["POST"])
+def api_arc_monolith_upload():
+    """Upload the folders to the chosen place. Refused without `confirm`:
+    it writes to the lab's space on the cluster."""
+    body = request.get_json(force=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "An upload writes to the lab's "
+                        "space on the cluster, so it has to be confirmed. "
+                        "Ask for the plan first."}), 400
+    try:
+        cfg = _mono_cfg()
+        dest = body.get("dest") or "scratch"
+        if dest not in vaccmod.upload_roots(cfg):
+            raise monolithmod.MonolithError("An upload goes to scratch or "
+                                            "temp, not %r." % dest)
+        man = monolithmod.manifest()
+        if not man:
+            raise monolithmod.MonolithError("Ask for the plan first.", 409)
+        remote = _mono_remote(cfg)
+        w = monolithmod.start_work(
+            "upload", lambda w: monolithmod.upload_work(w, man, dest, remote))
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/upload", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.upload",
+                            "detail": {"dest": dest}}])
+    return jsonify({"ok": True, "work": w.snapshot(),
+                    "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/check", methods=["POST"])
+def api_arc_monolith_check():
+    """Both places listed in one call, compared file by file with the copy
+    here; and the run polled, if there is one. Reads only."""
+    try:
+        cfg = _mono_cfg()
+        man = monolithmod.manifest()
+        if not man:
+            man = monolithmod.ensure_manifest(_circuit_host(), cfg)
+        body = request.get_json(silent=True) or {}
+        got = monolithmod.check(man, _mono_remote(cfg), cfg=cfg,
+                                ssh=MONO_SSH,
+                                run_only=bool(body.get("run_only")))
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/check", exc, 500)
+    return jsonify(dict({"ok": True}, **got, status=_mono_status()))
+
+
+@app.route("/api/arc/monolith/run", methods=["POST"])
+def api_arc_monolith_run():
+    """Submit the run -- or, when it has finished with tasks that did not
+    answer, run those again. Refused without `confirm`, and on older code:
+    the cluster runs this machine's backend."""
+    body = request.get_json(force=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "A run uses the lab's cluster "
+                        "allocation, so it has to be confirmed."}), 400
+    stale = [n for n in _code_changed() if n in monolithmod.CODE]
+    if stale and not MONO_SSH:
+        return jsonify({"ok": False, "error": "Restart Jarvis first: it is "
+                        "running older code for %s, and the cluster would be "
+                        "sent the new files beside it." % ", ".join(stale)}), \
+            409
+    try:
+        cfg = _mono_cfg()
+        man = monolithmod.manifest()
+        if not man:
+            raise monolithmod.MonolithError("Ask for the upload plan first.",
+                                            409)
+        run = monolithmod.run_now(man, cfg, APP_DIR, ssh=MONO_SSH)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except vaccmod.SSHError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 502
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/run", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.run",
+                            "detail": {"rid": run["rid"],
+                                       "arrays": [a["id"] for a in
+                                                  run["arrays"]],
+                                       "n_tasks": len(run["tasks"])}}])
+    return jsonify({"ok": True, "run": run, "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/cancel", methods=["POST"])
+def api_arc_monolith_cancel():
+    body = request.get_json(force=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Cancelling stops the run on "
+                        "the cluster; confirm it."}), 400
+    try:
+        cfg = _mono_cfg()
+        run = monolithmod.get_state().get("run")
+        if not run:
+            raise monolithmod.MonolithError("There is no run to cancel.", 409)
+        monolithmod.cancel(cfg, run, ssh=MONO_SSH)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/cancel", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.cancel",
+                            "detail": {"rid": run["rid"]}}])
+    return jsonify({"ok": True, "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/fetch", methods=["POST"])
+def api_arc_monolith_fetch():
+    """Bring the answers home, pool them, file the Monolith. Only when
+    pressed."""
+    body = request.get_json(force=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Fetching downloads the run's "
+                        "arrays; confirm it."}), 400
+    try:
+        cfg = _mono_cfg()
+        man = monolithmod.manifest()
+        if not man:
+            raise monolithmod.MonolithError("There is nothing to fetch yet.",
+                                            409)
+        by = (STORE.provenance() or {}).get("user")
+        w = monolithmod.start_work("fetch", lambda w: monolithmod
+                                   .fetch_and_build(w, man, cfg, ARTIFACTS,
+                                                    by=by,
+                                                    fetcher=MONO_FETCH))
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/fetch", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.fetch", "detail": {}}])
+    return jsonify({"ok": True, "work": w.snapshot(),
+                    "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/stop", methods=["POST"])
+def api_arc_monolith_stop():
+    got = monolithmod.stop_work()
+    return jsonify({"ok": True, "stopping": got, "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/forget", methods=["POST"])
+def api_arc_monolith_forget():
+    """Drop the note that a restart cut the last work short. Nothing on the
+    cluster or here is removed."""
+    st = monolithmod.get_state()
+    rec = st.get("work") or {}
+    if rec.get("status") == "running" and monolithmod.interrupted(st):
+        monolithmod.save_state(work=dict(rec, status="interrupted"))
+    return jsonify({"ok": True, "status": _mono_status()})
+
+
+_MONO_DATA = {"summary": ("summary.json", "application/json")}
+
+
+@app.route("/api/arc/monolith/data/<name>")
+def api_arc_monolith_data(name):
+    """The built Monolith's files: `summary`, or `<edges|power|pac>_<raw|
+    minus_fp>` (float32, the stacked QUANTITIES, C order -- the shape is in
+    the summary)."""
+    d = monolithmod.data_dir()
+    if not d:
+        return jsonify({"ok": False, "error": "The Monolith has not been "
+                        "built yet. Fetch the run first."}), 404
+    if name in _MONO_DATA:
+        fname, mime = _MONO_DATA[name]
+    else:
+        what, _, layer = name.partition("_")
+        if what not in ("edges", "power", "pac") or \
+                layer not in monolithmod.LAYERS:
+            return jsonify({"ok": False, "error": "No such Monolith file: "
+                            "%s" % name}), 404
+        fname, mime = "%s_%s.f32" % (what, layer), "application/octet-stream"
+    path = os.path.join(d, fname)
+    if not os.path.isfile(path):
+        return jsonify({"ok": False, "error": "No such Monolith file: %s"
+                        % name}), 404
+    return send_file(path, mimetype=mime)
+
+
+@app.route("/api/arc/monolith/entry")
+def api_arc_monolith_entry():
+    """One entry, all the way down: each rat's change and weight, each day,
+    every cue pair and rest epoch -- recomputed with the scalar drift
+    functions and compared with the pooled arrays."""
+    what = request.args.get("what") or "edges"
+    layer = request.args.get("layer") or "raw"
+    try:
+        at = [int(x) for x in (request.args.get("at") or "").split(",")
+              if x != ""]
+    except ValueError:
+        return jsonify({"ok": False, "error": "`at` is whole numbers."}), 400
+    dims = {"edges": 4, "power": 3, "pac": 3}
+    if what not in dims or layer not in monolithmod.LAYERS or \
+            len(at) != dims[what]:
+        return jsonify({"ok": False, "error": "Say what (edges, power, "
+                        "pac), layer (raw, minus_fp) and at."}), 400
+    d = monolithmod.data_dir()
+    summ = monolithmod.summary_now()
+    man = monolithmod.manifest()
+    if not d or not summ or not man:
+        return jsonify({"ok": False, "error": "The Monolith has not been "
+                        "built yet."}), 404
+    shape = summ["files"]["%s_%s.f32" % (what, layer)]["shape"][1:]
+    if any(not 0 <= a < s for a, s in zip(at, shape)):
+        return jsonify({"ok": False, "error": "That entry is outside the "
+                        "Monolith (%s)." % (shape,)}), 400
+    try:
+        got = monolithmod.entry_detail(d, man, summ, what, layer, at)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/entry", exc, 500)
+    return jsonify(dict({"ok": True}, **got))
 # ============================= end of Drift ===============================
 
 
@@ -18720,7 +19365,20 @@ def _upload_remote(cfg):
     return UPLOAD_REMOTE(cfg) if UPLOAD_REMOTE else vaccuploadmod.SshRemote(cfg)
 
 
-def _upload_items(cfg, gids):
+def _upload_dest(cfg, body):
+    """(dest id, its root) from a body's `dest`: "scratch" (the default --
+    Jarvis Data in the lab's shared space) or "temp" (the lab's gpfs3tmp
+    space). Anything else is refused rather than defaulted: an upload to a
+    place nobody chose is the one thing this must not do."""
+    roots = vaccmod.upload_roots(cfg)
+    want = (body or {}).get("dest") or "scratch"
+    if want not in roots:
+        raise ValueError("An upload goes to %s, not %r." % (
+            " or ".join(sorted(roots)) or "nowhere set up", want))
+    return want, roots[want]["root"]
+
+
+def _upload_items(cfg, gids, root=None):
     """Each recording asked for: where it is read from here, and where it
     goes -- or why it cannot go."""
     index = {r.get("gid"): r for r in (REG.all() or []) if r.get("gid")}
@@ -18740,7 +19398,7 @@ def _upload_items(cfg, gids):
             continue
         item["local"] = local
         try:
-            item["dest"] = vaccuploadmod.destination(cfg, rec, local)
+            item["dest"] = vaccuploadmod.destination(cfg, rec, local, root)
         except vaccuploadmod.UploadError as exc:
             item["why"] = str(exc)
         out.append(item)
@@ -18762,7 +19420,11 @@ def api_vacc_upload_plan():
     st = vaccmod.status()
     shared = st.get("shared") or {}
     try:
-        items = _upload_items(cfg, body.get("gids"))
+        dest, root = _upload_dest(cfg, body)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    try:
+        items = _upload_items(cfg, body.get("gids"), root)
         remote = _upload_remote(cfg)
         for it in items:
             if it.get("why"):
@@ -18780,7 +19442,8 @@ def api_vacc_upload_plan():
         "files": sum(i.get("n_send") or 0 for i in ready),
         "skipped": sum(i.get("n_skip") or 0 for i in ready),
         "blocked": [i for i in items if i.get("why")],
-        "dest_root": (cfg.get("shared") or {}).get("data_path"),
+        "dest": dest, "dest_root": root,
+        "dests": list(vaccmod.upload_roots(cfg).values()),
         "shared": shared,
     })
 
@@ -18804,7 +19467,12 @@ def api_vacc_upload():
     if not cfg.get("configured"):
         return jsonify({"ok": False, "error": "No VACC account is set up on "
                         "this machine."}), 400
-    items = [i for i in _upload_items(cfg, body.get("gids")) if not i.get("why")]
+    try:
+        dest, root = _upload_dest(cfg, body)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    items = [i for i in _upload_items(cfg, body.get("gids"), root)
+             if not i.get("why")]
     if not items:
         return jsonify({"ok": False, "error": "None of those recordings can "
                         "be uploaded from this computer."}), 400
@@ -18829,7 +19497,8 @@ def api_vacc_upload():
                     sent_bytes[0] += n
                 got = vaccuploadmod.send(remote, it["local"], it["dest"],
                                          plan=pl, on_bytes=on_bytes,
-                                         check=job.check, on_file=on_file)
+                                         check=job.check, on_file=on_file,
+                                         streams=vaccuploadmod.STREAMS)
                 sent_n += got["sent"]
                 skipped_n += got["skipped"]
                 job.member(gid, status="done", step=(
@@ -18842,19 +19511,18 @@ def api_vacc_upload():
                 job.member(gid, status="failed", step=None, error=str(exc)[:200])
         # The copies are on the cluster now; the next look finds them.
         try:
-            root = (cfg.get("shared") or {}).get("data_path")
             if root:
                 vaccmod.inventory_soon(cfg, root)
         except Exception:                                # noqa: BLE001
             pass
         return {"n": len(items), "files_sent": sent_n, "files_skipped": skipped_n,
                 "bytes_sent": sent_bytes[0], "failed": failed,
-                "dest_root": (cfg.get("shared") or {}).get("data_path")}
+                "dest": dest, "dest_root": root}
 
     job = cfcmod.start({"path": items[0]["local"]}, [("panorama pool", len(items))],
                        work, 1.0, "vacc:upload")
     STORE.record_activity([{"action": "vacc.upload",
-                            "detail": {"n": len(items),
+                            "detail": {"n": len(items), "dest": dest,
                                        "gids": [i["gid"] for i in items][:50]}}])
     return jsonify({"ok": True, "job": job.snapshot(), "n": len(items)})
 

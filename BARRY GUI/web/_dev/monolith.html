@@ -1,0 +1,448 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the Monolith page</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 34vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 66vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; background: #fff; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app"></iframe>
+<script>
+/* The Monolith page (web/monolith.html, js/monolith.js), on made-up data.
+
+   The page is loaded in the frame and reads its data from MONO_FIXTURE on
+   this page -- a summary, the float32 arrays and the drill-down entry, all
+   built here with a seeded generator and two planted changes -- so nothing
+   needs to have been built and nothing is asked of Jarvis or the cluster.
+   The real routes and the pooling are tools/check_monolith.py's.
+
+     - the counts, the uncorrected warning, the top 10 and the top 50
+     - the circuit draws exactly the edges that pass the slider (counted
+       here from the arrays), stricter to the right; a region with nothing
+       measured is grey
+     - the frequency slider walks the 1 Hz bands; the snaps are the named
+       bands; transitions say which window length a band uses
+     - Granger net draws arrows the way the net drive grew; the arrows
+       toggle draws them over another measure
+     - a point of interest snaps window, band and measure, and selects it
+     - the ghost: an edge lifts out and turns level; it opens into one edge
+       per rat, a rat into its two days, a day into its cue pairs (and rest
+       epochs, minus FP); the crumbs go back; Escape closes it
+     - the PAC grids and the PAC circuit at a chosen cell
+     - at phone width nothing scrolls sideways, and no text is cut short
+
+   ?stop=<step> leaves the frame at a step for a screenshot: lifted, rats,
+   days, units. Negative control: a planted edge moved out of the slider's
+   reach is not drawn. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad', n + (c || d === undefined ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2'); h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, tries = 120, gap = 50) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+const STOP = new URLSearchParams(location.search).get('stop');
+
+/* ---------------- the fixture ---------------- */
+function rng(seed) {
+  return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+const REG = ['Right ACC', 'Right OFC', 'Right DHC', 'Right RSC', 'Right PER', 'Right POR',
+             'Left POR', 'Left PER', 'Left RSC', 'Left DHC', 'Left OFC', 'Left ACC'];
+const PAIRS = [];
+for (let i = 0; i < REG.length; i++) for (let j = i + 1; j < REG.length; j++) PAIRS.push([i, j]);
+const BANDS = [];
+for (let f = 1; f <= 55; f++) {
+  const h = Math.max(0.5, 0.15 * f);
+  BANDS.push({ id: 'f' + String(f).padStart(2, '0'), hz: f, low: Math.max(0.5, f - h), high: Math.min(55, f + h),
+               lag_s: 2 / f, speed: f <= 12 ? 'slow' : 'fast', named: false, pad: true, label: f + ' Hz' });
+}
+BANDS.push({ id: 'theta', hz: null, low: 4, high: 12, lag_s: 0.5, speed: 'slow', named: true, pad: false, label: 'Theta 4–12 Hz' });
+BANDS.push({ id: 'beta', hz: null, low: 13, high: 30, lag_s: 0.15, speed: 'fast', named: true, pad: false, label: 'Beta 13–30 Hz' });
+BANDS.push({ id: 'gamma_low', hz: null, low: 30, high: 55, lag_s: 0.06, speed: 'fast', named: true, pad: false, label: 'Low gamma 30–55 Hz' });
+const WINDOWS = [['pre', 'Baseline', 'state'], ['cue1', 'Cue 1', 'state'], ['cue2', 'Cue 2', 'state'], ['post', 'After', 'state'],
+                 ['onset', 'Onset', 'transition'], ['switch', 'Switch', 'transition'], ['offset', 'Offset', 'transition']]
+  .map(([id, label, kind]) => ({ id, label, kind }));
+const METHODS = [['coherence', 'Coherence'], ['icoh', 'Imaginary coherence'], ['raw_cc', 'Raw cc'], ['env_cc', 'Envelope cc'],
+  ['env_cc0', 'Amplitude r, zero lag'], ['orth_env', 'Orthogonalised envelope r'], ['plv', 'PLV'], ['ppc', 'PPC'],
+  ['pli', 'PLI'], ['wpli', 'wPLI'], ['dwpli', 'Debiased wPLI'], ['gc_ab', 'Granger A→B'], ['gc_ba', 'Granger B→A'],
+  ['gc_net', 'Granger net']].map(([id, label]) => ({ id, label, say: label + ', described.', directed: /^gc_/.test(id) }));
+const CELLS = [];
+for (let fp = 2; fp <= 12; fp++) for (let fa = 15; fa <= 50; fa += 5) {
+  const phi = Math.min(55, fp + Math.max(0.5, 0.15 * fp));
+  const w = Math.max(1.5 * fp, 0.15 * fa), alo = fa - w, ahi = Math.min(55, fa + w);
+  const ok = alo >= phi + 2 && ahi - alo >= 2 * fp;
+  CELLS.push({ fp, fa, phase_band: [fp - Math.max(0.5, 0.15 * fp), phi], amp_band: ok ? [alo, ahi] : null });
+}
+const N = { W: 7, B: BANDS.length, M: METHODS.length, P: PAIRS.length, R: REG.length, C: CELLS.length };
+const GREY = 5;                              // Right POR: no rat has it
+const PLANT = { w: 1, b: 9, m: 0, p: 0 };    // Cue 1, 10 Hz, coherence, Right ACC – Right OFC
+const PLANT2 = { w: 2, b: 19, m: 6, p: 12 }; // Cue 2, 20 Hz, PLV
+const GNET = { w: 1, b: 9, p: 3, est: -0.08 }; // Granger net, Right ACC – Right PER, the other way
+
+function makeEdges(seed) {
+  const r = rng(seed);
+  const a = new Float32Array(6 * N.W * N.B * N.M * N.P);
+  const at = (q, w, b, m, p) => (((q * N.W + w) * N.B + b) * N.M + m) * N.P + p;
+  for (let w = 0; w < N.W; w++) for (let b = 0; b < N.B; b++) for (let m = 0; m < N.M; m++) for (let p = 0; p < N.P; p++) {
+    const grey = PAIRS[p][0] === GREY || PAIRS[p][1] === GREY;
+    a[at(0, w, b, m, p)] = (r() - 0.5) * 0.04;
+    a[at(1, w, b, m, p)] = grey ? NaN : r();
+    a[at(2, w, b, m, p)] = grey ? 3 : 8;
+    a[at(3, w, b, m, p)] = grey ? 2 : 4 + Math.floor(r() * 5);
+    a[at(4, w, b, m, p)] = grey ? NaN : 0.01;
+    a[at(5, w, b, m, p)] = grey ? 1 : 0;
+  }
+  for (const [x, est, pv] of [[PLANT, 0.3, 1e-6], [PLANT2, -0.2, 2e-5]]) {
+    a[at(0, x.w, x.b, x.m, x.p)] = est; a[at(1, x.w, x.b, x.m, x.p)] = pv; a[at(3, x.w, x.b, x.m, x.p)] = 8;
+  }
+  const gn = METHODS.findIndex((m) => m.id === 'gc_net');
+  a[at(0, GNET.w, GNET.b, gn, GNET.p)] = GNET.est; a[at(1, GNET.w, GNET.b, gn, GNET.p)] = 1e-4;
+  return a;
+}
+function makePower(seed) {
+  const r = rng(seed);
+  const a = new Float32Array(6 * N.W * N.B * N.R);
+  const at = (q, w, b, x) => ((q * N.W + w) * N.B + b) * N.R + x;
+  for (let w = 0; w < N.W; w++) for (let b = 0; b < N.B; b++) for (let x = 0; x < N.R; x++) {
+    a[at(0, w, b, x)] = x === GREY ? NaN : (r() - 0.5) * 0.2;
+    a[at(1, w, b, x)] = x === GREY ? NaN : r();
+    a[at(2, w, b, x)] = x === GREY ? 0 : 8; a[at(3, w, b, x)] = 5;
+    a[at(4, w, b, x)] = 0.05; a[at(5, w, b, x)] = x === GREY ? 5 : 0;
+  }
+  return a;
+}
+function makePac(seed) {
+  const r = rng(seed);
+  const RR = N.R * N.R;
+  const a = new Float32Array(6 * 4 * N.C * RR);
+  const at = (q, w, c, op) => ((q * 4 + w) * N.C + c) * RR + op;
+  for (let w = 0; w < 4; w++) for (let c = 0; c < N.C; c++) for (let op = 0; op < RR; op++) {
+    const live = !!CELLS[c].amp_band;
+    a[at(0, w, c, op)] = live ? (r() - 0.5) * 0.002 : NaN;
+    a[at(1, w, c, op)] = live ? r() : NaN;
+    a[at(2, w, c, op)] = 8; a[at(3, w, c, op)] = 5; a[at(4, w, c, op)] = 0.001; a[at(5, w, c, op)] = 0;
+  }
+  const c6 = CELLS.findIndex((c) => c.fp === 6 && c.fa === 40);
+  a[at(0, 1, c6, 0 * N.R + 1)] = 0.004; a[at(1, 1, c6, 0 * N.R + 1)] = 1e-4; a[at(3, 1, c6, 0 * N.R + 1)] = 8;
+  return a;
+}
+const SHAPES = { edges: [6, N.W, N.B, N.M, N.P], power: [6, N.W, N.B, N.R], pac: [6, 4, N.C, N.R * N.R] };
+const ARR = {
+  edges_raw: makeEdges(11), edges_minus_fp: makeEdges(12), power_raw: makePower(13),
+  power_minus_fp: makePower(14), pac_raw: makePac(15), pac_minus_fp: makePac(16),
+};
+function topList(layer) {
+  const out2 = [];
+  const mk = (x, est, p, same, rank) => ({ layer, w: WINDOWS[x.w].id, wi: x.w, kind: WINDOWS[x.w].kind,
+    band: BANDS[x.b].id, bi: x.b, hz: BANDS[x.b].hz, m: METHODS[x.m].id, mi: x.m, pair: x.p,
+    a: REG[PAIRS[x.p][0]], b: REG[PAIRS[x.p][1]], est, se: 0.02, p, k: 8, same, up: est > 0, rank,
+    more: rank === 1 ? [{ w: 'cue1', wi: 1, band: 'f11', bi: 10, hz: 11, m: 'coherence', mi: 0, est: 0.25, p: 3e-6, k: 8, same: 8 }] : [],
+    n_more: rank === 1 ? 4 : 0 });
+  out2.push(mk(PLANT, 0.3, 1e-6, 8, 1));
+  out2.push(mk(PLANT2, -0.2, 2e-5, 8, 2));
+  for (let i = 3; i <= 50; i++) {
+    const x = { w: i % 7, b: (i * 7) % 55, m: i % 14, p: 20 + (i % 40) };
+    out2.push(mk(x, 0.01 * (i % 5 ? 1 : -1), 0.001 * i, 7, i));
+  }
+  return out2;
+}
+const SUMMARY = {
+  ok: true, schema: 'arc.monolith/1', analysis: 'precon1-4-sweep', name: 'Monolith · Precon1→4 · 1–55 Hz',
+  built_at: '2026-10-01T15:00:00', rid: 'abcdef012345', rats: [3, 4, 6, 7, 8, 9, 10, 11],
+  days: ['Precon1', 'Precon4'], layers: ['raw', 'minus_fp'], min_rats: 5,
+  quantities: ['est', 'p', 'k', 'same', 'se', 'why'],
+  why: { 0: null, 1: 'fewer than 5 rats have it on both days', 2: 'no spread', 3: 'identical', 4: 'same change', 5: 'no rat' },
+  windows: WINDOWS, bands: BANDS, methods: METHODS, regions: REG, pairs: PAIRS, grey: [REG[GREY]],
+  pac_cells: CELLS,
+  lengths: { state: '10 s', slow: '−3 s / +3 s (bands ≤ 12 Hz, theta)', fast: '−1 s / +2 s (bands ≥ 13 Hz, beta, low gamma)' },
+  files: { 'edges_raw.f32': { shape: SHAPES.edges }, 'edges_minus_fp.f32': { shape: SHAPES.edges },
+           'power_raw.f32': { shape: SHAPES.power }, 'power_minus_fp.f32': { shape: SHAPES.power },
+           'pac_raw.f32': { shape: SHAPES.pac }, 'pac_minus_fp.f32': { shape: SHAPES.pac } },
+  top: { raw: topList('raw'), minus_fp: topList('minus_fp').slice(0, 30) },
+  pac_top: { raw: [{ layer: 'raw', w: 'cue1', wi: 1, cell: CELLS.findIndex((c) => c.fp === 6 && c.fa === 40), fp: 6, fa: 40,
+                     op: 1, phase: REG[0], amp: REG[1], est: 0.004, p: 1e-4, k: 8, same: 8 }], minus_fp: [] },
+  counts: { raw: { entries: 375144, tested: 340000, p05: 18000, p01: 3500, p001: 400, chance_p05: 17000,
+                   agree: { 8: { tested: 300000, all_same: 2400, chance_all_same: 2344 } } },
+            minus_fp: { entries: 375144, tested: 330000, p05: 17000, p01: 3300, p001: 350, chance_p05: 16500, agree: {} } },
+  correction: 'none -- every p shown is uncorrected',
+  points_rule: 'p < 0.05 (uncorrected), most rats the same way first, then p; at most 3 per region pair',
+  missing_tasks: [], n_refusals: 3, manifest: { digest: 'abc123', at: '2026-10-01', notes: ['r7 Precon1: FP1 passed over.'] },
+  run: { rid: 'abcdef012345', dest: 'temp', arrays: ['777001'], code: 'deadbeefcafe0000', n_tasks: 144 },
+};
+let entryAsked = [];
+function detail(layer, at) {
+  const r = rng(at.reduce((s, x) => s * 31 + x, 7));
+  const rats = SUMMARY.rats.map((rat, i) => {
+    if (i === 7) return { rat, days: {}, why: 'Precon4: not computed', weight: null };
+    const days = {};
+    for (const day of ['Precon1', 'Precon4']) {
+      const units = Array.from({ length: 12 }, (_x, u) => ({ id: 'p' + String(u + 1).padStart(2, '0'),
+        label: u % 2 ? 'Click → Low Tone' : 'Noise → High tone', cue: u % 2 ? 'Click → Low Tone' : 'Noise → High tone',
+        v: u === 3 ? null : 0.4 + (day === 'Precon4' ? 0.05 : 0) + (r() - 0.5) * 0.1, wires: [5 + u % 2, 21] }));
+      const s = { cue: 0.42, cue_se2: 0.0004, n: 11, units, x: 0.42 + (day === 'Precon4' ? 0.05 : 0), se2: 0.0004 };
+      if (layer === 'minus_fp') {
+        s.rest = 0.38; s.rest_se2 = 0.0003; s.n_rest = 6; s.x = s.cue - s.rest; s.se2 = 0.0007;
+        s.rest_units = Array.from({ length: 6 }, (_x, e) => ({ id: 'e0' + (e + 1), label: 'FP1 @ ' + (30 * e) + ' s', run: 'FP1', v: 0.38 + (r() - 0.5) * 0.05 }));
+      }
+      days[day] = s;
+    }
+    return { rat, days, delta: days.Precon4.x - days.Precon1.x, v: 0.0008, left: days.Precon1.x, right: days.Precon4.x, weight: 1 / 7 };
+  });
+  return { ok: true, what: 'edges', layer, at, rats, agree: true,
+           pooled: { est: 0.05, se: 0.01, p: 0.002, df: 6, k: 7, tau2: 0 }, arrays: { est: 0.05, p: 0.002 } };
+}
+window.MONO_FIXTURE = {
+  async json(path) {
+    if (path === '/data/summary') return JSON.parse(JSON.stringify(SUMMARY));
+    const m = /^\/entry\?what=(\w+)&layer=(\w+)&at=([\d,]+)$/.exec(path);
+    if (m) { entryAsked.push(path); return detail(m[2], m[3].split(',').map(Number)); }
+    throw new Error('no fixture for ' + path);
+  },
+  async array(name, shape) {
+    const a = ARR[name];
+    if (!a) throw new Error('no fixture array ' + name);
+    const want = shape.reduce((x, y) => x * y, 1);
+    if (a.length !== want) throw new Error(name + ' has ' + a.length + ', shape says ' + want);
+    return a;
+  },
+};
+
+/* ---------------- the checks ---------------- */
+(async () => { try {
+  const f = document.getElementById('app');
+  // A fresh view: what the page remembers is put back afterwards.
+  let kept = null;
+  try { kept = localStorage.getItem('barry.monolith.view'); localStorage.removeItem('barry.monolith.view'); } catch (e) { /* none */ }
+  f.src = '/monolith.html';
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = () => f.contentWindow;
+  const D = () => f.contentDocument;
+  const M = await until(() => W().MONO && W().MONO.data && W().MONO.data.S && D().getElementById('circsvg') && W().MONO);
+  check('the page loads on the fixture', !!M);
+  if (!M) { document.title = 'FAIL: did not load'; return; }
+  const txt = (n) => (n ? n.textContent : '').replace(/\s+/g, ' ').trim();
+  const at = (a, q, w, b, m, p) => a[(((q * N.W + w) * N.B + b) * N.M + m) * N.P + p];
+
+  head('what it says first');
+  const v = D().getElementById('verdict');
+  check('the counts, and how many by chance', /340,000 entries tested; 18,000 have p < \.05, where about 17,000/.test(txt(v)), txt(v).slice(0, 160));
+  check('every p is said to be uncorrected', /uncorrected/.test(txt(v)) && /uncorrected/.test(txt(D().querySelector('.lede'))));
+  const items = () => D().querySelectorAll('#toplist > li');
+  check('ten points of interest', items().length === 10, items().length);
+  check('the first is the planted change, all eight rats', /Right ACC – Right OFC/.test(txt(items()[0])) && /8\/8 rats/.test(txt(items()[0])));
+  D().getElementById('showall').click();
+  await sleep(30);
+  check('and fifty when asked', items().length === 50, items().length);
+  D().getElementById('showall').click();
+  await sleep(30);
+  check('and ten again', items().length === 10);
+
+  head('the circuit');
+  // It opened on the first point of interest.
+  const st0 = M.state;
+  check('it opens on the first point of interest', st0.win === 'cue1' && st0.band === 'f10' && st0.method === 'coherence' && st0.sel === 0,
+        JSON.stringify([st0.win, st0.band, st0.method, st0.sel]));
+  const count = (lv) => {
+    let n = 0;
+    for (let p = 0; p < N.P; p++) {
+      const pv = at(ARR.edges_raw, 1, PLANT.w, PLANT.b, PLANT.m, p);
+      if (isFinite(pv) && M.LEVELS[lv][1](pv)) n++;
+    }
+    return n;
+  };
+  const drawn = () => D().querySelectorAll('#circsvg path.edge').length;
+  for (const lv of [0, 1, 4]) {
+    M.set({ level: lv });
+    await sleep(20);
+    check('slider at “' + M.LEVELS[lv][0] + '”: exactly the passing edges are drawn (' + count(lv) + ')', drawn() === count(lv), drawn());
+  }
+  check('stricter to the right draws fewer', count(0) > count(1) && count(1) > count(4));
+  check('the planted edge passes even the strictest', !!D().querySelector('#circsvg path.edge[data-pair="0"]'));
+  M.set({ level: 1 });
+  await sleep(20);
+  const greyNode = D().querySelector('#circsvg circle[data-region="5"]');
+  check('a region nobody has is grey and says so', greyNode && greyNode.getAttribute('fill') === 'none'
+        && /Right POR \(not measured\)/.test(txt(D().getElementById('circsvg'))));
+  check('its pairs are never drawn', !Array.from(D().querySelectorAll('#circsvg path.edge')).some((e) => {
+    const p = Number(e.dataset.pair); return PAIRS[p][0] === GREY || PAIRS[p][1] === GREY; }));
+
+  head('frequency');
+  const slider = D().getElementById('freq');
+  slider.value = '20'; slider.dispatchEvent(new Event('input'));
+  await sleep(20);
+  check('the slider walks the 1 Hz bands', M.state.band === 'f20' && /20 Hz/.test(txt(D().getElementById('ctitle'))), M.state.band);
+  check('and says the band and its lag', /band 17\.00–23\.00 Hz · lag up to ±100 ms/.test(txt(D().getElementById('freqsay'))), txt(D().getElementById('freqsay')));
+  D().querySelector('#controls .seg button[data-id="theta"]').click();
+  await sleep(20);
+  check('Theta snaps to the named band', M.state.band === 'theta' && /Theta 4–12 Hz/.test(txt(D().getElementById('ctitle'))));
+  D().querySelector('#controls .seg button[data-id="transition"]').click();
+  await sleep(20);
+  check('Transition: its three windows', M.state.kind === 'transition' && M.state.win === 'onset'
+        && txt(D().querySelectorAll('#controls .seg')[2]) === 'OnsetSwitchOffset', txt(D().querySelectorAll('#controls .seg')[2]));
+  check('theta is measured −3/+3 s there', /−3 s \/ \+3 s around each boundary/.test(txt(D().getElementById('freqsay'))));
+  M.set({ band: 'f30' });
+  await sleep(20);
+  check('and 30 Hz −1/+2 s', /−1 s \/ \+2 s around each boundary/.test(txt(D().getElementById('freqsay'))));
+  check('the spectrum marks where the window length changes', /−3\/\+3 s/.test(txt(D().getElementById('specsvg'))));
+
+  head('Granger');
+  M.set({ kind: 'state', win: 'cue1', band: 'f10', method: 'gc_net', level: 1 });
+  await sleep(20);
+  const gn = D().querySelector('#circsvg path.edge[data-pair="' + GNET.p + '"]');
+  check('Granger net draws an arrow', gn && /url\(#mk-/.test(gn.getAttribute('marker-end') || ''));
+  // GNET is negative: Right PER drives Right ACC more -- the arrow starts at Right PER.
+  const startsAt = (path, region) => {
+    const ring = D().querySelector('#circsvg circle[data-region="' + region + '"]');
+    const m = /^M([\d.]+),([\d.]+)/.exec(path.getAttribute('d'));
+    return m && Math.abs(Number(m[1]) - Number(ring.getAttribute('cx'))) < 0.01 && Math.abs(Number(m[2]) - Number(ring.getAttribute('cy'))) < 0.01;
+  };
+  check('the way the net drive grew (from Right PER to Right ACC)', gn && startsAt(gn, PAIRS[GNET.p][1]));
+  M.set({ method: 'coherence', arrows: true });
+  await sleep(20);
+  const arr = D().querySelector('#circsvg path.arrowp[data-arrow="' + GNET.p + '"]');
+  check('the arrows toggle draws them over coherence', !!arr && /Granger arrow/.test(txt(D().getElementById('sigsay'))));
+  M.set({ arrows: false });
+
+  head('a point of interest snaps the view');
+  M.set({ kind: 'transition', win: 'offset', band: 'f40', method: 'pli', level: 3 });
+  await sleep(20);
+  items()[1].click();
+  await sleep(30);
+  const s2 = M.state;
+  check('to its window, band and measure', s2.win === 'cue2' && s2.band === 'f20' && s2.method === 'plv' && s2.kind === 'state',
+        JSON.stringify([s2.win, s2.band, s2.method, s2.kind]));
+  check('and selects it', s2.sel === PLANT2.p && !!D().querySelector('#circsvg path.edge.sel[data-pair="' + PLANT2.p + '"]'));
+  check('a slider too strict for it is eased just enough', M.LEVELS[s2.level][1](2e-5) && s2.level >= 2, s2.level);
+
+  head('the ghost');
+  const edge = D().querySelector('#circsvg path.edge[data-pair="' + PLANT2.p + '"]');
+  entryAsked = [];
+  edge.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  const lifted = await until(() => M.ghost.lifted && M.ghost.detail && D().querySelector('#ghostsvg .garc'));
+  check('clicking an edge lifts it out', !!lifted);
+  check('one request for the whole drill-down', entryAsked.length === 1 && /at=2,19,6,12$/.test(entryAsked[0]), entryAsked.join(' '));
+  const gnodes = Array.from(D().querySelectorAll('#ghostsvg circle.gnode'));
+  check('its two regions sit level, one each side', gnodes.length === 2 && gnodes[0].getAttribute('cy') === gnodes[1].getAttribute('cy')
+        && Number(gnodes[0].getAttribute('cx')) < Number(gnodes[1].getAttribute('cx')), gnodes.map((n) => n.getAttribute('cx') + ',' + n.getAttribute('cy')).join(' '));
+  const gnames = Array.from(D().querySelectorAll('#ghostsvg .gname')).map((x) => x.textContent);
+  check('named as the edge was', gnames.indexOf(REG[PAIRS[PLANT2.p][0]]) >= 0 && gnames.indexOf(REG[PAIRS[PLANT2.p][1]]) >= 0, gnames.join(','));
+  check('the crumbs say where', txt(D().getElementById('crumbs')).indexOf('Pooled') === 0);
+  if (STOP === 'lifted') { document.title = 'stopped at lifted'; return; }
+  const arcs = () => Array.from(D().querySelectorAll('#ghostsvg path.garc'));
+  arcs()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => arcs().length === 8, 80);
+  check('the edge opens into one edge per rat (8)', arcs().length === 8, arcs().length);
+  check('the rat left out is dashed, and says why', arcs().some((a) => a.getAttribute('stroke-dasharray') && a.dataset.key === 'r11'));
+  const r3 = arcs().find((a) => a.dataset.key === 'r3');
+  r3.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 200 }));
+  await sleep(10);
+  const tipText = txt(D().getElementById('tip'));
+  check('hovering a rat says its change, its two days and its weight', /^r3/.test(tipText) && /Precon1 .* → Precon4/.test(tipText) && /weight in the pool 14%/.test(tipText), tipText);
+  r3.dispatchEvent(new MouseEvent('mouseleave'));
+  if (STOP === 'rats') { document.title = 'stopped at rats'; return; }
+  r3.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => arcs().length === 2 && M.ghost.stack.length === 3, 80);
+  check('a rat opens into its two days', arcs().length === 2 && arcs().map((a) => a.dataset.key).join() === 'Precon1,Precon4');
+  if (STOP === 'days') { document.title = 'stopped at days'; return; }
+  arcs()[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => arcs().length === 12 && M.ghost.stack.length === 4, 80);
+  check('a day opens into every cue pair (12)', arcs().length === 12, arcs().length);
+  check('one with no value is dashed, not dropped', arcs().filter((a) => a.getAttribute('stroke-dasharray')).length === 1);
+  const leaf = arcs()[0];
+  leaf.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 200 }));
+  await sleep(10);
+  check('hovering a cue pair says its cue, value and wires', /CSC 5 and CSC 21/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
+  leaf.dispatchEvent(new MouseEvent('mouseleave'));
+  leaf.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await sleep(10);
+  check('clicking one pins what it is', /p01/.test(txt(D().getElementById('crumbs'))));
+  if (STOP === 'units') { document.title = 'stopped at units'; return; }
+  const crumbs = Array.from(D().querySelectorAll('#crumbs button'));
+  check('the crumbs: Pooled › Rats › r3 › Precon4', crumbs.map((b) => b.textContent).slice(0, 4).join('|') === 'Pooled|Rats|r3|Precon4',
+        crumbs.map((b) => b.textContent).join('|'));
+  crumbs[1].click();
+  await until(() => arcs().length === 8, 80);
+  check('and go back up', M.ghost.stack.length === 2 && arcs().length === 8);
+  D().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  await until(() => !D().getElementById('ghostsvg'), 40);
+  check('Escape closes it', !D().getElementById('ghostsvg') && M.ghost.pair == null);
+
+  head('minus FP');
+  D().querySelector('#controls .seg button[data-id="minus_fp"]').click();
+  await until(() => M.state.layer === 'minus_fp' && M.data.edges.minus_fp, 80);
+  check('the flip loads the other layer', M.state.layer === 'minus_fp' && !!M.data.edges.minus_fp);
+  check('its own points of interest', /Minus FP/.test(txt(D().querySelector('#poi h2'))) && items().length === 10);
+  M.set({ kind: 'state', win: 'cue2', band: 'f20', method: 'plv', level: 0 });
+  await sleep(20);
+  const e2 = D().querySelector('#circsvg path.edge[data-pair="' + PLANT2.p + '"]');
+  e2.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => M.ghost.lifted && M.ghost.detail && arcs().length === 1, 120);
+  arcs()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => arcs().length === 8, 80);
+  arcs()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => arcs().length === 2, 80);
+  check('a day minus FP says cue − rest', /= 0\.\d+ − 0\.38/.test(txt(D().getElementById('ghostsvg'))), txt(D().getElementById('ghostsvg')).slice(0, 200));
+  arcs()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => arcs().length === 18, 80);
+  check('and opens into its cue pairs and, dashed, its rest epochs (12 + 6)', arcs().length === 18
+        && arcs().filter((a) => /^e0/.test(a.dataset.key)).length === 6, arcs().length);
+  M.closeGhost(true);
+  D().querySelector('#controls .seg button[data-id="raw"]').click();
+  await until(() => M.state.layer === 'raw', 40);
+
+  head('PAC');
+  M.set({ kind: 'state', win: 'cue1', band: 'f10', method: 'coherence', level: 1 });
+  M.go(SUMMARY.top.raw[0]);
+  await sleep(30);
+  const grids = D().querySelectorAll('#paccard .pacgrid svg');
+  check('four grids for the selected pair: each way and each with itself', grids.length === 4, grids.length);
+  check('cells that cannot carry their sidebands are left empty', D().querySelectorAll('#paccard .pacgrid rect[fill="none"]').length === 4 * CELLS.filter((c) => !c.amp_band).length);
+  const cell = D().querySelector('#paccard .pacgrid rect[data-cell="5"]');
+  cell.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await sleep(20);
+  check('a cell opens the PAC circuit there', /PAC circuit at 2 Hz phase × 40 Hz amplitude/.test(txt(D().getElementById('paccard'))),
+        txt(D().getElementById('paccard')).slice(0, 120));
+
+  head('nothing cut short, nothing sideways');
+  const all = txt(D().body);
+  check('no text ends in an ellipsis', all.indexOf('…') < 0 || /Reading/.test(all));
+  f.style.width = '390px';
+  await sleep(120);
+  const se = D().scrollingElement;
+  check('at 390 px nothing scrolls sideways', se.scrollWidth <= se.clientWidth + 1, se.scrollWidth + ' > ' + se.clientWidth);
+  f.style.width = '';
+
+  head('negative control');
+  ARR.edges_raw[(((1 * N.W + PLANT.w) * N.B + PLANT.b) * N.M + PLANT.m) * N.P + PLANT.p] = 0.5;
+  M.set({ kind: 'state', win: 'cue1', band: 'f10', method: 'coherence', level: 1 });
+  await sleep(20);
+  check('the planted edge moved to p = .5 is not drawn at p < .05', !D().querySelector('#circsvg path.edge[data-pair="0"]'));
+  ARR.edges_raw[(((1 * N.W + PLANT.w) * N.B + PLANT.b) * N.M + PLANT.m) * N.P + PLANT.p] = 1e-6;
+
+  try { if (kept == null) localStorage.removeItem('barry.monolith.view'); else localStorage.setItem('barry.monolith.view', kept); } catch (e) { /* none */ }
+  head(bad === 0 ? 'the Monolith page works' : bad + ' failed');
+  document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
+  if (!STOP) document.getElementById('app').src = 'about:blank';   // idle: the dump is taken at once
+} catch (e) {
+  say('bad', 'harness threw: ' + (e && e.stack || e));
+  document.title = 'FAIL threw: ' + e.message;
+} })();
+</script>

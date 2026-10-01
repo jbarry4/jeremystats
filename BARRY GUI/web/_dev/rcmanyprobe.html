@@ -1,0 +1,109 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>rcmanyprobe: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;margin:0;display:flex}
+#log{width:700px;padding:10px;white-space:pre;flex:none}
+iframe{flex:1;height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Scratch probe for "you can't choose the set" in Root Canal's Many mode.
+   Measures; changes nothing that is kept. Deleted once the fault is found. */
+const L = document.getElementById('log');
+const say = (s) => { L.textContent += s + '\n'; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 20000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(120);
+  }
+  return false;
+}
+(async () => {
+  const A = document.getElementById('app');
+  await new Promise((r) => A.addEventListener('load', r, { once: true }));
+  const W = A.contentWindow, ev = (c) => W.eval(c), D = () => A.contentDocument;
+  try {
+    await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'), 25000);
+    ev('BARRY.rootcanal._setView("single")');
+    ev('setView("toolkit")');
+    await until(() => D().querySelector('.tk-step'), 10000);
+    Array.from(D().querySelectorAll('.tk-step')).find((b) => /Root Canal/.test(b.textContent)).click();
+    await until(() => D().querySelector('.rc-mode'), 15000);
+    // Many, through the run bar's own button.
+    const btns = Array.from(D().querySelectorAll('.rc-mode button'));
+    say('mode buttons: ' + btns.map((b) => b.textContent + (b.className ? '[' + b.className + ']' : '')).join(' | '));
+    const many = btns.find((b) => /Many/i.test(b.textContent));
+    if (many) many.click();
+    await until(() => D().querySelector('.rc-bulk-card .rc-done-list, .rc-bulk-card table'), 40000);
+    await sleep(500);
+    const box = (sel) => { const n = D().querySelector(sel); if (!n) return 'missing';
+      const r = n.getBoundingClientRect(); const cs = W.getComputedStyle(n);
+      return Math.round(r.left) + '+' + Math.round(r.width) + 'x' + Math.round(r.height)
+        + ' disp=' + cs.display + ' wrap=' + cs.flexWrap + ' ws=' + cs.whiteSpace
+        + ' w=' + cs.width + ' tl=' + cs.tableLayout + ' cls=' + n.className; };
+    say('viewport ' + W.innerWidth);
+    for (const sel of ['#tkResult', '.tk-main', '.rc-bulk-card', '.rc-done-list',
+                       '.rc-done-list .mini', '.rc-bulk-card table.rc-bulk',
+                       '.rc-bulk-card table.rc-bulk thead th:nth-child(2)',
+                       '.rc-bulk-card table.rc-bulk td:nth-child(2)',
+                       '.rc-mode']) say(sel + ': ' + box(sel));
+    const res = D().getElementById('tkResult');
+    say('tkResult scroll ' + res.scrollWidth + ' / ' + res.clientWidth);
+    // Which rules touch the done list?
+    const sheetRules = [];
+    for (const sh of D().styleSheets) {
+      let rs; try { rs = sh.cssRules; } catch (e) { continue; }
+      for (const r of rs) {
+        const t = r.selectorText || '';
+        if (/rc-done-list|rc-bulk\b|\.tbl\b/.test(t)) sheetRules.push(t + ' { ' + r.style.cssText + ' }');
+        if (r.cssRules) for (const r2 of r.cssRules) {
+          const t2 = r2.selectorText || '';
+          if (/rc-done-list|rc-bulk\b/.test(t2)) sheetRules.push('@ ' + (r.conditionText || r.media && r.media.mediaText) + ' ' + t2 + ' { ' + r2.style.cssText + ' }');
+        }
+      }
+    }
+    say('rules:\n  ' + sheetRules.join('\n  '));
+    // (a) untick a set
+    const cb = D().querySelector('.rc-bulk-card table.rc-bulk tbody input[type=checkbox]');
+    if (cb) {
+      cb.scrollIntoView({ block: 'center' });
+      await sleep(200);
+      const r = cb.getBoundingClientRect();
+      const top = D().elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      say('(a) checkbox at ' + Math.round(r.left) + ',' + Math.round(r.top) + ' checked=' + cb.checked
+          + '; element at that point: ' + (top ? top.tagName + '.' + top.className : 'none')
+          + (top === cb ? ' (the checkbox itself)' : ' (NOT the checkbox)'));
+      cb.click();
+      await sleep(400);
+      const cb2 = D().querySelector('.rc-bulk-card table.rc-bulk tbody input[type=checkbox]');
+      say('    after click: same node=' + (cb2 === cb) + ' checked=' + (cb2 && cb2.checked)
+          + ' pick=' + JSON.stringify(ev('BARRY.rootcanal._bulk().pick')));
+      await sleep(2500);
+      const cb3 = D().querySelector('.rc-bulk-card table.rc-bulk tbody input[type=checkbox]');
+      say('    2.5 s later: same node=' + (cb3 === cb) + ' checked=' + (cb3 && cb3.checked));
+    } else say('(a) no checkbox');
+    // (b) open an "Already read" one
+    const mini = D().querySelector('.rc-done-list .mini');
+    if (mini) {
+      mini.scrollIntoView({ block: 'center' });
+      await sleep(200);
+      const r = mini.getBoundingClientRect();
+      const top = D().elementFromPoint(Math.min(W.innerWidth - 2, r.left + 4), r.top + r.height / 2);
+      say('(b) first done button "' + mini.textContent + '" at ' + Math.round(r.left) + ',' + Math.round(r.top)
+          + '; at that point: ' + (top ? top.tagName + '.' + top.className + ' "' + (top.textContent || '').slice(0, 30) + '"' : 'none'));
+      mini.click();
+      await until(() => ev('BARRY.rootcanal._state().q.read') || ev('BARRY.rootcanal._state().job'), 30000);
+      await sleep(1500);
+      const st = ev('BARRY.rootcanal._state()');
+      say('    after: bulk.on=' + st.bulk.on + ' entry=' + st.q.entry + ' from_version=' + st.q.from_version
+          + ' read=' + st.q.read + ' job=' + !!st.job + ' fit=' + (st.fit && (st.fit.ok ? 'ok n=' + st.fit.n : st.fit.error)));
+      say('    on screen: ' + ['.rc-choose', '.rc-read', '.rc-job', '.rc-work', '.rc-bulk-card']
+          .map((s) => s + '=' + !!D().querySelector(s)).join(' '));
+      const errs = Array.from(D().querySelectorAll('.toast')).map((t) => t.textContent).join(' || ');
+      say('    toasts: ' + errs.slice(0, 400));
+    } else say('(b) no done button');
+  } catch (e) { say('THREW ' + e.message + '\n' + e.stack); }
+  document.title = 'rcmanyprobe: done';
+  A.src = 'about:blank';
+})();
+</script></body></html>

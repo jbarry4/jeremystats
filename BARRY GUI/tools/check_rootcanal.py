@@ -48,6 +48,7 @@ is not already cached -- the read's .npz under GUI_logs/.cache, which git
 ignores. It checks at the end that the Event Bank on disk is as it found it.
 """
 import base64
+import json
 import os
 import shutil
 import subprocess
@@ -92,7 +93,7 @@ def _bank_status():
     try:
         out = subprocess.run(
             ["git", "status", "--porcelain", "--", "GUI_logs/event_bank",
-             "GUI_logs/rootcanal"],
+             "GUI_logs/rootcanal", "GUI_logs/artifacts"],
             cwd=APP, capture_output=True, text=True, timeout=60)
         return out.stdout
     except Exception as exc:                             # noqa: BLE001
@@ -233,13 +234,16 @@ def main():
     real_reader = csc._read_channel_window
     saved = {k: getattr(A, k) for k in (
         "BANK", "ROOTCANAL", "STORE", "save_output", "_braces_session",
-        "_braces_channels", "_stored_for")}
+        "_braces_channels", "_stored_for", "ARTIFACTS")}
     saved_screen = A.bracesmod.screen
     try:
         csc._read_channel_window = fake
         _synthetic(A, rc, cfcmod, stamp_t, kinds)
         _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp,
                 stamp_t, kinds, fake)
+        _pool_gmm_agreement()
+        _pool_synthetic(A)
+        _pool_routes(A, tmp, fake)
     finally:
         csc._read_channel_window = real_reader
         for k, v in saved.items():
@@ -249,11 +253,12 @@ def main():
 
     if real:
         _real(A, rc, fresh)
+        _real_pool(A)
 
     head("NOTHING IN THE REAL BANK CHANGED")
     after = _bank_status()
-    ck("git status of GUI_logs/event_bank and GUI_logs/rootcanal is as it "
-       "was before the run", before == after,
+    ck("git status of GUI_logs/event_bank, GUI_logs/rootcanal and "
+       "GUI_logs/artifacts is as it was before the run", before == after,
        "before:\n%s\nafter:\n%s" % (before, after))
 
     print("")
@@ -583,6 +588,33 @@ def _synthetic(A, rc, cfcmod, stamp_t, kinds):
     ck("the CSD has a symmetric colour limit",
        v["csd"]["clim"][1] > 0
        and v["csd"]["clim"][0] == -v["csd"]["clim"][1])
+    # THE CSD IS ON THE DENTATE-SPIKE FILTER, not the fit filter: 60 Hz
+    # notch then 5-100 Hz, X-ray's. On the fit filter, mains that differs a
+    # little between contacts survived the second difference -- 72-78% of
+    # CSD power at 55-65 Hz on PTEN m1 s2 and m1 s8, while the traces
+    # beside it carried 1-5%.
+    ck("the CSD says it is on the dentate-spike filter",
+       v["csd"].get("band") == [5.0, 100.0]
+       and v["csd"].get("notch_hz") == 60.0
+       and "mains taken out" in (v["csd"].get("filter") or ""),
+       v["csd"].get("filter"))
+    fs_ = 2000.0
+    tt = np.arange(1000) / fs_
+    x = np.vstack([np.sin(2 * np.pi * 60.0 * tt) * 100.0
+                   + np.sin(2 * np.pi * 20.0 * tt) * 10.0])
+    y = rc._ds_filter(x, fs_)[0][250:750]
+    F = np.fft.rfftfreq(500, 1 / fs_)
+    Pw = np.abs(np.fft.rfft(y * np.hanning(500))) ** 2
+    at60 = Pw[(F > 55) & (F < 65)].sum()
+    at20 = Pw[(F > 15) & (F < 25)].sum()
+    ck("the filter takes 60 Hz down by more than 20 dB and leaves 20 Hz",
+       at60 < at20 * 0.1, "60 Hz %.3g vs 20 Hz %.3g" % (at60, at20))
+    # And it leaves a dentate spike alone: a 1 mV Gaussian, 8 ms SD, in the
+    # middle of the snippet, through the mains removal alone.
+    gs = 1000.0 * np.exp(-0.5 * ((tt - 0.25) / 0.008) ** 2)
+    moved = np.abs(rc._line_out(gs[None, :], fs_)[0] - gs).max()
+    ck("fitting the mains out moves a 1 mV spike by under 1%",
+       moved < 10.0, "%.2f uV" % moved)
     tmpf = os.path.join(tempfile.mkdtemp(prefix="rc_npz_"), "r.npz")
     rc.save_read(tmpf, got)
     back = rc.load_read(tmpf)
@@ -1009,6 +1041,394 @@ def _real(A, rc, fresh):
     ck("and nearly all were measured on all three axes",
        res["n_used"] >= 290, res["n_used"])
     ck("the dead contact (59) is out", 59 in got["bad"])
+
+
+
+# --------------------------------------------------------------------------
+# POOL
+# --------------------------------------------------------------------------
+def _canon_json(x):
+    from backend import artifacts as artifactsmod
+    return json.dumps(artifactsmod._canon(artifactsmod.plain(x)),
+                      sort_keys=True)
+
+
+def _blob(rng, n, amp, hw, hf, cls, sd=(60.0, 1.5, 1.5)):
+    rows = []
+    for _ in range(n):
+        rows.append({"amp_uV": float(rng.normal(amp, sd[0])),
+                     "hw_ms": float(rng.normal(hw, sd[1])),
+                     "hf_db": float(rng.normal(hf, sd[2])),
+                     "cls": cls, "truth": cls})
+    return rows
+
+
+def _member(pool, key, project, mouse, rows, gid=None):
+    for k, r in enumerate(rows):
+        r.setdefault("i", k)
+        r.setdefault("t", 1.0 + k)
+    gid = gid or "g_" + key
+    return {"key": key, "entry_id": "e_" + key, "session_label": key,
+            "gid": gid, "project": project,
+            "mouse_key": pool.mouse_key(project, mouse, gid),
+            "mouse_type": pool.mouse_type_of(project),
+            "banked": True, "pin": {"params": {"cross_ms": 50.0}},
+            "band": [500.0, 1000.0], "rows": rows}
+
+
+def _pool_gmm_agreement():
+    """The GMM's verdict says whether its two groups ARE the DS/IED split.
+
+    Built because the first real pool (18 PTEN recordings) gave ΔBIC +881,
+    "very strong support for two groups", while those two groups matched the
+    DS / IED call at adjusted Rand 0.07 and the split axis had one hump. The
+    BIC alone said the opposite of the data.
+    """
+    from backend import rootcanalpool as pool
+    rng = np.random.default_rng(5)
+    head("POOL: THE GMM SAYS WHETHER ITS GROUPS ARE THE DS / IED SPLIT")
+    mu, sd = np.zeros(3), np.ones(3)
+
+    # Two separate blobs, and the calls ARE the blobs.
+    a = rng.normal([-2.5, 0, -2.5], 0.5, size=(300, 3))
+    b = rng.normal([2.5, 0, 2.5], 0.5, size=(300, 3))
+    Z = np.vstack([a, b])
+    calls = ["ds"] * 300 + ["ied"] * 300
+    g = pool.gmm_test(Z, mu, sd, calls=calls)
+    ck("two blobs that are the two calls: ΔBIC favours two groups",
+       g["delta"] is not None and g["delta"] > 10, g["delta"])
+    ck("and the agreement is near total",
+       g["agree"] and g["agree"]["ari"] > 0.9, g["agree"])
+    ck("and the sentence says they match the DS / IED call",
+       "match the DS / IED call" in g["verdict"], g["verdict"])
+
+    # ONE skewed cloud, cut in two the way k-means would: by HF.
+    z = rng.lognormal(0.0, 0.6, size=(900, 3))
+    z = (z - z.mean(axis=0)) / z.std(axis=0)
+    cut = np.median(z[:, 2]) + 0.4
+    calls = ["ied" if v > cut else "ds" for v in z[:, 2]]
+    g = pool.gmm_test(z, mu, sd, calls=calls)
+    ck("one skewed cloud still earns two Gaussians by BIC",
+       g["delta"] is not None and g["delta"] >= 2, g["delta"])
+    ck("but the sentence does not call it two populations",
+       "Read the split-axis histogram" in g["verdict"]
+       and "match the DS / IED call" not in g["verdict"], g["verdict"])
+    ck("graded on the Rand index, not on raw agreement",
+       "adjusted Rand" in g["verdict"] and "1 is the same split" in g["verdict"],
+       g["verdict"])
+
+    g = pool.gmm_test(Z, mu, sd)
+    ck("without calls there is no agreement to report, and no claim about it",
+       g["agree"] is None and "DS / IED" not in g["verdict"], g["verdict"])
+
+
+def _pool_synthetic(A):
+    from backend import rootcanalpool as pool
+    rng = np.random.default_rng(11)
+
+    head("POOL: CLEAR VS BLUR, ON CLOUDS WHOSE SHAPE IS KNOWN")
+    a = _member(pool, "A", "PTEN", 13,
+                _blob(rng, 60, 900, 20, 6, "ds")
+                + _blob(rng, 30, 2000, 11, 24, "ied"))
+    b = _member(pool, "B", "KCNT1", 13,
+                _blob(rng, 50, 950, 21, 7, "ds")
+                + _blob(rng, 25, 2100, 10, 25, "ied"))
+    two = pool.fit_pool([a, b])
+    g = two["gmm"]
+    ck("two well-separated blobs: dBIC large and positive (%+.1f), very "
+       "strong" % g["delta"], g["delta"] > 10
+       and g["support"] == "very strong support for two groups"
+       and abs(g["delta"] - (g["bic1"] - g["bic2"])) < 1e-6, g)
+    ck("the verdict says it is evidence, not proof",
+       "evidence, not proof" in g["verdict"]
+       and "Gaussian shapes" in g["verdict"], g["verdict"])
+    ck("the two components come back in raw units, the higher-HF second",
+       len(g["means_raw"]) == 2 and g["means_raw"][1][2] > 20
+       and g["means_raw"][0][2] < 10 and abs(sum(g["weights"]) - 1) < 1e-9,
+       g["means_raw"])
+    truth = [r["truth"] for m in (a, b) for r in m["rows"]]
+    agree = np.mean([e["cls_pool"] == tr
+                     for e, tr in zip(two["events"], truth)])
+    ck("the pooled k-means recovers the blobs (%.0f%%), IED the higher-HF "
+       "one" % (100 * agree), agree > 0.95
+       and two["centres"][1]["cls"] == "ied"
+       and two["centres"][1]["raw"][2] > two["centres"][0]["raw"][2])
+    sv = two["split_axis"]["values"]
+    ds_s = [v for v, e in zip(sv, two["events"]) if e["cls_pool"] == "ds"]
+    ied_s = [v for v, e in zip(sv, two["events"]) if e["cls_pool"] == "ied"]
+    ck("the split axis puts DS below 0 and IED above it",
+       np.mean(ds_s) < 0 < np.mean(ied_s)
+       and len(sv) == len(two["events"]))
+
+    one = pool.fit_pool([
+        _member(pool, "C", "PTEN", 1, _blob(rng, 150, 1200, 18, 12, "ds",
+                                             sd=(200, 4, 4))),
+        _member(pool, "D", "PTEN", 2, _blob(rng, 150, 1200, 18, 12, "ds",
+                                             sd=(200, 4, 4)))])
+    ck("one blob: dBIC under 2 (%+.1f), no support for two groups"
+       % one["gmm"]["delta"], one["gmm"]["delta"] < 2
+       and one["gmm"]["support"] == "no support for two groups",
+       one["gmm"]["verdict"])
+
+    head("POOL: POOLED RAW UNITS")
+    base = _blob(rng, 80, 1000, 18, 10, "ds", sd=(150, 3, 3))
+    twin = [dict(r, amp_uV=2 * r["amp_uV"]) for r in base]
+    dbl = pool.fit_pool([_member(pool, "E", "PTEN", 3, [dict(r) for r in base]),
+                         _member(pool, "F", "PTEN", 4, twin)])
+    za = np.array([e["z"][0] for e in dbl["events"]])
+    gap = za[80:].mean() - za[:80].mean()
+    ck("a member with doubled amplitudes sits higher in the pool (mean z "
+       "+%.2f above its twin), where a per-recording z would put them on "
+       "top of each other" % gap, gap > 1.5)
+    ck("z-scored once, across the whole pool",
+       abs(za.mean()) < 1e-9 and abs(za.std() - 1) < 1e-9
+       and dbl["params"]["scale"] == "pooled raw")
+    ck("the panel's one line says why",
+       "differences in size between mice stay visible"
+       in dbl["scale"]["why"])
+
+    head("POOL: THE IDENTITY SWITCH, AGAINST A HAND COUNT")
+    a2 = dict(a, rows=[dict(r, cls="ds") for r in a["rows"]])
+    sw = pool.fit_pool([a2, b])
+    ev = sw["events"]
+    hand = {"ds": {"ds": 0, "ied": 0}, "ied": {"ds": 0, "ied": 0}}
+    for e in ev:
+        hand[e["cls_single"]][e["cls_pool"]] += 1
+    n_sw = sum(1 for e in ev if e["cls_single"] != e["cls_pool"])
+    S = sw["switches"]
+    ck("the crosstab is the hand count", S["crosstab"] == hand,
+       (S["crosstab"], hand))
+    ck("the overall rate is switched / n (%d of %d)" % (n_sw, len(ev)),
+       S["switched"] == n_sw and S["n"] == len(ev)
+       and abs(S["rate"] - n_sw / float(len(ev))) < 1e-12)
+    a_sw = sum(1 for e in ev if e["m"] == 0 and e["switched"])
+    rowA = [r for r in S["by_member"] if r["key"] == "A"][0]
+    ck("per member: A's every pooled IED is a DS-to-IED switch (%d)" % a_sw,
+       rowA["switched"] == a_sw == rowA["ds_to_ied"]
+       and rowA["ied_to_ds"] == 0 and a_sw >= 25)
+    ck("switched is exactly cls_single != cls_pool, event by event",
+       all(e["switched"] == (e["cls_single"] != e["cls_pool"]) for e in ev))
+
+    head("POOL: MICE AND MOUSE TYPES")
+    ck("PTEN m13 and KCNT1 m13 are two mice, never one",
+       a["mouse_key"] == "PTEN|m13" and b["mouse_key"] == "KCNT1|m13"
+       and len(two["switches"]["by_mouse"]) == 2)
+    ck("a recording with no mouse number is its own mouse",
+       pool.mouse_key("PTEN", None, "s1") == "PTEN|gid:s1")
+    ck("types: the cohort as filed, the project prefixed where it is not, "
+       "wt from the path, else the project",
+       pool.mouse_type_of("PTEN", "PTEN_DKO") == "PTEN_DKO"
+       and pool.mouse_type_of("PTEN", "DKO") == "PTEN DKO"
+       and pool.mouse_type_of("KCNT1", None,
+                              [r"D:\KCNT1\urethane\wt\m2"]) == "KCNT1 wt"
+       and pool.mouse_type_of("KCNT1", None, [r"D:\KCNT1\het\m2"]) == "KCNT1")
+    ov = pool.fit_pool([a, b], mouse_types={"PTEN|m13": "PTEN het"})
+    ck("a mouse_types override wins over the registry",
+       ov["members"][0]["mouse_type"] == "PTEN het"
+       and ov["members"][0]["mouse_type_default"] == "PTEN"
+       and all(e["mouse_type"] == "PTEN het" for e in ov["events"]
+               if e["m"] == 0)
+       and {r["mouse_type"] for r in ov["switches"]["by_type"]}
+       == {"PTEN het", "KCNT1"})
+
+    head("POOL: PARTIAL EVENTS, FOCUS, AND REFUSALS")
+    rows = [dict(r) for r in a["rows"]]
+    rows[3]["hw_ms"] = None
+    pp = pool.fit_pool([dict(a, rows=rows), b])
+    e3 = pp["events"][3]
+    ck("a 2-axis event is assigned on the axes it has, as in Single",
+       e3["partial"] and e3["cls_pool"] in ("ds", "ied") and e3["z"][1] is None
+       and pp["counts"]["partial"] == 1 and pp["n_used"] == pp["n"] - 1)
+    ck("and has no position on the split axis",
+       pp["split_axis"]["values"][3] is None)
+    fo = pool.fit_pool([a, b], focus={"mouse_key": "KCNT1|m13"})
+    gf = fo["gmm_focus"]
+    ck("a focused mouse gets its own 1-vs-2 test, labelled as that mouse's",
+       gf and gf["n"] == len(b["rows"]) and "KCNT1|m13" in gf["verdict"]
+       and gf["focus"] == {"mouse_key": "KCNT1|m13"})
+    ck("and the pool-wide one stays as it was",
+       abs(fo["gmm"]["delta"] - two["gmm"]["delta"]) < 1e-9)
+    fot = pool.fit_pool([a, b], focus={"mouse_type": "PTEN"})
+    ck("a focused mouse TYPE works the same way",
+       fot["gmm_focus"]["n"] == len(a["rows"]))
+    for bad, what in (([a, dict(b, band=[300.0, 600.0])],
+                       "members over different HF bands"),
+                      ([a, a], "the same member twice"), ([], "no members")):
+        try:
+            pool.fit_pool(bad)
+            ck("%s are refused with a sentence" % what, False, "accepted")
+        except pool.PoolError as exc:
+            ck("%s are refused with a sentence" % what,
+               str(exc).endswith("."), str(exc))
+
+
+def _pool_routes(A, tmp, fake):
+    from backend import artifacts as artifactsmod
+    logs = os.path.join(tmp, "GUI_logs")
+    A.ARTIFACTS = artifactsmod.Artifacts(logs, A.STORE)
+    c = A.app.test_client()
+    bank_before = {r["id"]: len(r.get("versions") or [])
+                   for r in A.BANK.all()}
+
+    head("POOL ROUTES (a throwaway artifact store)")
+    ck("the rootcanal_pool kind is registered",
+       "rootcanal_pool" in artifactsmod.KINDS)
+    cj = c.get("/api/rootcanal/pool/candidates").get_json()
+    singles = cj.get("singles") or []
+    banked = [s for s in singles if s["banked"]]
+    unbanked = [s for s in singles if not s["banked"]]
+    ck("candidates list banked results and cached reads, each marked",
+       cj["ok"] and banked and unbanked
+       and all({"key", "entry_id", "session_label", "gid", "project",
+                "mouse", "mouse_key", "mouse_type", "n", "banked",
+                "version", "params_hash", "read", "here", "counts"}
+               <= set(s) for s in singles), cj)
+    ck("a recording with both appears twice, as two candidates",
+       {s["entry_id"] for s in banked} & {s["entry_id"] for s in unbanked})
+    one_b = banked[0]
+    fake.calls = 0
+    fb = c.post("/api/rootcanal/pool/fit",
+                json={"members": [{"key": one_b["key"]}]}).get_json()
+    ck("a banked-only pool reads no recording", fb.get("ok")
+       and fake.calls == 0, fb.get("error"))
+    members = [{"key": s["key"]} for s in singles]
+    r = c.post("/api/rootcanal/pool/fit", json={"members": members})
+    fit = r.get_json()
+    ck("the pool fit answers in the contract's shape",
+       r.status_code == 200 and fit.get("ok")
+       and {"n", "n_used", "axes", "members", "events", "centres", "rule",
+            "scale", "gmm", "gmm_focus", "switches", "split_axis", "counts",
+            "params"} <= set(fit)
+       and {"m", "i", "t", "amp_uV", "hw_ms", "hf_db", "z", "cls_pool",
+            "cls_single", "switched", "partial", "wide", "mouse_key",
+            "mouse_type"} <= set(fit["events"][0])
+       and {"key", "entry_id", "session_label", "gid", "mouse_key",
+            "mouse_type", "banked", "n", "pin"} <= set(fit["members"][0])
+       and {"crosstab", "n", "switched", "rate", "by_member", "by_mouse",
+            "by_type"} <= set(fit["switches"])
+       and {"n", "bic1", "bic2", "delta", "verdict", "weights",
+            "means_raw"} <= set(fit["gmm"]),
+       fit.get("error") or sorted(fit))
+    um = [m for m in fit["members"] if not m["banked"]][0]
+    ck("an unbanked member is pinned by read, params and rows digest",
+       {"read", "params", "rows_digest"} <= set(um["pin"]))
+    bm = [m for m in fit["members"] if m["banked"]][0]
+    ck("a banked member is pinned by ds_version and params_hash",
+       {"ds_version", "params_hash"} <= set(bm["pin"])
+       and bm["pin"]["params_hash"])
+    k_ev = [j for j, e in enumerate(fit["events"])
+            if fit["members"][e["m"]]["key"] == um["key"]][0]
+    body = dict(um["event_body"], i=fit["events"][k_ev]["i"])
+    rv = c.post("/api/rootcanal/event", json=body).get_json()
+    ck("a dot opens through /api/rootcanal/event with the member's "
+       "event_body plus its i", rv.get("ok") and rv["i"] == body["i"],
+       rv.get("error"))
+    gone = dict(um["event_body"], i=0, read="000000000000")
+    rg = c.post("/api/rootcanal/event", json=gone).get_json()
+    ck("a member whose read is not here says so in a sentence",
+       not rg.get("ok") and "not on this machine" in rg.get("error", ""),
+       rg)
+
+    sv = {"members": members, "mouse_types": {}, "note": "check"}
+    r = c.post("/api/rootcanal/pool/save", json=dict(sv, nickname="  "))
+    ck("saving with an empty label is refused with a sentence",
+       r.status_code == 400 and "label" in r.get_json()["error"])
+    r = c.post("/api/rootcanal/pool/save", json=dict(sv, nickname="check"))
+    s1 = r.get_json()
+    ck("a new pool saves as v1 of a new artifact",
+       s1.get("ok") and s1["version"] == 1 and not s1["confirmed"]
+       and s1["nickname"] == "check"
+       and s1["name"].startswith("Root Canal pool · "), s1)
+    op = c.get("/api/rootcanal/pool/%s" % s1["artifact_id"]).get_json()
+    pay = op.get("payload") or {}
+    same = all(_canon_json(pay.get(k)) == _canon_json(fit.get(k))
+               for k in ("events", "members", "gmm", "switches", "centres",
+                         "split_axis", "counts", "rule", "scale"))
+    ck("reopening it gives the identical payload, with no refit",
+       op.get("ok") and same and pay.get("pool_key")
+       and op["artifact"]["kind"] == "rootcanal_pool")
+    r = c.post("/api/rootcanal/pool/save",
+               json=dict(sv, nickname="check",
+                         artifact_id=s1["artifact_id"]))
+    s2 = r.get_json()
+    ck("an identical re-save is a confirmation, not a version",
+       s2.get("ok") and s2["confirmed"] and s2["version"] == 1, s2)
+    r = c.post("/api/rootcanal/pool/save",
+               json=dict(sv, members=members[:-1], nickname="check",
+                         artifact_id=s1["artifact_id"]))
+    s3 = r.get_json()
+    ck("a changed member makes v2 of the same pool",
+       s3.get("ok") and s3["version"] == 2 and not s3["confirmed"]
+       and s3["artifact_id"] == s1["artifact_id"], s3)
+    mk = fit["members"][0]["mouse_key"]
+    r = c.post("/api/rootcanal/pool/save",
+               json=dict(sv, members=members[:-1], nickname="check renamed",
+                         mouse_types={mk: "custom type"},
+                         artifact_id=s1["artifact_id"]))
+    s4 = r.get_json()
+    ck("a changed override makes v3, and the label can change with it",
+       s4.get("ok") and s4["version"] == 3
+       and s4["nickname"] == "check renamed", s4)
+    p3 = A.ARTIFACTS.payload(s1["artifact_id"], 3)
+    ck("the override is stored in the pool and wins",
+       p3["mouse_types"] == {mk: "custom type"}
+       and p3["members"][0]["mouse_type"] == "custom type")
+    v1 = c.get("/api/rootcanal/pool/%s?version=1"
+               % s1["artifact_id"]).get_json()
+    ck("an earlier version reopens as it was",
+       v1.get("ok") and v1["version"] == 1
+       and len(v1["payload"]["members"]) == len(members))
+    s5 = c.post("/api/rootcanal/pool/save",
+                json=dict(sv, nickname="check")).get_json()
+    ck("the same members saved as a new pool are a second pool, on purpose",
+       s5.get("ok") and s5["artifact_id"] != s1["artifact_id"])
+    pl = c.get("/api/rootcanal/pools").get_json()
+    row = [p for p in pl.get("pools") or []
+           if p["artifact_id"] == s1["artifact_id"]]
+    ck("the shelf lists it with its label, version and member counts",
+       pl.get("ok") and len(pl["pools"]) == 2 and row
+       and row[0]["nickname"] == "check renamed" and row[0]["version"] == 3
+       and row[0]["n_members"] == len(members) - 1
+       and row[0]["n_unbanked"] is not None and row[0]["updated"], row)
+    bank_after = {r["id"]: len(r.get("versions") or [])
+                  for r in A.BANK.all()}
+    ck("nothing in Pooled wrote to the Event Bank", bank_before == bank_after)
+
+
+def _real_pool(A):
+    head("A REAL POOL: every Root Canal single on this machine")
+    from backend import rootcanalpool as pool
+    t0 = time.time()
+    cands = A._rootcanal_pool_candidates()
+    if not cands:
+        print("  skipped: no Root Canal singles on this machine")
+        return
+    members = A._rootcanal_pool_members([{"key": c["key"]} for c in cands])
+    res = pool.fit_pool(members, focus={"mouse_key": "PTEN|m13"})
+    g, sw = res["gmm"], res["switches"]
+    print("  %d singles (%d banked), %d events, %d mice, %.0f s"
+          % (len(cands), sum(1 for c in cands if c["banked"]), res["n"],
+             len({m["mouse_key"] for m in members}), time.time() - t0))
+    print("  counts %s" % res["counts"])
+    print("  rule: %s" % res["rule"])
+    print("  pool-wide: %s" % g["verdict"])
+    if g.get("weights"):
+        for w, mr in zip(g["weights"], g["means_raw"]):
+            print("    component w=%.3f  amp %.0f uV, hw %.1f ms, HF %+.1f dB"
+                  % (w, mr[0], mr[1], mr[2]))
+    if res["gmm_focus"]:
+        print("  focus: %s" % res["gmm_focus"]["verdict"])
+    print("  identity switch: %d of %d (%.1f%%), crosstab %s"
+          % (sw["switched"], sw["n"], 100 * (sw["rate"] or 0),
+             sw["crosstab"]))
+    for r in sw["by_mouse"]:
+        print("    %-12s %4d events, %3d switched (%.0f%%)"
+              % (r["mouse_key"], r["n"], r["switched"],
+                 100 * (r["rate"] or 0)))
+    ck("the real pool fits", res["n"] > 0 and g["n"] > 0)
+    ck("no event's HF is a flat-window infinity",
+       max(e["hf_db"] for e in res["events"] if e["hf_db"] is not None)
+       < 80)
 
 
 if __name__ == "__main__":
