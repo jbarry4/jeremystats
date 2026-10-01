@@ -1168,11 +1168,18 @@ BARRY.views.toolkit = (function () {
       // Only while the curation view is the one being looked at. Polling for
       // a panel nobody can see is just traffic.
       if (BARRY.state.view !== 'toolkit') return;
-      // Nor while the window is behind another one. The answer is a fresh
-      // read every time it comes back, so nothing is missed by not asking.
-      if (document.hidden) return;
+      // Nor while the window is behind another one, nor after ten minutes
+      // with nobody at it (BARRY.idle). The answer is a fresh read every
+      // time somebody comes back, so nothing is missed by not asking.
+      if (BARRY.idle ? BARRY.idle.away() : document.hidden) return;
       loadPresence(true);
     }, PRESENCE_POLL);
+  }
+
+  if (BARRY.idle) {
+    BARRY.idle.onWake(() => {
+      if (presenceTimer && BARRY.state.view === 'toolkit') loadPresence(true);
+    });
   }
 
   /* Stop asking.

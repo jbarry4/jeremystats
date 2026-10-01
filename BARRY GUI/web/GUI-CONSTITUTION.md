@@ -1307,7 +1307,7 @@ over a fixed window; the rest from intervals.
 | path | trigger | ≈ requests / hour | held back by |
 |---|---|---|---|
 | push | `_cloud_loop`: every 60 s, and ~6 s after a write of shared data | **0 when nothing changed (measured)**; one upsert per table that did | rows stamped when they changed; `machines` a 5-minute heartbeat; pushed snapshot keys remembered in the sync state |
-| pull: `barry_watermarks`, then only tables that moved | `_cloud_loop` | 20 s only while another machine's changes arrive; 60 s while somebody works here; up to 320 s quiet; 1,800 s with nobody looking — **17 requests in 230 s measured**, most of them other machines' old-code roster | watermark view; `_cloud_pace` |
+| pull: `barry_watermarks`, then only tables that moved | `_cloud_loop` | 20 s only while another machine's changes arrive; 60 s while somebody works or reads here; up to 320 s quiet; **none** after 10 min with nobody here — **17 requests in 230 s measured**, most of them other machines' old-code roster | watermark view; `_cloud_pace` |
 | `pull_files` | files step, every 300 s | 0 unless a pull saw `results` move; then the new rows only | `results_moved`, `_files_through` |
 | `upload_results` | files step, every 300 s | 0 unless a figure changed; a refused file is not retried until it changes | `uploaded` / `upload_refused` in the sync state |
 | tool feed `GET /api/toolfeed/<tool>` | every 15 s, ToolKit visible | ≤ 120 (one shared read per 30 s for every tool), 0 hidden | `toolfeed._shared` |
@@ -1318,6 +1318,15 @@ over a fixed window; the rest from intervals.
 Background sync runs only in the process `start.py` starts
 (`Jarvis_CLOUD_SYNC=on`), and only one per computer (`_cloud_loop_lock`).
 The harness runner and the tools that import `backend.app` do not sync.
+
+**Nobody here, nothing sent.** After `IDLE_AFTER` (10 min) with no key,
+click, scroll or mouse movement in any Jarvis page, the loop asks the
+cloud nothing -- no pull, push, heartbeat or figure sweep -- and every
+poller in the page skips its tick (`BARRY.idle.away()`). The page
+reports input to its own server (`POST /api/cloud/active`, at most once a
+minute, never to Supabase); the first input after the pause catches up at
+once through `BARRY.idle.onWake`. A new cloud-backed poller checks
+`BARRY.idle.away()`, not only `document.hidden`, and registers `onWake`.
 
 ### Known leaks
 

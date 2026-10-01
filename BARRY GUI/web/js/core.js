@@ -18,6 +18,69 @@ const BARRY = {
 };
 
 /* ==========================================================================
+   Is anybody here?
+   After ten minutes with no key, click, scroll or mouse movement, every
+   cloud-backed poll in the page stops (the tool feed, the presence poll, a
+   curation set's beat) and the server stops syncing altogether
+   (backend/app.py IDLE_AFTER). The first input afterwards restarts both at
+   once -- the pollers through onWake, the server through the beacon.
+
+   The beacon (POST /api/cloud/active) goes to this computer's own server,
+   never to Supabase, at most once a minute while somebody is using the page.
+   ========================================================================== */
+BARRY.idle = (function () {
+  const AFTER_MS = 10 * 60 * 1000;   // matches IDLE_AFTER in app.py
+  const TELL_MS = 60 * 1000;
+  let last = Date.now();
+  let told = 0;
+  const wake = [];
+
+  function isIdle() { return Date.now() - last >= AFTER_MS; }
+
+  function tell() {
+    told = Date.now();
+    try {
+      fetch('/api/cloud/active', { method: 'POST' }).catch(() => {});
+    } catch (e) { /* the server will fall back to counting requests */ }
+  }
+
+  function resume() {
+    for (const f of wake) {
+      try { f(); } catch (e) { /* one module's resume is not the others' */ }
+    }
+  }
+
+  function note(back) {
+    const was = isIdle();
+    last = Date.now();
+    if (was || last - told >= TELL_MS) tell();
+    if (was || back) resume();
+  }
+
+  ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']
+    .forEach((ev) => document.addEventListener(
+      ev, () => note(false), { passive: true, capture: true }));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) note(true);
+  });
+  tell();                              // a page just opened is somebody
+
+  return {
+    isIdle,
+    /* Should a cloud-backed poll skip this tick? Hidden, or nobody here. */
+    away() { return document.hidden || isIdle(); },
+    /* fn runs when somebody comes back -- to a hidden window, or after being
+       idle -- so a stopped poll can catch up at once. One path for both, so
+       a poll does not fire twice when both happen together. */
+    onWake(fn) { if (typeof fn === 'function') wake.push(fn); },
+    AFTER_MS,
+    /* For web/_dev/idle.html: pretend the last input was `ms` ago, so the
+       ten-minute rule can be checked without waiting ten minutes. */
+    _backdate(ms) { last = Date.now() - ms; },
+  };
+}());
+
+/* ==========================================================================
    Uncaught front-end errors
    A JS exception used to fail silently: the interface would simply stop
    halfway through starting up with no indication why. Now anything uncaught
