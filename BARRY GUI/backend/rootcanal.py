@@ -173,6 +173,41 @@ MERGE_GAP_S = 1.0                # stamps closer than this share a read
 # The fit. Defaults, every one of them a setting.
 LO_HZ, HI_HZ = 1.0, 100.0        # the amplitude/half-width filter
 FILTER_ORDER = 4                 # Butterworth, zero-phase (sosfiltfilt)
+
+# WHICH FILTER THE AMPLITUDE AND HALF-WIDTH ARE MEASURED ON, as a choice of
+# four, asked for by the user (2026-10-01) once it was clear the default had
+# been a recommendation rather than a measurement.
+#
+#   none    the stored 2 kHz snippet as it is. Nothing taken out -- mains
+#           included -- which is the point of having it: the baseline every
+#           other choice is a change from.
+#   ds      the dentate-spike filter. Toothy's 5-100 Hz detection band at
+#           its own order (the band Incisor found these events on, and X-ray
+#           measures them on), with the 60 Hz mains FITTED out the way the
+#           CSD's is (`_line_out`). The whole Dentist on one waveform.
+#   lfp     1-100 Hz, order 4: the LFP / morphology band `ied_ds_lit.py`
+#           takes from the epilepsy literature, and this tool's default
+#           since it was built. No mains removal -- that is the literature
+#           band as it is used -- and on PTEN m1 s2 it left 23 of 64 events
+#           measured on CSC41, a contact carrying heavy mains as well as
+#           real events. Kept the default so that nothing already fitted
+#           changes under anyone; choosing another is one click.
+#   custom  the corners and order given, with the mains out or not.
+#
+# A preset FIXES its corners and order: a "ds" fit with lo_hz 3 would be two
+# different filters under one name, so a preset's numbers are its own and
+# whatever came with the request is ignored.
+FILTERS = {
+    "none": {"lo_hz": 0.0, "hi_hz": 0.0, "order": 0, "mains_out": False,
+             "label": "no filter"},
+    "ds": {"lo_hz": float(incisor.DS_BAND[0]), "hi_hz": float(incisor.DS_BAND[1]),
+           "order": int(incisor.DS_ORDER), "mains_out": True,
+           "label": "DS filter"},
+    "lfp": {"lo_hz": LO_HZ, "hi_hz": HI_HZ, "order": FILTER_ORDER,
+            "mains_out": False, "label": "LFP filter"},
+}
+FILTER_KINDS = ("none", "ds", "lfp", "custom")
+DEFAULT_FILTER = "lfp"
 WIN_MS = 25.0                    # +- where the contact and the peak are picked
 BAND = (500.0, 1000.0)           # the HF band (v5's), now adjustable
 
@@ -294,8 +329,9 @@ class Params:
 
     READ_KEYS = ("entry_id", "stamps_hash", "read_fs", "snip_fs", "snip_ms",
                  "hf_win_ms", "hf_base_off_ms", "hf_base_win_ms", "pad_s")
-    FIT_KEYS = ("lo_hz", "hi_hz", "order", "win_ms", "band_lo", "band_hi",
-                "cross_ms", "flank_ms", "seed", "n_init", "flips", "centres")
+    FIT_KEYS = ("filt", "mains_out", "lo_hz", "hi_hz", "order", "win_ms",
+                "band_lo", "band_hi", "cross_ms", "flank_ms", "seed", "n_init",
+                "flips", "centres")
 
     def __init__(self, **kw):
         g = kw.get
@@ -317,9 +353,22 @@ class Params:
         self.spacing = g("spacing")
 
         # -- the fit --------------------------------------------------
-        self.lo_hz = _num(g("lo_hz"), LO_HZ, "the filter's low corner")
-        self.hi_hz = _num(g("hi_hz"), HI_HZ, "the filter's high corner")
-        self.order = int(_num(g("order"), FILTER_ORDER, "the filter order"))
+        self.filt = str(g("filt") or DEFAULT_FILTER).strip().lower()
+        if self.filt not in FILTER_KINDS:
+            raise RootCanalError(
+                "The filter has to be one of %s, not %r."
+                % (", ".join(FILTER_KINDS), self.filt))
+        if self.filt in FILTERS:
+            pre = FILTERS[self.filt]
+            self.lo_hz, self.hi_hz = pre["lo_hz"], pre["hi_hz"]
+            self.order, self.mains_out = pre["order"], pre["mains_out"]
+        else:
+            self.lo_hz = _num(g("lo_hz"), LO_HZ, "the filter's low corner")
+            self.hi_hz = _num(g("hi_hz"), HI_HZ, "the filter's high corner")
+            self.order = int(_num(g("order"), FILTER_ORDER,
+                                  "the filter order"))
+            mo = g("mains_out")
+            self.mains_out = True if mo is None else bool(mo)
         self.win_ms = _num(g("win_ms"), WIN_MS, "the amplitude window")
         self.band_lo = _num(g("band_lo"), BAND[0], "the band's low edge")
         self.band_hi = _num(g("band_hi"), BAND[1], "the band's high edge")
@@ -348,15 +397,17 @@ class Params:
                     "own.")
             self.centres = [[float(v) for v in row] for row in arr]
 
-        if self.order < 1 or self.order > 8:
+        if self.filt != "none" and (self.order < 1 or self.order > 8):
             raise RootCanalError("The filter order has to be 1 to 8.")
-        if self.lo_hz < 0:
+        if self.filt == "none":
+            pass
+        elif self.lo_hz < 0:
             raise RootCanalError("The filter's low corner cannot be negative.")
-        if not self.lo_hz < self.hi_hz:
+        elif not self.lo_hz < self.hi_hz:
             raise RootCanalError(
                 "The filter's high corner (%g Hz) has to be above its low "
                 "corner (%g Hz)." % (self.hi_hz, self.lo_hz))
-        if self.hi_hz > MAX_HI_HZ:
+        elif self.hi_hz > MAX_HI_HZ:
             raise RootCanalError(
                 "The waveforms are stored at %g Hz, so a lowpass above %g Hz "
                 "would be shaped by the storage step's own anti-alias filter "
@@ -407,6 +458,16 @@ class Params:
 
     def band_label(self):
         return "%s–%s Hz power" % (_g(self.band_lo), _g(self.band_hi))
+
+    def filter_label(self):
+        """What the amplitude and half-width were measured on, in words."""
+        if self.filt == "none":
+            return "no filter (60 Hz mains left in)"
+        name = FILTERS.get(self.filt, {}).get("label", "custom filter")
+        lo = ("%s–%s Hz" % (_g(self.lo_hz), _g(self.hi_hz)) if self.lo_hz > 0
+              else "low-pass %s Hz" % _g(self.hi_hz))
+        return "%s, %s, %s" % (name, lo, "60 Hz mains out" if self.mains_out
+                               else "60 Hz mains left in")
 
 
 def _num(v, default, what):
@@ -848,8 +909,18 @@ def _filter(x, p, fs):
     the module docstring for the numbers, and the two others that were
     tried and did worse).
     """
-    y = np.asarray(x, dtype=np.float64)
+    y = np.array(x, dtype=np.float64)
+    if p.filt == "none":
+        return y
     n = y.shape[-1]
+    if p.mains_out:
+        # Fitted out row by row where the row is finite; a NaN row (a
+        # contact the read could not take) stays NaN and touches nothing.
+        rows = y.reshape(-1, n)
+        ok = np.isfinite(rows).all(axis=1)
+        if ok.any():
+            rows[ok] = _line_out(rows[ok], fs)
+        y = rows.reshape(y.shape)
     return sosfiltfilt(_sos(p, fs), y, axis=-1, padtype="even",
                        padlen=max(0, n - 1))
 
@@ -947,8 +1018,8 @@ def measure(got, p):
     re-filter of the stack -- which is done a few dozen events at a time, so
     the float64 working copy stays tens of megabytes rather than hundreds.
     """
-    key = ("measure", p.lo_hz, p.hi_hz, p.order, p.win_ms, p.cross_ms,
-           tuple(p.flank_ms))
+    key = ("measure", p.filt, p.mains_out, p.lo_hz, p.hi_hz, p.order,
+           p.win_ms, p.cross_ms, tuple(p.flank_ms))
     memo = got.setdefault("_memo", {})
     if key in memo:
         return memo[key]
@@ -1374,4 +1445,6 @@ def event_view(got, p, i):
     return {"i": i, "t": float(got["t"][i]),
             "trace": trace, "spectrum": spectrum, "stack": stack,
             "csd": out_csd,
-            "filter": [float(p.lo_hz), float(p.hi_hz)]}
+            "filter": [float(p.lo_hz), float(p.hi_hz)],
+            "filt": p.filt, "mains_out": bool(p.mains_out),
+            "filter_label": p.filter_label()}

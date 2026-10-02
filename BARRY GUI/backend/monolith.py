@@ -1427,19 +1427,21 @@ def entry_detail(out_dir, man, summary, what, layer, at):
                       u["cue_label"], "v": _f(v)} for u, v in
                      zip(d["units"], vals)]
             if what == "edges":
-                wkey = ("wires_state" if at[0] < 4 else
-                        "wires_slow" if sweep.BAND_BY_ID[
-                            sweep.BAND_IDS[at[1]]]["speed"] == "slow"
-                        else "wires_fast")
+                wkey = wires_key(at[0], at[1])
                 Wt = _load_day(out_dir, rat, day, wkey, mmap="r")
                 a, b = summary["pairs"][at[3]]
                 wi = at[0] if at[0] < 4 else at[0] - 4
                 if Wt is not None:
                     for i, u in enumerate(units):
                         u["wires"] = [int(Wt[i, wi, a]), int(Wt[i, wi, b])]
+                        if u["v"] is None:
+                            u["why"] = unit_why(
+                                summary, rat, day, u["id"],
+                                [int(x) for x in Wt[i, wi]], names[a],
+                                names[b], u["wires"])
             m, s2, n = day_stats(vals[:, None])
             slot = {"cue": _f(m[0]), "cue_se2": _f(s2[0]), "n": int(n[0]),
-                    "units": units}
+                    "of": len(units), "units": units}
             if layer == "minus_fp":
                 Xr = _load_day(out_dir, rat, day, rest_name, mmap="r")
                 if Xr is None or not Xr.shape[0]:
@@ -1449,10 +1451,21 @@ def entry_detail(out_dir, man, summary, what, layer, at):
                                 dtype=np.float64)
                 rm, rs2, rn = day_stats(rv[:, None])
                 slot.update(rest=_f(rm[0]), rest_se2=_f(rs2[0]),
-                            n_rest=int(rn[0]),
+                            n_rest=int(rn[0]), of_rest=len(d["rest"]),
                             rest_units=[{"id": u["id"], "label": u["label"],
                                          "run": u["run"], "v": _f(v)}
                                         for u, v in zip(d["rest"], rv)])
+                if what == "edges":
+                    Wr = _load_day(out_dir, rat, day, "wires_rest", mmap="r")
+                    a, b = summary["pairs"][at[3]]
+                    for i, u in enumerate(slot["rest_units"]):
+                        if Wr is not None and i < Wr.shape[0]:
+                            u["wires"] = [int(Wr[i, 0, a]), int(Wr[i, 0, b])]
+                            if u["v"] is None:
+                                u["why"] = unit_why(
+                                    summary, rat, day, u["id"],
+                                    [int(x) for x in Wr[i, 0]], names[a],
+                                    names[b], u["wires"])
                 if slot["n"] and slot["n_rest"]:
                     slot["x"] = slot["cue"] - slot["rest"]
                     slot["se2"] = (None if slot["cue_se2"] is None or
@@ -1497,12 +1510,518 @@ def entry_detail(out_dir, man, summary, what, layer, at):
                   abs(e1 - e2) <= 1e-4 * max(1.0, abs(e2)))) and \
             ((p1 is None) == (p is None)) and \
             (p is None or abs(p1 - p) <= 1e-4 * max(1e-3, p))
+    ci = None
+    if p is not None and t.get("se") and t.get("df"):
+        from scipy.stats import t as _t
+        half = float(_t.ppf(0.975, t["df"])) * t["se"]
+        ci = [mp["mean"] - half, mp["mean"] + half]
+    for rec in per_rat:
+        if rec.get("v") is not None and rec["v"] >= 0:
+            half = 1.959964 * math.sqrt(rec["v"])
+            rec["ci"] = [rec["delta"] - half, rec["delta"] + half]
     return {"what": what, "layer": layer, "at": list(at),
             "rats": per_rat, "pooled": {
                 "est": mp.get("mean"), "se": t.get("se") if p is not None
                 else None, "p": p, "df": t.get("df"), "k": mp["k"],
-                "tau2": mp.get("tau2"), "why": mp.get("why") or t.get("why")},
+                "tau2": mp.get("tau2"), "ci": ci,
+                "why": mp.get("why") or t.get("why")},
             "arrays": pooled_says, "agree": agree}
+
+
+def wires_key(w, b):
+    """Which day file holds the wires a window was read on."""
+    if w < 4:
+        return "wires_state"
+    return ("wires_slow" if sweep.BAND_BY_ID[sweep.BAND_IDS[b]]["speed"]
+            == "slow" else "wires_fast")
+
+
+def unit_why(summary, rat, day, uid, row, name_a, name_b, wires):
+    """Why one cue pair (or rest epoch) has no value for one region pair,
+    in words, from the wires it was read on (-1: none usable)."""
+    if row and all(x < 0 for x in row):
+        said = None
+        for r in summary.get("refusals") or []:
+            if r.get("unit") == uid and str(r.get("task") or "").startswith(
+                    "r%d_%s_" % (rat, day)):
+                said = r.get("why")
+                break
+        return ("Not read in this window at all" + (": %s" % said if said
+                                                     else " (every region's "
+                                                     "wires were clipped or "
+                                                     "bad there)") + ".")
+    gone = [n for n, wv in ((name_a, wires[0]), (name_b, wires[1])) if wv < 0]
+    if gone:
+        return ("%s had no usable wire in this window: every wire it has "
+                "was clipped there, marked bad, or the region is not placed "
+                "in this rat." % " and ".join(gone))
+    return ("Both regions were read, but this measure could not be formed "
+            "here (a flat stretch, or too few pieces of the window for it).")
+
+
+# ==========================================================================
+# What was lost (the page's damage report)
+# ==========================================================================
+#: Why a region gave nothing in one window of one cue pair or rest epoch,
+#: first reason that applies wins. "clipped" is the bank's exclusion for
+#: that window (Spark's clipping check, and any hand edits made on top of
+#: it); in the slow transitions, which the node measures itself, it is the
+#: node's own clipping check.
+DAMAGE_REASONS = ("histology", "bad", "clipped", "unread")
+#: Why one wire was left out of one window, as the cue-pair view says it.
+EXCLUDED_SAY = {
+    "histology": "histology says this probe is not in %(region)s, so no "
+                 "region label fits this wire; shown as recorded",
+    "bad": "marked bad for the whole recording",
+    "clipped": "left out of %(window)s: the clipping check found it at the "
+               "rail there",
+    "unread": "not read in %(window)s, for no reason on record",
+}
+DAMAGE_SAY = {
+    "histology": "histology says the probe is not in this region",
+    "bad": "every wire it has is marked bad for the recording",
+    "clipped": "every wire it has was clipped (or excluded in the bank) "
+               "in that window",
+    "unread": "it was not measured there (the cue pair or window was "
+              "refused on the cluster, or nothing could be read)",
+}
+_DAMAGE_CACHE = {}
+
+
+def _drop_for(drop, wname):
+    if drop is None:
+        return None
+    if isinstance(drop, dict):
+        return drop.get(wname)
+    return drop
+
+
+def _lost_why(name, chans, blocked, bad, drop):
+    """The reason one region has no wire in one window."""
+    if name in blocked:
+        return "histology"
+    cs = set(chans.get(name) or [])
+    if cs and cs <= bad:
+        return "bad"
+    if drop is not None and cs and cs <= (set(int(c) for c in drop) | bad):
+        return "clipped"
+    return "unread"
+
+
+def _tally(names):
+    return {n: dict({"of": 0, "kept": 0}, **{r: 0 for r in DAMAGE_REASONS})
+            for n in names}
+
+
+def damage(man, summary, out_dir):
+    """What the Monolith lost, rat by rat and day by day, and in all.
+
+    Read from what the node actually did -- the wire each region was read
+    on in each window, -1 where none was usable -- with the reason worked
+    out from the manifest: histology, bad wires, the bank's per-window
+    exclusions. Cue pairs are counted kept (every region histology allows,
+    in every state window), partly kept, or lost (fewer than two regions in
+    every window, so no edge at all)."""
+    names = summary["regions"]
+    chans = coupling.dewey_map()
+    refused = {}
+    for r in summary.get("refusals") or []:
+        key = "_".join(str(r.get("task") or "").split("_")[:2])
+        refused[key] = refused.get(key, 0) + 1
+    notes = (summary.get("manifest") or {}).get("notes") or []
+    days_out = []
+    whole = {"cue": {"total": 0, "kept": 0, "partial": 0, "lost": 0},
+             "rest": {"total": 0, "kept": 0, "lost": 0},
+             "state": _tally(names), "trans": _tally(names),
+             "rest_regions": _tally(names)}
+    for d in man["days"]:
+        rat, day = int(d["rat"]), d["day"]
+        blocked = set(d.get("blocked") or {})
+        bad = set(int(c) for c in d.get("bad") or [])
+        units, rest = d.get("units") or [], d.get("rest") or []
+        W = {k: _load_day(out_dir, rat, day, k) for k in
+             ("wires_state", "wires_slow", "wires_fast", "wires_rest")}
+        st, tr, rr = _tally(names), _tally(names), _tally(names)
+        cue = {"total": len(units), "kept": 0, "partial": 0, "lost": 0}
+        allowed = [n for n in names if n not in blocked]
+        for i, u in enumerate(units):
+            ws = W["wires_state"]
+            got_all, any_pair = True, False
+            for wi, wname in enumerate(sweep.STATE):
+                drop = _drop_for(u.get("drop"), wname)
+                n_read = 0
+                for ri, name in enumerate(names):
+                    st[name]["of"] += 1
+                    ok = ws is not None and i < ws.shape[0] and ws[i, wi, ri] >= 0
+                    if ok:
+                        st[name]["kept"] += 1
+                        n_read += 1
+                    else:
+                        st[name][_lost_why(name, chans, blocked, bad,
+                                           drop)] += 1
+                        if name not in blocked:
+                            got_all = False
+                if n_read >= 2:
+                    any_pair = True
+            if not allowed:
+                got_all = False
+            cue["kept" if got_all else "partial" if any_pair else "lost"] += 1
+            for wi, wname in enumerate(sweep.TRANSITION):
+                for ri, name in enumerate(names):
+                    # Slow and fast windows both: a region is kept in a
+                    # transition window if either set read it there.
+                    tr[name]["of"] += 1
+                    hit = any(a is not None and i < a.shape[0] and a[i, wi, ri] >= 0
+                              for a in (W["wires_slow"], W["wires_fast"]))
+                    if hit:
+                        tr[name]["kept"] += 1
+                    else:
+                        drop = _drop_for(u.get("drop"), wname)
+                        why = _lost_why(name, chans, blocked, bad, drop)
+                        if why == "unread" and drop is None:
+                            why = "clipped"       # the node's own check
+                        tr[name][why] += 1
+        rest_t = {"total": len(rest), "kept": 0, "lost": 0}
+        for i, u in enumerate(rest):
+            wr = W["wires_rest"]
+            drop = _drop_for(u.get("drop"), "rest")
+            n_read = 0
+            for ri, name in enumerate(names):
+                rr[name]["of"] += 1
+                if wr is not None and i < wr.shape[0] and wr[i, 0, ri] >= 0:
+                    rr[name]["kept"] += 1
+                    n_read += 1
+                else:
+                    rr[name][_lost_why(name, chans, blocked, bad, drop)] += 1
+            rest_t["kept" if n_read >= 2 else "lost"] += 1
+        label = "r%d %s" % (rat, day)
+        days_out.append({
+            "rat": rat, "day": day, "cue": cue, "rest": rest_t,
+            "histology": sorted(blocked), "bad": sorted(bad),
+            "refused": refused.get("r%d_%s" % (rat, day), 0),
+            "notes": [n[len(label) + 2:] if n.startswith(label + ":") else n
+                      for n in notes if n.startswith(label + ":")],
+            "regions": [{"name": n, "state": st[n], "trans": tr[n],
+                         "rest": rr[n]} for n in names]})
+        for k in ("total", "kept", "partial", "lost"):
+            whole["cue"][k] += cue[k]
+        for k in ("total", "kept", "lost"):
+            whole["rest"][k] += rest_t[k]
+        for key, tally in (("state", st), ("trans", tr), ("rest_regions", rr)):
+            for n in names:
+                for k, v in tally[n].items():
+                    whole[key][n][k] += v
+    whole["state"] = [dict(name=n, **whole["state"][n]) for n in names]
+    whole["trans"] = [dict(name=n, **whole["trans"][n]) for n in names]
+    whole["rest_regions"] = [dict(name=n, **whole["rest_regions"][n])
+                             for n in names]
+    # What it cost the pooled result: entries not tested, and why.
+    entries = {}
+    pairs = summary["pairs"]
+    for layer in LAYERS:
+        fname = "edges_%s.f32" % layer
+        info = (summary.get("files") or {}).get(fname)
+        path = os.path.join(out_dir, fname)
+        if not info or not os.path.isfile(path):
+            continue
+        A = np.memmap(path, dtype="<f4", mode="r", shape=tuple(info["shape"]))
+        why = np.asarray(A[QUANTITIES.index("why")])
+        p = np.asarray(A[QUANTITIES.index("p")])
+        tested = np.isfinite(p)
+        codes = {}
+        for c in np.unique(why[~tested & np.isfinite(why)]).astype(int):
+            codes[str(c)] = int(((why == c) & ~tested).sum())
+        by_region = []
+        for ri, n in enumerate(names):
+            idx = [pi for pi, (a, b) in enumerate(pairs) if ri in (a, b)]
+            sub = tested[..., idx]
+            by_region.append({"name": n, "entries": int(sub.size),
+                              "tested": int(sub.sum())})
+        entries[layer] = {"entries": int(p.size), "tested": int(tested.sum()),
+                          "untested": codes, "by_region": by_region}
+        del A
+    return {"ok": True, "rid": summary.get("rid"), "regions": names,
+            "reasons": list(DAMAGE_REASONS), "reason_say": DAMAGE_SAY,
+            "days": days_out, "whole": whole, "entries": entries,
+            "why_say": summary.get("why") or {}}
+
+
+def damage_now():
+    """damage() for the built Monolith, kept until it is rebuilt."""
+    d = data_dir()
+    summ = summary_now()
+    # The manifest as it is on disk: this describes a run already made, so
+    # a manifest from before a change of file rule (which only decides what
+    # an upload sends) still says which cue pairs and wires it had.
+    man = _read_json(_path("manifest.json"))
+    if not d or not summ or not man or man.get("schema") != SCHEMA:
+        return None
+    key = (d, os.path.getmtime(os.path.join(d, "summary.json")))
+    got = _DAMAGE_CACHE.get(key)
+    if got is None:
+        _DAMAGE_CACHE.clear()
+        got = damage(man, summ, d)
+        _DAMAGE_CACHE[key] = got
+    # The aliasing check is its own file and may arrive later.
+    got = dict(got, aliasing=_read_json(_path("aliasing.json")))
+    return got
+
+
+# ==========================================================================
+# One cue pair, all the way down to its traces (the page's cue-pair view)
+# ==========================================================================
+# Read from the cluster's copy, as asked (2026-10-02): Jarvis runs a few
+# lines of the SAME backend on the login node -- coupling's own reader, the
+# window cut to the sample and decimated exactly as the node did -- and
+# brings back two traces as float32. Nothing is stored. A recording that is
+# no longer there (Temp is purged) is said, not read from elsewhere.
+LEAF_SPAN_PAD_S = 10.0
+_LEAF_CACHE = {}
+_LEAF_ORDER = []
+_LEAF_MAX = 24
+_PUSHED = {"sha": None}
+
+_READ_PY = r"""
+import base64, json, os, sys
+sys.path.insert(0, ".")
+args = json.loads(base64.b64decode("__ARGS__").decode("utf-8"))
+out = {"windows": {}}
+try:
+    if not os.path.isdir(args["folder"]):
+        out = {"gone": True, "folder": args["folder"]}
+    else:
+        import numpy as np
+        from backend import coupling
+        got = coupling._signals_for_windows(
+            args["folder"], args["chan"], [tuple(w) for w in args["windows"]],
+            {}, 1000.0)
+        for name, w in got.items():
+            regs = {}
+            for k, r in w["regions"].items():
+                sig = r.get("signal")
+                regs[k] = {"why": r.get("why"), "channel": r.get("channel"),
+                           "data": None if sig is None else base64.b64encode(
+                               np.asarray(sig, dtype="<f4").tobytes()).decode(
+                               "ascii")}
+            out["windows"][name] = {"t0": w["t0"], "t1": w["t1"],
+                                    "fs": w["fs"], "regions": regs}
+        # The wires left out: measured again by Spark's own detector, so
+        # the page can show where they hit the rail and how much.
+        c = args.get("clip")
+        if c and c.get("chans"):
+            try:
+                from backend import spark
+                got2 = spark.clipping_windows(
+                    args["folder"], [{"pair_id": 1, "windows": [
+                        tuple(w) for w in c["windows"]]}], only=c["chans"])
+                bp = got2.get("by_pair") or {}
+                recs = bp.get(1) or bp.get("1") or {}
+                out["clip"] = {str(k): {"windows": v.get("windows"),
+                                        "detail": v.get("detail"),
+                                        "spans": v.get("spans")}
+                               for k, v in recs.items()}
+                out["clip_why"] = got2.get("why")
+            except Exception as exc:
+                out["clip_error"] = "%s: %s" % (type(exc).__name__, exc)
+except Exception as exc:
+    out = {"error": "%s: %s" % (type(exc).__name__, exc)}
+sys.stdout.write("JARVIS_JSON=" + json.dumps(out) + "\n")
+"""
+
+
+def read_remote(cfg, folder, chan, windows, ssh=None, clip=None):
+    """{window name: {t0, t1, fs, regions: {key: {signal|None, why}}}} read
+    on the login node from the cluster's copy; {"gone": ...} when the folder
+    is not there."""
+    import base64
+    key = json.dumps([folder, chan, windows, clip], sort_keys=True)
+    if key in _LEAF_CACHE:
+        return _LEAF_CACHE[key]
+    args = base64.b64encode(json.dumps({
+        "folder": folder, "chan": chan, "windows": windows,
+        "clip": clip}).encode("utf-8")).decode("ascii")
+    script = "%s\ncd %s && python - <<'JARVIS_PY'\n%s\nJARVIS_PY\n" % (
+        vacc.activate(cfg),
+        vacc.q(vacc._remote_path(cfg.get("workspace") or ".", "code")),
+        _READ_PY.replace("__ARGS__", args))
+    raw = vacc._runner(cfg, ssh)("bash -s", stdin=script, timeout=180)
+    line = next((x for x in (raw or "").splitlines()
+                 if x.startswith("JARVIS_JSON=")), None)
+    if line is None:
+        raise MonolithError("The cluster did not answer with the traces: %s"
+                            % (raw or "nothing")[-300:], 502)
+    got = json.loads(line[len("JARVIS_JSON="):])
+    if got.get("error"):
+        raise MonolithError("Reading the traces on the cluster failed: %s"
+                            % got["error"], 502)
+    for w in (got.get("windows") or {}).values():
+        for r in w["regions"].values():
+            data = r.pop("data", None)
+            r["signal"] = (None if data is None else np.frombuffer(
+                base64.b64decode(data), dtype="<f4").astype(np.float64))
+    _LEAF_CACHE[key] = got
+    _LEAF_ORDER.append(key)
+    while len(_LEAF_ORDER) > _LEAF_MAX:
+        _LEAF_CACHE.pop(_LEAF_ORDER.pop(0), None)
+    return got
+
+
+def leaf(cfg, man, summary, out_dir, run, layer, at, rat, day, unit_id,
+         cell=None, ssh=None, app_dir=None):
+    """One cue pair (or rest epoch) of one entry, down to its traces: the
+    whole cue pair for context, the analysed window as the node had it, and
+    every measure's own picture of it (sweep.explain), with the stored
+    number beside the one recomputed here."""
+    wi, bi, mi, pi = (int(x) for x in at)
+    days_ = {(d["rat"], d["day"]): d for d in man["days"]}
+    d = days_.get((int(rat), day))
+    if not d:
+        raise MonolithError("r%s %s is not in this Monolith." % (rat, day),
+                            404)
+    rest = str(unit_id).startswith("e")
+    units = d["rest"] if rest else d["units"]
+    ui = next((i for i, u in enumerate(units) if u["id"] == unit_id), None)
+    if ui is None:
+        raise MonolithError("%s has no %s." % (d["label"], unit_id), 404)
+    unit = units[ui]
+    band_id = sweep.BAND_IDS[bi]
+    band = sweep.BAND_BY_ID[band_id]
+    if rest:
+        kind, wj, wkey = "rest", 0, "wires_rest"
+    elif wi < 4:
+        kind, wj, wkey = "state", wi, "wires_state"
+    else:
+        kind = "trans_slow" if band["speed"] == "slow" else "trans_fast"
+        wj, wkey = wi - 4, wires_key(wi, bi)
+    wname, w0, w1 = sweep._windows_for(kind, unit)[wj]
+    ra, rb = summary["pairs"][pi]
+    names = summary["regions"]
+    Wt = _load_day(out_dir, int(rat), day, wkey, mmap="r")
+    ca = int(Wt[ui, wj, ra]) if Wt is not None else -1
+    cb = int(Wt[ui, wj, rb]) if Wt is not None else -1
+    pair = unit.get("pair") or {}
+    if rest:
+        span = [max(0.0, float(pair["t0"]) - LEAF_SPAN_PAD_S),
+                float(pair["t1"]) + LEAF_SPAN_PAD_S]
+        marks = [{"name": "rest epoch", "t0": float(pair["t0"]),
+                  "t1": float(pair["t1"])}]
+        folder = next((f for f in d["folders"] if f["gid"] == unit["fp_gid"]),
+                      None)
+    else:
+        o, c, e = (float(pair[k]) for k in ("opener_t", "closer_t",
+                                            "offset_t"))
+        span = [o - LEAF_SPAN_PAD_S, e + LEAF_SPAN_PAD_S]
+        marks = [{"name": n_, "t0": a_, "t1": b_} for n_, a_, b_ in
+                 sweep._windows_for("state", unit)]
+        folder = next((f for f in d["folders"] if f["role"] == "SPC"), None)
+    remote = ((folder or {}).get("remote") or {}).get(run.get("dest"))
+    E = _load_day(out_dir, int(rat), day, "edges_rest" if rest else "edges",
+                  mmap="r")
+    stored = None
+    if E is not None:
+        stored = _f(E[ui, 0 if rest else wi, bi, mi, pi])
+    out = {"ok": True, "rat": int(rat), "day": day, "unit": unit_id,
+           "label": unit.get("label"), "cue": unit.get("cue_label"),
+           "run": unit.get("run"), "kind": kind, "rest": rest,
+           "window": {"name": wname, "t0": w0, "t1": w1},
+           "span": {"t0": span[0], "t1": span[1]}, "marks": marks,
+           "regions": [names[ra], names[rb]], "wires": [ca, cb],
+           "band": band, "method": METHODS[mi], "layer": layer,
+           "stored": stored, "remote": remote,
+           "units": [u["id"] for u in units]}
+    if not remote:
+        out.update(ok=False, gone=True, why="This Monolith's run did not "
+                   "say where on the cluster the recording is.")
+        return out
+    if ca < 0 or cb < 0:
+        out.update(measured=False, why=unit_why(
+            summary, int(rat), day, unit_id,
+            [int(x) for x in Wt[ui, wj]] if Wt is not None else [],
+            names[ra], names[rb], [ca, cb]))
+    if not _PUSHED.get("sha") and ssh is None and app_dir:
+        try:
+            _PUSHED["sha"] = vacc.push_code(cfg, app_dir).get("sha256")
+        except Exception:                                # noqa: BLE001
+            pass                        # the copy there reads as well
+    # The wires each region has that were left out of this window, and
+    # why: read and shown anyway, so a dashed line on the page can be
+    # looked at rather than taken on trust. A spare that was fine but not
+    # needed (the region was read on another wire) is not one of them.
+    cmap = coupling.dewey_map()
+    bad = set(int(c) for c in d.get("bad") or [])
+    drop_w = None if kind == "trans_slow" else _drop_for(
+        unit.get("drop"), "rest" if rest else wname)
+    drop_w = None if drop_w is None else set(int(c) for c in drop_w)
+    excluded = []
+    for side, rix, used in (("A", ra, ca), ("B", rb, cb)):
+        name = names[rix]
+        for ch in cmap.get(name) or []:
+            ch = int(ch)
+            if ch == used:
+                continue
+            if name in (d.get("blocked") or {}):
+                why = "histology"
+            elif ch in bad:
+                why = "bad"
+            elif drop_w is not None and ch in drop_w:
+                why = "clipped"
+            elif used >= 0:
+                continue
+            else:
+                why = "clipped" if kind == "trans_slow" else "unread"
+            excluded.append({"side": side, "region": name, "channel": ch,
+                             "why": why, "say": EXCLUDED_SAY[why] % {
+                                 "region": name, "window": wname}})
+    out["excluded"] = excluded
+    chan = {"A": [ca] if ca >= 0 else [], "B": [cb] if cb >= 0 else []}
+    for x in excluded:
+        chan["x%d" % x["channel"]] = [x["channel"]]
+    if ca < 0 and cb < 0 and not excluded:
+        return out
+    clip = ({"chans": [x["channel"] for x in excluded],
+             "windows": [[wname, w0, w1], ["span", span[0], span[1]]]}
+            if excluded else None)
+    got = read_remote(cfg, remote, chan, [["span", span[0], span[1]],
+                                          [wname, w0, w1]], ssh=ssh,
+                      clip=clip)
+    if got.get("gone"):
+        out.update(ok=False, gone=True, why=(
+            "This recording is no longer on the VACC (%s): %s. Upload it "
+            "again to see its traces." % (run.get("dest"), remote)))
+        return out
+    sp = got["windows"]["span"]
+    win = got["windows"][wname]
+    show = {}
+    for key, r in sp["regions"].items():
+        sig = r.get("signal")
+        if sig is None:
+            show[key] = None
+            continue
+        x = coupling.notch(sig, sp["fs"])[0]
+        y, fs_d = coupling.decimate_to(x, sp["fs"], sweep.TRACE_FS)
+        show[key] = sweep._rl(y)
+    out["span"].update(fs=sweep.TRACE_FS, a=show.get("A"), b=show.get("B"))
+    clips = got.get("clip") or {}
+    for x in excluded:
+        x["trace"] = show.get("x%d" % x["channel"])
+        c = clips.get(str(x["channel"]))
+        if c:
+            det = (c.get("detail") or {}).get(wname) or {}
+            x["clip"] = {"lost": bool(det.get("lost")),
+                         "frac": det.get("frac"), "run_ms": det.get("run_ms"),
+                         "spans": c.get("spans") or []}
+    if got.get("clip_error"):
+        out["clip_error"] = got["clip_error"]
+    sa = win["regions"]["A"].get("signal")
+    sb = win["regions"]["B"].get("signal")
+    if sa is not None and sb is not None:
+        ex = sweep.explain(sa, sb, band_id, cell=cell)
+        out["explain"] = ex
+        out["recomputed"] = ex["values"].get(METHODS[mi])
+        out["matches"] = (stored is None and out["recomputed"] is None) or (
+            stored is not None and out["recomputed"] is not None and
+            abs(stored - out["recomputed"]) <= 1e-4 * max(1.0, abs(stored)))
+    return out
 
 
 # ==========================================================================
@@ -1650,10 +2169,27 @@ def upload_plan(man, dest, remote):
         send_b += b
         send_n += len(send)
         skip_n += f["n_files"] - len(send)
+    sp = room_of(remote, man, dest)
+    fit = vacc.room(sp, send_b)
     return {"dest": dest, "rows": rows, "bytes": send_b, "files": send_n,
             "skipped": skip_n, "at": now_iso(),
             # Six streams measured at about 80 MB/s to the login node.
-            "seconds": round(send_b / (80.0 * 1024 * 1024)) if send_b else 0}
+            "seconds": round(send_b / (80.0 * 1024 * 1024)) if send_b else 0,
+            "space": sp, "room": fit}
+
+
+def room_of(remote, man, dest):
+    """The lab's room in `dest` (the far side's `space`), or unknown."""
+    ask = getattr(remote, "space", None)
+    if not ask:
+        return {"why": "this far side cannot say"}
+    root = ((man.get("roots") or {}).get(dest) or {}).get("root")
+    if not root:
+        for _d, f in folders_of(man):
+            root = (f.get("remote") or {}).get(dest)
+            if root:
+                break
+    return ask(root) if root else {"why": "no folder there"}
 
 
 def man_files(man, local):
@@ -1669,6 +2205,10 @@ def upload_work(worker, man, dest, remote):
     what is still missing."""
     worker.note(phase="listing", dest=dest)
     plan = upload_plan(man, dest, remote)
+    if not plan["room"]["fits"]:
+        # Said before a byte is sent, rather than found out file by file.
+        raise MonolithError(plan["room"]["say"] + " Upload to the other "
+                            "place, or free some space there first.", 409)
     rows = [r for r in plan["rows"] if r.get("n_send")]
     worker.note(phase="sending", bytes_total=plan["bytes"], bytes_done=0,
                 files_total=plan["files"], files_done=0,
@@ -1715,6 +2255,17 @@ def upload_work(worker, man, dest, remote):
                                    status="stopped", ended=now_iso(),
                                    bytes_sent=done["b"]))
             raise
+        except vaccupload.QuotaError as exc:
+            # Out of room: every folder after this would be refused the
+            # same way, so the upload stops here and says why.
+            failed.append({"folder": "r%d %s %s" % (r["rat"], r["day"],
+                                                    r["role"]),
+                           "why": str(exc)[:300]})
+            worker.note(failed=list(failed))
+            save_state(upload=dict(get_state().get("upload") or {},
+                                   status="out of room", ended=now_iso(),
+                                   bytes_sent=done["b"], failed=failed))
+            raise MonolithError(str(exc), 507)
         except Exception as exc:                         # noqa: BLE001
             failed.append({"folder": "r%d %s %s" % (r["rat"], r["day"],
                                                     r["role"]),

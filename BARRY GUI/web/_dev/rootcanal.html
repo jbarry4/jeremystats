@@ -345,6 +345,8 @@ const ENTRY = '46fd29a77cc7';
 
   // The filter is a fit param too.
   const ampWas = st().fit.events.map((e) => e.amp_uV);
+  // Corners only mean anything on a custom filter; a preset is its own.
+  ev(RC + '._setParam("filt", "custom")');
   ev(RC + '._setParam("lo_hz", 5)');
   ev(RC + '._setParam("hi_hz", 60)');
   ev(RC + '._recompute()');
@@ -353,6 +355,14 @@ const ENTRY = '46fd29a77cc7';
   ok('changing the filter changes the amplitudes',
      st().fit.events.some((e, j) => e.amp_uV !== ampWas[j]));
   ok('and still reads nothing from disk', !st().job && st().q.read === read0);
+  ev(RC + '._setParam("filt", "lfp")');
+  ev(RC + '._setParam("lo_hz", 1)');
+  ev(RC + '._setParam("hi_hz", 100)');
+  ev(RC + '._recompute()');
+  await until(() => st().fit.params.filt === 'lfp' && !st().fitting, 30000,
+              'back on LFP');
+  ok('and back on LFP the amplitudes are what they were',
+     st().fit.events.every((e, j) => e.amp_uV === ampWas[j]));
 
   /* The band stops at 2000 Hz -- the decimator's anti-alias corner, not
      the 2500 Hz Nyquist. 2400 is between the two, which is the case that
@@ -493,6 +503,85 @@ const ENTRY = '46fd29a77cc7';
   await until(() => st().fit.params.cross_ms === 50 && !st().fitting, 30000,
               'back to 50 ms');
   eq('back at v1’s search', st().fit.counts.partial, 2);
+
+  /* ================================================================== */
+  head('THE FILTER IS ONE OF FOUR: NONE, DS, LFP, CUSTOM');
+
+  /* Asked for once it was clear the 1-100 Hz default was a recommendation
+     rather than a measurement. Driven through the buttons themselves, and
+     each one followed to the server's own statement of what it applied. */
+  const fbtn = (label) => Array.from(D().querySelectorAll('.rc-filt button'))
+    .find((b) => b.textContent.trim() === label);
+  const chipText = () => (D().querySelector('.rc-chip') || {}).textContent || '';
+  const filtBefore = JSON.stringify(st().fit.counts);
+  eq('four choices, in order',
+     Array.from(D().querySelectorAll('.rc-filt button'))
+       .map((b) => b.textContent.trim()), ['No filter', 'DS', 'LFP', 'Custom']);
+  ok('LFP is the default, so nothing fitted before moves',
+     !!fbtn('LFP') && fbtn('LFP').classList.contains('active')
+     && st().fit.params.filt === 'lfp', st().fit.params.filt);
+  ok('and the chip names it', /LFP 1–100 Hz/.test(chipText()), chipText());
+  ok('a preset shows what it is, not corner fields',
+     !D().querySelector('.rc-mains') && !!D().querySelector('.rc-filt-is'));
+
+  async function pickFilter(label, want) {
+    fbtn(label).click();
+    await sleep(100);
+    ev(RC + '._recompute()');
+    await until(() => st().fit && st().fit.params.filt === want
+                      && !st().fitting, 30000, label);
+  }
+
+  await pickFilter('DS', 'ds');
+  eq('DS reaches the fit', ev(RC + '._lastBody()').filt, 'ds');
+  const dsp = st().fit.params;
+  ok('and the server applied 5-100 Hz with the mains out',
+     dsp.lo_hz === 5 && dsp.hi_hz === 100 && dsp.mains_out === true,
+     JSON.stringify([dsp.lo_hz, dsp.hi_hz, dsp.mains_out]));
+  ok('the chip says so', /DS 5–100 Hz, mains out/.test(chipText()), chipText());
+  await until(() => st().evData && st().evData.filt === 'ds', 20000,
+              'the event on the DS filter');
+  ok('the open event is re-read on the new filter, not the old one',
+     st().evData && st().evData.filt === 'ds',
+     st().evData && st().evData.filt);
+  {
+    const cv = D().getElementById('rcTrace');
+    const t = cv ? (cv.parentElement.querySelector('.rc-ev-t') || {}).textContent || '' : '';
+    ok('and the trace names the filter it is on', /DS 5–100 Hz/.test(t), t);
+  }
+
+  fbtn('Custom').click();
+  await sleep(150);
+  ok('Custom shows its corners and the mains box',
+     !!D().querySelector('.rc-mains')
+     && D().querySelectorAll('.rc-controls .rc-num input[type=number]').length
+        >= 4, D().querySelectorAll('.rc-controls .rc-num input').length);
+  ev(RC + '._setParam("lo_hz", 3)');
+  ev(RC + '._setParam("hi_hz", 150)');
+  const mainsBox = D().querySelector('.rc-mains input');
+  if (mainsBox && mainsBox.checked) mainsBox.click();
+  ev(RC + '._recompute()');
+  await until(() => st().fit && st().fit.params.filt === 'custom'
+                    && !st().fitting, 30000, 'custom');
+  const cp = st().fit.params;
+  ok('custom reaches the server with its own corners and the box as set',
+     cp.lo_hz === 3 && cp.hi_hz === 150 && cp.mains_out === false,
+     JSON.stringify([cp.lo_hz, cp.hi_hz, cp.mains_out]));
+  ok('and the chip names them', /custom 3–150 Hz/.test(chipText()), chipText());
+
+  await pickFilter('No filter', 'none');
+  ok('no filter is no filter', /no filter/.test(chipText()), chipText());
+
+  fbtn('Custom').click();
+  await sleep(150);
+  const ins = Array.from(D().querySelectorAll('.rc-controls .rc-num input[type=number]'))
+    .slice(0, 2).map((i) => i.value);
+  ok('choosing Custom again brings back the corners typed for it',
+     ins[0] === '3' && ins[1] === '150', JSON.stringify(ins));
+
+  await pickFilter('LFP', 'lfp');
+  eq('back on LFP, the answer is the one it was', JSON.stringify(st().fit.counts),
+     filtBefore);
 
   /* ================================================================== */
   head('EVERY DOT IS WHERE IT IS DRAWN, AT THE SIZE IT IS SHOWN');
@@ -658,6 +747,19 @@ const ENTRY = '46fd29a77cc7';
   ok('the trace says the half-width it measured, or that it could not',
      hasS('rcTrace', 'half-width'), JSON.stringify(txt.rcTrace || []));
   ok('the spectrum names the band', hasS('rcSpec', '500–1000 Hz'));
+  /* The CSD is on the dentate-spike filter, mains fitted out -- not the fit
+     filter, on which mains that differed between contacts striped it. The
+     answer says which, and the panel's title says what the answer says. */
+  ok('the event says its CSD is on the dentate-spike filter',
+     ed.csd && /mains taken out/.test(ed.csd.filter || '')
+     && JSON.stringify(ed.csd.band) === '[5,100]',
+     JSON.stringify(ed.csd && { filter: ed.csd.filter, band: ed.csd.band }));
+  {
+    const cv = D().getElementById('rcCsd');
+    const t = cv ? (cv.parentElement.querySelector('.rc-ev-t') || {}).textContent || '' : '';
+    ok('and the CSD panel names that filter, not the fit filter',
+       /5–100 Hz/.test(t) && /mains taken out/.test(t) && !/fit filter/.test(t), t);
+  }
   for (const id of ['rcTrace', 'rcSpec', 'rcStack', 'rcCsd']) {
     const cv = D().getElementById(id);
     ok(id + ' is on screen and a real size',
@@ -929,7 +1031,8 @@ const ENTRY = '46fd29a77cc7';
      sb.entry_id === ENTRY && String(sb.from_version) === String(st().q.from_version)
      && sb.read === st().q.read, JSON.stringify([sb.entry_id, sb.from_version, sb.read]));
   eq('with the settings the answer was computed with',
-     [sb.lo_hz, sb.hi_hz, sb.win_ms, sb.band_lo, sb.band_hi], [1, 100, 25, 500, 1000]);
+     [sb.filt, sb.lo_hz, sb.hi_hz, sb.mains_out, sb.win_ms, sb.band_lo, sb.band_hi],
+     ['lfp', 1, 100, false, 25, 500, 1000]);
   ok('and the overrides, as fit params', Array.isArray(sb.flips) && sb.centres === null,
      JSON.stringify([sb.flips, sb.centres]));
   eq('with the note typed', sb.note, 'harness note');

@@ -24,6 +24,14 @@ sys.path.insert(0, os.path.dirname(HERE))
 
 from backend import app as appmod, cfc, ids, vacc, vaccupload as U  # noqa: E402
 
+SAMPLE = r'''fs=gpfs3tmp
+group=pi-jbarry4
+mmlsquota:group:HEADER:version:reserved:reserved:filesystemName:quotaType:id:name:blockUsage:blockQuota:blockLimit:blockInDoubt:blockGrace:filesUsage:filesQuota:filesLimit:filesInDoubt:filesGrace:remarks:fid:filesetname:
+mmlsquota:group:0:1:::gpfs3tmp:GRP:170148:pi-jbarry4:1059076224:1048576000:1059061760:216:expired:65561:1024000:1034240:25:none::0::
+mmlsquota:user:HEADER:version:reserved:reserved:filesystemName:quotaType:id:name:blockUsage:blockQuota:blockLimit:blockInDoubt:blockGrace:filesUsage:filesQuota:filesLimit:filesInDoubt:filesGrace:remarks:fid:filesetname:
+mmlsquota:user:0:1:::gpfs3tmp:USR:454887:sakhava1:1059060056:0:0:163840:none:65559:0:0:80:none::0::
+end=1'''
+
 FAILED = []
 
 
@@ -203,6 +211,75 @@ def main():
     check("and identifies as the same recording",
           ids.identify(tdest).get("key") == ids.identify(local).get("key"))
 
+    print("\nout of room")
+    # The cluster's real answer on 2026-10-01: gpfs3tmp, pi-jbarry4 at its
+    # hard limit. Every file was refused and Jarvis said "Broken pipe".
+    sp = vacc.parse_space(SAMPLE)
+    check("the quota is read in bytes, for the group and this account",
+          sp.get("fs") == "gpfs3tmp" and sp.get("group") == "pi-jbarry4"
+          and sp.get("used") == 1059076224 * 1024
+          and sp.get("quota") == 1048576000 * 1024
+          and sp.get("limit") == 1059061760 * 1024
+          and sp.get("user_used") == 1059060056 * 1024, sp)
+    full = vacc.room(sp, 250 * 10 ** 9)
+    check("full: it does not fit, and says so before anything is sent",
+          not full["fits"] and "it is full" in full["say"]
+          and "refused part way" in full["say"], full["say"])
+    roomy = vacc.room({"fs": "gpfs2", "group": "g", "used": 3687 * 10 ** 9,
+                       "quota": 4398 * 10 ** 9, "limit": 8796 * 10 ** 9},
+                      250 * 10 ** 9)
+    check("room to spare: it fits, and says how much is left",
+          roomy["fits"] and not roomy["over_soft"]
+          and "711 GB left under the quota" in roomy["say"], roomy["say"])
+    over = vacc.room({"fs": "gpfs2", "group": "g", "used": 3687 * 10 ** 9,
+                      "quota": 3800 * 10 ** 9, "limit": 8796 * 10 ** 9},
+                     250 * 10 ** 9)
+    check("over the quota but under the hard limit: it fits, and warns",
+          over["fits"] and over["over_soft"] and "grace" in over["say"],
+          over["say"])
+    unknown = vacc.room({"why": "no answer"}, 10)
+    check("room nobody could read is said, not refused",
+          unknown["fits"] and not unknown["known"])
+    check("a cut-short answer is not read as room",
+          "why" in vacc.parse_space(SAMPLE.replace("end=1", "")))
+
+    class Refuses:
+        def __init__(self, cmd, **k):
+            self.stdin = self
+            self.stderr = self
+            self.n = 0
+        def write(self, b):
+            raise BrokenPipeError(32, "Broken pipe")
+        def close(self):
+            pass
+        def read(self):
+            return b"cat: write error: Disk quota exceeded\n"
+        def wait(self, timeout=None):
+            return 1
+    real_popen, real_have = subprocess.Popen, vacc.have_ssh
+    subprocess.Popen = Refuses
+    vacc.have_ssh = lambda: True
+    try:
+        U.SshRemote(cfg).put(os.path.join(local, "CSC1.ncs"), dest, "CSC1.ncs")
+        got = None
+    except U.UploadError as exc:
+        got = exc
+    finally:
+        subprocess.Popen, vacc.have_ssh = real_popen, real_have
+    check("a refusal says WHY -- the quota -- not \"Broken pipe\"",
+          isinstance(got, U.QuotaError) and "Disk quota exceeded" in str(got)
+          and "Broken pipe" not in str(got), got)
+
+    tiny = U.LocalRemote(os.path.join(work, "tiny"), room=400000)
+    try:
+        U.send(tiny, local, dest, streams=3)
+        stopped = None
+    except U.QuotaError as exc:
+        stopped = exc
+    check("a far side that runs out of room stops the upload with that "
+          "reason", stopped is not None and "out of room" in str(stopped),
+          stopped)
+
     print("\nthe routes")
     shutil.rmtree(far, ignore_errors=True)
     added, soon = [], []
@@ -270,6 +347,16 @@ def main():
               and (job.result or {}).get("dest") == "temp", (job.status, job.result))
         check("and the inventory is asked to look at temp",
               soon == ["/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp"], soon)
+        check("the plan says the room there (a folder here has no quota, so "
+              "it says it could not tell)", tplan.get("room")
+              and tplan["room"]["fits"] and not tplan["room"]["known"],
+              tplan.get("room"))
+        appmod.UPLOAD_REMOTE = lambda c: U.LocalRemote(far, room=10)
+        fplan = c.post("/api/vacc/upload/plan", json={"gids": ["zz-gid-7"],
+                                                      "dest": "scratch"}).get_json()
+        check("a full place: the plan says it does not fit",
+              fplan["room"]["known"] and not fplan["room"]["fits"],
+              fplan.get("room"))
     finally:
         appmod.REG.all = real["all"]
         appmod.REG.add_path = real["add_path"]

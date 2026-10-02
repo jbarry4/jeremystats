@@ -907,6 +907,29 @@ BARRY.views.toolkit = (function () {
      read off the DOM so a re-render cannot lose a half-typed search. */
   const curQ = { text: '', sort: 'recent', show: 'all', shelf: false };
 
+  /* Which half of Checkup is showing: the sets, or AI Beta (aibeta.js).
+     A preference, so it survives a reload; read and written in try/catch
+     because a browser set to block site data throws on the accessor. */
+  const CUR_PANE_KEY = 'barry.checkupPane';
+  function curPane() {
+    try {
+      return localStorage.getItem(CUR_PANE_KEY) === 'ai' && BARRY.aibeta
+        ? 'ai' : 'sets';
+    } catch (e) { return 'sets'; }
+  }
+  function curPaneSwitch() {
+    if (!BARRY.aibeta) return null;
+    return BARRY.ui.seg([
+      ['sets', 'Sets', 'The curation sets: what is open on the bench, and '
+                     + 'the shelf.'],
+      ['ai', 'AI Beta', 'A sandbox: a model trained on finished sets and '
+                      + 'tested on mice it never saw. It changes nothing.'],
+    ], curPane(), (v) => {
+      try { localStorage.setItem(CUR_PANE_KEY, v); } catch (e) { /* kept for this view only */ }
+      renderCuration();
+    }, { extra: 'cur-pane' });
+  }
+
   const CUR_SORTS = [
     ['recent', 'Recently touched'],
     ['left', 'Most left to do'],
@@ -1022,6 +1045,22 @@ BARRY.views.toolkit = (function () {
     if (q.tool !== 'curate') return;
     host.style.opacity = '1';
     host.innerHTML = '';
+    /* AI Beta needs none of the sets, so it does not wait for them. */
+    if (curPane() === 'ai') {
+      host.appendChild(el('div', { class: 'tk-head' }, [
+        BARRY.ui.stepHeader({
+          title: 'Checkup',
+          step: BARRY.ui.stepOf('curate'),
+          blurb: 'AI Beta. A model trained on the sets people have '
+               + 'finished, and tested on mice it never saw. A sandbox: '
+               + 'nothing here changes a set.',
+        }),
+        el('div', { class: 'spacer' }),
+        curPaneSwitch(),
+      ]));
+      BARRY.aibeta.paint(host);
+      return;
+    }
     if (!cur) {
       host.appendChild(el('div', { class: 'tk-loading' }, [
         stepLoader('Event curation', ['reading the curation sets',
@@ -1045,6 +1084,7 @@ BARRY.views.toolkit = (function () {
             + 'stays here until you close it.'),
       }),
       el('div', { class: 'spacer' }),
+      curPaneSwitch(),
       open.length > 1 ? el('button', {
         class: 'btn ghost sm', text: 'Close all',
         title: 'Clear the bench. Nothing is archived, deleted or unbanked.',

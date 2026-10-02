@@ -117,7 +117,7 @@ window.MONO = (function () {
     const r = await fetch(API + path, { cache: 'no-cache' });
     let body = null;
     try { body = await r.json(); } catch (e) { /* not JSON */ }
-    if (!r.ok || (body && body.ok === false)) throw new Error((body && body.error) || ('HTTP ' + r.status));
+    if (!r.ok || (body && body.ok === false)) throw new Error((body && (body.error || body.why)) || ('HTTP ' + r.status));
     return body;
   }
   async function getArray(name, shape) {
@@ -181,6 +181,124 @@ window.MONO = (function () {
     return win().label + ' · ' + (b.named ? b.label : b.hz + ' Hz') + ' · ' + method().label + ' · ' + layerSay(st.layer);
   }
 
+  /* ---------------- help: the ? marks and "this one" ---------------- */
+  const qh = (key) => (window.MONO_HELP ? MONO_HELP.q(key, () => here(key)) : null);
+  /* How many of the 1 Hz bands this pair passes p < .05 at, here. */
+  const BB_FRAC = 0.6;
+  function bbCount(layer, w, m, p) {
+    const S = D.S;
+    let n = 0, of = 0;
+    for (let b = 0; b < S.bands.length; b++) {
+      if (S.bands[b].named) continue;
+      const pv = E(layer, Q.p, w, b, m, p);
+      if (!isFinite(pv)) continue;
+      of++;
+      if (pv < 0.05) n++;
+    }
+    return { n, of };
+  }
+  function broadband(layer, w, m, p) {
+    const c = bbCount(layer, w, m, p);
+    return c.of >= 20 && c.n >= BB_FRAC * c.of ? c : null;
+  }
+  function selEntry(mid) {
+    if (st.sel == null) return null;
+    const S = D.S;
+    const m = S.methods.findIndex((x) => x.id === (mid || st.method));
+    const w = wi(), b = bi(), p = st.sel;
+    const [a, b2] = S.pairs[p];
+    return { est: E(st.layer, Q.est, w, b, m, p), p: E(st.layer, Q.p, w, b, m, p), k: E(st.layer, Q.k, w, b, m, p),
+             same: E(st.layer, Q.same, w, b, m, p), pair: S.regions[a] + ' – ' + S.regions[b2], a, b: b2, m };
+  }
+  function entSay(mid, layer) {
+    const e = selEntry(mid);
+    if (!e) return null;
+    const S = D.S;
+    const L = layer || st.layer;
+    const w = wi(), b = bi();
+    const est = E(L, Q.est, w, b, e.m, st.sel), p = E(L, Q.p, w, b, e.m, st.sel);
+    const k = E(L, Q.k, w, b, e.m, st.sel), same = E(L, Q.same, w, b, e.m, st.sel);
+    const where = win().label + ', ' + (band().named ? band().label : band().hz + ' Hz');
+    return e.pair + ' at ' + where + ': ' + S.methods[e.m].label + (isFinite(est) ? ' changed ' + f3(est) : ' was not measured')
+      + (isFinite(p) ? ' (p ' + fp(p) + ' uncorrected, ' + same + ' of ' + k + ' rats the same way, ' + layerSay(L) + ').'
+        : ' (not tested in ' + layerSay(L) + ').');
+  }
+  function coverSay(d) {
+    if (!d) return null;
+    return 'Cue pairs that gave a value (Precon1 · Precon4): ' + (d.rats || []).map((r) => {
+      const a = (r.days || {}).Precon1 || {}, b = (r.days || {}).Precon4 || {};
+      return 'r' + r.rat + ' ' + (a.of != null ? a.n + '/' + a.of : '—') + ' · ' + (b.of != null ? b.n + '/' + b.of : '—')
+        + (a.of_rest != null ? ' (rest ' + a.n_rest + '/' + a.of_rest + ' · ' + b.n_rest + '/' + b.of_rest + ')' : '');
+    }).join('; ') + '.';
+  }
+  function here(key) {
+    const S = D.S;
+    if (!S) return null;
+    if (S.methods.some((m) => m.id === key)) {
+      return entSay(key) || 'Click an edge (or a point of interest) to see what ' + S.methods.find((m) => m.id === key).label
+        + ' says for it here.';
+    }
+    const b = band();
+    switch (key) {
+      case 'measure': return entSay() || null;
+      case 'layer': {
+        const other = st.layer === 'raw' ? 'minus_fp' : 'raw';
+        if (st.sel == null) return 'You are looking at ' + layerSay(st.layer) + '.';
+        return entSay(null, st.layer) + (D.edges[other] ? ' ' + entSay(null, other) : '');
+      }
+      case 'windows': case 'window':
+        return 'Now: ' + win().label + ', ' + (st.kind === 'state' ? '10 s' : (b.speed === 'slow' ? '−3 s / +3 s around the boundary'
+          : '−1 s / +2 s around the boundary')) + '.';
+      case 'frequency': case 'bands':
+        return (b.named ? b.label : b.hz + ' Hz: the band ' + sig(b.low) + '–' + sig(b.high) + ' Hz') + ', lags searched up to ±'
+          + Math.round(b.lag_s * 1000) + ' ms.';
+      case 'sig': case 'circuit': return $('sigsay') ? $('sigsay').textContent : null;
+      case 'arrows': return entSay('gc_net');
+      case 'power': {
+        if (st.sel == null) return null;
+        const [a, b2] = S.pairs[st.sel];
+        return [a, b2].map((r) => {
+          const est = PW(st.layer, Q.est, wi(), bi(), r), p = PW(st.layer, Q.p, wi(), bi(), r);
+          return S.regions[r] + ': power ' + f3(est) + ' log10' + (isFinite(p) ? ' (p ' + fp(p) + ')' : '');
+        }).join('; ') + '.';
+      }
+      case 'points': {
+        const t = ((S.top || {})[st.layer] || [])[0];
+        return t ? 'First: ' + t.a + ' – ' + t.b + ', ' + poiSay(t) + ': ' + f3(t.est) + ', p ' + fp(t.p) + ', ' + t.same + '/' + t.k + ' rats.' : null;
+      }
+      case 'broadband': case 'spectrum': {
+        if (st.sel == null) return null;
+        const c = bbCount(st.layer, wi(), mi(), st.sel);
+        return selEntry().pair + ' passes p < .05 at ' + c.n + ' of ' + c.of + ' tested frequencies in this window and measure'
+          + (c.of >= 20 && c.n >= BB_FRAC * c.of ? ' -- broadband.' : '.');
+      }
+      case 'pac': case 'pac.circuit':
+        return st.pacCell != null ? 'Cell: ' + S.pac_cells[st.pacCell].fp + ' Hz phase × ' + S.pac_cells[st.pacCell].fa + ' Hz amplitude, '
+          + (S.windows.find((w) => w.id === st.pacWin) || {}).label + '.' : null;
+      case 'verdict': {
+        const c = (S.counts || {})[st.layer];
+        return c ? layerSay(st.layer) + ': ' + c.p05.toLocaleString() + ' of ' + c.tested.toLocaleString() + ' pass p < .05; chance alone gives about '
+          + c.chance_p05.toLocaleString() + '.' : null;
+      }
+      case 'coverage': return coverSay(GH.detail);
+      case 'ghost.pooled': case 'ghost.rats': return GH.detail ? pooledSay(GH.detail) : null;
+      case 'ghost.days': case 'ghost.units': {
+        const top = GH.stack[GH.stack.length - 1] || {};
+        const r = GH.detail && (GH.detail.rats || []).find((x) => x.rat === top.rat);
+        return r ? 'r' + r.rat + ': Precon1 ' + sig(r.left) + ' → Precon4 ' + sig(r.right) + ', change ' + f3(r.delta) + '.' : null;
+      }
+      case 'leaf': return LF.data ? leafSay(LF.data) : null;
+      default: return null;
+    }
+  }
+  function pooledSay(d) {
+    const P = d.pooled || {};
+    const k = (d.rats || []).filter((r) => r.delta != null).length;
+    const same = (d.rats || []).filter((r) => r.delta != null && P.est != null && r.delta !== 0 && (r.delta > 0) === (P.est > 0)).length;
+    return 'Pooled change ' + f3(P.est) + (P.ci ? ', 95% interval ' + f3(P.ci[0]) + ' to ' + f3(P.ci[1]) : '')
+      + ', p ' + fp(P.p) + ' (Hartung–Knapp t on ' + (P.df == null ? '—' : P.df) + ' df, uncorrected); ' + same + ' of ' + k + ' rats the same way.';
+  }
+
   /* ---------------- tooltip ---------------- */
   function tip(evt, lines) {
     const t = $('tip');
@@ -210,26 +328,36 @@ window.MONO = (function () {
     const S = D.S;
     const app = $('app');
     app.innerHTML = '';
-    app.appendChild(el('h1', { text: 'The Monolith: Precon1 → Precon4, every measure, 1–55 Hz' }));
+    // The tour: it starts by itself on a first visit (js/monolith_tour.js);
+    // this button brings it back any time.
+    app.appendChild(el('div', { class: 'pagehead' }, [
+      el('h1', { text: 'The Monolith: Precon1 → Precon4, every measure, 1–55 Hz' }),
+      el('button', { type: 'button', id: 'monoTour', class: 'tourbtn', text: 'Take the tour',
+                     title: 'A walk through one real lead, from the circuit down to the recording',
+                     onclick: () => { if (window.MONO_TOUR) window.MONO_TOUR.start(); } }),
+    ]));
     app.appendChild(el('p', { class: 'lede', text: 'Each rat compared with itself, Precon4 minus Precon1, '
       + 'both cue pairings pooled; the changes pooled over rats (DerSimonian–Laird, Hartung–Knapp t on '
       + 'k − 1 df, at least ' + S.min_rats + ' rats). Every p on this page is uncorrected: this is for '
       + 'sifting, and the counts below say how many to expect by chance.' }));
     app.appendChild(el('div', { class: 'card', id: 'verdict' }));
+    app.appendChild(el('p', { class: 'small muted guide-link' }, ['Every ? opens what that thing is, with a strong and a no-effect example '
+      + 'made by this analysis’s own engine. All of it in one place: ', el('a', { href: 'monolith-guide.html', target: '_blank', rel: 'noopener', text: 'the Guide' }), '.']));
     app.appendChild(el('div', { class: 'grid' }, [
       el('div', { class: 'col-circ' }, [
         el('div', { class: 'card circ' }, [
-          el('h2', { id: 'ctitle' }),
+          el('div', { class: 'hrow' }, [el('h2', { id: 'ctitle' }), qh('circuit')]),
           el('div', { class: 'crumbs', id: 'crumbs' }),
           el('div', { class: 'circ-svg', id: 'circwrap', style: 'position:relative' }, [
             el('div', { id: 'circ' }),
           ]),
+          el('div', { class: 'gstats', id: 'gstats', hidden: 'hidden' }),
           el('div', { id: 'circempty' }),
           el('div', { class: 'legend', id: 'legend' }),
           el('p', { class: 'small muted', id: 'circsay' }),
         ]),
         el('div', { class: 'card spec', id: 'speccard' }, [
-          el('h2', { id: 'spectitle' }), el('div', { id: 'spec' }),
+          el('div', { class: 'hrow' }, [el('h2', { id: 'spectitle' }), qh('spectrum')]), el('div', { id: 'spec' }),
           el('p', { class: 'small muted', id: 'specsay' }),
         ]),
         el('div', { class: 'card', id: 'paccard' }),
@@ -237,6 +365,7 @@ window.MONO = (function () {
       el('div', { class: 'col-ctl' }, [el('div', { class: 'card', id: 'controls' })]),
       el('div', { class: 'col-poi' }, [el('div', { class: 'card', id: 'poi' })]),
     ]));
+    app.appendChild(el('div', { class: 'card', id: 'damage' }, [el('p', { class: 'loading', text: 'Counting what was lost…' })]));
     app.appendChild(el('div', { class: 'card foot', id: 'foot' }));
   }
 
@@ -254,20 +383,23 @@ window.MONO = (function () {
     renderAll(before !== after);
   }
 
+  function lab(text, key, id) {
+    return el('span', { class: 'lab hrow', id: id || null }, [el('span', { text }), qh(key)]);
+  }
   function renderControls() {
     const S = D.S;
     const host = $('controls');
     host.innerHTML = '';
     host.appendChild(el('h2', { text: 'View' }));
-    host.appendChild(el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Layer' }),
+    host.appendChild(el('div', { class: 'ctl' }, [lab('Layer', 'layer'),
       seg(LAYERS, st.layer, (id) => switchLayer(id), 'big')]));
-    host.appendChild(el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Windows' }),
+    host.appendChild(el('div', { class: 'ctl' }, [lab('Windows', 'windows'),
       seg([['state', 'State'], ['transition', 'Transition']], st.kind, (id) => {
         if (id === st.kind) return;
         const first = S.windows.find((w) => w.kind === id);
         set({ kind: id, win: first.id });
       }, 'big')]));
-    host.appendChild(el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Window' }),
+    host.appendChild(el('div', { class: 'ctl' }, [lab('Window', 'window'),
       seg(S.windows.filter((w) => w.kind === st.kind).map((w) => [w.id, w.label]), st.win,
           (id) => set({ win: id }))]));
 
@@ -281,23 +413,25 @@ window.MONO = (function () {
     const winLen = st.kind === 'state' ? '10 s windows'
       : (b.speed === 'slow' ? '−3 s / +3 s around each boundary' : '−1 s / +2 s around each boundary');
     host.appendChild(el('div', { class: 'ctl' }, [
-      el('span', { class: 'lab', text: 'Frequency — ' + (b.named ? b.label : b.hz + ' Hz') }),
+      lab('Frequency — ' + (b.named ? b.label : b.hz + ' Hz'), 'frequency'),
       slider,
       el('div', { class: 'ticks', 'aria-hidden': 'true' }, ['1', '12', '25', '40', '55'].map((t) => el('span', { text: t }))),
-      seg(S.bands.filter((x) => x.named).map((x) => [x.id, x.label.replace(/ \d.*$/, ''), x.label]), st.band,
-          (id) => set({ band: id })),
+      el('div', { class: 'hrow' }, [seg(S.bands.filter((x) => x.named).map((x) => [x.id, x.label.replace(/ \d.*$/, ''), x.label]), st.band,
+          (id) => set({ band: id })), qh('bands')]),
       el('div', { class: 'readout', id: 'freqsay', text: (b.named ? b.label : b.hz + ' Hz, band '
         + sig(b.low) + '–' + sig(b.high) + ' Hz') + ' · lag up to ±' + Math.round(lag) + ' ms · ' + winLen }),
     ]));
 
-    // The measure, grouped.
-    const mbox = el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Measure' })]);
+    // The measure, grouped; each with its own ?.
+    const mbox = el('div', { class: 'ctl' }, [lab('Measure', 'measure')]);
     for (const [g, ids] of GROUPS) {
       mbox.appendChild(el('div', { class: 'mgroup', text: g }));
-      mbox.appendChild(seg(ids.map((id) => {
+      mbox.appendChild(el('div', { class: 'seg', role: 'group' }, ids.map((id) => {
         const m = S.methods.find((x) => x.id === id);
-        return [id, m.label, m.say];
-      }), st.method, (id) => set({ method: id })));
+        return el('span', { class: 'mchip' }, [
+          el('button', { type: 'button', 'aria-pressed': String(st.method === id), 'data-id': id, text: m.label,
+                         title: m.say, onclick: () => set({ method: id }) }), qh(id)]);
+      })));
     }
     host.appendChild(mbox);
 
@@ -306,19 +440,19 @@ window.MONO = (function () {
       'aria-valuetext': LEVELS[st.level][0] });
     lv.addEventListener('input', (e) => set({ level: Number(e.target.value) }));
     host.appendChild(el('div', { class: 'ctl' }, [
-      el('span', { class: 'lab', text: 'Show edges — stricter →' }), lv,
+      lab('Show edges — stricter →', 'sig'), lv,
       el('div', { class: 'ticks', 'aria-hidden': 'true' }, ['all', '.05', '.01', '.001', '.0001'].map((t) => el('span', { text: t }))),
       el('div', { class: 'readout', id: 'sigsay' }),
     ]));
-    const tg = (key, label, title) => {
+    const tg = (key, label, title, help) => {
       const box = el('input', { type: 'checkbox', id: 'tg-' + key });
       box.checked = !!st[key];
       box.addEventListener('change', () => set({ [key]: box.checked }));
-      return el('label', { class: 'toggle', title: title }, [box, label]);
+      return el('div', { class: 'hrow' }, [el('label', { class: 'toggle', title: title }, [box, label]), qh(help)]);
     };
     host.appendChild(el('div', { class: 'ctl' }, [
-      tg('arrows', 'Granger arrows', 'Draw the net Granger direction (A→B minus B→A) as arrows, wherever it passes the slider'),
-      tg('power', 'Node power', 'Colour each region by its own power change at this frequency'),
+      tg('arrows', 'Granger arrows', 'Draw the net Granger direction (A→B minus B→A) as arrows, wherever it passes the slider', 'arrows'),
+      tg('power', 'Node power', 'Colour each region by its own power change at this frequency', 'power'),
     ]));
   }
 
@@ -357,13 +491,36 @@ window.MONO = (function () {
     return out;
   }
 
-  /* The arrowhead's tip stops `gap` px short of the path's end, so it
-     sits at the edge of the node rather than under it. */
-  function marker(defs, id, color, gap) {
-    const mk = sv('marker', { id, viewBox: '0 0 10 10', refX: String(10 + (gap || 12) / 0.9), refY: '5', markerWidth: '9',
-      markerHeight: '9', markerUnits: 'userSpaceOnUse', orient: 'auto' });
-    mk.appendChild(sv('path', { d: 'M0,0 L10,5 L0,10 z', fill: color }));
-    defs.appendChild(mk);
+  /* A directed edge: the curve from a's centre towards b, stopped where its
+     head begins, and the head, sized to the line, its tip at the edge of
+     b's circle. A fixed-size marker on the curve's end was narrower than a
+     thick line and sat under the node, so a strong arrow read as a blunt
+     line (2026-10-02). `rEnd` is b's radius with its outline. */
+  function arrowGeom(pa, q, pb, w, rEnd) {
+    const at = (t) => {
+      const u = 1 - t;
+      return { x: u * u * pa.x + 2 * u * t * q.x + t * t * pb.x, y: u * u * pa.y + 2 * u * t * q.y + t * t * pb.y };
+    };
+    const L = Math.max(11, 2.2 * w + 6), hw = Math.max(5.5, 1.45 * w + 2.5);
+    // The last t still `r` from b's centre, walking back from the end.
+    const tAt = (r) => {
+      for (let t = 1; t > 0; t -= 0.002) {
+        const p = at(t);
+        if (Math.hypot(p.x - pb.x, p.y - pb.y) >= r) return t;
+      }
+      return 0;
+    };
+    const tTip = tAt(rEnd + 3), tBase = tAt(rEnd + 3 + L);
+    const T = at(tTip), B = at(tBase);
+    const c = { x: pa.x + tBase * (q.x - pa.x), y: pa.y + tBase * (q.y - pa.y) };
+    const len = Math.hypot(T.x - B.x, T.y - B.y) || 1;
+    const ux = (T.x - B.x) / len, uy = (T.y - B.y) / len;
+    const f = (v) => v.toFixed(2);
+    return {
+      d: 'M' + f(pa.x) + ',' + f(pa.y) + ' Q' + f(c.x) + ',' + f(c.y) + ' ' + f(B.x) + ',' + f(B.y),
+      head: f(T.x) + ',' + f(T.y) + ' ' + f(B.x - uy * hw) + ',' + f(B.y + ux * hw) + ' ' + f(B.x + uy * hw) + ',' + f(B.y - ux * hw),
+      tip: T, base: B, halfWidth: hw,
+    };
   }
 
   function edgeLines(e) {
@@ -374,10 +531,12 @@ window.MONO = (function () {
       ? (e.est >= 0 ? short(S.regions[a]) + ' → ' + short(S.regions[b]) : short(S.regions[b]) + ' → ' + short(S.regions[a]))
       : st.method === 'gc_ab' ? short(S.regions[a]) + ' → ' + short(S.regions[b])
       : short(S.regions[b]) + ' → ' + short(S.regions[a])) + ')' : '';
+    const bb = e.tested ? broadband(st.layer, wi(), mi(), e.p) : null;
     return [S.regions[a] + ' – ' + S.regions[b], viewSay(),
       'change ' + f3(e.est) + (isFinite(e.se) ? ' (SE ' + sig(e.se) + ')' : '') + dir,
       e.tested ? 'p = ' + fp(e.pv) + ' (uncorrected), ' + e.same + ' of ' + e.k + ' rats this way'
         : 'not tested: ' + (S.why[String(e.why)] || 'no rat has it on both days'),
+      bb ? 'Broadband: passes at ' + bb.n + ' of ' + bb.of + ' frequencies here -- check the traces for a non-neural cause.' : '',
       'Click to lift it out and open it up.'];
   }
 
@@ -393,12 +552,8 @@ window.MONO = (function () {
     const pos = positions();
     const svg = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', id: 'circsvg',
       'aria-label': 'Circuit: ' + shown.length + ' edges drawn of ' + tested.length + ' tested' });
-    const defs = sv('defs');
-    marker(defs, 'mk-up', css('--up'));
-    marker(defs, 'mk-down', css('--down'));
-    marker(defs, 'mk-arrow', css('--arrow'));
-    svg.appendChild(defs);
     svg.appendChild(sv('circle', { cx: CX, cy: CY, r: RING, fill: 'none', stroke: css('--ring'), 'stroke-width': 1 }));
+    const NODE_EDGE = 12.5;              // a node's radius (11) and half its outline
     const directed = method().directed;
     shown.sort((x, y) => Math.abs(x.est) - Math.abs(y.est));
     for (const e of shown) {
@@ -412,16 +567,24 @@ window.MONO = (function () {
       const qx = CX + (mx - CX) * 0.35, qy = CY + (my - CY) * 0.35;
       const wpx = 1.4 + 6.5 * Math.abs(e.est) / max;
       const up = st.method === 'gc_net' ? true : e.est >= 0;
-      const path = sv('path', { d: 'M' + pa.x + ',' + pa.y + ' Q' + qx + ',' + qy + ' ' + pb.x + ',' + pb.y,
-        class: 'edge' + (st.sel === e.p ? ' sel' : ''), stroke: up ? css('--up') : css('--down'),
+      const col = up ? css('--up') : css('--down');
+      const g = directed ? arrowGeom(pa, { x: qx, y: qy }, pb, wpx, NODE_EDGE) : null;
+      const path = sv('path', { d: g ? g.d : 'M' + pa.x + ',' + pa.y + ' Q' + qx + ',' + qy + ' ' + pb.x + ',' + pb.y,
+        class: 'edge' + (st.sel === e.p ? ' sel' : ''), stroke: col,
         'stroke-width': wpx.toFixed(2), 'stroke-opacity': 0.9, tabindex: '0', 'data-pair': String(e.p),
-        'marker-end': directed ? 'url(#' + (up ? 'mk-up' : 'mk-down') + ')' : null,
-        'aria-label': edgeLines(e).slice(0, 4).join(', ') });
+        'data-to': g ? String(b) : null, 'aria-label': edgeLines(e).slice(0, 4).join(', ') });
       hover(path, () => edgeLines(e));
       const pick = () => { st.sel = e.p; hideTip(); renderCircuit(); renderSpectrum(); renderTop(); renderPac(); openGhost(e.p); };
       path.addEventListener('click', pick);
       path.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(); } });
       svg.appendChild(path);
+      if (g) {
+        const head = sv('polygon', { points: g.head, class: 'ahead' + (st.sel === e.p ? ' sel' : ''), fill: col,
+                                     'data-pair': String(e.p), 'data-to': String(b) });
+        hover(head, () => edgeLines(e));
+        head.addEventListener('click', pick);
+        svg.appendChild(head);
+      }
     }
     // Granger arrows over a non-Granger view.
     let nArrows = 0;
@@ -440,9 +603,11 @@ window.MONO = (function () {
         const pa = pos[a], pb = pos[b2];
         const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2;
         const qx = CX + (mx - CX) * 0.62, qy = CY + (my - CY) * 0.62;
-        svg.appendChild(sv('path', { d: 'M' + pa.x + ',' + pa.y + ' Q' + qx + ',' + qy + ' ' + pb.x + ',' + pb.y,
-          class: 'arrowp', stroke: css('--arrow'), 'stroke-width': (1.2 + 2.6 * Math.abs(x.g) / gmax).toFixed(2),
-          'stroke-dasharray': '5 3', 'marker-end': 'url(#mk-arrow)', 'data-arrow': String(x.p) }));
+        const aw = 1.2 + 2.6 * Math.abs(x.g) / gmax;
+        const g = arrowGeom(pa, { x: qx, y: qy }, pb, aw, NODE_EDGE);
+        svg.appendChild(sv('path', { d: g.d, class: 'arrowp', stroke: css('--arrow'), 'stroke-width': aw.toFixed(2),
+          'stroke-dasharray': '5 3', 'data-arrow': String(x.p), 'data-to': String(b2) }));
+        svg.appendChild(sv('polygon', { points: g.head, class: 'arrowh', fill: css('--arrow'), 'data-arrow': String(x.p), 'data-to': String(b2) }));
         nArrows++;
       }
     }
@@ -573,6 +738,11 @@ window.MONO = (function () {
     });
     host.appendChild(svg);
     $('spectitle').textContent = 'Across frequencies · ' + win().label + ' · ' + method().label + ' · ' + layerSay(st.layer);
+    const bbSel = sel != null ? broadband(st.layer, w, m, sel) : null;
+    if (bbSel) {
+      host.appendChild(el('p', { class: 'bbnote hrow' }, [el('span', { text: 'Broadband: the selected pair passes at ' + bbSel.n + ' of '
+        + bbSel.of + ' frequencies here. Oscillatory coupling rarely does; look at its cue pairs’ traces.' }), qh('broadband')]));
+    }
     $('specsay').textContent = 'Bars: how many region pairs pass ' + LEVELS[st.level][0] + ' at each frequency.'
       + (sel != null ? ' Line: ' + S.regions[S.pairs[sel][0]] + ' – ' + S.regions[S.pairs[sel][1]]
         + ' at every frequency, a filled dot where it passes.' : ' Click an edge to draw its line.')
@@ -593,7 +763,8 @@ window.MONO = (function () {
     host.innerHTML = '';
     const list = (S.top || {})[st.layer] || [];
     const n = st.showAll ? list.length : Math.min(10, list.length);
-    host.appendChild(el('h2', { text: (st.showAll ? 'Top ' + list.length : 'Top 10') + ' points of interest · ' + layerSay(st.layer) }));
+    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: (st.showAll ? 'Top ' + list.length : 'Top 10') + ' points of interest · '
+      + layerSay(st.layer) }), qh('points')]));
     host.appendChild(el('p', { class: 'small muted', text: S.points_rule + '. Click one to snap the view to it.' }));
     const ol = el('ol', { class: 'top', id: 'toplist' });
     list.slice(0, n).forEach((t) => {
@@ -602,7 +773,10 @@ window.MONO = (function () {
         tabindex: '0', 'data-rank': String(t.rank) }, [
         el('span', { class: 'rk', text: String(t.rank) }),
         el('span', { class: 'pr' }, [pair, el('span', { class: 'chip' + (t.same === t.k ? ' all' : ''),
-          text: t.same + '/' + t.k + ' rats' })]),
+          text: t.same + '/' + t.k + ' rats' }),
+          (() => { const bb = broadband(st.layer, t.wi, t.mi, t.pair);
+                   return bb ? el('span', { class: 'chip bb', title: 'Passes at ' + bb.n + ' of ' + bb.of + ' frequencies in this window and measure',
+                                            text: 'broadband' }) : null; })()]),
         el('span', { class: 'bs num', text: poiSay(t) + ': ' + f3(t.est) + ', p ' + fp(t.p) }),
         t.n_more ? el('span', { class: 'mr' }, [
           el('button', { type: 'button', text: '+' + t.n_more + ' more like it', onclick: (e) => {
@@ -618,11 +792,12 @@ window.MONO = (function () {
       li.addEventListener('click', () => go(t));
       li.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(t); });
       li.addEventListener('mouseenter', () => {
-        const ed = document.querySelector('#circsvg .edge[data-pair="' + t.pair + '"]');
-        if (ed && t.w === st.win && t.band === st.band && t.m === st.method) ed.classList.add('hl');
+        if (t.w !== st.win || t.band !== st.band || t.m !== st.method) return;
+        document.querySelectorAll('#circsvg .edge[data-pair="' + t.pair + '"], #circsvg .ahead[data-pair="' + t.pair + '"]')
+          .forEach((x) => x.classList.add('hl'));
       });
       li.addEventListener('mouseleave', () => {
-        document.querySelectorAll('#circsvg .edge.hl').forEach((x) => x.classList.remove('hl'));
+        document.querySelectorAll('#circsvg .hl').forEach((x) => x.classList.remove('hl'));
       });
       ol.appendChild(li);
     });
@@ -652,7 +827,7 @@ window.MONO = (function () {
     const S = D.S;
     const host = $('paccard');
     host.innerHTML = '';
-    host.appendChild(el('h2', { text: 'Phase–amplitude coupling · ' + layerSay(st.layer) }));
+    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'Phase–amplitude coupling · ' + layerSay(st.layer) }), qh('pac')]));
     if (!D.pac[st.layer]) {
       host.appendChild(el('p', { class: 'empty', text: 'No PAC was built for this layer.' }));
       return;
@@ -726,10 +901,6 @@ window.MONO = (function () {
       const PWd = 300, PH = 290, pcx = 150, pcy = 145, pr = 100;
       const svg = sv('svg', { viewBox: '0 0 ' + PWd + ' ' + PH, role: 'img', id: 'pacsvg',
         'aria-label': 'PAC circuit at ' + cell.fp + ' Hz phase and ' + cell.fa + ' Hz amplitude' });
-      const defs = sv('defs');
-      marker(defs, 'mk-pac', css('--up'), 9);
-      marker(defs, 'mk-pacd', css('--down'), 9);
-      svg.appendChild(defs);
       const pos = S.regions.map((_n, i) => {
         const ang = -Math.PI / 2 + (i + 0.5) * (2 * Math.PI / R);
         return { x: pcx + pr * Math.cos(ang), y: pcy + pr * Math.sin(ang), a: ang };
@@ -744,11 +915,17 @@ window.MONO = (function () {
       for (const x of live) {
         const a2 = pos[x.ph], b2 = pos[x.am];
         const mx = (a2.x + b2.x) / 2, my = (a2.y + b2.y) / 2;
-        const path = sv('path', { d: 'M' + a2.x + ',' + a2.y + ' Q' + (pcx + (mx - pcx) * 0.4) + ',' + (pcy + (my - pcy) * 0.4) + ' ' + b2.x + ',' + b2.y,
-          fill: 'none', stroke: x.v >= 0 ? css('--up') : css('--down'), 'stroke-width': (1 + 3 * Math.abs(x.v) / m2).toFixed(2),
-          'marker-end': 'url(#' + (x.v >= 0 ? 'mk-pac' : 'mk-pacd') + ')', class: 'edge' });
-        hover(path, [short(S.regions[x.ph]) + ' phase → ' + short(S.regions[x.am]) + ' amplitude', 'change ' + f3(x.v) + ', p ' + fp(x.p)]);
+        const pwid = 1 + 3 * Math.abs(x.v) / m2;
+        const pcol = x.v >= 0 ? css('--up') : css('--down');
+        const g = arrowGeom(a2, { x: pcx + (mx - pcx) * 0.4, y: pcy + (my - pcy) * 0.4 }, b2, pwid, 9);
+        const path = sv('path', { d: g.d, fill: 'none', stroke: pcol, 'stroke-width': pwid.toFixed(2), class: 'edge',
+                                  'data-ph': String(x.ph), 'data-to': String(x.am) });
+        const say = [short(S.regions[x.ph]) + ' phase → ' + short(S.regions[x.am]) + ' amplitude', 'change ' + f3(x.v) + ', p ' + fp(x.p)];
+        hover(path, say);
         svg.appendChild(path);
+        const head = sv('polygon', { points: g.head, class: 'ahead', fill: pcol, 'data-ph': String(x.ph), 'data-to': String(x.am) });
+        hover(head, say);
+        svg.appendChild(head);
       }
       S.regions.forEach((name, i) => {
         const v = PAC(st.layer, Q.est, pw, c, i * R + i), p = PAC(st.layer, Q.p, pw, c, i * R + i);
@@ -761,6 +938,7 @@ window.MONO = (function () {
         svg.appendChild(sv('text', { x: lx, y: ly + 3, 'text-anchor': Math.abs(Math.cos(pos[i].a)) < 0.2 ? 'middle' : Math.cos(pos[i].a) > 0 ? 'start' : 'end',
           'font-size': 9.5, fill: css('--ink-2') }, short(name)));
       });
+      circ.appendChild(qh('pac.circuit'));
       circ.appendChild(el('div', { class: 'cap small', text: 'The PAC circuit at ' + cell.fp + ' Hz phase × ' + cell.fa
         + ' Hz amplitude: arrows from the phase region to the amplitude region, wherever the change passes the slider ('
         + live.length + '). A filled node: its own PAC changed.' }));
@@ -787,6 +965,7 @@ window.MONO = (function () {
     const S = D.S;
     const v = $('verdict');
     v.innerHTML = '';
+    v.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'What it found' }), qh('verdict')]));
     for (const [id, name] of LAYERS) {
       const c = (S.counts || {})[id];
       if (!c) continue;
@@ -797,6 +976,13 @@ window.MONO = (function () {
         + c.chance_p05.toLocaleString() + ' would by chance alone; ' + c.p001.toLocaleString() + ' have p < .001. '
         + (ag.tested ? 'All ' + top + ' rats the same way: ' + ag.all_same.toLocaleString() + ' (chance: about '
           + ag.chance_all_same.toLocaleString() + ').' : '')]));
+    }
+    if (DMG.data) {
+      const c = DMG.data.whole.cue;
+      v.appendChild(el('p', { class: 'small' }, [el('strong', { text: 'Lost on the way: ' }),
+        c.lost + ' of ' + c.total + ' cue pairs entirely, ' + c.partial + ' partly. ',
+        el('button', { type: 'button', class: 'linkish', text: 'See what was lost, rat by rat',
+                       onclick: () => { const t = $('damage'); if (t) t.scrollIntoView({ block: 'start' }); } })]));
     }
     v.appendChild(el('p', { class: 'small muted', text: 'Every p here is uncorrected, by design: the Monolith is for '
       + 'finding leads, and with this many tests a good share of the p < .05 entries are chance. On made-up data '
@@ -916,6 +1102,7 @@ window.MONO = (function () {
     GH.detail = null;
     GH.lifted = false;
     renderCrumbs();
+    renderGhostStats();
     if (!g) return;
     if (quiet) { g.remove(); return; }
     tween(220, (t) => g.setAttribute('opacity', String(1 - t)), () => g.remove());
@@ -1014,13 +1201,17 @@ window.MONO = (function () {
       key: u.id, label: u.id + ' ' + sig(u.v), value: u.v, width: 1.8, leaf: true,
       color: top.day === 'Precon1' ? ink3 : ink, dash: u.v == null ? '3 4' : null,
       tip: ['r' + rat.rat + ' · ' + top.day + ' · ' + u.id, u.label + ' (' + u.cue + ')',
-        u.v == null ? 'not measured in this window (clipping, or a region with no usable wire)' : 'value ' + sig(u.v),
-        u.wires ? 'read on CSC ' + (u.wires[0] >= 0 ? u.wires[0] : '—') + ' and CSC ' + (u.wires[1] >= 0 ? u.wires[1] : '—') : ''] }));
+        u.v == null ? 'Not measured: ' + (u.why || 'no value in this window') : 'value ' + sig(u.v),
+        u.wires ? 'read on CSC ' + (u.wires[0] >= 0 ? u.wires[0] : '—') + ' and CSC ' + (u.wires[1] >= 0 ? u.wires[1] : '—') : '',
+        'Click to see its traces and how each number was made.'],
+      onopen: () => openLeaf(rat.rat, top.day, u.id) }));
     for (const e of (minus ? (s.rest_units || []) : [])) {
       items.push({ key: e.id, label: e.id + ' ' + sig(e.v) + ' rest', value: e.v, width: 1.4, leaf: true,
         color: css('--arrow'), dash: '5 3',
         tip: ['r' + rat.rat + ' · ' + top.day + ' · rest ' + e.id, e.label + ' (' + e.run + ')',
-          e.v == null ? 'not measured' : 'value ' + sig(e.v)] });
+          e.v == null ? 'Not measured: ' + (e.why || 'no value') : 'value ' + sig(e.v),
+          'Click to see its traces.'],
+        onopen: () => openLeaf(rat.rat, top.day, e.id) });
     }
     return { parent: s.cue, say: 'r' + rat.rat + ' · ' + top.day + ': every cue pair' + (minus ? ' and, dashed, every rest epoch' : '')
       + '. The line below is the day’s mean' + (minus ? ' over cue pairs' : '') + '.', items };
@@ -1030,6 +1221,14 @@ window.MONO = (function () {
     GH.stack.push(s);
     GH.info = null;
     drawLevel(true, true);
+  }
+  /* Back up the ghost to `depth` levels (1 is the pooled edge), as the
+     crumbs do. */
+  function ghostTo(depth) {
+    if (GH.pair == null || GH.stack.length <= depth) return;
+    GH.stack = GH.stack.slice(0, Math.max(1, depth));
+    GH.info = null;
+    drawLevel(true);
   }
 
   function arcPath(c) {
@@ -1052,9 +1251,9 @@ window.MONO = (function () {
     const arcs = [];
     const labels = [];
     L.items.forEach((it, i) => {
-      const path = sv('path', { d: arcPath(animate ? 0 : target[i]), class: 'garc' + (it.leaf ? ' leaf' : ''),
+      const path = sv('path', { d: arcPath(animate ? 0 : target[i]), class: 'garc' + (it.leaf && !it.onopen ? ' leaf' : ''),
         stroke: it.color, 'stroke-width': it.width.toFixed(2), 'stroke-dasharray': it.dash || null,
-        tabindex: it.onpick ? '0' : null, 'data-key': it.key, role: it.onpick ? 'button' : null,
+        tabindex: it.onpick || it.onopen ? '0' : null, 'data-key': it.key, role: it.onpick || it.onopen ? 'button' : null,
         'aria-label': it.tip ? it.tip.join(', ') : it.label });
       if (it.tip) hover(path, it.tip);
       const pick = () => {
@@ -1068,6 +1267,8 @@ window.MONO = (function () {
             });
             labels.forEach((x) => x.setAttribute('opacity', String(1 - t)));
           }, () => it.onpick());
+        } else if (it.onopen) {
+          it.onopen();
         } else if (it.tip) {
           GH.info = it.tip.slice(0, 3).join(' · ');
           renderCrumbs();
@@ -1126,6 +1327,7 @@ window.MONO = (function () {
     }
     if (line) g.appendChild(sv('text', { x: CX, y: yy, 'text-anchor': 'middle', class: 'gl gsay' }, line));
     renderCrumbs();
+    renderGhostStats();
     if (animate) {
       tween(460, (t) => {
         arcs.forEach((p, i) => p.setAttribute('d', arcPath(target[i] * t)));
@@ -1134,7 +1336,480 @@ window.MONO = (function () {
     }
   }
 
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && GH.pair != null) closeGhost(false); });
+  document.addEventListener('keydown', (e) => {
+    if (LF.open) {
+      if (e.key === 'Escape') { closeLeaf(); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft') { stepLeaf(-1); e.preventDefault(); }
+      else if (e.key === 'ArrowRight') { stepLeaf(1); e.preventDefault(); }
+      return;
+    }
+    if (e.key === 'Escape' && GH.pair != null) closeGhost(false);
+  });
+
+  /* ==================================================================
+     The ghost's numbers: each level's own picture, under the circuit
+     ================================================================== */
+  const LEVEL_SAY = { pooled: 'The pooled edge: each rat’s Precon1 → Precon4', rats: 'One edge per rat: the forest plot',
+                      days: 'One rat’s two days: every cue pair', units: 'One day: every cue pair' };
+  function dayGroups(r, days) {
+    const G = window.MONO_FIGS;
+    const out = [];
+    for (const day of days) {
+      const s = (r.days || {})[day] || {};
+      out.push({ name: day + ' cue', day, kind: 'cue', units: s.units || [], values: (s.units || []).map((u) => u.v),
+                 mean: s.cue, se: s.cue_se2 != null ? Math.sqrt(s.cue_se2) : null });
+      if (GH.layer === 'minus_fp') {
+        out.push({ name: day + ' rest', day, kind: 'rest', units: s.rest_units || [], values: (s.rest_units || []).map((u) => u.v),
+                   mean: s.rest, se: s.rest_se2 != null ? Math.sqrt(s.rest_se2) : null, color: G.css('--arrow') });
+      }
+    }
+    return out;
+  }
+  function renderGhostStats() {
+    const host = $('gstats');
+    if (!host) return;
+    host.innerHTML = '';
+    if (GH.pair == null || !GH.detail || !window.MONO_FIGS) { host.hidden = true; return; }
+    host.hidden = false;
+    const G = window.MONO_FIGS;
+    const d = GH.detail;
+    const top = GH.stack[GH.stack.length - 1] || { lv: 'pooled' };
+    host.appendChild(el('div', { class: 'hrow' }, [el('h3', { text: LEVEL_SAY[top.lv] }), qh('ghost.' + top.lv)]));
+    if (top.lv === 'pooled') {
+      host.appendChild(G.slope((d.rats || []).filter((r) => r.delta != null).map((r) => ({ rat: 'r' + r.rat, left: r.left, right: r.right })),
+                               { w: 560, h: 200 }));
+      host.appendChild(el('p', { class: 'small', text: pooledSay(d) }));
+    } else if (top.lv === 'rats') {
+      host.appendChild(G.forest((d.rats || []).map((r) => ({ rat: 'r' + r.rat, delta: r.delta, ci: r.ci, weight: r.weight, why: r.why })),
+                                { est: (d.pooled || {}).est, ci: (d.pooled || {}).ci }, { w: 560 }));
+      host.appendChild(el('p', { class: 'small', text: pooledSay(d) }));
+    } else {
+      const r = (d.rats || []).find((x) => x.rat === top.rat) || {};
+      const days = top.lv === 'days' ? ['Precon1', 'Precon4'] : [top.day];
+      const groups = dayGroups(r, days);
+      host.appendChild(G.dots(groups, {
+        w: 560, h: 190,
+        tip: (node, gi, i) => {
+          const u = groups[gi].units[i] || {};
+          hover(node, ['r' + r.rat + ' · ' + groups[gi].day + ' · ' + u.id, (u.label || '') + (u.cue ? ' (' + u.cue + ')' : u.run ? ' (' + u.run + ')' : ''),
+            u.v == null ? 'Not measured: ' + (u.why || 'no value') : 'value ' + sig(u.v), 'Click to see its traces.']);
+        },
+        onDot: (gi, i) => { const u = groups[gi].units[i]; if (u) openLeaf(r.rat, groups[gi].day, u.id); },
+      }));
+      host.appendChild(el('p', { class: 'small', text: 'Each dot is one ' + (GH.layer === 'minus_fp' ? 'cue pair or rest epoch' : 'cue pair')
+        + '; the bar is the mean and the whisker its standard error. A hollow dot at the bottom gave no value. Click any dot for its traces.' }));
+    }
+    host.appendChild(el('p', { class: 'small muted hrow' }, [el('span', { text: coverSay(d) }), qh('coverage')]));
+  }
+
+  /* ==================================================================
+     One cue pair, down to its traces (read from the VACC copy)
+     ================================================================== */
+  const LF = { open: false, rat: null, day: null, unit: null, data: null, err: null, seq: 0, at: null, layer: null };
+  function pacCellNow() {
+    if (st.pacCell != null) return st.pacCell;
+    const S = D.S;
+    const i = S.pac_cells.findIndex((c) => c.fp === 6 && c.fa === 40);
+    return i >= 0 ? i : 0;
+  }
+  function leafPath(rat, day, unit) {
+    return '/leaf?layer=' + LF.layer + '&at=' + LF.at.join(',') + '&rat=' + rat + '&day=' + encodeURIComponent(day)
+      + '&unit=' + encodeURIComponent(unit) + '&cell=' + pacCellNow();
+  }
+  function leafUnits(day) {
+    const r = GH.detail && (GH.detail.rats || []).find((x) => x.rat === LF.rat);
+    const s = r && (r.days || {})[day];
+    if (!s) return [];
+    const rest = String(LF.unit || '').charAt(0) === 'e';
+    return (rest ? s.rest_units || [] : s.units || []).map((u) => u.id);
+  }
+  async function openLeaf(rat, day, unit) {
+    Object.assign(LF, { open: true, rat, day, unit, data: null, err: null, at: (GH.at || [wi(), bi(), mi(), st.sel]).slice(),
+                        layer: GH.layer || st.layer });
+    const seq = ++LF.seq;
+    hideTip();
+    renderLeaf();
+    try {
+      const d = await getJSON(leafPath(rat, day, unit));
+      if (seq !== LF.seq) return;
+      LF.data = d;
+    } catch (e) {
+      if (seq !== LF.seq) return;
+      LF.err = e.message;
+    }
+    renderLeaf();
+    // The next cue pair, read now so stepping to it is quick.
+    const ids = leafUnits(day), i = ids.indexOf(unit);
+    if (i >= 0 && i + 1 < ids.length && !FIX) {
+      fetch(API + leafPath(rat, day, ids[i + 1])).catch(() => null);
+    }
+  }
+  function closeLeaf() {
+    LF.open = false;
+    LF.seq++;
+    const h = $('leaf');
+    if (h) h.remove();
+  }
+  function stepLeaf(dir) {
+    const ids = leafUnits(LF.day);
+    const i = ids.indexOf(LF.unit);
+    if (i < 0) return;
+    const j = i + dir;
+    if (j >= 0 && j < ids.length) openLeaf(LF.rat, LF.day, ids[j]);
+  }
+  function switchDay(day) {
+    if (day === LF.day) return;
+    const ids = leafUnits(LF.day), other = leafUnits(day);
+    const i = Math.max(0, ids.indexOf(LF.unit));
+    if (other.length) openLeaf(LF.rat, day, other[Math.min(i, other.length - 1)]);
+  }
+  const secs = (v) => String(+(+v).toFixed(2));
+  function leafSay(d) {
+    return 'r' + d.rat + ' · ' + d.day + ' · ' + d.unit + (d.label ? ' (' + d.label + ')' : '') + ' · ' + d.window.name + ' window, '
+      + secs(d.window.t1 - d.window.t0) + ' s · ' + (d.band.named ? d.band.label : d.band.hz + ' Hz') + ' · ' + d.regions.join(' – ');
+  }
+  const PLOT_OF = { coherence: 'coherence', icoh: 'icoh', raw_cc: 'raw_cc', env_cc: 'env_cc', env_cc0: 'env_cc0', orth_env: 'orth_env',
+                    plv: 'plv', ppc: 'ppc', pli: 'pli', wpli: 'wpli', dwpli: 'dwpli', gc_ab: 'gc', gc_ba: 'gc', gc_net: 'gc' };
+  function renderLeaf() {
+    let host = $('leaf');
+    if (!LF.open) { if (host) host.remove(); return; }
+    if (!host) {
+      host = el('div', { id: 'leaf', class: 'leafpanel', role: 'dialog', 'aria-label': 'One cue pair, down to its traces' });
+      document.body.appendChild(host);
+    }
+    host.innerHTML = '';
+    const S = D.S, G = window.MONO_FIGS, d = LF.data;
+    const ids = leafUnits(LF.day), i = ids.indexOf(LF.unit);
+    const bar = el('div', { class: 'leafbar' }, [
+      el('div', { class: 'hrow' }, [el('h2', { text: d ? leafSay(d) : 'r' + LF.rat + ' · ' + LF.day + ' · ' + LF.unit }), qh('leaf')]),
+      el('div', { class: 'leafctl' }, [
+        el('button', { type: 'button', class: 'lbtn', text: '←', title: 'The previous cue pair (←)', disabled: i <= 0 ? 'disabled' : null,
+                       onclick: () => stepLeaf(-1) }),
+        el('span', { class: 'small muted', text: i >= 0 ? (i + 1) + ' of ' + ids.length : '' }),
+        el('button', { type: 'button', class: 'lbtn', text: '→', title: 'The next cue pair (→)', disabled: i < 0 || i >= ids.length - 1 ? 'disabled' : null,
+                       onclick: () => stepLeaf(1) }),
+        seg([['Precon1', 'Precon1'], ['Precon4', 'Precon4']], LF.day, (day) => switchDay(day)),
+        el('button', { type: 'button', class: 'lbtn', text: 'SVG', title: 'Save the figures as one SVG', disabled: d ? null : 'disabled', onclick: () => exportLeaf('svg') }),
+        el('button', { type: 'button', class: 'lbtn', text: 'PNG', title: 'Save the figures as a PNG', disabled: d ? null : 'disabled', onclick: () => exportLeaf('png') }),
+        el('button', { type: 'button', class: 'lbtn', text: 'CSV', title: 'Save the window’s traces and every number', disabled: d && d.explain ? null : 'disabled', onclick: () => exportLeaf('csv') }),
+        el('button', { type: 'button', class: 'lbtn', text: 'Close ✕', title: 'Close (Esc)', onclick: closeLeaf }),
+      ]),
+    ]);
+    host.appendChild(bar);
+    const body = el('div', { class: 'leafbody' });
+    host.appendChild(body);
+    // Traces as wide as the panel, so their labels stay readable on a phone.
+    const TW = Math.max(320, Math.min(1400, (body.clientWidth || 960) - 30));
+    if (!d && !LF.err) {
+      body.appendChild(el('p', { class: 'loading', text: 'Reading this cue pair from the VACC copy of the recording (a few seconds the first time)…' }));
+      return;
+    }
+    if (LF.err) {
+      body.appendChild(el('p', { class: 'warn', text: LF.err }));
+      return;
+    }
+    if (d.measured === false) body.appendChild(el('p', { class: 'warn', text: 'Not measured here: ' + d.why }));
+    const sec = (title, key, kids) => body.appendChild(el('section', { class: 'lsec' },
+      [el('div', { class: 'hrow' }, [el('h3', { text: title }), key ? qh(key) : null])].concat(kids)));
+    // 1. The whole cue pair.
+    if (d.span && (d.span.a || d.span.b)) {
+      const n = (d.span.a || d.span.b).length;
+      const t = Array.from({ length: n }, (_x, k) => +(d.span.t0 + k / d.span.fs).toFixed(4));
+      const rows = [];
+      if (d.span.a) rows.push({ y: d.span.a, short: 'A', label: d.regions[0] + ' (µV, notched)', color: G.css('--up') });
+      if (d.span.b) rows.push({ y: d.span.b, short: 'B', label: d.regions[1] + ' (µV, notched)', color: G.css('--down') });
+      sec(d.rest ? 'The rest epoch, with 10 s either side' : 'The whole cue pair', null, [
+        G.traces(t, rows, { w: TW, rowH: 70, marks: d.marks, highlight: [d.window.t0, d.window.t1], label: 'the recording' }),
+        el('p', { class: 'small muted', text: 'Shaded: the ' + d.window.name + ' window this number was computed on ('
+          + secs(d.window.t0) + '–' + secs(d.window.t1) + ' s into the recording). Dashed lines: where each window starts.' })]);
+    }
+    const ex = d.explain;
+    if (!ex) return;
+    // 2. The analysed window, four ways.
+    const tr = ex.traces;
+    sec('The analysed window', null, [G.traces(tr.t.map((x) => +(x + d.window.t0).toFixed(4)), [
+      { y: tr.raw_a, short: 'A raw', color: G.css('--up') },
+      { y: tr.raw_b, short: 'B raw', color: G.css('--down') },
+      { y: tr.band_a, y2: tr.band_b, short: 'band', color: G.css('--up'), color2: G.css('--down'), label: sig(ex.band.low) + '–' + sig(ex.band.high) + ' Hz, A and B' },
+      { y: tr.env_a, y2: tr.env_b, short: 'env', color: G.css('--up'), color2: G.css('--down'), label: 'envelopes' },
+      { y: tr.dphi, short: 'Δφ', range: [-Math.PI, Math.PI], zero: true, label: 'phase of A − phase of B' },
+    ], { w: TW, rowH: 56, label: 'the analysed window' })]);
+    // 3. How each number was made: the one in view first.
+    const order = [d.method].concat(GROUPS.flatMap((g) => g[1]).filter((m) => m !== d.method));
+    const grid = el('div', { class: 'lgrid' });
+    for (const m of order) {
+      const meth = S.methods.find((x) => x.id === m);
+      const v = (ex.values || {})[m];
+      const card = el('div', { class: 'lcard' + (m === d.method ? ' sel' : '') }, [
+        el('div', { class: 'hrow' }, [el('h4', { text: meth.label }), qh(m)]),
+        el('div', { class: 'lval num', text: 'this cue pair: ' + sig(v) + (m === d.method && d.stored != null
+          ? ' · stored ' + sig(d.stored) + (d.matches ? ' · matches' : ' · DIFFERS') : '') }),
+      ]);
+      const fig = window.MONO_HELP ? MONO_HELP.measurePlot(PLOT_OF[m], ex, { w: 300 }) : null;
+      if (fig) card.appendChild(fig);
+      grid.appendChild(card);
+    }
+    const pcard = el('div', { class: 'lcard' }, [el('div', { class: 'hrow' }, [el('h4', { text: 'Power' }), qh('power')]),
+      el('div', { class: 'lval num', text: 'log10 power: A ' + sig(ex.power[0]) + ', B ' + sig(ex.power[1]) })]);
+    const pf = window.MONO_HELP ? MONO_HELP.measurePlot('power', ex, { w: 300 }) : null;
+    if (pf) pcard.appendChild(pf);
+    grid.appendChild(pcard);
+    sec('How each number was made', null, [grid]);
+    // 4. PAC: the phase-binned amplitude for the chosen cell.
+    if (ex.pac) {
+      const P = ex.pac;
+      const kids = [el('p', { class: 'small muted', text: P.fp + ' Hz phase × ' + P.fa + ' Hz amplitude'
+        + (P.amp_band ? ' (amplitude band ' + sig(P.amp_band[0]) + '–' + sig(P.amp_band[1]) + ' Hz)' : ' -- not measured: this cell cannot carry its sidebands')
+        + '. Bars: mean amplitude in each phase bin; dashed: what no coupling looks like. Choose another cell in the PAC panel.' })];
+      if (P.aa) {
+        const row = el('div', { class: 'lgrid' });
+        for (const [k, name] of [['aa', 'A phase → A amplitude'], ['ab', 'A phase → B amplitude'], ['ba', 'B phase → A amplitude'], ['bb', 'B phase → B amplitude']]) {
+          row.appendChild(el('div', { class: 'lcard' }, [el('h4', { text: name }), G.pacBars(P[k].p, { w: 240, mi: P[k].mi })]));
+        }
+        kids.push(row);
+      }
+      sec('Phase–amplitude coupling in this window', 'pac', kids);
+    }
+  }
+
+  /* Save what is on screen: one SVG of every figure, a PNG of it, or the
+     window's traces and every number as CSV. */
+  function leafName(ext) {
+    return 'monolith-r' + LF.rat + '-' + LF.day + '-' + LF.unit + '-' + (LF.data ? LF.data.window.name + '-' + LF.data.band.id + '-' + LF.data.method : '') + '.' + ext;
+  }
+  function download(name, blob) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  function composite() {
+    const figs = Array.from(document.querySelectorAll('#leaf svg.mfig'));
+    const W2 = 980;
+    let y = 30;
+    const out = document.createElementNS(NS, 'svg');
+    out.setAttribute('xmlns', NS);
+    out.appendChild(sv('rect', { x: 0, y: 0, width: W2, height: 10, fill: css('--surface') }));
+    out.appendChild(sv('text', { x: 10, y: 20, 'font-size': 13, fill: css('--ink'), 'font-family': 'sans-serif' }, LF.data ? leafSay(LF.data) : ''));
+    let x = 10, rowH = 0;
+    for (const f of figs) {
+      const vb = (f.getAttribute('viewBox') || '0 0 300 150').split(' ').map(Number);
+      const w = vb[2], h = vb[3];
+      if (x + w > W2 - 10) { x = 10; y += rowH + 12; rowH = 0; }
+      const c = f.cloneNode(true);
+      c.setAttribute('x', x);
+      c.setAttribute('y', y);
+      c.setAttribute('width', w);
+      c.setAttribute('height', h);
+      c.removeAttribute('class');
+      out.appendChild(c);
+      x += w + 12;
+      rowH = Math.max(rowH, h);
+    }
+    const H2 = y + rowH + 10;
+    out.setAttribute('viewBox', '0 0 ' + W2 + ' ' + H2);
+    out.setAttribute('width', W2);
+    out.setAttribute('height', H2);
+    out.firstChild.setAttribute('height', H2);
+    return { svg: out, w: W2, h: H2 };
+  }
+  function exportLeaf(kind) {
+    const d = LF.data;
+    if (!d) return;
+    if (kind === 'csv') {
+      const ex = d.explain || {};
+      const tr = ex.traces || {};
+      const lines = ['# ' + leafSay(d), '# stored ' + d.method + ' ' + d.stored + ', recomputed ' + d.recomputed];
+      for (const [m, v] of Object.entries(ex.values || {})) lines.push('# ' + m + ',' + v);
+      lines.push('t_s,raw_a,raw_b,band_a,band_b,env_a,env_b,dphi');
+      for (let k = 0; k < (tr.t || []).length; k++) {
+        lines.push([(tr.t[k] + d.window.t0).toFixed(4), tr.raw_a[k], tr.raw_b[k], tr.band_a[k], tr.band_b[k], tr.env_a[k], tr.env_b[k], tr.dphi[k]].join(','));
+      }
+      download(leafName('csv'), new Blob([lines.join('\n') + '\n'], { type: 'text/csv' }));
+      return;
+    }
+    const c = composite();
+    const text = new XMLSerializer().serializeToString(c.svg);
+    if (kind === 'svg') { download(leafName('svg'), new Blob([text], { type: 'image/svg+xml' })); return; }
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = c.w * 2;
+      cv.height = c.h * 2;
+      const g = cv.getContext('2d');
+      g.fillStyle = css('--surface') || '#fff';
+      g.fillRect(0, 0, cv.width, cv.height);
+      g.scale(2, 2);
+      g.drawImage(img, 0, 0);
+      cv.toBlob((b) => b && download(leafName('png'), b), 'image/png');
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(text);
+  }
+
+  /* ==================================================================
+     What was lost: per rat and day, and in all
+     ================================================================== */
+  const DMG = { data: null, err: null };
+  const REASON_LABEL = { kept: 'kept', histology: 'histology', bad: 'bad wire', clipped: 'clipped', unread: 'not measured' };
+  function reasonColor(r) {
+    return { kept: css('--ok'), histology: css('--node-grey'), bad: css('--arrow'), clipped: css('--up'), unread: css('--ink-3') }[r];
+  }
+  const pct = (a, b) => (b ? Math.round(100 * a / b) : 0) + '%';
+  async function loadDamage() {
+    try { DMG.data = await getJSON('/damage'); } catch (e) { DMG.err = e.message; }
+    renderDamage();
+    renderVerdict();
+  }
+  function sumTally(rows) {
+    const t = { of: 0, kept: 0, histology: 0, bad: 0, clipped: 0, unread: 0 };
+    for (const r of rows) for (const k in t) t[k] += r[k] || 0;
+    return t;
+  }
+  /* One bar: how a set of region-windows went, kept first. */
+  function damageBar(t, w) {
+    const H = 16, svg = sv('svg', { viewBox: '0 0 ' + w + ' ' + H, class: 'mfig dbar', width: '100%', style: 'max-width:' + w + 'px',
+      role: 'img', 'aria-label': 'kept ' + pct(t.kept, t.of) });
+    let x = 0;
+    for (const r of ['kept', 'histology', 'clipped', 'bad', 'unread']) {
+      const v = t[r] || 0;
+      if (!v) continue;
+      const ww = w * v / t.of;
+      const seg = sv('rect', { x: x.toFixed(2), y: 0, width: Math.max(0.5, ww).toFixed(2), height: H, fill: reasonColor(r), 'data-reason': r });
+      hover(seg, [REASON_LABEL[r], v.toLocaleString() + ' of ' + t.of.toLocaleString() + ' region-windows (' + pct(v, t.of) + ')',
+                  r === 'kept' ? '' : DMG.data.reason_say[r]]);
+      svg.appendChild(seg);
+      x += ww;
+    }
+    return svg;
+  }
+  /* Rats down, regions across, one panel per day; a cell is how many of
+     that region's cue-pair windows were kept. */
+  function damageMap(day) {
+    const d = DMG.data, S = D.S;
+    const days = d.days.filter((x) => x.day === day);
+    const names = d.regions;
+    const cw = 44, ch = 22, left = 34, top = 50;
+    const W2 = left + cw * names.length + 4, H2 = top + ch * days.length + 6;
+    const svg = sv('svg', { viewBox: '0 0 ' + W2 + ' ' + H2, class: 'mfig dmap', width: '100%', style: 'max-width:' + W2 + 'px',
+      role: 'img', 'aria-label': 'What each rat kept, region by region, on ' + day, 'data-day': day });
+    const defs = sv('defs');
+    const pat = sv('pattern', { id: 'hatch-' + day, width: 6, height: 6, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' });
+    pat.appendChild(sv('rect', { x: 0, y: 0, width: 6, height: 6, fill: css('--surface-2') }));
+    pat.appendChild(sv('line', { x1: 0, y1: 0, x2: 0, y2: 6, stroke: css('--node-grey'), 'stroke-width': 2.5 }));
+    defs.appendChild(pat);
+    svg.appendChild(defs);
+    svg.appendChild(sv('text', { x: left, y: 12, 'font-size': 11.5, 'font-weight': 600, fill: css('--ink') }, day));
+    names.forEach((n, j) => {
+      const x = left + cw * j + cw / 2;
+      const [side, ...rest] = n.split(' ');
+      svg.appendChild(sv('text', { x, y: top - 18, 'text-anchor': 'middle', 'font-size': 9.5, fill: css('--ink-3') }, side === 'Right' ? 'R' : side === 'Left' ? 'L' : side));
+      svg.appendChild(sv('text', { x, y: top - 6, 'text-anchor': 'middle', 'font-size': 9.5, fill: css('--ink-2') }, rest.join(' ')));
+    });
+    days.forEach((dd, i) => {
+      const y = top + ch * i;
+      svg.appendChild(sv('text', { x: left - 5, y: y + ch / 2 + 3.5, 'text-anchor': 'end', 'font-size': 10.5, fill: css('--ink-2') }, 'r' + dd.rat));
+      dd.regions.forEach((r, j) => {
+        const x = left + cw * j;
+        const t = r.state;
+        const histo = t.histology === t.of && t.of > 0;
+        const share = t.of ? t.kept / t.of : 0;
+        const cell = sv('rect', { x: x + 1, y: y + 1, width: cw - 2, height: ch - 2, rx: 3,
+          fill: histo ? 'url(#hatch-' + day + ')' : mix(css('--up'), css('--ok'), share), 'fill-opacity': histo ? 1 : 0.25 + 0.6 * share,
+          'data-rat': String(dd.rat), 'data-region': r.name, 'data-kept': String(t.kept), 'data-of': String(t.of) });
+        const why = ['histology', 'clipped', 'bad', 'unread'].filter((k) => t[k]).map((k) => t[k] + ' ' + REASON_LABEL[k]);
+        hover(cell, ['r' + dd.rat + ' · ' + day + ' · ' + r.name,
+          histo ? 'Not measured at all: ' + d.reason_say.histology + '.'
+            : 'Cue-pair windows: ' + t.kept + ' of ' + t.of + ' kept' + (why.length ? ' (' + why.join(', ') + ')' : ''),
+          histo ? '' : 'Transition windows: ' + r.trans.kept + ' of ' + r.trans.of + ' kept',
+          histo ? '' : 'Rest epochs: ' + r.rest.kept + ' of ' + r.rest.of + ' kept']);
+        svg.appendChild(cell);
+        if (!histo) {
+          svg.appendChild(sv('text', { x: x + cw / 2, y: y + ch / 2 + 3.5, 'text-anchor': 'middle', 'font-size': 9.5, 'pointer-events': 'none',
+            fill: css('--ink') }, Math.round(100 * share) + ''));
+        }
+      });
+    });
+    return svg;
+  }
+  function renderDamage() {
+    const host = $('damage');
+    if (!host) return;
+    host.innerHTML = '';
+    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'What was lost' }), qh('damage')]));
+    const d = DMG.data;
+    if (!d) {
+      host.appendChild(el('p', { class: DMG.err ? 'warn' : 'loading', text: DMG.err ? 'The damage report could not be read: ' + DMG.err : 'Counting what was lost…' }));
+      return;
+    }
+    const W0 = d.whole;
+    const days = d.days;
+    const rats = Array.from(new Set(days.map((x) => x.rat))).sort((a, b) => a - b);
+    const dayNames = Array.from(new Set(days.map((x) => x.day)));
+    const tS = sumTally(W0.state), tT = sumTally(W0.trans), tR = sumTally(W0.rest_regions);
+    // In all.
+    host.appendChild(el('p', {}, [el('strong', { text: 'In all: ' }),
+      W0.cue.total + ' cue pairs over ' + rats.length + ' rats and ' + dayNames.length + ' days. ' + W0.cue.kept
+      + ' kept every region histology allows, in every window; ' + W0.cue.partial + ' lost a region somewhere; '
+      + W0.cue.lost + ' were lost entirely (no two regions read in any window). Rest epochs: ' + W0.rest.kept + ' of '
+      + W0.rest.total + ' usable.']));
+    const row = (label, t) => el('div', { class: 'drow' }, [el('span', { class: 'dlab small', text: label }), damageBar(t, 520),
+      el('span', { class: 'small muted', text: pct(t.kept, t.of) + ' kept' })]);
+    host.appendChild(el('div', { class: 'dbars' }, [
+      row('Cue-pair windows', tS), row('Transition windows', tT), row('Rest epochs', tR)]));
+    host.appendChild(el('div', { class: 'legend' }, ['kept', 'histology', 'clipped', 'bad', 'unread'].map((r) =>
+      el('span', { title: r === 'kept' ? '' : d.reason_say[r] }, [el('b', { class: 'sw', style: 'background:' + reasonColor(r) }), REASON_LABEL[r]]))));
+    // What it cost the pooled result.
+    const E0 = d.entries[st.layer] || d.entries.raw;
+    if (E0) {
+      const why = Object.entries(E0.untested).map(([c, n]) => n.toLocaleString() + ' because ' + (d.why_say[c] || 'code ' + c));
+      const none = E0.by_region.filter((x) => x.tested === 0).map((x) => x.name);
+      host.appendChild(el('p', { class: 'small' }, [el('strong', { text: 'Entries: ' }),
+        E0.tested.toLocaleString() + ' of ' + E0.entries.toLocaleString() + ' tested (' + pct(E0.tested, E0.entries) + '). '
+        + (why.length ? 'Not tested: ' + why.join('; ') + '. ' : '')
+        + (none.length ? 'Nothing at all with ' + none.join(' or ') + ': too few rats have it on both days.' : '')]));
+    }
+    if (d.aliasing) {
+      const A = d.aliasing;
+      host.appendChild(el('p', { class: 'small' }, [el('strong', { text: 'Aliasing: ' }), A.say || '',
+        A.at ? el('span', { class: 'muted', text: ' (checked ' + String(A.at).slice(0, 10) + ')' }) : null, qh('aliasing')]));
+    }
+    // Rat by rat.
+    host.appendChild(el('h3', { text: 'Each rat, each day' }));
+    host.appendChild(el('div', { class: 'dmaps' }, dayNames.map((day) => damageMap(day))));
+    host.appendChild(el('p', { class: 'small muted', text: 'A cell is the share of that region’s cue-pair windows (cue pairs × 4 windows) '
+      + 'that were kept; hatched: histology says the probe is not there. Hover a cell for transitions and rest.' }));
+    const tbl = el('table', { class: 'dtable' });
+    const head = el('tr', {}, [el('th', { text: 'Rat' })].concat(dayNames.map((day) => el('th', { text: day }))).concat([el('th', { text: 'Both days' })]));
+    tbl.appendChild(el('thead', {}, [head]));
+    const body = el('tbody');
+    const cueSay = (c, r) => c.kept + ' kept, ' + c.partial + ' partly, ' + c.lost + ' lost of ' + c.total + ' cue pairs · rest ' + r.kept + '/' + r.total;
+    for (const rat of rats) {
+      const mine = days.filter((x) => x.rat === rat);
+      const cells = dayNames.map((day) => {
+        const x = mine.find((y) => y.day === day);
+        if (!x) return el('td', { class: 'muted', text: 'not in the Monolith' });
+        const extra = [];
+        if (x.refused) extra.push(x.refused + ' refused on the cluster');
+        for (const n of x.notes) extra.push(n);
+        return el('td', {}, [el('div', { text: cueSay(x.cue, x.rest) }), extra.length ? el('div', { class: 'small muted', text: extra.join(' · ') }) : null]);
+      });
+      const c = { total: 0, kept: 0, partial: 0, lost: 0 }, r = { total: 0, kept: 0 };
+      for (const x of mine) { for (const k in c) c[k] += x.cue[k]; r.total += x.rest.total; r.kept += x.rest.kept; }
+      const hist = (mine[0] || {}).histology || [];
+      body.appendChild(el('tr', { 'data-rat': String(rat) }, [el('th', { text: 'r' + rat })].concat(cells).concat([el('td', {}, [
+        el('div', { text: cueSay(c, r) }), hist.length ? el('div', { class: 'small muted', text: 'histology: no ' + hist.join(', ') }) : null])])));
+    }
+    const tot = el('tr', { class: 'dtot' }, [el('th', { text: 'All' })].concat(dayNames.map((day) => {
+      const c = { total: 0, kept: 0, partial: 0, lost: 0 }, r = { total: 0, kept: 0 };
+      for (const x of days.filter((y) => y.day === day)) { for (const k in c) c[k] += x.cue[k]; r.total += x.rest.total; r.kept += x.rest.kept; }
+      return el('td', { text: cueSay(c, r) });
+    })).concat([el('td', { text: cueSay(W0.cue, W0.rest) })]));
+    body.appendChild(tot);
+    tbl.appendChild(body);
+    host.appendChild(el('div', { class: 'dtwrap' }, [tbl]));
+  }
 
   /* ---------------- everything ---------------- */
   function renderAll(viewChanged) {
@@ -1177,7 +1852,10 @@ window.MONO = (function () {
       Object.assign(st, { kind: D.S.windows.find((w) => w.id === t.w).kind, win: t.w, band: t.band, method: t.m, sel: t.pair });
     }
     renderAll();
-    try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => renderAll()); } catch (e) { /* old browser */ }
+    loadDamage();
+    try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { renderAll(); renderDamage(); }); } catch (e) { /* old browser */ }
+    D.ready = true;
+    document.dispatchEvent(new CustomEvent('monolith:ready'));
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -1187,6 +1865,8 @@ window.MONO = (function () {
     get state() { return Object.assign({}, st); },
     get data() { return D; },
     get ghost() { return { pair: GH.pair, stack: GH.stack.slice(), lifted: GH.lifted, detail: GH.detail, info: GH.info }; },
-    set, go, openGhost, closeGhost, push, renderAll, LEVELS, Q,
+    get ready() { return !!D.ready; },
+    set, go, openGhost, closeGhost, push, ghostTo, renderAll, LEVELS, Q, openLeaf, closeLeaf, stepLeaf, switchDay,
+    get leaf() { return Object.assign({}, LF); }, broadband, bbCount, here, arrowGeom, get damage() { return DMG.data; }, renderDamage,
   };
 })();

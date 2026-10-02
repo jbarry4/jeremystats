@@ -961,12 +961,12 @@ BARRY.vacc = (function () {
 
   /* Where it goes is asked every time, Scratch first (2026-10-01): the
      lab's shared Jarvis Data, or Temp, the lab's gpfs3tmp space, which
-     takes any number of files and is purged on a schedule. Each choice is
+     is purged on a schedule and has its own quota. Each choice is
      planned on its own, because what is already there differs between
      them, and the button says what the chosen one would send. */
   const DEST_SAY = {
     scratch: 'The lab’s shared space, Jarvis Data. Processing space: VACC may clear it, and this is never the only copy.',
-    temp: 'The lab’s temporary space (gpfs3tmp). Takes any number of files, and is purged on a schedule.',
+    temp: 'The lab’s temporary space (gpfs3tmp), purged on a schedule. The lab’s quota there is about 1 TB.',
   };
 
   async function upload(gids) {
@@ -1018,6 +1018,14 @@ BARRY.vacc = (function () {
         if ((plan.shared || {}).why && dest === 'scratch') {
           box.appendChild(el('p', { class: 'warn-line', text: plan.shared.why }));
         }
+        /* The lab's quota there, asked of the cluster with the plan: a
+           place that is full is said before anything is sent, not found
+           out file by file as "Broken pipe". */
+        const room = plan.room || {};
+        if (room.say) {
+          box.appendChild(el('p', { class: room.fits === false ? 'warn-line vacc-up-room' : 'hint vacc-up-room',
+            text: room.say }));
+        }
         box.appendChild(el('ul', { class: 'fix-steps' }, ready.map((i) => el('li', { text:
           i.label + ' — ' + (i.n_send
             ? i.n_send + ' file(s), ' + bytes(i.bytes)
@@ -1033,9 +1041,11 @@ BARRY.vacc = (function () {
       const b = okBtn();
       if (b) {
         const n = plan && !asking ? plan.files : 0;
-        b.disabled = n ? null : 'disabled';
-        b.textContent = n ? 'Upload ' + bytes(plan.bytes) + ' to ' + (d.label || dest)
-                          : 'Nothing to upload';
+        const full = !!(plan && !asking && (plan.room || {}).fits === false);
+        b.disabled = n && !full ? null : 'disabled';
+        b.textContent = full ? 'Not enough room in ' + (d.label || dest)
+          : n ? 'Upload ' + bytes(plan.bytes) + ' to ' + (d.label || dest)
+          : 'Nothing to upload';
       }
     };
     const choose = async (id) => {
@@ -1065,6 +1075,7 @@ BARRY.vacc = (function () {
       false, async () => {
         const plan = plans[dest];
         if (!plan || !plan.files) throw new Error('Nothing to send there.');
+        if ((plan.room || {}).fits === false) throw new Error(plan.room.say);
         started = await apiPost('/api/vacc/upload', {
           gids: (plan.items || []).filter((i) => !i.why && i.n_send).map((i) => i.gid),
           dest, confirm: true });

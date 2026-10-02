@@ -15,6 +15,62 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.02.6 - The Monolith shows a newcomer around
+
+### Added
+
+- **A guided tour of the Monolith.** It is written for a lab member who
+  knows the rats, regions and cues but not this analysis. In 14 steps it
+  follows this Monolith's top point of interest, with its real numbers:
+  - the counts against chance;
+  - what a line on the circuit means;
+  - what the view is;
+  - the leads;
+  - the edge lifted out: the pooled change, each rat and the forest plot,
+    one rat's two days, that day's cue pairs;
+  - one cue pair's recording, read from the VACC, and how its number was
+    made.
+
+  Click steps work either way: click the real thing yourself, or press Next
+  and a cursor clicks it. If you open a different rat or day than the one
+  suggested, the tour follows yours. Back sets the page up again for the
+  step before. If the recording has left the VACC, that step says so.
+- **It starts by itself on a first visit,** and this browser remembers that
+  it was shown, so it never starts on its own again. **Take the tour**, at
+  the top right of the page, starts it any time.
+
+### Fixed
+
+The Monolith tour runs on the engine Jarvis's own tours use (`tour.js`).
+Four fixes there help every tour:
+
+- **Next on a click step moved on twice.** The click's own timer advanced a
+  second time 420 ms later, which skipped the step after.
+- **A step that took a moment to set up could paint over the next one.**
+  This happened if Next was pressed while the step was still setting up.
+  Separately, the last step's re-measuring painted the new step's words
+  before its target was ready.
+- **Next could not click an SVG target**, such as an edge or an arc. It now
+  sends a real click event. A target that has already left the page is not
+  clicked.
+- **A target with no height** (a straight line) could not be pointed at.
+  It now gets a ring like anything else.
+
+### Checks
+
+- `_dev/monolith.html` (153). A returning visitor is not shown the tour; a
+  first visit starts it. It walks all 14 steps and measures that each
+  step's ring surrounds its own target. It also checks:
+  - Next performs a click step and moves on exactly one;
+  - a reader's own click moves the tour on;
+  - a different rat is followed;
+  - Back works;
+  - the traces appear, or the "gone" message does;
+  - Finish, Escape and the button all behave;
+  - the box stays on screen at 390 px.
+- Jarvis's tour harnesses pass unchanged: `tour` (54), `tournext` (14) and
+  `loadclean` (9).
+
 ## 2026.10.02.5 - A database that is not answering is asked once, not 270 times
 
 ### Fixed
@@ -43,6 +99,126 @@ This file is the only place the version is written. The app reads it.
 
 - **Sync marks on the Checkup shelf** as well as on the bench, beside when
   each set was last touched.
+
+## 2026.10.02.4 - AI Beta leaves out recordings rejected whole
+
+### Changed
+
+- **A recording where every candidate is Garbage is no longer learned
+  from.** Those twelve recordings held 1,487 candidates, 57% of all the
+  garbage, and they came in pairs from one mouse (m24, m29, m46, m48).
+  That is a call about the animal or the placement, not about any one
+  event. Every candidate in them looks like a dentate spike on its own,
+  so the model caught 104 of them and learned that spike-shaped events
+  can be garbage. They are listed under "not used", with the reason.
+  Whether a recording is usable at all is a different question, and AI
+  Beta does not ask it.
+
+### Measured: the re-run (gradient-boosted trees, default inputs)
+
+The data is now 41 recordings from 23 mice: 10,078 DS and 1,098 Garbage.
+The figures below compare the same 40 mixed recordings, before and after.
+
+| | before | after |
+|---|---|---|
+| Ranking (AUC), pooled | 0.879 | 0.911 |
+| Ranking inside one recording, median of 35 | 0.83 | 0.88 |
+| Garbage caught when asked to keep 98% of DS | 8.7% | 25.8% |
+| ... when asked to keep 95% | 27.1% | 47.5% |
+| ... when asked to keep 90% | 58.7% | 71.7% |
+
+At the 98% bar it kept 98.6% of real DS and flagged 3.8% of candidates.
+It now leans on the shank and CSD measures almost as much as on the
+waveforms: shuffling them drops its ranking by 0.13, against 0.15 for the
+waveforms.
+
+## 2026.10.02.3 - Checkup's AI Beta: a model tested on mice it never saw
+
+### Added
+
+- **AI Beta, inside Checkup.** A **Sets | AI Beta** switch in Checkup's
+  header, remembered per machine. It is a sandbox: it trains a model to
+  sort dentate spike candidates into DS and Garbage from the sets people
+  have finished, tests it on mice it never saw, and says how it did. It
+  writes no label, no curation set and no bank version, and Braces never
+  sees it. Running it on new, undecided sets is a later step.
+
+  - **What it learns from.** For each Event Bank entry, the undecided
+    version (v0) is the candidates, whether they came from a Toothy
+    import or from Incisor. The answer is the last version before Braces
+    that holds only DS and Garbage. That is 53 recordings from 28 mice:
+    10,078 DS and 2,585 Garbage. Two settled versions whose snapshot never
+    reached this machine (PTEN m24 s4 and m21 s6) are taken from the
+    curation set, and only because its counts match the version exactly.
+  - **The clock comes first.** Every feature is read from the raw file at
+    a stamp, so a stamp on the wrong clock is a window on the wrong event.
+    Versions on Toothy's clock are converted with Re-time's arithmetic.
+    What is left (Toothy's linear time axis drifts as well) is measured per
+    recording, never per event, as a running median of how far the
+    nearest CSD peak sits from each stamp. 39 of the 53 needed a nudge,
+    by up to 71 ms.
+  - **Inputs, each a toggle:** Incisor's numbers, shank and CSD measures,
+    waveforms, timing context, recording context (off) and a 5-100 Hz CSD
+    image (off). Each recording is read once and cached. All 53 took
+    about 25 minutes here, six at a time. Changing the inputs later only
+    retrains, which takes about 90 seconds.
+  - **Tested on whole mice**, five ways round. The bar for calling
+    something a DS is set inside the training mice so that it keeps 98% of
+    real spikes. Anything under the bar is a flag for a person and is
+    never thrown away. Classes are balanced.
+  - **The summary:** the headline counts; the three kinds of recording
+    (both labels, rejected whole, no garbage); what each stricter or looser
+    bar would cost; which inputs it leaned on; each held-out group of mice;
+    and each recording. Every run is kept, with the model it trained under
+    `GUI_logs/aibeta/models` and what it learned from.
+
+### Measured: the first run (gradient-boosted trees, default inputs)
+
+- **On mice it never saw, at the 98% bar,** it kept 96.9% of real DS and
+  caught 7.7% of the garbage, flagging 4.0% of candidates.
+- **In recordings with both labels it ranks well:** AUC 0.88 pooled. Inside
+  a single recording, a real spike scores above a piece of garbage 83% of
+  the time (median of 35 recordings).
+- **It cannot see a recording rejected whole.** Twelve recordings, 1,487
+  candidates and 57% of all the garbage were rejected outright. It caught
+  104 of them, because each candidate in them looks like a dentate spike
+  on its own. That rejection is a call about the recording, not about any
+  one event.
+- **The price of keeping spikes.** Asked to keep 90% of DS, it catches 38%
+  of all garbage and 59% of the garbage in mixed recordings, and flags
+  15.8% of candidates.
+- **It leans on the waveforms.** Shuffling them drops its ranking by 0.21.
+  Incisor's numbers add almost nothing on top.
+- **For reference:** a person's first pass matched the settled call 71.6%
+  of the time. Often that was a Toothy-era sort by somebody else.
+- **Tried, and not the default:**
+  - Recording context made it worse: one fold's ranking fell from 0.82 to
+    0.61, and twelve rejected recordings are too few to learn from.
+  - The CSD image ranked better within a recording (0.91) but worse across
+    recordings, and was five times slower.
+  - A random forest caught more garbage at the 98% bar (13%) but less at
+    90%.
+  - Logistic regression was worse throughout.
+
+### Changed
+
+- **Balanced classes by repetition, not by weight**, for the
+  gradient-boosted trees. With scikit-learn 1.9 here, `class_weight`
+  made each fit fifteen times slower (1.3 s against 18.9 s), which turned
+  a 90-second run into six minutes.
+
+### Checked
+
+- `tools/check_aibeta.py`: 28 ok. It checks which version is the answer,
+  the skips and their reasons, one entry per recording, the clock
+  conversion and the running median, counts at a bar, and that no mouse
+  is tested in a fold it trained in.
+- `_dev/aibeta.html`: 31 ok. It never trains: the train request is
+  intercepted, and the count of attempts must be zero.
+- The train route end to end through a live server on six cached
+  recordings: the cost line, the refusal with no inputs, the refusal of a
+  second run while one goes, the job, its result and the run listed. That
+  run was then removed.
 
 ## 2026.10.02.2 - Every record says whether it is shared; no Sync button
 
@@ -89,6 +265,94 @@ This file is the only place the version is written. The app reads it.
   (`/api/cloud/items`), so they cost no requests at Supabase.
 
 Checks: `tools/check_syncitems.py` (25) and `_dev/syncmarks.html` (20).
+
+## 2026.10.02.1 - The Monolith explains itself, down to the traces
+
+### Added
+
+- **A ? beside everything on the Monolith page.** That covers every View
+  control, every measure, the circuit, the points of interest, the
+  spectrum, PAC, each level of the ghost, and the cue-pair view. Each ? opens
+  beside itself and gives:
+  - what the thing is, in plain words;
+  - what to look for, and what fools it;
+  - one or two papers;
+  - a highlighted line about the entry on screen.
+
+  The measures and the statistics also show two made-up examples side by
+  side, a strong effect and no effect. They are drawn from
+  `web/monolith_guide.json`, which `tools/monolith_guide.py` makes by running
+  signals shaped like the real data (8 rats, about 15 cue pairs a day, 10 s at
+  1 kHz) through the Monolith's own engine. The statistics examples are:
+  - eight rats that agree vs a 5:3 split;
+  - one outlier rat;
+  - minus FP taking away a change shared with rest;
+  - nothing changed, on a circuit, where about 5% still pass.
+- **The Guide** (`monolith-guide.html`): every ? in one page, with
+  contents. Each ? links to its own entry.
+- **Under the ghost, each level's own picture:**
+  - Pooled: each rat's Precon1 and Precon4, joined.
+  - Rats: a forest plot with 95% intervals and the Hartung–Knapp diamond.
+  - A rat: both days' cue pairs as dots, mean ± SE, with rest beside them
+    for minus FP.
+  - A day: its cue pairs as dots.
+
+  A line under the pictures says how many cue pairs gave a value, rat by
+  rat. A dash in the ghost now says why it has no value: which region had no
+  usable wire, or what the node refused.
+- **Click a cue pair to see its traces.** A cue pair can be opened from the
+  ghost or from a dot. Jarvis reads that stretch of the recording from the
+  VACC copy, on the login node, with the same reader the node used. The view
+  shows:
+  - the whole cue pair, 10 s either side, with its windows marked and the
+    analysed one shaded;
+  - the analysed window four ways: raw, band-passed, envelopes, and the
+    phase difference;
+  - every measure as its own picture, the one in view first, with its
+    stored number and the one recomputed here, which must match;
+  - the phase-binned amplitude bars for the chosen PAC cell, each way.
+
+  ← and → step through the cue pairs, and Precon1/Precon4 switches the day.
+  The view saves as SVG, PNG or CSV. A recording that has left the VACC
+  (Temp is purged) is said to be gone. Nothing is read from anywhere else.
+- **Broadband flag.** A pair that passes p < .05 at 60% or more of the
+  tested 1 Hz bands is marked *broadband* in the points of interest, in its
+  hover and under the spectrum. A change that is everywhere is more often
+  a reference or an artifact than a rhythm.
+
+### Fixed
+
+- **Granger arrows read as arrows.** The head was a fixed 9 px marker. On a
+  thick edge it was narrower than the line, and the line ran on under it to
+  the node's centre, so a strong arrow looked like a blunt line ending
+  inside the node. Now:
+  - the line stops where the head begins;
+  - the head is sized to the line, at least 6 px wider than it;
+  - the tip stops just outside the node it points at.
+
+  This applies to the circuit, to the Granger arrows drawn over another
+  measure, and to the PAC circuit.
+
+### Checks
+
+- `tools/check_sweep.py` (63): every curve the pictures are drawn from
+  rebuilds its number: the band means of the spectra, the rose's mean
+  vector, the lag curves' peaks, the segments' PPC and debiased wPLI, and
+  the PAC bars' MI. The same curve read 4 Hz off does not.
+- `tools/check_monolith.py` (123): the cue-pair route, against a stand-in
+  login node that answers the real read script. It reads once, then from
+  memory, and says "differ" beside a made-up stored number and "match" once
+  the engine's number is stored. It covers a missing wire and a recording
+  that is gone.
+- `_dev/monolith.html` (124): the ? popovers and their figures, the
+  broadband flag, the ghost's pictures, and the cue-pair view (stepping,
+  day switch, all three saves, not measured, gone). It also checks the
+  Guide, and that no word in any figure is cut off or sits on another.
+  Every arrow is measured from what was drawn: head width against line
+  width, where the line ends against where the head starts, and the tip
+  against the node's circle.
+
+Restart Jarvis to get the cue-pair route.
 
 ## 2026.10.01.6 - Every channel, always: even-only reading is gone
 
@@ -173,6 +437,129 @@ toggled even-only, now open them plainly.
 Harness: `_dev/xfdual.html`, 37 checks. Against the committed code it fails
 6 and then stops.
 
+## 2026.10.01.4 - Root Canal's amplitude filter is a choice of four
+
+### Added
+
+- **No filter | DS | LFP | Custom**, for what amplitude and half-width are
+  measured on. Asked for once it was clear the 1-100 Hz default had been a
+  recommendation, not a measurement.
+
+  | | band | 60 Hz mains |
+  |---|---|---|
+  | No filter | none — the stored 2 kHz snippet | left in |
+  | DS | 5-100 Hz at Toothy's order — Incisor's and X-ray's band | fitted out, as the CSD's is |
+  | LFP | 1-100 Hz, order 4 — the literature's morphology band | left in, as that band is used |
+  | Custom | your corners | a checkbox, on by default |
+
+  **LFP stays the default**, so nothing already fitted moves. A preset is
+  its own numbers: a request saying "ds" with other corners gets 5-100 Hz,
+  and the request itself carries the preset's numbers rather than the
+  corners last typed for Custom. Every chip, panel title, banked method
+  line and figure names the filter in words, and the Xplorefinder
+  pop-out opens on the same filter, notch included.
+
+  A pool refuses members measured on different filters, for the reason it
+  refuses different bands: two measurements under one axis label.
+
+### Measured
+
+- **What the mains was doing to the amplitude axis.** On PTEN m1 s2, the
+  events whose max-amp contact is CSC41 — a contact carrying heavy mains
+  as well as real events — by filter: LFP 23 of 64, no filter 21, DS 3,
+  custom 3-150 Hz with the mains out 5. The mains was choosing the contact
+  the amplitude and half-width were read off, for a third of that
+  recording's events.
+
+### Fixed
+
+- The click panel's cache key now includes the filter. Without it, a new
+  filter showed the old trace.
+
+### Checked
+
+- `tools/check_rootcanal.py` 208 ok: each preset's numbers, presets
+  ignoring stray corners, refusals, no filter returning the snippet
+  untouched, DS taking 60 Hz down by more than 20 dB and keeping 20 Hz,
+  LFP leaving the mains, NaN contacts staying NaN.
+- `rootcanal.html` 204 ok, driving the four buttons to the server's own
+  statement of what it applied, the event re-read on a new filter, Custom
+  remembering its corners, and back on LFP giving the same answer as
+  before. With the filter choice broken, 10 fail. `rootcanalpool.html` 112,
+  `dspca.html` 304.
+
+## 2026.10.01.3 - Root Canal pools recordings, and its CSD loses the mains
+
+### Added
+
+- **Root Canal: Single | Pooled.** Bring processed singles — banked
+  results and unbanked reads, each marked — into one space, pooled in
+  raw units and re-clustered, with every event's own single call kept
+  beside the pooled one. Colour by pooled call, single call, switches,
+  recording, mouse or mouse type; focus a mouse or a type and the rest
+  dims. The question it is built to answer: two clusters, or one
+  ambiguous spectrum?
+
+  - **Identity switches**, drawn and counted: a 2x2 of single against
+    pooled call, the rate, and the rate per recording, mouse and type.
+  - **GMM, one group against two, by BIC** — and, beside it, whether its
+    two groups ARE the DS / IED split (adjusted Rand against the k-means
+    call). Without that the test answers a different question: on the
+    first real pool (18 PTEN recordings, 2761 events) ΔBIC was +881,
+    "very strong support for two groups", while those two groups matched
+    the DS / IED call at adjusted Rand 0.07 and the split axis had one
+    hump and a long tail. Two Gaussians fitted a skewed cloud. The verdict
+    sentence is now worded on the agreement.
+  - **Mouse** is project + mouse number, so PTEN m13 and KCNT1 m13 are two
+    animals. **Mouse type** is the registry's project and cohort, and can
+    be set by hand per mouse in the pool.
+  - **Saved as a Jarvis Artifact** (`rootcanal_pool`), with a required
+    label: pinned members and every dot, so it reopens with nothing read.
+    Changing members makes a version; an identical re-save confirms.
+    Nothing is written back to the Event Bank.
+
+### Fixed
+
+- **Root Canal's CSD carried mains.** It was taken on the fit filter,
+  1-100 Hz, with no notch. Measured on the 18 cached reads: a median 5% of
+  CSD power at 55-65 Hz, and 72-78% on PTEN m1 s2 and m1 s8 — while the
+  voltage traces beside it carried 1-5%, which is why they looked clean.
+  A CSD is a second difference, and mains that differs a little between
+  contacts survives it. On PTEN m1 eleven contacts carry up to 80% mains
+  (CSC1, 8, 9, 12-14, 16-18, 41, 57) and only CSC59 is marked bad.
+
+  The CSD is now on the dentate-spike band, 5-100 Hz, as X-ray's is. And
+  the mains is FITTED OUT, not notched: X-ray notches the continuous
+  recording, where a 2 Hz notch has time to settle, and on a +-250 ms
+  snippet it does not — it took a pure 60 Hz sine down by less than
+  20 dB and left 9-13% on the noisy contacts. A least-squares 60 Hz sine
+  over the snippet's 30 cycles comes out with no ringing and moves a 1 mV
+  spike by under 1%. CSD mains, median over recordings, 5.2% -> 1.7%;
+  PTEN m1 s2 72% -> 2.9%; the worst event of all 82% -> 5%.
+
+- **The batch table is sized to its contents.** At full width on a wide
+  screen it was 2014 px for four short columns.
+
+### Open
+
+- **The fit filter itself is still 1-100 Hz with no mains removal.** It
+  was a recommendation, not a measurement, and on PTEN m1 s2 23 of 64
+  events were measured on CSC41, a mains-heavy contact that carries real
+  events. Moving it to the dentate-spike filter is the user's call.
+- "You can't choose the set" in Many could not be reproduced: in a real
+  browser, at 1600 and 2540 px, ticking sticks, Already read opens and
+  fits the set, and nothing overflows.
+- Two Single failures and an X-ray timeout seen once in a three-harness
+  run did not come back in three runs since.
+
+### Checked
+
+- `tools/check_rootcanal.py`: 196 ok. New: the GMM's agreement wording on
+  two blobs and on one skewed cloud, the CSD's filter, a 60 Hz sine down
+  by more than 20 dB, a spike left alone.
+- `rootcanal.html` 188, `rootcanalpool.html` 112, `dspca.html` 304. The new
+  CSD-title check fails with the old wording.
+
 ## 2026.10.01.2 - The Monolith: every measure, 1–55 Hz, on the VACC
 
 ### Added
@@ -238,10 +625,25 @@ Harness: `_dev/xfdual.html`, 37 checks. Against the committed code it fails
 
 - **Upload to VACC asks where, every time**: Scratch (Jarvis Data) is
   chosen to start with, and Temp (`/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp`,
-  any number of files, purged on a schedule) is the other choice. Each is
+  purged on a schedule, with its own quota) is the other choice. Each is
   planned on its own, and the button says which one it is uploading to.
   Copies in Temp are found by the inventory, like copies in Jarvis Data.
   Files go six at a time.
+
+- **The room on the cluster is read before anything is sent.** The first
+  real upload to Temp failed on every folder with a bare `[Errno 32] Broken
+  pipe`. What the cluster had actually said was `cat: write error: Disk
+  quota exceeded`. The lab group pi-jbarry4 is at its gpfs3tmp hard limit
+  (1,010 GB of a 1,000 GB quota), almost all of it in `DEWEY GUI Project`.
+  - The upload plan now asks GPFS for the group's quota where the files
+    would go (`vacc.space`). It says how much room is left, and whether this
+    upload fits.
+  - A place that cannot take the upload says so: its button reads "Not
+    enough room in Temp" and is off. This holds in the Monolith tab and in
+    Sessions' Upload to VACC.
+  - If the cluster refuses part way through, its own words are shown.
+  - A quota refusal stops the upload at once, rather than failing every
+    folder after it.
 
 ### Checked
 

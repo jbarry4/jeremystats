@@ -74,6 +74,10 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
 .edge.sel { filter: drop-shadow(0 0 3px var(--focus)); }
 .edge.hl { stroke-opacity: 1 !important; filter: drop-shadow(0 0 2px var(--focus)); }
 .arrowp { fill: none; pointer-events: none; }
+.ahead { cursor: pointer; }
+.ahead.sel { filter: drop-shadow(0 0 3px var(--focus)); }
+.ahead.hl { filter: drop-shadow(0 0 2px var(--focus)); }
+.arrowh { pointer-events: none; }
 .node { cursor: default; }
 .node-l { font: 11.5px var(--sans); fill: var(--ink-2); }
 .node-l.grey { fill: var(--ink-3); }
@@ -81,7 +85,7 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
 .legend i { display: inline-block; width: 24px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 6px; }
 .legend b.sw { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 6px; }
 .empty { color: var(--ink-3); font-size: 13.5px; padding: 12px 0; }
-.tip { position: fixed; z-index: 20; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line-2);
+.tip { position: fixed; z-index: 50; pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line-2);
        border-radius: var(--r); padding: 8px 10px; font-size: 12.5px; box-shadow: 0 6px 24px rgba(0,0,0,.18); max-width: 340px; display: none; }
 .tip b { display: block; overflow-wrap: anywhere; }
 .tip .row { overflow-wrap: anywhere; }
@@ -132,6 +136,154 @@ dl.meth { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap:
 dl.meth dt { font-weight: 600; }
 dl.meth dd { margin: 0; color: var(--ink-2); overflow-wrap: anywhere; }
 .loading { padding: 40px 0; color: var(--ink-2); }
+/* a heading (or label) with its ? beside it */
+.hrow { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; min-width: 0; }
+.hrow > h2, .hrow > h3, .hrow > h4 { margin: 0; }
+div.hrow:has(> h2) { margin: 0 0 8px; }
+div.hrow:has(> h3) { margin: 12px 0 6px; }
+.ctl > .lab.hrow { display: flex; }
+.guide-link a { color: var(--ink-2); }
+/* the ? and its popover (js/monolith_help.js) */
+.qmark, .seg button.qmark { flex: none; width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1px solid var(--line-2);
+  background: var(--surface); color: var(--ink-3); font: 600 11px/16px var(--sans); text-align: center; cursor: pointer; box-shadow: none; }
+.qmark:hover, .seg button.qmark:hover { color: var(--ink); border-color: var(--ink-3); }
+.mchip { display: inline-flex; align-items: center; gap: 1px; min-width: 0; }
+.qpop { position: fixed; z-index: 40; background: var(--surface); color: var(--ink); border: 1px solid var(--line-2); border-radius: var(--r);
+  box-shadow: 0 10px 36px rgba(0,0,0,.22); padding: 10px 14px 12px; overflow: auto; font-size: 13.5px; }
+.qpop-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.qpop-h b { font-size: 15px; overflow-wrap: anywhere; }
+.qpop-x { font: inherit; border: 0; background: none; color: var(--ink-3); cursor: pointer; padding: 0 2px; font-size: 15px; }
+.qblock p { margin: 0 0 7px; overflow-wrap: anywhere; }
+.qblock b { color: var(--ink); }
+.qplain { color: var(--ink); }
+.qlook, .qtraps { color: var(--ink-2); }
+.qhere { background: color-mix(in srgb, var(--focus) 12%, transparent); border-left: 3px solid var(--focus); padding: 5px 8px; border-radius: 4px; }
+.qfigs:empty { display: none; }
+.qfigs { margin: 8px 0; }
+.qdemo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .qdemo { grid-template-columns: minmax(0, 1fr); } }
+.qcase { border: 1px solid var(--line); border-radius: var(--r); padding: 7px 8px; background: var(--surface-2); min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.qcase.strong { border-color: color-mix(in srgb, var(--up) 45%, var(--line)); }
+.qcase-h { font-weight: 600; font-size: 12.5px; overflow-wrap: anywhere; }
+.qcase-say { font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
+.qsay { grid-column: 1 / -1; font-size: 12.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+.qcite { font-size: 11.5px; color: var(--ink-3); margin: 6px 0; overflow-wrap: anywhere; }
+.qguide { font-size: 12.5px; color: var(--ink-2); }
+svg.mfig { display: block; width: 100%; height: auto; }
+/* broadband */
+.chip.bb { background: var(--up-soft); color: var(--up); }
+.bbnote { font-size: 12.5px; color: var(--up); margin: 6px 0 0; }
+/* the ghost's numbers, under the circuit */
+.gstats { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 4px; }
+.gstats svg.mfig { margin: 4px 0 6px; }
+.gstats circle[data-i] { cursor: pointer; }
+/* one cue pair, down to its traces */
+.leafpanel { position: fixed; inset: 12px; z-index: 30; background: var(--surface); color: var(--ink); border: 1px solid var(--line-2);
+  border-radius: var(--r); box-shadow: 0 14px 48px rgba(0,0,0,.28); display: flex; flex-direction: column; overflow: hidden; }
+@media (max-width: 640px) { .leafpanel { inset: 0; border-radius: 0; } }
+.leafbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 14px;
+  border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.leafbar h2 { font-size: 15px; }
+.leafctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lbtn { font: inherit; font-size: 13px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: var(--r); padding: 3px 10px; cursor: pointer; }
+.lbtn:disabled { opacity: .45; cursor: default; }
+.leafbody { flex: 1; overflow: auto; padding: 8px 14px 30px; }
+.lsec { margin: 0 0 14px; min-width: 0; }
+.lgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+.lcard { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; background: var(--surface-2); min-width: 0; }
+.lcard.sel { border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
+.lcard h4 { font-size: 13px; margin: 0 0 2px; overflow-wrap: anywhere; }
+.lval { font-size: 12.5px; color: var(--ink-2); margin: 2px 0 6px; overflow-wrap: anywhere; }
+/* what was lost */
+.dbars { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 6px; }
+.drow { display: grid; grid-template-columns: 140px minmax(0, 520px) auto; gap: 10px; align-items: center; }
+@media (max-width: 640px) { .drow { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+.dlab { color: var(--ink-2); }
+.dmaps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 12px; margin: 6px 0; }
+svg.dmap rect[data-region] { cursor: default; }
+.dtwrap { overflow-x: auto; margin-top: 8px; }
+.dtable { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+.dtable th, .dtable td { text-align: left; vertical-align: top; padding: 5px 8px; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.dtable thead th { color: var(--ink-3); font-weight: 600; border-top: 0; }
+.dtable tbody th { white-space: nowrap; }
+.dtable tr.dtot td, .dtable tr.dtot th { font-weight: 600; border-top: 2px solid var(--line-2); }
+/* the page's head: the title, and the button that starts the tour */
+.pagehead { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
+.pagehead h1 { flex: 1 1 320px; min-width: 0; }
+.tourbtn { flex: none; font: inherit; font-size: 13.5px; font-weight: 600; border: 1px solid var(--focus); background: var(--surface);
+  color: var(--ink); border-radius: var(--r); padding: 6px 14px; cursor: pointer; }
+.tourbtn:hover { background: color-mix(in srgb, var(--focus) 14%, var(--surface)); }
+/* ==========================================================================
+   The guided tour (js/tour.js, the engine Jarvis's tours use; the Monolith's
+   steps are js/monolith_tour.js). Copied from the "Guided tours" block and
+   .tour-cursor in web/app.css, with Jarvis's tokens mapped onto this page's,
+   inside the tour only.
+   ========================================================================== */
+.tour, .tour-cursor {
+  --accent: var(--focus); --accent-soft: color-mix(in srgb, var(--focus) 26%, transparent);
+  --accent-line: color-mix(in srgb, var(--focus) 55%, transparent); --on-accent: #1b1400;
+  --bg-2: var(--surface); --bg-3: var(--chip); --text: var(--ink); --text-2: var(--ink-2); --text-3: var(--ink-3);
+  --line-soft: var(--line); --warn: var(--up); --warn-soft: var(--up-soft);
+  --radius: var(--r); --radius-sm: 6px; --r-2: 2px; --r-6: 6px; --sp-6: 6px; --sp-8: 8px;
+  --shadow: 0 12px 40px rgba(0, 0, 0, .28);
+}
+.tour { position: fixed; inset: 0; z-index: 900; pointer-events: none; font-family: var(--sans); }
+.tour-block { position: fixed; background: rgba(20, 32, 28, 0.48); pointer-events: auto; transition: opacity .15s ease; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tour-block { background: rgba(6, 14, 11, 0.62); } }
+:root[data-theme="dark"] .tour-block { background: rgba(6, 14, 11, 0.62); }
+.tour-block.hidden { display: none; }
+.tour-hole { position: fixed; pointer-events: none; border: 2px solid var(--accent); border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 22px 2px var(--accent-line);
+  transition: left .18s ease, top .18s ease, width .18s ease, height .18s ease; }
+.tour-hole.hidden { display: none; }
+.tour-hole.clickable { animation: tour-pulse 1.5s ease-in-out infinite; }
+@keyframes tour-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--accent-soft), 0 0 22px 2px var(--accent-line); }
+  50% { box-shadow: 0 0 0 7px var(--accent-soft), 0 0 30px 5px var(--accent-line); }
+}
+@media (prefers-reduced-motion: reduce) { .tour-hole { transition: none; } .tour-hole.clickable { animation: none; } }
+.tour-box { position: fixed; pointer-events: auto; width: 340px; max-width: calc(100vw - 28px); background: var(--bg-2);
+  border: 1px solid var(--line-2); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px 11px; color: var(--text); }
+.tour-box.busy { opacity: .8; }
+.tour-box h4 { margin: 8px 0 5px; font-size: 15px; line-height: 1.35; color: var(--text); overflow-wrap: anywhere; }
+.tour-body { margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-2); overflow-wrap: anywhere; }
+.tour-note { margin: 8px 0 0; font-size: 12px; line-height: 1.55; color: var(--text-3); padding-left: 9px; border-left: 2px solid var(--line); }
+.tour-do { margin: 9px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text); font-weight: 600; }
+.tour-problem { margin: 9px 0 0; padding: 7px 9px; border-radius: var(--radius-sm); background: var(--warn-soft); color: var(--warn);
+  font-size: 12px; line-height: 1.5; }
+.tour-head { display: flex; align-items: center; gap: var(--sp-8); }
+.tour-mod { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-2); font-weight: 700; }
+.tour-of { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; margin-left: auto; }
+.tour-head .close-x { flex: none; }
+.tour-bar { height: 2px; background: var(--line-soft); border-radius: var(--r-2); margin-top: 7px; overflow: hidden; }
+.tour-bar i { display: block; height: 100%; background: var(--accent); transition: width .25s ease; }
+.tour-foot { display: flex; align-items: center; gap: var(--sp-6); margin-top: 11px; }
+.tour-box::after { content: ''; position: absolute; width: 9px; height: 9px; background: var(--bg-2);
+  border-left: 1px solid var(--line-2); border-top: 1px solid var(--line-2); }
+.tour-box[data-arrow="none"]::after { display: none; }
+.tour-box[data-arrow="bottom"]::after { top: -5px; left: 50%; margin-left: -5px; transform: rotate(45deg); }
+.tour-box[data-arrow="top"]::after { bottom: -5px; left: 50%; margin-left: -5px; transform: rotate(225deg); }
+.tour-box[data-arrow="right"]::after { left: -5px; top: 50%; margin-top: -5px; transform: rotate(-45deg); }
+.tour-box[data-arrow="left"]::after { right: -5px; top: 50%; margin-top: -5px; transform: rotate(135deg); }
+.tour .btn { font: inherit; padding: 7px 14px; border-radius: var(--radius-sm); border: 1px solid transparent; background: var(--accent);
+  color: var(--on-accent); cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.tour .btn:hover:not(:disabled) { filter: brightness(1.08); }
+.tour .btn:disabled { opacity: .45; filter: grayscale(.85); cursor: not-allowed; }
+.tour .btn.ghost { background: transparent; border-color: var(--line-2); color: var(--text-2); }
+.tour .btn.ghost:hover:not(:disabled) { background: var(--bg-3); color: var(--text); }
+.tour .btn.sm { padding: 5px 11px; font-size: 12.5px; }
+.tour .close-x { width: 26px; height: 26px; border: 0; border-radius: var(--r-6); padding: 5px; background: transparent;
+  color: var(--text-2); cursor: pointer; }
+.tour .close-x:hover { background: var(--bg-3); color: var(--text); }
+.tour .close-x svg { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.tour-cursor { position: fixed; z-index: 100000; pointer-events: none; width: 22px; height: 22px; margin: -3px 0 0 -3px;
+  transition: left .5s cubic-bezier(.32, .72, .3, 1), top .5s cubic-bezier(.32, .72, .3, 1);
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, .55)); }
+.tour-cursor svg { width: 100%; height: 100%; fill: #fff; stroke: #111; stroke-width: 1.1; }
+.tour-cursor.press::after { content: ''; position: absolute; left: -9px; top: -9px; width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid var(--accent); animation: tour-press .34s ease-out forwards; }
+@keyframes tour-press { from { transform: scale(.35); opacity: .95; } to { transform: scale(1.25); opacity: 0; } }
+.tour-cursor.press svg { transform: scale(.86); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -140,6 +292,10 @@ dl.meth dd { margin: 0; color: var(--ink-2); overflow-wrap: anywhere; }
   <p class="loading" id="loading">Reading the Monolith…</p>
 </main>
 <div class="tip" id="tip" role="status"></div>
+<script src="js/monolith_figs.js"></script>
+<script src="js/monolith_help.js"></script>
 <script src="js/monolith.js"></script>
+<script src="js/monolith_tour.js"></script>
+<script src="js/tour.js"></script>
 </body>
 </html>

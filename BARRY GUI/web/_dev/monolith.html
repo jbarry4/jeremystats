@@ -31,17 +31,45 @@
      - the frequency slider walks the 1 Hz bands; the snaps are the named
        bands; transitions say which window length a band uses
      - Granger net draws arrows the way the net drive grew; the arrows
-       toggle draws them over another measure
+       toggle draws them over another measure; every arrow measured: its
+       head wider than its line, the line stopping where the head begins,
+       the tip just outside the node it points at (never under it)
      - a point of interest snaps window, band and measure, and selects it
      - the ghost: an edge lifts out and turns level; it opens into one edge
        per rat, a rat into its two days, a day into its cue pairs (and rest
        epochs, minus FP); the crumbs go back; Escape closes it
      - the PAC grids and the PAC circuit at a chosen cell
      - at phone width nothing scrolls sideways, and no text is cut short
+     - every ? opens what it is, with this entry's line and the strong and
+       no-effect figures from the real monolith_guide.json; Escape closes it
+       and nothing else
+     - a pair that passes at most frequencies is flagged broadband
+     - under the ghost, each level's picture: the slope chart, the forest
+       plot, the days' and one day's cue pairs as dots (a dot opens it)
+     - a cue pair opens to its traces: the whole cue pair with the window
+       shaded, the window four ways, every measure's own picture (the one
+       in view first, its stored number matched), PAC bars; stepping with
+       the buttons and the arrow keys, the day switch, SVG/PNG/CSV, "not
+       measured", and a recording that is gone said so, with nothing drawn
+     - the Guide page: every ? as an entry, each figure drawn, a link lands
+       on its entry
+     - WHAT WAS LOST: the whole thing in words and bars, a rat x region map
+       per day (histology hatched, a clipped region's share and its reasons
+       on hover), a rat x day table whose totals are the sums of its rows,
+       the verdict's line linking to it, untested entries and aliasing
+     - THE TOUR: on a first visit it starts by itself (and is remembered);
+       its 14 steps each light up their own target, measured; Next performs
+       a click step and moves on exactly one; a reader's own click moves it
+       on too, and a different rat than suggested is followed; Back sets
+       the page up again; it goes down to the cue pair's traces, or says the
+       recording is gone; Finish and Escape leave it; the Take the tour
+       button starts it again; at 390 px the box stays on screen
+       (negative control: with the visit remembered it does not start)
 
    ?stop=<step> leaves the frame at a step for a screenshot: lifted, rats,
-   days, units. Negative control: a planted edge moved out of the slider's
-   reach is not drawn. */
+   days, units, leaf, help, granger (add &dark=1 for the dark tokens), tour<n> (the tour at step n,
+   from 0; &phone=1 at 390 px, &dark=1 dark). Negative control: a planted edge moved out of the
+   slider's reach is not drawn. */
 const out = document.getElementById('out');
 let bad = 0;
 const say = (c, m) => { const d = document.createElement('div');
@@ -49,6 +77,20 @@ const say = (c, m) => { const d = document.createElement('div');
                         out.appendChild(d); if (c === 'bad') bad += 1; };
 const check = (n, c, d) => say(c ? 'ok' : 'bad', n + (c || d === undefined ? '' : '   [' + d + ']'));
 const head = (t) => { const h = document.createElement('h2'); h.textContent = t; out.appendChild(h); };
+
+/* One arrow, measured from what was drawn: the head's tip against the
+   circle of the node it points at, the head's width against the line's,
+   and where the line ends against where the head begins. */
+function arrowFit(line, poly, node) {
+  const pts = poly.getAttribute('points').trim().split(/\s+/).map((q) => q.split(',').map(Number));
+  const [tip, b1, b2] = pts;
+  const cx = Number(node.getAttribute('cx')), cy = Number(node.getAttribute('cy'));
+  const r = Number(node.getAttribute('r')) + Number(node.getAttribute('stroke-width') || 0) / 2;
+  const end = /([-\d.]+),([-\d.]+)\s*$/.exec(line.getAttribute('d'));
+  const mid = [(b1[0] + b2[0]) / 2, (b1[1] + b2[1]) / 2];
+  return { tipOut: Math.hypot(tip[0] - cx, tip[1] - cy) - r, headW: Math.hypot(b1[0] - b2[0], b1[1] - b2[1]),
+           lineW: Number(line.getAttribute('stroke-width')), gap: end ? Math.hypot(Number(end[1]) - mid[0], Number(end[2]) - mid[1]) : Infinity };
+}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function until(fn, tries = 120, gap = 50) {
   for (let i = 0; i < tries; i++) {
@@ -58,6 +100,33 @@ async function until(fn, tries = 120, gap = 50) {
   return null;
 }
 const STOP = new URLSearchParams(location.search).get('stop');
+
+/* Every word in every figure under `root`: inside its picture, and not on
+   top of another word. Measured from the drawn boxes, not judged by eye --
+   a unit sat on the last tick's number, and a peak's label ran off the top,
+   and both looked like "a figure" in a quick glance. */
+function figWords(root) {
+  const bad = [];
+  for (const g of root.querySelectorAll('svg.mfig')) {
+    const vb = g.viewBox.baseVal;
+    const boxes = [];
+    for (const t of g.querySelectorAll('text')) {
+      const w = t.textContent.trim();
+      if (!w) continue;
+      const b = t.getBBox();
+      if (b.x < -1 || b.y < -1 || b.x + b.width > vb.width + 1 || b.y + b.height > vb.height + 1) {
+        bad.push((g.getAttribute('aria-label') || 'figure') + ': “' + w + '” leaves the picture');
+      }
+      for (const [o, ow] of boxes) {
+        const dx = Math.min(b.x + b.width, o.x + o.width) - Math.max(b.x, o.x);
+        const dy = Math.min(b.y + b.height, o.y + o.height) - Math.max(b.y, o.y);
+        if (dx > 2 && dy > 3) bad.push((g.getAttribute('aria-label') || 'figure') + ': “' + w + '” on “' + ow + '”');
+      }
+      boxes.push([b, w]);
+    }
+  }
+  return bad;
+}
 
 /* ---------------- the fixture ---------------- */
 function rng(seed) {
@@ -144,11 +213,18 @@ function makePac(seed) {
   a[at(0, 1, c6, 0 * N.R + 1)] = 0.004; a[at(1, 1, c6, 0 * N.R + 1)] = 1e-4; a[at(3, 1, c6, 0 * N.R + 1)] = 8;
   return a;
 }
+function plantBroadband(a) {
+  for (let b = 0; b < 55; b++) {
+    if (b === PLANT2.b) continue;
+    a[(((1 * N.W + PLANT2.w) * N.B + b) * N.M + PLANT2.m) * N.P + PLANT2.p] = b <= 40 ? 1e-3 : 0.5;
+  }
+}
 const SHAPES = { edges: [6, N.W, N.B, N.M, N.P], power: [6, N.W, N.B, N.R], pac: [6, 4, N.C, N.R * N.R] };
 const ARR = {
   edges_raw: makeEdges(11), edges_minus_fp: makeEdges(12), power_raw: makePower(13),
   power_minus_fp: makePower(14), pac_raw: makePac(15), pac_minus_fp: makePac(16),
 };
+plantBroadband(ARR.edges_raw);
 function topList(layer) {
   const out2 = [];
   const mk = (x, est, p, same, rank) => ({ layer, w: WINDOWS[x.w].id, wi: x.w, kind: WINDOWS[x.w].kind,
@@ -196,24 +272,103 @@ function detail(layer, at) {
     for (const day of ['Precon1', 'Precon4']) {
       const units = Array.from({ length: 12 }, (_x, u) => ({ id: 'p' + String(u + 1).padStart(2, '0'),
         label: u % 2 ? 'Click → Low Tone' : 'Noise → High tone', cue: u % 2 ? 'Click → Low Tone' : 'Noise → High tone',
-        v: u === 3 ? null : 0.4 + (day === 'Precon4' ? 0.05 : 0) + (r() - 0.5) * 0.1, wires: [5 + u % 2, 21] }));
-      const s = { cue: 0.42, cue_se2: 0.0004, n: 11, units, x: 0.42 + (day === 'Precon4' ? 0.05 : 0), se2: 0.0004 };
+        v: u === 3 ? null : 0.4 + (day === 'Precon4' ? 0.05 : 0) + (r() - 0.5) * 0.1, wires: [5 + u % 2, 21],
+        why: u === 3 ? 'no usable wire in ' + REG[1] : undefined }));
+      const s = { cue: 0.42, cue_se2: 0.0004, n: 11, of: 12, units, x: 0.42 + (day === 'Precon4' ? 0.05 : 0), se2: 0.0004 };
       if (layer === 'minus_fp') {
-        s.rest = 0.38; s.rest_se2 = 0.0003; s.n_rest = 6; s.x = s.cue - s.rest; s.se2 = 0.0007;
+        s.rest = 0.38; s.rest_se2 = 0.0003; s.n_rest = 6; s.of_rest = 6; s.x = s.cue - s.rest; s.se2 = 0.0007;
         s.rest_units = Array.from({ length: 6 }, (_x, e) => ({ id: 'e0' + (e + 1), label: 'FP1 @ ' + (30 * e) + ' s', run: 'FP1', v: 0.38 + (r() - 0.5) * 0.05 }));
       }
       days[day] = s;
     }
-    return { rat, days, delta: days.Precon4.x - days.Precon1.x, v: 0.0008, left: days.Precon1.x, right: days.Precon4.x, weight: 1 / 7 };
+    const delta = days.Precon4.x - days.Precon1.x;
+    return { rat, days, delta, v: 0.0008, ci: [delta - 0.055, delta + 0.055], left: days.Precon1.x, right: days.Precon4.x, weight: 1 / 7 };
   });
   return { ok: true, what: 'edges', layer, at, rats, agree: true,
-           pooled: { est: 0.05, se: 0.01, p: 0.002, df: 6, k: 7, tau2: 0 }, arrays: { est: 0.05, p: 0.002 } };
+           pooled: { est: 0.05, se: 0.01, ci: [0.03, 0.07], p: 0.002, df: 6, k: 7, tau2: 0 }, arrays: { est: 0.05, p: 0.002 } };
 }
+
+/* One cue pair, down to its traces, as /leaf says it: the explanation is a
+   real one -- the strong zero-lag example in monolith_guide.json, made by
+   sweep.explain -- so every measure's picture has real numbers to draw.
+   p04 is "not measured"; LEAF_GONE says the recording has left the VACC. */
+let leafAsked = [];
+let LEAF_GONE = false;
+let GUIDE = null;
+function leafOf(q) {
+  leafAsked.push(decodeURIComponent(q.toString()));
+  const rat = Number(q.get('rat')), day = q.get('day'), unit = q.get('unit'), layer = q.get('layer');
+  const at = q.get('at').split(',').map(Number);
+  if (LEAF_GONE) throw new Error('This recording is no longer on the VACC (temp): /gpfs3/scratch/fake/r' + rat + '. Upload it again to see its traces.');
+  const rest = unit.charAt(0) === 'e';
+  const units = rest ? Array.from({ length: 6 }, (_x, e) => 'e0' + (e + 1)) : Array.from({ length: 12 }, (_x, u) => 'p' + String(u + 1).padStart(2, '0'));
+  const base = 100 + 40 * Math.max(0, units.indexOf(unit));
+  const marks = [['pre', base, base + 10], ['cue1', base + 10, base + 20], ['cue2', base + 20, base + 30], ['post', base + 30, base + 40]]
+    .map(([name, t0, t1]) => ({ name, t0, t1 }));
+  const wm = marks.find((m) => m.name === WINDOWS[at[0]].id) || marks[2];
+  const fs = 250, t0 = base, t1 = base + 40, n = (t1 - t0) * fs;
+  const wave = (ph) => Array.from({ length: n }, (_x, k) => +(40 * Math.sin(2 * Math.PI * 8 * k / fs + ph) + 12 * Math.sin(k * 0.37)).toFixed(2));
+  const out = { ok: true, rat, day, unit, label: 'Noise → High tone', cue: 'Noise → High tone', run: rest ? 'FP1' : null,
+    kind: rest ? 'rest' : WINDOWS[at[0]].kind, rest, window: { name: wm.name, t0: wm.t0, t1: wm.t1 },
+    span: { t0, t1, fs, a: wave(0), b: wave(0.6) }, marks, regions: [REG[PAIRS[at[3]][0]], REG[PAIRS[at[3]][1]]], wires: [5, 21],
+    band: BANDS[at[1]], method: METHODS[at[2]].id, layer, stored: null, remote: '/gpfs3/scratch/fake/r' + rat, units };
+  if (unit === 'p04') {
+    out.measured = false; out.why = 'no usable wire in ' + out.regions[1]; out.span = { t0, t1 };
+    return out;
+  }
+  const ex = JSON.parse(JSON.stringify(GUIDE.scenarios.zero_lag.strong));
+  out.explain = ex; out.stored = ex.values[out.method]; out.recomputed = out.stored; out.matches = true;
+  return out;
+}
+/* What /damage says, made up: 12 cue pairs and 6 rest epochs a rat-day;
+   Right POR is never there (histology); r4 Precon1 loses 20 of Right OFC's
+   48 cue-pair windows to clipping; every rat-day keeps 9 cue pairs whole,
+   2 partly and loses 1. */
+function damageFixture() {
+  const r = rng(99);
+  const days = [];
+  const tally = (of) => ({ of, kept: 0, histology: 0, bad: 0, clipped: 0, unread: 0 });
+  for (const rat of SUMMARY.rats) for (const day of ['Precon1', 'Precon4']) {
+    const U = 12, Ur = 6;
+    const regions = REG.map((name, ri) => {
+      const st = tally(U * 4), tr = tally(U * 3), re = tally(Ur);
+      if (ri === GREY) { st.histology = st.of; tr.histology = tr.of; re.histology = re.of; }
+      else {
+        const c = (rat === 4 && day === 'Precon1' && ri === 1) ? 20 : Math.floor(r() * 6);
+        st.clipped = c; st.kept = st.of - c; tr.kept = tr.of; re.kept = re.of;
+      }
+      return { name, state: st, trans: tr, rest: re };
+    });
+    days.push({ rat, day, cue: { total: U, kept: 9, partial: 2, lost: 1 }, rest: { total: Ur, kept: Ur, lost: 0 },
+                histology: [REG[GREY]], bad: [], refused: rat === 3 ? 2 : 0,
+                notes: rat === 7 && day === 'Precon1' ? ['FP1 2026-07-22 has no records (an aborted acquisition), so it was passed over.'] : [],
+                regions });
+  }
+  const sum = (key) => REG.map((name, ri) => {
+    const t = tally(0);
+    for (const d of days) for (const k in t) t[k] += d.regions[ri][key][k];
+    return Object.assign({ name }, t);
+  });
+  const whole = { cue: { total: 0, kept: 0, partial: 0, lost: 0 }, rest: { total: 0, kept: 0, lost: 0 },
+                  state: sum('state'), trans: sum('trans'), rest_regions: sum('rest') };
+  for (const d of days) { for (const k in whole.cue) whole.cue[k] += d.cue[k]; for (const k in whole.rest) whole.rest[k] += d.rest[k]; }
+  const entries = { entries: 375144, tested: 340000, untested: { 1: 35144 },
+                    by_region: REG.map((name, i) => ({ name, entries: 1000, tested: i === GREY ? 0 : 800 })) };
+  return { ok: true, rid: SUMMARY.rid, regions: REG, reasons: ['histology', 'bad', 'clipped', 'unread'],
+           reason_say: { histology: 'histology says the probe is not in this region', bad: 'every wire it has is marked bad',
+                         clipped: 'every wire it has was clipped', unread: 'it was not measured there' },
+           days, whole, entries: { raw: entries, minus_fp: entries }, why_say: SUMMARY.why,
+           aliasing: { say: 'worst leakage into 1–55 Hz −142 dB; no recording’s hardware filter above half its rate.', at: '2026-10-02T12:00:00' } };
+}
+const DAMAGE = damageFixture();
+
 window.MONO_FIXTURE = {
   async json(path) {
     if (path === '/data/summary') return JSON.parse(JSON.stringify(SUMMARY));
+    if (path === '/damage') return JSON.parse(JSON.stringify(DAMAGE));
     const m = /^\/entry\?what=(\w+)&layer=(\w+)&at=([\d,]+)$/.exec(path);
     if (m) { entryAsked.push(path); return detail(m[2], m[3].split(',').map(Number)); }
+    if (path.indexOf('/leaf?') === 0) return leafOf(new URLSearchParams(path.slice(6)));
     throw new Error('no fixture for ' + path);
   },
   async array(name, shape) {
@@ -231,12 +386,32 @@ window.MONO_FIXTURE = {
   // A fresh view: what the page remembers is put back afterwards.
   let kept = null;
   try { kept = localStorage.getItem('barry.monolith.view'); localStorage.removeItem('barry.monolith.view'); } catch (e) { /* none */ }
+  // The tour starts by itself on a first visit. Everything before the tour
+  // section runs as a returning visitor; what this browser remembered about
+  // tours is put back at the end, whatever it was.
+  const TOUR_KEY = 'barry.monolith.tour.seen', DONE_KEY = 'barry.tour.done';
+  let keptTour = null, keptDone = null;
+  try {
+    keptTour = localStorage.getItem(TOUR_KEY); keptDone = localStorage.getItem(DONE_KEY);
+    localStorage.setItem(TOUR_KEY, 'harness');
+  } catch (e) { /* none */ }
+  const restore = () => {
+    try {
+      if (kept == null) localStorage.removeItem('barry.monolith.view'); else localStorage.setItem('barry.monolith.view', kept);
+      if (keptTour == null) localStorage.removeItem(TOUR_KEY); else localStorage.setItem(TOUR_KEY, keptTour);
+      if (keptDone == null) localStorage.removeItem(DONE_KEY); else localStorage.setItem(DONE_KEY, keptDone);
+    } catch (e) { /* none */ }
+  };
+  GUIDE = await fetch('/monolith_guide.json', { cache: 'no-cache' }).then((r) => r.json()).catch(() => null);
+  check('the guide examples are served (monolith_guide.json)', !!(GUIDE && GUIDE.scenarios && GUIDE.scenarios.zero_lag));
   f.src = '/monolith.html';
   await new Promise((r) => f.addEventListener('load', r, { once: true }));
   const W = () => f.contentWindow;
   const D = () => f.contentDocument;
   const M = await until(() => W().MONO && W().MONO.data && W().MONO.data.S && D().getElementById('circsvg') && W().MONO);
   check('the page loads on the fixture', !!M);
+  await sleep(700);
+  check('a returning visitor is not shown the tour (CONTROL for the first-visit start below)', !D().getElementById('tour'));
   if (!M) { document.title = 'FAIL: did not load'; return; }
   const txt = (n) => (n ? n.textContent : '').replace(/\s+/g, ' ').trim();
   const at = (a, q, w, b, m, p) => a[(((q * N.W + w) * N.B + b) * N.M + m) * N.P + p];
@@ -254,6 +429,83 @@ window.MONO_FIXTURE = {
   D().getElementById('showall').click();
   await sleep(30);
   check('and ten again', items().length === 10);
+
+  head('what was lost');
+  const dmg = () => D().getElementById('damage');
+  await until(() => M.damage && dmg().querySelector('svg.dmap'), 120);
+  const dt = txt(dmg());
+  check('in all, in words: cue pairs kept, partly, lost; rest epochs', /In all: 192 cue pairs over 8 rats and 2 days\. 144 kept every region histology allows, in every window; 32 lost a region somewhere; 16 were lost entirely .* Rest epochs: 96 of 96 usable\./.test(dt), dt.slice(0, 300));
+  const bars = dmg().querySelectorAll('svg.dbar');
+  const keptRect = bars[0] && bars[0].querySelector('rect[data-reason="kept"]');
+  const tS = DAMAGE.whole.state.reduce((a, x) => ({ of: a.of + x.of, kept: a.kept + x.kept }), { of: 0, kept: 0 });
+  check('three bars (cue-pair windows, transitions, rest), the kept share drawn to scale', bars.length === 3 && keptRect
+        && Math.abs(Number(keptRect.getAttribute('width')) / 520 - tS.kept / tS.of) < 0.005, keptRect && keptRect.getAttribute('width'));
+  const maps = dmg().querySelectorAll('svg.dmap');
+  check('a map per day, a cell per rat and region (8 × 12)', maps.length === 2
+        && Array.from(maps).every((m) => m.querySelectorAll('rect[data-region]').length === 96));
+  check('a region histology rules out is hatched, in every rat', Array.from(maps).every((m) =>
+        Array.from(m.querySelectorAll('rect[data-region="' + REG[GREY] + '"]')).every((c) => /url\(#hatch-/.test(c.getAttribute('fill')))));
+  const dcell = maps[0].querySelector('rect[data-rat="4"][data-region="Right OFC"]');
+  check('r4 Precon1 Right OFC: 28 of 48 windows kept', dcell && dcell.dataset.kept === '28' && dcell.dataset.of === '48');
+  dcell.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 300 }));
+  await sleep(10);
+  check('its hover says why the rest were lost', /Cue-pair windows: 28 of 48 kept \(20 clipped\)/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
+  dcell.dispatchEvent(new MouseEvent('mouseleave'));
+  const drows = dmg().querySelectorAll('table.dtable tbody tr');
+  check('a row per rat and a total', drows.length === 9 && txt(drows[8].querySelector('th')) === 'All');
+  check('the total is the sum of the rows: 144 kept, 32 partly, 16 lost of 192 · rest 96/96',
+        /144 kept, 32 partly, 16 lost of 192 cue pairs · rest 96\/96/.test(txt(drows[8])), txt(drows[8]));
+  check('each rat over both days: 18 kept, 4 partly, 2 lost of 24', /18 kept, 4 partly, 2 lost of 24 cue pairs · rest 12\/12/.test(txt(drows[0])), txt(drows[0]));
+  check('what was refused on the cluster and the passed-over FP recordings are said', /2 refused on the cluster/.test(txt(drows[0]))
+        && /aborted acquisition/.test(txt(dmg().querySelector('tr[data-rat="7"]'))));
+  check('the entries it cost, and the region with nothing', /Entries: 340,000 of 375,144 tested/.test(dt) && /Nothing at all with Right POR/.test(dt));
+  check('and the aliasing check', /Aliasing: worst leakage into 1–55 Hz −142 dB/.test(dt));
+  check('the counts say what was lost and link here', /Lost on the way: 16 of 192 cue pairs entirely, 32 partly/.test(txt(D().getElementById('verdict')))
+        && !!D().querySelector('#verdict button.linkish'));
+  const dw = figWords(dmg());
+  check('no word in its pictures is cut off or on another', dw.length === 0, dw.slice(0, 4).join(' | '));
+
+  head('every ? says what it is');
+  const H = W().MONO_HELP;
+  const marks = () => Array.from(D().querySelectorAll('.qmark'));
+  check('a ? on every measure', D().querySelectorAll('#controls .mchip .qmark').length === 14, D().querySelectorAll('#controls .mchip .qmark').length);
+  const onPage = new Set(marks().map((b) => b.dataset.help));
+  const want = ['verdict', 'layer', 'windows', 'window', 'frequency', 'bands', 'measure', 'sig', 'arrows', 'circuit', 'points', 'spectrum', 'pac'];
+  check('and on the view controls, the circuit, the points, the spectrum, PAC', want.every((k) => onPage.has(k)), want.filter((k) => !onPage.has(k)).join(','));
+  check('every ? has words written for it', marks().every((b) => H.T[b.dataset.help] && H.T[b.dataset.help].plain), marks().filter((b) => !H.T[b.dataset.help]).map((b) => b.dataset.help).join(','));
+  const pop = () => D().querySelector('.qpop');
+  D().querySelector('#controls .mchip .qmark[data-help="coherence"]').click();
+  await until(() => pop() && pop().querySelectorAll('.qdemo .qcase svg.mfig').length >= 4, 120);
+  check('the coherence ? opens beside it', pop() && pop().dataset.key === 'coherence');
+  const pt = txt(pop());
+  check('plain words, what to look for, what fools it, a paper', /What to look for:/.test(pt) && /What fools it:/.test(pt) && /Paper/.test(pt), pt.slice(0, 120));
+  check('and a line about the entry on screen', /This one: Right ACC – Right OFC at Cue 1, 10 Hz: Coherence changed/.test(pt), pt.slice(0, 400));
+  const cases = pop().querySelectorAll('.qcase');
+  const G = W().MONO_FIGS;
+  check('a strong effect and no effect, side by side, each with its pictures', cases.length === 2 && Array.from(cases).every((c) => c.querySelectorAll('svg.mfig').length === 2));
+  check('their numbers are the engine’s (monolith_guide.json)', txt(cases[0].querySelector('.qcase-h')) === 'Strong effect — ' + G.sig(GUIDE.scenarios.zero_lag.strong.values.coherence)
+        && txt(cases[1].querySelector('.qcase-h')) === 'No effect — ' + G.sig(GUIDE.scenarios.zero_lag.none.values.coherence), txt(cases[0].querySelector('.qcase-h')));
+  check('and a link to its entry in the Guide', /monolith-guide\.html#coherence$/.test(pop().querySelector('a.qguide').getAttribute('href')));
+  const pr = pop().getBoundingClientRect();
+  const pw = figWords(pop());
+  check('no word in its figures is cut off or on top of another', pw.length === 0, pw.slice(0, 4).join(' | '));
+  check('the popover stays on screen', pr.left >= 0 && pr.right <= W().innerWidth + 1 && pr.top >= 0, [pr.left, pr.right, W().innerWidth].join(' '));
+  if (STOP === 'help') { restore(); document.title = 'stopped at help'; return; }
+  D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(10);
+  check('Escape closes it', !pop());
+  D().querySelector('#verdict .qmark').click();
+  await until(() => pop() && pop().querySelector('.qdemo svg.mfig'), 120);
+  check('the counts’ ? shows nothing-changed on a circuit', pop() && /pass p < \.05 with nothing changed/.test(txt(pop())), pop() && txt(pop()).slice(0, 200));
+  D().body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  await sleep(10);
+  check('a click elsewhere closes it', !pop());
+
+  head('broadband');
+  check('the pair that passes almost everywhere is flagged', !!items()[1].querySelector('.chip.bb') && /broadband/i.test(txt(items()[1])), txt(items()[1]).slice(0, 160));
+  check('the planted 10 Hz change is not', !items()[0].querySelector('.chip.bb'));
+  const bb = M.bbCount('raw', PLANT2.w, PLANT2.m, PLANT2.p);
+  check('counted over the 1 Hz bands: 41 of 55', bb.n === 41 && bb.of === 55, JSON.stringify(bb));
 
   head('the circuit');
   // It opened on the first point of interest.
@@ -307,7 +559,36 @@ window.MONO_FIXTURE = {
   M.set({ kind: 'state', win: 'cue1', band: 'f10', method: 'gc_net', level: 1 });
   await sleep(20);
   const gn = D().querySelector('#circsvg path.edge[data-pair="' + GNET.p + '"]');
-  check('Granger net draws an arrow', gn && /url\(#mk-/.test(gn.getAttribute('marker-end') || ''));
+  const gh = D().querySelector('#circsvg polygon.ahead[data-pair="' + GNET.p + '"]');
+  check('Granger net draws an arrow', !!gn && !!gh);
+  const nodeOf = (svgId, r) => D().querySelector('#' + svgId + ' circle[data-region="' + r + '"]');
+  const fit = arrowFit(gn, gh, nodeOf('circsvg', Number(gh.dataset.to)));
+  check('its head is clearly wider than its line (' + fit.headW.toFixed(1) + ' px vs ' + fit.lineW.toFixed(1) + ')', fit.headW >= fit.lineW + 6);
+  check('CONTROL: the old 9 px head on this, the thickest line, would not be', !(9 >= fit.lineW + 6), fit.lineW);
+  check('the line stops where the head begins, not under it', fit.gap < 0.6, fit.gap);
+  check('the tip stops just outside the node it points at, not under it (' + fit.tipOut.toFixed(1) + ' px)', fit.tipOut > 1 && fit.tipOut < 6);
+  M.set({ level: 0 });
+  await sleep(20);
+  const lines = Array.from(D().querySelectorAll('#circsvg path.edge'));
+  const heads = Array.from(D().querySelectorAll('#circsvg polygon.ahead'));
+  const fits = heads.map((h) => arrowFit(D().querySelector('#circsvg path.edge[data-pair="' + h.dataset.pair + '"]'), h, nodeOf('circsvg', Number(h.dataset.to))));
+  check('every Granger edge (' + lines.length + ') has its head, and every head fits the same way',
+        heads.length === lines.length && lines.length > 10 && fits.every((x) => x.headW >= x.lineW + 6 && x.gap < 0.6 && x.tipOut > 1 && x.tipOut < 6),
+        heads.length + ' heads, ' + lines.length + ' lines; ' + JSON.stringify(fits.find((x) => !(x.headW >= x.lineW + 6 && x.gap < 0.6 && x.tipOut > 1 && x.tipOut < 6)) || null));
+  const allNodes = Array.from(D().querySelectorAll('#circsvg circle[data-region]'));
+  const under = heads.filter((h) => {
+    const tip = h.getAttribute('points').trim().split(/\s+/)[0].split(',').map(Number);
+    return allNodes.some((c) => Math.hypot(tip[0] - Number(c.getAttribute('cx')), tip[1] - Number(c.getAttribute('cy'))) < Number(c.getAttribute('r')));
+  });
+  check('no arrow tip is under any node', under.length === 0, under.length);
+  if (STOP === 'granger') {
+    // ?dark=1: the page's dark tokens, drawn again, for a screenshot.
+    if (new URLSearchParams(location.search).get('dark')) { D().documentElement.dataset.theme = 'dark'; M.set({}); }
+    restore(); document.title = 'stopped at granger';
+    return;
+  }
+  M.set({ level: 1 });
+  await sleep(20);
   // GNET is negative: Right PER drives Right ACC more -- the arrow starts at Right PER.
   const startsAt = (path, region) => {
     const ring = D().querySelector('#circsvg circle[data-region="' + region + '"]');
@@ -319,6 +600,10 @@ window.MONO_FIXTURE = {
   await sleep(20);
   const arr = D().querySelector('#circsvg path.arrowp[data-arrow="' + GNET.p + '"]');
   check('the arrows toggle draws them over coherence', !!arr && /Granger arrow/.test(txt(D().getElementById('sigsay'))));
+  const arh = D().querySelector('#circsvg polygon.arrowh[data-arrow="' + GNET.p + '"]');
+  const afit = arr && arh ? arrowFit(arr, arh, nodeOf('circsvg', Number(arh.dataset.to))) : null;
+  check('each with a head that fits it the same way', !!afit && afit.headW >= afit.lineW + 6 && afit.gap < 0.6 && afit.tipOut > 1 && afit.tipOut < 6,
+        JSON.stringify(afit));
   M.set({ arrows: false });
 
   head('a point of interest snaps the view');
@@ -345,11 +630,18 @@ window.MONO_FIXTURE = {
   const gnames = Array.from(D().querySelectorAll('#ghostsvg .gname')).map((x) => x.textContent);
   check('named as the edge was', gnames.indexOf(REG[PAIRS[PLANT2.p][0]]) >= 0 && gnames.indexOf(REG[PAIRS[PLANT2.p][1]]) >= 0, gnames.join(','));
   check('the crumbs say where', txt(D().getElementById('crumbs')).indexOf('Pooled') === 0);
-  if (STOP === 'lifted') { document.title = 'stopped at lifted'; return; }
+  const gs = () => D().getElementById('gstats');
+  const sw = () => figWords(gs());
+  check('under it, each rat’s Precon1 and Precon4, joined', gs() && !gs().hidden && !!gs().querySelector('svg.mfig[aria-label="Precon1 to Precon4, rat by rat"]'));
+  check('and the pooled change in words, with its interval', /Pooled change \+0\.050, 95% interval \+0\.030 to \+0\.070, p \.002/.test(txt(gs())), txt(gs()).slice(0, 200));
+  check('which cue pairs gave a value, rat by rat', /r3 11\/12 · 11\/12/.test(txt(gs())), txt(gs()).slice(-200));
+  if (STOP === 'lifted') { restore(); document.title = 'stopped at lifted'; return; }
   const arcs = () => Array.from(D().querySelectorAll('#ghostsvg path.garc'));
   arcs()[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await until(() => arcs().length === 8, 80);
   check('the edge opens into one edge per rat (8)', arcs().length === 8, arcs().length);
+  await until(() => gs().querySelector('svg.mfig[aria-label="forest plot"]'), 40);
+  check('under it, the forest plot', !!gs().querySelector('svg.mfig[aria-label="forest plot"]') && /7 of 7 rats the same way/.test(txt(gs())), txt(gs()).slice(0, 200));
   check('the rat left out is dashed, and says why', arcs().some((a) => a.getAttribute('stroke-dasharray') && a.dataset.key === 'r11'));
   const r3 = arcs().find((a) => a.dataset.key === 'r3');
   r3.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 200 }));
@@ -357,24 +649,135 @@ window.MONO_FIXTURE = {
   const tipText = txt(D().getElementById('tip'));
   check('hovering a rat says its change, its two days and its weight', /^r3/.test(tipText) && /Precon1 .* → Precon4/.test(tipText) && /weight in the pool 14%/.test(tipText), tipText);
   r3.dispatchEvent(new MouseEvent('mouseleave'));
-  if (STOP === 'rats') { document.title = 'stopped at rats'; return; }
+  if (STOP === 'rats') { restore(); document.title = 'stopped at rats'; return; }
   r3.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await until(() => arcs().length === 2 && M.ghost.stack.length === 3, 80);
   check('a rat opens into its two days', arcs().length === 2 && arcs().map((a) => a.dataset.key).join() === 'Precon1,Precon4');
-  if (STOP === 'days') { document.title = 'stopped at days'; return; }
+  await until(() => gs().querySelectorAll('circle[data-i]').length === 24, 40);
+  check('under it, both days’ cue pairs as dots (12 + 12)', gs().querySelectorAll('circle[data-i]').length === 24, gs().querySelectorAll('circle[data-i]').length);
+  if (STOP === 'days') { restore(); document.title = 'stopped at days'; return; }
   arcs()[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await until(() => arcs().length === 12 && M.ghost.stack.length === 4, 80);
   check('a day opens into every cue pair (12)', arcs().length === 12, arcs().length);
   check('one with no value is dashed, not dropped', arcs().filter((a) => a.getAttribute('stroke-dasharray')).length === 1);
+  await until(() => gs().querySelectorAll('circle[data-i]').length === 12, 40);
+  check('its pictures’ words neither cut off nor overlapping', sw().length === 0, sw().slice(0, 4).join(' | '));
+  check('under it, this day’s cue pairs (12), the one with no value hollow', gs().querySelectorAll('circle[data-i]').length === 12
+        && gs().querySelectorAll('circle[data-i][fill="none"]').length === 1);
+  const nod = arcs().find((a) => a.dataset.key === 'p04');
+  nod.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 200 }));
+  await sleep(10);
+  check('a dash says why it has no value', /Not measured: no usable wire in Right OFC/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
+  nod.dispatchEvent(new MouseEvent('mouseleave'));
   const leaf = arcs()[0];
   leaf.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 200 }));
   await sleep(10);
   check('hovering a cue pair says its cue, value and wires', /CSC 5 and CSC 21/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
   leaf.dispatchEvent(new MouseEvent('mouseleave'));
+  if (STOP === 'units') { restore(); document.title = 'stopped at units'; return; }
+
+  head('one cue pair, down to its traces');
+  const LP = () => D().getElementById('leaf');
+  const leafReady = (unit) => until(() => LP() && M.leaf.data && M.leaf.data.unit === unit && M.leaf.unit === unit, 120);
+  leafAsked = [];
   leaf.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await leafReady('p01');
+  check('clicking a cue pair opens it', !!LP() && !!LP().querySelector('.lcard'));
+  const c6 = CELLS.findIndex((c) => c.fp === 6 && c.fa === 40);
+  check('one request: the entry, the rat, the day, the cue pair, the PAC cell',
+        leafAsked.length === 1 && leafAsked[0] === 'layer=raw&at=2,19,6,12&rat=3&day=Precon4&unit=p01&cell=' + c6, leafAsked.join(' '));
+  const pairName = REG[PAIRS[PLANT2.p][0]] + ' – ' + REG[PAIRS[PLANT2.p][1]];
+  check('it says which', txt(LP().querySelector('h2')) === 'r3 · Precon4 · p01 (Noise → High tone) · cue2 window, 10 s · 20 Hz · ' + pairName, txt(LP().querySelector('h2')));
+  const secs = () => Array.from(LP().querySelectorAll('.lsec'));
+  const s0 = secs()[0];
+  check('the whole cue pair, both regions, its windows marked', /The whole cue pair/.test(txt(s0)) && ['pre', 'cue1', 'cue2', 'post'].every((n) => txt(s0.querySelector('svg')).indexOf(n) >= 0)
+        && s0.querySelectorAll('svg path').length === 2);
+  check('the analysed window shaded on it', !!s0.querySelector('svg rect') && /cue2 window this number was computed on \(120–130 s into/.test(txt(s0)), txt(s0).slice(-160));
+  const s1 = secs()[1];
+  check('the window four ways: raw, band, envelopes, phase difference', ['A raw', 'B raw', 'band', 'env', 'Δφ'].every((n) => txt(s1.querySelector('svg')).indexOf(n) >= 0));
+  const cards = () => Array.from(secs()[2].querySelectorAll('.lcard'));
+  check('every measure, and power, as its own card (15)', cards().length === 15, cards().length);
+  check('the one in view first, marked', cards()[0].classList.contains('sel') && txt(cards()[0].querySelector('h4')) === 'PLV');
+  check('each drawn its own way', cards().every((c) => c.querySelector('svg.mfig')), cards().filter((c) => !c.querySelector('svg.mfig')).map((c) => txt(c.querySelector('h4'))).join(','));
+  check('each with its ?', cards().every((c) => c.querySelector('.qmark')));
+  check('the stored number beside the recomputed one, matched', new RegExp('this cue pair: ' + G.sig(GUIDE.scenarios.zero_lag.strong.values.plv).replace('.', '\\.') + ' · stored .* · matches').test(txt(cards()[0])), txt(cards()[0]));
+  const s3 = secs()[3];
+  check('PAC: the phase-binned amplitude, each way (4)', s3 && /6 Hz phase × 40 Hz amplitude/.test(txt(s3)) && s3.querySelectorAll('.lcard svg.mfig').length === 4);
+  const lw = figWords(LP());
+  check('no word in its figures is cut off or on top of another', lw.length === 0, lw.slice(0, 4).join(' | '));
+  LP().querySelector('.leafbar .qmark').click();
+  await until(() => pop(), 40);
+  check('its ? says what this view is, about this cue pair', pop() && pop().dataset.key === 'leaf' && /This one: r3 · Precon4 · p01/.test(txt(pop())));
+  D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await sleep(10);
-  check('clicking one pins what it is', /p01/.test(txt(D().getElementById('crumbs'))));
-  if (STOP === 'units') { document.title = 'stopped at units'; return; }
+  check('Escape closes the ? first, and leaves the cue pair open', !pop() && !!LP());
+  if (STOP === 'leaf') { restore(); document.title = 'stopped at leaf'; return; }
+
+  const btn = (t) => Array.from(LP().querySelectorAll('.leafctl button')).find((b) => b.textContent === t);
+  check('the first cue pair cannot step back', btn('←').disabled && /1 of 12/.test(txt(LP().querySelector('.leafctl'))));
+  btn('→').click();
+  await leafReady('p02');
+  check('→ steps to the next cue pair', M.leaf.unit === 'p02' && /2 of 12/.test(txt(LP().querySelector('.leafctl'))) && /unit=p02/.test(leafAsked[leafAsked.length - 1]));
+  D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  await leafReady('p03');
+  check('and so does the → key', M.leaf.unit === 'p03');
+  D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+  await leafReady('p02');
+  check('← goes back', M.leaf.unit === 'p02');
+  D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  await leafReady('p03');
+  D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  await until(() => M.leaf.unit === 'p04' && LP() && /Not measured here/.test(txt(LP())), 120);
+  check('a cue pair with no value says why, and draws nothing', /Not measured here: no usable wire in Right RSC/.test(txt(LP())) && !LP().querySelector('.lcard'), txt(LP()).slice(0, 300));
+  LP().querySelector('.leafctl .seg button[data-id="Precon1"]').click();
+  await leafReady('p04');
+  check('the day switch: the same cue pair on Precon1', M.leaf.day === 'Precon1' && /day=Precon1&unit=p04/.test(leafAsked[leafAsked.length - 1]));
+  btn('←').click();
+  await leafReady('p03');
+  check('and steps on from there', M.leaf.day === 'Precon1' && M.leaf.unit === 'p03' && !!LP().querySelector('.lcard'));
+
+  // Saving: the files are caught here, never written.
+  const blobs = [];
+  const WU = W().URL, oc = WU.createObjectURL;
+  WU.createObjectURL = (b) => { blobs.push(b); return 'blob:none'; };
+  const AP = W().HTMLAnchorElement.prototype, ock = AP.click;
+  AP.click = function () { if (!this.download) return ock.call(this); };
+  btn('CSV').click();
+  await until(() => blobs.length >= 1, 40);
+  const csv = blobs[0] ? await blobs[0].text() : '';
+  const rows = csv.split('\n').filter((x) => /^-?[\d.]+,/.test(x));
+  check('CSV: the window’s traces, every number above them', blobs[0] && /csv/.test(blobs[0].type) && csv.indexOf('t_s,raw_a,raw_b,band_a,band_b,env_a,env_b,dphi') >= 0
+        && rows.length === GUIDE.scenarios.zero_lag.strong.traces.t.length && /# plv,/.test(csv), rows.length + ' rows');
+  btn('SVG').click();
+  await until(() => blobs.length >= 2, 40);
+  const svgText = blobs[1] ? await blobs[1].text() : '';
+  const nfig = LP().querySelectorAll('svg.mfig').length;
+  check('SVG: every figure on screen, in one file', blobs[1] && /svg/.test(blobs[1].type) && (svgText.match(/<svg/g) || []).length === nfig + 1, (svgText.match(/<svg/g) || []).length + ' vs ' + (nfig + 1));
+  btn('PNG').click();
+  await until(() => blobs.length >= 3, 160);
+  check('PNG: the same, as a picture', blobs[2] && blobs[2].type === 'image/png' && blobs[2].size > 2000, blobs[2] && blobs[2].size);
+  WU.createObjectURL = oc;
+  AP.click = ock;
+
+  f.style.width = '390px';
+  await sleep(150);
+  check('at 390 px the cue pair view does not scroll sideways', LP().querySelector('.leafbody').scrollWidth <= LP().querySelector('.leafbody').clientWidth + 1
+        && D().scrollingElement.scrollWidth <= D().scrollingElement.clientWidth + 1, LP().querySelector('.leafbody').scrollWidth + ' > ' + LP().querySelector('.leafbody').clientWidth);
+  f.style.width = '';
+  await sleep(60);
+
+  LEAF_GONE = true;
+  M.openLeaf(3, 'Precon4', 'p05');
+  await until(() => LP() && /no longer on the VACC/.test(txt(LP())), 120);
+  check('a recording that has left the VACC: said so, nothing drawn', !!LP() && /This recording is no longer on the VACC \(temp\)/.test(txt(LP())) && !LP().querySelector('svg.mfig'), LP() && txt(LP()).slice(0, 200));
+  LEAF_GONE = false;
+  D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(10);
+  check('Escape closes the cue pair, and leaves the ghost open', !LP() && M.ghost.pair != null && !!D().getElementById('ghostsvg'));
+  gs().querySelectorAll('circle[data-i]')[2].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await leafReady('p03');
+  check('a dot under the ghost opens its cue pair too', M.leaf.unit === 'p03' && M.leaf.day === 'Precon4');
+  M.closeLeaf();
   const crumbs = Array.from(D().querySelectorAll('#crumbs button'));
   check('the crumbs: Pooled › Rats › r3 › Precon4', crumbs.map((b) => b.textContent).slice(0, 4).join('|') === 'Pooled|Rats|r3|Precon4',
         crumbs.map((b) => b.textContent).join('|'));
@@ -420,6 +823,15 @@ window.MONO_FIXTURE = {
   await sleep(20);
   check('a cell opens the PAC circuit there', /PAC circuit at 2 Hz phase × 40 Hz amplitude/.test(txt(D().getElementById('paccard'))),
         txt(D().getElementById('paccard')).slice(0, 120));
+  const c6p = CELLS.findIndex((c) => c.fp === 6 && c.fa === 40);
+  D().querySelector('#paccard .pacgrid rect[data-cell="' + c6p + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await sleep(20);
+  const pl = D().querySelector('#pacsvg path.edge[data-ph="0"][data-to="1"]');
+  const ph = D().querySelector('#pacsvg polygon.ahead[data-ph="0"][data-to="1"]');
+  const pnode = ph ? Array.from(D().querySelectorAll('#pacsvg circle'))[1] : null;
+  const pfit = pl && ph && pnode ? arrowFit(pl, ph, pnode) : null;
+  check('the PAC circuit’s planted arrow (R ACC phase → R OFC amplitude) fits the same way',
+        !!pfit && pfit.headW >= pfit.lineW + 6 && pfit.gap < 0.6 && pfit.tipOut > 1 && pfit.tipOut < 6, JSON.stringify(pfit));
 
   head('nothing cut short, nothing sideways');
   const all = txt(D().body);
@@ -437,7 +849,170 @@ window.MONO_FIXTURE = {
   check('the planted edge moved to p = .5 is not drawn at p < .05', !D().querySelector('#circsvg path.edge[data-pair="0"]'));
   ARR.edges_raw[(((1 * N.W + PLANT.w) * N.B + PLANT.b) * N.M + PLANT.m) * N.P + PLANT.p] = 1e-6;
 
-  try { if (kept == null) localStorage.removeItem('barry.monolith.view'); else localStorage.setItem('barry.monolith.view', kept); } catch (e) { /* none */ }
+  head('the tour');
+  M.closeLeaf(); M.closeGhost(true);
+  try { localStorage.removeItem(TOUR_KEY); } catch (e) { /* none */ }
+  // For a screenshot of a step: &phone=1 draws it 390 px wide, &dark=1 in
+  // the dark tokens.
+  const shotArgs = new URLSearchParams(location.search);
+  if (/^tour\d+$/.test(STOP || '') && shotArgs.get('phone')) f.style.width = '390px';
+  f.src = '/monolith.html';
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const M2 = await until(() => W().MONO && W().MONO.ready && W().MONO, 200);
+  if (/^tour\d+$/.test(STOP || '') && shotArgs.get('dark')) { D().documentElement.dataset.theme = 'dark'; M2.renderAll(); }
+  const TR = () => W().BARRY && W().BARRY.tour;
+  const tst = () => TR() && TR().state;
+  const TB = () => D().getElementById('tourBox');
+  const ready = () => TB() && !TB().classList.contains('busy') && TB().querySelector('h4');
+  // The step's own box: busy clears 140 ms before the new words are painted,
+  // so the step number in the box is what says it has arrived.
+  const atStep = (i) => until(() => tst() && tst().index === i && ready()
+    && txt(TB().querySelector('.tour-of')).indexOf((i + 1) + ' of ') === 0, 600, 50);
+  await atStep(0);
+  check('a first visit starts the tour by itself, at step 1 of 14', !!M2 && tst() && tst().index === 0 && tst().steps === 14
+        && /1 of 14/.test(txt(TB())), tst() && JSON.stringify(tst()));
+  let seenNow = null;
+  try { seenNow = localStorage.getItem(TOUR_KEY); } catch (e) { /* none */ }
+  check('and this browser now remembers it was shown', !!seenNow);
+  const stopN = /^tour(\d+)$/.exec(STOP || '');
+  if (stopN) {
+    if (Number(stopN[1]) > 0) { TR().step(Number(stopN[1])); await atStep(Number(stopN[1])); }
+    restore(); document.title = 'stopped at tour' + stopN[1];
+    return;
+  }
+  // The hole, as set (its own transition is not waited for), against the
+  // step's target: the target sits wholly inside it.
+  const hole = () => D().getElementById('tourHole');
+  const covers = (node) => {
+    const h = hole();
+    if (!node || !h || h.classList.contains('hidden')) return false;
+    const L = parseFloat(h.style.left), T = parseFloat(h.style.top), Wd = parseFloat(h.style.width), Ht = parseFloat(h.style.height);
+    const b = node.getBoundingClientRect();
+    return L <= b.left + 1 && T <= b.top + 1 && L + Wd >= b.right - 1 && T + Ht >= b.bottom - 1;
+  };
+  const nextBtn = () => Array.from(D().querySelectorAll('#tourBox .tour-foot button')).find((b) => /^(Next|Finish)$/.test(b.textContent.trim()));
+  // A person, not a double press: the engine ignores a second Next inside
+  // 250 ms of the first (tour.js, `advancing`).
+  const press = async () => { await sleep(320); nextBtn().click(); };
+  const backBtn = () => Array.from(D().querySelectorAll('#tourBox .tour-foot button')).find((b) => b.textContent.trim() === 'Back');
+  const h4 = () => txt(TB().querySelector('h4'));
+  const body = () => txt(TB().querySelector('.tour-body'));
+  const garc = (key) => D().querySelector('#ghostsvg path.garc[data-key="' + key + '"]');
+
+  check('1, welcome: nothing lit, the box in the middle', hole().classList.contains('hidden') && /two minutes/.test(h4()), h4());
+  await press(); await atStep(1);
+  check('2, the counts: lit, with this Monolith’s own numbers', covers(D().getElementById('verdict'))
+        && /340,000 tests\. 18,000 came out p < \.05, and chance alone would give about 17,000/.test(body()), body());
+  await press(); await atStep(2);
+  check('3, the circuit, lit', covers(D().getElementById('circsvg')));
+  await press(); await atStep(3);
+  check('4, the controls, lit, naming the view now', covers(D().getElementById('controls'))
+        && body().indexOf(txt(D().getElementById('ctitle'))) >= 0, body().slice(0, 200));
+  await press(); await atStep(4);
+  const topLead = SUMMARY.top.raw[0];
+  check('5, the leads: the first lit, named, and Next will click it', covers(D().querySelector('#toplist > li'))
+        && /The first is Right ACC – Right OFC, Cue 1, 10 Hz, Coherence, with 8 of 8 rats/.test(body()) && /Next will click/.test(txt(TB())), body());
+  M2.set({ method: 'plv', win: 'cue2', band: 'f20' });       // away from the lead, so the click has work to do
+  await sleep(30);
+  await press(); await atStep(5);
+  check('Next performed it: the lead is in view and selected', M2.state.sel === topLead.pair && M2.state.method === topLead.m
+        && M2.state.win === topLead.w && !!D().querySelector('#circsvg path.edge.sel'), JSON.stringify([M2.state.sel, M2.state.method, M2.state.win]));
+  await sleep(900);
+  check('and moved on exactly one step (no second advance from the click’s own timer)', tst().index === 5, tst().index);
+  check('6, the selected edge, lit', covers(D().querySelector('#circsvg path.edge.sel')));
+  await press(); await atStep(6);
+  check('Next lifted it out', M2.ghost.lifted && M2.ghost.pair === topLead.pair);
+  check('7, the pooled line, lit, with the pooled change', covers(garc('pooled')) && /Here it is \+0\.050, p \.002/.test(body()), body());
+  // A reader's own click moves the tour on too.
+  garc('pooled').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await atStep(7);
+  check('a reader’s own click on it moves the tour on, to the rats', tst().index === 7 && M2.ghost.stack.length === 2);
+  check('8, the forest plot, lit', covers(D().getElementById('gstats')) && !!D().querySelector('#gstats svg.mfig[aria-label="forest plot"]'));
+  await press(); await atStep(8);
+  check('9, one rat suggested and lit (r3), with its two days', covers(garc('r3')) && /r3 went from .* on Precon1 to .* on Precon4/.test(body()), body());
+  // The reader opens a different rat, then presses Next: the tour follows
+  // theirs, and does not click the suggested one, now gone, as well.
+  garc('r4').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => M2.ghost.stack.length === 3, 80);
+  await sleep(400);
+  await press();
+  await atStep(9);
+  check('a reader who opens another rat (r4) is followed, not fought', M2.ghost.stack.length === 3 && M2.ghost.stack[2].rat === 4
+        && /^r4’s two days/.test(body()) && covers(garc('Precon4')), body().slice(0, 60));
+  backBtn().click(); await atStep(8);
+  check('Back sets the page up again: the rats, one lit', M2.ghost.stack.length === 2 && covers(garc('r3')), M2.ghost.stack.length);
+  await press(); await atStep(9);
+  check('Next again: r3’s days', M2.ghost.stack[2] && M2.ghost.stack[2].rat === 3 && covers(garc('Precon4')));
+  await press(); await atStep(10);
+  check('11, every cue pair of that day, the first with a value lit', M2.ghost.stack.length === 4 && covers(garc('p01'))
+        && /Next will click p01/.test(txt(TB())), txt(TB()).slice(0, 200));
+  await press(); await atStep(11);
+  check('12, the recording itself: that cue pair opened and its traces lit', M2.leaf.open && M2.leaf.unit === 'p01'
+        && covers(D().querySelector('#leaf .lsec')) && /r3’s cue pair p01 on Precon4 as recorded/.test(body()), body().slice(0, 120));
+  await press(); await atStep(12);
+  check('13, how the number was made: the measure in view lit', covers(D().querySelector('#leaf .lcard.sel')) && /should match/.test(body()));
+  await press(); await atStep(13);
+  check('14, the end: the cue pair closed, and the Take the tour button lit', !M2.leaf.open && covers(D().getElementById('monoTour'))
+        && nextBtn().textContent.trim() === 'Finish');
+  const tw = figWords(D());
+  check('no word in a figure along the way is cut off or overlapping', tw.length === 0, tw.slice(0, 4).join(' | '));
+  await press();
+  await until(() => !D().getElementById('tour'), 60);
+  check('Finish leaves the tour, and nothing else opens', !D().getElementById('tour') && !tst() && !D().querySelector('.qpop'));
+
+  head('the tour again, by the button');
+  D().getElementById('monoTour').click();
+  await atStep(0);
+  check('Take the tour starts it again, at step 1', tst() && tst().index === 0);
+  // Straight to the traces with the recording gone: set up from nothing.
+  M2.closeGhost(true);
+  LEAF_GONE = true;
+  TR().step(11);
+  await atStep(11);
+  check('a recording no longer on the VACC: step 12 says so, and lights the message',
+        /no longer on the VACC/.test(body()) && covers(D().querySelector('#leaf .warn')), body().slice(0, 120));
+  LEAF_GONE = false;
+  D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await until(() => !D().getElementById('tour'), 40);
+  check('Escape leaves it', !D().getElementById('tour') && !tst());
+  M2.closeLeaf(); M2.closeGhost(true);
+  f.style.width = '390px';
+  await sleep(150);
+  D().getElementById('monoTour').click();
+  await atStep(0);
+  TR().step(2);
+  await atStep(2);
+  const br = TB().getBoundingClientRect();
+  check('at 390 px the box stays on screen', br.left >= 0 && br.right <= W().innerWidth + 1 && br.top >= 0 && br.bottom <= W().innerHeight + 1,
+        [br.left, br.right, br.top, br.bottom, W().innerWidth, W().innerHeight].map(Math.round).join(' '));
+  TR().stop(true);
+  f.style.width = '';
+
+  head('the Guide');
+  f.src = '/monolith-guide.html#wpli';
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  await until(() => D().body && D().body.dataset.ready === '1', 120);
+  const GT = W().MONO_HELP.T;
+  const keys = Object.keys(GT);
+  check('every ? has an entry', keys.every((k) => D().getElementById(k) && D().getElementById(k).classList.contains('entry')), keys.filter((k) => !D().getElementById(k)).join(','));
+  check('and a line in the contents', D().querySelectorAll('#toc a').length === keys.length, D().querySelectorAll('#toc a').length + ' of ' + keys.length);
+  const drawnKeys = keys.filter((k) => GT[k].demo || (GT[k].plot && GUIDE.measures[k === 'arrows' ? 'gc_net' : k === 'pac.circuit' ? 'pac' : k]));
+  await until(() => D().querySelectorAll('.entry .qdemo').length === drawnKeys.length, 120);
+  check('each measure and statistic drawn (' + drawnKeys.length + ')', D().querySelectorAll('.entry .qdemo').length === drawnKeys.length,
+        drawnKeys.filter((k) => !D().getElementById(k).querySelector('.qdemo')).join(','));
+  check('no entry links to itself as “Read it in the Guide”', !D().querySelector('.entry a.qguide'));
+  const gw = figWords(D());
+  check('no word in any figure is cut off or on top of another', gw.length === 0, gw.length + ': ' + gw.slice(0, 6).join(' | '));
+  await until(() => Math.abs(D().getElementById('wpli').getBoundingClientRect().top) < 40, 40);
+  const wtop = D().getElementById('wpli').getBoundingClientRect().top;
+  check('a link lands on its entry', Math.abs(wtop) < 40, wtop);
+  check('no text ends in an ellipsis', txt(D().body).indexOf('…') < 0);
+  f.style.width = '390px';
+  await sleep(120);
+  check('at 390 px nothing scrolls sideways', D().scrollingElement.scrollWidth <= D().scrollingElement.clientWidth + 1, D().scrollingElement.scrollWidth);
+  f.style.width = '';
+
+  restore();
   head(bad === 0 ? 'the Monolith page works' : bad + ' failed');
   document.title = bad === 0 ? 'ok' : 'FAIL ' + bad + ': ' + Array.from(out.querySelectorAll('.bad')).map((d) => d.textContent).join(' | ');
   if (!STOP) document.getElementById('app').src = 'about:blank';   // idle: the dump is taken at once

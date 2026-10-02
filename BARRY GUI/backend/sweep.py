@@ -882,3 +882,207 @@ def run_node(spec, job):
             "bytes": os.path.getsize(out), "n_units": len(units),
             "seconds": meta["seconds"], "why": meta["why"][:50],
             "n_why": len(meta["why"])}
+
+
+# --------------------------------------------------------------------------
+# How each number was made: one window, every measure's own picture
+# --------------------------------------------------------------------------
+# The Monolith page's cue-pair view and its Guide both draw from this. The
+# NUMBERS come from `window_measures` itself -- the same call the node made
+# -- so what the picture is captioned with is the stored number, not a
+# second estimate of it; the pictures are the intermediate steps those
+# numbers summarise (the spectrum a band mean is taken over, the lag curve a
+# peak is read off, the phase differences a PLV is the length of).
+SHOW_HZ = 60.0
+TRACE_FS = 250.0
+
+
+def _rl(x, n=4):
+    """Floats to `n` significant digits, NaN as None: small JSON."""
+    out = []
+    for v in np.asarray(x, dtype=np.float64).ravel():
+        out.append(float("%.*g" % (n, v)) if np.isfinite(v) else None)
+    return out
+
+
+def _fv(x):
+    x = float(x)
+    return x if np.isfinite(x) else None
+
+
+def lag_curve(ya, yb, lag):
+    """r at every lag from -lag to +lag samples, `coupling._xcorr_coeff`'s
+    convention (r[k] = sum a[n+k] b[n] / sqrt(sum a^2 sum b^2))."""
+    ya = np.asarray(ya, dtype=np.float64)
+    yb = np.asarray(yb, dtype=np.float64)
+    n = ya.size
+    nfft = _fast_len(n + lag + 1)
+    c = np.fft.irfft(np.fft.rfft(ya, n=nfft) * np.conj(np.fft.rfft(yb, n=nfft)),
+                     n=nfft)
+    den = math.sqrt(float(np.dot(ya, ya)) * float(np.dot(yb, yb)))
+    if not den > 0:
+        return np.full(2 * lag + 1, np.nan)
+    return np.concatenate([c[nfft - lag:], c[:lag + 1]]) / den
+
+
+def _pac_bins(phase, amp):
+    """Mean amplitude in each of PAC_BINS phase bins, normalised to sum 1,
+    and Tort's modulation index from them."""
+    edges = np.linspace(-np.pi, np.pi, PAC_BINS + 1)
+    idx = np.clip(np.digitize(phase, edges) - 1, 0, PAC_BINS - 1)
+    counts = np.bincount(idx, minlength=PAC_BINS).astype(float)
+    sums = np.bincount(idx, weights=amp, minlength=PAC_BINS)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        mean = sums / counts
+        p = mean / np.nansum(mean)
+        h = -np.nansum(np.where(p > 0, p * np.log(p), 0.0))
+    mi = (math.log(PAC_BINS) - h) / math.log(PAC_BINS)
+    return p, mi
+
+
+def explain(a, b, band_id, fs=FS, notch_hz=coupling.NOTCH_HZ, cell=None):
+    """Everything one window says about one pair of signals, measure by
+    measure: the numbers (exactly the analysis's), and the curves each was
+    read from. `a` and `b` are the window's two 1000 Hz traces as the node
+    had them (decimated, not yet notched). `cell` is a PAC_CELLS index."""
+    band = BAND_BY_ID[band_id]
+    lo, hi = float(band["low"]), float(band["high"])
+    v, pw, notes = window_measures([a, b], [band_id], fs, notch_hz)
+    values = {m: _fv(v[0, i, 0]) for i, m in enumerate(EDGE_METHODS)}
+    values["gc_net"] = (None if values["gc_ab"] is None or
+                        values["gc_ba"] is None
+                        else values["gc_ab"] - values["gc_ba"])
+    out = {"band": band, "values": values,
+           "power": [_fv(pw[0, 0]), _fv(pw[0, 1])], "notes": notes}
+    xa = coupling.notch(np.asarray(a, dtype=np.float64), fs, notch_hz)[0]
+    xb = coupling.notch(np.asarray(b, dtype=np.float64), fs, notch_hz)[0]
+    n = min(xa.size, xb.size)
+    xa, xb = xa[:n], xb[:n]
+    out["n"] = int(n)
+    out["seconds"] = round(n / float(fs), 3)
+
+    # Welch: the band's own segments, as window_measures cut them.
+    L = welch_len_s(band)
+    nseg = int(round(L * fs))
+    if n >= nseg:
+        X = np.vstack([xa, xb])
+        win = _hann(nseg)
+        segs = _segments(X, nseg, nseg // 2)
+        segs = segs - segs.mean(axis=2, keepdims=True)
+        F = np.fft.rfft(segs * win, n=2 * nseg, axis=2)
+        Saa = np.mean(np.abs(F[0]) ** 2, axis=0)
+        Sbb = np.mean(np.abs(F[1]) ** 2, axis=0)
+        Sab = np.mean(F[0] * np.conj(F[1]), axis=0)
+        freqs = np.fft.rfftfreq(2 * nseg, 1.0 / fs)
+        keep = freqs <= SHOW_HZ
+        scale = 2.0 / (fs * np.sum(win * win))
+        with np.errstate(invalid="ignore", divide="ignore"):
+            coh = np.abs(Sab) ** 2 / (Saa * Sbb)
+            icoh = np.imag(Sab) / np.sqrt(Saa * Sbb)
+            psa = np.log10(Saa * scale)
+            psb = np.log10(Sbb * scale)
+        out["spectra"] = {"f": _rl(freqs[keep], 5), "coh": _rl(coh[keep]),
+                          "icoh": _rl(icoh[keep]), "psd_a": _rl(psa[keep]),
+                          "psd_b": _rl(psb[keep]), "seg_s": L,
+                          "k": int(segs.shape[1])}
+
+    # Granger: the same segments, at 250 Hz, factorised (Wilson).
+    try:
+        ya = coupling.decimate_to(xa, fs, GC_FS)[0]
+        yb = coupling.decimate_to(xb, fs, GC_FS)[0]
+        m = min(ya.size, yb.size)
+        ng = int(round(L * GC_FS))
+        if m >= ng:
+            Y = np.vstack([ya[:m], yb[:m]])
+            win = _hann(ng)
+            segs = _segments(Y, ng, ng // 2)
+            segs = segs - segs.mean(axis=2, keepdims=True)
+            F = np.fft.fft(segs * win, n=2 * ng, axis=2)
+            S = np.empty((1, 2 * ng, 2, 2), dtype=np.complex128)
+            S[0, :, 0, 0] = np.mean(np.abs(F[0]) ** 2, axis=0)
+            S[0, :, 1, 1] = np.mean(np.abs(F[1]) ** 2, axis=0)
+            S[0, :, 0, 1] = np.mean(F[0] * np.conj(F[1]), axis=0)
+            S[0, :, 1, 0] = np.conj(S[0, :, 0, 1])
+            H, sig, it = wilson(S)
+            g12, g21 = granger(H, sig)
+            f = np.fft.fftfreq(2 * ng, 1.0 / GC_FS)
+            keep = (f >= 0) & (f <= SHOW_HZ)
+            out["granger"] = {"f": _rl(f[keep], 5), "ab": _rl(g12[0, keep]),
+                              "ba": _rl(g21[0, keep]), "iterations": int(it)}
+    except (coupling.CouplingError, np.linalg.LinAlgError) as exc:
+        out["granger"] = {"why": str(exc)}
+
+    # The band's analytic signals: what every phase and envelope measure
+    # is computed on.
+    za = analytic(xa, fs, lo, hi, pad=band["pad"])
+    zb = analytic(xb, fs, lo, hi, pad=band["pad"])
+    Xc = za * np.conj(zb)
+    dphi = np.angle(Xc)
+    k = max(1, int(round(fs / TRACE_FS)))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        unit = Xc / np.abs(Xc)
+        ob = np.abs(np.imag(Xc)) / np.abs(za)
+        oa = np.abs(np.imag(Xc)) / np.abs(zb)
+    mv = np.nanmean(unit)
+    im = np.imag(Xc)
+    hist = np.histogram(dphi, bins=36, range=(-np.pi, np.pi))[0] / float(n)
+    pos = float(np.sum(im > 0)) / n
+    neg = float(np.sum(im < 0)) / n
+    wpos = float(np.sum(np.abs(im[im > 0])))
+    wneg = float(np.sum(np.abs(im[im < 0])))
+    tot = max(wpos + wneg, 1e-300)
+    out["phase"] = {"rose": _rl(hist), "mean_angle": _fv(np.angle(mv)),
+                    "plv": _fv(np.abs(mv)), "lead_frac": pos, "lag_frac": neg,
+                    "w_lead": wpos / tot, "w_lag": wneg / tot}
+    ls = int(round(seg_len_s(band) * fs))
+    K = n // ls if ls > 0 else 0
+    if K >= 1:
+        c = Xc[:K * ls].reshape(K, ls).mean(axis=1)
+        mag = np.abs(c)
+        out["segments"] = {"angle": _rl(np.angle(c)),
+                           "size": _rl(mag / max(float(np.max(mag)), 1e-300)),
+                           "imag": _rl(np.imag(c) / max(float(np.max(mag)),
+                                                       1e-300)),
+                           "k": int(K), "seg_s": round(ls / fs, 4)}
+    lag = int(round(band["lag_s"] * fs))
+    if 1 <= lag < n:
+        Ea = np.abs(za) - np.abs(za).mean()
+        Eb = np.abs(zb) - np.abs(zb).mean()
+        rr = lag_curve(np.real(za), np.real(zb), lag)
+        re = lag_curve(Ea, Eb, lag)
+        lags = np.arange(-lag, lag + 1) * 1000.0 / fs
+        step = max(1, int(math.ceil(lags.size / 801.0)))
+        ir, ie = int(np.nanargmax(np.abs(rr))), int(np.nanargmax(np.abs(re)))
+        out["lags"] = {"ms": _rl(lags[::step], 5), "raw": _rl(rr[::step]),
+                       "env": _rl(re[::step]),
+                       "raw_peak": [_fv(lags[ir]), _fv(rr[ir])],
+                       "env_peak": [_fv(lags[ie]), _fv(re[ie])],
+                       "max_ms": round(lag * 1000.0 / fs, 3)}
+    with np.errstate(invalid="ignore"):
+        r_ab = np.corrcoef(np.abs(za), np.nan_to_num(ob))[0, 1]
+        r_ba = np.corrcoef(np.abs(zb), np.nan_to_num(oa))[0, 1]
+    out["orth"] = {"r_a": _fv(r_ab), "r_b": _fv(r_ba)}
+    out["traces"] = {
+        "fs": fs / k, "t": _rl(np.arange(0, n, k) / fs, 5),
+        "raw_a": _rl(xa[::k]), "raw_b": _rl(xb[::k]),
+        "band_a": _rl(np.real(za)[::k]), "band_b": _rl(np.real(zb)[::k]),
+        "env_a": _rl(np.abs(za)[::k]), "env_b": _rl(np.abs(zb)[::k]),
+        "dphi": _rl(dphi[::k]), "orth_b": _rl(ob[::k]),
+        "orth_a": _rl(oa[::k])}
+
+    if cell is not None and 0 <= int(cell) < len(PAC_CELLS):
+        fp, fa, (plo, phi), aband = PAC_CELLS[int(cell)]
+        pac = {"cell": int(cell), "fp": fp, "fa": fa,
+               "phase_band": [plo, phi], "amp_band": list(aband) if aband
+               else None, "bins": PAC_BINS}
+        if aband:
+            ph = {"a": np.angle(analytic(xa, fs, plo, phi, pad=True)),
+                  "b": np.angle(analytic(xb, fs, plo, phi, pad=True))}
+            am = {"a": np.abs(analytic(xa, fs, aband[0], aband[1], pad=True)),
+                  "b": np.abs(analytic(xb, fs, aband[0], aband[1], pad=True))}
+            for key, (p_, a_) in (("aa", ("a", "a")), ("ab", ("a", "b")),
+                                  ("ba", ("b", "a")), ("bb", ("b", "b"))):
+                dist, mi = _pac_bins(ph[p_], am[a_])
+                pac[key] = {"p": _rl(dist), "mi": _fv(mi)}
+        out["pac"] = pac
+    return out

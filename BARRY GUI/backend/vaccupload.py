@@ -42,6 +42,23 @@ class UploadError(RuntimeError):
     pass
 
 
+class QuotaError(UploadError):
+    """The cluster refused for want of room. Every file after it would be
+    refused for the same reason, so an upload stops on the first one."""
+
+
+def refused(rel, err):
+    """The error to raise when the far side refused `rel`, saying why."""
+    why = (err or "").strip() or "no reason given"
+    low = why.lower()
+    if "quota exceeded" in low or "no space left" in low:
+        return QuotaError("The cluster is out of room for %s: %s. Nothing "
+                          "more can be uploaded there until space is freed "
+                          "-- choose the other place, or clear some."
+                          % (rel, why[:200]))
+    return UploadError("The cluster refused %s: %s" % (rel, why[:300]))
+
+
 # --------------------------------------------------------------------------
 # Where a recording goes
 # --------------------------------------------------------------------------
@@ -133,6 +150,10 @@ class SshRemote:
         raw = vacc._ssh(self.cfg, "bash -s", stdin=script, timeout=120)
         return _parse_sizes(raw)
 
+    def space(self, root):
+        """The lab's room where `root` is (vacc.space). Never raises."""
+        return vacc.space(self.cfg, root)
+
     def sizes_many(self, rdirs, timeout=600):
         """{dir: {relative path: size}} for many folders, in ONE ssh -- the
         Monolith's 48 folders in both places would otherwise be ninety-six
@@ -176,26 +197,45 @@ class SshRemote:
                     block = fh.read(CHUNK)
                     if not block:
                         break
-                    proc.stdin.write(block)
+                    try:
+                        proc.stdin.write(block)
+                    except (BrokenPipeError, ConnectionResetError, OSError):
+                        # The far side stopped reading: its command has
+                        # ended, and why is on its stderr. Said as a bare
+                        # "Broken pipe" this hid "Disk quota exceeded".
+                        err = proc.stderr.read().decode("utf-8", "replace")
+                        proc.wait(timeout=60)
+                        raise refused(rel, err)
                     if on_bytes:
                         on_bytes(len(block))
             proc.stdin.close()
             err = proc.stderr.read().decode("utf-8", "replace")
             code = proc.wait(timeout=600)
+        except UploadError:
+            raise
         except BaseException:
             sysinfo.kill_tree(proc)
             raise
         if code != 0:
-            raise UploadError("The cluster refused %s: %s"
-                              % (rel, (err or "no reason given").strip()[:300]))
+            raise refused(rel, err)
 
 
 class LocalRemote:
     """A folder on this machine standing in for the cluster, for tests.
-    Remote paths are placed under `base`; the same .part-then-rename."""
+    Remote paths are placed under `base`; the same .part-then-rename.
+    `room` (bytes, or None for no limit) makes it run out like a quota."""
 
-    def __init__(self, base):
+    def __init__(self, base, room=None, group="zz-lab"):
         self.base = base
+        self.room = room
+        self.group = group
+
+    def space(self, root):
+        if self.room is None:
+            return {"why": "a folder on this machine has no quota"}
+        used = sum(sum(v.values()) for v in [self.sizes("/")])
+        return {"fs": "local", "group": self.group, "used": used,
+                "quota": self.room, "limit": self.room, "grace": "none"}
 
     def _p(self, rpath):
         return os.path.join(self.base, rpath.lstrip("/").replace("/", os.sep))
@@ -217,6 +257,10 @@ class LocalRemote:
 
     def put(self, full, rdir, rel, on_bytes=None, check=None):
         vacc._remote_path(rdir, *rel.split("/"))
+        if self.room is not None:
+            have = sum(self.sizes("/").values())
+            if have + os.path.getsize(full) > self.room:
+                raise refused(rel, "cat: write error: Disk quota exceeded")
         final = self._p(posixpath.join(rdir, rel))
         os.makedirs(os.path.dirname(final), exist_ok=True)
         tmp = final + ".part"
@@ -305,6 +349,7 @@ def send(remote, local_dir, rdir, plan=None, on_bytes=None, check=None,
         return {"sent": sent, "skipped": plan["skip"], "bytes": plan["bytes"]}
     lock = threading.Lock()
     state = {"next": 0, "sent": 0, "error": None}
+    # A quota refusal stops every stream: each would be refused the same.
 
     def counted(n):
         if on_bytes:

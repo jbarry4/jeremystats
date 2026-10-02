@@ -19,7 +19,7 @@
     "owner": "Shahriar",
     "ondemand": "https://ondemand.vacc.uvm.edu/pun/sys/dashboard/files/fs//gpfs2/scratch/sakhava1"
   },
-  "_temp": "The lab's temporary space (gpfs3tmp). Takes any number of files and is purged on a schedule. The other place an upload may go; it asks every time, scratch first.",
+  "_temp": "The lab's temporary space (gpfs3tmp), purged on a schedule. NOT unlimited: the lab group's quota there is 1000 GB (hard limit 1010 GB); an upload reads the room left before it sends anything. The other place an upload may go; it asks every time, scratch first.",
   "temp": {
     "root": "/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp",
     "owner": "Shahriar",

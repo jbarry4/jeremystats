@@ -1266,10 +1266,12 @@ SHARED_DEFAULT = {
 }
 
 
-#: The lab's temporary space on the cluster (gpfs3tmp). It takes any number
-#: of files, which scratch's quota does not always, and it is purged on a
-#: schedule -- so it is somewhere to put copies for a run, never the only
-#: copy of anything. An upload asks every time which of the two it goes to.
+#: The lab's temporary space on the cluster (gpfs3tmp). It is purged on a
+#: schedule, so it is somewhere to put copies for a run, never the only
+#: copy of anything. It is NOT unlimited: the lab group's quota there is
+#: 1000 GB (hard limit 1010 GB), measured 2026-10-01 -- when it was full.
+#: An upload asks every time which of the two it goes to, and says the
+#: room left in each (`space`, `room`) before anything is sent.
 TEMP_DEFAULT = {
     "root": "/gpfs3tmp/pi/jbarry4/sakhava1/Jarvis_temp",
     "owner": "Shahriar",
@@ -1283,6 +1285,127 @@ def _temp_of(cfg):
     got.update({k: v for k, v in (cfg.get("temp") or {}).items() if v})
     got["data_path"] = str(got.get("root") or "").rstrip("/")
     return got
+
+
+#: How the lab's room on a cluster filesystem is asked: the filesystem the
+#: folder is on (its nearest existing ancestor -- Jarvis Data may not exist
+#: yet), the group that owns it, and GPFS's own quota for that group and for
+#: this account, machine-readable (-Y) and in KiB.
+#:
+#: Measured 2026-10-01, because a "temp allows any amount" belief cost an
+#: upload: gpfs3tmp's quota for pi-jbarry4 is 1000 GB (hard limit 1010 GB),
+#: and it was full -- every file was refused with "Disk quota exceeded",
+#: which reached Jarvis as a bare "Broken pipe".
+_SPACE = r"""R=%s
+while [ ! -e "$R" ] && [ "$R" != "/" ]; do R=$(dirname "$R"); done
+FS=$(df --output=source "$R" 2>/dev/null | tail -1)
+G=$(stat -c %%G "$R" 2>/dev/null || id -gn)
+echo "fs=$FS"
+echo "group=$G"
+timeout 30 mmlsquota -g "$G" --block-size 1K -Y "$FS" 2>/dev/null
+timeout 30 mmlsquota -u "$(id -un)" --block-size 1K -Y "$FS" 2>/dev/null
+echo end=1
+"""
+
+
+def parse_space(raw):
+    """{fs, group, used, quota, limit, grace, user_used} in bytes, from
+    `_SPACE`'s output; {"why": ...} when the cluster did not say."""
+    out, heads, done = {}, {}, False
+    for line in (raw or "").splitlines():
+        line = line.strip()
+        if line == "end=1":
+            done = True
+        elif line.startswith("fs="):
+            out["fs"] = line[3:]
+        elif line.startswith("group="):
+            out["group"] = line[6:]
+        elif line.startswith("mmlsquota:"):
+            bits = line.split(":")
+            kind = bits[1] if len(bits) > 1 else ""
+            if len(bits) > 2 and bits[2] == "HEADER":
+                heads[kind] = bits
+                continue
+            h = heads.get(kind)
+            if not h:
+                continue
+            row = dict(zip(h, bits))
+            try:
+                used = int(row.get("blockUsage") or 0) * 1024
+                quota = int(row.get("blockQuota") or 0) * 1024
+                limit = int(row.get("blockLimit") or 0) * 1024
+            except ValueError:
+                continue
+            if kind == "group":
+                out.update(used=used, quota=quota, limit=limit,
+                           grace=row.get("blockGrace") or "none")
+            elif kind == "user":
+                out["user_used"] = used
+    if not done:
+        return {"why": "the cluster's answer was cut short"}
+    if "used" not in out:
+        out["why"] = "the cluster did not report a quota for this place"
+    return out
+
+
+def space(cfg, root, timeout=90, ssh=None):
+    """The lab's room where `root` is. Never raises."""
+    try:
+        raw = _runner(cfg, ssh)("bash -s", stdin=_SPACE % q(root),
+                                timeout=timeout)
+    except Exception as exc:                         # noqa: BLE001
+        return {"why": str(exc)[:200]}
+    return parse_space(raw)
+
+
+def room(sp, need):
+    """Whether `need` bytes fit in the room `space` reported, and a
+    sentence that says so: {known, fits, over_soft, free_soft, free_hard,
+    say}. Unknown room is said, and not refused."""
+    sp = sp or {}
+    gb = lambda b: "%s GB" % format(int(round(b / 1e9)), ",")   # noqa: E731
+    if "used" not in sp:
+        return {"known": False, "fits": True, "over_soft": False,
+                "say": "How much room is left there could not be read (%s)."
+                       % (sp.get("why") or "no answer")}
+    used, quota, limit = sp["used"], sp.get("quota") or 0, \
+        sp.get("limit") or 0
+    hard = limit or quota
+    free_hard = (hard - used) if hard else None
+    free_soft = (quota - used) if quota else None
+    fits = free_hard is None or need <= free_hard
+    over_soft = free_soft is not None and need > free_soft
+    who = "the lab group %s" % sp.get("group") if sp.get("group") else \
+        "this account's group"
+    if not hard:
+        say = "%s has no quota on %s." % (who.capitalize(), sp.get("fs"))
+    else:
+        say = ("On %s, %s uses %s of its %s quota (hard limit %s)"
+               % (sp.get("fs"), who, gb(used), gb(quota or hard), gb(hard)))
+        if free_hard <= 0:
+            say += " -- it is full"
+        elif free_soft is not None and free_soft <= 0:
+            say += (" -- already over the quota (grace %s), %s left before "
+                    "the hard limit" % (sp.get("grace") or "unknown",
+                                        gb(free_hard)))
+        else:
+            say += ", %s left under the quota" % gb(
+                free_soft if free_soft is not None else free_hard)
+        if sp.get("user_used") and sp["user_used"] >= 0.5 * used:
+            say += "; %s of it is this account's own files" % gb(
+                sp["user_used"])
+        say += ". "
+        if not fits:
+            say += ("This needs %s, so it would be refused part way "
+                    "through." % gb(need))
+        elif over_soft:
+            say += ("This needs %s: it fits under the hard limit but goes "
+                    "over the quota, which starts the grace period."
+                    % gb(need))
+        else:
+            say += "This needs %s, and fits." % gb(need)
+    return {"known": True, "fits": fits, "over_soft": over_soft,
+            "free_soft": free_soft, "free_hard": free_hard, "say": say}
 
 
 def upload_roots(cfg):
@@ -1303,8 +1426,8 @@ def upload_roots(cfg):
         out["temp"] = {
             "id": "temp", "label": "Temp",
             "root": tp["data_path"], "ondemand": tp.get("ondemand") or "",
-            "say": "The lab's temporary space (gpfs3tmp). Takes any number "
-                   "of files, and is purged on a schedule."}
+            "say": "The lab's temporary space (gpfs3tmp), purged on a "
+                   "schedule. The lab's quota there is about 1 TB."}
     return out
 
 

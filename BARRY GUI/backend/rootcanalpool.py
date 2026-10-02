@@ -377,6 +377,17 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
             % ", ".join("%s–%s Hz" % (rootcanal._g(a), rootcanal._g(b))
                         for a, b in sorted(bands)))
     band = list(bands.pop())
+    # ONE FILTER, for the same reason as one band: amplitude and half-width
+    # measured on two different filters are two measurements under one
+    # axis label, and a mains-heavy recording measured unfiltered would
+    # sit apart from the rest for a reason that has nothing to do with it.
+    filts = {m.get("filter") for m in members if m.get("filter")}
+    if len(filts) > 1:
+        raise PoolError(
+            "These members were measured on different filters (%s), so "
+            "their amplitude and half-width are not one measurement. Refit "
+            "them on one filter before pooling."
+            % "; ".join(sorted(filts)))
     over = {str(k): str(v).strip() for k, v in (mouse_types or {}).items()
             if str(v or "").strip()}
 

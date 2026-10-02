@@ -149,6 +149,7 @@ BARRY.driftMono = (function () {
   }
 
   async function askPlan(dest) {
+    if (ms.acting) return;              // one thing at a time; the plan in hand stays
     ms.dest = dest || ms.dest;
     ms.planning = true;
     ms.plan = null;
@@ -387,6 +388,12 @@ BARRY.driftMono = (function () {
         'reading the 48 folders here (about 20 s the first time), then one listing of '
         + destLabel(ms.dest)));
     } else if (P) {
+      const R = P.room || {};
+      if (R.say) {
+        card.appendChild(el('p', { class: R.fits === false ? 'dpc-warn dmo-room' : 'hint dmo-room', text: R.say
+          + (R.fits === false ? ' Choose ' + destLabel(ms.dest === 'temp' ? 'scratch' : 'temp')
+            + ', or free some space in ' + destLabel(ms.dest) + ' first.' : '') }));
+      }
       card.appendChild(el('p', { class: 'dmo-cost', text: P.files
         ? bytes(P.bytes) + ' in ' + plural(P.files, 'file') + ' to send to ' + destLabel(ms.dest)
           + (P.skipped ? '; ' + plural(P.skipped, 'file') + ' already there' : '')
@@ -400,10 +407,13 @@ BARRY.driftMono = (function () {
       bits.push(el('button', { class: primary(isNext), 'data-go': 'upload.plan', disabled: off(ms.planning),
         text: 'Upload…', onclick: () => askPlan(ms.dest) }));
     } else if (P.files) {
+      const full = (P.room || {}).fits === false;
       bits.push(el('button', { class: 'btn ghost', text: 'Work it out again', disabled: off(),
         onclick: () => askPlan(ms.dest) }));
-      bits.push(el('button', { class: primary(isNext), 'data-go': 'upload', disabled: off(),
-        text: 'Upload ' + bytes(P.bytes) + ' to ' + destLabel(ms.dest), onclick: upload }));
+      bits.push(el('button', { class: primary(isNext && !full), 'data-go': 'upload', disabled: off(full),
+        title: full ? 'There is not enough room there for this upload.' : null,
+        text: full ? 'Not enough room in ' + destLabel(ms.dest)
+          : 'Upload ' + bytes(P.bytes) + ' to ' + destLabel(ms.dest), onclick: upload }));
     } else {
       bits.push(el('button', { class: 'btn ghost', text: 'Work it out again', disabled: off(),
         onclick: () => askPlan(ms.dest) }));

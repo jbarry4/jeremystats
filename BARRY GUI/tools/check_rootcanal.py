@@ -241,6 +241,7 @@ def main():
         _synthetic(A, rc, cfcmod, stamp_t, kinds)
         _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp,
                 stamp_t, kinds, fake)
+        _filter_choices()
         _pool_gmm_agreement()
         _pool_synthetic(A)
         _pool_routes(A, tmp, fake)
@@ -286,12 +287,16 @@ def _synthetic(A, rc, cfcmod, stamp_t, kinds):
     ck("the live set and the version it was banked as are one read",
        rc.Params(entry_id="x", stamps_hash="abc",
                  from_version="3").read_hash() == base.read_hash())
-    for kw, what in (({"hi_hz": 900}, "a lowpass above 400 Hz"),
+    for kw, what in (({"filt": "custom", "hi_hz": 900},
+                      "a lowpass above 400 Hz"),
                      ({"band_hi": 2600}, "a band past the 2500 Hz Nyquist"),
                      ({"band_hi": 2100},
                       "a band past the 2000 Hz anti-alias corner, where the "
                       "read is off the raw file by up to 9.5 dB"),
-                     ({"lo_hz": 50, "hi_hz": 20}, "a filter upside down"),
+                     # Corners only mean anything on a custom filter: a
+                     # preset is its own numbers and ignores them.
+                     ({"filt": "custom", "lo_hz": 50, "hi_hz": 20},
+                      "a filter upside down"),
                      ({"centres": [[0, 0], [1, 1]]}, "centres of two numbers"),
                      ({"win_ms": 0}, "a zero amplitude window"),
                      ({"cross_ms": 5}, "a half-width search under 10 ms"),
@@ -730,7 +735,7 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
     ck("and it finds the %d IEDs" % n_ied, fit["counts"]["ied"] == n_ied,
        fit["counts"])
     r = c.post("/api/rootcanal/fit", json={"entry_id": "rcchk000001",
-                                          "hi_hz": 5000})
+                                          "filt": "custom", "hi_hz": 5000})
     ck("a bad setting comes back as a 400 with a sentence",
        r.status_code == 400 and "400 Hz" in r.get_json()["error"])
     r = c.post("/api/rootcanal/event", json={"entry_id": "rcchk000001",
@@ -1074,6 +1079,65 @@ def _member(pool, key, project, mouse, rows, gid=None):
             "mouse_type": pool.mouse_type_of(project),
             "banked": True, "pin": {"params": {"cross_ms": 50.0}},
             "band": [500.0, 1000.0], "rows": rows}
+
+
+def _filter_choices():
+    """None, DS, LFP or custom: what each one is, and that each is itself."""
+    from backend import rootcanal as rc
+    head("THE FOUR FILTERS THE AMPLITUDE AND HALF-WIDTH CAN BE MEASURED ON")
+    ck("the default is still the LFP filter, so nothing fitted before moves",
+       rc.Params().filt == "lfp"
+       and rc.Params().fit_params() == rc.Params(filt="lfp").fit_params())
+    d = rc.Params(filt="ds", lo_hz=3, hi_hz=300, order=7, mains_out=False)
+    ck("a preset is its own numbers: DS is 5-100 Hz at Toothy's order, "
+       "mains out, whatever else came with it",
+       (d.lo_hz, d.hi_hz, d.order, d.mains_out) == (5.0, 100.0, 3, True),
+       (d.lo_hz, d.hi_hz, d.order, d.mains_out))
+    l = rc.Params(filt="lfp", lo_hz=3)
+    ck("LFP is 1-100 Hz, order 4, mains left in",
+       (l.lo_hz, l.hi_hz, l.order, l.mains_out) == (1.0, 100.0, 4, False))
+    c = rc.Params(filt="custom", lo_hz=3, hi_hz=150, order=2)
+    ck("custom takes its corners, and takes the mains out unless told not to",
+       (c.lo_hz, c.hi_hz, c.order, c.mains_out) == (3.0, 150.0, 2, True))
+    ck("and can be told not to",
+       rc.Params(filt="custom", mains_out=False).mains_out is False)
+    for kw, what in (({"filt": "bogus"}, "an unknown filter"),
+                     ({"filt": "custom", "lo_hz": 50, "hi_hz": 20},
+                      "a custom filter upside down")):
+        try:
+            rc.Params(**kw)
+            ck("%s is refused" % what, False, "accepted")
+        except rc.RootCanalError:
+            ck("%s is refused" % what, True)
+    ck("each says what it is in words",
+       rc.Params(filt="none").filter_label().startswith("no filter")
+       and "60 Hz mains out" in d.filter_label()
+       and "mains left in" in l.filter_label())
+
+    fs = 2000.0
+    t = np.arange(1000) / fs
+    x = np.vstack([100.0 * np.sin(2 * np.pi * 60 * t)
+                   + 10.0 * np.sin(2 * np.pi * 20 * t)])
+    F = np.fft.rfftfreq(500, 1 / fs)
+
+    def power(y, lo, hi):
+        Pw = np.abs(np.fft.rfft(y[250:750] * np.hanning(500))) ** 2
+        return Pw[(F > lo) & (F < hi)].sum()
+
+    raw = rc._filter(x, rc.Params(filt="none"), fs)[0]
+    ck("no filter is no filter: the snippet comes back as it went in",
+       np.allclose(raw, x[0]))
+    dsy = rc._filter(x, d, fs)[0]
+    ck("the DS filter takes 60 Hz down by more than 20 dB and keeps 20 Hz",
+       power(dsy, 55, 65) < 0.1 * power(dsy, 15, 25),
+       "%.3g vs %.3g" % (power(dsy, 55, 65), power(dsy, 15, 25)))
+    lfy = rc._filter(x, l, fs)[0]
+    ck("the LFP filter leaves the mains where it was, as the literature band "
+       "does", power(lfy, 55, 65) > 10 * power(lfy, 15, 25))
+    nanx = np.vstack([x[0], np.full(1000, np.nan)])
+    out = rc._filter(nanx, d, fs)
+    ck("a NaN contact stays NaN and spoils nothing else",
+       np.isnan(out[1]).all() and np.isfinite(out[0]).all())
 
 
 def _pool_gmm_agreement():

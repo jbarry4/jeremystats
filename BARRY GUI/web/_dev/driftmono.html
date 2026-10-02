@@ -112,7 +112,8 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
                         vacc: { configured: true, available: true }, min_rats: 5, concurrency: 100, code_changed: [] });
   const rows = (d) => RATS.flatMap((rat) => ['Precon1', 'Precon4'].flatMap((day) => ['SPC', 'FP1', 'FP2'].map((role) => ({
     rat, day, role, local: 'E:/x', remote: '/' + d + '/x', n_files: 50, n_send: 50, n_skip: 0, bytes: 5.2e9, total_bytes: 5.2e9 }))));
-  stub.plans.scratch = { dest: 'scratch', rows: rows('s'), bytes: 250.1e9, files: 2439, skipped: 0, seconds: 2981, at: iso() };
+  stub.plans.scratch = { dest: 'scratch', rows: rows('s'), bytes: 250.1e9, files: 2439, skipped: 0, seconds: 2981, at: iso(),
+    room: { known: true, fits: true, say: 'On gpfs2, the lab group pi-jbarry4 uses 3,687 GB of its 4,398 GB quota (hard limit 8,796 GB), 711 GB left under the quota. This needs 250 GB, and fits.' } };
   stub.plans.temp = { dest: 'temp', rows: rows('t'), bytes: 120.5e9, files: 1200, skipped: 1239, seconds: 1436, at: iso() };
   const days = RATS.flatMap((rat) => ['Precon1', 'Precon4'].map((day) => ({ rat, day, gid: 'g', spc_ready: true, rest_ready: true,
     folders: ['SPC', 'FP1', 'FP2'].map((role) => ({ role, gid: 'g', use: 'temp', remote: '/t', at: { temp: { state: 'complete', have: 50, of: 50 },
@@ -196,6 +197,27 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
     await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/upload'), 60);
     const up = stub.calls.find((c) => c.path === '/api/arc/monolith/upload');
     check('the upload goes where the card said, confirmed', up && up.body.dest === 'temp' && up.body.confirm === true, JSON.stringify(up && up.body));
+
+    head('a place that is full is said before anything is sent');
+    stub.plans.temp = Object.assign({}, stub.plans.temp, { room: { known: true, fits: false,
+      say: 'On gpfs3tmp, the lab group pi-jbarry4 uses 1,084 GB of its 1,074 GB quota (hard limit 1,084 GB) -- it is full. This needs 121 GB, so it would be refused part way through.' } });
+    stub.calls.length = 0;
+    // The upload's own request is still settling; its buttons are off until it has.
+    await until(() => btn(/^Work it out again$/) && !btn(/^Work it out again$/).disabled, 80);
+    btn(/^Work it out again$/).click();
+    await until(() => btn(/^Not enough room in Temp$/), 80);
+    const fullBtn = btn(/^Not enough room in Temp$/);
+    check('Temp full: the button says so and is off', fullBtn && fullBtn.disabled,
+          Array.from(step('upload').querySelectorAll('button')).map((b) => b.textContent + (b.disabled ? '(off)' : '')).join(' | ') + ' :: ' + step('upload').textContent.slice(0, 400));
+    check('the card says the quota, and to choose Scratch', /it is full/.test(step('upload').textContent)
+          && /Choose Scratch, or free some space in Temp first/.test(step('upload').textContent));
+    check('no primary in the upload card while it cannot go',
+          !step('upload').querySelector('button.dpc-go'));
+    check('and nothing is sent', !stub.calls.some((c) => c.path === '/api/arc/monolith/upload'));
+    step('upload').querySelector('.dmo-where [data-dest="scratch"]').click();
+    await until(() => btn(/^Upload 250 GB to Scratch$/), 80);
+    check('Scratch says it fits, and how much is left', /711 GB left under the quota/.test(step('upload').textContent)
+          && !!btn(/^Upload 250 GB to Scratch$/) && !btn(/^Upload 250 GB to Scratch$/).disabled);
 
     head('while it uploads');
     await show(Object.assign(base(), { work: { what: 'upload', status: 'running', started: iso(60), progress: {

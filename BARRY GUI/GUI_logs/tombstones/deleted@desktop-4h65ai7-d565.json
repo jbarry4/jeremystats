@@ -420,6 +420,10 @@
         "set",
         "2026-09-11T18:38:19.838676+00:00"
       ],
+      "deck:deck_75e86456": [
+        "set",
+        "2026-10-02T01:13:50.471624+00:00"
+      ],
       "deck:deck_78913345": [
         "set",
         "2026-09-10T00:51:31.360979+00:00"
@@ -528,6 +532,10 @@
         "set",
         "2026-09-21T14:45:29.738060+00:00"
       ],
+      "deck:deck_925938c0": [
+        "set",
+        "2026-10-02T19:55:43.593186+00:00"
+      ],
       "deck:deck_94ef537d": [
         "set",
         "2026-09-09T22:28:54.507782+00:00"
@@ -592,6 +600,10 @@
         "set",
         "2026-09-09T04:33:13.479215+00:00"
       ],
+      "deck:deck_a246bb9c": [
+        "set",
+        "2026-10-02T19:55:43.593186+00:00"
+      ],
       "deck:deck_a3fb0665": [
         "set",
         "2026-09-14T14:59:30.933863+00:00"
@@ -639,6 +651,10 @@
       "deck:deck_aeed6024": [
         "set",
         "2026-09-10T22:03:10.913801+00:00"
+      ],
+      "deck:deck_b20ccac0": [
+        "set",
+        "2026-10-02T01:13:50.471624+00:00"
       ],
       "deck:deck_b3118cab": [
         "set",
@@ -2182,7 +2198,7 @@
       ],
       "session:s288ddefe4f6c": [
         "set",
-        "2026-09-30T23:52:25.374904+00:00"
+        "2026-10-02T01:13:50.471624+00:00"
       ],
       "session:s2980e4675a37": [
         "set",
@@ -2558,7 +2574,7 @@
       ],
       "session:s87b38b261735": [
         "set",
-        "2026-09-30T23:56:56.226825+00:00"
+        "2026-10-02T01:13:50.471624+00:00"
       ],
       "session:s89a5254ca5a2": [
         "set",
@@ -2622,7 +2638,7 @@
       ],
       "session:s9693b09979f7": [
         "set",
-        "2026-09-30T23:52:24.615543+00:00"
+        "2026-10-02T01:13:50.471624+00:00"
       ],
       "session:s96c776f67cdd": [
         "set",
@@ -2650,7 +2666,7 @@
       ],
       "session:s998e7ba29d70": [
         "set",
-        "2026-09-30T23:52:23.598035+00:00"
+        "2026-10-02T01:13:50.471624+00:00"
       ],
       "session:s99945547a2f0": [
         "set",
@@ -2662,7 +2678,7 @@
       ],
       "session:s9af553b58e44": [
         "set",
-        "2026-09-30T23:52:10.481673+00:00"
+        "2026-10-02T01:13:50.471624+00:00"
       ],
       "session:s9b0bc1c585f7": [
         "set",
@@ -2778,7 +2794,7 @@
       ],
       "session:sb2f867f27ea1": [
         "set",
-        "2026-09-30T23:52:08.614494+00:00"
+        "2026-10-02T01:13:50.471624+00:00"
       ],
       "session:sb30a6d0d1e34": [
         "set",
@@ -3022,7 +3038,7 @@
       ],
       "session:se2126ae68ea7": [
         "set",
-        "2026-10-01T00:09:20.630190+00:00"
+        "2026-10-02T01:13:50.471624+00:00"
       ],
       "session:se32fc5b8416f": [
         "set",
@@ -3122,7 +3138,7 @@
       ],
       "session:sfc58efb0655e": [
         "set",
-        "2026-09-30T23:52:09.321494+00:00"
+        "2026-10-02T01:13:50.471624+00:00"
       ],
       "session:sfe24ff6003b6": [
         "set",
@@ -3135,7 +3151,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-01T00:09:20.630190+00:00",
+    "at": "2026-10-02T19:55:43.593186+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -4076,6 +4092,15 @@
       "synced": true,
       "synced_at": "2026-09-11T14:38:19-0400"
     },
+    "deck:deck_75e86456": {
+      "at": "2026-10-01T16:44:13-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_75e86456",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-10-01T21:13:50-0400"
+    },
     "deck:deck_78913345": {
       "at": "2026-09-09T20:51:19-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4319,6 +4344,15 @@
       "synced": true,
       "synced_at": "2026-09-21T10:45:29-0400"
     },
+    "deck:deck_925938c0": {
+      "at": "2026-10-02T15:38:01-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_925938c0",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-10-02T15:55:43-0400"
+    },
     "deck:deck_94ef537d": {
       "at": "2026-09-09T18:28:35-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4463,6 +4497,15 @@
       "synced": true,
       "synced_at": "2026-09-09T00:33:13-0400"
     },
+    "deck:deck_a246bb9c": {
+      "at": "2026-10-02T15:22:33-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_a246bb9c",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-10-02T15:55:43-0400"
+    },
     "deck:deck_a3fb0665": {
       "at": "2026-09-14T10:58:00-0400",
       "by": "desktop-4h65ai7-d565",
@@ -4570,6 +4613,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-10T18:03:10-0400"
+    },
+    "deck:deck_b20ccac0": {
+      "at": "2026-10-01T15:47:42-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "deck_b20ccac0",
+      "kind": "deck",
+      "note": null,
+      "synced": true,
+      "synced_at": "2026-10-01T21:13:50-0400"
     },
     "deck:deck_b3118cab": {
       "at": "2026-09-08T23:37:30-0400",
@@ -7414,7 +7466,8 @@
       "id": "s288ddefe4f6c",
       "kind": "session",
       "note": "forgotten in housekeeping",
-      "synced": false
+      "synced": true,
+      "synced_at": "2026-10-01T21:13:50-0400"
     },
     "session:s2980e4675a37": {
       "at": "2026-09-11T14:39:29-0400",
@@ -8259,7 +8312,8 @@
       "id": "s87b38b261735",
       "kind": "session",
       "note": "forgotten in housekeeping",
-      "synced": false
+      "synced": true,
+      "synced_at": "2026-10-01T21:13:50-0400"
     },
     "session:s89a5254ca5a2": {
       "at": "2026-09-10T17:32:30-0400",
@@ -8402,7 +8456,8 @@
       "id": "s9693b09979f7",
       "kind": "session",
       "note": "forgotten in housekeeping",
-      "synced": false
+      "synced": true,
+      "synced_at": "2026-10-01T21:13:50-0400"
     },
     "session:s96c776f67cdd": {
       "at": "2026-09-09T03:20:52-0400",
@@ -8464,7 +8519,8 @@
       "id": "s998e7ba29d70",
       "kind": "session",
       "note": "forgotten in housekeeping",
-      "synced": false
+      "synced": true,
+      "synced_at": "2026-10-01T21:13:50-0400"
     },
     "session:s99945547a2f0": {
       "at": "2026-09-18T15:23:42-0400",
@@ -8490,7 +8546,8 @@
       "id": "s9af553b58e44",
       "kind": "session",
       "note": "forgotten in housekeeping",
-      "synced": false
+      "synced": true,
+      "synced_at": "2026-10-01T21:13:50-0400"
     },
     "session:s9b0bc1c585f7": {
       "at": "2026-09-09T18:10:54-0400",
@@ -8750,7 +8807,8 @@
       "id": "sb2f867f27ea1",
       "kind": "session",
       "note": "forgotten in housekeeping",
-      "synced": false
+      "synced": true,
+      "synced_at": "2026-10-01T21:13:50-0400"
     },
     "session:sb30a6d0d1e34": {
       "at": "2026-09-11T13:46:22-0400",
@@ -9298,7 +9356,8 @@
       "id": "se2126ae68ea7",
       "kind": "session",
       "note": "forgotten in housekeeping",
-      "synced": false
+      "synced": true,
+      "synced_at": "2026-10-01T21:13:50-0400"
     },
     "session:se32fc5b8416f": {
       "at": "2026-09-09T20:01:39-0400",
@@ -9513,7 +9572,8 @@
       "id": "sfc58efb0655e",
       "kind": "session",
       "note": "forgotten in housekeeping",
-      "synced": false
+      "synced": true,
+      "synced_at": "2026-10-01T21:13:50-0400"
     },
     "session:sfe24ff6003b6": {
       "at": "2026-09-23T09:09:19-0400",

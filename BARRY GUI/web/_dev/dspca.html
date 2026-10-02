@@ -1970,5 +1970,10 @@ const NL = String.fromCharCode(10);
   say('');
   say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
   document.title = 'dspca: ' + pass + ' ok, ' + fail + ' fail';
+  /* UNLOADED, or headless Edge never dumps. The app keeps timers running
+     (pollers, size ticks, the activity feed), and with a page that never
+     goes quiet `--dump-dom` waits out the runner's wall clock: the suite
+     finished its checks and was reported TIMED OUT. */
+  try { document.getElementById('app').src = 'about:blank'; } catch (e) { /* ok */ }
 })();
 </script></body></html>

@@ -43,6 +43,11 @@ BARRY.tour = (function () {
   /* True while Next is performing a step, so a double press cannot fire the
      same click twice or race the animation. */
   let advancing = false;
+  /* The step being set up, while its `before`/`wait` run. Nothing paints in
+     that time but the step itself: the last step's re-measuring (watch,
+     scroll, resize) used to paint the NEW step's words early, over a
+     target that was not ready yet. */
+  let settingUp = -1;
 
   /* ==================================================================
      Registration
@@ -117,7 +122,15 @@ BARRY.tour = (function () {
      waiting for. */
   async function pressIt(target) {
     const done = () => {
-      try { target.click(); } catch (e) { /* it may have gone */ }
+      // Gone from the page (the reader already did something else there):
+      // its old listeners would still run, on a screen that has moved on.
+      if (!target.isConnected) return;
+      try {
+        // An SVG element (an edge, an arc) has no click(); a dispatched
+        // click reaches its listeners the same way a real one does.
+        if (typeof target.click === 'function') target.click();
+        else target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+      } catch (e) { /* it may have gone */ }
     };
     const box = target.getBoundingClientRect();
     const still = window.matchMedia
@@ -175,6 +188,9 @@ BARRY.tour = (function () {
     BARRY.activity.log('tour.finish', { module: mod.id });
     teardown();
     active = null;
+    // A module on a page of its own (the Monolith) has no menu to go back
+    // to; it says what happens at the end itself.
+    if (typeof mod.onFinish === 'function') { mod.onFinish(); return; }
     // Straight into the menu, so the obvious next thing is the next module.
     openMenu(mod.id);
   }
@@ -190,7 +206,11 @@ BARRY.tour = (function () {
        null (reading 'module')" at whoever pressed escape while a step was
        still setting itself up. */
     const mine = active;
-    const gone = () => active !== mine;
+    // Left, or moved on to another step while this one was setting up: a
+    // step that finishes setting up late must not paint over the next one.
+    const gone = () => active !== mine || active.index !== i;
+    if (watching) { clearInterval(watching); watching = null; }
+    settingUp = i;
 
     const st = active.module.steps[i];
     if (!st) { finish(); return; }
@@ -214,6 +234,7 @@ BARRY.tour = (function () {
         if (!ok && st.required !== false) {
           // Say what did not appear rather than pointing at nothing.
           setBusy(false);
+          settingUp = -1;
           paint(st, null, 'This step needs something that is not on screen: '
                 + (typeof st.wait === 'string' ? st.wait : 'a prerequisite')
                 + '. You can skip ahead.');
@@ -223,6 +244,7 @@ BARRY.tour = (function () {
     } catch (e) {
       if (gone()) return;
       setBusy(false);
+      settingUp = -1;
       // A step whose setup failed says so and lets you carry on, rather than
       // ending the tour. A machine with nothing scanned yet hits this on the
       // steps that need a recording, and that is a fine reason to skip one
@@ -239,6 +261,7 @@ BARRY.tour = (function () {
       await sleep(140);
       if (gone()) return;
     }
+    settingUp = -1;
     paint(st, target);
     watch(st, target);
 
@@ -404,7 +427,9 @@ BARRY.tour = (function () {
     let r = null;
     if (target) {
       const b = target.getBoundingClientRect();
-      if (b.width > 0 && b.height > 0) {
+      // A line (an SVG stroke, a rule) has no height or no width, but is
+      // still a thing to point at; the padding gives the ring its room.
+      if (b.width > 0 || b.height > 0) {
         r = { left: b.left - pad, top: b.top - pad,
               width: b.width + pad * 2, height: b.height + pad * 2 };
       }
@@ -521,7 +546,7 @@ BARRY.tour = (function () {
   }
 
   function reposition() {
-    if (!active) return;
+    if (!active || settingUp === active.index) return;
     const st = active.module.steps[active.index];
     paint(st, resolve(st.target));
   }
@@ -529,12 +554,16 @@ BARRY.tour = (function () {
   /* A click-to-continue step listens on the target itself, in the capture
      phase, so it hears the click even if the app stops it later. */
   function attachTargetClick(target, st) {
+    // The step this click belongs to. Next performs the click and moves on
+    // at once; without this, the click's own timer moved on a second time
+    // 420 ms later and the step after was skipped.
+    const at = active ? active.index : -1;
     onTargetClick = {
       target,
       fn: () => {
         // Let the application handle it first, then move on.
         setTimeout(() => {
-          if (!active) return;
+          if (!active || active.index !== at) return;
           detachTargetClick();
           step(1);
         }, st.afterClick === undefined ? 420 : st.afterClick);

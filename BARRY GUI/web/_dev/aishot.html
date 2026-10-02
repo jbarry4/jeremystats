@@ -1,0 +1,53 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Pose — Checkup's AI Beta</title>
+<style>html,body{margin:0;height:100%}iframe{border:0;width:100vw;height:100vh;display:block}</style>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Opens Checkup on AI Beta and leaves it open, for screenshots.
+   `?each=1` unfolds the per-recording results; `?choose=1` the recording
+   list. Nothing is trained.
+
+   It LEAVES Checkup's pane on AI Beta, and that is the one thing it
+   changes. Putting the stored pane back as soon as the panel drew was
+   tried: ToolKit renders twice, the second render read the restored
+   preference, and the shot came out showing the sets. A pose is a state
+   left on screen; switch back with the header's Sets button. */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 400, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(gap);
+  }
+  return null;
+}
+(async () => {
+  const Q = new URLSearchParams(location.search);
+  const f = document.getElementById('app');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow, D = f.contentDocument;
+  await untilN(() => typeof W.setView === 'function');
+  const KEY = 'barry.checkupPane';
+  try { W.localStorage.setItem(KEY, 'ai'); } catch (e) {}
+  W.setView('toolkit');
+  await untilN(() => D.querySelectorAll('.tk-step').length);
+  const btn = Array.from(D.querySelectorAll('.tk-step')).find(
+    (x) => ((x.querySelector('strong') || {}).textContent || '').trim()
+             === 'Checkup');
+  if (btn) btn.click();
+  await untilN(() => D.querySelector('#aiBeta .ai-intro'));
+  await untilN(() => D.querySelector('#aiResults .ai-result, #aiResults .empty-state'));
+  await untilN(() => !/Checking/.test((D.getElementById('aiPlan') || {}).textContent || 'Checking'), 600);
+  if (Q.get('choose') === '1') {
+    const c = Array.from(D.querySelectorAll('#aiBeta button'))
+      .find((b) => /Choose/.test(b.textContent));
+    if (c) c.click();
+  }
+  if (Q.get('each') === '1') {
+    const e = Array.from(D.querySelectorAll('#aiBeta button'))
+      .find((b) => /each recording/.test(b.textContent));
+    if (e) e.click();
+  }
+  document.title = 'posed';
+})();
+</script>

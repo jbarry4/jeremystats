@@ -23,7 +23,8 @@ import uuid
 
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
-from . import (analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
+from . import (aibeta as aibetamod,
+               analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                dspcahf,
                compose, continuity as continuitymod, csc,
                healthlog as healthlogmod,
@@ -98,6 +99,7 @@ FEEDBACK = feedbackmod.Feedback(LOGS_DIR)
 # what this machine has learned about them survives a restart. See
 # `rootcanal.register_stages`.
 rootcanal.register_stages(cfcmod)
+aibetamod.register_stages(cfcmod)
 cfcmod.configure(LOGS_DIR)
 # Whether a recording is one continuous block or several, keyed on the
 # reference file's size and mtime. A clean folder is decided by two records
@@ -7143,6 +7145,7 @@ def _rootcanal_params(body, rec, stamps, sess=None, stored=None):
         invert=bool((sess or {}).get("invert", True)),
         probe=probe,
         spacing=(dspca.spacing_for(probe) if probe else None),
+        filt=body.get("filt"), mains_out=body.get("mains_out"),
         lo_hz=body.get("lo_hz"), hi_hz=body.get("hi_hz"),
         order=body.get("order"), win_ms=body.get("win_ms"),
         band_lo=body.get("band_lo"), band_hi=body.get("band_hi"),
@@ -7621,6 +7624,7 @@ def _rootcanal_figures(body, rec, p, answer_hash, src_v):
                 "parameters": {
                     "panel": what, "entry_id": rec["id"],
                     "filter_hz": [p.lo_hz, p.hi_hz], "win_ms": p.win_ms,
+                    "filter": p.filter_label(),
                     "band_hz": [p.band_lo, p.band_hi],
                     "flips": len(p.flips),
                     "centres": "by hand" if p.centres else "k-means",
@@ -7742,11 +7746,10 @@ def api_rootcanal_commit():
     }
     link = "Numbers and figures: results bank rootcanal/%s__%s." % (
         rec.get("gid"), answer_hash)
-    method = ("filter %s–%s Hz, amplitude window ±%s ms, half-width "
+    method = ("measured on %s, amplitude window ±%s ms, half-width "
               "search ±%s ms, %s"
-              % (rootcanal._g(p.lo_hz), rootcanal._g(p.hi_hz),
-                 rootcanal._g(p.win_ms), rootcanal._g(p.cross_ms),
-                 p.band_label()))
+              % (p.filter_label(), rootcanal._g(p.win_ms),
+                 rootcanal._g(p.cross_ms), p.band_label()))
     # WHICH EVENTS WERE PLACED ON LESS THAN THE FULL QUESTION. The event
     # whitelist in `EventBank.add` has no field for it -- an unknown key is
     # dropped on the way in -- so the flags travel as times: in both notes,
@@ -8271,6 +8274,7 @@ def _rootcanal_pool_members(want):
         out.append(dict(
             c, rows=rows, pin=pin, here=here,
             band=[p.band_lo, p.band_hi],
+            filter=p.filter_label(),
             # The click panel's request, ready but for `i`: POST it to
             # /api/rootcanal/event with the event's `i` added. The read is
             # pinned, so it opens the read this member's numbers came from
@@ -11308,6 +11312,154 @@ def api_curation_order(gid, kind):
                    "scored": len(scores or {})},
     }])
     return jsonify({"ok": True, "set": CURATE.summary(rec)})
+
+
+# ==========================================================================
+# AI Beta -- Checkup's sandbox
+#
+# The step the note above stopped short of, taken as a sandbox: a model
+# trained on the settled decisions and TESTED on mice it never saw, so the
+# question "is it any good" has a number before anybody lets it near a set.
+# It writes nothing anybody else reads -- no label, no curation set, no bank
+# version -- only its own run records and models (backend/aibeta.py).
+# ==========================================================================
+_AIBETA_JOB = {"id": None}
+
+
+def _aibeta_open(entry):
+    """The recording an AI Beta entry was curated on, ready to read."""
+    rec = BANK.get(entry["entry_id"])
+    if not rec:
+        raise ValueError("No bank entry %s." % entry["entry_id"])
+    sess, _row = _braces_session(rec)
+    stored = _stored_for(sess)
+    chans = _braces_channels(sess)
+    return {"session": sess, "channels": chans,
+            "probe": _probe_for(stored),
+            "bad": [int(c["number"]) for c in chans if c.get("bad")],
+            "spacing": None}
+
+
+def _aibeta_running():
+    jid = _AIBETA_JOB.get("id")
+    job = cfcmod.get(jid) if jid else None
+    if job and job.snapshot()["status"] == "running":
+        return job
+    return None
+
+
+@app.route("/api/aibeta/state")
+def api_aibeta_state():
+    """What AI Beta can learn from, and every run so far.
+
+    Answered from the bank alone -- no recording is opened -- so the panel
+    draws at once. Which recordings are already read is `/plan`'s question.
+    """
+    try:
+        ds = aibetamod.dataset(BANK, CURATE)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("aibeta/state", exc, 500)
+    keep = ("entry_id", "gid", "label", "mouse_key", "source", "pipeline",
+            "version", "version_name", "basis", "events_from", "n", "n_ds",
+            "n_garbage", "first_pass")
+    job = _aibeta_running()
+    return jsonify({
+        "ok": True,
+        "summary": aibetamod.summary(ds),
+        "entries": [{k: e.get(k) for k in keep} for e in ds["entries"]],
+        "skipped": ds["skipped"],
+        "families": aibetamod.FAMILIES,
+        "models": aibetamod.MODELS,
+        "keep_ds": aibetamod.KEEP_DS,
+        "folds": aibetamod.N_FOLDS,
+        "runs": [aibetamod.brief(r) for r in AIBETA.all()],
+        "running": job.snapshot() if job else None,
+        "have_sklearn": aibetamod.HAVE_SKLEARN,
+    })
+
+
+@app.route("/api/aibeta/plan", methods=["POST"])
+def api_aibeta_plan():
+    """Which of the chosen recordings are read already, and the cost of the
+    rest -- said before anything is spent (constitution 6b)."""
+    body = request.get_json(force=True, silent=True) or {}
+    want = body.get("entries")
+    try:
+        ds = aibetamod.dataset(BANK, CURATE)
+        ents = [e for e in ds["entries"]
+                if not want or e["entry_id"] in set(want)]
+        rows = aibetamod.plan(ents, _aibeta_open, AIBETA)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("aibeta/plan", exc, 400)
+    todo = [r for r in rows if r["ok"] and not r["cached"]]
+    per = cfcmod.rate_for("ai read")
+    return jsonify({
+        "ok": True,
+        "n": len(rows),
+        "cached": sum(1 for r in rows if r["cached"]),
+        "to_read": len(todo),
+        "unreadable": [{"entry_id": r["entry_id"], "label": r["label"],
+                        "why": r.get("why")} for r in rows if not r["ok"]],
+        "events_to_read": sum(r["n"] for r in todo),
+        "read_s": round(per * len(todo), 0),
+        "train_s": round(cfcmod.rate_for("ai train")
+                         * (aibetamod.N_FOLDS * (aibetamod.N_INNER + 1) + 1)),
+    })
+
+
+@app.route("/api/aibeta/train", methods=["POST"])
+def api_aibeta_train():
+    """Read what is not read, then train and test. A job; poll
+    /api/cfc/job/<id>, and the run record is the job's result."""
+    if not aibetamod.HAVE_SKLEARN:
+        return jsonify({"ok": False, "error": "AI Beta needs scikit-learn, "
+                                              "which is not installed "
+                                              "here."}), 400
+    busy = _aibeta_running()
+    if busy:
+        # One at a time: two runs would read the same recordings twice and
+        # race to write the same cache files.
+        return jsonify({"ok": False, "error": "A training run is already "
+                                              "going.",
+                        "job": busy.snapshot()}), 409
+    body = request.get_json(force=True, silent=True) or {}
+    fams = [f for f in (body.get("families") or [])
+            if f in aibetamod.FAMILY_IDS]
+    model_id = body.get("model") or "hgb"
+    if model_id not in aibetamod.MODEL_IDS:
+        return jsonify({"ok": False, "error": "Unknown model %r." % model_id}), 400
+    if body.get("families") is not None and not fams:
+        return jsonify({"ok": False, "error": "Pick at least one kind of "
+                                              "input."}), 400
+    settings = {"entries": body.get("entries") or None,
+                "families": fams or None, "model": model_id}
+    prov = STORE.provenance()
+
+    def work(job):
+        rec = aibetamod.run(BANK, CURATE, AIBETA, _aibeta_open, settings,
+                            prov=prov, job=job)
+        STORE.record_activity([{
+            "action": "aibeta.train",
+            "detail": {"run": rec["id"], "model": model_id,
+                       "families": rec["settings"]["families"],
+                       "n": rec["data"]["n_events"],
+                       "auc": rec["results"]["pooled"].get("auc")},
+        }])
+        return {"run": aibetamod.brief(rec), "id": rec["id"]}
+
+    n_fits = aibetamod.N_FOLDS * (aibetamod.N_INNER + 1) + 1
+    job = cfcmod.start({"tool": "aibeta", "model": model_id},
+                       [("ai read", 1), ("ai train", n_fits)], work, 1.0)
+    _AIBETA_JOB["id"] = job.id
+    return jsonify({"ok": True, "job": job.snapshot()})
+
+
+@app.route("/api/aibeta/run/<run_id>")
+def api_aibeta_run(run_id):
+    rec = AIBETA.get(run_id)
+    if not rec:
+        return jsonify({"ok": False, "error": "No AI Beta run %s." % run_id}), 404
+    return jsonify({"ok": True, "run": rec})
 
 
 @app.route("/api/curation/close-all", methods=["POST"])
@@ -16616,6 +16768,9 @@ DSPCA = toolresults.ToolResults(
 ROOTCANAL = toolresults.ToolResults(
     LOGS_DIR, "rootcanal", STORE,
     keys=tuple(rootcanal.Params.READ_KEYS) + tuple(rootcanal.Params.FIT_KEYS))
+# Checkup's AI Beta: its run records and the models they trained, sharded
+# per machine under GUI_logs/aibeta; the features it reads are cache.
+AIBETA = aibetamod.Runs(LOGS_DIR, STORE)
 MICE = micebook.MouseBook(LOGS_DIR, STORE)
 # Compiled from what everything else already records, so it cannot
 # drift out of step with the attribution on the data.
@@ -17360,6 +17515,69 @@ def api_arc_monolith_data(name):
         return jsonify({"ok": False, "error": "No such Monolith file: %s"
                         % name}), 404
     return send_file(path, mimetype=mime)
+
+
+@app.route("/api/arc/monolith/leaf")
+def api_arc_monolith_leaf():
+    """One cue pair (or rest epoch) of one entry, down to its traces: read
+    from the cluster's copy of the recording on the login node, explained
+    measure by measure (sweep.explain), with the stored number beside the
+    one recomputed here. ?layer&at=w,b,m,p&rat&day&unit[&cell]"""
+    layer = request.args.get("layer") or "raw"
+    try:
+        at = [int(x) for x in (request.args.get("at") or "").split(",")
+              if x != ""]
+        rat = int(request.args.get("rat") or "")
+        cell = request.args.get("cell")
+        cell = int(cell) if cell not in (None, "") else None
+    except ValueError:
+        return jsonify({"ok": False, "error": "`at`, `rat` and `cell` are "
+                        "whole numbers."}), 400
+    day = request.args.get("day") or ""
+    unit = request.args.get("unit") or ""
+    if len(at) != 4 or layer not in monolithmod.LAYERS or not unit:
+        return jsonify({"ok": False, "error": "Say layer, at (four "
+                        "numbers), rat, day and unit."}), 400
+    d = monolithmod.data_dir()
+    summ = monolithmod.summary_now()
+    man = monolithmod.manifest()
+    run = monolithmod.get_state().get("run")
+    if not d or not summ or not man or not run:
+        return jsonify({"ok": False, "error": "The Monolith has not been "
+                        "built yet."}), 404
+    shape = summ["files"]["edges_%s.f32" % layer]["shape"][1:]
+    if any(not 0 <= a < s for a, s in zip(at, shape)):
+        return jsonify({"ok": False, "error": "That entry is outside the "
+                        "Monolith (%s)." % (shape,)}), 400
+    try:
+        cfg = _mono_cfg()
+        got = monolithmod.leaf(cfg, man, summ, d, run, layer, at, rat, day,
+                               unit, cell=cell, ssh=MONO_SSH,
+                               app_dir=APP_DIR)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except vaccmod.SSHError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 502
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/leaf", exc, 500)
+    return jsonify(got)
+
+
+@app.route("/api/arc/monolith/damage")
+def api_arc_monolith_damage():
+    """What the built Monolith lost, rat by rat and day by day, and in all:
+    cue pairs and rest epochs kept, partly kept and lost; each region's
+    windows kept and why the rest were not (histology, bad wires, clipping,
+    not measured); the entries left untested. With the aliasing check, if
+    it has been run (tools/check_aliasing.py)."""
+    try:
+        got = monolithmod.damage_now()
+    except Exception as exc:                             # noqa: BLE001
+        return fail("arc/monolith/damage", exc, 500)
+    if not got:
+        return jsonify({"ok": False, "error": "The Monolith has not been "
+                        "built yet."}), 404
+    return jsonify(got)
 
 
 @app.route("/api/arc/monolith/entry")
@@ -19470,6 +19688,10 @@ def api_vacc_upload_plan():
         "skipped": sum(i.get("n_skip") or 0 for i in ready),
         "blocked": [i for i in items if i.get("why")],
         "dest": dest, "dest_root": root,
+        "room": vaccmod.room(
+            (remote.space(root) if hasattr(remote, "space") else
+             {"why": "this far side cannot say"}),
+            sum(i.get("bytes") or 0 for i in ready)),
         "dests": list(vaccmod.upload_roots(cfg).values()),
         "shared": shared,
     })
@@ -19533,6 +19755,16 @@ def api_vacc_upload():
                     done=got["sent"], of=got["sent"])
             except cfcmod.Canceled:
                 raise
+            except vaccuploadmod.QuotaError as exc:
+                # Out of room: the rest would be refused the same way.
+                failed += 1
+                job.member(gid, status="failed", step=None,
+                           error=str(exc)[:200])
+                for other in items[items.index(it) + 1:]:
+                    job.member(other["gid"], status="failed", step=None,
+                               error="not sent: the cluster is out of room")
+                    failed += 1
+                break
             except Exception as exc:                     # noqa: BLE001
                 failed += 1
                 job.member(gid, status="failed", step=None, error=str(exc)[:200])
