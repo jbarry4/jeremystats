@@ -1,0 +1,235 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Avery sweep</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 56vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 44vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Avery's sweep screen, start to finish, against a server that is FAKED.
+
+   Every /api/avery* and /api/cfc/* request the panel makes is answered here,
+   so the harness never reads a recording, never trains, never writes a
+   label or a bank version -- it checks the screen: the confirm dialog says
+   what it will do, starting shows the scanner, the scanner scans real
+   samples and stamps the verdicts it is given, the summary counts what it
+   was told and lists every candidate, a tile filters the list, and Accept
+   posts once and hands control back. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+const wave = (k, sign) => Array.from({ length: 51 }, (_, i) =>
+  +(Math.exp(-((i - 25) ** 2) / (8 + k)) * sign
+    + 0.05 * Math.sin(i / 3)).toFixed(3));
+const LABS = ['spike', 'review', 'flag', 'garbage'];
+const SAMPLES = Array.from({ length: 12 }, (_, k) => ({
+  i: k * 3, id: 'e' + k, t: 10 + k * 11.1, wave: wave(k, 1),
+  csd: wave(k + 3, -1).map((v) => Math.abs(v)), profile: [],
+  readouts: { amp_uv: 300 + k * 10, half_width_ms: 14.2, rise_ms: 12,
+              csd_peak: 2.1, common_mode: 0.31, mua: 0.2, likeness: 0.6 },
+  p: null, label: null }));
+const ROWS = Array.from({ length: 40 }, (_, k) => ({
+  id: 'e' + k, start: 5 + k * 3.3, p: +(1 - k / 40).toFixed(3),
+  label: k < 18 ? 'spike' : k < 21 ? 'review' : k < 37 ? 'flag' : 'garbage',
+  readable: true, human: k % 9 === 0 ? 'spike' : null,
+  human_by: k % 9 === 0 ? 'A person' : null }));
+const COUNTS = { spike: 18, review: 3, flag: 16, garbage: 3 };
+const RESULT = {
+  id: 'job1', gid: 'demo-ds-tutorial', kind: 'ds', set_name: 'Fake set',
+  run_id: 'aiFAKE', n: 40, n_readable: 40, counts: COUNTS,
+  already_decided: 5, agreement: { compared: 5, agree: 4 },
+  label_colors: {}, rows: ROWS,
+  samples: SAMPLES.map((s, k) => Object.assign({}, s,
+    { p: +(0.9 - k * 0.07).toFixed(2), label: LABS[k % 4] })),
+  held_out: { spike: { n: 100, n_ds: 99, n_garbage: 1 },
+              garbage: { n: 10, n_ds: 1, n_garbage: 9 },
+              review: { n: 5, n_ds: 4, n_garbage: 1 },
+              flag: { n: 50, n_ds: 30, n_garbage: 20 } },
+};
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null;
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    W = () => f.contentWindow;
+    const D = () => f.contentDocument;
+    const ready = await untilN(() => typeof W().setView === 'function');
+    check('the application loads', !!ready);
+    if (!ready) { document.title = 'FAIL'; return; }
+    check('Avery is loaded', W().eval('typeof BARRY.avery === "object"'));
+
+    /* The fake server. */
+    const posts = [];
+    let polls = 0;
+    const realFetch = W().fetch.bind(W());
+    const reply = (obj, status) => Promise.resolve(new (W().Response)(
+      JSON.stringify(obj), { status: status || 200,
+                             headers: { 'Content-Type': 'application/json' } }));
+    W().fetch = (url, opts) => {
+      const u = String(url);
+      const method = (opts && opts.method) || 'GET';
+      if (u.startsWith('/api/avery') || u.startsWith('/api/cfc/')) {
+        if (method === 'POST') posts.push(u);
+        if (u === '/api/avery') {
+          return reply({ ok: true, ready: true, run_id: 'aiFAKE',
+                         model: 'forest', families: ['a', 'b'],
+                         n_recordings: 45, garbage_caught: 0.985,
+                         ds_flagged: 0.429, running: null });
+        }
+        if (u === '/api/avery/sweep') {
+          return reply({ ok: true, job: { id: 'job1', status: 'running',
+                                          stages: [], preview_rev: 0 } });
+        }
+        if (u.startsWith('/api/cfc/job/job1')) {
+          polls += 1;
+          const done = polls > 4;
+          return reply({ ok: true, job: {
+            id: 'job1', status: done ? 'done' : 'running',
+            preview_rev: polls >= 2 ? 1 : 0, elapsed: polls,
+            stages: [{ name: 'avery read', of: 10, done: 10, status: 'done' },
+                     { name: 'avery physio', of: 20, done: done ? 20 : polls * 4,
+                       status: done ? 'done' : 'running', unit: 'stretches' },
+                     { name: 'avery score', of: 40, done: done ? 40 : 0,
+                       status: done ? 'done' : 'waiting' }] } });
+        }
+        if (u.startsWith('/api/avery/sweep/job1/peek')) {
+          return reply({ ok: true, rev: 1,
+                         peek: { stage: 'physio', samples: SAMPLES } });
+        }
+        if (u.startsWith('/api/cfc/result/job1')) {
+          return reply({ ok: true, result: RESULT });
+        }
+        if (u.startsWith('/api/avery/sweep/job1/accept')) {
+          return reply({ ok: true, applied: 35, kept: 5, entry: 'x',
+                         version: 7 });
+        }
+        return reply({ ok: false, error: 'not faked: ' + u }, 404);
+      }
+      return realFetch(url, opts);
+    };
+
+    head('asking first');
+    W().eval(`window.__averyDone = null;
+      BARRY.avery.open({ gid: 'demo-ds-tutorial', kind: 'ds', name: 'Fake set',
+        n: 40, decided: 5, onDone: (r) => { window.__averyDone = r; } });`);
+    const dlg = await untilN(() => {
+      const m = D().querySelector('#bigModal:not(.hidden) .avery-confirm');
+      return m && m.isConnected ? m : null;
+    });
+    check('a confirm dialog opens', !!dlg);
+    if (!dlg) throw new Error('no dialog');
+    check('it is titled Avery Sweep',
+          /Avery Sweep/.test(dlg.querySelector('h3').textContent));
+    check('it states the candidates and that decisions are kept',
+          /40/.test(dlg.textContent) && /never changes those/.test(dlg.textContent),
+          dlg.textContent.slice(0, 200));
+    check('it states what was shown on unseen mice',
+          /98\.5%/.test(dlg.textContent) && /42\.9%/.test(dlg.textContent));
+    check('nothing has been posted yet', posts.length === 0, posts.join());
+    const go = Array.from(dlg.querySelectorAll('button'))
+      .find((b) => b.textContent.trim() === 'Start the sweep');
+    check('the primary says what it starts', !!go);
+    go.click();
+
+    head('the scanner');
+    const ov = await untilN(() => D().getElementById('averyOv'));
+    check('the sweep screen opens', !!ov);
+    check('the sweep was posted once',
+          posts.filter((p) => p === '/api/avery/sweep').length === 1, posts.join());
+    check('it carries a scope to draw on', !!D().getElementById('averyScope'));
+    const read = await untilN(() => {
+      const r = D().getElementById('averyRead');
+      return r && r.children.length >= 3 ? r : null;
+    }, 400);
+    check('a sample is scanned and read out', !!read,
+          'no readouts appeared');
+    const measured = await untilN(() => {
+      const s = D().getElementById('averyStamp');
+      return s && /measured|DS|Flag|Garbage/.test(s.textContent) ? s : null;
+    }, 400);
+    check('each scan ends in a stamp', !!measured);
+
+    head('the verdicts, then the summary');
+    const skip = await untilN(() => Array.from(D().querySelectorAll('#averyOv button'))
+      .find((b) => /Skip to the summary/.test(b.textContent)), 600);
+    check('the reel can be skipped', !!skip);
+    const stampCall = await untilN(() => {
+      const s = D().getElementById('averyStamp');
+      return s && /^(DS|Flag|Garbage|Flag for Deep Review)/.test(s.textContent)
+        ? s : null;
+    }, 600);
+    check('the reel stamps a real verdict', !!stampCall,
+          (D().getElementById('averyStamp') || {}).textContent);
+    if (skip) skip.click();
+    const tiles = await untilN(() => {
+      const t = D().querySelectorAll('#averySummary .avery-tile');
+      return t.length === 4 ? t : null;
+    }, 400);
+    check('four tiles: DS, Flag for Deep Review, Flag, Garbage', !!tiles);
+    if (tiles) {
+      const words = Array.from(tiles).map((t) => t.querySelector('span').textContent);
+      check('in that order',
+            words.join('|') === 'DS|Flag for Deep Review|Flag|Garbage', words.join('|'));
+      const nums = Array.from(tiles).map((t) => t.querySelector('b').textContent);
+      check('with the counts it was given', nums.join('|') === '18|3|16|3', nums.join('|'));
+    }
+    const rows = D().querySelectorAll('#averySummary .avery-list tbody tr');
+    check('every candidate is listed', rows.length === 40, rows.length);
+    check('each with its call written out',
+          Array.from(rows).every((r) => /^(DS|Flag|Garbage|Flag for Deep Review)$/
+            .test(r.querySelector('.avery-pill').textContent.trim())));
+    check('the decisions a person made are shown beside',
+          Array.from(rows).some((r) => /A person/.test(r.textContent)));
+    D().querySelectorAll('#averySummary .avery-tile')[3].click();
+    await sleep(200);
+    const garb = D().querySelectorAll('#averySummary .avery-list tbody tr');
+    check('a tile filters the list to its call', garb.length === 3, garb.length);
+    check('it says how its calls held up on unseen mice',
+          /99\.0%/.test(D().getElementById('averySummary').textContent));
+    check('nothing was accepted before the button',
+          !posts.some((p) => /accept/.test(p)), posts.join());
+
+    head('accept');
+    const acc = D().getElementById('averyAccept');
+    check('Accept and review is offered', !!acc && /Accept and review/.test(acc.textContent));
+    acc.click();
+    const done = await untilN(() => W().eval('window.__averyDone'), 200);
+    check('accepting posts once and hands back', !!done
+          && posts.filter((p) => /accept/.test(p)).length === 1, posts.join());
+    check('the screen closes', !D().getElementById('averyOv'));
+  } catch (e) {
+    say('bad', 'harness threw: ' + e.message);
+  } finally {
+    try { if (W) W().eval('closeAllModals && closeAllModals()'); } catch (e) {}
+    head(bad === 0 ? 'Avery sweep: all checks passed' : bad + ' failed');
+    document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+    f.src = 'about:blank';
+  }
+})();
+</script>

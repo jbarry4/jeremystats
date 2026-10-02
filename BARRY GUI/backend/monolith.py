@@ -97,7 +97,7 @@ PAC_WINDOWS = list(sweep.STATE) + list(sweep.TRANSITION)
 
 #: What a small run can add to a Monolith already built, without running
 #: the rest again: named bands it lacks, and PAC at the transitions.
-ADDITIONS_SAY = {"delta": "the delta band (1–4 Hz)",
+ADDITIONS_SAY = {"delta": "the delta band (2–4 Hz)",
                  "pac_trans": "phase–amplitude coupling at the transitions"}
 
 WINDOWS = list(sweep.STATE) + list(sweep.TRANSITION)
@@ -1971,9 +1971,25 @@ def damage(man, summary, out_dir):
     whole["trans"] = [dict(name=n, **whole["trans"][n]) for n in names]
     whole["rest_regions"] = [dict(name=n, **whole["rest_regions"][n])
                              for n in names]
+    # Which comparisons survive: per region pair, the rats in which both
+    # regions were read (in at least one cue-pair window) on BOTH days the
+    # change is taken between, and the share of its entries tested.
+    pairs = summary["pairs"]
+    read = {}
+    for d in man["days"]:
+        W = _load_day(out_dir, int(d["rat"]), d["day"], "wires_state")
+        read[(int(d["rat"]), d["day"])] = set() if W is None or not W.shape[0] \
+            else {ri for ri in range(len(names)) if (W[:, :, ri] >= 0).any()}
+    all_rats = sorted({int(d["rat"]) for d in man["days"]})
+    pair_rows = []
+    for pi, (a, b) in enumerate(pairs):
+        rats = [r for r in all_rats if all(
+            a in read.get((r, day), set()) and b in read.get((r, day), set())
+            for day in DAY_NAMES)]
+        pair_rows.append({"a": names[a], "b": names[b], "rats": rats,
+                          "n": len(rats), "enough": len(rats) >= MIN_RATS})
     # What it cost the pooled result: entries not tested, and why.
     entries = {}
-    pairs = summary["pairs"]
     for layer in LAYERS:
         fname = "edges_%s.f32" % layer
         info = (summary.get("files") or {}).get(fname)
@@ -1994,11 +2010,16 @@ def damage(man, summary, out_dir):
             by_region.append({"name": n, "entries": int(sub.size),
                               "tested": int(sub.sum())})
         entries[layer] = {"entries": int(p.size), "tested": int(tested.sum()),
-                          "untested": codes, "by_region": by_region}
+                          "untested": codes, "by_region": by_region,
+                          "by_pair": [int(tested[..., pi].sum())
+                                      for pi in range(len(pairs))],
+                          "per_pair": int(tested[..., 0].size)}
         del A
     return {"ok": True, "rid": summary.get("rid"), "regions": names,
             "reasons": list(DAMAGE_REASONS), "reason_say": DAMAGE_SAY,
             "days": days_out, "whole": whole, "entries": entries,
+            "pairs": pair_rows, "min_rats": MIN_RATS,
+            "core_days": list(DAY_NAMES),
             "why_say": summary.get("why") or {}}
 
 

@@ -15,6 +15,75 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.02.9 - Avery sweeps a set from Checkup
+
+### Added
+
+- **Avery Sweep, in Checkup's Xplorefinder bar** (dentate spike sets).
+  Avery is AI Beta's model, put to work: a random forest trained on 45
+  recordings with every input except anatomy.
+  - **It asks first.** The dialog states the candidates, how many a person
+    has already decided, the model, what it did on mice it never saw (98.5%
+    of garbage caught, 42.9% of real spikes flagged), and roughly how
+    long the sweep takes.
+  - **A scanning screen while it reads.** Now and then it takes one real
+    candidate, sweeps across its waveform and the shank's CSD, and reads
+    out its amplitude, width, rise, CSD peak, common mode, unit firing and
+    likeness. When the scores are in, a short reel shows real verdicts on a
+    dozen candidates spread through the set, then the summary appears.
+  - **Every candidate gets one of four calls:**
+    - DS: at or above the bar that caught 99% of garbage.
+    - Flag for Deep Review: between the 98% and 99% bars, the closest to
+      the line.
+    - Flag: the rest.
+    - Garbage: below the score where nine in ten held-out candidates
+      were garbage.
+  - **The summary** shows a tile per call, which filters a list of every
+    candidate with Avery's call, its score and any person's call. It says
+    how each call held up on unseen mice, and how often Avery agreed with
+    decisions already made.
+  - **Accept and review** puts Avery's calls on the candidates nobody has
+    decided, never over a person's decision. It banks every call as a
+    version made by "Avery (AI)" and tagged `avery`, and keeps the scores
+    in `GUI_logs/aibeta/sweeps`, so edge cases can be mined later. Then it
+    opens the Flagged pass. **Discard** keeps nothing.
+- **AI Beta: Make this Avery** on any run trained with Avery's bars. The
+  run Avery uses is marked in the Runs list.
+
+### Changed
+
+- **Training never learns from an Avery version**, however settled it
+  looks.
+- **Both reads can read one recording's stretches six at a time**, which
+  makes a sweep about 1.5–2.5 minutes for a few hundred candidates.
+
+### Measured
+
+- **Same numbers as training on sets it was trained on.** Swept again,
+  PTEN m22 s3 and m60 s4 gave every DS-or-Garbage call the settled answer
+  (92 of 92, 289 of 289). That only shows the sweep measures candidates
+  the way training did; it is not a test of accuracy.
+- **KCNT1 m78 s1: all 451 candidates came back Flag** (one Deep Review).
+  Its scores sat just under the DS bar, median 0.86 against 0.96, and
+  only one KCNT1 recording was trained on. Avery needs more KCNT1
+  examples before it is useful there.
+- **On held-out mice, Garbage calls are rare:** 21 of 12,406 candidates,
+  19 of them really garbage. Most garbage lands in Flag, where a person
+  sees it.
+
+### Checked
+
+- `tools/check_aibeta.py`: 34 ok. New: an Avery version is never the
+  answer, the four bars sort high to DS and low to Garbage, the DS bar
+  sits above 99% of garbage, and Garbage calls are at least nine in ten
+  garbage.
+- `_dev/avery.html`: 27 ok, against a faked server. `_dev/aibeta.html`:
+  33 ok.
+- Accept was run end to end on the demo set: it filled only the
+  undecided candidates, kept every person's call, banked one `avery`
+  version, wrote the sweep record and refused a second accept. The demo
+  set and its bank entry were then put back exactly as they were.
+
 ## 2026.10.02.8 - The Monolith: what was lost, each half of the cue pairs, delta, and how it was averaged
 
 ### Added
@@ -78,9 +147,9 @@ This file is the only place the version is written. The app reads it.
   numbers: the raw cue pair, the window, the band, the measure, each day's
   mean (the first averaging), the rat's change, the pooled change with each
   rat's weight (the second averaging), and the line it becomes.
-- **The delta band (1–4 Hz)**, a fourth named band. It has 2 s lags, 2 s
-  Welch pieces and slow transitions, and is sweep-only, so the circuits'
-  three bands are untouched.
+- **The delta band (2–4 Hz)**, a fourth named band. It has 1 s lags,
+  1 s Welch pieces and slow transitions, and is sweep-only, so the
+  circuits' three bands are untouched.
 - **PAC at the transitions**, in the slow −3/+3 s windows, which give the
   2 Hz phase enough cycles. The PAC panel shows them beside the states.
 - **Adding to a built Monolith.** Drift → Monolith offers a small run that

@@ -95,7 +95,10 @@ window.MONO_TOUR = (function () {
   }
 
   /* ---- setting each step up -------------------------------------------- */
+  // The page opens on what was kept; the rest of the tour is on the Monolith.
+  function onTab(id) { if (M().state.tab !== id && M().showTab) M().showTab(id); }
   function closeAll() {
+    onTab('main');
     if (M().leaf.open) M().closeLeaf();
     if (M().ghost.pair != null) M().closeGhost(true);
     if (window.MONO_HELP) window.MONO_HELP.close();
@@ -109,6 +112,7 @@ window.MONO_TOUR = (function () {
      rats, 3 one rat's days, 4 one day's cue pairs. What the reader opened
      is kept when it is that deep; otherwise the tour's own choice. */
   async function ghostAt(depth) {
+    onTab('main');
     if (M().leaf.open) M().closeLeaf();
     const t = lead();
     // A click the reader (or Next) just made may still be animating.
@@ -154,6 +158,7 @@ window.MONO_TOUR = (function () {
     return u ? u.id : null;
   }
   async function leafOpen() {
+    onTab('main');
     const L = M().leaf;
     if (L.open) { T.rat = L.rat; T.day = L.day; T.unit = L.unit; }
     else {
@@ -179,6 +184,26 @@ window.MONO_TOUR = (function () {
         note: 'Escape leaves at any point. “Take the tour”, at the top of the page, brings it back.',
       },
       {
+        id: 'kept', target: '#damage', title: 'Before any result: what was kept',
+        before: async function () {
+          if (M().leaf.open) M().closeLeaf();
+          if (M().ghost.pair != null) M().closeGhost(true);
+          if (window.MONO_HELP) window.MONO_HELP.close();
+          onTab('cov');
+          await until(() => q('#damage h2'), 3000);
+          const d = M().damage;
+          const W = d && d.whole;
+          const enough = d && d.pairs ? d.pairs.filter((x) => x.enough).length : null;
+          this.body = (W ? 'Of ' + num(W.cue.total) + ' presentations (cue pairs), ' + num(W.cue.kept) + ' kept every region, '
+            + num(W.cue.partial) + ' lost a region somewhere and ' + num(W.cue.lost) + ' were lost entirely. ' : '')
+            + 'Losses are split by cause: clipping (the signal at the rail) against probe placement (histology). '
+            + (enough != null ? enough + ' of ' + d.pairs.length + ' region pairs have enough rats to be compared at all; the '
+              + 'matrix at the bottom shows which.' : '');
+        },
+        body: '',
+        note: 'Anything left out can still be opened and looked at, marked as not used.',
+      },
+      {
         id: 'counts', target: '#verdict', title: 'First: how much of this is chance',
         before: async function () {
           closeAll();
@@ -202,8 +227,10 @@ window.MONO_TOUR = (function () {
         id: 'view', target: '#controls', title: 'What you are looking at',
         before: async function () {
           closeAll();
-          this.body = 'The circuit shows one view at a time: a window (Baseline, Cue 1, Cue 2, After, or the '
-            + 'moments between them), a frequency, and a measure. The view now is written above the circuit: “'
+          this.body = 'The circuit shows one view at a time: a window (one of the 4 states — pre-baseline, cue 1, '
+            + 'cue 2, post-baseline — or one of the 3 transitions between them), a frequency, and a measure. Line '
+            + 'thickness is the size of the change, not its p; the p of every line is in the list under the circuit. '
+            + 'The view now is written above the circuit: “'
             + (q('#ctitle') ? q('#ctitle').textContent : '') + '”. The slider at the bottom of this panel sets how '
             + 'strict to be: left shows everything tested, right only the strongest.';
         },

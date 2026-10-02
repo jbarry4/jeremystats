@@ -130,6 +130,32 @@ ck("an entry with nothing settled is skipped, with a reason",
    any(s["entry_id"] == "B" and "not finished" in s["why"]
        for s in ds["skipped"]), ds["skipped"])
 ck("a harness entry is not learned from", "H" not in by)
+av = ver(5, {"spike": 2, "garbage": 2},
+         [[10.0, "spike"], [20.0, "garbage"], [30.0, "garbage"],
+          [40.0, "spike"]])
+av["tag"] = "avery"
+ds_av = AI.dataset(FakeBank([entry("V", "gV", 7, [v0, v1, v2, av])]))
+ck("an Avery version is never the answer, however settled it looks",
+   ds_av["entries"] and ds_av["entries"][0]["version_v"] == 2,
+   [(e["label"], e["version_v"]) for e in ds_av["entries"]])
+pol_p = np.array([0.95, 0.9, 0.85, 0.5, 0.4, 0.2, 0.1, 0.05, 0.02, 0.01])
+pol_y = np.array([1, 1, 1, 1, 0, 1, 0, 0, 0, 0])
+pol = AI.label_policy(pol_p, pol_y)
+labs = list(AI.apply_policy(pol_p, pol))
+ck("Avery's bars sort high to DS and low to Garbage",
+   labs[0] == "spike" and labs[-1] == "garbage", labs)
+ck("and nothing falls outside the four calls",
+   set(labs) <= set(AI.POLICY_LABELS), labs)
+rs = np.random.default_rng(3)
+big_p = np.r_[rs.uniform(0.0, 0.5, 1000), rs.uniform(0.4, 1.0, 1000)]
+big_y = np.r_[np.zeros(1000, int), np.ones(1000, int)]
+bp = AI.label_policy(big_p, big_y)
+caught = float((big_p[big_y == 0] < bp["t_ds"]).mean())
+ck("the DS bar sits above 99% of the garbage",
+   abs(caught - 0.99) < 0.005, caught)
+pure = bp["held_out"]["garbage"]
+ck("Garbage calls are at least nine in ten garbage",
+   pure["n"] and pure["n_garbage"] / pure["n"] >= 0.9, pure)
 ck("a recording rejected whole is left out, and says so",
    "G" not in by and any(s["entry_id"] == "G"
                          and s["why"].startswith("rejected whole")

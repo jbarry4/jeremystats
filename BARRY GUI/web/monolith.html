@@ -333,6 +333,34 @@ svg.dmap rect[data-region] { cursor: default; }
 @keyframes tour-press { from { transform: scale(.35); opacity: .95; } to { transform: scale(1.25); opacity: 0; } }
 .tour-cursor.press svg { transform: scale(.86); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* The trail: where the value on screen comes from, and the way back. */
+.trail { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0 0 10px; padding: 8px 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); font-size: 13px; }
+.trail .crumb { font: inherit; border: 1px solid var(--line-2); background: var(--surface-2); color: var(--ink-2); border-radius: 12px;
+  padding: 2px 10px; cursor: pointer; }
+.trail .crumb:hover { color: var(--ink); border-color: var(--ink-3); }
+.trail .crumb.here { cursor: default; color: var(--ink); font-weight: 600; border-color: var(--ink-3); background: var(--chip); }
+.trail .sep { color: var(--ink-3); }
+.trailsay { flex: 1 1 100%; font-size: 12.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+/* Every line drawn, with its p. */
+#lines details { margin-top: 8px; }
+#lines summary { cursor: pointer; font-size: 12.5px; color: var(--ink-2); }
+.linetable { border-collapse: collapse; width: 100%; font-size: 12.5px; margin-top: 4px; }
+.linetable th, .linetable td { text-align: left; padding: 3px 6px; border-top: 1px solid var(--line); }
+.linetable th { font-weight: 600; color: var(--ink-3); font-size: 11.5px; border-top: 0; }
+.linetable td.num { font-variant-numeric: tabular-nums; }
+.linetable td.up { color: var(--up); } .linetable td.down { color: var(--down); }
+.linetable tbody tr { cursor: pointer; }
+.linetable tbody tr:hover { background: var(--chip); }
+.linetable tbody tr.sel { background: color-mix(in srgb, var(--focus) 14%, transparent); }
+.legend-key { flex: 1 1 100%; font-weight: 600; color: var(--ink); }
+.rankrow { gap: 8px; margin: 4px 0 8px; flex-wrap: wrap; }
+.perwin-h { font-size: 12.5px; margin: 12px 0 2px; color: var(--ink-2); }
+.covnext { justify-content: flex-end; margin: -4px 0 14px; }
+.pairwrap { margin-top: 14px; }
+.pairmat text { font-family: inherit; }
+#causes { margin-top: 0; }
+.evwrap .card h3 { margin-top: 12px; }
 </style>
 </head>
 <body>

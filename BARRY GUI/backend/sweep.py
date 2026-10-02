@@ -125,12 +125,12 @@ KINDS = ("state", "trans_slow", "trans_fast", "rest", "pac", "pac_rest",
 #: BANDS, which the circuits share and this does not touch). Appended AFTER
 #: them, so a Monolith built before one was added is the same arrays with
 #: one band fewer at the end, and can have it added by a small run.
-#: Delta (user, 2026-10-02): 1-4 Hz; lags searched over two cycles of its
-#: slowest edge, 2 s; Welch pieces of 2 s so its lowest hertz has two cycles
-#: in each (the 1 s pieces of the faster bands would hold one).
+#: Delta (the lab meeting, 2026-10-02): 2-4 Hz; lags searched over two
+#: cycles of its slowest edge, 1 s; Welch pieces by the usual rule (1 s,
+#: two cycles of 2 Hz in each).
 SWEEP_NAMED = {
-    "delta": {"id": "delta", "low": 1.0, "high": 4.0, "max_lag_ms": 2000.0,
-              "label": "Delta", "welch_s": 2.0},
+    "delta": {"id": "delta", "low": 2.0, "high": 4.0, "max_lag_ms": 1000.0,
+              "label": "Delta"},
 }
 
 PAC_PHASE_HZ = tuple(range(2, 13))
@@ -177,7 +177,7 @@ def bands():
                     "high": float(b["high"]),
                     "lag_s": float(b["max_lag_ms"]) / 1000.0,
                     "speed": "slow" if b["high"] <= SPLIT_HZ else "fast",
-                    "named": True, "pad": False, "welch_s": b["welch_s"],
+                    "named": True, "pad": False,
                     "label": "%s %g–%g Hz" % (b["label"], b["low"],
                                               b["high"])})
     return out

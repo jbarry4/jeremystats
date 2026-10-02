@@ -292,12 +292,12 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
     head('adding to it: delta, and PAC at the transitions');
     const builtS = { rid: run.rid, at: iso(1), artifact_id: 'zzmono', version: 1, missing_tasks: [],
                      counts: { raw: { tested: 340000, p05: 18000, chance_p05: 17000 }, minus_fp: { tested: 330000, p05: 17000 } } };
-    const says = { delta: 'the delta band (1–4 Hz)', pac_trans: 'phase–amplitude coupling at the transitions' };
+    const says = { delta: 'the delta band (2–4 Hz)', pac_trans: 'phase–amplitude coupling at the transitions' };
     await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS,
                                        missing: { bands: ['delta'], pac_trans: true }, additions_say: says }));
     const addBtn = btn(/^Add the delta band/);
     check('a Monolith built without them says so, and offers to add them', !!addBtn
-          && /built without the delta band \(1–4 Hz\) or phase–amplitude coupling at the transitions/.test(step('view').textContent)
+          && /built without the delta band \(2–4 Hz\) or phase–amplitude coupling at the transitions/.test(step('view').textContent)
           && /nothing already measured is measured again/.test(step('view').textContent), step('view').textContent.slice(0, 300));
     check('  it is not the next step: View still is', primaries().length === 1 && /^View Monolith Artifact$/.test(primaries()[0].textContent.trim()));
     stub.calls.length = 0;

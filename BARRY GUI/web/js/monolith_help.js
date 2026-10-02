@@ -53,15 +53,15 @@ window.MONO_HELP = (function () {
       demo: 'minus_fp',
     },
     windows: {
-      title: 'State or transition windows',
-      plain: 'State windows are the four 10 s chunks of a cue pair: baseline, cue 1, cue 2, after. Transition windows straddle the moments things change: cue 1 starting (onset), cue 1 giving way to cue 2 (switch), cue 2 ending (offset).',
+      title: 'Seven windows: 4 states, 3 transitions',
+      plain: 'Every presentation is measured seven times. The 4 states are 10 s each: pre-baseline (before cue 1), cue 1, cue 2, post-baseline (after cue 2). The 3 transitions straddle the moments things change: cue 1 starting (onset), cue 1 giving way to cue 2 (switch), cue 2 ending (offset).',
       look: 'A state change says how the brain sat during a part of the pair; a transition change says how it moved at the boundary.',
       traps: 'Transition windows are shorter (6 s for slow bands, 3 s for fast), so their numbers are noisier than state ones.',
     },
     window: {
       title: 'Which window',
-      plain: 'Baseline is the 10 s before cue 1; cue 1 and cue 2 are the cues (about 10 s each); after is the 10 s after cue 2 ends. Onset, switch and offset are −3/+3 s around each boundary for bands up to 12 Hz (a 1 Hz cycle needs that long), and −1/+2 s for faster ones.',
-      look: 'Compare the cue windows with baseline in the same rat-day to see what the cue itself did.',
+      plain: 'Pre-baseline is the 10 s before cue 1; cue 1 and cue 2 are the cues (about 10 s each); post-baseline is the 10 s after cue 2 ends. Onset, switch and offset are −3/+3 s around each boundary for bands up to 12 Hz (a 1 Hz cycle needs that long), and −1/+2 s for faster ones.',
+      look: 'Compare the cue windows with pre-baseline in the same rat-day to see what the cue itself did.',
       traps: 'A window that touched clipping drops the clipped wire for that cue pair: shorter windows lose more cue pairs.',
     },
     frequency: {
@@ -224,6 +224,18 @@ window.MONO_HELP = (function () {
       plain: 'One node per region, one edge per region pair that passes the slider. Red edge: the measure rose from Precon1 to Precon4; blue: it fell. Thicker: a bigger change. Grey rings: regions no rat had usable (histology or wires).',
       look: 'Click an edge to lift it out and open it into its rats, days and cue pairs.',
       traps: 'A thick edge is a big change, not necessarily a reliable one: check how many rats agree.',
+    },
+    rank: {
+      title: 'Rank overall, or within each window',
+      plain: 'Overall: every entry of every window competes in one list, ranked by how many rats changed the same way, then by p. Within each window: the best three of each of the seven windows, ranked the same way, each window on its own.',
+      look: 'Overall is what is strongest anywhere. Within each window stops one window with many strong entries (onset, often: the cue starting moves everything) from filling the whole list, so a smaller change at the switch or offset is still seen.',
+      traps: 'The windows are not equally long, so their p are not equally easy to reach: a 3 s transition is noisier than a 10 s state. Comparing ranks across windows says which is stronger within its own window, not which is the bigger effect.',
+    },
+    trail: {
+      title: 'Where this value comes from',
+      plain: 'The path from the whole Monolith down to one presentation’s signals: the pooled change of a region pair, then each rat’s change, then one rat’s two sessions, then one session’s presentations, then one presentation. Each step says what its numbers are.',
+      look: 'Click any earlier step to go back to it. Pooled and rat levels are changes (Precon4 − Precon1); session and presentation levels are values, not changes.',
+      traps: 'Raw and minus FP give different numbers at every level: minus FP takes each session’s flower-pot rest off first. The layer is named at each step.',
     },
     points: {
       title: 'Points of interest',

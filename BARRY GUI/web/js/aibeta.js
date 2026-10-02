@@ -533,13 +533,26 @@ BARRY.aibeta = (function () {
     const s = run.settings || {};
     const card = el('div', { class: 'card ai-result' });
 
+    const isAvery = !!(st && st.avery && st.avery.ready
+                       && st.avery.run_id === run.id);
     card.appendChild(el('div', { class: 'ai-row ai-result-head' }, [
       el('strong', { text: 'How it did' }),
       el('span', { class: 'hint', text:
         when(run.at) + (run.by ? ' · ' + run.by : '') + ' · '
         + modelName(s.model) + ' · ' + (s.families || []).map(famName)
                                                           .join(', ') }),
-    ]));
+      el('div', { class: 'spacer' }),
+      /* Avery is the run Checkup's "Avery sweep" sorts sets with. Only a
+         run trained with Avery's four bars can be it. */
+      isAvery ? BARRY.ui.chip('This is Avery', { kind: 'good',
+        title: 'Checkup’s Avery sweep sorts sets with this run.' })
+      : (res.policy ? BARRY.ui.button({ size: 'sm', text: 'Make this Avery',
+          title: 'Sort sets with this run from Checkup’s Avery sweep, '
+               + 'using its bars: DS above the one that caught 99% of '
+               + 'garbage, Flag for Deep Review just under it, Garbage '
+               + 'below the score where nine in ten were garbage.',
+          onclick: () => makeAvery(run.id) }) : null),
+    ].filter(Boolean)));
 
     card.appendChild(el('p', { class: 'ai-lede', text:
       'On ' + plural(d.n_mice || 0, 'mouse', 'mice') + ' it never saw ('
@@ -791,6 +804,18 @@ BARRY.aibeta = (function () {
     return card;
   }
 
+  async function makeAvery(id) {
+    try {
+      await apiPost('/api/aibeta/avery', { run_id: id });
+    } catch (e) {
+      toast(e.message, 'err', 9000);
+      return;
+    }
+    toast('Avery now sorts sets with this run.', 'ok', 5000);
+    st = null;
+    load();
+  }
+
   function count(big, small, kind) {
     return el('div', { class: 'br-count' + (kind ? ' ' + kind : '') }, [
       el('b', { text: big }), el('span', { text: small })]);
@@ -822,7 +847,8 @@ BARRY.aibeta = (function () {
           onclick: () => { openRun(r.id); paintRunsSel(); },
         }, [
           el('td', { text: when(r.at) }),
-          el('td', { text: modelName((r.settings || {}).model) }),
+          el('td', { text: modelName((r.settings || {}).model)
+            + (st && st.avery && st.avery.run_id === r.id ? ' · Avery' : '') }),
           el('td', { class: 'ai-wrap', text: ((r.settings || {}).families
                                               || []).map(famName).join(', ') }),
           el('td', { text: num(r.n_events) }),

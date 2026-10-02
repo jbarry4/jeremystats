@@ -80,7 +80,7 @@
        mean, the rat's change, the pooled change); another rat follows;
        minus FP shows the rest taken off; the first tab comes back
      - THE TOUR: on a first visit it starts by itself (and is remembered);
-       its 14 steps each light up their own target, measured; Next performs
+       its 15 steps each light up their own target, measured; Next performs
        a click step and moves on exactly one; a reader's own click moves it
        on too, and a different rat than suggested is followed; Back sets
        the page up again; it goes down to the cue pair's traces, or says the
@@ -427,12 +427,19 @@ function damageFixture() {
   const whole = { cue: { total: 0, kept: 0, partial: 0, lost: 0 }, rest: { total: 0, kept: 0, lost: 0 },
                   state: sum('state'), trans: sum('trans'), rest_regions: sum('rest') };
   for (const d of days) { for (const k in whole.cue) whole.cue[k] += d.cue[k]; for (const k in whole.rest) whole.rest[k] += d.rest[k]; }
+  // Right POR's pairs have no rat; Right DHC – Right RSC has only four.
+  const pairs = PAIRS.map(([a, b]) => {
+    const n = (a === GREY || b === GREY) ? 0 : (Math.min(a, b) === 2 && Math.max(a, b) === 3) ? 4 : 8;
+    return { a: REG[a], b: REG[b], rats: SUMMARY.rats.slice(0, n), n, enough: n >= 5 };
+  });
   const entries = { entries: 375144, tested: 340000, untested: { 1: 35144 },
-                    by_region: REG.map((name, i) => ({ name, entries: 1000, tested: i === GREY ? 0 : 800 })) };
+                    by_region: REG.map((name, i) => ({ name, entries: 1000, tested: i === GREY ? 0 : 800 })),
+                    by_pair: pairs.map((x) => (x.enough ? 800 : 0)), per_pair: 1000 };
   return { ok: true, rid: SUMMARY.rid, regions: REG, reasons: ['histology', 'bad', 'clipped', 'unread'],
            reason_say: { histology: 'histology says the probe is not in this region', bad: 'every wire it has is marked bad',
                          clipped: 'every wire it has was clipped', unread: 'it was not measured there' },
            days, whole, entries: { raw: entries, minus_fp: entries }, why_say: SUMMARY.why,
+           pairs, min_rats: 5, core_days: ['Precon1', 'Precon4'],
            aliasing: { say: 'worst leakage into 1–55 Hz −142 dB; no recording’s hardware filter above half its rate.', at: '2026-10-02T12:00:00' } };
 }
 const DAMAGE = damageFixture();
@@ -496,25 +503,23 @@ window.MONO_FIXTURE = {
   const txt = (n) => (n ? n.textContent : '').replace(/\s+/g, ' ').trim();
   const at = (a, q, w, b, m, p) => a[(((q * N.W + w) * N.B + b) * N.M + m) * N.P + p];
 
-  head('what it says first');
-  const v = D().getElementById('verdict');
-  check('the counts, and how many by chance', /340,000 entries tested; 18,000 have p < \.05, where about 17,000/.test(txt(v)), txt(v).slice(0, 160));
-  check('every p is said to be uncorrected', /uncorrected/.test(txt(v)) && /uncorrected/.test(txt(D().querySelector('.lede'))));
-  const items = () => D().querySelectorAll('#toplist > li');
-  check('ten points of interest', items().length === 10, items().length);
-  check('the first is the planted change, all eight rats', /Right ACC – Right OFC/.test(txt(items()[0])) && /8\/8 rats/.test(txt(items()[0])));
-  D().getElementById('showall').click();
-  await sleep(30);
-  check('and fifty when asked', items().length === 50, items().length);
-  D().getElementById('showall').click();
-  await sleep(30);
-  check('and ten again', items().length === 10);
-
-  head('what was lost');
+  head('1 · what was kept, first');
+  const tabs = () => Array.from(D().querySelectorAll('#tabs > button[role="tab"]'));
+  check('four tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · When we averaged | 4 · Events first',
+        tabs().map((b) => txt(b)).join(' | '));
+  check('a fresh page opens on what was kept, the Monolith behind it', M.state.tab === 'cov' && !D().getElementById('covpane').hidden
+        && D().getElementById('mainpane').hidden && D().getElementById('tab-cov').getAttribute('aria-selected') === 'true', M.state.tab);
   const dmg = () => D().getElementById('damage');
   await until(() => M.damage && dmg().querySelector('svg.dmap'), 120);
   const dt = txt(dmg());
-  check('in all, in words: cue pairs kept, partly, lost; rest epochs', /In all: 192 cue pairs over 8 rats and 2 days\. 144 kept every region histology allows, in every window; 32 lost a region somewhere; 16 were lost entirely .* Rest epochs: 96 of 96 usable\./.test(dt), dt.slice(0, 300));
+  check('titled for what was kept, and said what a presentation is', /^What was kept, and what was lost/.test(txt(dmg().querySelector('h2')))
+        && /A presentation is one cue pair/.test(dt) && /not used in the analysis/.test(dt));
+  check('in all, in words: presentations kept, partly, lost; rest epochs', /In all: 192 presentations \(cue pairs\) over 8 rats and 2 sessions\. 144 kept every region histology allows, in every window; 32 lost a region somewhere; 16 were lost entirely .* Rest epochs \(flower-pot recordings\): 96 of 96 usable\./.test(dt), dt.slice(0, 400));
+  const lostBy = DAMAGE.whole.state.reduce((a, x) => ({ clipped: a.clipped + x.clipped, histology: a.histology + x.histology, of: a.of + x.of }), { clipped: 0, histology: 0, of: 0 });
+  const cz = txt(D().getElementById('causes'));
+  check('losses broken out by cause: clipping against probe placement', cz.indexOf('clipping (signal at the rail): ' + lostBy.clipped.toLocaleString()) >= 0
+        && cz.indexOf('probe placement (histology): ' + lostBy.histology.toLocaleString()) >= 0
+        && cz.indexOf('of ' + lostBy.of.toLocaleString()) >= 0, cz);
   const bars = dmg().querySelectorAll('svg.dbar');
   const keptRect = bars[0] && bars[0].querySelector('rect[data-reason="kept"]');
   const tS = DAMAGE.whole.state.reduce((a, x) => ({ of: a.of + x.of, kept: a.kept + x.kept }), { of: 0, kept: 0 });
@@ -542,8 +547,51 @@ window.MONO_FIXTURE = {
   check('and the aliasing check', /Aliasing: worst leakage into 1–55 Hz −142 dB/.test(dt));
   check('the counts say what was lost and link here', /Lost on the way: 16 of 192 cue pairs entirely, 32 partly/.test(txt(D().getElementById('verdict')))
         && !!D().querySelector('#verdict button.linkish'));
+  const pm = D().getElementById('pairmat');
+  const pcells = pm ? Array.from(pm.querySelectorAll('rect[data-pair]')) : [];
+  check('which comparisons remain: a square per region pair (66)', pcells.length === PAIRS.length, pcells.length);
+  check('those under five rats are said, and are grey (11 with Right POR, and Right DHC – Right RSC)',
+        /needs at least 5 rats to be compared; 12 of 66 do not, and are never tested/.test(txt(pm))
+        && pcells.filter((c) => Number(c.dataset.n) < 5).length === 12, txt(pm).slice(0, 200));
+  const dr = pm.querySelector('rect[data-pair="Right DHC|Right RSC"]');
+  dr.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 300 }));
+  await sleep(10);
+  check('its hover: the four rats, and never tested', /4 rats have both regions on both sessions \(r3, r4, r6, r7\)/.test(txt(D().getElementById('tip')))
+        && /Fewer than 5: this comparison is never tested/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
+  dr.dispatchEvent(new MouseEvent('mouseleave'));
+  const okc = pm.querySelector('rect[data-pair="Right ACC|Right OFC"]');
+  okc.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 300 }));
+  await sleep(10);
+  check('a pair with enough: how much of it was tested', /8 rats have both regions/.test(txt(D().getElementById('tip')))
+        && /800 of 1,000 of its entries were tested \(80%\)/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
+  okc.dispatchEvent(new MouseEvent('mouseleave'));
   const dw = figWords(dmg());
   check('no word in its pictures is cut off or on another', dw.length === 0, dw.slice(0, 4).join(' | '));
+
+  const goOn = D().querySelector('#covpane .covnext button');
+  check('and a way on to the Monolith', !!goOn && /Go on to the Monolith/.test(txt(goOn)));
+  goOn.click();
+  await sleep(30);
+  check('which opens it', M.state.tab === 'main' && !D().getElementById('mainpane').hidden && D().getElementById('covpane').hidden);
+  D().querySelector('#verdict button.linkish').click();
+  await sleep(30);
+  check('the counts’ “what was lost” link goes back to it', M.state.tab === 'cov' && !D().getElementById('covpane').hidden);
+  D().getElementById('tab-main').click();
+  await sleep(60);
+
+  head('what it says first');
+  const v = D().getElementById('verdict');
+  check('the counts, and how many by chance', /340,000 entries tested; 18,000 have p < \.05, where about 17,000/.test(txt(v)), txt(v).slice(0, 160));
+  check('every p is said to be uncorrected', /uncorrected/.test(txt(v)) && /uncorrected/.test(txt(D().querySelector('.lede'))));
+  const items = () => D().querySelectorAll('#toplist > li');
+  check('ten points of interest', items().length === 10, items().length);
+  check('the first is the planted change, all eight rats', /Right ACC – Right OFC/.test(txt(items()[0])) && /8\/8 rats/.test(txt(items()[0])));
+  D().getElementById('showall').click();
+  await sleep(30);
+  check('and fifty when asked', items().length === 50, items().length);
+  D().getElementById('showall').click();
+  await sleep(30);
+  check('and ten again', items().length === 10);
 
   head('every ? says what it is');
   const H = W().MONO_HELP;
@@ -669,6 +717,28 @@ window.MONO_FIXTURE = {
   f.style.width = '';
   await sleep(60);
 
+  head('ranking within each window');
+  const rk = () => D().querySelector('#poi .rankrow');
+  check('a Rank control: overall, or within each window, with its ?', !!rk() && /Overall/.test(txt(rk())) && /Within each window/.test(txt(rk()))
+        && !!rk().querySelector('.qmark[data-help="rank"]'));
+  rk().querySelector('.seg button[data-id="win"]').click();
+  await sleep(30);
+  const pwn = D().getElementById('perwin');
+  const FD = { measure: 'any', region: 'any', withRegion: 'any', from: 1, to: 55, named: true, bins: true, win: 'any', dir: 'either', bb: 'show' };
+  const perOk = WINDOWS.map((w, wi) => {
+    const ol = pwn && pwn.querySelector('ol[data-win="' + w.id + '"]');
+    const want = M.filteredPoints('raw', Object.assign({}, FD, { win: w.id }));
+    const lis = ol ? Array.from(ol.querySelectorAll('li[data-rank]')) : [];
+    const n = brute({}).filter((x) => x.w === wi).length;
+    return { w: w.id, n, lis: lis.length, ok: !!ol && lis.length === Math.min(3, want.length) && (!want.length || txt(lis[0]).indexOf(want[0].a + ' – ' + want[0].b) >= 0)
+             && txt(ol.previousElementSibling).indexOf(n.toLocaleString() + ' pass p < .05') >= 0 };
+  });
+  check('the best three of each of the seven windows, each ranked on its own', !!pwn && perOk.every((x) => x.ok), JSON.stringify(perOk.filter((x) => !x.ok)));
+  check('so the onset cannot take the list: every window is heard', pwn && pwn.querySelectorAll('h3.perwin-h').length === 7);
+  rk().querySelector('.seg button[data-id="all"]').click();
+  await sleep(30);
+  check('Overall brings the one list back', !D().getElementById('perwin') && items().length === 10);
+
   head('cue pairs: both, or one half');
   const viewWas = M.state;
   const sc = () => D().getElementById('splitctl');
@@ -684,7 +754,7 @@ window.MONO_FIXTURE = {
         D().querySelectorAll('#circsvg path.edge').length === countIn(ARR['edges_raw__snd_click'])
         && !!D().querySelector('#circsvg path.edge[data-pair="' + PLANT3.p + '"]'), D().querySelectorAll('#circsvg path.edge').length);
   check('CONTROL: its change is not in the whole', at(ARR.edges_raw, 1, 0, 29, 3, PLANT3.p) >= 0.05 || !isFinite(at(ARR.edges_raw, 1, 0, 29, 3, PLANT3.p)));
-  check('the view says which half', /Pre · 30 Hz · Envelope cc · Raw · Click pair|Baseline · 30 Hz · Envelope cc · Raw · Click pair/.test(txt(D().getElementById('ctitle'))), txt(D().getElementById('ctitle')));
+  check('the view says which half', /Pre-baseline · 30 Hz · Envelope cc · Raw · Click pair/.test(txt(D().getElementById('ctitle'))), txt(D().getElementById('ctitle')));
   check('its own points of interest, its change first', /Right ACC – Left OFC/.test(txt(items()[0])) && /Envelope cc/.test(txt(items()[0])), txt(items()[0]));
   check('the counts say only that half is shown', /Showing the click pair only: 8 rats, 96 cue pairs/.test(txt(D().getElementById('verdict'))), txt(D().getElementById('verdict')).slice(0, 300));
   entryAsked = [];
@@ -749,6 +819,21 @@ window.MONO_FIXTURE = {
   check('the planted edge passes even the strictest', !!D().querySelector('#circsvg path.edge[data-pair="0"]'));
   M.set({ level: 1 });
   await sleep(20);
+
+  head('every line drawn, with its p');
+  check('the legend says thickness is the size of the change, not p', /Line thickness = how big the change is, not its p/.test(txt(D().getElementById('legend'))));
+  const lrows = () => Array.from(D().querySelectorAll('#lines table.linetable tbody tr'));
+  check('a row for every line drawn (' + drawn() + ')', lrows().length === drawn() && drawn() > 0, lrows().length);
+  const lpv = lrows().map((r) => at(ARR.edges_raw, 1, PLANT.w, PLANT.b, PLANT.m, Number(r.dataset.pair)));
+  check('strongest evidence first: sorted by p, every p shown', lpv.every((x, i) => i === 0 || x >= lpv[i - 1])
+        && lrows().every((r) => txt(r.children[2]) && txt(r.children[2]) !== '—') && lrows()[0].dataset.pair === '0', lrows().slice(0, 3).map((r) => txt(r)).join(' | '));
+  check('the layer is said in words', txt(D().getElementById('layersay')) === 'Raw: the cue windows as measured.', txt(D().getElementById('layersay')));
+  const sh = (r) => r.replace(/^Left /, 'L ').replace(/^Right /, 'R ');
+  const crumbsT = () => Array.from(D().querySelectorAll('#trail button.crumb')).map((b) => txt(b));
+  const trailSay = () => txt(D().getElementById('trailsay'));
+  check('the trail starts at the Monolith, and says what its numbers are', crumbsT().join('|') === 'The Monolith'
+        && trailSay() === 'Showing the change Precon4 − Precon1, pooled over rats (cue windows as measured).', crumbsT().join('|') + ' / ' + trailSay());
+  check('with its ?', !!D().querySelector('#trail .qmark[data-help="trail"]'));
   const greyNode = D().querySelector('#circsvg circle[data-region="5"]');
   check('a region nobody has is grey and says so', greyNode && greyNode.getAttribute('fill') === 'none'
         && /Right POR \(not measured\)/.test(txt(D().getElementById('circsvg'))));
@@ -768,10 +853,14 @@ window.MONO_FIXTURE = {
   D().querySelector('#controls .seg button[data-id="theta"]').click();
   await sleep(20);
   check('Theta snaps to the named band', M.state.band === 'theta' && /Theta 4–12 Hz/.test(txt(D().getElementById('ctitle'))));
-  D().querySelector('#controls .seg button[data-id="transition"]').click();
+  const wc = D().getElementById('winctl');
+  check('the seven windows in two named groups: 4 states, 3 transitions', /4 states \(10 s each\)/.test(txt(wc)) && /3 transitions \(around each boundary\)/.test(txt(wc))
+        && wc.querySelectorAll('.seg').length === 2 && txt(wc.querySelectorAll('.seg')[0]) === 'Pre-baselineCue 1Cue 2Post-baseline'
+        && txt(wc.querySelectorAll('.seg')[1]) === 'OnsetSwitchOffset', txt(wc));
+  check('no State/Transition switch to hide three of them behind', !D().querySelector('#controls .seg button[data-id="transition"]'));
+  wc.querySelector('.seg button[data-id="onset"]').click();
   await sleep(20);
-  check('Transition: its three windows', M.state.kind === 'transition' && M.state.win === 'onset'
-        && txt(D().querySelectorAll('#controls .seg')[2]) === 'OnsetSwitchOffset', txt(D().querySelectorAll('#controls .seg')[2]));
+  check('Onset, in one click: a transition window', M.state.kind === 'transition' && M.state.win === 'onset');
   check('theta is measured −3/+3 s there', /−3 s \/ \+3 s around each boundary/.test(txt(D().getElementById('freqsay'))));
   M.set({ band: 'f30' });
   await sleep(20);
@@ -924,6 +1013,9 @@ window.MONO_FIXTURE = {
   const gnames = Array.from(D().querySelectorAll('#ghostsvg .gname')).map((x) => x.textContent);
   check('named as the edge was', gnames.indexOf(REG[PAIRS[PLANT2.p][0]]) >= 0 && gnames.indexOf(REG[PAIRS[PLANT2.p][1]]) >= 0, gnames.join(','));
   check('the crumbs say where', txt(D().getElementById('crumbs')).indexOf('Pooled') === 0);
+  const p2name = sh(REG[PAIRS[PLANT2.p][0]]) + ' – ' + sh(REG[PAIRS[PLANT2.p][1]]);
+  check('the trail: the Monolith › this pair, the pooled change', crumbsT().join('|') === 'The Monolith|' + p2name
+        && /^Showing one region pair’s change Precon4 − Precon1, pooled over rats/.test(trailSay()), crumbsT().join('|') + ' / ' + trailSay());
   const gs = () => D().getElementById('gstats');
   const sw = () => figWords(gs());
   check('under it, each rat’s Precon1 and Precon4, joined', gs() && !gs().hidden && !!gs().querySelector('svg.mfig[aria-label="Precon1 to Precon4, rat by rat"]'));
@@ -956,6 +1048,8 @@ window.MONO_FIXTURE = {
   check('one with no value is dashed, not dropped', arcs().filter((a) => a.getAttribute('stroke-dasharray')).length === 1);
   await until(() => gs().querySelectorAll('circle[data-i]').length === 12, 40);
   check('its pictures’ words neither cut off nor overlapping', sw().length === 0, sw().slice(0, 4).join(' | '));
+  check('the trail: pooled › each rat › r3 › Precon4, values not changes', crumbsT().join('|') === 'The Monolith|' + p2name + '|each rat|r3|Precon4'
+        && /one session’s presentations, one value each — not a change/.test(trailSay()), crumbsT().join('|') + ' / ' + trailSay());
   check('under it, this day’s cue pairs (12), the one with no value hollow', gs().querySelectorAll('circle[data-i]').length === 12
         && gs().querySelectorAll('circle[data-i][fill="none"]').length === 1);
   const nod = arcs().find((a) => a.dataset.key === 'p04');
@@ -977,6 +1071,7 @@ window.MONO_FIXTURE = {
   leaf.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await leafReady('p01');
   check('clicking a cue pair opens it', !!LP() && !!LP().querySelector('.lcard'));
+  check('the trail ends at its signals', crumbsT()[crumbsT().length - 1] === 'p01 · signals' && /one presentation: its signals/.test(trailSay()), crumbsT().join('|'));
   const c6 = CELLS.findIndex((c) => c.fp === 6 && c.fa === 40);
   check('one request: the entry, the rat, the day, the cue pair, the PAC cell',
         leafAsked.length === 1 && leafAsked[0] === 'layer=raw&at=2,19,6,12&rat=3&day=Precon4&unit=p01&cell=' + c6, leafAsked.join(' '));
@@ -1086,6 +1181,9 @@ window.MONO_FIXTURE = {
   crumbs[1].click();
   await until(() => arcs().length === 8, 80);
   check('and go back up', M.ghost.stack.length === 2 && arcs().length === 8);
+  D().querySelector('#trail button.crumb[data-lv="pooled"]').click();
+  await until(() => M.ghost.stack.length === 1, 80);
+  check('a step of the trail goes back to it', M.ghost.stack.length === 1 && crumbsT().join('|') === 'The Monolith|' + p2name, crumbsT().join('|'));
   D().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
   await until(() => !D().getElementById('ghostsvg'), 40);
   check('Escape closes it', !D().getElementById('ghostsvg') && M.ghost.pair == null);
@@ -1094,6 +1192,8 @@ window.MONO_FIXTURE = {
   D().querySelector('#controls .seg button[data-id="minus_fp"]').click();
   await until(() => M.state.layer === 'minus_fp' && M.data.edges.minus_fp, 80);
   check('the flip loads the other layer', M.state.layer === 'minus_fp' && !!M.data.edges.minus_fp);
+  check('and says so in words, and on the trail', txt(D().getElementById('layersay')) === 'Minus FP: each session’s flower-pot rest taken off first.'
+        && /\(each session less its flower-pot rest\)/.test(trailSay()), trailSay());
   check('its own points of interest', /Minus FP/.test(txt(D().querySelector('#poi h2'))) && items().length === 10);
   M.set({ kind: 'state', win: 'cue2', band: 'f20', method: 'plv', level: 0 });
   await sleep(20);
@@ -1208,8 +1308,8 @@ window.MONO_FIXTURE = {
   const atStep = (i) => until(() => tst() && tst().index === i && ready()
     && txt(TB().querySelector('.tour-of')).indexOf((i + 1) + ' of ') === 0, 600, 50);
   await atStep(0);
-  check('a first visit starts the tour by itself, at step 1 of 14', !!M2 && tst() && tst().index === 0 && tst().steps === 14
-        && /1 of 14/.test(txt(TB())), tst() && JSON.stringify(tst()));
+  check('a first visit starts the tour by itself, at step 1 of 15', !!M2 && tst() && tst().index === 0 && tst().steps === 15
+        && /1 of 15/.test(txt(TB())), tst() && JSON.stringify(tst()));
   let seenNow = null;
   try { seenNow = localStorage.getItem(TOUR_KEY); } catch (e) { /* none */ }
   check('and this browser now remembers it was shown', !!seenNow);
@@ -1240,58 +1340,62 @@ window.MONO_FIXTURE = {
 
   check('1, welcome: nothing lit, the box in the middle', hole().classList.contains('hidden') && /two minutes/.test(h4()), h4());
   await press(); await atStep(1);
-  check('2, the counts: lit, with this Monolith’s own numbers', covers(D().getElementById('verdict'))
-        && /340,000 tests\. 18,000 came out p < \.05, and chance alone would give about 17,000/.test(body()), body());
+  check('2, what was kept, first: on its tab, with this Monolith’s own numbers', M2.state.tab === 'cov' && !D().getElementById('covpane').hidden
+        && /Of 192 presentations \(cue pairs\), 144 kept every region, 32 lost a region somewhere and 16 were lost entirely/.test(body())
+        && /54 of 66 region pairs have enough rats/.test(body()), body());
   await press(); await atStep(2);
-  check('3, the circuit, lit', covers(D().getElementById('circsvg')));
+  check('3, the counts: back on the Monolith, lit, with its own numbers', M2.state.tab === 'main' && covers(D().getElementById('verdict'))
+        && /340,000 tests\. 18,000 came out p < \.05, and chance alone would give about 17,000/.test(body()), body());
   await press(); await atStep(3);
-  check('4, the controls, lit, naming the view now', covers(D().getElementById('controls'))
-        && body().indexOf(txt(D().getElementById('ctitle'))) >= 0, body().slice(0, 200));
+  check('4, the circuit, lit', covers(D().getElementById('circsvg')));
   await press(); await atStep(4);
+  check('5, the controls, lit, naming the view now', covers(D().getElementById('controls'))
+        && body().indexOf(txt(D().getElementById('ctitle'))) >= 0, body().slice(0, 200));
+  await press(); await atStep(5);
   const topLead = SUMMARY.top.raw[0];
-  check('5, the leads: the first lit, named, and Next will click it', covers(D().querySelector('#toplist > li'))
+  check('6, the leads: the first lit, named, and Next will click it', covers(D().querySelector('#toplist > li'))
         && /The first is Right ACC – Right OFC, Cue 1, 10 Hz, Coherence, with 8 of 8 rats/.test(body()) && /Next will click/.test(txt(TB())), body());
   M2.set({ method: 'plv', win: 'cue2', band: 'f20' });       // away from the lead, so the click has work to do
   await sleep(30);
-  await press(); await atStep(5);
+  await press(); await atStep(6);
   check('Next performed it: the lead is in view and selected', M2.state.sel === topLead.pair && M2.state.method === topLead.m
         && M2.state.win === topLead.w && !!D().querySelector('#circsvg path.edge.sel'), JSON.stringify([M2.state.sel, M2.state.method, M2.state.win]));
   await sleep(900);
-  check('and moved on exactly one step (no second advance from the click’s own timer)', tst().index === 5, tst().index);
-  check('6, the selected edge, lit', covers(D().querySelector('#circsvg path.edge.sel')));
-  await press(); await atStep(6);
+  check('and moved on exactly one step (no second advance from the click’s own timer)', tst().index === 6, tst().index);
+  check('7, the selected edge, lit', covers(D().querySelector('#circsvg path.edge.sel')));
+  await press(); await atStep(7);
   check('Next lifted it out', M2.ghost.lifted && M2.ghost.pair === topLead.pair);
-  check('7, the pooled line, lit, with the pooled change', covers(garc('pooled')) && /Here it is \+0\.050, p \.002/.test(body()), body());
+  check('8, the pooled line, lit, with the pooled change', covers(garc('pooled')) && /Here it is \+0\.050, p \.002/.test(body()), body());
   // A reader's own click moves the tour on too.
   garc('pooled').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  await atStep(7);
-  check('a reader’s own click on it moves the tour on, to the rats', tst().index === 7 && M2.ghost.stack.length === 2);
-  check('8, the forest plot, lit', covers(D().getElementById('gstats')) && !!D().querySelector('#gstats svg.mfig[aria-label="forest plot"]'));
-  await press(); await atStep(8);
-  check('9, one rat suggested and lit (r3), with its two days', covers(garc('r3')) && /r3 went from .* on Precon1 to .* on Precon4/.test(body()), body());
+  await atStep(8);
+  check('a reader’s own click on it moves the tour on, to the rats', tst().index === 8 && M2.ghost.stack.length === 2);
+  check('9, the forest plot, lit', covers(D().getElementById('gstats')) && !!D().querySelector('#gstats svg.mfig[aria-label="forest plot"]'));
+  await press(); await atStep(9);
+  check('10, one rat suggested and lit (r3), with its two days', covers(garc('r3')) && /r3 went from .* on Precon1 to .* on Precon4/.test(body()), body());
   // The reader opens a different rat, then presses Next: the tour follows
   // theirs, and does not click the suggested one, now gone, as well.
   garc('r4').dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await until(() => M2.ghost.stack.length === 3, 80);
   await sleep(400);
   await press();
-  await atStep(9);
+  await atStep(10);
   check('a reader who opens another rat (r4) is followed, not fought', M2.ghost.stack.length === 3 && M2.ghost.stack[2].rat === 4
         && /^r4’s two days/.test(body()) && covers(garc('Precon4')), body().slice(0, 60));
-  backBtn().click(); await atStep(8);
+  backBtn().click(); await atStep(9);
   check('Back sets the page up again: the rats, one lit', M2.ghost.stack.length === 2 && covers(garc('r3')), M2.ghost.stack.length);
-  await press(); await atStep(9);
-  check('Next again: r3’s days', M2.ghost.stack[2] && M2.ghost.stack[2].rat === 3 && covers(garc('Precon4')));
   await press(); await atStep(10);
-  check('11, every cue pair of that day, the first with a value lit', M2.ghost.stack.length === 4 && covers(garc('p01'))
-        && /Next will click p01/.test(txt(TB())), txt(TB()).slice(0, 200));
+  check('Next again: r3’s days', M2.ghost.stack[2] && M2.ghost.stack[2].rat === 3 && covers(garc('Precon4')));
   await press(); await atStep(11);
-  check('12, the recording itself: that cue pair opened and its traces lit', M2.leaf.open && M2.leaf.unit === 'p01'
-        && covers(D().querySelector('#leaf .lsec')) && /r3’s cue pair p01 on Precon4 as recorded/.test(body()), body().slice(0, 120));
+  check('12, every cue pair of that day, the first with a value lit', M2.ghost.stack.length === 4 && covers(garc('p01'))
+        && /Next will click p01/.test(txt(TB())), txt(TB()).slice(0, 200));
   await press(); await atStep(12);
-  check('13, how the number was made: the measure in view lit', covers(D().querySelector('#leaf .lcard.sel')) && /should match/.test(body()));
+  check('13, the recording itself: that cue pair opened and its traces lit', M2.leaf.open && M2.leaf.unit === 'p01'
+        && covers(D().querySelector('#leaf .lsec')) && /r3’s cue pair p01 on Precon4 as recorded/.test(body()), body().slice(0, 120));
   await press(); await atStep(13);
-  check('14, the end: the cue pair closed, and the Take the tour button lit', !M2.leaf.open && covers(D().getElementById('monoTour'))
+  check('14, how the number was made: the measure in view lit', covers(D().querySelector('#leaf .lcard.sel')) && /should match/.test(body()));
+  await press(); await atStep(14);
+  check('15, the end: the cue pair closed, and the Take the tour button lit', !M2.leaf.open && covers(D().getElementById('monoTour'))
         && nextBtn().textContent.trim() === 'Finish');
   const tw = figWords(D());
   check('no word in a figure along the way is cut off or overlapping', tw.length === 0, tw.slice(0, 4).join(' | '));
@@ -1306,9 +1410,9 @@ window.MONO_FIXTURE = {
   // Straight to the traces with the recording gone: set up from nothing.
   M2.closeGhost(true);
   LEAF_GONE = true;
-  TR().step(11);
-  await atStep(11);
-  check('a recording no longer on the VACC: step 12 says so, and lights the message',
+  TR().step(12);
+  await atStep(12);
+  check('a recording no longer on the VACC: step 13 says so, and lights the message',
         /no longer on the VACC/.test(body()) && covers(D().querySelector('#leaf .warn')), body().slice(0, 120));
   LEAF_GONE = false;
   D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

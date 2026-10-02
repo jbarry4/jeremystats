@@ -24,6 +24,7 @@ import uuid
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
 from . import (aibeta as aibetamod,
+               avery as averymod,
                analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                dspcahf,
                compose, continuity as continuitymod, csc,
@@ -11375,6 +11376,8 @@ def api_aibeta_state():
         "runs": [aibetamod.brief(r) for r in AIBETA.all()],
         "running": job.snapshot() if job else None,
         "have_sklearn": aibetamod.HAVE_SKLEARN,
+        # Which run Avery sweeps sets with, if any.
+        "avery": averymod.status(AIBETA),
     })
 
 
@@ -11460,6 +11463,190 @@ def api_aibeta_run(run_id):
     if not rec:
         return jsonify({"ok": False, "error": "No AI Beta run %s." % run_id}), 404
     return jsonify({"ok": True, "run": rec})
+
+
+@app.route("/api/aibeta/avery", methods=["POST"])
+def api_aibeta_make_avery():
+    """Make one AI Beta run the model Avery sweeps sets with."""
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        AIBETA.set_avery(body.get("run_id"), STORE.provenance())
+    except aibetamod.AiBetaError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    STORE.record_activity([{"action": "aibeta.avery",
+                            "detail": {"run": body.get("run_id")}}])
+    return jsonify({"ok": True, "avery": averymod.status(AIBETA)})
+
+
+# ==========================================================================
+# Avery -- AI Beta's model, sweeping a set from Checkup's Xplorefinder mode
+#
+# A sweep writes nothing. Its calls reach the set, and the bank, only when a
+# person accepts them on the summary -- and then only onto candidates nobody
+# has decided, with every call also banked as an `avery` version so what the
+# model said and what people then said can be compared (backend/avery.py).
+# ==========================================================================
+_AVERY_JOB = {"id": None}
+
+
+def _avery_open(gid):
+    """The recording a set belongs to, ready to read."""
+    sess, _row = _braces_session({"gid": gid})
+    stored = _stored_for(sess)
+    chans = _braces_channels(sess)
+    return {"session": sess, "channels": chans,
+            "probe": _probe_for(stored),
+            "bad": [int(c["number"]) for c in chans if c.get("bad")],
+            "spacing": None}
+
+
+@app.route("/api/avery")
+def api_avery_status():
+    """Whether Avery can sweep here, and what it was shown to do."""
+    st = averymod.status(AIBETA)
+    jid = _AVERY_JOB.get("id")
+    job = cfcmod.get(jid) if jid else None
+    st["running"] = (job.snapshot() if job and job.snapshot()["status"]
+                     == "running" else None)
+    return jsonify(dict(st, ok=True))
+
+
+@app.route("/api/avery/sweep", methods=["POST"])
+def api_avery_sweep():
+    """Start a sweep of one set. A job; poll /api/cfc/job/<id>."""
+    body = request.get_json(force=True, silent=True) or {}
+    gid, kind = body.get("gid"), body.get("kind") or "ds"
+    if kind != "ds":
+        return jsonify({"ok": False, "error": "Avery sorts dentate spike "
+                                              "sets only."}), 400
+    st = averymod.status(AIBETA)
+    if not st["ready"]:
+        return jsonify({"ok": False, "error": st["why"]}), 400
+    jid = _AVERY_JOB.get("id")
+    busy = cfcmod.get(jid) if jid else None
+    if busy and busy.snapshot()["status"] == "running":
+        return jsonify({"ok": False, "error": "Avery is already sweeping a "
+                                              "set.",
+                        "job": busy.snapshot()}), 409
+    if not CURATE.get(gid, kind):
+        return jsonify({"ok": False, "error": "No such curation set."}), 404
+
+    def work(job):
+        out = averymod.sweep(AIBETA, CURATE, BANK, _avery_open, gid, kind,
+                             job)
+        out["id"] = job.id
+        averymod.remember(job.id, out)
+        STORE.record_activity([{
+            "action": "avery.sweep",
+            "detail": {"gid": gid, "kind": kind, "run": out["run_id"],
+                       "n": out["n"], "counts": out["counts"]}}])
+        return out
+
+    job = cfcmod.start({"tool": "avery", "gid": gid},
+                       [("avery read", 1), ("avery physio", 1),
+                        ("avery score", 1)], work, 1.0)
+    _AVERY_JOB["id"] = job.id
+    return jsonify({"ok": True, "job": job.snapshot()})
+
+
+@app.route("/api/avery/sweep/<sid>/peek")
+def api_avery_peek(sid):
+    """The candidates the scanning screen shows while the sweep reads."""
+    job = cfcmod.get(sid)
+    if not job:
+        return jsonify({"ok": False, "error": "No such sweep."}), 404
+    data, rev = job.preview()
+    return jsonify({"ok": True, "peek": data, "rev": rev})
+
+
+@app.route("/api/avery/sweep/<sid>/accept", methods=["POST"])
+def api_avery_accept(sid):
+    """Put Avery's calls on the undecided candidates and bank every call."""
+    sw = averymod.recall(sid)
+    if not sw:
+        return jsonify({"ok": False, "error":
+                        "That sweep is no longer held -- they are kept until "
+                        "Jarvis restarts or eight newer ones replace them. "
+                        "Sweep the set again."}), 404
+    gid, kind = sw["gid"], sw["kind"]
+    rec = CURATE.get(gid, kind)
+    sess = _session_by_gid(gid)
+    if not rec or not sess:
+        return jsonify({"ok": False, "error": "That set or its recording "
+                                              "is gone."}), 404
+    names = {l["id"]: l.get("name") or l["id"] for l in (rec.get("labels") or [])}
+    events = [{"start": r["start"], "label": names.get(r["label"], r["label"]),
+               "label_id": r["label"], "by": aibetamod.AVERY_BY}
+              for r in sorted(sw["rows"], key=lambda r: r["start"])]
+    by_label = {}
+    for ev in events:
+        by_label[ev["label_id"]] = by_label.get(ev["label_id"], 0) + 1
+    c = sw["counts"]
+    note = ("Avery sweep, run %s: %d DS, %d Flag for Deep Review, %d Flag, "
+            "%d Garbage. Calls by a model, banked for the record and for "
+            "training on edge cases later -- not a person's pass."
+            % (sw["run_id"], c.get("spike", 0), c.get("review", 0),
+               c.get("flag", 0), c.get("garbage", 0)))
+    prior = BANK.curated_entries(gid, kind)
+    whole = [p for p in prior if p.get("curation_label") == "*"]
+    keep = whole[0]["id"] if whole else None
+    adopt = BANK.source_entry_for(gid, kind, events)
+    if not keep and adopt:
+        keep = adopt["id"]
+    try:
+        entry = BANK.add({
+            "id": keep,
+            "project": sess.get("project") or sess.get("group"),
+            "mouse": sess.get("mouse"), "session": sess.get("session"),
+            "session_key": sess.get("key"),
+            "session_loose_key": sess.get("loose_key"),
+            "session_label": sess.get("label"),
+            "recording_start": sess.get("start"),
+            "name": rec.get("name"), "type": kind,
+            "events": events, "by_label": by_label, "label_names": names,
+            "pipeline": "Jarvis curation (" + kind + ")",
+            "added_by": aibetamod.AVERY_BY,
+            "version_note": note,
+            "version_tag": aibetamod.AVERY_TAG,
+            "based_on": rec.get("based_on"),
+            "curated": True, "import_from": adopt,
+            "curation_label": "*", "gid": gid,
+        })
+    except eventbank.BankError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    # Onto the candidates nobody has decided. A person's call stays.
+    current = {e["id"]: e for e in (rec.get("events") or [])}
+    pairs = {r["id"]: r["label"] for r in sw["rows"]
+             if r["id"] in current and not current[r["id"]].get("label")}
+    applied, prog = CURATE.label_many(gid, kind, pairs,
+                                      who=aibetamod.AVERY_BY)
+    prov = STORE.provenance()
+    AIBETA.sweeps.write(sid, {
+        "id": sid, "gid": gid, "kind": kind,
+        "session_label": sw.get("session_label"), "run_id": sw["run_id"],
+        "policy": sw["policy"], "counts": sw["counts"],
+        "basis": sw.get("basis"), "at": sw.get("at"),
+        "accepted_by": prov.get("user"), "accepted_at": aibetamod._now(),
+        "bank": {"entry": entry["id"], "version": entry.get("version")},
+        "applied": applied,
+        "rows": [[r["id"], r["start"], r["p"], r["label"], r["human"],
+                  r["human_by"]] for r in sw["rows"]],
+        "columns": ["id", "start", "p_ds", "avery", "person_before",
+                    "person_by"],
+    })
+    STORE.record_activity([{
+        "action": "avery.accept",
+        "detail": {"gid": gid, "kind": kind, "run": sw["run_id"],
+                   "applied": applied, "entry": entry["id"],
+                   "version": entry.get("version"), "counts": sw["counts"]},
+        "session": {"key": sess.get("key"), "label": sess.get("label")}}])
+    mirror_bank_soon()
+    averymod.forget(sid)
+    return jsonify({"ok": True, "applied": applied,
+                    "kept": len(sw["rows"]) - applied,
+                    "entry": entry["id"], "version": entry.get("version"),
+                    "progress": prog})
 
 
 @app.route("/api/curation/close-all", methods=["POST"])

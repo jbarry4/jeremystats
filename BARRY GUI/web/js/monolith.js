@@ -41,6 +41,14 @@ window.MONO = (function () {
                   ['Phase', ['plv', 'ppc', 'pli', 'wpli', 'dwpli']],
                   ['Direction', ['gc_ab', 'gc_ba', 'gc_net']]];
   const LAYERS = [['raw', 'Raw'], ['minus_fp', 'Minus FP']];
+  // What each layer is, said where it is chosen: "raw" and the flower-pot
+  // adjustment were the two words that confused people.
+  const LAYER_LONG = { raw: 'Raw: the cue windows as measured', minus_fp: 'Minus FP: each session’s flower-pot rest taken off first' };
+  const TABS = [['cov', '1 · What was kept'], ['main', '2 · The Monolith'], ['avg', '3 · When we averaged'], ['ev', '4 · Events first']];
+  // The windows by their meeting names; the switch is cue 1 giving way to cue 2.
+  const WLABEL = { pre: 'Pre-baseline', cue1: 'Cue 1', cue2: 'Cue 2', post: 'Post-baseline', onset: 'Onset', switch: 'Switch', offset: 'Offset' };
+  const WTITLE = { pre: 'The ten seconds before cue 1', cue1: 'Cue 1 sounding', cue2: 'Cue 2 sounding', post: 'The ten seconds after cue 2 ends',
+                   onset: 'Around cue 1 starting', switch: 'Around cue 1 giving way to cue 2', offset: 'Around cue 2 ending' };
   const DIRECTED = { gc_ab: 1, gc_ba: -1, gc_net: 0 };
 
   const D = { S: null, edges: {}, power: {}, pac: {}, err: null };
@@ -96,7 +104,7 @@ window.MONO = (function () {
   function remember() {
     try {
       const keep = {};
-      for (const k of ['layer', 'kind', 'win', 'band', 'method', 'level', 'arrows', 'power', 'pacWin', 'filt', 'hi', 'rangeRule', 'split']) keep[k] = st[k];
+      for (const k of ['layer', 'kind', 'win', 'band', 'method', 'level', 'arrows', 'power', 'pacWin', 'filt', 'hi', 'rangeRule', 'split', 'tab', 'rank']) keep[k] = st[k];
       localStorage.setItem(VIEW_KEY, JSON.stringify(keep));
     } catch (e) { /* per viewer only */ }
   }
@@ -435,15 +443,24 @@ window.MONO = (function () {
       + 'k − 1 df, at least ' + S.min_rats + ' rats). Every p on this page is uncorrected: this is for '
       + 'sifting, and the counts below say how many to expect by chance.' }));
     // Two tabs: the Monolith itself, and how one of its lines was made.
-    app.appendChild(el('div', { class: 'tabs', role: 'tablist', id: 'tabs' }, [
-      el('button', { type: 'button', role: 'tab', id: 'tab-main', 'aria-selected': String(st.tab !== 'avg'),
-                     text: 'The Monolith', onclick: () => showTab('main') }),
-      el('button', { type: 'button', role: 'tab', id: 'tab-avg', 'aria-selected': String(st.tab === 'avg'),
-                     text: 'When we averaged', onclick: () => showTab('avg') }),
-    ]));
-    const mp = el('div', { id: 'mainpane', role: 'tabpanel', hidden: st.tab === 'avg' ? 'hidden' : null });
+    // A staged workflow, in order: what the data allow, then the result,
+    // then how one value of it was made (the lab meeting, 2026-10-02).
+    if (!TABS.some((t) => t[0] === st.tab)) st.tab = 'cov';
+    app.appendChild(el('div', { class: 'tabs', role: 'tablist', id: 'tabs' }, TABS.map(([id, label]) =>
+      el('button', { type: 'button', role: 'tab', id: 'tab-' + id, 'aria-selected': String(st.tab === id),
+                     text: label, onclick: () => showTab(id) }))));
+    const cp = el('div', { id: 'covpane', role: 'tabpanel', hidden: st.tab === 'cov' ? null : 'hidden' }, [
+      el('div', { class: 'card', id: 'damage' }, [el('p', { class: 'loading', text: 'Counting what was kept…' })]),
+      el('div', { class: 'hrow covnext' }, [el('button', { type: 'button', class: 'more-btn', text: 'Go on to the Monolith →',
+                                                      onclick: () => showTab('main') })]),
+    ]);
+    app.appendChild(cp);
+    const mp = el('div', { id: 'mainpane', role: 'tabpanel', hidden: st.tab === 'main' ? null : 'hidden' });
     app.appendChild(mp);
     app.appendChild(el('div', { id: 'avgpane', role: 'tabpanel', hidden: st.tab === 'avg' ? null : 'hidden' }));
+    app.appendChild(el('div', { id: 'evpane', role: 'tabpanel', hidden: st.tab === 'ev' ? null : 'hidden' }));
+    // Where a value comes from, and the way back: the trail over the result.
+    mp.appendChild(el('nav', { class: 'trail', id: 'trail', 'aria-label': 'Where this value comes from' }));
     mp.appendChild(el('div', { class: 'card', id: 'verdict' }));
     mp.appendChild(el('p', { class: 'small muted guide-link' }, ['Every ? opens what that thing is, with a strong and a no-effect example '
       + 'made by this analysis’s own engine. All of it in one place: ', el('a', { href: 'monolith-guide.html', target: '_blank', rel: 'noopener', text: 'the Guide' }), '.']));
@@ -458,6 +475,7 @@ window.MONO = (function () {
           el('div', { class: 'gstats', id: 'gstats', hidden: 'hidden' }),
           el('div', { id: 'circempty' }),
           el('div', { class: 'legend', id: 'legend' }),
+          el('div', { id: 'lines' }),
           el('p', { class: 'small muted', id: 'circsay' }),
         ]),
         el('div', { class: 'card spec', id: 'speccard' }, [
@@ -469,7 +487,6 @@ window.MONO = (function () {
       el('div', { class: 'col-ctl' }, [el('div', { class: 'card', id: 'controls' })]),
       el('div', { class: 'col-poi' }, [el('div', { class: 'card', id: 'poi' })]),
     ]));
-    mp.appendChild(el('div', { class: 'card', id: 'damage' }, [el('p', { class: 'loading', text: 'Counting what was lost…' })]));
     mp.appendChild(el('div', { class: 'card foot', id: 'foot' }));
   }
 
@@ -478,14 +495,21 @@ window.MONO = (function () {
      ================================================================== */
   const AV = { seq: 0, detail: null, leaf: null, err: null, leafErr: null, rat: null, day: 'Precon4', unit: null, key: null };
   function showTab(t) {
-    st.tab = t === 'avg' ? 'avg' : 'main';
-    const a = $('tab-main'), b = $('tab-avg');
-    if (a) a.setAttribute('aria-selected', String(st.tab === 'main'));
-    if (b) b.setAttribute('aria-selected', String(st.tab === 'avg'));
-    const mp = $('mainpane'), ap = $('avgpane');
-    if (mp) mp.hidden = st.tab !== 'main';
-    if (ap) ap.hidden = st.tab !== 'avg';
+    st.tab = TABS.some((x) => x[0] === t) ? t : 'main';
+    remember();
+    for (const [id] of TABS) {
+      const b = $('tab-' + id);
+      if (b) b.setAttribute('aria-selected', String(st.tab === id));
+    }
+    const panes = { cov: 'covpane', main: 'mainpane', avg: 'avgpane', ev: 'evpane' };
+    for (const [id, pane] of Object.entries(panes)) {
+      const n = $(pane);
+      if (n) n.hidden = st.tab !== id;
+    }
     if (st.tab === 'avg') loadAvg();
+    if (st.tab === 'ev' && window.MONO_EVENTS) window.MONO_EVENTS.show();
+    if (st.tab === 'main') renderTrail();
+    try { scrollTo(0, 0); } catch (e) { /* none */ }
   }
   /* The entry the walk-through follows: the selected pair in this view
      (over a range, its strongest band), else the first point of interest. */
@@ -755,16 +779,16 @@ window.MONO = (function () {
     host.innerHTML = '';
     host.appendChild(el('h2', { text: 'View' }));
     host.appendChild(el('div', { class: 'ctl' }, [lab('Layer', 'layer'),
-      seg(LAYERS, st.layer, (id) => switchLayer(id), 'big')]));
-    host.appendChild(el('div', { class: 'ctl' }, [lab('Windows', 'windows'),
-      seg([['state', 'State'], ['transition', 'Transition']], st.kind, (id) => {
-        if (id === st.kind) return;
-        const first = S.windows.find((w) => w.kind === id);
-        set({ kind: id, win: first.id });
-      }, 'big')]));
-    host.appendChild(el('div', { class: 'ctl' }, [lab('Window', 'window'),
-      seg(S.windows.filter((w) => w.kind === st.kind).map((w) => [w.id, w.label]), st.win,
-          (id) => set({ win: id }))]));
+      seg(LAYERS.map(([id, l]) => [id, l, LAYER_LONG[id]]), st.layer, (id) => switchLayer(id), 'big'),
+      el('div', { class: 'readout', id: 'layersay', text: LAYER_LONG[st.layer] + '.' })]));
+    // The seven windows, always both kinds: the four states and the three
+    // transitions, each group named.
+    const pickWin = (id) => set({ win: id, kind: S.windows.find((w) => w.id === id).kind });
+    host.appendChild(el('div', { class: 'ctl', id: 'winctl' }, [lab('Window', 'windows'),
+      el('div', { class: 'mgroup hrow' }, [el('span', { text: '4 states (10 s each)' }), qh('window')]),
+      seg(S.windows.filter((w) => w.kind === 'state').map((w) => [w.id, w.label, WTITLE[w.id]]), st.win, pickWin),
+      el('div', { class: 'mgroup', text: '3 transitions (around each boundary)' }),
+      seg(S.windows.filter((w) => w.kind === 'transition').map((w) => [w.id, w.label, WTITLE[w.id]]), st.win, pickWin)]));
 
     // Frequency: two knobs over every whole hertz -- together, one band;
     // apart, every band between them -- and the named bands. The knobs are
@@ -900,7 +924,7 @@ window.MONO = (function () {
         if (w && w.status === 'failed') throw new Error(w.error || 'the split failed');
         break;
       }
-      D.S = await getJSON('/data/summary');
+      adopt(await getJSON('/data/summary'));
     } catch (e) {
       SPL.err = e.message;
     }
@@ -1165,7 +1189,8 @@ window.MONO = (function () {
       lg.appendChild(el('span', {}, [el('b', { class: 'sw', style: 'background:' + css('--up') }), 'louder']));
       lg.appendChild(el('span', {}, [el('b', { class: 'sw', style: 'background:' + css('--down') }), 'quieter (node power)']));
     }
-    lg.appendChild(el('span', { text: 'Thicker is a bigger change. A ringed node’s power change passes the slider.' }));
+    lg.appendChild(el('span', { class: 'legend-key', text: 'Line thickness = how big the change is, not its p. The p of every line is in the list below and on its hover. A ringed node’s power change passes the slider.' }));
+    renderLines(shown);
     $('circsay').textContent = (method().say || '') + (st.method === 'gc_net' ? ' An arrow points the way the net drive grew.' : '');
     if (GH.pair != null) drawGhostStatic();
   }
@@ -1451,6 +1476,8 @@ window.MONO = (function () {
     host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: (st.showAll ? 'Top ' + list.length : 'Top ' + Math.min(10, list.length)) + ' points of interest · '
       + layerSay(st.layer) }), qh('points')]));
     host.appendChild(el('p', { class: 'small muted', text: S.points_rule + '. Click one to snap the view to it.' }));
+    host.appendChild(el('div', { class: 'hrow rankrow' }, [el('span', { class: 'small', text: 'Rank' }),
+      seg([['all', 'Overall'], ['win', 'Within each window']], st.rank || 'all', (id) => { st.rank = id; remember(); renderTop(); }), qh('rank')]));
     host.appendChild(el('details', { class: 'fwrap', open: active || st.filtOpen ? 'open' : null,
                                      ontoggle: (e) => { st.filtOpen = e.target.open; } }, [
       el('summary', {}, [el('span', { text: active ? 'Filtered: ' + filtSay(F) : 'Filter these' }), qh('filter')]),
@@ -1458,6 +1485,29 @@ window.MONO = (function () {
       active ? el('p', { class: 'small', id: 'filtsay' }, [FCACHE.n.toLocaleString() + ' entries pass p < .05 with these filters. ',
         el('button', { type: 'button', class: 'linkish', id: 'f-clear', text: 'Clear the filter', onclick: () => { st.filt = null; st.filtOpen = true; remember(); renderTop(); } })])
         : null]));
+    if ((st.rank || 'all') === 'win') {
+      // The best few of each window, so one window cannot take the list.
+      const perWin = el('div', { id: 'perwin' });
+      for (const w of S.windows) {
+        const F2 = Object.assign({}, F, { win: w.id });
+        const cands = filterCandidates(st.layer, F2);
+        const best = rankPoints(fkey(st.layer, F2), cands).slice(0, 3);
+        perWin.appendChild(el('h3', { class: 'perwin-h', text: w.label + ' · ' + cands.length.toLocaleString() + ' pass p < .05' }));
+        const ol2 = el('ol', { class: 'top', 'data-win': w.id });
+        best.forEach((t) => {
+          const li = el('li', { tabindex: '0', 'data-rank': String(t.rank) }, [
+            el('span', { class: 'rk', text: String(t.rank) }),
+            el('span', { class: 'pr' }, [t.a + ' – ' + t.b, el('span', { class: 'chip' + (t.same === t.k ? ' all' : ''), text: t.same + '/' + t.k + ' rats' })]),
+            el('span', { class: 'bs num', text: poiSay(t) + ': ' + f3(t.est) + ', p ' + fp(t.p) })]);
+          li.addEventListener('click', () => go(t));
+          ol2.appendChild(li);
+        });
+        if (!best.length) ol2.appendChild(el('li', { class: 'empty', text: 'Nothing passes p < .05 here.' }));
+        perWin.appendChild(ol2);
+      }
+      host.appendChild(perWin);
+      return;
+    }
     const ol = el('ol', { class: 'top', id: 'toplist' });
     list.slice(0, n).forEach((t) => {
       const pair = t.a + ' – ' + t.b;
@@ -1696,8 +1746,8 @@ window.MONO = (function () {
       const c = DMG.data.whole.cue;
       v.appendChild(el('p', { class: 'small' }, [el('strong', { text: 'Lost on the way: ' }),
         c.lost + ' of ' + c.total + ' cue pairs entirely, ' + c.partial + ' partly. ',
-        el('button', { type: 'button', class: 'linkish', text: 'See what was lost, rat by rat',
-                       onclick: () => { const t = $('damage'); if (t) t.scrollIntoView({ block: 'start' }); } })]));
+        el('button', { type: 'button', class: 'linkish', text: 'See what was kept, rat by rat',
+                       onclick: () => showTab('cov') })]));
     }
     v.appendChild(el('p', { class: 'small muted', text: 'Every p here is uncorrected, by design: the Monolith is for '
       + 'finding leads, and with this many tests a good share of the p < .05 entries are chance. On made-up data '
@@ -1854,7 +1904,76 @@ window.MONO = (function () {
     }
   }
 
+  /* Every line on the circuit with its p, beside the picture: thickness
+     says size, this says strength of evidence. */
+  function renderLines(shown) {
+    const host = $('lines');
+    if (!host) return;
+    host.innerHTML = '';
+    if (!shown.length) return;
+    const S = D.S;
+    const rows = shown.slice().sort((x, y) => (x.pv - y.pv) || (Math.abs(y.est) - Math.abs(x.est)));
+    const tbl = el('table', { class: 'linetable' }, [el('thead', {}, [el('tr', {}, ['Region pair', 'Change', 'p', 'Rats the same way'].map((t) => el('th', { text: t })))])]);
+    const body = el('tbody');
+    for (const e of rows) {
+      const [a, b] = S.pairs[e.p];
+      const tr = el('tr', { 'data-pair': String(e.p), tabindex: '0', class: st.sel === e.p ? 'sel' : null }, [
+        el('td', { text: short(S.regions[a]) + ' – ' + short(S.regions[b]) }),
+        el('td', { class: 'num ' + (e.est >= 0 ? 'up' : 'down'), text: f3(e.est) }),
+        el('td', { class: 'num', text: e.range ? fp(e.pv) + ' (strongest band)' : fp(e.pv) }),
+        el('td', { class: 'num', text: isFinite(e.same) ? e.same + '/' + e.k : '—' })]);
+      const pick = () => { st.sel = e.p; hideTip(); renderCircuit(); renderSpectrum(); renderTop(); renderPac();
+                           openGhost(e.p, e.range && e.range.best ? e.range.best.b : null); };
+      tr.addEventListener('click', pick);
+      tr.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') pick(); });
+      body.appendChild(tr);
+    }
+    tbl.appendChild(body);
+    host.appendChild(el('details', { open: rows.length <= 12 ? 'open' : null }, [
+      el('summary', { text: 'The ' + rows.length + ' line' + (rows.length === 1 ? '' : 's') + ' drawn, with their p' }), tbl]));
+  }
+
+  /* ---------------- the trail: where this value comes from ---------------- */
+  // What the numbers at each level ARE, said in words, with the layer.
+  function levelMeans(lv) {
+    const L = st.layer === 'minus_fp' ? ' (each session less its flower-pot rest)' : ' (cue windows as measured)';
+    return {
+      circuit: 'the change Precon4 − Precon1, pooled over rats' + L,
+      pooled: 'one region pair’s change Precon4 − Precon1, pooled over rats' + L,
+      rats: 'each rat’s own change, Precon4 − Precon1' + L,
+      days: 'one rat’s value in each session: the mean over that session’s presentations' + L,
+      units: 'one session’s presentations, one value each — not a change',
+      leaf: 'one presentation: its signals, and every measure computed on its window',
+    }[lv];
+  }
+  function renderTrail() {
+    const host = $('trail');
+    if (!host || !D.S) return;
+    host.innerHTML = '';
+    const S = D.S;
+    const steps = [{ label: 'The Monolith', title: viewSay(), lv: 'circuit', go: () => { closeLeaf(); closeGhost(false); } }];
+    if (GH.pair != null) {
+      const [a, b] = S.pairs[GH.pair];
+      steps.push({ label: short(S.regions[a]) + ' – ' + short(S.regions[b]), lv: 'pooled', go: () => { closeLeaf(); ghostTo(1); } });
+      const st2 = GH.stack || [];
+      if (st2.length >= 2) steps.push({ label: 'each rat', lv: 'rats', go: () => { closeLeaf(); ghostTo(2); } });
+      if (st2.length >= 3) steps.push({ label: 'r' + st2[2].rat, lv: 'days', go: () => { closeLeaf(); ghostTo(3); } });
+      if (st2.length >= 4) steps.push({ label: st2[3].day, lv: 'units', go: () => { closeLeaf(); ghostTo(4); } });
+    }
+    if (LF.open) steps.push({ label: LF.unit + ' · signals', lv: 'leaf', go: () => {} });
+    steps.forEach((x, i) => {
+      if (i) host.appendChild(el('span', { class: 'sep', text: '›', 'aria-hidden': 'true' }));
+      const last = i === steps.length - 1;
+      host.appendChild(el('button', { type: 'button', class: 'crumb' + (last ? ' here' : ''), 'data-lv': x.lv, text: x.label,
+                                      'aria-current': last ? 'step' : null, title: levelMeans(x.lv), onclick: last ? null : x.go }));
+    });
+    host.appendChild(qh('trail'));
+    const lv = steps[steps.length - 1].lv;
+    host.appendChild(el('span', { class: 'trailsay', id: 'trailsay', text: 'Showing ' + levelMeans(lv) + '.' }));
+  }
+
   function renderCrumbs() {
+    renderTrail();
     const host = $('crumbs');
     if (!host) return;
     host.innerHTML = '';
@@ -2157,6 +2276,7 @@ window.MONO = (function () {
     const seq = ++LF.seq;
     hideTip();
     renderLeaf();
+    renderTrail();
     try {
       const d = await getJSON(leafPath(rat, day, unit));
       if (seq !== LF.seq) return;
@@ -2177,6 +2297,7 @@ window.MONO = (function () {
     LF.seq++;
     const h = $('leaf');
     if (h) h.remove();
+    renderTrail();
   }
   function stepLeaf(dir) {
     const ids = leafUnits(LF.day);
@@ -2406,7 +2527,8 @@ window.MONO = (function () {
      What was lost: per rat and day, and in all
      ================================================================== */
   const DMG = { data: null, err: null };
-  const REASON_LABEL = { kept: 'kept', histology: 'histology', bad: 'bad wire', clipped: 'clipped', unread: 'not measured' };
+  const REASON_LABEL = { kept: 'kept', histology: 'probe placement (histology)', bad: 'bad wire', clipped: 'clipping (signal at the rail)', unread: 'not measured' };
+  const REASON_SHORT = { histology: 'probe placement', bad: 'bad wire', clipped: 'clipped', unread: 'not measured' };
   function reasonColor(r) {
     return { kept: css('--ok'), histology: css('--node-grey'), bad: css('--arrow'), clipped: css('--up'), unread: css('--ink-3') }[r];
   }
@@ -2472,7 +2594,7 @@ window.MONO = (function () {
         const cell = sv('rect', { x: x + 1, y: y + 1, width: cw - 2, height: ch - 2, rx: 3,
           fill: histo ? 'url(#hatch-' + day + ')' : mix(css('--up'), css('--ok'), share), 'fill-opacity': histo ? 1 : 0.25 + 0.6 * share,
           'data-rat': String(dd.rat), 'data-region': r.name, 'data-kept': String(t.kept), 'data-of': String(t.of) });
-        const why = ['histology', 'clipped', 'bad', 'unread'].filter((k) => t[k]).map((k) => t[k] + ' ' + REASON_LABEL[k]);
+        const why = ['histology', 'clipped', 'bad', 'unread'].filter((k) => t[k]).map((k) => t[k] + ' ' + REASON_SHORT[k]);
         hover(cell, ['r' + dd.rat + ' · ' + day + ' · ' + r.name,
           histo ? 'Not measured at all: ' + d.reason_say.histology + '.'
             : 'Cue-pair windows: ' + t.kept + ' of ' + t.of + ' kept' + (why.length ? ' (' + why.join(', ') + ')' : ''),
@@ -2487,11 +2609,63 @@ window.MONO = (function () {
     });
     return svg;
   }
+  /* Region × region: how many rats have the pair on both sessions; under
+     the minimum, the comparison is never tested. */
+  function pairMatrix(d) {
+    const names = d.regions, R = names.length;
+    const E0 = (d.entries || {})[st.layer] || (d.entries || {}).raw;
+    const idx = {};
+    names.forEach((n, i) => { idx[n] = i; });
+    // Lower triangle only: rows are regions 2..R, columns 1..R-1.
+    const cell = 30, left = 70, top = 64;
+    const W2 = left + cell * (R - 1) + 44, H2 = top + cell * (R - 1) + 6;
+    const svg = sv('svg', { viewBox: '0 0 ' + W2 + ' ' + H2, class: 'mfig pairmat', width: '100%', style: 'max-width:' + W2 + 'px',
+      role: 'img', 'aria-label': 'Which region pairs can be compared' });
+    names.forEach((n, j) => {
+      const sh = short(n);
+      if (j < R - 1) {
+        svg.appendChild(sv('text', { x: left + cell * j + cell / 2, y: top - 8, 'font-size': 9.5, fill: css('--ink-2'),
+          transform: 'rotate(-45 ' + (left + cell * j + cell / 2) + ' ' + (top - 8) + ')' }, sh));
+      }
+      if (j > 0) {
+        svg.appendChild(sv('text', { x: left - 6, y: top + cell * (j - 1) + cell / 2 + 3.5, 'text-anchor': 'end', 'font-size': 9.5,
+          fill: css('--ink-2') }, sh));
+      }
+    });
+    const okCol = css('--ok'), noCol = css('--node-grey');
+    (d.pairs || []).forEach((pr, pi) => {
+      const a = idx[pr.a], b = idx[pr.b];
+      const [r, c] = a > b ? [a, b] : [b, a];
+      const x = left + cell * c, y = top + cell * (r - 1);
+      const tested = E0 && E0.by_pair ? E0.by_pair[pi] : null;
+      const rect = sv('rect', { x: x + 1, y: y + 1, width: cell - 2, height: cell - 2, rx: 3,
+        fill: pr.enough ? okCol : noCol, 'fill-opacity': pr.enough ? 0.2 + 0.6 * pr.n / 8 : 0.35,
+        'data-pair': pr.a + '|' + pr.b, 'data-n': String(pr.n) });
+      hover(rect, [pr.a + ' – ' + pr.b, pr.n + ' rat' + (pr.n === 1 ? '' : 's') + ' have both regions on both sessions'
+        + (pr.rats.length ? ' (' + pr.rats.map((x2) => 'r' + x2).join(', ') + ')' : ''),
+        pr.enough ? (tested != null ? tested.toLocaleString() + ' of ' + E0.per_pair.toLocaleString() + ' of its entries were tested ('
+          + pct(tested, E0.per_pair) + ')' : '') : 'Fewer than ' + d.min_rats + ': this comparison is never tested.']);
+      svg.appendChild(rect);
+      svg.appendChild(sv('text', { x: x + cell / 2, y: y + cell / 2 + 3.5, 'text-anchor': 'middle', 'font-size': 10, 'pointer-events': 'none',
+        fill: css('--ink'), 'font-weight': pr.enough ? 600 : 400 }, String(pr.n)));
+    });
+    const none = (d.pairs || []).filter((x) => !x.enough);
+    return el('div', { class: 'pairwrap', id: 'pairmat' }, [
+      el('h3', { text: 'Which comparisons remain' }),
+      el('p', { class: 'small muted', text: 'Each square is a region pair, and the number in it is how many rats have both regions read on both '
+        + 'sessions. A pair needs at least ' + d.min_rats + ' rats to be compared; ' + (none.length ? none.length + ' of ' + d.pairs.length
+        + ' do not, and are never tested (grey).' : 'every pair has enough.') }),
+      svg]);
+  }
+
   function renderDamage() {
     const host = $('damage');
     if (!host) return;
     host.innerHTML = '';
-    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'What was lost' }), qh('damage')]));
+    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'What was kept, and what was lost' }), qh('damage')]));
+    host.appendChild(el('p', { class: 'lede', text: 'Before any result: how much of the experiment the Monolith could use. A presentation is one cue '
+      + 'pair (cue 1 then cue 2) heard once; each was measured in seven windows, in every region with a usable wire. What was left out stays '
+      + 'inspectable — open any presentation from the Monolith to see its wires, used or not — but it was not used in the analysis.' }));
     const d = DMG.data;
     if (!d) {
       host.appendChild(el('p', { class: DMG.err ? 'warn' : 'loading', text: DMG.err ? 'The damage report could not be read: ' + DMG.err : 'Counting what was lost…' }));
@@ -2504,10 +2678,16 @@ window.MONO = (function () {
     const tS = sumTally(W0.state), tT = sumTally(W0.trans), tR = sumTally(W0.rest_regions);
     // In all.
     host.appendChild(el('p', {}, [el('strong', { text: 'In all: ' }),
-      W0.cue.total + ' cue pairs over ' + rats.length + ' rats and ' + dayNames.length + ' days. ' + W0.cue.kept
+      W0.cue.total + ' presentations (cue pairs) over ' + rats.length + ' rats and ' + dayNames.length + ' sessions. ' + W0.cue.kept
       + ' kept every region histology allows, in every window; ' + W0.cue.partial + ' lost a region somewhere; '
-      + W0.cue.lost + ' were lost entirely (no two regions read in any window). Rest epochs: ' + W0.rest.kept + ' of '
+      + W0.cue.lost + ' were lost entirely (no two regions read in any window). Rest epochs (flower-pot recordings): ' + W0.rest.kept + ' of '
       + W0.rest.total + ' usable.']));
+    // Losses by cause, not one total: clipping (the signal at the rail)
+    // against probe placement (histology) and bad wires.
+    const causes = ['clipped', 'histology', 'bad', 'unread'].filter((k) => tS[k]).map((k) =>
+      REASON_LABEL[k] + ': ' + tS[k].toLocaleString() + ' (' + pct(tS[k], tS.of) + ')');
+    host.appendChild(el('p', { class: 'small', id: 'causes' }, [el('strong', { text: 'Lost region-windows, by cause: ' }),
+      causes.join(' · ') + ' — of ' + tS.of.toLocaleString() + ' (presentations × 4 windows × ' + d.regions.length + ' regions).']));
     const row = (label, t) => el('div', { class: 'drow' }, [el('span', { class: 'dlab small', text: label }), damageBar(t, 520),
       el('span', { class: 'small muted', text: pct(t.kept, t.of) + ' kept' })]);
     host.appendChild(el('div', { class: 'dbars' }, [
@@ -2563,11 +2743,22 @@ window.MONO = (function () {
     body.appendChild(tot);
     tbl.appendChild(body);
     host.appendChild(el('div', { class: 'dtwrap' }, [tbl]));
+    // Which comparisons survive the exclusions.
+    if ((d.pairs || []).length) host.appendChild(pairMatrix(d));
+  }
+
+  /* A summary read from the server, in the page's words (the windows'
+     names from the lab meeting, 2026-10-02), however often it is re-read. */
+  function adopt(S) {
+    for (const w of S.windows || []) w.label = WLABEL[w.id] || w.label;
+    D.S = S;
+    return S;
   }
 
   /* ---------------- everything ---------------- */
   function renderAll(viewChanged) {
     if (st.tab === 'avg') loadAvg();
+    renderTrail();
     renderControls();
     renderCircuit();
     renderSpectrum();
@@ -2579,8 +2770,7 @@ window.MONO = (function () {
   async function init() {
     recall();
     try {
-      D.S = await getJSON('/data/summary');
-      const S = D.S;
+      const S = adopt(await getJSON('/data/summary'));
       if (!S.bands.some((b) => b.id === st.band)) st.band = 'f08';
       if (!S.windows.some((w) => w.id === st.win)) st.win = 'cue1';
       st.kind = S.windows.find((w) => w.id === st.win).kind;
@@ -2624,6 +2814,6 @@ window.MONO = (function () {
     get ghost() { return { pair: GH.pair, stack: GH.stack.slice(), lifted: GH.lifted, detail: GH.detail, info: GH.info }; },
     get ready() { return !!D.ready; },
     set, go, openGhost, closeGhost, push, ghostTo, renderAll, LEVELS, Q, openLeaf, closeLeaf, stepLeaf, switchDay,
-    rangeBins, switchSplit, topOf, showTab, get avg() { return Object.assign({}, AV); }, get split() { return st.split || 'all'; }, get leaf() { return Object.assign({}, LF); }, broadband, bbCount, here, arrowGeom, filteredPoints, setFilt, get filtN() { return FCACHE.n; }, get damage() { return DMG.data; }, renderDamage,
+    rangeBins, switchSplit, topOf, showTab, renderTrail, levelMeans, get avg() { return Object.assign({}, AV); }, get split() { return st.split || 'all'; }, get leaf() { return Object.assign({}, LF); }, broadband, bbCount, here, arrowGeom, filteredPoints, setFilt, get filtN() { return FCACHE.n; }, get damage() { return DMG.data; }, renderDamage,
   };
 })();

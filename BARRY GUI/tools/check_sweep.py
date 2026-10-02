@@ -73,9 +73,9 @@ def bands_table():
           and [b["id"] for b in B if b["named"]] == list(coupling.BAND_ORDER) + ["delta"]
           and SW.BAND_IDS[-1] == "delta")
     dl = SW.BAND_BY_ID["delta"]
-    check("delta: 1-4 Hz, slow, lags over 2 s, Welch pieces of 2 s",
-          (dl["low"], dl["high"], dl["speed"], dl["lag_s"]) == (1.0, 4.0, "slow", 2.0)
-          and SW.welch_len_s(dl) == 2.0 and "delta" in SW.bands_for("trans_slow")
+    check("delta: 2-4 Hz, slow, lags over 1 s, Welch pieces of 1 s",
+          (dl["low"], dl["high"], dl["speed"], dl["lag_s"]) == (2.0, 4.0, "slow", 1.0)
+          and SW.welch_len_s(dl) == 1.0 and "delta" in SW.bands_for("trans_slow")
           and "delta" not in SW.bands_for("trans_fast"))
     check("the circuits' own bands are untouched", "delta" not in coupling.BANDS)
     u = {"pair": {"opener_t": 100.0, "closer_t": 110.0, "offset_t": 120.0}}
@@ -454,7 +454,7 @@ def delta_band():
     from scipy.signal import butter, sosfiltfilt
     rng = np.random.default_rng(31)
     n = 10000
-    sos = butter(4, [1.0 / (FS / 2), 4.0 / (FS / 2)], btype="band", output="sos")
+    sos = butter(4, [2.0 / (FS / 2), 4.0 / (FS / 2)], btype="band", output="sos")
     # Delta activity filling the band, shared by two regions (the second
     # 30 ms behind); a third region has its own.
     s = sosfiltfilt(sos, rng.standard_normal(n + 400))
@@ -466,7 +466,7 @@ def delta_band():
     c = 60 * own + noise(rng, n, 10)
     v, pw, _n = SW.window_measures([a, b, c], ["delta"])
     co = v[0, MI["coherence"]]
-    check("shared 1-4 Hz activity is coherent in delta (%.3f); a region with "
+    check("shared 2-4 Hz activity is coherent in delta (%.3f); a region with "
           "its own is not (%.3f)" % (co[0], co[1]), co[0] > 0.8 and co[1] < 0.5)
     lag = v[0, MI["raw_cc"], 0]
     check("and correlated at its lag (%.3f)" % lag, abs(lag) > 0.8)

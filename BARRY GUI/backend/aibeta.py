@@ -152,6 +152,61 @@ TRADEOFF = (0.99, 0.98, 0.95, 0.90, 0.80)
 # never saw it can still let one through, and the table says how often.
 CATCH = (1.0, 0.99, 0.98, 0.95, 0.90)
 
+# AVERY -- the model, named by the user (2026-10-02), that sweeps a Checkup
+# set and calls every candidate one of four things. Its bars come from the
+# held-out scores of the run it was trained in:
+#
+#   DS                    at or above the bar that caught 99% of garbage
+#   Flag for Deep Review  just under it: between the 98% and 99% bars, the
+#                         last stretch before a candidate would be accepted
+#   Flag                  the rest of the way down
+#   Garbage               below the score under which at least 90% of the
+#                         held-out candidates were garbage
+#
+# So DS is the operating point the user chose -- 98.6% of garbage caught
+# and 41.5% of real spikes flagged on mice it never saw -- and the flags are
+# split by how close they came.
+AVERY_TAG = "avery"
+AVERY_BY = "Avery (AI)"
+POLICY = {"ds_catch": 0.99, "review_catch": 0.98, "garbage_purity": 0.90}
+POLICY_LABELS = ("spike", "review", "flag", "garbage")
+
+
+def label_policy(p, y, targets=None):
+    """Avery's four bars, from held-out scores and the labels behind them."""
+    t = dict(POLICY, **(targets or {}))
+    p = np.asarray(p, float)
+    y = np.asarray(y).astype(int)
+    pg = p[y == 0]
+    if not pg.size:
+        raise AiBetaError("No garbage in the held-out scores to set bars by.")
+    t_ds = float(np.quantile(pg, t["ds_catch"])) + 1e-9
+    t_review = min(t_ds, float(np.quantile(pg, t["review_catch"])) + 1e-9)
+    order = np.argsort(p, kind="mergesort")
+    ps, ys = p[order], y[order]
+    purity = np.cumsum(ys == 0) / np.arange(1, ps.size + 1)
+    ok = np.where((purity >= t["garbage_purity"]) & (ps < t_review))[0]
+    t_garbage = float(ps[ok.max()]) + 1e-9 if ok.size else 0.0
+    pol = {"t_ds": round(t_ds, 6), "t_review": round(t_review, 6),
+           "t_garbage": round(t_garbage, 6), "targets": t}
+    labs = apply_policy(p, pol)
+    pol["held_out"] = {
+        lab: {"n": int((labs == lab).sum()),
+              "n_ds": int(((labs == lab) & (y == 1)).sum()),
+              "n_garbage": int(((labs == lab) & (y == 0)).sum())}
+        for lab in POLICY_LABELS}
+    return pol
+
+
+def apply_policy(p, pol):
+    """Each score as one of spike / review / flag / garbage."""
+    p = np.asarray(p, float)
+    out = np.full(p.size, "flag", dtype=object)
+    out[p < pol["t_garbage"]] = "garbage"
+    out[(p >= pol["t_review"]) & (p < pol["t_ds"])] = "review"
+    out[p >= pol["t_ds"]] = "spike"
+    return out
+
 N_FOLDS = 5
 N_INNER = 3
 
@@ -273,7 +328,8 @@ def _first_pass(bank, rec, named, target, target_events):
     for ver, _name in named:
         if ver is target:
             break
-        if (ver.get("v") or 0) == 0 or not ver.get("snap"):
+        if (ver.get("v") or 0) == 0 or not ver.get("snap") \
+                or ver.get("tag") == AVERY_TAG:
             continue
         bl = ver.get("by_label") or {}
         if any(n and str(k).strip().lower() != "unspecified"
@@ -342,11 +398,15 @@ def dataset(bank, curate=None, pin=None):
         named = versionsmod.label_rows(rec.get("versions") or [])
         if not named:
             continue
-        # Everything before Braces first touched it.
+        # Everything before Braces first touched it -- and nothing Avery
+        # wrote. An Avery version is a model's calls, banked for the record;
+        # learning from it would be the model learning from itself.
         before = []
         for ver, name in named:
             if ver.get("aligned"):
                 break
+            if ver.get("tag") == AVERY_TAG:
+                continue
             before.append((ver, name))
         target = tname = None
         if pin is not None:
@@ -704,7 +764,7 @@ _NAMES.update(phys.NAMES)
 
 
 def read_entry(session, channels, probe, bad, times, spacing=None,
-               report=None, job=None, stop=None, on_span=None):
+               report=None, job=None, stop=None, on_span=None, workers=1):
     """Read every stamp's surround once, and turn each into features.
 
     `times` are on the recording's own clock already (None for an event that
@@ -730,37 +790,61 @@ def read_entry(session, channels, probe, bad, times, spacing=None,
     runs = braces.spans(stamps, window_ms=reach_ms, pad_s=PAD_S)
     by_time = sorted(idx_ok, key=lambda i: times[i])
 
-    fs_seen = None
-    blocks_b, blocks_w, where = {}, {}, {}
-    at = 0
-    R = None
-    for k, (a, b) in enumerate(runs):
-        if stop:
-            stop()
-        if job:
-            job.check()
+    # Which stamps each stretch serves, decided before any is read, so the
+    # stretches can be read in any order -- and, for one recording on its
+    # own (a sweep), several at once.
+    members, at = [], 0
+    for a, b in runs:
         mine = []
         while at < len(by_time) and times[by_time[at]] <= b - PAD_S:
             mine.append(by_time[at])
             at += 1
+        members.append(mine)
+
+    blocks_b, blocks_w = {}, {}
+    fs_box = [None]
+    count = [0]
+
+    def one(k):
+        if stop:
+            stop()
+        if job:
+            job.check()
+        a, b = runs[k]
+        mine = members[k]
         if not mine:
-            continue
+            return {}
         got = _read_matrix(session, channels, a, b, spec, p.lfp_fs)
+        count[0] += 1
         if on_span:
-            on_span(k + 1, len(runs))
+            on_span(count[0], len(runs))
         if not got:
-            continue
+            return {}
         wide_n, band, anchor, fs = got
-        fs_seen = fs
-        R = int(round(reach_ms / 1000.0 * fs))
+        fs_box[0] = fs
+        R_ = int(round(reach_ms / 1000.0 * fs))
         wide_n = braces.repair(wide_n, channels, bad)
         band = braces.repair(band, channels, bad)
+        out = {}
         for i in mine:
             i0 = int(round((times[i] - anchor) * fs))
-            if i0 - R < 0 or i0 + R + 1 > band.shape[1]:
+            if i0 - R_ < 0 or i0 + R_ + 1 > band.shape[1]:
                 continue
-            blocks_b[i] = band[:, i0 - R:i0 + R + 1].astype(np.float32)
-            blocks_w[i] = wide_n[:, i0 - R:i0 + R + 1].astype(np.float32)
+            out[i] = (band[:, i0 - R_:i0 + R_ + 1].astype(np.float32),
+                      wide_n[:, i0 - R_:i0 + R_ + 1].astype(np.float32))
+        return out
+
+    if workers > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            parts = list(pool.map(one, range(len(runs))))
+    else:
+        parts = [one(k) for k in range(len(runs))]
+    for part in parts:
+        for i, (bb_, ww_) in part.items():
+            blocks_b[i], blocks_w[i] = bb_, ww_
+    fs_seen = fs_box[0]
+    R = None
 
     have = sorted(blocks_b)
     if not have:
@@ -769,6 +853,7 @@ def read_entry(session, channels, probe, bad, times, spacing=None,
     B = np.stack([blocks_b[i] for i in have])          # (n, ch, 2R+1)
     W = np.stack([blocks_w[i] for i in have])
     del blocks_b, blocks_w
+    R = (B.shape[2] - 1) // 2
 
     # Which column of contacts the CSD is taken down. A linear array is one;
     # an H10-D is several, and the one where these events are biggest is the
@@ -1401,6 +1486,7 @@ def train_and_test(data, families, model_id="hgb", job=None,
         "by_kind": by_kind,
         "tradeoff": tradeoff,
         "catch": catch,
+        "policy": label_policy(oof, y),
         "n_features": len(names),
         "keep_ds": keep,
         "final_threshold": round(t_final, 4),
@@ -1419,6 +1505,11 @@ def train_and_test(data, families, model_id="hgb", job=None,
 # its own); this machine's own rate replaces them after the first run.
 _STAGES = (("ai read", "recordings", 20.0),
            ("ai physio", "recordings", 60.0),
+           # Avery's sweep of one set (avery.py): the stretches of ONE
+           # recording, read several at a time, then every candidate scored.
+           ("avery read", "stretches", 0.3),
+           ("avery physio", "stretches", 1.2),
+           ("avery score", "candidates", 0.001),
            ("ai train", "fits", 3.0))
 
 
@@ -1692,6 +1783,7 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
                     "total": round(time.time() - started, 1)},
     }
     bundle = {"model": model, "feature_names": names, "families": fams,
+              "policy": results.get("policy"),
               "threshold": float(thr), "feature_version": FEATURE_VERSION,
               "keep_ds": KEEP_DS, "run_id": rid, "trained_at": rec["at"],
               "entries": [(u["entry_id"], u["version"]) for u in used]}
@@ -1714,7 +1806,15 @@ class Runs:
         self.dir = os.path.join(self.root, "runs")
         self.models = os.path.join(self.root, "models")
         self.cache = os.path.join(logs_dir, ".cache", "aibeta")
+        self.logs = logs_dir
         self.book = shards.Book(self.dir, {}, store)
+        # Which run Avery is: one record, the latest designation winning.
+        self.avery_book = shards.Book(os.path.join(self.root, "avery"), {},
+                                      store)
+        # Every sweep somebody accepted: each candidate's score and call,
+        # the bars, and the run -- the record the edge cases are mined from.
+        self.sweeps = shards.Book(os.path.join(self.root, "sweeps"), {},
+                                  store)
         self.store = store
 
     def feature_path(self, gid, key):
@@ -1748,6 +1848,40 @@ class Runs:
         out = [r for r in (self.book.all() or []) if r.get("id")]
         out.sort(key=lambda r: r.get("at") or "", reverse=True)
         return out
+
+    def avery(self):
+        """{run_id, at, by} for the run Avery is, or None."""
+        rec = self.avery_book.read("avery") or {}
+        return rec if rec.get("run_id") else None
+
+    def set_avery(self, run_id, prov=None):
+        rec = self.get(run_id)
+        if not rec:
+            raise AiBetaError("No AI Beta run %s." % run_id)
+        if not ((rec.get("results") or {}).get("policy")):
+            raise AiBetaError(
+                "That run predates Avery's four bars, so it cannot sort a "
+                "set into DS, Flag, Flag for Deep Review and Garbage. Train "
+                "it again and use the new run.")
+        prov = prov or {}
+        return self.avery_book.write("avery", {
+            "run_id": run_id, "at": _now(), "by": prov.get("user"),
+            "machine": prov.get("machine")})
+
+    def load_model(self, run_id):
+        """The trained bundle a run saved, from this machine's disk."""
+        rec = self.get(run_id)
+        if not rec:
+            raise AiBetaError("No AI Beta run %s." % run_id)
+        rel = (rec.get("model") or {}).get("file")
+        path = os.path.join(self.logs, rel) if rel else None
+        if not path or not os.path.exists(path):
+            raise AiBetaError(
+                "Run %s's model is not on this machine yet (%s). It is "
+                "filed with the run, so it arrives on the next pull."
+                % (run_id, rel or "no file"))
+        import joblib
+        return rec, joblib.load(path)
 
 
 def brief(rec):

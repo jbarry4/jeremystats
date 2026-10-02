@@ -182,7 +182,7 @@ def _band_power(x, fs, bands):
 
 def read_physio(session, channels, probe, bad, times,
                 report=None, folder=None, job=None, on_span=None,
-                aibeta=None):
+                aibeta=None, workers=1):
     """The second read. Returns {"fam": {id: array}, "ok": bool array}."""
     AI = aibeta
     p = dspca.Params(probe=probe, invert=True, bad=sorted(int(b)
@@ -226,8 +226,12 @@ def read_physio(session, channels, probe, bad, times,
     n_all = len(times)
     sp = spans([times[i] for i in idx], REACH_MS / 1000.0, PAD_S)
     store = {}
-    fs = None
-    for k, (a, b, members) in enumerate(sp):
+    fs_box = [None]
+    count = [0]
+
+    def one(k):
+        a, b, members = sp[k]
+        out_ = {}
         if job:
             job.check()
         raws, anchor, ch_fs = [], None, None
@@ -239,15 +243,17 @@ def read_physio(session, channels, probe, bad, times,
             if anchor is None:
                 anchor, ch_fs = got_t0, f_
             raws.append(np.asarray(raw, dtype=np.float64))
+        count[0] += 1
         if on_span:
-            on_span(k + 1, len(sp))
+            on_span(count[0], len(sp))
         if not raws:
-            continue
+            return out_
         keep = min(r.size for r in raws)
         X = np.vstack([r[:keep] for r in raws])
         del raws
         q = incisor.decimation_for(ch_fs, p.lfp_fs)
         fs = ch_fs / q
+        fs_box[0] = fs
         # Multi-unit envelope at full rate, then averaged down to 1 kHz.
         sos = _sig.butter(3, [MUA_BAND[0], min(MUA_BAND[1], ch_fs * 0.45)],
                           btype="band", fs=ch_fs, output="sos")
@@ -311,7 +317,7 @@ def read_physio(session, channels, probe, bad, times,
                     / raw_sd)[good]
             steps = (np.abs(dseg).max(axis=1) / step_sd)[good] \
                 if dseg.shape[1] else np.full(1, np.nan)
-            store[i] = {
+            out_[i] = {
                 "band": band[:, i0 - Bk:i0 + Bk + 1].astype(np.float32),
                 "mua": mua[:, i0 - Bk:i0 + Bk + 1].astype(np.float32),
                 "rip": rip[:, i0 - Bk:i0 + Bk + 1].astype(np.float32),
@@ -329,6 +335,17 @@ def read_physio(session, channels, probe, bad, times,
                          float((zmax > 20).mean())],
             }
         del X, dX, x, clean, band, mua, rip
+        return out_
+
+    if workers > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for part in pool.map(one, range(len(sp))):
+                store.update(part)
+    else:
+        for k in range(len(sp)):
+            store.update(one(k))
+    fs = fs_box[0]
 
     have = sorted(store)
     fam = {k: np.full((n_all, len(NAMES[k])), np.nan, dtype=np.float32)

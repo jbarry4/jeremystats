@@ -817,6 +817,15 @@ BARRY.curate = (function () {
       ]),
       el('span', { class: 'cur-saving', id: 'curSaving', text: '' }),
       el('div', { style: 'flex:1' }),
+      /* Avery, AI Beta's model: sorts the whole set, asks before it starts,
+         and writes nothing unless its summary is accepted (avery.js). */
+      (set_.kind === 'ds' && BARRY.avery) ? el('button', {
+        class: 'btn ghost sm', text: 'Avery sweep\u2026',
+        title: 'Let Avery read every candidate and call each one DS, Flag '
+             + 'for Deep Review, Flag or Garbage. It asks first, and nothing '
+             + 'changes unless you accept its summary.',
+        onclick: averySweep,
+      }) : null,
       el('button', { class: 'btn ghost sm', text: 'List all\u2026',
                      title: 'Every candidate in this set, by time or by '
                           + 'category. Click one to go to it.',
@@ -886,6 +895,54 @@ BARRY.curate = (function () {
           + 'so banking lands on whatever is newest. Click to choose one.',
       onclick: switchVersion,
     });
+  }
+
+  /* ---------- Avery ---------- */
+  function averySweep() {
+    if (!set_) return;
+    BARRY.avery.open({
+      gid: set_.gid, kind: set_.kind,
+      name: set_.name || set_.session_label || '',
+      n: events().length,
+      decided: events().filter((e) => e.label).length,
+      colors: Object.fromEntries((kind.labels || []).map((l) => [l.id, l.color])),
+      // Accepted: its calls are on the set now, so read it again and go
+      // straight to the flags, which is the work Avery leaves.
+      onDone: () => refreshSet('flag'),
+    });
+  }
+
+  /* Re-read the set after something else wrote to it, as switching
+     versions does, and optionally move to a pass. */
+  async function refreshSet(pass) {
+    if (!set_) return;
+    const gid = set_.gid, kd = set_.kind;
+    let data;
+    try {
+      data = await api('/api/curation/' + encodeURIComponent(gid) + '/'
+                       + encodeURIComponent(kd));
+    } catch (e) {
+      toast('Could not re-read the set: ' + e.message, 'err', 9000);
+      return;
+    }
+    set_ = data.set;
+    vhist = data.history || [];
+    kind = { id: set_.kind, labels: set_.labels || [] };
+    history = [];
+    markRev += 1;
+    if (index >= events().length) index = Math.max(0, events().length - 1);
+    if (sess) sess.curation = { kind: set_.kind, set: set_, index };
+    if (pass) {
+      const was = review;
+      review = pass;
+      if (!nWanted()) review = was;
+    }
+    publishMarks();
+    if (!wanted(current())) {
+      const i = events().findIndex(wanted);
+      if (i >= 0) { goTo(i, true); }
+    }
+    render();
   }
 
   /* Put this version down and pick that one up, without leaving the mode.
