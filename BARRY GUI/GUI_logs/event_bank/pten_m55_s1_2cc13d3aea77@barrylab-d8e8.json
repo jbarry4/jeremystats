@@ -1,42 +1,56 @@
 {
   "_at": {
-    "added": "2026-09-28T19:15:23.939006+00:00",
-    "by_label": "2026-09-28T19:15:23.939006+00:00",
-    "curation_label": "2026-09-28T19:15:23.939006+00:00",
-    "duration_s": "2026-09-28T19:15:23.939006+00:00",
-    "events": "2026-09-28T19:15:23.939006+00:00",
-    "gid": "2026-09-28T19:15:23.939006+00:00",
-    "id": "2026-09-28T19:15:23.939006+00:00",
-    "label_names": "2026-09-28T19:15:23.939006+00:00",
-    "mouse": "2026-09-28T19:15:23.939006+00:00",
-    "n": "2026-09-28T19:15:23.939006+00:00",
-    "name": "2026-09-28T19:15:23.939006+00:00",
-    "note": "2026-09-28T19:15:23.939006+00:00",
-    "project": "2026-09-28T19:15:23.939006+00:00",
-    "recording_start": "2026-09-28T19:15:23.939006+00:00",
-    "schema": "2026-09-28T19:15:23.939006+00:00",
-    "session": "2026-09-28T19:15:23.939006+00:00",
-    "session_key": "2026-09-28T19:15:23.939006+00:00",
-    "session_label": "2026-09-28T19:15:23.939006+00:00",
-    "session_loose_key": "2026-09-28T19:15:23.939006+00:00",
-    "session_path": "2026-09-28T19:15:23.939006+00:00",
-    "source": "2026-09-28T19:15:23.939006+00:00",
-    "specified": "2026-09-28T19:15:23.939006+00:00",
-    "type": "2026-09-28T19:15:23.939006+00:00",
-    "type_name": "2026-09-28T19:15:23.939006+00:00",
-    "units": "2026-09-28T19:15:23.939006+00:00",
-    "version": "2026-09-28T19:15:23.939006+00:00"
+    "added": "2026-10-01T13:57:10.607276+00:00",
+    "by_label": "2026-10-01T13:57:10.607276+00:00",
+    "curation_label": "2026-10-01T13:57:10.607276+00:00",
+    "duration_s": "2026-10-01T13:57:10.607276+00:00",
+    "events": "2026-10-01T13:57:10.607276+00:00",
+    "gid": "2026-10-01T13:57:10.607276+00:00",
+    "id": "2026-10-01T13:57:10.607276+00:00",
+    "label_names": "2026-10-01T13:57:10.607276+00:00",
+    "mouse": "2026-10-01T13:57:10.607276+00:00",
+    "n": "2026-10-01T13:57:10.607276+00:00",
+    "name": "2026-10-01T13:57:10.607276+00:00",
+    "note": "2026-10-01T13:57:10.607276+00:00",
+    "project": "2026-10-01T13:57:10.607276+00:00",
+    "recording_start": "2026-10-01T13:57:10.607276+00:00",
+    "schema": "2026-10-01T13:57:10.607276+00:00",
+    "session": "2026-10-01T13:57:10.607276+00:00",
+    "session_key": "2026-10-01T13:57:10.607276+00:00",
+    "session_label": "2026-10-01T13:57:10.607276+00:00",
+    "session_loose_key": "2026-10-01T13:57:10.607276+00:00",
+    "session_path": "2026-10-01T13:57:10.607276+00:00",
+    "source": "2026-10-01T13:57:10.607276+00:00",
+    "specified": "2026-10-01T13:57:10.607276+00:00",
+    "type": "2026-10-01T13:57:10.607276+00:00",
+    "type_name": "2026-10-01T13:57:10.607276+00:00",
+    "units": "2026-10-01T13:57:10.607276+00:00",
+    "version": "2026-10-01T13:57:10.607276+00:00"
   },
   "_keys": {
+    "history": {
+      "{\"at\": \"2026-10-01T09:57:10-04:00\", \"by\": \"Rain Younger\", \"changed\": [\"events\"], \"now_n\": 19, \"was_n\": 19, \"why\": \"re-banked from the curation set\"}": [
+        "set",
+        "2026-10-01T13:57:10.607276+00:00"
+      ]
+    },
     "versions": {
+      "617059dcdb46": [
+        "set",
+        "2026-10-01T13:57:10.607276+00:00"
+      ],
+      "a36485cc8934": [
+        "set",
+        "2026-10-01T13:57:10.607276+00:00"
+      ],
       "d5dda1c2e453": [
         "set",
-        "2026-09-28T19:15:23.939006+00:00"
+        "2026-10-01T13:57:10.607276+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-28T19:15:23.939006+00:00",
+    "at": "2026-10-01T13:57:10.607276+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -46,122 +60,144 @@
     "machine": "BarryLab"
   },
   "by_label": {
-    "unspecified": 19
+    "garbage": 19
   },
-  "curation_label": null,
-  "duration_s": 1953.2117333333333,
+  "curation_label": "*",
+  "duration_s": null,
   "events": [
     {
-      "amplitude": 757.5634,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 620.38156
     },
     {
-      "amplitude": 737.6156,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 704.37423
     },
     {
-      "amplitude": 592.5441,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 859.144621
     },
     {
-      "amplitude": 630.9386,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1048.740875
     },
     {
-      "amplitude": 678.7783,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1093.938698
     },
     {
-      "amplitude": 706.0921,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1108.862639
     },
     {
-      "amplitude": 604.8303,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1175.689376
     },
     {
-      "amplitude": 676.7688,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1178.491365
     },
     {
-      "amplitude": 638.8468,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1289.825927
     },
     {
-      "amplitude": 701.088,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1352.377681
     },
     {
-      "amplitude": 645.6454,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1358.056659
     },
     {
-      "amplitude": 597.7952,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1358.200658
     },
     {
-      "amplitude": 655.6581,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1399.947494
     },
     {
-      "amplitude": 592.9081,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1500.383099
     },
     {
-      "amplitude": 746.3577,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1584.710768
     },
     {
-      "amplitude": 598.7077,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1605.175687
     },
     {
-      "amplitude": 632.3724,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1707.715284
     },
     {
-      "amplitude": 758.0051,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1839.970764
     },
     {
-      "amplitude": 649.4861,
-      "channel": 34,
+      "label": "Garbage",
+      "label_id": "garbage",
       "start": 1903.533514
     }
   ],
   "gid": "sa9275263c832",
+  "history": [
+    {
+      "at": "2026-10-01T09:57:10-04:00",
+      "by": "Rain Younger",
+      "changed": [
+        "events"
+      ],
+      "now_n": 19,
+      "was_n": 19,
+      "why": "re-banked from the curation set"
+    }
+  ],
   "id": "2cc13d3aea77",
-  "label_names": {},
+  "label_names": {
+    "ds1": "Dentate Spike (DS1)",
+    "ds2": "Dentate Spike (DS2)",
+    "ds3": "Dentate Spike (DS3)",
+    "ds4": "Dentate Spike (DS4)",
+    "ds5": "Dentate Spike (DS5)",
+    "flag": "Flag",
+    "garbage": "Garbage",
+    "review": "Flag for Deep Review",
+    "spike": "Dentate Spike"
+  },
   "mouse": 55,
   "n": 19,
   "name": "PTEN_DKO m55 s1 2025-06-11  \u00b7  Incisor CSC34",
   "note": "",
   "project": "PTEN",
-  "recording_start": null,
+  "recording_start": "2025-06-11T13:22:40",
   "schema": 1,
   "session": 1,
   "session_key": "m055_s001_2025-06-11_13-22-40",
   "session_label": "PTEN_DKO m55 s1 2025-06-11",
   "session_loose_key": "m055_s001",
-  "session_path": "Y:\\ProcessedPtenData\\PTENDKOm55\\m55s1jun11\\2025-06-11_13-22-40",
+  "session_path": null,
   "source": {
     "detector": null,
     "file": null,
@@ -201,11 +237,11 @@
     "pipeline": "Incisor (dentate spike)",
     "run_id": null
   },
-  "specified": false,
+  "specified": true,
   "type": "ds",
-  "type_name": "Dentate spike",
+  "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 0,
+  "version": 1,
   "versions": [
     {
       "at": "2026-09-28T15:15:23-04:00",
@@ -302,6 +338,200 @@
         ]
       ],
       "v": 0
+    },
+    {
+      "at": "2026-09-28T15:20:12-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 19
+      },
+      "changed": 0,
+      "from_v": null,
+      "gained": 0,
+      "id": "617059dcdb46",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 19,
+      "note": "Imported from Incisor (dentate spike). 19 candidates, none decided yet.",
+      "snap": [
+        [
+          620.38156,
+          null
+        ],
+        [
+          704.37423,
+          null
+        ],
+        [
+          859.144621,
+          null
+        ],
+        [
+          1048.740875,
+          null
+        ],
+        [
+          1093.938698,
+          null
+        ],
+        [
+          1108.862639,
+          null
+        ],
+        [
+          1175.689376,
+          null
+        ],
+        [
+          1178.491365,
+          null
+        ],
+        [
+          1289.825927,
+          null
+        ],
+        [
+          1352.377681,
+          null
+        ],
+        [
+          1358.056659,
+          null
+        ],
+        [
+          1358.200658,
+          null
+        ],
+        [
+          1399.947494,
+          null
+        ],
+        [
+          1500.383099,
+          null
+        ],
+        [
+          1584.710768,
+          null
+        ],
+        [
+          1605.175687,
+          null
+        ],
+        [
+          1707.715284,
+          null
+        ],
+        [
+          1839.970764,
+          null
+        ],
+        [
+          1903.533514,
+          null
+        ]
+      ],
+      "v": 0
+    },
+    {
+      "at": "2026-10-01T09:57:10-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "garbage": 19
+      },
+      "changed": 19,
+      "from_id": "617059dcdb46",
+      "from_v": 0,
+      "gained": 0,
+      "id": "a36485cc8934",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {
+        "undecided \u2192 Garbage": 19
+      },
+      "n": 19,
+      "note": "Gui final curation",
+      "snap": [
+        [
+          620.38156,
+          "garbage"
+        ],
+        [
+          704.37423,
+          "garbage"
+        ],
+        [
+          859.144621,
+          "garbage"
+        ],
+        [
+          1048.740875,
+          "garbage"
+        ],
+        [
+          1093.938698,
+          "garbage"
+        ],
+        [
+          1108.862639,
+          "garbage"
+        ],
+        [
+          1175.689376,
+          "garbage"
+        ],
+        [
+          1178.491365,
+          "garbage"
+        ],
+        [
+          1289.825927,
+          "garbage"
+        ],
+        [
+          1352.377681,
+          "garbage"
+        ],
+        [
+          1358.056659,
+          "garbage"
+        ],
+        [
+          1358.200658,
+          "garbage"
+        ],
+        [
+          1399.947494,
+          "garbage"
+        ],
+        [
+          1500.383099,
+          "garbage"
+        ],
+        [
+          1584.710768,
+          "garbage"
+        ],
+        [
+          1605.175687,
+          "garbage"
+        ],
+        [
+          1707.715284,
+          "garbage"
+        ],
+        [
+          1839.970764,
+          "garbage"
+        ],
+        [
+          1903.533514,
+          "garbage"
+        ]
+      ],
+      "v": 1
     }
   ]
 }

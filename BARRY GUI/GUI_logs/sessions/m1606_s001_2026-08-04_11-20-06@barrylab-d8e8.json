@@ -19,8 +19,8 @@
     "schema": "2026-09-03T00:08:55.759314+00:00",
     "session": "2026-09-03T00:08:55.759314+00:00",
     "start": "2026-09-03T00:08:55.759314+00:00",
-    "updated": "2026-09-16T21:06:20.651518+00:00",
-    "view_state": "2026-09-04T13:25:58.788783+00:00"
+    "updated": "2026-10-01T17:06:22.434435+00:00",
+    "view_state": "2026-10-01T17:06:22.434435+00:00"
   },
   "_keys": {
     "paths": {
@@ -41,11 +41,19 @@
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-04T13:32:11.422572+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-01T16:57:50.999024+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-17T13:41:05.176769+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-16T21:06:20.651518+00:00",
+    "at": "2026-10-01T17:06:22.434435+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -91,13 +99,29 @@
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06",
       "root": null,
       "scan": null
+    },
+    "barrylab-d8e8": {
+      "at": "2026-10-01T12:57:50-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06",
+      "root": null,
+      "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-17T09:41:00-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1606\\KCNT1_m1606_s01_080426\\2026-08-04_11-20-06",
+      "root": null,
+      "scan": null
     }
   },
   "session": 1,
   "start": "2026-08-04T11:20:06",
   "updated": {
-    "app_version": "2026.09.16.2",
-    "at": "2026-09-16T17:06:20-04:00",
+    "app_version": "2026.10.01.2",
+    "at": "2026-10-01T13:06:22-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -176,16 +200,17 @@
     "fdefault": null,
     "flock": true,
     "gain": 1,
-    "hp": 0,
+    "hp": 5,
     "invert": true,
-    "lp": 0,
+    "lp": 100,
+    "marks_view": "show",
     "normalize": "shared",
-    "notch": 0,
-    "probe": null,
+    "notch": 60,
+    "probe": "h3",
     "spacing": 50,
-    "span": 10,
+    "span": 0.5,
     "stft_mode": null,
-    "t0": 437.57560625068066,
-    "ylim": null
+    "t0": 72.12626,
+    "ylim": 182.95394465835528
   }
 }

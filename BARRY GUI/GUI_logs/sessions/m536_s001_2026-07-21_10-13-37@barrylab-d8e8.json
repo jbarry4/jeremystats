@@ -2,7 +2,7 @@
   "_at": {
     "bad_channels": "2026-09-25T14:19:46.007176+00:00",
     "created": "2026-09-02T23:51:19.965075+00:00",
-    "duration_s": "2026-09-03T00:08:56.678378+00:00",
+    "duration_s": "2026-10-01T16:30:07.608490+00:00",
     "first_seen_by": "2026-09-03T00:08:56.678378+00:00",
     "fs": "2026-09-03T00:08:56.678378+00:00",
     "gid": "2026-09-02T23:51:19.965075+00:00",
@@ -19,7 +19,7 @@
     "schema": "2026-09-03T00:08:56.678378+00:00",
     "session": "2026-09-03T00:08:56.678378+00:00",
     "start": "2026-09-03T00:08:56.678378+00:00",
-    "updated": "2026-09-25T14:19:46.007176+00:00"
+    "updated": "2026-10-01T16:30:07.608490+00:00"
   },
   "_keys": {
     "paths": {
@@ -48,11 +48,19 @@
       "DESKTOP-4H65AI7": [
         "set",
         "2026-09-03T00:08:56.678378+00:00"
+      ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-01T16:30:07.608490+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-25T14:18:13.412958+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T14:19:46.007176+00:00",
+    "at": "2026-10-01T16:30:07.608490+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -100,13 +108,29 @@
       "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01B_072126\\2026-07-21_11-00-19",
       "root": "//netfiles03.uvm.edu/bigdata_jbarry/Jeremy3/KCNT1",
       "scan": "scan_94ff1eb81c"
+    },
+    "barrylab-d8e8": {
+      "at": "2026-10-01T12:30:07-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01B_072126\\2026-07-21_11-00-19",
+      "root": "Y:/Jeremy3/KCNT1",
+      "scan": "scan_22235c040e"
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-25T10:18:13-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01_072126\\2026-07-21_10-13-37",
+      "root": null,
+      "scan": null
     }
   },
   "session": 1,
   "start": "2026-07-21T10:13:37",
   "updated": {
-    "app_version": "2026.09.24.2",
-    "at": "2026-09-25T10:19:46-04:00",
+    "app_version": "2026.10.01.2",
+    "at": "2026-10-01T12:30:07-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
