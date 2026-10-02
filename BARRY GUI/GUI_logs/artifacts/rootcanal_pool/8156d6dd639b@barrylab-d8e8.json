@@ -1,0 +1,214 @@
+{
+  "_at": {
+    "added": "2026-10-02T22:05:46.948952+00:00",
+    "deleted": "2026-10-02T22:05:46.948952+00:00",
+    "id": "2026-10-02T22:05:46.948952+00:00",
+    "kind": "2026-10-02T22:05:46.948952+00:00",
+    "name": "2026-10-02T22:05:46.948952+00:00",
+    "nickname": "2026-10-02T22:05:46.948952+00:00",
+    "schema": "2026-10-02T22:05:46.948952+00:00",
+    "subject": "2026-10-02T22:05:46.948952+00:00",
+    "subject_key": "2026-10-02T22:05:46.948952+00:00",
+    "version": "2026-10-02T22:05:46.948952+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "2aa1f987ac36": [
+        "set",
+        "2026-10-02T22:05:46.948952+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-02T22:05:46.948952+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-02T18:05:46-04:00",
+    "by": "Rain Younger",
+    "machine": "Strawbarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "8156d6dd639b",
+  "kind": "rootcanal_pool",
+  "name": "Root Canal pool \u00b7 PTEN \u00b7 4 recordings, 4 mice",
+  "nickname": "PTEN CNO All PTEN \"IED+\"",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "gids": [
+      "s1563f9c932bc",
+      "s81e818bd402d",
+      "s838980579a4b",
+      "s8d50a361b096"
+    ],
+    "n_mice": 4,
+    "n_recordings": 4,
+    "name": "Root Canal pool \u00b7 PTEN \u00b7 4 recordings, 4 mice",
+    "pool_key": "256dcf7a72894024ae5487800c8d6af1",
+    "projects": [
+      "PTEN"
+    ]
+  },
+  "subject_key": "rootcanal_pool|256dcf7a72894024ae5487800c8d6af1",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.10.01.2",
+      "at": "2026-10-02T18:05:46-04:00",
+      "by": "Rain Younger",
+      "commit": null,
+      "digest": "bae5d27fcece",
+      "id": "2aa1f987ac36",
+      "inputs": [
+        {
+          "banked": false,
+          "entry_id": "72f3eed667cd",
+          "key": "u:72f3eed667cd:c0c300acd334",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "c0c300acd334",
+          "rows_digest": "a7e91a29bcf9"
+        },
+        {
+          "banked": false,
+          "entry_id": "03adeaf1032e",
+          "key": "u:03adeaf1032e:c85bff1d9a2c",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "c85bff1d9a2c",
+          "rows_digest": "dfc7d0ea0219"
+        },
+        {
+          "banked": false,
+          "entry_id": "7d5fa32206b4",
+          "key": "u:7d5fa32206b4:82f667c6b2b2",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "82f667c6b2b2",
+          "rows_digest": "c7b4699867ec"
+        },
+        {
+          "banked": false,
+          "entry_id": "572f9942ffcc",
+          "key": "u:572f9942ffcc:b424da313519",
+          "params": {
+            "band_hi": 1000.0,
+            "band_lo": 500.0,
+            "centres": null,
+            "cross_ms": 50.0,
+            "flank_ms": [
+              30.0,
+              60.0
+            ],
+            "flips": [],
+            "hi_hz": 100.0,
+            "lo_hz": 1.0,
+            "n_init": 10,
+            "order": 4,
+            "seed": 0,
+            "win_ms": 25.0
+          },
+          "read": "b424da313519",
+          "rows_digest": "08bf7224a7eb"
+        }
+      ],
+      "machine": "Strawbarry",
+      "n_summary": {
+        "delta_bic": 418.6853506346324,
+        "events": 1391,
+        "members": 4,
+        "mice": 4,
+        "switch_rate": 0.13012221423436376,
+        "unbanked": 4
+      },
+      "note": null,
+      "params": {
+        "band": [
+          500.0,
+          1000.0
+        ],
+        "dbic_scale": [
+          [
+            2.0,
+            "no support for two groups"
+          ],
+          [
+            6.0,
+            "positive support for two groups"
+          ],
+          [
+            10.0,
+            "strong support for two groups"
+          ],
+          [
+            null,
+            "very strong support for two groups"
+          ]
+        ],
+        "gmm": {
+          "compare": [
+            1,
+            2
+          ],
+          "covariance": "full",
+          "min_n": 20,
+          "n_init": 5,
+          "random_state": 0
+        },
+        "k": 2,
+        "n_init": 10,
+        "random_state": 0,
+        "scale": "pooled raw"
+      },
+      "params_hash": "0ffe3a8a575f",
+      "v": 1
+    }
+  ]
+}
