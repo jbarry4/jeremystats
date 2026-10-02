@@ -54,7 +54,7 @@ BARRY.doppler = (function () {
        a bad channel is a claim about the recording that every other tool
        acts on, and this is a question somebody is asking of one run --
        "what does it find on the odd shank alone". Numbers, never row
-       indices, because an index shifts the moment even-only is toggled. */
+       indices, because an index shifts the moment a file goes missing. */
     exclude: [],
     preset: 'all',
     // One recording or many (constitution §6d). Both run on the VACC.
@@ -385,7 +385,7 @@ BARRY.doppler = (function () {
 
     /* A preset that would leave nothing to read is disabled with the
        reason on it, rather than offered and then refused by the server.
-       On a recording opened even-only, "Odds" is exactly that. */
+       On a recording with no odd-numbered files, "Odds" is exactly that. */
     const segBox = el('div', { class: 'seg dop-presets' });
     for (const [id, label, title] of PRESETS) {
       const keep = presetKeeps(id, all);

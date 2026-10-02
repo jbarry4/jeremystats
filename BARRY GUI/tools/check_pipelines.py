@@ -184,7 +184,7 @@ def real_cases(limit):
                     rep = continuity.check(path)
                     if not rep.get("ok"):
                         continue
-                    sess, err = appmod._session_for(path, False, True)
+                    sess, err = appmod._session_for(path, True)
                     if err:
                         continue
                     chans = sess["channels"]

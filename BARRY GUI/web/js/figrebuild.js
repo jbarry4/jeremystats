@@ -343,7 +343,6 @@ BARRY.figrebuild = (function () {
         setView('xplore');
         const locate = (plan.steps || []).find((x) => x.id === 'locate') || {};
         sess = await BARRY.views.xplore.open(locate.path, {
-          evenOnly: s.even_only !== false,
           invert: s.invert !== false,
         });
         if (!sess) throw new Error('The recording would not open.');

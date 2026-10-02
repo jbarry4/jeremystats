@@ -291,6 +291,12 @@ class Sync:
         self.artifacts = None
         self._art_sent_sig = None
         self._art_pending_sig = None
+        # Artifact id -> the fingerprint the cloud row carries, as of the
+        # last push that asked. Kept so `item_states` can say which artifact
+        # is up there without asking again. `_pending` twin, committed only
+        # when a push completes.
+        self._art_cloud_fp = {}
+        self._art_fp_pending = None
         # When the artifact tables were last found missing: asked again after
         # ART_ABSENT_RETRY_S rather than never. See rows_artifacts.
         self._art_absent_until = 0.0
@@ -734,11 +740,13 @@ class Sync:
 
         now = cloud.now()
         rows, live = [], set()
+        fp_after = dict(there)
         for rec, nick_at in recs:
             live.add(rec["id"])
             fp = self.artifacts.cloud_fingerprint(rec)
             if there.get(rec["id"]) == fp:
                 continue
+            fp_after[rec["id"]] = fp
             added = rec.get("added") or {}
             deleted = rec.get("deleted") or None
             rows.append({
@@ -775,6 +783,10 @@ class Sync:
                 "updated_at": now,
             })
         self._art_pending_sig = sig
+        self._art_fp_pending = fp_after
+        # Kept in the sync state with the cursor, so a restarted Jarvis can
+        # still say which artifacts are up there before its first push.
+        self._pending["art_fp"] = fp_after
         return {"artifacts": rows, "artifact_snapshots": snaps}
 
     def rows_curation(self):
@@ -1333,6 +1345,132 @@ class Sync:
     # ==================================================================
     # Push
     # ==================================================================
+    # ==================================================================
+    # Has it gone up? Per record, without asking the database
+    # ==================================================================
+    ITEM_KINDS = ("bank", "curation", "layers", "artifacts")
+
+    def item_states(self, kinds=None, last_push=None, known_gids=None):
+        """{kind: {id: {"state", "at"}}} for the records a person works on.
+
+        `state` is one of:
+
+          synced   this machine's copy was in a push that finished;
+          waiting  changed since the last push that finished;
+          local    never travels -- a demo or harness record, or one whose
+                   recording the shared table does not have (the push drops
+                   those; see `_push`);
+          unknown  artifacts only, before any push has asked the cloud
+                   what it holds.
+
+        Answered from the push cursor and the artifact fingerprints the last
+        push saw, so it costs nothing at the database. The stamps are the
+        ones `rows_*` send, so "waiting" here is exactly "the next push will
+        carry it". Asking the database instead is `/api/bank/sync?verify=1`.
+        """
+        want = set(kinds or self.ITEM_KINDS)
+        out = {}
+
+        def judge(stamp):
+            if not last_push:
+                return "waiting"
+            if not stamp:
+                # Sent on every push (see `_after`), so the last one had it.
+                return "synced"
+            return "waiting" if _after(stamp, last_push) else "synced"
+
+        def orphan(gid):
+            return bool(known_gids is not None and gid
+                        and gid not in known_gids)
+
+        if "bank" in want:
+            d = {}
+            for rec in (self.bank.all() if self.bank else []):
+                rid = rec.get("id")
+                if not rid:
+                    continue
+                if self._is_demo(rec):
+                    d[rid] = {"state": "local", "why": "demo"}
+                elif orphan(rec.get("gid")):
+                    d[rid] = {"state": "local", "why": "no recording"}
+                else:
+                    t = _bank_touched(rec)
+                    d[rid] = {"state": judge(t), "at": t}
+            out["bank"] = d
+
+        if "curation" in want:
+            d = {}
+            for rec in (self.curate.all() if self.curate else []):
+                gid, kind = rec.get("gid"), rec.get("kind")
+                if not gid or not kind:
+                    continue
+                sid = "%s__%s" % (gid, kind)
+                if self._is_demo(rec):
+                    d[sid] = {"state": "local", "why": "demo"}
+                    continue
+                if orphan(gid):
+                    d[sid] = {"state": "local", "why": "no recording"}
+                    continue
+                stamps = [cloud.ts(_prov(rec, "updated").get("at"))]
+                for ev in (rec.get("events") or []):
+                    stamps.append(cloud.ts(ev.get("at"))
+                                  or cloud.ts(ev.get("cleared_at")))
+                    for r in (ev.get("reviews") or []):
+                        stamps.append(cloud.ts(r.get("at")))
+                stamps = [s for s in stamps if s]
+                t = max(stamps, key=_ts_key) if stamps else None
+                d[sid] = {"state": judge(t), "at": t}
+            out["curation"] = d
+
+        if "layers" in want:
+            d = {}
+            for rec in (self.layers.all() if self.layers else []):
+                gid = rec.get("gid")
+                if not gid:
+                    continue
+                if self._is_demo(rec):
+                    d[gid] = {"state": "local", "why": "demo"}
+                elif orphan(gid):
+                    d[gid] = {"state": "local", "why": "no recording"}
+                else:
+                    t = cloud.ts(_prov(rec, "updated").get("at"))
+                    d[gid] = {"state": judge(t), "at": t}
+            out["layers"] = d
+
+        if "artifacts" in want and self.artifacts is not None:
+            d = {}
+            store = self.artifacts
+            if not self._art_cloud_fp:
+                # A fresh process: what the last push that asked was told.
+                try:
+                    self._art_cloud_fp = dict(
+                        (self.cloud.state() or {}).get("art_fp") or {})
+                except Exception:                        # noqa: BLE001
+                    pass
+            try:
+                level = (store.signature() == self._art_sent_sig
+                         and not store.cloud_dirty)
+                recs = store.records_for_cloud()
+            except Exception:                            # noqa: BLE001
+                level, recs = False, []
+            for rec, _nick in recs:
+                aid = rec.get("id")
+                if not aid:
+                    continue
+                if self._art_local_only(rec):
+                    d[aid] = {"state": "local", "why": "demo"}
+                    continue
+                up = level or (self._art_cloud_fp.get(aid)
+                               == store.cloud_fingerprint(rec))
+                # Nothing heard from the cloud about artifacts at all yet
+                # (no push since this process started, none remembered):
+                # that is not knowing, and it is said as not knowing.
+                d[aid] = {"state": "synced" if up
+                          else "waiting" if self._art_cloud_fp
+                          else "unknown"}
+            out["artifacts"] = d
+        return out
+
     def collect(self, include_history=True):
         """Every table's rows, ready to send."""
         rows = {"machines": self.rows_machines()}
@@ -1447,6 +1585,7 @@ class Sync:
             # quarter of an hour: this failure is not the database saying
             # the entry is missing.
             self._pending = {}
+            self._art_fp_pending = None
             self._snap_asked = (None, 0.0)
             raise
 
@@ -1503,6 +1642,9 @@ class Sync:
             # Only now, with every table sent, is the artifact store's
             # state the one the cloud has.
             self._art_sent_sig = self._art_pending_sig
+            if self._art_fp_pending is not None:
+                self._art_cloud_fp = self._art_fp_pending
+                self._art_fp_pending = None
             if self.artifacts is not None:
                 self.artifacts.cloud_dirty = False
         out = {"sent": sent, "tables": report, "dry_run": dry_run,

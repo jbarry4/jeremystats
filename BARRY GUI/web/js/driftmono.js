@@ -28,7 +28,7 @@ BARRY.driftMono = (function () {
   const CLUSTER_MS = 120000;
   const KIND_SAY = { state: 'state, 4 band chunks', trans_slow: 'slow transitions',
                      trans_fast: 'fast transitions', pac: 'PAC', rest: 'rest',
-                     pac_rest: 'rest PAC' };
+                     pac_rest: 'rest PAC', pac_trans: 'PAC at the transitions' };
 
   const ms = {
     host: null, status: null, err: null, asking: false, acting: false,
@@ -149,6 +149,7 @@ BARRY.driftMono = (function () {
   }
 
   async function askPlan(dest) {
+    if (ms.acting) return;              // one thing at a time; the plan in hand stays
     ms.dest = dest || ms.dest;
     ms.planning = true;
     ms.plan = null;
@@ -164,6 +165,10 @@ BARRY.driftMono = (function () {
   const check = () => act('/api/arc/monolith/check', {}, 'check');
   const run = () => act('/api/arc/monolith/run', { confirm: true }, 'run',
     'Submitted. Check the VACC to see the tasks move.');
+  /* A small run that adds what the built Monolith lacks (the delta band,
+     PAC at the transitions); fetching it rebuilds the Monolith from both. */
+  const addRun = (extra) => act('/api/arc/monolith/run', { confirm: true, extra }, 'run.add',
+    'Submitted the addition. Check the VACC to see it move; fetching it rebuilds the Monolith with it.');
   const fetchIt = () => act('/api/arc/monolith/fetch', { confirm: true }, 'fetch',
     'Fetching the answers and building the Monolith.');
   const stopWork = () => act('/api/arc/monolith/stop', {}, 'stop');
@@ -387,6 +392,12 @@ BARRY.driftMono = (function () {
         'reading the 48 folders here (about 20 s the first time), then one listing of '
         + destLabel(ms.dest)));
     } else if (P) {
+      const R = P.room || {};
+      if (R.say) {
+        card.appendChild(el('p', { class: R.fits === false ? 'dpc-warn dmo-room' : 'hint dmo-room', text: R.say
+          + (R.fits === false ? ' Choose ' + destLabel(ms.dest === 'temp' ? 'scratch' : 'temp')
+            + ', or free some space in ' + destLabel(ms.dest) + ' first.' : '') }));
+      }
       card.appendChild(el('p', { class: 'dmo-cost', text: P.files
         ? bytes(P.bytes) + ' in ' + plural(P.files, 'file') + ' to send to ' + destLabel(ms.dest)
           + (P.skipped ? '; ' + plural(P.skipped, 'file') + ' already there' : '')
@@ -400,10 +411,13 @@ BARRY.driftMono = (function () {
       bits.push(el('button', { class: primary(isNext), 'data-go': 'upload.plan', disabled: off(ms.planning),
         text: 'Upload…', onclick: () => askPlan(ms.dest) }));
     } else if (P.files) {
+      const full = (P.room || {}).fits === false;
       bits.push(el('button', { class: 'btn ghost', text: 'Work it out again', disabled: off(),
         onclick: () => askPlan(ms.dest) }));
-      bits.push(el('button', { class: primary(isNext), 'data-go': 'upload', disabled: off(),
-        text: 'Upload ' + bytes(P.bytes) + ' to ' + destLabel(ms.dest), onclick: upload }));
+      bits.push(el('button', { class: primary(isNext && !full), 'data-go': 'upload', disabled: off(full),
+        title: full ? 'There is not enough room there for this upload.' : null,
+        text: full ? 'Not enough room in ' + destLabel(ms.dest)
+          : 'Upload ' + bytes(P.bytes) + ' to ' + destLabel(ms.dest), onclick: upload }));
     } else {
       bits.push(el('button', { class: 'btn ghost', text: 'Work it out again', disabled: off(),
         onclick: () => askPlan(ms.dest) }));
@@ -636,6 +650,26 @@ BARRY.driftMono = (function () {
       if ((B.missing_tasks || []).length) {
         card.appendChild(el('p', { class: 'dpc-warn', text: plural(B.missing_tasks.length, 'task')
           + ' had not answered when it was built; their rat-days are thinner. Fetch again once they have.' }));
+      }
+      // What a small run can still add, and the button that runs it.
+      const miss = S.missing || {};
+      const says = [];
+      if ((miss.bands || []).length) says.push((S.additions_say || {}).delta || 'the delta band');
+      if (miss.pac_trans) says.push((S.additions_say || {}).pac_trans || 'PAC at the transitions');
+      if (says.length && !(S.run && S.built && S.run.rid !== S.built.rid)) {
+        const C = S.check;
+        card.appendChild(el('div', { class: 'dmo-add', 'data-go': 'add' }, [
+          el('p', { text: 'This Monolith was built without ' + says.join(' or ') + '. A small run measures only that, '
+            + 'on the recordings already on the cluster, and fetching it rebuilds the Monolith from both runs — '
+            + 'nothing already measured is measured again.' }),
+          el('div', { class: 'head-actions dpc-actions' }, [
+            el('span', { class: 'hint', text: C ? 'Uses the lab’s cluster allocation: a few minutes of compute a rat-day.'
+              : 'Check the VACC first: the recordings have to be whole on the cluster still.' }),
+            el('div', { class: 'spacer' }),
+            el('button', { class: 'btn ghost', 'data-go': 'add', disabled: off(!C || (S.code_changed || []).length > 0),
+              text: 'Add ' + says.join(' and '), onclick: () => addRun(miss) }),
+          ]),
+        ]));
       }
     }
     card.appendChild(el('div', { class: 'head-actions dpc-actions' }, [

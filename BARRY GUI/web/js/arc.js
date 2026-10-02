@@ -3592,7 +3592,7 @@ BARRY.arc = (function () {
        until somebody left the mode and came back.
 
        Everything here is by CSC NUMBER, never by row index: the pane's
-       row list changes the moment somebody toggles even-only, and an
+       row list changes the moment a channel file goes missing, and an
        index would then name a different channel with perfect confidence.
        ---------------------------------------------------------------- */
     clean: {
@@ -4153,11 +4153,11 @@ BARRY.arcmode = (function () {
 
   /* Which channels the pane is actually drawing.
    *
-   * Read off the pane rather than off the recording: even-only and the
-   * channel ticks both change it, and a flagged channel nobody can see is
-   * worth saying out loud rather than leaving as a stretch that never
-   * appears. Odd channels in particular -- an even-only pane holds none of
-   * them, and every stretch on CSC17 would silently have nowhere to go. */
+   * Read off the pane rather than off the recording: the channel ticks
+   * change it, and a flagged channel nobody can see is worth saying out
+   * loud rather than leaving as a stretch that never appears. Odd channels
+   * in particular -- a pane on the Even preset holds none of them, and
+   * every stretch on CSC17 would silently have nowhere to go. */
   function paneRows() {
     try {
       const XF = BARRY.views.xplore.state;
@@ -4477,11 +4477,37 @@ BARRY.arcmode = (function () {
          baseline and cue 1" is. The whole complaint this strip answers was
          that the consequence was never stated where somebody was looking,
          and half-stating it is the same fault. */
-      bits.push(el('span', { class: 'arc-verdict-who',
-        text: going.map((c) => 'CSC' + c + ' ('
-                               + C.gone(p.pair_id, c, view).map(C.say)
-                                 .join(', ')
-                               + ')').join('; ') }));
+      /* Grouped by what each channel loses, with runs of channels
+         written as ranges: thirty-three channels losing the same three
+         windows is one line, not thirty-three entries run together. */
+      const groups = new Map();
+      for (const c of going) {
+        const what = C.gone(p.pair_id, c, view).map(C.say).join(', ');
+        if (!groups.has(what)) groups.set(what, []);
+        groups.get(what).push(Number(c));
+      }
+      const runs = (cs) => {
+        cs.sort((a, b) => a - b);
+        const out = [];
+        let a = cs[0], b = cs[0];
+        const flush = () => out.push(a === b ? 'CSC' + a
+          : b === a + 1 ? 'CSC' + a + ', CSC' + b : 'CSC' + a + '–' + b);
+        for (const c of cs.slice(1)) {
+          if (c === b + 1) { b = c; continue; }
+          flush();
+          a = b = c;
+        }
+        flush();
+        return out.join(', ');
+      };
+      bits.push(el('div', { class: 'arc-verdict-who' },
+        Array.from(groups).map(([what, cs]) => el('div', {
+          class: 'arc-verdict-grp', 'data-n': String(cs.length) }, [
+          el('span', { class: 'arc-verdict-chans',
+                       text: runs(cs) + (cs.length > 1
+                         ? ' (' + cs.length + ' channels)' : '') }),
+          el('span', { text: what }),
+        ]))));
     } else {
       /* "Nothing is excluded" used to be followed by "every channel goes
          into the connectivity analysis", which is a claim about the
@@ -4671,8 +4697,8 @@ BARRY.arcmode = (function () {
               + '. This pane is not drawing ' + (missing.length === 1
                 ? 'that channel' : 'those channels')
               + ' — tick ' + (missing.length === 1 ? 'it' : 'them')
-              + ' in the channel list, or turn even-only off, to see the '
-              + 'stretches. The decision holds either way.' }));
+              + ' in the channel list to see the stretches. The decision '
+              + 'holds either way.' }));
     }
     return el('div', { class: 'arc-chan-box' }, kids);
   }
@@ -4895,19 +4921,35 @@ BARRY.arcmode = (function () {
           }
 
           // The row's own word, so the channel's fate is readable without
-          // going back to the panel for it.
-          ctx.fillStyle = col;
-          ctx.globalAlpha = 0.9;
-          ctx.font = '9px ui-monospace, monospace';
+          // going back to the panel for it -- where the row has room for a
+          // line of text. Thirty-two rows in a short pane do not, and the
+          // words then piled on top of each other into a grey smear over
+          // the traces; there the colour of the stretch says it, and only
+          // the channel being edited gets its words, on a backing so they
+          // read over its neighbours.
           const of = C.names(view).length;
           const atT = view === 'transition' ? ' at the transitions' : '';
-          ctx.fillText(drops ? C.grade(lost.length, of) + atT
-                               + ' — will be removed'
-                       : lost.length ? C.grade(lost.length, of) + atT
-                                       + ' — kept'
-                       : 'grazed the rail — kept',
-                       padL + 4, y + 9);
-          ctx.globalAlpha = 1;
+          const say = drops ? C.grade(lost.length, of) + atT
+                              + ' — will be removed'
+                      : lost.length ? C.grade(lost.length, of) + atT
+                                      + ' — kept'
+                      : 'grazed the rail — kept';
+          const roomy = rowH >= 13;
+          if (roomy || csc === pick) {
+            ctx.font = (rowH >= 16 ? 10 : 9) + 'px ui-monospace, monospace';
+            const tx = padL + 4, ty = roomy ? y + Math.min(11, rowH - 3)
+                                            : y + rowH / 2 + 3;
+            if (!roomy) {
+              const tw = ctx.measureText(say).width;
+              ctx.fillStyle = BARRY.token('--bg-2');
+              ctx.globalAlpha = 0.92;
+              ctx.fillRect(tx - 3, ty - 10, tw + 6, 13);
+            }
+            ctx.fillStyle = col;
+            ctx.globalAlpha = 0.9;
+            ctx.fillText(say, tx, ty);
+            ctx.globalAlpha = 1;
+          }
 
           // The row being edited, framed in the mode's colour.
           if (csc === pick) {
@@ -4957,7 +4999,7 @@ BARRY.arcmode = (function () {
     exit,
     draw,
     goTo,
-    /* Toggling even-only reopens the recording and replaces the session
+    /* Toggling invert reopens the recording and replaces the session
        object. The panel is repainted with it, because which channels the
        pane draws has just changed and the panel says so out loud. */
     rebind: (s) => { sess = s; if (kind) render(); },

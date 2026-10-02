@@ -597,8 +597,6 @@ def describe_input(session, spec, used=None, band_locked=None):
         bits.append("%d bad excluded" % n_bad)
     if session.get("invert"):
         bits.append("inverted")
-    if session.get("even_only"):
-        bits.append("even only")
     return "  \u00b7  ".join(bits)
 
 

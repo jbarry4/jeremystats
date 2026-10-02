@@ -1081,7 +1081,7 @@ def _signals_for_windows(folder, chan_map, windows, exclude=(),
     # this clipped is most of the data.
     ex = _exclude_map(exclude, windows)
     every = set.intersection(*ex.values()) if ex else set()
-    files = dict(nlx.list_csc_files(folder, even_only=False))
+    files = dict(nlx.list_csc_files(folder))
     origin = nlx.recording_start_us(folder)
     if origin is None:
         raise CouplingError(
@@ -1802,8 +1802,8 @@ def region_signals(folder, channels_by_region, t0, t1, exclude=(),
     """One window of every region, decimated, averaged over usable wires.
 
     `channels_by_region` is anything `region_map` understands. `exclude` is
-    CSC NUMBERS -- never row indices, which move the moment somebody toggles
-    even-only -- and is normally `excluded_for(banked_event)`.
+    CSC NUMBERS -- never row indices, which move the moment a channel file
+    goes missing -- and is normally `excluded_for(banked_event)`.
 
     Returns `{"fs", "t0", "t1", "regions": {name: {...}}}` where each region
     carries its `signal` (or None), the channels it was actually made from,

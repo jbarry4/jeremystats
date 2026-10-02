@@ -516,8 +516,7 @@ class Store:
         """`bad` is a list of CSC channel NUMBERS (not row indices).
 
         Channel numbers are used deliberately: row indices shift the moment
-        someone toggles even-only or a channel file goes missing, but CSC14 is
-        always CSC14.
+        a channel file goes missing, but CSC14 is always CSC14.
         """
         patch = {"bad_channels": sorted({int(b) for b in bad})}
         if note is not None:

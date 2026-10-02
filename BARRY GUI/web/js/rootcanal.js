@@ -66,7 +66,33 @@ BARRY.rootcanal = (function () {
      half-width on; 25 ms because it is v4's `--win-ms`; 500-1000 Hz because
      it is v5's band. All four are FIT params on the server: changing them
      re-filters the cached snippets and never re-reads the recording. */
-  const DEF = { lo_hz: 1, hi_hz: 100, win_ms: 25, band_lo: 500, band_hi: 1000,
+  /* WHICH FILTER AMPLITUDE AND HALF-WIDTH ARE MEASURED ON -- four choices,
+     the server's `rootcanal.FILTERS` mirrored here so the panel can name a
+     preset before it has been fitted. A preset is its own numbers; only
+     Custom reads the corner fields and the mains box. LFP stays the default
+     so nothing already fitted moves under anyone. */
+  const FILTERS = {
+    none: { label: 'No filter', lo_hz: 0, hi_hz: 0, mains_out: false,
+            title: 'The stored 2 kHz snippet as it is. Nothing taken out, '
+                 + 'the 60 Hz mains included -- the baseline every other '
+                 + 'choice is a change from.' },
+    ds: { label: 'DS', lo_hz: 5, hi_hz: 100, mains_out: true,
+          title: 'The dentate-spike filter: 5–100 Hz, the band Incisor found '
+               + 'these on and X-ray measures them on, with the 60 Hz mains '
+               + 'fitted out the way the CSD’s is.' },
+    lfp: { label: 'LFP', lo_hz: 1, hi_hz: 100, mains_out: false,
+           title: '1–100 Hz, the LFP / morphology band the epilepsy '
+                + 'literature measures field-spike shape on '
+                + '(ied_ds_lit.py). The mains is left in, as that band is '
+                + 'used. This tool’s default since it was built.' },
+    custom: { label: 'Custom', title: 'Your own corners, with the 60 Hz '
+                                    + 'mains taken out or not.' },
+  };
+  const FILTER_ORDER = ['none', 'ds', 'lfp', 'custom'];
+  const presetOf = (f) => (f && f !== 'custom' && FILTERS[f]) || null;
+
+  const DEF = { filt: 'lfp', mains_out: true,
+                lo_hz: 1, hi_hz: 100, win_ms: 25, band_lo: 500, band_hi: 1000,
                 /* How far either side of the peak the half-amplitude
                    crossings are hunted. 50 ms is v1's own search; wider finds
                    the slow ones, and every event only found that way is
@@ -98,6 +124,7 @@ BARRY.rootcanal = (function () {
     from_version: null,   // a version ref, or null for "as it is now"
     gid: null,
     read: null,           // the read hash, once there is one
+    filt: DEF.filt, mains_out: DEF.mains_out,
     lo_hz: DEF.lo_hz, hi_hz: DEF.hi_hz, win_ms: DEF.win_ms,
     band_lo: DEF.band_lo, band_hi: DEF.band_hi, cross_ms: DEF.cross_ms,
     /* The two overrides, both FIT params so a result can be rebuilt from
@@ -114,10 +141,29 @@ BARRY.rootcanal = (function () {
      band -- the picture would change for a reason nobody asked for. These
      only reach `q` when Recompute is pressed. */
   const pend = {
+    filt: DEF.filt, mains_out: DEF.mains_out,
     lo_hz: DEF.lo_hz, hi_hz: DEF.hi_hz, win_ms: DEF.win_ms,
     band_lo: DEF.band_lo, band_hi: DEF.band_hi, cross_ms: DEF.cross_ms,
   };
-  const PKEYS = ['lo_hz', 'hi_hz', 'win_ms', 'band_lo', 'band_hi', 'cross_ms'];
+  const PKEYS = ['filt', 'mains_out', 'lo_hz', 'hi_hz', 'win_ms', 'band_lo',
+                 'band_hi', 'cross_ms'];
+  /* Two of them are not numbers: the filter's name and the mains box. */
+  const asParam = (k, v) => (k === 'filt' ? String(v)
+    : k === 'mains_out' ? (v === true || v === 'true') : Number(v));
+
+  /* The filter a set of params names, in words -- off the preset where it is
+     one, so what is named is what the server applies. */
+  function filterWords(p, short) {
+    const f = (p && p.filt) || DEF.filt;
+    if (f === 'none') return short ? 'no filter' : 'no filter (60 Hz mains left in)';
+    const pre = FILTERS[f] && f !== 'custom' ? FILTERS[f] : null;
+    const lo = pre ? pre.lo_hz : Number(p.lo_hz);
+    const hi = pre ? pre.hi_hz : Number(p.hi_hz);
+    const out = pre ? pre.mains_out : !!asParam('mains_out', p.mains_out);
+    const name = f === 'custom' ? 'custom' : pre.label;
+    const band = lo > 0 ? hz(lo) + '–' + hz(hi) + ' Hz' : 'low-pass ' + hz(hi) + ' Hz';
+    return name + ' ' + band + (out ? ', mains out' : (short ? '' : ', mains left in'));
+  }
 
   let cands = null;       // sets that could be put through this
   let job = null;         // the read, while it is happening
@@ -349,7 +395,14 @@ BARRY.rootcanal = (function () {
          cache is keyed on the stamps, not the version label, and saying
          which read is meant is cheaper than the server working it out. */
       read: q.read,
-      lo_hz: +q.lo_hz, hi_hz: +q.hi_hz, win_ms: +q.win_ms,
+      /* Under a preset, the preset's own numbers -- not the corners last
+         typed for Custom, which the server would ignore but a banked
+         request would still carry, saying 3–150 Hz about a fit on LFP. */
+      filt: q.filt,
+      mains_out: presetOf(q.filt) ? presetOf(q.filt).mains_out : !!q.mains_out,
+      lo_hz: presetOf(q.filt) ? presetOf(q.filt).lo_hz : +q.lo_hz,
+      hi_hz: presetOf(q.filt) ? presetOf(q.filt).hi_hz : +q.hi_hz,
+      win_ms: +q.win_ms,
       band_lo: +q.band_lo, band_hi: +q.band_hi, cross_ms: +q.cross_ms,
       flips: q.flips.slice(),
       centres: q.centres ? q.centres.map((c) => c.slice()) : null,
@@ -385,7 +438,13 @@ BARRY.rootcanal = (function () {
        where the form is still asking that. It can round a corner or cap a
        band; the chips then describe the picture rather than the request. */
     const p = fit.params || {};
+    // A preset's corners and mains setting are the preset's, not the form's:
+    // copied back, they would overwrite what was typed for Custom, and
+    // choosing Custom again would not show it.
+    const presetOwns = p.filt && p.filt !== 'custom'
+      ? new Set(['lo_hz', 'hi_hz', 'mains_out']) : new Set();
     for (const k of PKEYS) {
+      if (presetOwns.has(k)) continue;
       if (p[k] != null && String(body[k]) === String(q[k])
           && String(pend[k]) === String(q[k])) {
         q[k] = p[k];
@@ -415,14 +474,18 @@ BARRY.rootcanal = (function () {
   function problems(p) {
     const out = [];
     const n = (k) => Number(p[k]);
-    if (!(n('lo_hz') >= 0)) out.push('the filter’s low corner is not a number');
-    if (!(n('hi_hz') > 0)) out.push('the filter’s high corner is not a number');
-    if (n('hi_hz') <= n('lo_hz')) {
-      out.push('the filter’s high corner has to be above its low one');
-    }
-    if (n('hi_hz') > LP_MAX) {
-      out.push('the snippets are kept at 2 kHz, so the filter stops at '
-               + LP_MAX + ' Hz');
+    // The corners only mean anything on a custom filter; a preset is its
+    // own numbers.
+    if (p.filt === 'custom') {
+      if (!(n('lo_hz') >= 0)) out.push('the filter’s low corner is not a number');
+      if (!(n('hi_hz') > 0)) out.push('the filter’s high corner is not a number');
+      if (n('hi_hz') <= n('lo_hz')) {
+        out.push('the filter’s high corner has to be above its low one');
+      }
+      if (n('hi_hz') > LP_MAX) {
+        out.push('the snippets are kept at 2 kHz, so the filter stops at '
+                 + LP_MAX + ' Hz');
+      }
     }
     if (!(n('win_ms') >= 1) || n('win_ms') > WIN_MAX) {
       out.push('the amp window has to be 1 to ' + WIN_MAX + ' ms either side '
@@ -460,7 +523,7 @@ BARRY.rootcanal = (function () {
     if (!pending() || fitting) return false;
     const bad = problems(pend);
     if (bad.length) { toast('Not yet: ' + bad[0] + '.', 'warn', 7000); return false; }
-    for (const k of PKEYS) q[k] = Number(pend[k]);
+    for (const k of PKEYS) q[k] = asParam(k, pend[k]);
     refit();
     swapTop();
     return true;
@@ -1047,7 +1110,7 @@ BARRY.rootcanal = (function () {
         ? 'This picture is still the previous answer, computed with these '
           + 'settings. Recompute to see the new ones.'
         : 'The filter and the band this picture was computed with.',
-      text: hz(p.lo_hz) + '–' + hz(p.hi_hz) + ' Hz filter  ·  ±'
+      text: filterWords(p, true) + '  ·  ±'
             + hz(p.win_ms) + ' ms  ·  half-width ±'
             + hz(p.cross_ms != null ? p.cross_ms : q.cross_ms) + ' ms  ·  '
             + hz(p.band_lo) + '–' + hz(p.band_hi)
@@ -1091,12 +1154,30 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'card rc-controls' }, [
       el('div', { class: 'rc-group' }, [
         el('span', { class: 'rc-group-l', text: 'Amplitude and width' }),
-        num('lo_hz', 'filter', { unit: '–', min: 0, max: LP_MAX, title:
-          'The low corner of the zero-phase filter amplitude and half-width '
-          + 'are measured through. 1 Hz by default.' }),
-        num('hi_hz', '', { unit: 'Hz', min: 1, max: LP_MAX, title:
-          'The high corner. 100 Hz by default; the snippets are kept at '
-          + '2 kHz, so up to ' + LP_MAX + ' Hz means something.' }),
+        el('span', { class: 'rc-num-l', text: 'filter' }),
+        BARRY.ui.seg(FILTER_ORDER.map((k) => [k, FILTERS[k].label,
+                                              FILTERS[k].title]),
+          pend.filt, (v) => { pend.filt = v; swapTop(); tickPending(); },
+          { extra: 'rc-filt' }),
+        pend.filt === 'custom' ? num('lo_hz', '', { unit: '–', min: 0,
+          max: LP_MAX, title: 'The low corner of the zero-phase filter '
+          + 'amplitude and half-width are measured through. 0 makes it a '
+          + 'low-pass.' }) : null,
+        pend.filt === 'custom' ? num('hi_hz', '', { unit: 'Hz', min: 1,
+          max: LP_MAX, title: 'The high corner. The snippets are kept at '
+          + '2 kHz, so up to ' + LP_MAX + ' Hz means something.' }) : null,
+        pend.filt === 'custom' ? el('label', { class: 'rc-num rc-mains',
+          title: 'Fit the 60 Hz mains out of each contact before filtering, '
+               + 'the way the CSD’s is. On PTEN m1 s2 the mains left in '
+               + 'put 23 of 64 events’ measurement on a mains-heavy '
+               + 'contact.' }, [
+          el('input', { type: 'checkbox',
+            checked: asParam('mains_out', pend.mains_out) ? 'checked' : null,
+            onchange: (e) => { pend.mains_out = e.target.checked;
+                               tickPending(); } }),
+          el('span', { class: 'rc-num-l', text: '60 Hz out' }),
+        ]) : el('span', { class: 'hint rc-filt-is',
+                          text: filterWords(pend).replace(/^\S+ /, '') }),
         num('win_ms', 'window ±', { unit: 'ms', min: 1, max: WIN_MAX, title:
           'How far either side of the stamp the max-amp contact and its '
           + 'peak are looked for. v4 used 25 ms.' }),
@@ -1373,10 +1454,19 @@ BARRY.rootcanal = (function () {
       why ? el('p', { class: 'rc-ev-why', text: why }) : null,
       el('div', { class: 'rc-ev-grid' }, [
         cell('rcTrace', 'Max-amp contact', (e.contact != null
-          ? 'CSC' + e.contact : 'the contact the read names') + ', the fit filter'),
+          ? 'CSC' + e.contact : 'the contact the read names') + ', '
+          + filterWords(shownParams(), true)),
         cell('rcSpec', 'Spectrum', 'event against its baseline'),
         cell('rcStack', 'Every contact', 'max contact marked'),
-        cell('rcCsd', 'CSD', 'the fit filter, down the probe'),
+        /* Not the fit filter: the server takes the CSD on the dentate-spike
+           band with the mains fitted out, and says so on the answer. On the
+           fit filter, mains that differs a little between contacts survived
+           the second difference and striped the picture. Before the answer
+           arrives, the same words the server uses. */
+        cell('rcCsd', 'CSD', ((evData && evData.ok !== false && evData.csd
+                               && evData.csd.filter)
+                              || '5–100 Hz, 60 Hz mains taken out')
+                             + ' · down the probe'),
       ]),
     ].filter(Boolean));
   }
@@ -1484,8 +1574,11 @@ BARRY.rootcanal = (function () {
      event's class and nothing about its trace, so it does not refetch. */
   const loadEvent = debounce(async function loadEvent_() {
     if (picked == null || !q.read || !fit || !fit.ok) return;
-    const key = JSON.stringify([picked, q.read, q.lo_hz, q.hi_hz, q.win_ms,
-                                q.band_lo, q.band_hi, q.cross_ms]);
+    // The filter is in it: on a new filter the same event's trace is a
+    // different trace, and a key without it showed the old one.
+    const key = JSON.stringify([picked, q.read, q.filt, q.mains_out, q.lo_hz,
+                                q.hi_hz, q.win_ms, q.band_lo, q.band_hi,
+                                q.cross_ms]);
     if (key === evKey && evData) { drawEvent(); return; }
     const mine = ++evGen;
     evBusy = true;
@@ -3197,13 +3290,14 @@ BARRY.rootcanal = (function () {
         evs: poolEvents().filter((x) => x.m === e.m),
         lo: pr.lo_hz != null ? pr.lo_hz : DEF.lo_hz,
         hi: pr.hi_hz != null ? pr.hi_hz : DEF.hi_hz,
+        mains: !!pr.mains_out,
       };
     }
     const e = pickedEvent();
     if (!e || !fit || !fit.ok) return null;
     const p = shownParams();
     return { gid: q.gid, now: e, evs: fit.events || [], lo: p.lo_hz,
-             hi: p.hi_hz };
+             hi: p.hi_hz, mains: !!asParam('mains_out', p.mains_out) };
   }
 
   function xUrl(path, t) {
@@ -3215,8 +3309,11 @@ BARRY.rootcanal = (function () {
       panes: JSON.stringify([{ panel: 'traces' }, { panel: 'csd' }]),
       t0: Math.max(0, t - 0.25).toFixed(4),
       span: '0.5',
-      // The fit's own filter, so the window shows what was measured.
+      // The fit's own filter, so the window shows what was measured: 0
+      // and 0 is Xplorefinder's "no filter", and a filter that took the
+      // mains out asks for its notch.
       hp: String(p.lo_hz), lp: String(p.hi_hz),
+      notch: xt.mains ? '60' : '0',
       chrome: 'notabs,noheads',
       role: 'rootcanal',
       theme: (BARRY.state && BARRY.state.theme) || 'dark',
@@ -3389,7 +3486,7 @@ BARRY.rootcanal = (function () {
      different settings without saying so is not one question. */
   function singleParams() {
     const out = {};
-    for (const k2 of PKEYS) out[k2] = Number(q[k2]);
+    for (const k2 of PKEYS) out[k2] = asParam(k2, q[k2]);
     return out;
   }
 
@@ -3916,8 +4013,7 @@ BARRY.rootcanal = (function () {
     kids.push(el('p', { class: 'hint', text:
       'A banked result reads no recording. An unbanked one is a Root Canal '
       + 'read cached on this machine, fitted at Single’s settings as they '
-      + 'stand when it is ticked: ' + hz(sp.lo_hz) + '–' + hz(sp.hi_hz)
-      + ' Hz, ±' + hz(sp.win_ms) + ' ms, half-width ±' + hz(sp.cross_ms)
+      + 'stand when it is ticked: ' + filterWords(sp) + ', ±' + hz(sp.win_ms) + ' ms, half-width ±' + hz(sp.cross_ms)
       + ' ms, ' + hz(sp.band_lo) + '–' + hz(sp.band_hi) + ' Hz. Only sets '
       + 'that have been through Braces are offered.' }));
     const cs = pool.cands || [];

@@ -747,7 +747,7 @@ def recording_span_s(folder):
     if origin is None:
         return None
     ends = []
-    for _num, path in nlx.list_csc_files(folder, even_only=False):
+    for _num, path in nlx.list_csc_files(folder):
         try:
             hdr = nlx.read_header(path)
             fs = float(nlx._header_float(hdr, "SamplingFrequency")
@@ -1003,7 +1003,7 @@ def _measure(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=(),
     if not pairs:
         return empty()
 
-    files = nlx.list_csc_files(folder, even_only=False)
+    files = nlx.list_csc_files(folder)
     if not files:
         return empty()
 

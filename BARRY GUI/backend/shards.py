@@ -97,6 +97,31 @@ EPOCH = "0000-00-00T00:00:00"
 
 _LOCK = threading.RLock()
 
+#: Paths under GUI_logs whose files are written once, by one machine, and
+#: never edited -- so they cannot conflict on a pull even without a machine
+#: tag in the name. A run record; a feedback screenshot; an artifact
+#: version's payload, which is content-addressed (`v<N>__<digest>.json`) and
+#: compared rather than rewritten if it is written again (artifacts.py,
+#: `_write_snap`). Read by app.conflict_audit and tools/conflict_check.py.
+WRITE_ONCE = ("runs/", "feedback/screenshots/", "artifacts/snap/")
+
+#: Called with the Book after this machine writes or erases one of its
+#: records, or None. app.py sets it so a change to something shared asks for
+#: a push straight away, whoever made it -- a request, or a job finishing in
+#: a thread, which no request ever sees. Must be cheap and must not raise
+#: into the write; it is called with the module lock held.
+ON_CHANGE = None
+
+
+def _changed(book):
+    hook = ON_CHANGE
+    if hook is None:
+        return
+    try:
+        hook(book)
+    except Exception:                                    # noqa: BLE001
+        pass
+
 # Merge kinds. See the module docstring.
 LWW, FIRST, UNION, MAPLWW, BYID = "lww", "first", "union", "maplww", "byid"
 
@@ -620,6 +645,7 @@ class Book:
             self._all_sig = None
             if self.store:
                 self.store._stage(path)
+            _changed(self)
             merged = self.read(base)
             return merged if merged is not None else rec
 
@@ -682,6 +708,8 @@ class Book:
                         self.store._stage(path)
                 except OSError:
                     pass
+            if gone:
+                _changed(self)
             return gone
 
     # -- migration ------------------------------------------------------

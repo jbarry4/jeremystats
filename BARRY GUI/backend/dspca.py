@@ -1177,8 +1177,8 @@ def rows_for_box(nums, p, runs=None):
 
     Held as numbers rather than indices because a run is saved and reopened,
     and an index into a channel list is only meaningful against the list it
-    was taken from -- a recording read with `even_only` on, or a probe column
-    selected, and row 12 is a different wire.
+    was taken from -- a probe column selected, or a channel left out, and
+    row 12 is a different wire.
     """
     if p.sel_lo is None or p.sel_hi is None:
         return None

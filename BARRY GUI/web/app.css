@@ -9247,11 +9247,19 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   background: var(--bg-2); border-top: 2px solid var(--mode);
 }
 .arc-bar {
-  display: flex; align-items: center; gap: var(--sp-10); flex: none;
-  padding: 5px var(--sp-12);
+  display: flex; align-items: center; gap: var(--sp-8) var(--sp-12); flex: none;
+  flex-wrap: wrap;
+  padding: var(--sp-8) var(--sp-12);
   background: var(--bg-2); border-bottom: 1px solid var(--line-soft);
   font-size: var(--fs-115);
 }
+/* Room to breathe (2026-10-02): the pair's name is never broken across two
+ * lines, its "why" takes what is left and wraps inside itself, and the key
+ * reminders get a line of their own under everything rather than being
+ * squeezed between the switch and the buttons. */
+.arc-bar-pair { white-space: nowrap; }
+.arc-bar-why { flex: 1 1 220px; min-width: 0; }
+.arc-bar-keys { order: 10; flex-basis: 100%; row-gap: var(--sp-4); }
 .arc-bar strong { color: var(--mode); }
 .arc-bar-n {
   font-variant-numeric: tabular-nums; font-family: var(--mono);
@@ -9296,9 +9304,17 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .arc-verdict strong { color: var(--err); font-size: var(--fs-135); }
 .arc-verdict.none { background: var(--ok-soft); }
 .arc-verdict.none strong { color: var(--ok); }
-.arc-verdict-who, .arc-verdict-kept {
+.arc-verdict-kept {
   font-family: var(--mono); font-size: var(--fs-11);
 }
+/* The channels going, one line per thing they lose, under the sentence:
+ * a group of channels and the windows they lose, never a wall of them. */
+.arc-verdict-who {
+  flex-basis: 100%; display: flex; flex-direction: column; gap: var(--sp-4);
+  font-size: var(--fs-12); line-height: 1.5;
+}
+.arc-verdict-grp { display: flex; flex-wrap: wrap; gap: 2px var(--sp-8); }
+.arc-verdict-chans { font-family: var(--mono); font-weight: 600; }
 .arc-verdict-who { color: var(--err); }
 .arc-verdict.none .arc-verdict-who { color: var(--ok); }
 .arc-verdict-kept { color: var(--ok); }
@@ -11831,7 +11847,15 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 }
 .rc-note:focus { outline: none; border-color: var(--accent-line); }
 .rc-bulk-card { display: flex; flex-direction: column; gap: var(--sp-8); }
-.rc-bulk { width: 100%; }
+/* Sized to what is in it, not to the panel. At full width on a 2560 px
+   screen "set" and "events" sat a screen apart -- measured: a 2014 px table
+   for four short columns -- and reading across a row was a hunt. */
+.rc-bulk { width: auto; max-width: 100%; }
+/* The fit filter's four choices, and what the chosen preset is in words. */
+.rc-filt { flex: none; }
+.rc-filt-is { white-space: nowrap; }
+.rc-mains { display: inline-flex; align-items: center; gap: var(--sp-4); }
+.rc-bulk td, .rc-bulk th { padding-right: var(--sp-16); }
 .rc-bulk td, .rc-bulk th { font-size: var(--fs-115);
                            padding: var(--sp-2) var(--sp-6); }
 .rc-bulk tr.bad td { color: var(--err); }
@@ -12153,3 +12177,111 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
   margin: 0; font-family: var(--mono); font-size: var(--fs-12); color: var(--accent);
 }
 .bank-dlg-nowho { color: var(--warn); }
+
+/* --------------------------------------------------------------------------
+   Has it reached the shared database (js/syncstate.js)
+   --------------------------------------------------------------------------
+   A quiet mark, because it sits in rows people read for other reasons: a
+   dot and a word, coloured by state. Not a .pill -- that is a filter button
+   everywhere else, and this does nothing when pressed. */
+.sync-mark {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  font-size: var(--fs-9); line-height: 1.3; white-space: nowrap;
+  color: var(--text-3); letter-spacing: 0.01em;
+}
+.sync-mark:empty { display: none; }
+.sync-mark::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; flex: none;
+}
+.sync-mark.synced { color: var(--ok); }
+.sync-mark.waiting { color: var(--accent); }
+.sync-mark.stuck { color: var(--err); }
+.sync-mark.local::before { background: transparent; border: 1px solid currentColor; }
+.sync-mark.unknown::before,
+.sync-mark.off::before { background: transparent; border: 1px dashed currentColor; }
+/* The bank list's row is a grid; the mark takes the top right, after the
+   count, so the name keeps the width it had. */
+.bank-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "name  n    sync"
+                       "type  src  src";
+}
+.bank-row .sync-mark { grid-area: sync; justify-self: end; }
+/* The rail chip, by where the shared copy stands. */
+.chip-btn.sync-ok svg { color: var(--ok); }
+.chip-btn.sync-busy svg { color: var(--accent); }
+.chip-btn.sync-warn { border-color: var(--warn); color: var(--warn); }
+.chip-btn.sync-bad { border-color: var(--err); color: var(--err); }
+/* On the shelf, after the time it was last touched. */
+.csr-when .sync-mark { margin-left: var(--sp-6); }
+
+/* ---------- Checkup · AI Beta (aibeta.js) ----------
+   A sandbox inside Checkup: a model trained on finished sets and tested on
+   mice it never saw. The counts and the progress bar are Braces' own
+   (.br-counts, .br-bar, .br-tbl); only what Braces has no shape for is
+   here. */
+.cur-pane { flex: none; }
+.ai-beta { display: flex; flex-direction: column; gap: var(--sp-12); margin-top: var(--sp-12); }
+.ai-beta .card { margin: 0; display: flex; flex-direction: column; gap: var(--sp-10); }
+.ai-lede {
+  margin: 0; font-size: var(--fs-13); color: var(--text);
+  line-height: 1.5; max-width: 90ch;
+}
+.ai-row { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap; }
+.ai-strong { font-size: var(--fs-125); color: var(--text); font-weight: 600; }
+.ai-plain {
+  margin: 0; font-size: var(--fs-12); color: var(--text-2);
+  line-height: 1.5; max-width: 90ch;
+}
+.ai-toggles { display: flex; flex-wrap: wrap; gap: var(--sp-6); }
+.ai-input-groups { display: flex; flex-direction: column; gap: var(--sp-6); }
+.ai-sub { font-size: var(--fs-11); color: var(--text-3); }
+.ai-go {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: var(--sp-12); flex-wrap: wrap;
+  border-top: 1px solid var(--line-soft); padding-top: var(--sp-10);
+}
+.ai-plan { flex: 1 1 280px; display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.ai-plan .hint { margin: 0; }
+.ai-bad { color: var(--warn); }
+.ai-warn { border-left: 3px solid var(--warn); }
+.ai-pick {
+  border: 1px solid var(--line); border-radius: var(--r-5);
+  padding: var(--sp-8); display: flex; flex-direction: column; gap: var(--sp-6);
+}
+.ai-pick-list { display: flex; flex-direction: column; max-height: 320px; overflow-y: auto; }
+.ai-pick-row {
+  display: grid; align-items: baseline; gap: var(--sp-10);
+  grid-template-columns: auto minmax(12rem, 1.2fr) minmax(10rem, 1.4fr) auto minmax(8rem, auto);
+  padding: var(--sp-6); border-bottom: 1px solid var(--line-soft);
+  font-size: var(--fs-12); cursor: pointer;
+}
+.ai-pick-row.static { grid-template-columns: minmax(12rem, 1fr) 2fr; cursor: default; }
+.ai-pick-row.off { opacity: .55; }
+.ai-pick-row:last-child { border-bottom: 0; }
+.ai-pick-row:hover { background: var(--bg-hover); }
+.ai-pick-row.static:hover { background: none; }
+.ai-pick-name { color: var(--text); }
+.ai-pick-meta { color: var(--text-3); font-size: var(--fs-11); }
+.ai-pick-n { color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ai-job { gap: var(--sp-8); }
+.ai-job p.hint { margin: 0; }
+.ai-result-head strong { font-size: var(--fs-14); }
+.ai-dl > div { grid-template-columns: 13rem 1fr; }
+.ai-bars { display: flex; flex-direction: column; gap: var(--sp-4); }
+.ai-bar-row {
+  display: grid; grid-template-columns: 12rem 1fr 7rem;
+  align-items: center; gap: var(--sp-10); font-size: var(--fs-12);
+}
+.ai-bar { height: 8px; background: var(--bg-3); border-radius: var(--r-2); overflow: hidden; }
+.ai-bar i { display: block; height: 100%; background: var(--accent); }
+.ai-bar-n {
+  font-family: var(--mono); font-size: var(--fs-115); color: var(--text-2);
+  text-align: right;
+}
+table.ai-tbl tr { cursor: default; }
+.ai-runs table.ai-tbl tr { cursor: pointer; }
+table.ai-tbl td.ai-wrap { white-space: normal; min-width: 10rem; }
+table.ai-tbl tr.ai-on td { background: var(--accent-soft); color: var(--text); }
+.ai-notes p { margin: 0 0 var(--sp-4); }

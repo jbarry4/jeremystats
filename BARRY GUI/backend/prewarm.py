@@ -72,7 +72,9 @@ def key_for(session, spec):
     clean = {k: v for k, v in (spec or {}).items()
              if k not in _IGNORE and not k.startswith("_")}
     blob = json.dumps(
-        [session.get("path"), session.get("even_only"), clean],
+        # `False` where whether it was an even-only read used to be: the
+        # read is always every channel now, and a constant keeps old keys.
+        [session.get("path"), False, clean],
         sort_keys=True, default=str)
     return hashlib.sha1(blob.encode("utf-8")).hexdigest()
 

@@ -69,7 +69,7 @@ let CTX = null;
 async function makeContext(path) {
   const open = await (await fetch('/api/csc/open', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: path, even_only: false, invert: true }),
+    body: JSON.stringify({ path: path, invert: true }),
   })).json();
   const info = open.session || open;
   const chans = (info.channels || []).map((c, i) => ({
@@ -81,7 +81,7 @@ async function makeContext(path) {
     bad: i === 1,
   }));
   return {
-    path: path, evenOnly: false, invert: true,
+    path: path, invert: true,
     label: info.label || path,
     /* A short window on the opener, so "Use the view" has somewhere real to
        point and the whole-recording default has something to differ from. */

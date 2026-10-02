@@ -136,7 +136,7 @@ def synthetic(n_ch=12, seconds=120.0, fs=1000.0, seed=7, n_events=140):
 def real_slice(path, seconds=60.0, max_ch=8):
     """A real recording, concatenated, the way the detector would read it."""
     from backend import continuity, csc
-    sess = csc.open_session(path, even_only=True, invert=True)
+    sess = csc.open_session(path, invert=True)
     rep = continuity.check(path)
     if not rep or not rep.get("ok"):
         raise SystemExit("That recording has no usable segmentation.")

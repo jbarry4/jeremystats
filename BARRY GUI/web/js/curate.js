@@ -1657,7 +1657,7 @@ BARRY.curate = (function () {
     get review() { return review; },
     /* Point at a different session object for the same recording.
 
-       Toggling even-only reopens the recording, which replaces the session
+       Toggling invert reopens the recording, which replaces the session
        object. This module keeps its own reference; without being told, it
        carries on drawing onto the replaced one, and the candidate marks
        look to you like they have been lost. */

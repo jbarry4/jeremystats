@@ -55,7 +55,27 @@ BARRY.views.xplore = (function () {
   /* ==================================================================
      Session lifecycle
      ================================================================== */
-  async function openSession(path, opts) {
+  /* One read per recording at a time.
+
+     Opening is a request that takes seconds, and the recording is only in
+     `XF.order` once it has answered -- so a double click, or a tab from the
+     catalogue while the same open was in flight, made two sessions of one
+     recording, two tabs, and panes split between them. A second ask for a
+     path already being opened waits for the first. */
+  const OPENING = new Map();
+
+  function openSession(path, opts) {
+    if (!path) return Promise.resolve(null);
+    const o = opts || {};
+    if (o.duplicate || o.replace) return openSessionNow(path, o);
+    if (OPENING.has(path)) return OPENING.get(path);
+    const p = openSessionNow(path, o)
+      .finally(() => { OPENING.delete(path); });
+    OPENING.set(path, p);
+    return p;
+  }
+
+  async function openSessionNow(path, opts) {
     if (!path) return null;
     opts = opts || {};
 
@@ -68,8 +88,7 @@ BARRY.views.xplore = (function () {
 
     const existing = XF.order.find((id) => XF.sessions[id].path === path);
     if (existing && !opts.duplicate) {
-      XF.active = existing;
-      render();
+      showSession(existing);
       return XF.sessions[existing];
     }
 
@@ -77,12 +96,6 @@ BARRY.views.xplore = (function () {
     try {
       info = await apiPost('/api/csc/open', {
         path,
-        /* Deliberately absent unless somebody chose. `!== false` meant
-           "true unless told otherwise", which forced even-only on every
-           recording -- so half of every 64-channel probe never loaded and
-           a channel list of 32 looked entirely plausible. Absent lets the
-           recording answer for itself. */
-        even_only: opts.evenOnly === undefined ? undefined : !!opts.evenOnly,
         invert: opts.invert !== false,
       });
     } catch (e) {
@@ -103,10 +116,6 @@ BARRY.views.xplore = (function () {
       t0: 0, span: Math.min(10, Math.max(0.05, dur)),
       gain: 1, hp: 0, lp: 0, notch: 0,
       normalize: 'shared',
-      // What the server actually settled on, not what we guessed.
-      evenOnly: info.even_only !== undefined ? !!info.even_only
-                                             : !!opts.evenOnly,
-      channelScheme: info.channel_scheme || null,
       nCscFiles: info.n_csc_files || null,
       invert: opts.invert !== false,
       spacing: 50,
@@ -165,10 +174,24 @@ BARRY.views.xplore = (function () {
 
     // First session fills pane 0; later ones take the next free pane if the
     // layout has room, so opening a second session in 2-up just works.
-    if (!XF.panes.length) {
+    /* A re-read keeps the panes it was in, columns and all. They still
+       named the old id, so they drew nothing, and the new copy went into
+       the focused pane on top of them. */
+    const rebound = opts.replace
+      ? XF.panes.filter((p) => p && p.sessionId === opts.replace) : [];
+    rebound.forEach((p) => { p.sessionId = id; });
+    /* Into a probe layout -- this one's or another recording's -- the
+       layout is decided below, by `showSession`. Putting the new recording
+       into the focused pane first left it beside a column of the old one. */
+    const relayout = !rebound.length
+      && (probeSplits(sess) || XF.panes.some((p) => p && p.colTag != null));
+    if (rebound.length || relayout) {
+      /* placed */
+    } else if (!XF.panes.length) {
       XF.panes = [{ sessionId: id, panel: DEFAULT_PANEL }];
     } else {
-      const free = XF.panes.findIndex((p) => !p || !p.sessionId);
+      const free = XF.panes.findIndex((p) => !p || !p.sessionId
+                                             || !XF.sessions[p.sessionId]);
       if (free >= 0) XF.panes[free] = { sessionId: id, panel: DEFAULT_PANEL };
       else if (XF.panes.length < XF.nPanes) XF.panes.push({ sessionId: id, panel: DEFAULT_PANEL });
       else XF.panes[XF.focused] = { sessionId: id, panel: DEFAULT_PANEL };
@@ -198,8 +221,8 @@ BARRY.views.xplore = (function () {
       duration_s: info.duration_s, restored: notes,
     }, sess);
 
-    render();
-    refreshAll();
+    if (relayout) showSession(id);
+    else { render(); refreshAll(); }
     /* If the recording says which probe it is, lay it out that way now.
 
        The control said "Dual array" the moment the recording opened and the
@@ -209,12 +232,10 @@ BARRY.views.xplore = (function () {
        layout that carries the meaning: a pane per line of contacts is the
        whole reason these templates exist.
 
-       Only for a probe that actually divides the array, and only when the
-       panes are still the default one. Somebody who opened a second
-       recording into a two-up they arranged themselves should keep it. */
-    if (probeSplits(sess) && XF.order.length === 1) {
-      layoutProbe(sess, DEFAULT_PANEL);
-    }
+       That now happens above, in `showSession`, for every recording that
+       opens and not only the first: a second recording opened with a dual
+       implant's panes up used to land in one of them and leave the other
+       showing half of the first. */
     syncProbeControl();
     autoImportNev(sess);
     return sess;
@@ -227,6 +248,114 @@ BARRY.views.xplore = (function () {
   function probeSplits(sess) {
     const def = probeDef(sess && sess.probe);
     return !!(def && def.columns && def.columns.length > 1);
+  }
+
+  /* Are the panes this recording's probe layout, a pane per column, in
+     the template's order. Asked rather than remembered: a flag saying
+     "this is a probe layout" is one more thing that can disagree with the
+     panes, and that disagreement was the bug. */
+  function isProbeLayoutOf(sess) {
+    const cols = probeSplits(sess) ? probeColumns(sess) : null;
+    if (!cols || !cols.length) return false;
+    const live = XF.panes.slice(0, XF.nPanes);
+    return live.length === Math.min(MAX_PANES, cols.length)
+      && live.every((p, i) => p && p.sessionId === sess.id
+                              && p.colTag === cols[i].id);
+  }
+
+  /* A pane's column override, all of it. Dropping `channels` and `colTag`
+     and leaving `colLabel` behind kept a pane titled "Array 2" in a
+     layout that no longer had arrays. */
+  function dropColumns(p) {
+    if (!p) return;
+    delete p.channels; delete p.colTag; delete p.colShank; delete p.colLabel;
+  }
+
+  /* Put a recording on screen, in the layout its probe calls for.
+
+     Opening, switching tabs and closing all come through here. Each used to
+     do its own part of this: a tab click only moved `XF.active`, so the
+     probe control followed the recording and the panes did not. A dual
+     implant's two panes stayed up under an H3's tab, and the only way to
+     make them agree was to pick H3 and then pick the probe back. The rule is
+     now one place:
+
+       - a probe that divides the array gets a pane per column, its own;
+       - anything else leaving a probe layout gets one pane;
+       - otherwise the arrangement is the person's: a recording already in a
+         pane is focused there, and one that is not takes the focused pane. */
+  function showSession(id) {
+    const sess = XF.sessions[id];
+    if (!sess) return;
+    XF.active = id;
+    if (probeSplits(sess)) {
+      if (isProbeLayoutOf(sess)) { render(); return; }
+      XF.zoomed = null;
+      if (layoutProbe(sess, panelNow(sess))) return;
+    }
+    if (XF.panes.some((p) => p && p.colTag != null)) {
+      XF.zoomed = null;
+      BARRY.views.xplore.setPanes([{ sessionId: id, panel: panelNow(sess) }],
+                                  { col: 0.5, row: 0.5 });
+      return;
+    }
+    const at = XF.panes.findIndex((p) => p && p.sessionId === id);
+    if (at >= 0 && at < XF.nPanes) {
+      XF.focused = at;
+      if (XF.zoomed != null) XF.zoomed = at;
+      render();
+      return;
+    }
+    const into = Math.max(0, Math.min(XF.focused || 0, XF.nPanes - 1));
+    disposePane(into);
+    XF.panes[into] = { sessionId: id, panel: DEFAULT_PANEL };
+    XF.focused = into;
+    if (XF.zoomed != null) XF.zoomed = into;
+    render();
+    refreshPane(into);
+  }
+
+  /* Every pane showing this recording. */
+  function panesOf(sess) {
+    const out = [];
+    for (let i = 0; i < XF.nPanes; i++) {
+      const p = XF.panes[i];
+      if (p && sess && p.sessionId === sess.id) out.push(i);
+    }
+    return out;
+  }
+
+  /* The samples a trace pane draws.
+
+     Its own window, or the session's last one -- but never the session's
+     for a pane showing one column of a probe. `sess.win` is whichever pane
+     answered last, so a column waiting for its own read drew the OTHER
+     column's channels until it arrived. */
+  function paneWin(pane, sess) {
+    if (!pane) return null;
+    if (pane._win) return pane._win;
+    return (pane.channels && pane.channels.length) ? null
+                                                   : (sess && sess.win) || null;
+  }
+
+  /* The automatic amplitude, one for the recording.
+
+     Each read comes back with a 99.5th percentile of its own channels, and
+     each pane used to draw to its own -- so with no scale pinned the two
+     arrays of a dual implant were drawn at different scales, side by side,
+     while the strip above them showed a number that belonged to one. The
+     largest of them is the one every pane can be drawn at without clipping
+     the other. */
+  function sessAuto(sess, key) {
+    let best = 0;
+    for (const i of panesOf(sess)) {
+      const p = XF.panes[i];
+      const w = p.panel === 'traces' ? paneWin(p, sess) : null;
+      const v = w && Number(w[key || 'robust_auto']);
+      if (v && isFinite(v) && v > best) best = v;
+    }
+    if (!best && sess && sess.win) best = Number(sess.win[key || 'robust_auto']) || 0;
+    return best || null;
   }
 
   /* Session tab colors come from BARRY.hues, which reads the theme, so a
@@ -339,14 +468,42 @@ BARRY.views.xplore = (function () {
     XF.panes.forEach((p, i) => {
       if (p && p.sessionId === id) { disposePane(i); XF.panes[i] = null; }
     });
-    if (XF.active === id) XF.active = XF.order[0] || null;
+    if (XF.zoomed != null && !XF.panes[XF.zoomed]) XF.zoomed = null;
     if (!XF.order.length) {
       for (let i = 0; i < XF.panes.length; i++) disposePane(i);
       XF.panes = [];
+      XF.active = null;
+      XF.focused = 0;
+      XF.zoomed = null;
       $('#xfDrop').classList.remove('hidden');
       $('#paneGrid').classList.add('hidden');
+      render();
+      return;
     }
-    render();
+    /* What is left goes back on screen in its own layout. Closing the
+       recording a dual implant's panes belonged to used to leave two empty
+       panes, and the next recording's probe control saying one thing while
+       the grid said another. */
+    const next = XF.active !== id && XF.sessions[XF.active]
+      ? XF.active
+      : (XF.panes.find((p) => p && XF.sessions[p.sessionId]) || {}).sessionId
+        || XF.order[0];
+    if (!XF.panes[XF.focused]) {
+      const at = XF.panes.findIndex((p) => p && p.sessionId === next);
+      XF.focused = at >= 0 ? at : 0;
+    }
+    const empty = !XF.panes.some((p) => p && XF.sessions[p.sessionId]);
+    if (empty && !probeSplits(XF.sessions[next])) {
+      XF.active = next;
+      BARRY.views.xplore.setPanes([{ sessionId: next, panel: DEFAULT_PANEL }],
+                                  { col: 0.5, row: 0.5 });
+    } else if (empty || XF.panes.some((p) => p && p.colTag != null)
+               || probeSplits(XF.sessions[next])) {
+      showSession(next);
+    } else {
+      XF.active = next;
+      render();
+    }
   }
 
   /* The frequency band a pane is analysing.
@@ -547,11 +704,20 @@ BARRY.views.xplore = (function () {
     const base = Array.from(sess.sel).sort((a, b) => a - b);
     if (!pane || !pane.channels || !pane.channels.length) return base;
     const want = new Set(pane.channels);
-    const keep = base.filter((i) => want.has(i));
-    // If the override and the selection have nothing in common the pane
-    // would go blank with no explanation, so fall back to the override and
-    // let the usual "not in this recording" path speak.
-    return keep.length ? keep : pane.channels.slice();
+    /* Nothing in common is an empty pane, and it says so (colEmptyWords).
+       It used to fall back to the whole column, which drew channels
+       somebody had just unchecked: "1st half" on a dual implant left the
+       second array on screen in full. */
+    return base.filter((i) => want.has(i));
+  }
+
+  /* What a probe-column pane says when none of its channels are selected,
+     or null when that is not why it is empty. */
+  function colEmptyWords(pane, sess) {
+    if (!pane || !pane.channels || !pane.channels.length || !sess) return null;
+    if (paneChans(pane, sess).length) return null;
+    return 'None of ' + (pane.colLabel || 'this column') + '\u2019s '
+           + pane.channels.length + ' channels are selected.';
   }
 
   function fLocked(sess) {
@@ -1089,7 +1255,8 @@ BARRY.views.xplore = (function () {
           document.body.classList.add('dragging-session');
         },
         ondragend: () => document.body.classList.remove('dragging-session'),
-        onclick: () => { XF.active = id; render(); },
+        // On screen, not only chosen: see showSession.
+        onclick: () => showSession(id),
       }, [
         el('span', { class: 'dot', style: 'background:' + s.color }),
         el('span', { class: 'nm', text: s.identity.label || s.info.name }),
@@ -1133,6 +1300,12 @@ BARRY.views.xplore = (function () {
       try { off(); } catch (e) { /* a dead node is fine to ignore */ }
     }
     pane._teardown = [];
+    /* A read still in flight for a pane that is going away was holding a
+       connection and a server thread for an answer nobody would draw. */
+    if (pane._abort) { try { pane._abort.abort(); } catch (e) { /* gone */ } }
+    pane._abort = null;
+    clearTimeout(pane._climTimer);
+    pane._climTimer = null;
     pane._canvas = pane._overlay = pane._readout = null;
     pane._loading = pane._mini = pane._img = pane._grid = null;
     pane._hud = pane._ghost = pane._inputLine = null;
@@ -1211,9 +1384,17 @@ BARRY.views.xplore = (function () {
      button went on saying "off" after a filter had been set. */
   function stripHost(index) {
     if (XF.master >= 0) return document.getElementById('xfMaster');
-    const grid = document.getElementById('paneGrid');
-    const box = grid && grid.children[index];
+    const box = paneBox(index);
     return (box && box.classList.contains('pane')) ? box : null;
+  }
+
+  /* A pane's node, by the index it was built for. Not `grid.children[i]`:
+     a zoomed grid holds only the one pane, so child 0 is pane 3 and
+     child 3 is nothing. */
+  function paneBox(index) {
+    const grid = document.getElementById('paneGrid');
+    return grid ? grid.querySelector(':scope > [data-pane-at="' + index + '"]')
+                : null;
   }
 
   function renderPanes() {
@@ -1252,7 +1433,8 @@ BARRY.views.xplore = (function () {
     const sess = sessionOf(pane);
 
     if (!sess) {
-      const empty = el('div', { class: 'pane empty' }, [
+      const empty = el('div', { class: 'pane empty',
+                                'data-pane-at': String(index) }, [
         el('div', { style: 'text-align:center' }, [
           el('div', { text: XF.order.length ? 'Empty pane — drag a tab here'
                                             : 'Empty pane' }),
@@ -1273,7 +1455,12 @@ BARRY.views.xplore = (function () {
 
     const box = el('div', {
       class: 'pane' + (index === XF.focused ? ' focused' : ''),
-      onmousedown: () => { XF.focused = index; XF.active = pane.sessionId; renderTabs(); },
+      'data-pane-at': String(index),
+      /* The probe control follows the recording, so a click into another
+         recording's pane has to move it too -- renderTabs alone left it
+         naming the last one. */
+      onmousedown: () => { XF.focused = index; XF.active = pane.sessionId;
+                           renderTabs(); syncProbeControl(); },
     });
     makeDropTarget(box, index);
 
@@ -1335,8 +1522,8 @@ BARRY.views.xplore = (function () {
   /* Draggable dividers, laid over the gaps between panes.
 
      They are absolutely positioned rather than being grid items: a grid item
-     would have to be woven into the pane order, and every index in this file
-     assumes grid.children[i] is pane i. */
+     would have to be woven into the pane order. Panes are found by their
+     `data-pane-at`, through paneBox. */
   function addSplitters(grid) {
     // Nothing to drag on the six-up: see applySplit.
     if (XF.nPanes < 2 || XF.nPanes > 4) return;
@@ -1690,8 +1877,7 @@ BARRY.views.xplore = (function () {
         title: 'Full screen \u2014 the whole monitor, nothing else on it',
         onclick: (e) => {
           e.stopPropagation();
-          const box = $('#paneGrid').children[
-            XF.zoomed != null ? 0 : index];
+          const box = paneBox(index);
           goFullscreen(box || document.getElementById('view-xplore'));
         },
       }),
@@ -1890,7 +2076,7 @@ BARRY.views.xplore = (function () {
       const g = geom();
       const x = e.clientX - g.rect.left, y = e.clientY - g.rect.top;
       if (x < g.padL || y < g.y0) return false;
-      const win = pane._win || sess.win;
+      const win = paneWin(pane, sess);
       const lane = (win && win.series && win.series.length)
         ? g.plotH / win.series.length : g.plotH;
       m = { x0: x, x1: x, lane: Math.floor((y - g.y0) / lane) };
@@ -1902,7 +2088,7 @@ BARRY.views.xplore = (function () {
       if (!m) return;
       const g = geom();
       m.x1 = clamp(e.clientX - g.rect.left, g.padL, g.padL + g.plotW);
-      const win = pane._win || sess.win;
+      const win = paneWin(pane, sess);
       const f0 = (m.x0 - g.padL) / g.plotW;
       const f1 = (m.x1 - g.padL) / g.plotW;
       const w = winOf(pane, sess);
@@ -1935,7 +2121,7 @@ BARRY.views.xplore = (function () {
       const g = geom();
       const w = winOf(pane, sess);
       const dt = Math.abs((m.x1 - m.x0) / g.plotW) * w.span;
-      const win = pane._win || sess.win;
+      const win = paneWin(pane, sess);
       if (dt > 0) {
         BARRY.activity.log('measure.read', {
           dt: round(dt, 5), hz: round(1 / dt, 3),
@@ -1969,7 +2155,7 @@ BARRY.views.xplore = (function () {
     sess.overviewReq = true;
     try {
       const res = await apiPost('/api/csc/overview', {
-        path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+        path: sess.path, invert: sess.invert,
         channel: firstSel(sess), bins: 700,
       });
       if (res.ok) sess.overview = res;
@@ -2117,7 +2303,7 @@ BARRY.views.xplore = (function () {
       sess.bandReq[ch] = key;
       try {
         const res = await apiPost('/api/csc/overview', {
-          path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+          path: sess.path, invert: sess.invert,
           channel: ch, bins: 700,
           profile: 'band', band: { lo: b.lo, hi: b.hi },
           measure: sess.stripMeasure || 'abs',
@@ -2400,13 +2586,13 @@ BARRY.views.xplore = (function () {
 
   function scaleControl(index, pane, sess) {
     const isTraces = pane.panel === 'traces';
-    const data = isTraces ? (pane._win || sess.win) : pane._panelData;
+    const data = isTraces ? paneWin(pane, sess) : pane._panelData;
 
     if (!isTraces && !isImagePanel(pane.panel)) {
       return el('span');           // video and tracking have no scale
     }
 
-    const auto = isTraces ? (data && data.robust_auto)
+    const auto = isTraces ? sessAuto(sess)
                           : (data && data.clim_auto);
     const pinned = isTraces ? (sess.ylim != null)
                             : !!(pane.clim || sess.clim);
@@ -2459,13 +2645,16 @@ BARRY.views.xplore = (function () {
 
       if (isTraces) {
         sess.ylim = m;
-        // Drawn from data already in hand, so this is immediate.
-        drawPane(index);
+        /* Drawn from data already in hand, so this is immediate -- in every
+           pane of the recording. The scale is the recording's, and a dual
+           implant's second array went on at the old one until its next
+           read, which is the "the uV doesn't sync" that was reported. */
+        drawSession(sess);
         if (commit) {
           BARRY.activity.log('ylim.change', { ylim: m }, sess);
           queueSaveState(sess);
           publishLink(sess.t0, sess.span, sess);
-          refreshControls(index);
+          refreshSessionControls(sess);
         }
         return;
       }
@@ -2486,8 +2675,16 @@ BARRY.views.xplore = (function () {
         const top = baseClim[1];
         setClim(index, pane, sess, [round(top - m, 6), round(top, 6)]);
       }
+      /* Every pane the scale was set on, not only this one. With a master
+         strip `setClim` writes the limits into all of them, and only the
+         pane the strip was built from was asked for a new image -- so the
+         second array of a dual implant kept its old colours until something
+         else made it read again. */
       clearTimeout(pane._climTimer);
-      pane._climTimer = setTimeout(() => refreshPane(index), commit ? 0 : 220);
+      pane._climTimer = setTimeout(() => {
+        pane._climTimer = null;
+        if (XF.master >= 0) refreshSession(sess); else refreshPane(index);
+      }, commit ? 0 : 220);
       if (commit) {
         BARRY.activity.log('clim.change',
                            { clim: pane.clim, panel: pane.panel }, sess);
@@ -2554,7 +2751,9 @@ BARRY.views.xplore = (function () {
             : 'Scaling to each window. Move the slider to pin it.'),
           onclick: () => {
             if (isTraces) {
-              sess.ylim = pinned ? null : Math.abs(magnitude);
+              // The scale on screen now, not the one when the strip was
+              // built: an arriving read moves it without a rebuild.
+              sess.ylim = pinned ? null : Math.abs(sessAuto(sess) || magnitude);
               BARRY.activity.log('ylim.change', { ylim: sess.ylim }, sess);
               queueSaveState(sess);
               refreshSession(sess);
@@ -2584,9 +2783,12 @@ BARRY.views.xplore = (function () {
               }
               BARRY.activity.log('clim.change',
                                  { clim: pane.clim, panel: pane.panel }, sess);
-              refreshPane(index);
+              if (XF.master >= 0) refreshSession(sess); else refreshPane(index);
             }
-            refreshControls(index);
+            // Pinning a trace scale pins it for the recording, so every
+            // strip that speaks for it changes, not only this one.
+            if (isTraces) refreshSessionControls(sess);
+            else refreshControls(index);
           },
         }),
         isTraces ? null : el('button', {
@@ -2894,15 +3096,15 @@ BARRY.views.xplore = (function () {
 
   /* ---------- pinned y-axis / color scale ---------- */
   function toggleScalePop(index, pane, sess) {
-    const host = $('#paneGrid').children[index];
+    const host = paneBox(index);
     if (!host) return;
     const existing = host.querySelector('.scale-pop');
     if (existing) { existing.remove(); return; }
 
     const isTraces = pane.panel === 'traces';
-    const data = isTraces ? sess.win : pane._panelData;
+    const data = isTraces ? paneWin(pane, sess) : pane._panelData;
     const auto = isTraces
-      ? (data && data.robust_auto)
+      ? sessAuto(sess)
       : (data && data.clim_auto);
 
     const pop = el('div', { class: 'scale-pop' });
@@ -3110,8 +3312,11 @@ BARRY.views.xplore = (function () {
           ? (r.top - h - 6) + 'px'
           : (r.bottom + 6) + 'px';
 
+        // The button as it is now: repaintMenu can move the panel onto
+        // the one that replaced it.
         const away = (ev) => {
-          if (!node.contains(ev.target) && !btn.contains(ev.target)) closeMenu();
+          const b = openMenu && openMenu.button;
+          if (!node.contains(ev.target) && !(b && b.contains(ev.target))) closeMenu();
         };
         const esc = (ev) => { if (ev.key === 'Escape') closeMenu(); };
         openMenu = { node, button: btn, away, esc, build };
@@ -3164,15 +3369,27 @@ BARRY.views.xplore = (function () {
        number away -- and the read that finished is exactly what would
        land in the middle of typing the next band. */
     const act = document.activeElement;
-    if (act && act.tagName === 'INPUT' && node.contains(act)) return;
+    if (act && act.tagName === 'INPUT' && node.contains(act)
+        && act.type !== 'checkbox' && act.type !== 'radio') return;
     let fresh;
     try { fresh = openMenu.build(); } catch (e) { return; }
     node.textContent = '';
     node.appendChild(fresh);
+    /* The strip may have been rebuilt under it -- marking a channel bad
+       renders the panes -- and then `btn` is a detached node at 0,0. Find
+       the button that took its place, by the name and pane it was built
+       for, so the panel stays against it and a click on it still closes. */
+    let anchor = btn;
+    if (anchor && !anchor.isConnected) {
+      const name = anchor.dataset.menu, at = anchor.dataset.pane;
+      anchor = Array.from(document.querySelectorAll('.ctl-menu'))
+        .find((b) => b.dataset.menu === name && b.dataset.pane === at) || null;
+      if (anchor) { anchor.classList.add('active'); openMenu.button = anchor; }
+    }
     /* It just changed height. Keep it against its button, by the same
        rule the open used. */
-    if (!btn) return;
-    const r = btn.getBoundingClientRect();
+    if (!anchor) return;
+    const r = anchor.getBoundingClientRect();
     const h = node.offsetHeight;
     node.style.top = (r.bottom + 6 + h > window.innerHeight && r.top > h + 12)
       ? (r.top - h - 6) + 'px'
@@ -3718,10 +3935,13 @@ BARRY.views.xplore = (function () {
       popRow(sess.sel.size + ' of ' + sess.info.channels.length + ' drawn', [
         el('div', { class: 'ctl-group' },
           [['all', 'All'], ['none', 'None'], ['even', 'Even'],
-           ['odd', 'Odd'], ['invert', 'Flip'], ['good', 'Good']].map(
+           ['odd', 'Odd'], ['first', '1st half'], ['second', '2nd half'],
+           ['invert', 'Flip'], ['good', 'Good']].map(
             ([k, label]) => el('button', {
               class: 'mini', text: label,
-              title: k === 'good' ? 'Only channels not marked bad' : '',
+              title: k === 'good' ? 'Only channels not marked bad'
+                : (k === 'first' || k === 'second') ? halfTitle(sess, k)
+                : '',
               onclick: () => {
                 quickSelect(sess, k);
                 BARRY.activity.log('channels.change',
@@ -3770,6 +3990,9 @@ BARRY.views.xplore = (function () {
             render(); refreshSession(sess);
             queueSaveState(sess);
             publishLink(sess.t0, sess.span, sess);
+            // The count at the top of this panel, and the row's own
+            // greyed state, are drawn from the selection.
+            repaintMenu();
           },
         }),
         el('span', { class: 'cc-n', text: String(c.number) }),
@@ -3791,6 +4014,10 @@ BARRY.views.xplore = (function () {
             e.preventDefault();
             e.stopPropagation();
             toggleBad(sess, c.number);
+            /* The button said "ok" until the menu was closed and opened
+               again: the panes were redrawn and this panel, which is not
+               part of them, was not. */
+            repaintMenu();
           },
         }),
       ].filter(Boolean)));
@@ -4256,8 +4483,10 @@ BARRY.views.xplore = (function () {
       }),
     ]));
 
-    // Neuralynx polarity is inverted by lab convention, and the probe sits on
-    // the even channels -- but both need to be switchable.
+    // Neuralynx polarity is inverted by lab convention, and switchable.
+    // There was an "Even channels only" here too: it read half the files,
+    // and picking the even channels is what the Ch menu's Even does without
+    // reading any less. Removed 2026-10.
     if (sess.info.source === 'ncs') {
       rows.push(popRow('Read as', [
         el('label', {
@@ -4270,8 +4499,8 @@ BARRY.views.xplore = (function () {
               sess.invert = e.target.checked;
               BARRY.activity.log('read.invert', { invert: sess.invert }, sess);
               closeMenu();
-              // Same as even-only below: this decides what the samples mean,
-              // so every window reading this file needs it.
+              // This decides what the samples mean, so every window
+              // reading this file needs it.
               publishFacts(sess);
               queueSaveState(sess);
               reopenSameView(sess);
@@ -4279,30 +4508,10 @@ BARRY.views.xplore = (function () {
           }),
           el('span', { text: 'Invert polarity' }),
         ]),
-        el('label', {
-          class: 'toggle sm' + (sess.evenOnly ? ' on' : ''),
-          title: 'Probe channels are the even CSC numbers',
-        }, [
-          el('input', {
-            type: 'checkbox', checked: sess.evenOnly ? 'checked' : null,
-            onchange: (e) => {
-              sess.evenOnly = e.target.checked;
-              BARRY.activity.log('read.evenOnly',
-                                 { evenOnly: sess.evenOnly }, sess);
-              closeMenu();
-              // Every other window is reading the same file and has to be
-              // told, and it has to outlive the session being closed.
-              publishFacts(sess);
-              queueSaveState(sess);
-              reopenSameView(sess);
-            },
-          }),
-          el('span', { text: 'Even channels only' }),
-        ]),
       ]));
       rows.push(el('p', { class: 'ctl-pop-note',
-        text: 'Either of these reopens the recording, because both change '
-            + 'what gets read off disk.' }));
+        text: 'This reopens the recording, because it changes what gets '
+            + 'read off disk.' }));
     }
 
     rows.push(popRow('Jump', [
@@ -5995,7 +6204,7 @@ BARRY.views.xplore = (function () {
       const t1 = P.whole ? (sess.info.duration_s || w.t0 + w.span) : w.t0 + w.span;
       try {
         const res = await apiPost('/api/spikes/detect', {
-          path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+          path: sess.path, invert: sess.invert,
           t0, t1, channels: Array.from(sess.sel).sort((a, b) => a - b),
           bad_channels: Array.from(sess.bad),
           highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
@@ -6200,7 +6409,7 @@ BARRY.views.xplore = (function () {
 
   /* Re-read a session after a read option changed, without losing your place.
 
-     Invert and even-only change how the file is decoded, so the session has to
+     Invert changes how the file is decoded, so the session has to
      be reopened -- but throwing away the window, gain and filters every time
      someone toggles polarity would be unusable. */
   /* What a reopen has to work out again, because it describes the file or
@@ -6208,16 +6417,14 @@ BARRY.views.xplore = (function () {
 
      This used to be the other way round -- a list of things to keep -- and
      it had drifted: curation and StrataScope state were not on it, so
-     toggling even-only in the middle of labelling silently threw away the
+     toggling a read option in the middle of labelling silently threw away the
      dentate spike marks you were making. A deny-list cannot drift the same
      way, because a field added later is carried over by default, which is
      the safe direction to be wrong in. */
   const REDERIVED_ON_REOPEN = new Set([
     'id',        // its handle in XF.sessions; the new one owns the slot
     'info',      // channels, duration, fs -- the reason for reopening
-    'sel',       // channel INDICES, and the indices shift with even-only
-    'win',       // samples already fetched, for the old channel set
-    'evenOnly',  // the thing being changed
+    'win',       // samples already fetched, read the old way
   ]);
 
   async function reopenSameView(sess) {
@@ -6226,13 +6433,18 @@ BARRY.views.xplore = (function () {
     const wasStrata = !!(BARRY.strata && BARRY.strata.active);
 
     const reopened = await openSession(sess.path, {
-      evenOnly: sess.evenOnly, invert: sess.invert, replace: sess.id,
+      invert: sess.invert, replace: sess.id,
     });
     if (!reopened) return;
     for (const k of Object.keys(sess)) {
       if (REDERIVED_ON_REOPEN.has(k)) continue;
       reopened[k] = sess[k];
     }
+    /* The selection comes across: every channel is read both times, so an
+       index means the same wire. Only what is no longer there is dropped --
+       a file can have gone missing between the two reads. */
+    const nNow = reopened.info.channels.length;
+    reopened.sel = new Set(Array.from(sess.sel).filter((i) => i < nNow));
     panes.forEach((p, i) => { if (p) XF.panes[i] = { ...p, sessionId: reopened.id }; });
 
     /* The modes hold their own reference to the session object. Without
@@ -6241,8 +6453,8 @@ BARRY.views.xplore = (function () {
     if (wasCurating && BARRY.curate.rebind) BARRY.curate.rebind(reopened);
     if (wasStrata && BARRY.strata.rebind) BARRY.strata.rebind(reopened);
 
-    /* A reopen only ever happens because even-only or invert changed, and
-       both are now part of the saved state. Saving here rather than at each
+    /* A reopen only ever happens because invert changed, and it is part
+       of the saved state. Saving here rather than at each
        call site means it cannot be forgotten by a new one -- including the
        path where another window told us to change. */
     queueSaveState(reopened);
@@ -6269,6 +6481,24 @@ BARRY.views.xplore = (function () {
      went on looking for its markup and reporting the absence as a fault. */
 
 
+  /* The first or second half of the recording's channels, in file order.
+
+     On a dual implant that is one array or the other, which is what it is
+     for; on anything else it is half the shank. An odd count gives the
+     middle channel to the first half. */
+  function halfOf(sess, kind) {
+    const all = sess.info.channels || [];
+    const cut = Math.ceil(all.length / 2);
+    return kind === 'first' ? all.slice(0, cut) : all.slice(cut);
+  }
+
+  function halfTitle(sess, kind) {
+    const h = halfOf(sess, kind);
+    if (!h.length) return 'No channels in this half';
+    return 'Channels ' + h[0].number + '–' + h[h.length - 1].number
+           + ' (' + h.length + ')';
+  }
+
   function quickSelect(sess, kind) {
     const all = sess.info.channels;
     if (kind === 'all') all.forEach((c) => sess.sel.add(c.index));
@@ -6277,6 +6507,12 @@ BARRY.views.xplore = (function () {
     else if (kind === 'good') {
       sess.sel.clear();
       all.forEach((c) => { if (!sess.bad.has(c.number) && !c.bad) sess.sel.add(c.index); });
+    } else if (kind === 'first' || kind === 'second') {
+      // Before the even/odd fall-through below, which takes any other word
+      // to mean odd.
+      const h = halfOf(sess, kind);
+      sess.sel.clear();
+      h.forEach((c) => sess.sel.add(c.index));
     } else {
       const want = kind === 'even' ? 0 : 1;
       sess.sel.clear();
@@ -6342,7 +6578,7 @@ BARRY.views.xplore = (function () {
       // says "reading channels" over a trace that is already drawn is a lie.
       const loading = el('div', {
         class: 'plot-loading'
-             + ((pane._win || (sess && sess.win)) ? ' hidden' : ''),
+             + (paneWin(pane, sess) ? ' hidden' : ''),
       }, [loader('Voltage traces', 'reading channels')]);
       const overlay = el('div', { class: 'ch-overlay' });
       const cHost = el('div', { class: 'pane-canvas-host' },
@@ -6434,6 +6670,45 @@ BARRY.views.xplore = (function () {
     XF.panes.forEach((p, i) => { if (p && p.sessionId === sess.id) refreshPane(i); });
   }
 
+  /* Repaint every pane of a recording from what it already holds. */
+  function drawSession(sess) {
+    for (const i of panesOf(sess)) drawPane(i);
+  }
+
+  /* Every strip that speaks for this recording: the master, or each
+     pane's own. Called when a drag is let go or a read lands, never per
+     input event -- rebuilding a strip replaces the slider under the
+     pointer. A read cannot land on a drag: dragging pins the scale, and
+     only an unpinned one is rebuilt on arrival. */
+  /* The trace scale's number and slider, set in place on every strip that
+     shows it. Leaves alone a box somebody is typing in or a slider being
+     dragged, and any strip whose scale is a colour scale. */
+  function syncScaleNumbers(sess) {
+    const m = sess.ylim != null ? sess.ylim : sessAuto(sess);
+    if (!m) return;
+    const at = XF.master >= 0 ? [XF.master] : panesOf(sess);
+    for (const i of at) {
+      const p = XF.panes[i];
+      if (!p || p.panel !== 'traces') continue;
+      const host = stripHost(i);
+      const ctl = host && host.querySelector('.scale-ctl');
+      if (!ctl) continue;
+      const num = ctl.querySelector('.scale-num');
+      const sl = ctl.querySelector('.scale-slider');
+      if (num && document.activeElement !== num) {
+        num.value = String(round(m, m < 10 ? 3 : 1));
+      }
+      if (sl && document.activeElement !== sl) {
+        sl.value = String(scaleToSlider(m));
+      }
+    }
+  }
+
+  function refreshSessionControls(sess) {
+    if (XF.master >= 0) { refreshControls(XF.master); return; }
+    for (const i of panesOf(sess)) refreshControls(i);
+  }
+
   /* A horizontal strip that a vertical wheel cannot reach is a strip whose
      right-hand end nobody finds. */
   function wireStripScroll(strip) {
@@ -6451,8 +6726,7 @@ BARRY.views.xplore = (function () {
      it has to be redrawn when the window moves. refreshControls only ever
      touched the control strip, which is why the counter looked frozen. */
   function refreshHead(index) {
-    const grid = $('#paneGrid');
-    const box = grid && grid.children[index];
+    const box = paneBox(index);
     if (!box || !box.classList.contains('pane')) return;
     const pane = XF.panes[index], sess = sessionOf(pane);
     if (!sess) return;
@@ -6498,7 +6772,7 @@ BARRY.views.xplore = (function () {
     const sess = sessionOf(pane);
     if (!pane || !sess) return;
     if (pane.panel === 'traces') {
-      if (pane._win || sess.win) drawPane(index);
+      if (paneWin(pane, sess)) drawPane(index);
       drawMini(index, pane, sess);
     } else if (pane._panelData) {
       drawRasterGrid(pane, pane._panelData);
@@ -6608,7 +6882,13 @@ BARRY.views.xplore = (function () {
     if (!sess.sel.size) { sess.win = null; drawPane(index); return; }
     // A column with nothing in it draws nothing, rather than falling through
     // to the whole array and quietly showing the wrong contacts.
-    if (!paneChans(pane, sess).length) { pane._win = null; drawPane(index); return; }
+    if (!paneChans(pane, sess).length) {
+      pane._req = (pane._req || 0) + 1;      // a read in flight is now stale
+      pane._win = null;
+      if (pane._loading) pane._loading.classList.add('hidden');
+      drawPane(index);
+      return;
+    }
     // Per-PANE request id. A per-session counter made two panes onto the same
     // recording cancel one another, so whichever asked second was the only one
     // that ever rendered.
@@ -6618,7 +6898,7 @@ BARRY.views.xplore = (function () {
     const px = Math.max(200, Math.floor((pane._canvas ? pane._canvas.clientWidth : 900) - 70));
     try {
       const win = await apiPost('/api/csc/window', {
-        path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+        path: sess.path, invert: sess.invert,
         t0: sess.t0, t1: sess.t0 + sess.span,
         channels: paneChans(pane, sess),
         px, highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
@@ -6628,7 +6908,14 @@ BARRY.views.xplore = (function () {
         full_rate: !!pane.fullRate,
       });
       if (id !== pane._req) return;
-      sess.win = win;
+      /* The pane can have been replaced while this was in flight -- a
+         layout change, a tab switch -- and the recording closed. Then
+         this answer belongs to nothing on screen: writing `sess.win` from
+         one column's read is what drew half the channels in the H3 pane
+         that replaced it. */
+      if (XF.panes[index] !== pane || !XF.sessions[sess.id]) return;
+      const before = sessAuto(sess);
+      if (!pane.channels || !pane.channels.length) sess.win = win;
       pane._win = win;
       showPanelInput(pane, {
         input: [fmtTime(win.t0) + '\u2013' + fmtTime(win.t1)
@@ -6637,7 +6924,6 @@ BARRY.views.xplore = (function () {
                 filterWords(sess),
                 sess.bad.size ? sess.bad.size + ' bad marked' : null,
                 sess.invert ? 'inverted' : null,
-                sess.evenOnly ? 'even only' : null,
                ].filter(Boolean).join('  \u00b7  '),
         // The trace is a min/max envelope unless somebody said otherwise,
         // and that decides whether waveform shape can be read off it.
@@ -6648,7 +6934,18 @@ BARRY.views.xplore = (function () {
       // Drawing is separated from fetching so a render fault is reported as
       // one, instead of being mistaken for a failed request.
       try {
-        drawPane(index);
+        /* The recording's automatic scale can have moved with this read,
+           and every pane of it is drawn at that one -- so the others are
+           redrawn, from what they already hold, and the strip says the
+           new number -- written into the box, not by rebuilding the strip:
+           a rebuild closes any open menu, and a filter change made in the
+           Filter menu is exactly what moves this scale. */
+        if (sess.ylim == null && sessAuto(sess) !== before) {
+          drawSession(sess);
+          syncScaleNumbers(sess);
+        } else {
+          drawPane(index);
+        }
       } catch (err) {
         reportClientError('drawPane', err.message, err.stack);
       }
@@ -6684,7 +6981,7 @@ BARRY.views.xplore = (function () {
       const spec = panelSpec(index, pane, sess);
       if (!spec) return;
       apiPost('/api/panel/prewarm', {
-        path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+        path: sess.path, invert: sess.invert,
         spec, times: times.slice(0, 48), limit: 12,
       }).catch(() => { /* speculative: a failure is not worth saying */ });
     }, 400);
@@ -6699,7 +6996,7 @@ BARRY.views.xplore = (function () {
   function panelSpec(index, pane, sess) {
     if (!pane || !sess) return null;
     const spec = {
-      path: sess.path, even_only: sess.evenOnly, invert: sess.invert,
+      path: sess.path, invert: sess.invert,
       panel: pane.panel, t0: sess.t0, t1: sess.t0 + sess.span,
       channels: paneChans(pane, sess),
       // Rows to draw faintly. Sent even when empty so a cached render from
@@ -6767,6 +7064,15 @@ BARRY.views.xplore = (function () {
 
   async function fetchImagePanel(index, pane, sess) {
     if (!sess.sel.size && isChannelPanel(pane.panel)) return;
+    const none = isChannelPanel(pane.panel) && colEmptyWords(pane, sess);
+    if (none) {
+      pane._req = (pane._req || 0) + 1;      // and anything in flight is stale
+      pane._panelData = null;
+      if (pane._img) pane._img.removeAttribute('src');
+      if (pane._loading) pane._loading.classList.add('hidden');
+      showPanelError(pane, none);
+      return;
+    }
     const id = (pane._req = (pane._req || 0) + 1);
     /* Stop the one before this. It was going to be discarded on arrival
        anyway, and until it arrived it was holding one of the six
@@ -6782,6 +7088,7 @@ BARRY.views.xplore = (function () {
       const res = await apiPost('/api/panel', spec,
                                 ctl ? { signal: ctl.signal } : null);
       if (id !== pane._req) return;
+      if (XF.panes[index] !== pane || !XF.sessions[sess.id]) return;
       const hadAuto = JSON.stringify((pane._panelData || {}).clim_auto || null);
       pane._panelData = res;
       /* The control strip was built before this panel had a scale, so its
@@ -8009,9 +8316,8 @@ BARRY.views.xplore = (function () {
         value: {
           bad: Array.from(sess.bad).sort((a, b) => a - b),
           // How the file has to be read, not how you want to look at it.
-          // A window reading 32 channels while another reads 64 is two
+          // A window reading it inverted while another does not is two
           // windows disagreeing about what the recording is.
-          evenOnly: !!sess.evenOnly,
           invert: !!sess.invert,
           // Same reasoning: what an unchecked channel does, and how visible
           // the marks are, are facts about this recording's display that
@@ -8176,17 +8482,16 @@ BARRY.views.xplore = (function () {
         }
       }
 
-      /* Even-only and invert change which samples are read, so applying one
-         means reopening the recording rather than redrawing it.
+      /* Invert changes which samples are read, so applying it means
+         reopening the recording rather than redrawing it.
 
          Compared before acting, and only ever acted on when it differs --
          that is what stops two windows reopening each other in a loop. The
          reopen deliberately does not publish; the window that was clicked
-         already did. */
-      const wantEven = !!v.evenOnly, wantInv = !!v.invert;
-      if (v.evenOnly !== undefined
-          && (wantEven !== !!sess.evenOnly || wantInv !== !!sess.invert)) {
-        sess.evenOnly = wantEven;
+         already did. An `evenOnly` from a window older than this one is
+         ignored: there is one way to read a recording now. */
+      const wantInv = !!v.invert;
+      if (v.invert !== undefined && wantInv !== !!sess.invert) {
         sess.invert = wantInv;
         // Fire and forget: pollLink is not the place to wait on a reopen.
         reopenSameView(sess);
@@ -8334,10 +8639,9 @@ BARRY.views.xplore = (function () {
           // The frequency band and whether it is locked. Without these the
           // band was remembered by nothing and every reopen went back to
           // the built-in 20.
-          // How the file is read. Not a view preference: getting either
-          // wrong makes every panel wrong, and they were being forgotten
-          // the moment a recording was closed.
-          even_only: !!sess.evenOnly,
+          // How the file is read. Not a view preference: getting it
+          // wrong makes every panel wrong, and it was being forgotten the
+          // moment a recording was closed.
           invert: !!sess.invert,
           // What an unchecked channel does, and how visible the marks are.
           // Both are display choices somebody made on purpose about this
@@ -8409,8 +8713,7 @@ BARRY.views.xplore = (function () {
   const CH_HEADER_H = 104;
 
   function padTopOf(index) {
-    const grid = $('#paneGrid');
-    const box = grid && grid.children[index];
+    const box = paneBox(index);
     if (!box || !box.querySelector('.ch-list')) return PAD.t;
     return CH_HEADER_H;
   }
@@ -8560,11 +8863,13 @@ BARRY.views.xplore = (function () {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = P.bg; ctx.fillRect(0, 0, w, h);
 
-    const win = pane._win || sess.win;
+    const win = paneWin(pane, sess);
     if (!win || !win.series || !win.series.length) {
       ctx.fillStyle = P.dim; ctx.font = '12px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(sess.sel.size ? 'Loading…' : 'No channels selected.', w / 2, h / 2);
+      ctx.fillText(colEmptyWords(pane, sess)
+                   || (sess.sel.size ? 'Loading…' : 'No channels selected.'),
+                   w / 2, h / 2);
       return;
     }
 
@@ -8701,7 +9006,8 @@ BARRY.views.xplore = (function () {
     // echoes ylim back as robust_max, but the envelope it returns does not
     // depend on it -- so honouring it locally makes the amplitude slider
     // instant instead of one request per pixel of drag.
-    const shared = (sess.ylim != null ? sess.ylim : win.robust_max) || 1;
+    const shared = (sess.ylim != null ? sess.ylim
+                    : (sessAuto(sess, 'robust_max') || win.robust_max)) || 1;
     const npts = win.n_points, dx = npts > 1 ? plotW / (npts - 1) : plotW;
     ctx.textAlign = 'right';
 
@@ -9125,8 +9431,8 @@ BARRY.views.xplore = (function () {
        a drag, and the tail of a refresh that has just awaited a fetch -- and
        any of them can fire after the pane's session has been closed or
        swapped. One hands over `sessionOf(p)`, which is null by then, and the
-       whole thing threw. Reproduced every run by ticking even-only, which
-       reopens the session while the panes are still redrawing.
+       whole thing threw. Reproduced every run by ticking a read option,
+       which reopens the session while the panes are still redrawing.
 
        Here rather than at each call site: with no session there is nothing
        to draw wherever the call came from, and the next timer somebody adds
@@ -9395,7 +9701,7 @@ BARRY.views.xplore = (function () {
   }
 
   function hoverTraces(pane, sess, canvas, readout, e) {
-    const win = pane._win || sess.win;
+    const win = paneWin(pane, sess);
     if (!win || !win.series.length) { readout.classList.remove('on'); return; }
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left, y = e.clientY - rect.top;
@@ -10182,9 +10488,11 @@ BARRY.views.xplore = (function () {
         if (s0 && d0 && d0.columns && d0.columns.length) {
           s0.probe = 'h3';
           if (probeSel) probeSel.value = 'h3';
-          XF.panes.forEach((pp) => { if (pp) { delete pp.channels;
-                                               delete pp.colTag; } });
         }
+        /* Every pane, and every column field. A column left over from a
+           layout that is gone is a pane showing half a recording with
+           nothing saying why. */
+        XF.panes.forEach(dropColumns);
         XF.nPanes = +b.dataset.panes;
         $$('#xfLayoutSeg button').forEach((x) => x.classList.toggle('active', x === b));
         // Fill new panes with the sessions already open.
@@ -10329,10 +10637,7 @@ BARRY.views.xplore = (function () {
          by a different route. Asked again here, once there is something to
          ask. */
       const s0 = active();
-      if (s0 && probeSplits(s0) && XF.order.length === 1
-          && XF.panes.length <= 1) {
-        layoutProbe(s0, panelNow(s0));
-      }
+      if (s0 && probeSplits(s0) && !isProbeLayoutOf(s0)) showSession(s0.id);
     }).catch(() => {});
     api('/api/panels').then((d) => {
       XF.panelDefs = d.panels || [];
@@ -10454,11 +10759,21 @@ BARRY.views.xplore = (function () {
        cross-window test has to be able to trigger without hunting for a
        button that moves depending on the pane's height. */
     toggleBad: (number, sess) => toggleBad(sess || active(), number),
-    /* Even-only and invert change what is read off disk, so a harness that
-       wants to test them syncing between windows has to be able to set them
-       the way the toggle does -- publish, then reopen. Exposed for
-       web/_dev/evensync.html. */
+    /* Invert changes what is read off disk, so a harness that wants to
+       test it syncing between windows has to be able to set it the way the
+       toggle does -- publish, then reopen. */
     publishFacts: (sess) => publishFacts(sess || active()),
+    /* A channel preset by name -- 'even', 'odd', 'first', 'second',
+       'good', 'all' -- the Ch menu's buttons without the menu. For a deep
+       link: Incisor's traces window opens on the even channels this way,
+       now that there is no even-only read to open it with. */
+    select: (kind, sess) => {
+      const s = sess || active();
+      if (!s) return;
+      quickSelect(s, kind);
+      render();
+      refreshSession(s);
+    },
     publishCuration: (sess, pointer) => publishCuration(sess, pointer),
     /* StrataScope's way of telling the other windows what it has. Exposed
        rather than reached for, because the sheet lives in strata.js and the
@@ -10536,9 +10851,16 @@ BARRY.views.xplore = (function () {
        *
        * A cap still exists because a pane costs a canvas and a request,
        * and there is no montage in this lab with more groups than this. */
+      /* The old panes are torn down first. Replacing the array dropped
+         them with their window listeners, ResizeObservers and reads still
+         live -- renderPanes only disposes what is in the array -- and
+         every layout change added another set. */
+      for (let i = 0; i < XF.panes.length; i++) disposePane(i);
       XF.nPanes = Math.max(1, Math.min(MAX_PANES, specs.length));
       XF.panes = specs.slice(0, XF.nPanes).map((p) => Object.assign(
         { sessionId: XF.active }, p));
+      XF.zoomed = null;
+      if (XF.focused >= XF.nPanes) XF.focused = 0;
       // Applied before the render that reads it, or the first paint uses the
       // old proportions and then jumps.
       if (split) XF.split = split;

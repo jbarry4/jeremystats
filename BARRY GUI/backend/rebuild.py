@@ -62,10 +62,9 @@ def pack_recipe(layout, sessions):
     recipe["events_truncated"] = len(events) > MAX_EVENTS
 
     # How each session was opened matters as much as which one it was:
-    # even_only and invert change the channel list and the sign of every trace.
+    # invert changes the sign of every trace.
     recipe["sessions"] = {
         sid: {"path": spec.get("path", ""),
-              "even_only": bool(spec.get("even_only", True)),
               "invert": bool(spec.get("invert", True))}
         for sid, spec in (sessions or {}).items()
     }
@@ -104,7 +103,7 @@ def from_legacy(run):
                    for p in (run.get("panels") or [])],
         "events": [], "event_count": 0, "events_truncated": False,
         "sessions": {"default": {"path": sess.get("path", ""),
-                                 "even_only": True, "invert": True}},
+                                 "invert": True}},
     }
 
 
@@ -187,6 +186,7 @@ def audit(recipe, complete, panel_ids, colormap_ids, page_ids, known=None):
 
     # ---- 2. open it and compare the inventory ------------------------------
     duration = None
+    channels_now = None
     if reachable:
         sess, err = _peek(use_path, primary)
         if err:
@@ -206,6 +206,25 @@ def audit(recipe, complete, panel_ids, colormap_ids, page_ids, known=None):
             # and checking one against the other is how a rebuild would come
             # back with the wrong traces.
             want = recipe.get("channels")
+            # A figure made from an even-channels-only read counted its
+            # positions in a list of the even channels. That read is gone,
+            # so they are carried across by CSC number into the full list --
+            # the same wires, at the positions they now have.
+            if want and primary.get("even_only"):
+                want, lost = _from_even_positions(want, numbers)
+                channels_now = want
+                extra = ("The figure was made reading the even channels "
+                         "only, which Jarvis no longer does; its %d channel "
+                         "pick(s) were carried across by CSC number."
+                         % len(want))
+                if lost:
+                    status = "warn"
+                    extra += (" %d position(s) had no even channel to "
+                              "match." % len(lost))
+                    problems.append(
+                        "%d channel position(s) from the figure's even-only "
+                        "read have no matching channel." % len(lost))
+                note = extra
             if want:
                 gone = sorted(i for i in want if not 0 <= i < len(chans))
                 if gone:
@@ -236,7 +255,6 @@ def audit(recipe, complete, panel_ids, colormap_ids, page_ids, known=None):
                 "%d channels at %s Hz, %s"
                 % (len(chans), _num(sess.get("fs")), _dur(duration)),
                 status, note,
-                even_only=primary.get("even_only", True),
                 invert=primary.get("invert", True),
                 channels_present=len(chans)))
 
@@ -274,7 +292,7 @@ def audit(recipe, complete, panel_ids, colormap_ids, page_ids, known=None):
         gain=recipe.get("gain")))
 
     # ---- 5. channel selection ---------------------------------------------
-    want = recipe.get("channels")
+    want = channels_now if channels_now is not None else recipe.get("channels")
     bad = recipe.get("bad_channels") or []
     if want:
         steps.append(_step(
@@ -367,13 +385,25 @@ def audit(recipe, complete, panel_ids, colormap_ids, page_ids, known=None):
 # helpers
 # ----------------------------------------------------------------------------
 
+def _from_even_positions(want, numbers):
+    """Positions in an even-channels-only list, as positions in `numbers`.
+
+    Returns (positions, the ones that had no even channel to land on).
+    """
+    evens = [i for i, n in enumerate(numbers) if int(n) % 2 == 0]
+    got, lost = [], []
+    for i in want:
+        if 0 <= int(i) < len(evens):
+            got.append(evens[int(i)])
+        else:
+            lost.append(i)
+    return got, lost
+
+
 def _peek(path, spec):
     """Open a session far enough to read its inventory, without loading data."""
     try:
-        sess = csc.open_session(
-            path,
-            even_only=bool(spec.get("even_only", True)),
-            invert=bool(spec.get("invert", True)))
+        sess = csc.open_session(path, invert=bool(spec.get("invert", True)))
     except Exception as exc:                       # noqa: BLE001 -- reported
         return None, str(exc)
     if not sess.get("ok"):

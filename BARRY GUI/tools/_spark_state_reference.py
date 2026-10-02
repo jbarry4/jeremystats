@@ -586,7 +586,7 @@ def clipping_for(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=()):
     if not pairs:
         return {}, {}
 
-    files = nlx.list_csc_files(folder, even_only=False)
+    files = nlx.list_csc_files(folder)
     if not files:
         return {}, {}
 

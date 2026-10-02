@@ -179,7 +179,7 @@ the button says what they are.
 
 `More` holds the things you set once per recording: the event actions
 (classes, import, export), the threshold spike detector, the read options
-(invert polarity, even channels only), jump-to-start and jump-to-end, and
+(invert polarity), jump-to-start and jump-to-end, and
 Reveal / Figure builder.
 
 | | |
@@ -517,7 +517,7 @@ session, unambiguous), **weak** (ambiguous — nearest start time wins). Mark a
 channel bad on one machine and it is found on the next.
 
 Bad channels are stored by **CSC channel number**, not row index, because an
-index shifts the moment someone toggles even-only. In a CSD panel a bad channel
+index shifts the moment a channel file goes missing. In a CSD panel a bad channel
 is interpolated from its neighbours rather than blanked — a second spatial
 derivative would otherwise lose three rows to one bad channel.
 
@@ -564,7 +564,9 @@ always the same: which recording, which seconds of it, which channels,
 filtered how. Every export writes the **complete layout** onto its run record
 — not a summary of it, because a summary is exactly what cannot be rebuilt
 from — including the channel selection, the bad channels, the gain, the event
-marks and how the session was opened (`invert`, `even_only`).
+marks and how the session was opened (`invert`). A figure made before
+even-only reading was removed has its channel positions carried across by CSC
+number when it is rebuilt.
 
 **Rebuild…** on a figure, in Results or in History, reads that back and checks
 it against the machine as it is *now* before doing anything:

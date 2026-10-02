@@ -140,7 +140,7 @@ def raw_chunk(folder, index=40, seconds=300.0):
     rep = continuity.check(folder)
     if not rep.get("ok"):
         return None
-    sess, err = appmod._session_for(folder, False, True)
+    sess, err = appmod._session_for(folder, True)
     if err:
         return None
     by = {c["index"]: c for c in sess["channels"]}
@@ -158,7 +158,7 @@ def real_trace(folder, index=40):
     rep = continuity.check(folder)
     if not rep.get("ok"):
         return None, None, None
-    sess, err = appmod._session_for(folder, False, True)
+    sess, err = appmod._session_for(folder, True)
     if err:
         return None, None, None
     by = {c["index"]: c for c in sess["channels"]}

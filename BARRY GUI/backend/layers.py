@@ -125,8 +125,8 @@ class Layers:
             # if the vocabulary grows.
             "regions": [dict(r) for r in REGIONS],
             # Channel NUMBER -> region id. Numbers, not row indices: a row
-            # index shifts the moment even-only is toggled or a file goes
-            # missing, and CSC14 is always CSC14.
+            # index shifts the moment a file goes missing, and CSC14 is
+            # always CSC14.
             "labels": {},
             "channels": list(channels or []),
             "created": self.store.provenance() if self.store else {"at": _now()},

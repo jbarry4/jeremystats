@@ -1344,9 +1344,9 @@ BARRY.figure = (function () {
     ids.add(sess.id);
     for (const id of ids) {
       const s = XF.sessions[id];
-      if (s) out[id] = { path: s.path, even_only: s.evenOnly, invert: s.invert };
+      if (s) out[id] = { path: s.path, invert: s.invert };
     }
-    out.default = { path: sess.path, even_only: sess.evenOnly, invert: sess.invert };
+    out.default = { path: sess.path, invert: sess.invert };
     return out;
   }
 

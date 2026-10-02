@@ -1,0 +1,213 @@
+{
+  "_at": {
+    "added": "2026-10-02T01:18:27.944486+00:00",
+    "deleted": "2026-10-02T01:18:27.944486+00:00",
+    "id": "2026-10-02T01:18:27.944486+00:00",
+    "kind": "2026-10-02T01:18:27.944486+00:00",
+    "name": "2026-10-02T01:18:27.944486+00:00",
+    "nickname": "2026-10-02T01:18:27.944486+00:00",
+    "schema": "2026-10-02T01:18:27.944486+00:00",
+    "subject": "2026-10-02T01:18:27.944486+00:00",
+    "subject_key": "2026-10-02T01:18:27.944486+00:00",
+    "version": "2026-10-02T01:18:27.944486+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "192f35984ed3": [
+        "set",
+        "2026-10-02T01:18:27.944486+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-02T01:18:27.944486+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-01T21:18:27-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "Bluebarry"
+  },
+  "cited": [],
+  "deleted": null,
+  "id": "13d390c62820",
+  "kind": "monolith",
+  "name": "Monolith \u00b7 Precon1\u21924 \u00b7 1\u201355 Hz",
+  "nickname": "Monolith \u00b7 Precon1\u21924 \u00b7 1\u201355 Hz",
+  "schema": "arc.artifact/1",
+  "subject": {
+    "analysis": "precon1-4-sweep",
+    "days": [
+      "Precon1",
+      "Precon4"
+    ],
+    "gids": [
+      "sec4bed944ba0",
+      "s7f9b97e294b8",
+      "s989ca3b5b2d6",
+      "s09af032023a9",
+      "sce947d33ceb8",
+      "sc905a9b9e371",
+      "s360e48254222",
+      "sc710262dff13",
+      "s234fc080573e",
+      "sdf092805b0cb",
+      "sb3ad74706f07",
+      "s4af2a78d7ab7",
+      "s0c6efa477a94",
+      "s5e2c6d208fc7",
+      "s3fcdbcc678da",
+      "sbd33a50b7fec"
+    ],
+    "name": "Monolith \u00b7 Precon1\u21924 \u00b7 1\u201355 Hz",
+    "project": "DEWEY",
+    "rats": [
+      3,
+      4,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ]
+  },
+  "subject_key": "monolith|precon1-4-sweep",
+  "version": 1,
+  "versions": [
+    {
+      "app_version": "2026.10.01.6",
+      "at": "2026-10-01T21:18:27-04:00",
+      "by": "Shahriar Tafti",
+      "commit": "1104d414",
+      "digest": "9f71bc58e058",
+      "id": "192f35984ed3",
+      "inputs": [
+        {
+          "entry": "87ee7177c51a",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "77811b41578d",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "89edcc328d09",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "6c2736709317",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "43df172979f6",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "697fa041f287",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "a4ea3e40c9be",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "9261f7eefb33",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "bcdfcc41f296",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "edfa0c9fedc4",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "79c1b9043b78",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "8d09accec259",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "303da526335e",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "501bdb304196",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "9f2928e2aa4f",
+          "kind": "bank",
+          "version": 1
+        },
+        {
+          "entry": "fe1e9139df06",
+          "kind": "bank",
+          "version": 1
+        }
+      ],
+      "machine": "Bluebarry",
+      "n_summary": {
+        "p05": null,
+        "points": 50,
+        "rats": 8,
+        "tested": null
+      },
+      "note": null,
+      "params": {
+        "bands": 58,
+        "concurrency": 100,
+        "fast": [
+          1.0,
+          2.0
+        ],
+        "half_frac": 0.15,
+        "methods": [
+          "coherence",
+          "icoh",
+          "raw_cc",
+          "env_cc",
+          "env_cc0",
+          "orth_env",
+          "plv",
+          "ppc",
+          "pli",
+          "wpli",
+          "dwpli",
+          "gc_ab",
+          "gc_ba",
+          "gc_net"
+        ],
+        "min_rats": 5,
+        "rid": "d8e69bdc39d7",
+        "slow": [
+          3.0,
+          3.0
+        ],
+        "split_hz": 12.0,
+        "top_hz": 55.0
+      },
+      "params_hash": "f9f84ed7921f",
+      "v": 1
+    }
+  ]
+}

@@ -102,7 +102,7 @@ def direct_transition(folder, pairs, before_s, after_s, skip, spark, coupling,
     """
     origin = nlx.recording_start_us(folder)
     out = {}
-    files = [(n, p) for n, p in nlx.list_csc_files(folder, even_only=False)
+    files = [(n, p) for n, p in nlx.list_csc_files(folder)
              if int(n) not in set(skip)]
     for num, path in files:
         hdr = nlx.read_header(path)
@@ -547,7 +547,7 @@ def routes(A, gid, sm, got, both, bad, light=False):
         ev = fake["events"][want_pair - 1]
         drop = A._coupling_drop(ev, bad)
         present = {int(n) for n, _p in nlx.list_csc_files(
-            got["path"], even_only=False)}
+            got["path"])}
         cmap = coupling.dewey_map()
         rat, probe = A._coupling_probe(sm)
         blocked = A._coupling_blocked(probe)

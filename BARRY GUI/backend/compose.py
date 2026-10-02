@@ -833,7 +833,7 @@ def _decode_data_uri(uri):
 def _ranges(nums):
     """[1,2,3,7,9,10] -> "1-3, 7, 9-10"; [1,3,..,63] -> "1-63/2".
 
-    The step matters. Every-other-channel is what "even only" gives you and
+    The step matters. Every-other-channel is what the Even selection gives you and
     what half of this lab records, and it has no consecutive run to collapse
     -- so thirty-two numbers printed in full and ran off a journal-column
     page. The JS side already says `CSC 1-10/3` for a probe column; this is

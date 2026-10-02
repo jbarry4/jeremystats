@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monolith Guide</title>
+<!-- Every ? on the Monolith page, one after another: what it is, what to look
+     for, what fools it, and the strong vs no-effect examples. The words are
+     js/monolith_help.js; the examples are web/monolith_guide.json, made by
+     tools/monolith_guide.py with the Monolith's own engine. Each ? links here
+     as monolith-guide.html#<key>. Harness: _dev/monolith.html (the Guide test). -->
+<style>
+:root {
+  --bg: #f6f6f2; --surface: #ffffff; --surface-2: #fbfbf8; --ink: #16181b; --ink-2: #474c54; --ink-3: #6f747d;
+  --line: #e2e1db; --line-2: #cfcec7; --chip: #efeee9; --focus: #c98a00;
+  --up: #c63a39; --down: #1c5cab; --up-soft: rgba(198, 58, 57, .12); --down-soft: rgba(28, 92, 171, .12);
+  --node: #2c3e50; --node-grey: #c9c8c1; --ring: #e7e6e0; --arrow: #6b3fa0; --ok: #2e7d4f;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace; --r: 8px; --gutter: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #191c20; --surface-2: #1d2025; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+    --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933;
+    --up: #f2807e; --down: #6aa5f2; --up-soft: rgba(242, 128, 126, .16); --down-soft: rgba(106, 165, 242, .16);
+    --node: #d7dbe0; --node-grey: #3a3f46; --ring: #24272c; --arrow: #c09bf0; --ok: #6fd39c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #191c20; --surface-2: #1d2025; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+  --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933;
+  --up: #f2807e; --down: #6aa5f2; --up-soft: rgba(242, 128, 126, .16); --down-soft: rgba(106, 165, 242, .16);
+  --node: #d7dbe0; --node-grey: #3a3f46; --ring: #24272c; --arrow: #c09bf0; --ok: #6fd39c;
+}
+* { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+main { max-width: 1040px; margin: 0 auto; padding: 22px var(--gutter) 80px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.01em; }
+h2.part { font-size: 13px; margin: 28px 0 10px; color: var(--ink-2); text-transform: uppercase; letter-spacing: .05em; }
+p { margin: 0 0 9px; }
+.lede { color: var(--ink-2); max-width: 80ch; }
+.small { font-size: 13px; }
+.muted { color: var(--ink-3); }
+a { color: var(--ink-2); }
+nav.toc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 16px; margin: 14px 0 6px; }
+nav.toc .grp { margin: 0 0 8px; }
+nav.toc .grp:last-child { margin: 0; }
+nav.toc b { display: block; font-size: 12px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+nav.toc a { font-size: 13.5px; }
+section.entry { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 18px 12px; margin: 0 0 14px; scroll-margin-top: 12px; min-width: 0; }
+section.entry:target { border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
+section.entry > h3 { font-size: 18px; margin: 0 0 8px; overflow-wrap: anywhere; }
+section.entry > h3 a.self { color: var(--ink-3); text-decoration: none; margin-left: 6px; font-weight: 400; }
+.qblock p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.qblock b { color: var(--ink); }
+.qlook, .qtraps { color: var(--ink-2); }
+.qsteps { margin: 0 0 8px; padding-left: 22px; }
+.qsteps li { margin: 0 0 6px; overflow-wrap: anywhere; }
+.qexample { background: var(--surface-2); border: 1px dashed var(--line-2); border-radius: 6px; padding: 6px 10px; }
+.qfigs:empty { display: none; }
+.qfigs { margin: 10px 0; }
+.qdemo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 600px) { .qdemo { grid-template-columns: minmax(0, 1fr); } }
+.qcase { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; background: var(--surface-2); min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.qcase.strong { border-color: color-mix(in srgb, var(--up) 45%, var(--line)); }
+.qcase-h { font-weight: 600; font-size: 13.5px; overflow-wrap: anywhere; }
+.qcase-say { font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+.qsay { grid-column: 1 / -1; font-size: 13.5px; color: var(--ink-2); overflow-wrap: anywhere; }
+.qcite { font-size: 12.5px; color: var(--ink-3); margin: 8px 0 0; overflow-wrap: anywhere; }
+svg.mfig { display: block; width: 100%; height: auto; }
+.top { font-size: 13px; }
+.loading { padding: 40px 0; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<main id="guide">
+  <h1>The Monolith, explained</h1>
+  <p class="lede">Every <b>?</b> on the Monolith page, in one place. For each: what it is in plain words, what to look
+    for, what fools it, and where to read more. The measures and the statistics each have two made-up examples
+    side by side: a strong effect and no effect at all.</p>
+  <p class="lede small" id="madeby">The examples are made-up signals shaped like the real data (8 rats, about 15 cue
+    pairs a day, 10 s windows at 1 kHz), run once through the Monolith’s own engine. The number under each picture is
+    what the real analysis says about those signals; nothing is drawn by hand.</p>
+  <nav class="toc" id="toc" aria-label="Contents"></nav>
+  <div id="entries"><p class="loading">Drawing the examples…</p></div>
+  <p class="small muted"><a href="#guide" class="top">Back to the top</a> · <a href="monolith.html">Open the Monolith</a></p>
+</main>
+<script src="js/monolith_figs.js"></script>
+<script src="js/monolith_help.js"></script>
+<script>
+'use strict';
+(function () {
+  const H = window.MONO_HELP;
+  const PARTS = [
+    ['Reading the page', ['verdict', 'layer', 'circuit', 'sig', 'arrows', 'points', 'filter', 'broadband', 'spectrum', 'coverage']],
+    ['Choosing what to look at', ['windows', 'window', 'frequency', 'range', 'bands', 'split', 'measure']],
+    ['The measures: phase together, at zero lag', ['coherence', 'plv', 'ppc']],
+    ['The measures: phase together, with a lag', ['icoh', 'pli', 'wpli', 'dwpli']],
+    ['The measures: amplitude and correlation', ['raw_cc', 'env_cc', 'env_cc0', 'orth_env']],
+    ['The measures: direction', ['gc_ab', 'gc_ba', 'gc_net']],
+    ['Power and phase–amplitude coupling', ['power', 'pac', 'pac.circuit']],
+    ['Opening an edge', ['averaged', 'ghost.pooled', 'ghost.rats', 'ghost.days', 'ghost.units', 'leaf', 'excluded']],
+    ['What was lost, and how the signals were checked', ['damage', 'aliasing']],
+  ];
+  // Anything written but not placed above still gets its own entry.
+  const placed = new Set(PARTS.flatMap((p) => p[1]));
+  const rest = Object.keys(H.T).filter((k) => !placed.has(k));
+  if (rest.length) PARTS.push(['Other', rest]);
+
+  const mk = (tag, attrs, text) => {
+    const n = document.createElement(tag);
+    for (const k in attrs || {}) n.setAttribute(k, attrs[k]);
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  const toc = document.getElementById('toc');
+  const host = document.getElementById('entries');
+  H.guide().then((g) => {
+    host.innerHTML = '';
+    if (!g) host.appendChild(mk('p', { class: 'muted' }, 'The examples (monolith_guide.json) could not be read; the words are all here.'));
+    else document.getElementById('madeby').appendChild(mk('span', { class: 'muted' }, ' Made by ' + g.made_by + '.'));
+    for (const [name, keys] of PARTS) {
+      const grp = mk('div', { class: 'grp' });
+      grp.appendChild(mk('b', {}, name));
+      const ul = mk('ul');
+      grp.appendChild(ul);
+      toc.appendChild(grp);
+      host.appendChild(mk('h2', { class: 'part' }, name));
+      for (const key of keys) {
+        const t = H.T[key];
+        if (!t) continue;
+        const li = mk('li');
+        li.appendChild(mk('a', { href: '#' + key }, t.title));
+        ul.appendChild(li);
+        const sec = mk('section', { class: 'entry', id: key });
+        const h = mk('h3', {}, t.title);
+        h.appendChild(mk('a', { class: 'self', href: '#' + key, 'aria-label': 'Link to this entry' }, '#'));
+        sec.appendChild(h);
+        sec.appendChild(H.block(key, { big: true, noGuide: true }));
+        host.appendChild(sec);
+      }
+    }
+    // The figures fill in a moment after the words; go to the entry asked
+    // for once they have, so it does not slide away.
+    const go = () => {
+      const id = decodeURIComponent(location.hash.slice(1));
+      const n = id && document.getElementById(id);
+      if (n) n.scrollIntoView({ block: 'start', behavior: 'instant' });
+    };
+    // At once, and again once the figures have drawn (animation frames can
+    // be held back in a frame that is not on screen; a timer is not).
+    go();
+    requestAnimationFrame(() => requestAnimationFrame(go));
+    setTimeout(go, 250);
+    document.title = 'Monolith Guide';
+    document.body.dataset.ready = '1';
+  });
+})();
+</script>
+</body>
+</html>

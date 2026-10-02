@@ -112,7 +112,8 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
                         vacc: { configured: true, available: true }, min_rats: 5, concurrency: 100, code_changed: [] });
   const rows = (d) => RATS.flatMap((rat) => ['Precon1', 'Precon4'].flatMap((day) => ['SPC', 'FP1', 'FP2'].map((role) => ({
     rat, day, role, local: 'E:/x', remote: '/' + d + '/x', n_files: 50, n_send: 50, n_skip: 0, bytes: 5.2e9, total_bytes: 5.2e9 }))));
-  stub.plans.scratch = { dest: 'scratch', rows: rows('s'), bytes: 250.1e9, files: 2439, skipped: 0, seconds: 2981, at: iso() };
+  stub.plans.scratch = { dest: 'scratch', rows: rows('s'), bytes: 250.1e9, files: 2439, skipped: 0, seconds: 2981, at: iso(),
+    room: { known: true, fits: true, say: 'On gpfs2, the lab group pi-jbarry4 uses 3,687 GB of its 4,398 GB quota (hard limit 8,796 GB), 711 GB left under the quota. This needs 250 GB, and fits.' } };
   stub.plans.temp = { dest: 'temp', rows: rows('t'), bytes: 120.5e9, files: 1200, skipped: 1239, seconds: 1436, at: iso() };
   const days = RATS.flatMap((rat) => ['Precon1', 'Precon4'].map((day) => ({ rat, day, gid: 'g', spc_ready: true, rest_ready: true,
     folders: ['SPC', 'FP1', 'FP2'].map((role) => ({ role, gid: 'g', use: 'temp', remote: '/t', at: { temp: { state: 'complete', have: 50, of: 50 },
@@ -197,6 +198,27 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
     const up = stub.calls.find((c) => c.path === '/api/arc/monolith/upload');
     check('the upload goes where the card said, confirmed', up && up.body.dest === 'temp' && up.body.confirm === true, JSON.stringify(up && up.body));
 
+    head('a place that is full is said before anything is sent');
+    stub.plans.temp = Object.assign({}, stub.plans.temp, { room: { known: true, fits: false,
+      say: 'On gpfs3tmp, the lab group pi-jbarry4 uses 1,084 GB of its 1,074 GB quota (hard limit 1,084 GB) -- it is full. This needs 121 GB, so it would be refused part way through.' } });
+    stub.calls.length = 0;
+    // The upload's own request is still settling; its buttons are off until it has.
+    await until(() => btn(/^Work it out again$/) && !btn(/^Work it out again$/).disabled, 80);
+    btn(/^Work it out again$/).click();
+    await until(() => btn(/^Not enough room in Temp$/), 80);
+    const fullBtn = btn(/^Not enough room in Temp$/);
+    check('Temp full: the button says so and is off', fullBtn && fullBtn.disabled,
+          Array.from(step('upload').querySelectorAll('button')).map((b) => b.textContent + (b.disabled ? '(off)' : '')).join(' | ') + ' :: ' + step('upload').textContent.slice(0, 400));
+    check('the card says the quota, and to choose Scratch', /it is full/.test(step('upload').textContent)
+          && /Choose Scratch, or free some space in Temp first/.test(step('upload').textContent));
+    check('no primary in the upload card while it cannot go',
+          !step('upload').querySelector('button.dpc-go'));
+    check('and nothing is sent', !stub.calls.some((c) => c.path === '/api/arc/monolith/upload'));
+    step('upload').querySelector('.dmo-where [data-dest="scratch"]').click();
+    await until(() => btn(/^Upload 250 GB to Scratch$/), 80);
+    check('Scratch says it fits, and how much is left', /711 GB left under the quota/.test(step('upload').textContent)
+          && !!btn(/^Upload 250 GB to Scratch$/) && !btn(/^Upload 250 GB to Scratch$/).disabled);
+
     head('while it uploads');
     await show(Object.assign(base(), { work: { what: 'upload', status: 'running', started: iso(60), progress: {
       phase: 'sending', dest: 'temp', bytes_done: 30e9, bytes_total: 120.5e9, rate: 80e6, folder: 'r4 Precon1 SPC', file: 'CSC12.ncs',
@@ -265,6 +287,29 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
     btn(/^View Monolith Artifact$/).click();
     check('View opens the Monolith page', opened[0] === '/monolith.html', opened.join());
     check('Results knows a monolith artifact', ev('BARRY.artifacts.viewers().indexOf("monolith") >= 0'));
+    check('a Monolith with everything offers nothing to add', !btn(/^Add /));
+
+    head('adding to it: delta, and PAC at the transitions');
+    const builtS = { rid: run.rid, at: iso(1), artifact_id: 'zzmono', version: 1, missing_tasks: [],
+                     counts: { raw: { tested: 340000, p05: 18000, chance_p05: 17000 }, minus_fp: { tested: 330000, p05: 17000 } } };
+    const says = { delta: 'the delta band (1–4 Hz)', pac_trans: 'phase–amplitude coupling at the transitions' };
+    await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       missing: { bands: ['delta'], pac_trans: true }, additions_say: says }));
+    const addBtn = btn(/^Add the delta band/);
+    check('a Monolith built without them says so, and offers to add them', !!addBtn
+          && /built without the delta band \(1–4 Hz\) or phase–amplitude coupling at the transitions/.test(step('view').textContent)
+          && /nothing already measured is measured again/.test(step('view').textContent), step('view').textContent.slice(0, 300));
+    check('  it is not the next step: View still is', primaries().length === 1 && /^View Monolith Artifact$/.test(primaries()[0].textContent.trim()));
+    stub.calls.length = 0;
+    addBtn.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/run'), 60);
+    const addCall = stub.calls.find((c) => c.path === '/api/arc/monolith/run');
+    check('  pressed, it runs only what is missing, confirmed', addCall && addCall.body.confirm === true
+          && JSON.stringify(addCall.body.extra) === JSON.stringify({ bands: ['delta'], pac_trans: true }), addCall && JSON.stringify(addCall.body));
+    await show(Object.assign(base(), { check: null, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       missing: { pac_trans: true }, additions_say: says }));
+    const off2 = btn(/^Add phase–amplitude coupling at the transitions$/);
+    check('  without a check of the VACC it is off, and says why', off2 && off2.disabled && /Check the VACC first/.test(step('view').textContent));
 
     head('what goes wrong says so');
     await show(Object.assign(base(), { interrupted: { what: 'upload', id: 'x', started: iso(3600), status: 'running' } }));

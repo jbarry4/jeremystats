@@ -545,7 +545,11 @@ BARRY.views.eventbank = (function () {
       el('span', { class: 'bank-n', text: e.n + '' }),
       el('span', { class: 'bank-src', text: baseName(src.pipeline || ''),
                    title: src.pipeline || '' }),
-    ]);
+      /* Whether it has reached the shared database. The bank pushes a
+         change by itself within seconds (backend/syncitems.py); this says
+         when it has. Per version is in the entry's own panel. */
+      BARRY.syncState ? BARRY.syncState.mark('bank', e.id) : null,
+    ].filter(Boolean));
   }
 
   /* ---------- right: one entry in full ---------- */

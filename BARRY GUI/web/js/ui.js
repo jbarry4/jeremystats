@@ -308,7 +308,12 @@ BARRY.ui = (function () {
      `owner.onAssign` is what separates them honestly: curation sets can be
      handed to somebody and sheets cannot, so a set's owner is a button and
      a sheet's is text. A control that looks pressable and is not would be a
-     worse lie than the one this replaces. */
+     worse lie than the one this replaces.
+
+     `sync: { kind, id }` puts the shared-database mark on the owner line
+     (js/syncstate.js): whether this set or sheet has reached the shared
+     tables, so "is my work up there" is answered on the card rather than in
+     the sync panel. */
   function workbenchCard(o) {
     const opt = o || {};
     const own = opt.owner || {};
@@ -343,6 +348,8 @@ BARRY.ui = (function () {
       el('div', { class: 'cur-set-who' }, [
         ownerNode,
         opt.when ? el('span', { class: 'cur-set-when', text: opt.when }) : null,
+        opt.sync && BARRY.syncState
+          ? BARRY.syncState.mark(opt.sync.kind, opt.sync.id) : null,
       ].filter(Boolean)),
     ].concat(opt.extras || [])
      .concat([

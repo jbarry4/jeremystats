@@ -143,7 +143,6 @@ BARRY.views.spectrum = (function () {
   function body() {
     return {
       path: ctx.path,
-      even_only: ctx.evenOnly,
       invert: ctx.invert,
       channels: q.channels,
       t0: q.whole ? 0 : q.t0,

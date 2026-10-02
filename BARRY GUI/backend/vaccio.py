@@ -461,7 +461,7 @@ def _reaper_soon():
 # --------------------------------------------------------------------------
 # The session, in the shape `csc.py` hands around
 # --------------------------------------------------------------------------
-def open_session(path, even_only=None, invert=True):
+def open_session(path, invert=True):
     """A `vacc:<gid>` recording, opened on the cluster.
 
     The returned dict is what `csc.open_session` returns for a folder of
@@ -491,7 +491,7 @@ def open_session(path, even_only=None, invert=True):
                 "error": where.get("why") or "The cluster has no copy of it."}
 
     try:
-        got = call("open", path=remote, even_only=even_only, invert=invert)
+        got = call("open", path=remote, invert=invert)
     except LinkError as exc:
         return {"ok": False, "path": path, "error": str(exc)}
     if not got.get("ok"):
@@ -511,7 +511,6 @@ def open_session(path, even_only=None, invert=True):
 
 def _remote_args(session):
     return {"path": session.get("remote"),
-            "even_only": session.get("even_only"),
             "invert": session.get("invert", True)}
 
 

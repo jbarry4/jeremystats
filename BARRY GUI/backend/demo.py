@@ -121,7 +121,7 @@ def path_for(spec):
 # --------------------------------------------------------------------------
 # The session, shaped exactly like a real one
 # --------------------------------------------------------------------------
-def open_session(path, even_only=None, invert=True):
+def open_session(path, invert=True):
     spec = get(path)
     if not spec:
         return {"ok": False, "error": "No such demo recording: %s" % path}
@@ -145,7 +145,6 @@ def open_session(path, even_only=None, invert=True):
         "duration_s": spec["duration_s"],
         "n_samples": int(spec["duration_s"] * FS),
         "channels": channels,
-        "even_only": False,
         "invert": bool(invert),
         "demo": True,
         "demo_note": spec["note"],

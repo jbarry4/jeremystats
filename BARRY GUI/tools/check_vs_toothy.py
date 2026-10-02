@@ -100,7 +100,7 @@ def compare(path, gid, label):
         return None
 
     from backend import app as appmod
-    sess, err = appmod._session_for(path, False, True)
+    sess, err = appmod._session_for(path, True)
     if err:
         print("  could not open: %s" % err)
         return None
@@ -108,8 +108,7 @@ def compare(path, gid, label):
     # Every channel, because the hilus channel is what Toothy detected on and
     # this has to find the same one before the times can be compared.
     chans = [c["index"] for c in sess["channels"]]
-    spec = {"path": path, "channels": chans, "invert": True,
-            "even_only": False}
+    spec = {"path": path, "channels": chans, "invert": True}
     out = incisor.run(sess, spec, rep)
     hil = out["picked"]["hilus"]
     print("  Incisor picked %s (margin %.0f%%), %d events"

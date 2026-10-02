@@ -24,6 +24,12 @@ On made-up signals whose answers are known:
   - PAC: theta phase driving gamma amplitude is found at that cell, in the
     right direction between two regions, and not where it is absent
   - a missing region, and a flat one, leave their pairs NaN and no others
+  - explain(), behind the page's pictures: each curve rebuilds its number
+    -- the coherence and Granger spectra averaged over the band, the
+    phase-difference rose's mean vector, the lead/lag shares, the lag
+    curves' peaks and zero, the segments' PPC and debiased wPLI, the power
+    spectrum's band mean, the PAC bars' MI against pac_window -- and the
+    same curve read over the wrong band does not
 """
 import math
 import os
@@ -63,8 +69,19 @@ def bands_table():
     print("\nThe bands")
     B = SW.BANDS
     bins = [b for b in B if not b["named"]]
-    check("55 one-hertz bands and 3 named", len(bins) == 55
-          and [b["id"] for b in B if b["named"]] == list(coupling.BAND_ORDER))
+    check("55 one-hertz bands, the circuits' 3 named, then delta", len(bins) == 55
+          and [b["id"] for b in B if b["named"]] == list(coupling.BAND_ORDER) + ["delta"]
+          and SW.BAND_IDS[-1] == "delta")
+    dl = SW.BAND_BY_ID["delta"]
+    check("delta: 1-4 Hz, slow, lags over 2 s, Welch pieces of 2 s",
+          (dl["low"], dl["high"], dl["speed"], dl["lag_s"]) == (1.0, 4.0, "slow", 2.0)
+          and SW.welch_len_s(dl) == 2.0 and "delta" in SW.bands_for("trans_slow")
+          and "delta" not in SW.bands_for("trans_fast"))
+    check("the circuits' own bands are untouched", "delta" not in coupling.BANDS)
+    u = {"pair": {"opener_t": 100.0, "closer_t": 110.0, "offset_t": 120.0}}
+    check("PAC at the transitions takes the slow windows (-3/+3 s)",
+          SW._windows_for("pac_trans", u) == SW._windows_for("trans_slow", u)
+          and SW.bands_for("pac_trans") == [] and "pac_trans" in SW.KINDS)
     f1 = SW.BAND_BY_ID["f01"]
     check("1 Hz is 0.5-1.5 Hz", (f1["low"], f1["high"]) == (0.5, 1.5), f1)
     f20 = SW.BAND_BY_ID["f20"]
@@ -83,8 +100,8 @@ def bands_table():
               == (c["low"], c["high"], c["max_lag_ms"]))
     slow = SW.bands_for("trans_slow")
     fast = SW.bands_for("trans_fast")
-    check("slow transition bands are 1-12 Hz and theta",
-          slow == ["f%02d" % f for f in range(1, 13)] + ["theta"], slow)
+    check("slow transition bands are 1-12 Hz, theta and delta",
+          slow == ["f%02d" % f for f in range(1, 13)] + ["theta", "delta"], slow)
     check("fast transition bands are 13-55 Hz, beta and low gamma",
           fast == ["f%02d" % f for f in range(13, 56)] + ["beta", "gamma_low"])
     check("lag bound is two cycles of each bin",
@@ -344,7 +361,120 @@ def pac_known():
           np.all(np.isnan(out[unmeasured])) and len(unmeasured) > 0)
 
 
+def explain_agrees():
+    """The pictures on the page are drawn from explain(): if a curve could
+    not rebuild the number beside it, the picture would be decoration."""
+    print("\nexplain(): every curve rebuilds its number")
+    rng = np.random.default_rng(21)
+    n = 10000
+    t = np.arange(n) / FS
+    s = np.sin(2 * np.pi * 8 * t + 0.3 * np.cumsum(rng.standard_normal(n)) / 40)
+    a = 50 * s + noise(rng, n, 20)
+    b = 40 * np.roll(s, 12) + noise(rng, n, 20)
+    cell = [i for i, cc in enumerate(SW.PAC_CELLS) if cc[0] == 6 and cc[1] == 40][0]
+    worst = {}
+
+    def near(key, x, y, tol):
+        d = abs(float(x) - float(y))
+        worst[key] = max(worst.get(key, 0.0), d)
+        return d <= tol
+
+    oks = {k: True for k in ("same", "coherence", "icoh", "gc", "plv", "pli",
+                             "wpli", "raw_cc", "env_cc", "env_cc0", "orth",
+                             "ppc", "dwpli", "power", "pac")}
+    for band in ("f08", "theta", "f30", "beta"):
+        ex = SW.explain(a, b, band, cell=cell)
+        v = ex["values"]
+        vm, pw, _n = SW.window_measures([a, b], [band])
+        oks["same"] &= all(
+            (v[m] is None and np.isnan(vm[0, i, 0])) or near("same", v[m], vm[0, i, 0], 1e-12)
+            for i, m in enumerate(SW.EDGE_METHODS)) and near("same", v["gc_net"], v["gc_ab"] - v["gc_ba"], 1e-12)
+        lo, hi = ex["band"]["low"], ex["band"]["high"]
+        f = np.array(ex["spectra"]["f"])
+        sel = (f >= lo) & (f <= hi)
+        oks["coherence"] &= near("coherence", np.nanmean(np.array(ex["spectra"]["coh"])[sel]), v["coherence"], 2e-4)
+        oks["icoh"] &= near("icoh", abs(np.nanmean(np.array(ex["spectra"]["icoh"])[sel])), v["icoh"], 2e-4)
+        gf = np.array(ex["granger"]["f"])
+        gs = (gf >= lo) & (gf <= hi)
+        oks["gc"] &= near("gc", np.nanmean(np.array(ex["granger"]["ab"])[gs]), v["gc_ab"], 1e-3) and \
+            near("gc", np.nanmean(np.array(ex["granger"]["ba"])[gs]), v["gc_ba"], 1e-3)
+        ph = ex["phase"]
+        oks["plv"] &= near("plv", ph["plv"], v["plv"], 1e-12)
+        oks["pli"] &= near("pli", abs(ph["lead_frac"] - ph["lag_frac"]), v["pli"], 1e-9)
+        oks["wpli"] &= near("wpli", abs(ph["w_lead"] - ph["w_lag"]), v["wpli"], 1e-9)
+        L = ex["lags"]
+        oks["raw_cc"] &= near("raw_cc", L["raw_peak"][1], v["raw_cc"], 1e-9)
+        oks["env_cc"] &= near("env_cc", L["env_peak"][1], v["env_cc"], 1e-9)
+        z = int(np.argmin(np.abs(np.array(L["ms"]))))
+        oks["env_cc0"] &= L["ms"][z] == 0 and near("env_cc0", L["env"][z], v["env_cc0"], 2e-4)
+        oks["orth"] &= near("orth", (ex["orth"]["r_a"] + ex["orth"]["r_b"]) / 2.0, v["orth_env"], 1e-9)
+        sg = ex["segments"]
+        u = np.exp(1j * np.array(sg["angle"]))
+        K = u.size
+        ppc = (abs(u.sum()) ** 2 - K) / (K * (K - 1.0))
+        oks["ppc"] &= near("ppc", ppc, v["ppc"], 2e-3)
+        im = np.array(sg["imag"])
+        dw = (im.sum() ** 2 - (im ** 2).sum()) / (np.abs(im).sum() ** 2 - (im ** 2).sum())
+        oks["dwpli"] &= near("dwpli", dw, v["dwpli"], 2e-3)
+        psa = np.log10(np.mean(10 ** np.array(ex["spectra"]["psd_a"])[sel]))
+        psb = np.log10(np.mean(10 ** np.array(ex["spectra"]["psd_b"])[sel]))
+        oks["power"] &= near("power", psa, ex["power"][0], 1e-3) and near("power", psb, ex["power"][1], 1e-3) \
+            and near("power", ex["power"][0], pw[0, 0], 1e-12)
+        if band == "f08":
+            pac = SW.pac_window([a, b])[cell]
+            P = ex["pac"]
+            oks["pac"] = all(near("pac", P[k]["mi"], pac[j], 1e-9) for k, j in
+                             (("aa", 0), ("ab", 1), ("ba", 2), ("bb", 3))) and \
+                all(abs(sum(P[k]["p"]) - 1) < 1e-3 for k in ("aa", "ab", "ba", "bb"))
+            # CONTROL: the same curve read a band too high misses.
+            off = (f >= lo + 4) & (f <= hi + 4)
+            miss = abs(np.nanmean(np.array(ex["spectra"]["coh"])[off]) - v["coherence"])
+    check("its numbers are window_measures' own (gc_net = A→B − B→A)", oks["same"])
+    for k, say in (("coherence", "coherence: the spectrum's band mean"),
+                   ("icoh", "imaginary coherence: |the band mean|"),
+                   ("gc", "Granger: each direction's band mean"),
+                   ("plv", "PLV: the rose's mean vector"),
+                   ("pli", "PLI: |lead share − lag share|"),
+                   ("wpli", "wPLI: the same, weighted"),
+                   ("raw_cc", "raw cc: the lag curve's peak"),
+                   ("env_cc", "envelope cc: its curve's peak"),
+                   ("env_cc0", "amplitude r at zero lag: the envelope curve at 0 ms"),
+                   ("orth", "orthogonalised r: the mean of both ways"),
+                   ("ppc", "PPC: from the segments shown"),
+                   ("dwpli", "debiased wPLI: from the segments shown"),
+                   ("power", "power: log of the spectrum's band mean"),
+                   ("pac", "PAC: the bars' MI is pac_window's, each way")):
+        check(say + " (worst %.1e)" % worst.get(k, 0.0), oks[k])
+    check("CONTROL: the coherence curve read 4 Hz too high misses (%.3f)" % miss,
+          miss > 0.1)
+
+
+def delta_band():
+    print("\nDelta")
+    from scipy.signal import butter, sosfiltfilt
+    rng = np.random.default_rng(31)
+    n = 10000
+    sos = butter(4, [1.0 / (FS / 2), 4.0 / (FS / 2)], btype="band", output="sos")
+    # Delta activity filling the band, shared by two regions (the second
+    # 30 ms behind); a third region has its own.
+    s = sosfiltfilt(sos, rng.standard_normal(n + 400))
+    s /= s.std()
+    own = sosfiltfilt(sos, rng.standard_normal(n))
+    own /= own.std()
+    a = 60 * s[200:200 + n] + noise(rng, n, 10)
+    b = 60 * s[170:170 + n] + noise(rng, n, 10)
+    c = 60 * own + noise(rng, n, 10)
+    v, pw, _n = SW.window_measures([a, b, c], ["delta"])
+    co = v[0, MI["coherence"]]
+    check("shared 1-4 Hz activity is coherent in delta (%.3f); a region with "
+          "its own is not (%.3f)" % (co[0], co[1]), co[0] > 0.8 and co[1] < 0.5)
+    lag = v[0, MI["raw_cc"], 0]
+    check("and correlated at its lag (%.3f)" % lag, abs(lag) > 0.8)
+
+
 def main():
+    explain_agrees()
+    delta_band()
     bands_table()
     named_equal_coupling()
     bin_raw_cc_equals_coupling()

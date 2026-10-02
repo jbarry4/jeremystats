@@ -130,7 +130,9 @@ def cache_key(spec, report=None):
         "path": spec.get("path"),
         "channels": sorted(int(c) for c in (spec.get("channels") or [])),
         "invert": bool(spec.get("invert", True)),
-        "even_only": bool(spec.get("even_only")),
+        # Constant since even-only reading was removed (2026-10), and kept
+        # so a key computed before then still finds its entry.
+        "even_only": False,
         "height_sd": round(float(spec.get("height_sd", DS_HEIGHT_SD)), 6),
         "abs_uv": round(float(spec.get("abs_uv", DS_ABS_THR_UV)), 6),
         "dist_ms": round(float(spec.get("dist_ms", DS_DIST_MS)), 6),
@@ -238,7 +240,6 @@ def plan_for(session, spec, report=None):
                                         or spec.get("path")) or "")
                         .startswith("\\\\")),
         "invert": bool(spec.get("invert", True)),
-        "even_only": bool(session.get("even_only")),
         # What was NOT scanned, and how the recording was read.
         #
         # None of this changes when a dentate spike happened -- a time comes
@@ -252,7 +253,6 @@ def plan_for(session, spec, report=None):
         "bad_channels": list(spec.get("bad_channels") or []),
         "probe": spec.get("probe") or "h3",
         "probe_name": spec.get("probe_name") or "H3 (single linear array)",
-        "channel_scheme": session.get("channel_scheme") or None,
         "n_csc_files": session.get("n_csc_files"),
     }
 
@@ -1149,7 +1149,6 @@ def _params(spec, plan):
         "decimate": plan["decimate"],
         "estimator": spec.get("estimator") or "sd",
         "invert": bool(spec.get("invert", True)),
-        "even_only": bool(plan.get("even_only")),
         "bad_channels_excluded": list(spec.get("bad_channels") or []),
         "n_channels_scanned": int(plan.get("n_channels") or 0),
         "probe": spec.get("probe") or "h3",

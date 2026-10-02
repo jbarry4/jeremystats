@@ -73,6 +73,8 @@ async function untilN(fn, tries = 200, gap = 100) {
   tplan.dest = 'temp'; tplan.dest_root = TEMP; tplan.bytes = 2000000000;
   tplan.items[0].dest = TEMP + '/PTEN/M1_Pten/M1ptens1oct2/2023-10-02_16-49-04';
   tplan.items[0].n_skip = 0; tplan.items[0].n_send = 4; tplan.files = 4;
+  plan.room = { known: true, fits: true, say: 'On gpfs2, the lab group pi-jbarry4 uses 3,687 GB of its 4,398 GB quota, 711 GB left under the quota. This needs 1 GB, and fits.' };
+  tplan.room = { known: true, fits: true, say: 'On gpfs3tmp there is room.' };
   const asked = [];
   let job = { id: 'zzjob1', status: 'running',
               members: [{ id: 'g1', label: 'zz PTEN m1 s1', status: 'running',
@@ -110,6 +112,7 @@ async function untilN(fn, tries = 200, gap = 100) {
           !!seg && txt(seg) === 'ScratchTemp'
           && segOn().querySelector('.active').dataset.dest === 'scratch', seg && txt(seg));
     check('the dialog says where they go', txt(md()).indexOf(ROOT) >= 0);
+    check('and the room the lab has there, from the cluster', /711 GB left under the quota/.test(txt(md())));
     check('what each sends, and what is already there',
           /zz PTEN m1 s1 — 3 file\(s\), .+, 1 already there/.test(txt(md())), txt(md()));
     check('and why one cannot go', /zz ACTIVE bw10 — Its folders do not name/.test(txt(md())));
@@ -139,6 +142,21 @@ async function untilN(fn, tries = 200, gap = 100) {
     const tsent = asked.find((a) => a[0] === 'upload');
     check('the upload goes to Temp', tsent && tsent[1].dest === 'temp'
           && tsent[1].confirm === true, JSON.stringify(tsent));
+    asked.length = 0;
+
+    head('a place that is full');
+    tplan.room = { known: true, fits: false, say: 'On gpfs3tmp, the lab group pi-jbarry4 uses 1,084 GB of its 1,074 GB quota -- it is full. This needs 2 GB, so it would be refused part way through.' };
+    asked.length = 0;
+    p = B.vacc.upload(['g1', 'g2']);
+    await untilN(() => open() && md().querySelector('.vacc-up-where'), 50, 100);
+    md().querySelector('.vacc-up-where [data-dest="temp"]').click();
+    await untilN(() => btn(/^Not enough room in Temp$/), 50, 100);
+    check('full: the button says so and is off', !!btn(/^Not enough room in Temp$/) && !!btn(/^Not enough room in Temp$/).disabled);
+    check('and the dialog says why', /it is full/.test(txt(md())));
+    btn(/^Cancel$/).click();
+    await p;
+    check('nothing is sent', !asked.some((a) => a[0] === 'upload'));
+    tplan.room = { known: true, fits: true, say: 'On gpfs3tmp there is room.' };
     asked.length = 0;
 
     head('confirmed');

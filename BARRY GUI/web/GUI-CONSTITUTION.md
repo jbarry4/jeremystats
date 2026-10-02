@@ -454,7 +454,12 @@ A mode holding the old one keeps painting into a detached tree.
 Read `README.md § Session identity` before touching these.
 
 - **Stored by CSC channel number, never by row index.** An index shifts the
-  moment somebody toggles even-only.
+  moment a channel file goes missing.
+- **Every channel is read.** There is no even-channels-only read any more,
+  and none is to be added back: picking the even channels is a selection,
+  made in the `Ch` menu, not a second way of opening a recording. A read
+  that is sometimes half the files makes every index into it mean two
+  things.
 - Identity is **mouse + session + the recording start time from the Neuralynx
   header** — not the path, which differs per machine. Matching is tiered:
   exact, then strong (mouse+session, unambiguous), then weak (nearest start).
@@ -1454,6 +1459,25 @@ server-assigned stamp is the real fix.
 11. **The cloud being away is a state, not an error.** No retry storm: a
     failed call waits its backoff and the page says "not reachable", as
     presence already does ("nobody is reported present").
+    `cloud._call` enforces it for every caller: after a 502-504 or a
+    Cloudflare 520-524, a timeout or no connection, nothing is asked for 15 s,
+    doubling to 5 min, and the call raises `CloudAway` without a request. The
+    first answer of any kind clears it. Measured before: 270 requests in one
+    sitting, all failing, each holding a thread for twenty seconds.
+12. **There is no sync button.** A change to a shared record asks for a
+    push itself, however it was made (`shards.ON_CHANGE`, wired in
+    `backend/syncitems.py`). That includes a request, or a job banking its
+    results in a thread, even while the loop is idle-paused. A pull that
+    fails does not hold the push back. The Sync panel keeps its "Sync now"
+    for diagnosis; the rail does not have one.
+13. **Say per record whether it has gone up.** A list of things people
+    make carries `BARRY.syncState.mark(kind, id)`: Event Bank rows,
+    workbench cards (`workbenchCard({ sync })`) and artifacts. The states
+    are *shared*, *sending*, *not sent* (the last sync failed, with why),
+    *this computer* (never travels, with why) and *not shared* (this machine
+    is not connected). The answer is `/api/cloud/items`, worked out from the
+    push cursor, so it costs nothing at Supabase. A new kind of shared
+    record adds its kind to `Sync.item_states` and a mark to its list.
 
 ### Measuring it
 
