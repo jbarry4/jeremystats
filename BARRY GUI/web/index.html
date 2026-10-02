@@ -300,18 +300,15 @@
     </div><!-- /.rail-scroll -->
 
     <div class="rail-foot">
-      <!-- Two things on one row, because they are two different acts.
-           The left half syncs now; the right half opens the panel that
-           explains what syncing means. It used to be only the second, so
-           "push this to the other machine" was three clicks deep. -->
+      <!-- Where the shared copy stands, and the way into the panel that
+           explains it. There was a "Sync now" beside it: the background
+           sync already pushes a change within seconds, so the button mostly
+           reported the database being briefly away, as an error, as though
+           the click had failed. js/syncstate.js draws this. -->
       <div class="rail-sync">
-        <button class="chip-btn sync-go" id="syncNowBtn"
-                title="Sync with the shared database now">
-          <svg viewBox="0 0 20 20"><path d="M3 10a7 7 0 0 1 12-5M17 10a7 7 0 0 1-12 5"/><path d="M15 2v3h-3M5 18v-3h3"/></svg>
-          <span id="syncNowLabel">Sync now</span>
-        </button>
-        <button class="chip-btn sync-info" id="syncBtn"
+        <button class="chip-btn sync-go" id="syncBtn"
                 title="What is synced, and how">
+          <svg viewBox="0 0 20 20"><path d="M3 10a7 7 0 0 1 12-5M17 10a7 7 0 0 1-12 5"/><path d="M15 2v3h-3M5 18v-3h3"/></svg>
           <span id="syncLabel">Sync</span>
         </button>
       </div>
@@ -762,6 +759,7 @@
 <script src="js/core.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/stash.js"></script>
+<script src="js/syncstate.js"></script>
 <script src="js/features.js"></script>
 <script src="js/activity.js"></script>
 <script src="js/pipeline.js"></script>

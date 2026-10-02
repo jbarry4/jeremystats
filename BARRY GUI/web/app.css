@@ -12153,3 +12153,39 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
   margin: 0; font-family: var(--mono); font-size: var(--fs-12); color: var(--accent);
 }
 .bank-dlg-nowho { color: var(--warn); }
+
+/* --------------------------------------------------------------------------
+   Has it reached the shared database (js/syncstate.js)
+   --------------------------------------------------------------------------
+   A quiet mark, because it sits in rows people read for other reasons: a
+   dot and a word, coloured by state. Not a .pill -- that is a filter button
+   everywhere else, and this does nothing when pressed. */
+.sync-mark {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  font-size: var(--fs-9); line-height: 1.3; white-space: nowrap;
+  color: var(--text-3); letter-spacing: 0.01em;
+}
+.sync-mark:empty { display: none; }
+.sync-mark::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; flex: none;
+}
+.sync-mark.synced { color: var(--ok); }
+.sync-mark.waiting { color: var(--accent); }
+.sync-mark.stuck { color: var(--err); }
+.sync-mark.local::before { background: transparent; border: 1px solid currentColor; }
+.sync-mark.unknown::before,
+.sync-mark.off::before { background: transparent; border: 1px dashed currentColor; }
+/* The bank list's row is a grid; the mark takes the top right, after the
+   count, so the name keeps the width it had. */
+.bank-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "name  n    sync"
+                       "type  src  src";
+}
+.bank-row .sync-mark { grid-area: sync; justify-self: end; }
+/* The rail chip, by where the shared copy stands. */
+.chip-btn.sync-ok svg { color: var(--ok); }
+.chip-btn.sync-busy svg { color: var(--accent); }
+.chip-btn.sync-warn { border-color: var(--warn); color: var(--warn); }
+.chip-btn.sync-bad { border-color: var(--err); color: var(--err); }

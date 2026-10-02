@@ -1459,6 +1459,20 @@ server-assigned stamp is the real fix.
 11. **The cloud being away is a state, not an error.** No retry storm: a
     failed call waits its backoff and the page says "not reachable", as
     presence already does ("nobody is reported present").
+12. **There is no sync button.** A change to a shared record asks for a
+    push itself, however it was made (`shards.ON_CHANGE`, wired in
+    `backend/syncitems.py`). That includes a request, or a job banking its
+    results in a thread, even while the loop is idle-paused. A pull that
+    fails does not hold the push back. The Sync panel keeps its "Sync now"
+    for diagnosis; the rail does not have one.
+13. **Say per record whether it has gone up.** A list of things people
+    make carries `BARRY.syncState.mark(kind, id)`: Event Bank rows,
+    workbench cards (`workbenchCard({ sync })`) and artifacts. The states
+    are *shared*, *sending*, *not sent* (the last sync failed, with why),
+    *this computer* (never travels, with why) and *not shared* (this machine
+    is not connected). The answer is `/api/cloud/items`, worked out from the
+    push cursor, so it costs nothing at Supabase. A new kind of shared
+    record adds its kind to `Sync.item_states` and a mark to its list.
 
 ### Measuring it
 

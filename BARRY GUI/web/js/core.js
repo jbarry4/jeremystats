@@ -1052,22 +1052,9 @@ BARRY.refreshSync = async function refreshSync() {
      error recorded while you are somewhere else is exactly the case the
      badge exists for, and it was the one case it missed. */
   BARRY.setErrorCount(((data.index || {}).counts || {}).errors || 0);
-  const git = data.git || {};
-  const btn = $('#syncBtn');
-  const label = $('#syncLabel');
-  if (!git.ok) {
-    label.textContent = 'Logs';
-    btn.classList.remove('dirty');
-    btn.title = 'GUI_logs at ' + (data.root || '');
-  } else if (git.dirty) {
-    label.textContent = git.dirty + ' to commit';
-    btn.classList.add('dirty');
-    btn.title = git.dirty + ' uncommitted file(s) in GUI_logs — click for details';
-  } else {
-    label.textContent = 'Logs synced';
-    btn.classList.remove('dirty');
-    btn.title = 'GUI_logs has no uncommitted changes';
-  }
+  /* The chip says where the shared database stands (syncstate.js); the
+     git state of GUI_logs, which it used to say alone, is in its title. */
+  if (BARRY.syncState) BARRY.syncState.paintRail();
 };
 
 /* Whether anything in the logs could ever conflict on a pull.
@@ -1317,78 +1304,6 @@ function conflictNote(c) {
 }
 
 
-/* Sync, from anywhere, with the phase on the button.
-
-   The same request the dialog's "Sync now" makes -- there is one sync and
-   one lock -- but reachable in one click and reporting into the rail rather
-   than into a modal that has to be open to be read.
-
-   `/api/sync/progress` is polled while the request is in flight because a
-   full round trip is three or four seconds and the pull alone is fifteen
-   round trips. A button that says nothing for that long is indistinguishable
-   from a button that did nothing. */
-let _syncing = false;
-
-async function globalSync(btn) {
-  if (_syncing) return;
-  _syncing = true;
-  const label = document.getElementById('syncNowLabel');
-  const was = label ? label.textContent : 'Sync now';
-  if (btn) btn.classList.add('busy');
-
-  let stop = false;
-  const watch = async () => {
-    while (!stop) {
-      try {
-        const got = await api('/api/sync/progress');
-        const st = (got && got.step) || {};
-        /* `stop` is re-checked AFTER the await. Setting it only stops the
-           next iteration; a request already in flight would otherwise
-           write its phase over the label the `finally` had just put
-           back -- which left the chip reading "pushing error_marks 93%"
-           for ever. */
-        if (stop) break;
-        if (st.running && label) {
-          const pct = st.of ? Math.round(100 * st.done / st.of) : null;
-          label.textContent = (st.phase || 'syncing')
-            + (st.table ? ' ' + st.table : '')
-            + (pct != null ? '  ' + pct + '%' : '');
-        }
-      } catch (e) { /* the sync is what matters, not the commentary */ }
-      await new Promise((r) => setTimeout(r, 300));
-    }
-  };
-  watch();
-
-  try {
-    const res = await apiPost('/api/cloud/sync', {});
-    const last = (res && res.last) || {};
-    if (last.error) {
-      toast('Sync: ' + last.error, 'err', 8000);
-    } else {
-      /* What actually moved, not "done". "Sent 0, brought back 0" is a
-         useful answer -- it means everybody is already level. */
-      toast('Sent ' + (last.pushed || 0) + ', brought back '
-            + (last.pulled || 0)
-            + (last.downloaded ? ', downloaded ' + last.downloaded + ' file(s)'
-               : '') + '.', 'ok', 6000);
-    }
-    /* Whatever came down should be on screen without a second thought. */
-    try { await BARRY.refreshSync(); } catch (e) { /* status only */ }
-    const v = BARRY.views[BARRY.state.view];
-    if (v && v.reload) { try { v.reload(); } catch (e) { /* leave it */ } }
-    else if (v && v.onShow) { try { v.onShow(); } catch (e) { /* leave it */ } }
-  } catch (e) {
-    toast('Could not sync: ' + e.message, 'err', 9000);
-  } finally {
-    stop = true;
-    _syncing = false;
-    if (btn) btn.classList.remove('busy');
-    if (label) label.textContent = was;
-  }
-}
-
-BARRY.syncNow = globalSync;
 
 function showSync() {
   const d = BARRY.sync || {};
@@ -3596,8 +3511,7 @@ BARRY.init = async function init() {
   }
 
   $('#syncBtn').addEventListener('click', showSync);
-  const goBtn = $('#syncNowBtn');
-  if (goBtn) goBtn.addEventListener('click', () => globalSync(goBtn));
+  if (BARRY.syncState) BARRY.syncState.refresh();
 
   $('#logToggle').addEventListener('click', () =>
     $('#logDock').classList.toggle('collapsed'));

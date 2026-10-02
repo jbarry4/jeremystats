@@ -1500,6 +1500,8 @@ BARRY.views.toolkit = (function () {
       count: pr.specified + ' / ' + pr.total
              + (done ? '  ✓' : '  ·  ' + pr.left + ' left'),
       owner: { name: who, onAssign: () => assignSet(st) },
+      // The id the push files it under (cloudsync.rows_curation).
+      sync: { kind: 'curation', id: st.gid + '__' + st.kind },
       when: when ? 'opened ' + when
                    + (st.opened_by && st.opened_by !== who
                        ? ' by ' + st.opened_by : '') : null,
@@ -2616,6 +2618,7 @@ BARRY.views.toolkit = (function () {
       ].filter(Boolean),
       count: (pr.labelled || 0) + ' / ' + (pr.total || 0) + ' channels',
       owner: { name: sh.assignee || null },
+      sync: { kind: 'layers', id: sh.gid },
       when: when ? (onBench ? 'picked up ' : 'last touched ') + when
                    + (sh.opened_by && onBench ? ' by ' + sh.opened_by : '')
                  : null,

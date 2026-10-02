@@ -18183,12 +18183,26 @@ def cloud_sync_once(push=True, pull=True, files=False):
                 _sync_note(phase, table=table, n=n, done=seen[0])
             return note
 
+        # A pull that fails no longer stops the push behind it. They were
+        # one try, so a database too busy to answer the pull's first select
+        # (a Cloudflare 522 on `barry_watermarks`) kept every change made
+        # here from going up until the pull came back. The database keeps
+        # the newer row whichever order they arrive in, so pushing without
+        # the pull loses nothing. The pull's failure is still the result.
+        pull_failed = None
         if pull:
             _sync_note("pulling", of=steps, done=seen[0])
-            got = CLOUD.pull(on_progress=None, on_table=step("pulling"))
-            out["pulled"] = sum(v for v in (got.get("applied") or {}).values()
-                                if isinstance(v, int))
-            _sync_note("pulled", n=out["pulled"], of=steps, done=seen[0])
+            try:
+                got = CLOUD.pull(on_progress=None, on_table=step("pulling"))
+                out["pulled"] = sum(
+                    v for v in (got.get("applied") or {}).values()
+                    if isinstance(v, int))
+                _sync_note("pulled", n=out["pulled"], of=steps,
+                           done=seen[0])
+            except Exception as exc:                 # noqa: BLE001
+                if not push:
+                    raise
+                pull_failed = exc
         if push:
             # Deletions first: a push that re-sends a row we have locally
             # deleted would undo the tombstone it is about to write.
@@ -18204,6 +18218,10 @@ def cloud_sync_once(push=True, pull=True, files=False):
             out["uploaded"] = up.get("uploaded", 0)
             down = CLOUD.pull_files()
             out["downloaded"] = down.get("downloaded", 0)
+        if pull_failed is not None:
+            # What did go through is kept; the failure is what is reported.
+            _cloud_last.update(out)
+            raise pull_failed
         # And the browsable copy of the bank, so the folder tree agrees with
         # the view whether or not anything changed up there.
         out["mirrored"] = CLOUD.mirror_bank(APP_DIR).get("written", 0)
@@ -18295,6 +18313,8 @@ IDLE_AFTER = 600
 # after_request hook rather than by each route: there are about ninety routes
 # that write and one place they all pass through.
 _push_wanted = [0.0]
+# When a shared record last changed, or 0. See cloud_touch.
+_push_urgent = [0.0]
 # When the person at this machine last did something (a write they caused;
 # not a timer). Holds the pull at PULL_SOLO rather than letting it back off.
 _user_active = [0.0]
@@ -18347,9 +18367,17 @@ def cloud_idle():
     return time.time() - _last_human() >= IDLE_AFTER
 
 
-def cloud_touch():
-    """Note that something local changed, so the next push is soon."""
+def cloud_touch(urgent=False):
+    """Note that something local changed, so the next push is soon.
+
+    `urgent` is a shared record -- a bank entry, a curation set, a layer
+    sheet, an artifact -- changing on this machine, however it was changed
+    (syncitems.py). It is pushed even while the loop is idle-paused, which is
+    when a batch that banks its results overnight finishes.
+    """
     _push_wanted[0] = time.time()
+    if urgent:
+        _push_urgent[0] = time.time()
 
 
 def _cloud_backoff(fails, blocked):
@@ -18369,6 +18397,10 @@ def _cloud_backoff(fails, blocked):
         return 600
     err = str(_cloud_last.get("error") or "")
     transient = ("504" in err or "502" in err or "503" in err
+                 # Cloudflare in front of Supabase: 520-524 are "the origin
+                 # did not answer", which is the database being busy, not
+                 # anything wrong here.
+                 or any(c in err for c in ("520", "521", "522", "523", "524"))
                  or "Gateway" in err or "timed out" in err
                  or "Timeout" in err or "Connection" in err
                  or "555" in err)
@@ -18416,6 +18448,18 @@ def _cloud_loop():
             # Nobody has used Jarvis for IDLE_AFTER: nothing at all is asked
             # of the cloud until somebody does (see IDLE_AFTER).
             if cloud_idle():
+                urgent = _push_urgent[0]
+                if urgent and now - urgent >= PUSH_AFTER_WRITE:
+                    # A shared record changed with nobody here -- a job
+                    # finishing. Push it and nothing else: nobody being here
+                    # is still the reason not to pull.
+                    _push_urgent[0] = 0.0
+                    _push_wanted[0] = 0.0
+                    cloud_sync_once(pull=False, push=True, files=False)
+                    fails = _cloud_last.get("failures", 0)
+                    if fails:
+                        retry_at = time.time() + _cloud_backoff(
+                            fails, _cloud_last.get("blocked"))
                 if not paused:
                     paused = True
                     _cloud_pace.update(pull_s=None, why=(
@@ -18442,6 +18486,7 @@ def _cloud_loop():
             if due_pull or due_push or due_files:
                 if due_push:
                     _push_wanted[0] = 0.0
+                    _push_urgent[0] = 0.0
                 cloud_sync_once(pull=due_pull, push=due_push,
                                 files=due_files)
                 if due_pull:
@@ -18523,6 +18568,16 @@ def _cloud_loop_lock():
     except OSError:
         # Cannot even make the file: sync anyway rather than not at all.
         return True
+
+
+# Every shared record asks for a push when it changes, and the page can ask
+# which have gone up. See syncitems.py.
+from . import syncitems as syncitemsmod  # noqa: E402
+
+syncitemsmod.install(
+    app, cloud_sync=CLOUD,
+    stores=(BANK.book.dir, CURATE.book.dir, LAYERS.book.dir, ARTIFACTS.root),
+    registry=REG, last=_cloud_last, touch=cloud_touch, lock=_cloud_lock)
 
 
 # Only the app itself syncs in the background. start.py says so by setting

@@ -15,6 +15,52 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.02.2 - Every record says whether it is shared; no Sync button
+
+### Changed
+
+- **The rail's "Sync now" is gone.** The background sync already pushed a
+  change within seconds. What the button mostly did was report the
+  database being briefly away, in a toast, as though the click had failed.
+  The chip in its place says where the shared copy stands:
+  - *All shared*;
+  - *3 sending*;
+  - *3 not sent*;
+  - *Database away*;
+  - *Not shared*.
+
+  Its title gives the reason and the GUI_logs git state the chip used to
+  show. The Sync panel keeps its own Sync now.
+- **The Event Bank pushes a change by itself, however it was made.** The
+  same goes for curation sets, layer sheets and artifacts. A request
+  already asked for a push. A job banking its results in a thread made no
+  request, so its entries waited for the next timed push. That push never
+  came while Jarvis was idle-paused, which is when an overnight batch
+  finishes. Every write to one of these stores now asks for a push, and
+  the push goes even while idle.
+- **A pull that fails no longer holds the push back.** They ran as one
+  step. A database too busy to answer the pull's first select (the 522 on
+  `barry_watermarks`) kept every change made here from going up.
+- **A Cloudflare 520-524 is a brief failure.** Sync retries in 30-180 s
+  rather than in minutes.
+
+### Added
+
+- **A mark on every record that travels**, saying whether it has reached
+  the shared database:
+  - on Event Bank rows;
+  - on Checkup's working sets and StrataScope's sheets (the workbench
+    cards);
+  - on artifacts.
+
+  The states are *shared*, *sending*, *not sent* (with what went wrong, in
+  words), *this computer* (a demo, or a recording the shared table does not
+  have) and *not shared* (this machine is not connected). The marks update
+  in place. They are worked out from this machine's push cursor
+  (`/api/cloud/items`), so they cost no requests at Supabase.
+
+Checks: `tools/check_syncitems.py` (25) and `_dev/syncmarks.html` (20).
+
 ## 2026.10.01.6 - Every channel, always: even-only reading is gone
 
 ### Removed

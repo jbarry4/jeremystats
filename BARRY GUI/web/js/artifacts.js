@@ -305,7 +305,8 @@ BARRY.artifacts = (function () {
         r.cited_active ? el('span', { class: 'art-vn cited',
                                       text: 'cited ' + r.cited_active + '×' }) : null,
         el('span', { class: 'art-prov', text: provLine(cur) }),
-      ]),
+        BARRY.syncState ? BARRY.syncState.mark('artifacts', r.id) : null,
+      ].filter(Boolean)),
       extra ? el('span', { class: 'art-extra', text: String(extra) }) : null,
     ]);
   }
