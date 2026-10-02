@@ -1115,7 +1115,10 @@ def conflict_audit():
             rel = os.path.relpath(os.path.join(folder, name),
                                   LOGS_DIR).replace("\\", "/")
             n += 1
-            if rel.startswith("runs/") or name in ("README.md", ".gitignore"):
+            # Written once and never edited, so they cannot conflict --
+            # artifact payloads among them, which are content-addressed.
+            if rel.startswith(shards.WRITE_ONCE) or name in (
+                    "README.md", ".gitignore"):
                 continue
             stem = name.rsplit(".", 1)[0]
             if shards.SIGIL in stem:

@@ -12189,3 +12189,5 @@ h3.art-nick { font-size: var(--fs-15); margin: 0; }
 .chip-btn.sync-busy svg { color: var(--accent); }
 .chip-btn.sync-warn { border-color: var(--warn); color: var(--warn); }
 .chip-btn.sync-bad { border-color: var(--err); color: var(--err); }
+/* On the shelf, after the time it was last touched. */
+.csr-when .sync-mark { margin-left: var(--sp-6); }

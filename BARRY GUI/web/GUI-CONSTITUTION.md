@@ -1459,6 +1459,11 @@ server-assigned stamp is the real fix.
 11. **The cloud being away is a state, not an error.** No retry storm: a
     failed call waits its backoff and the page says "not reachable", as
     presence already does ("nobody is reported present").
+    `cloud._call` enforces it for every caller: after a 502-504 or a
+    Cloudflare 520-524, a timeout or no connection, nothing is asked for 15 s,
+    doubling to 5 min, and the call raises `CloudAway` without a request. The
+    first answer of any kind clears it. Measured before: 270 requests in one
+    sitting, all failing, each holding a thread for twenty seconds.
 12. **There is no sync button.** A change to a shared record asks for a
     push itself, however it was made (`shards.ON_CHANGE`, wired in
     `backend/syncitems.py`). That includes a request, or a job banking its

@@ -16,6 +16,8 @@ Nothing here talks to Supabase and nothing is written under GUI_logs.
 3. `cloud_sync_once`: a pull that fails no longer stops the push behind it,
    and the failure is still what is reported.
 4. `/api/cloud/items` answers on the real app, shaped as the page reads it.
+5. `cloud._call`: a 522 is asked once and then held (CloudAway, no
+   request) until the wait is over; any answer, even a refusal, clears it.
 """
 import os
 import shutil
@@ -220,7 +222,77 @@ def part3_and_4():
     A._push_urgent[0] = 0.0
 
 
+def part5():
+    """The database not answering: asked once, then held."""
+    import io
+    import urllib.error
+    import urllib.request
+    from backend import cloud
+    print("5. a database that does not answer is not asked again at once")
+    calls = []
+    real = urllib.request.urlopen
+
+    class Ok:
+        status = 200
+        headers = {}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return b"[]"
+
+    mode = ["522"]
+
+    def fake(req, timeout=None):
+        calls.append(req.full_url)
+        if mode[0] == "522":
+            raise urllib.error.HTTPError(req.full_url, 522, "x", {},
+                                         io.BytesIO(b"timed out"))
+        if mode[0] == "409":
+            raise urllib.error.HTTPError(req.full_url, 409, "x", {},
+                                         io.BytesIO(b"conflict"))
+        return Ok()
+
+    c = cloud.Cloud(os.path.join(APP, "GUI_logs"), None)
+    c.cfg = {"url": "https://example.invalid", "key": "k"}
+    cloud._came_back()
+    urllib.request.urlopen = fake
+    try:
+        for _ in range(3):
+            try:
+                c._call("GET", "/rest/v1/people")
+            except cloud.CloudError:
+                pass
+        check("a 522 is asked once, then held", len(calls) == 1, len(calls))
+        check("and the hold says so", bool(cloud.away()))
+        try:
+            c._call("GET", "/rest/v1/people")
+            held = False
+        except cloud.CloudAway as exc:
+            held = "not answering" in str(exc)
+        check("as a CloudAway, in words", held)
+        cloud._AWAY["until"] = 0          # the wait is over
+        mode[0] = "409"
+        try:
+            c._call("GET", "/rest/v1/people")
+        except cloud.CloudError:
+            pass
+        check("a refusal is an answer: it clears the hold",
+              cloud.away() is None and cloud._AWAY["n"] == 0)
+        mode[0] = "ok"
+        check("and the next call goes through",
+              c._call("GET", "/rest/v1/people")[0] == [])
+    finally:
+        urllib.request.urlopen = real
+        cloud._came_back()
+
+
 if __name__ == "__main__":
+    part5()
     part1()
     part2()
     part3_and_4()

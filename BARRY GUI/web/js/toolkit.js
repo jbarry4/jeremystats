@@ -1659,7 +1659,13 @@ BARRY.views.toolkit = (function () {
                      : pr.specified + ' / ' + pr.total }),
         el('span', { class: 'csr-who' + (st.assignee ? '' : ' none'),
                      text: st.assignee || '—' }),
-        el('span', { class: 'csr-when', text: when || '' }),
+        // And whether it has reached the shared database, beside when it
+        // was last touched -- the shelf is where most sets are.
+        el('span', { class: 'csr-when' }, [
+          when || '',
+          BARRY.syncState
+            ? BARRY.syncState.mark('curation', st.gid + '__' + st.kind) : null,
+        ].filter(Boolean)),
         el('div', { class: 'csr-acts' }, [
         el('button', {
           class: 'btn ghost sm', text: 'Pick it up',

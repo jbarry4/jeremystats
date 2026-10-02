@@ -277,6 +277,58 @@ class NotConfigured(CloudError):
     pass
 
 
+class CloudAway(CloudError):
+    """Not asked: the database stopped answering a moment ago.
+
+    Raised without a request, by `_call`, while `away()` says so. A
+    CloudError like any other to every caller, which already treat a failed
+    call as "try later"."""
+
+
+# ==========================================================================
+# The database not answering
+# ==========================================================================
+# When Supabase's database stops answering, Cloudflare in front of it holds
+# every request for about twenty seconds and then returns a 522. Every
+# caller -- the sync, the presence beat, the schema probe -- kept asking
+# regardless: 270 requests in one sitting, every one of them failing, each
+# one twenty seconds of a thread, and a sync that read "Syncing..." for
+# minutes. After the first such failure nothing is asked for a while,
+# doubling to five minutes, and the first answer that comes back clears it.
+# Shared by every Cloud in the process: it is one database.
+_AWAY = {"until": 0.0, "n": 0, "why": "", "since": None}
+_AWAY_LOCK = threading.Lock()
+AWAY_FIRST_S = 15
+AWAY_MAX_S = 300
+# The HTTP codes that mean "the server did not answer", not "the server said
+# no". A 4xx is an answer and is never held against the database.
+_UNREACHABLE = {502, 503, 504, 520, 521, 522, 523, 524}
+
+
+def away():
+    """None, or {"until", "why", "since", "failures"} while asking is held."""
+    with _AWAY_LOCK:
+        if time.time() >= _AWAY["until"]:
+            return None
+        return {"until": _AWAY["until"], "why": _AWAY["why"],
+                "since": _AWAY["since"], "failures": _AWAY["n"]}
+
+
+def _went_away(why):
+    with _AWAY_LOCK:
+        _AWAY["n"] += 1
+        wait = min(AWAY_MAX_S, AWAY_FIRST_S * 2 ** (_AWAY["n"] - 1))
+        _AWAY["until"] = time.time() + wait
+        _AWAY["why"] = why
+        if not _AWAY["since"]:
+            _AWAY["since"] = time.time()
+
+
+def _came_back():
+    with _AWAY_LOCK:
+        _AWAY.update(until=0.0, n=0, why="", since=None)
+
+
 # ==========================================================================
 # Configuration
 # ==========================================================================
@@ -543,9 +595,17 @@ class Cloud:
             if body is not None else None)
         req = urllib.request.Request(url, data=data, method=method,
                                      headers=self._headers(headers))
+        held = away()
+        if held:
+            raise CloudAway(
+                "The shared database is not answering (%s), so it is not "
+                "being asked again until %s. Nothing is lost; it is all "
+                "kept here." % (held["why"], time.strftime(
+                    "%H:%M:%S", time.localtime(held["until"]))))
         who = _who()
         try:
             with urllib.request.urlopen(req, timeout=timeout) as res:
+                _came_back()
                 wire = res.read()
                 _meter_note(who, method, path, res.status,
                             len(wire) + _header_bytes(res.headers))
@@ -557,6 +617,10 @@ class Cloud:
                 except ValueError:
                     return payload, res.headers
         except urllib.error.HTTPError as exc:
+            if exc.code in _UNREACHABLE:
+                _went_away("HTTP %d" % exc.code)
+            else:
+                _came_back()          # it answered; the answer was no
             detail = ""
             try:
                 wire = exc.read()
@@ -569,8 +633,16 @@ class Cloud:
             raise CloudError(_explain(method, path, exc.code, detail)) from None
         except urllib.error.URLError as exc:
             _meter_note(who, method, path, 0, 0)
+            _went_away("no connection")
             raise CloudError("cannot reach %s: %s"
                              % (self.cfg["url"], exc.reason)) from None
+        except TimeoutError:
+            # A read that timed out is not a URLError in urllib, and it is
+            # the same thing: nobody answered.
+            _meter_note(who, method, path, 0, 0)
+            _went_away("timed out")
+            raise CloudError("%s %s timed out after %ds"
+                             % (method, path, timeout)) from None
 
     # -- tables ---------------------------------------------------------
     @staticmethod

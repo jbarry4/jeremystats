@@ -15,6 +15,35 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.02.5 - A database that is not answering is asked once, not 270 times
+
+### Fixed
+
+- **Jarvis stops asking a database that is not answering.** When
+  Supabase's database is down, Cloudflare holds each request for about
+  twenty seconds and then returns a 522. The sync, the presence beat and
+  the schema probe each kept asking anyway. One sitting made 270 requests,
+  all of them failed, and each held a thread for twenty seconds. That is why
+  the panel read "Syncing…" for minutes.
+
+  Now the first such failure holds every request:
+  - after a 502-504, a Cloudflare 520-524, a timeout or no connection;
+  - for 15 s, doubling up to 5 minutes;
+  - with each held call failing at once, saying when Jarvis will ask again.
+
+  The first answer of any kind clears the hold. Nothing is lost: everything
+  stays here and goes up when the database answers.
+- **"12 file(s) here are shared between machines" was a false alarm.**
+  Those files were artifact version payloads (`artifacts/snap/…`). They are
+  written once and named by their content, so they cannot conflict. They
+  are now treated as write-once, like run records, by both the Sync panel
+  and `tools/conflict_check.py`.
+
+### Added
+
+- **Sync marks on the Checkup shelf** as well as on the bench, beside when
+  each set was last touched.
+
 ## 2026.10.02.2 - Every record says whether it is shared; no Sync button
 
 ### Changed

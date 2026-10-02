@@ -41,7 +41,9 @@ from backend import feedback, shards  # noqa: E402
 # A feedback screenshot is an attachment, not a record: only `add()` writes
 # shots, only the machine filing a report calls it, and the name carries that
 # report's own id. Nobody edits one afterwards.
-WRITE_ONCE = ("runs/", "feedback/screenshots/")
+# An artifact version's payload is the third: see shards.WRITE_ONCE,
+# which this is.
+WRITE_ONCE = shards.WRITE_ONCE
 
 # Not written by code at all.
 INERT = ("README.md", ".gitignore")
