@@ -138,6 +138,23 @@ def main(argv):
     wins = spark.transition_windows(u["pair"], *sweep.SLOW_LEN)
     check("the windows are -3/+3 s around each boundary",
           all(abs((b - a) - 6.0) < 1e-9 for _n, a, b in wins))
+    slow_wires = arrays["wires"][0].copy()
+
+    print("\nPAC at the transitions, in the same slow windows")
+    spec = dict(spec, kind="pac_trans", bands=[])
+    t0 = time.time()
+    arrays, meta = sweep.run_task(spec)
+    print("  (%.1f s)" % (time.time() - t0))
+    pv = arrays["values"][0]
+    check("three windows of every PAC cell, numbers where wires are",
+          pv.shape[0] == 3 and pv.shape[1] == len(sweep.PAC_CELLS)
+          and np.isfinite(pv).any(), (pv.shape, meta["why"]))
+    check("read on exactly the wires the slow transitions were",
+          np.array_equal(arrays["wires"][0], slow_wires))
+    live = [i for i, c in enumerate(sweep.PAC_CELLS) if c[3] is not None]
+    dead = [i for i, c in enumerate(sweep.PAC_CELLS) if c[3] is None]
+    check("cells that cannot carry their sidebands left empty, the rest "
+          "measured", np.isnan(pv[:, dead]).all() and np.isfinite(pv[:, live]).any())
 
     print("\nA rest epoch")
     e = d["rest"][0]

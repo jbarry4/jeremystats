@@ -38,9 +38,18 @@ window.MONO_HELP = (function () {
     },
     layer: {
       title: 'Layer: raw or minus FP',
-      plain: 'Raw is each rat’s own change, Precon4 − Precon1, in the cue windows. Minus FP first takes away that day’s rest value (FP1 + FP2 recordings, no cues): (cue − rest) on Precon4 minus (cue − rest) on Precon1.',
-      look: 'An edge in raw that survives minus FP changed with the cues. One that vanishes changed in rest too, so it is about the day, not the cues.',
-      traps: 'Minus FP adds the rest’s noise to the cue’s, so a real but small cue change can fall below the line there.',
+      plain: 'Two ways of measuring each rat’s change from Precon1 to Precon4. Raw uses the cue pairs alone. Minus FP takes each day’s rest away first — the same measure on the same wires in that day’s no-cue recordings (FP1 and FP2) — so whatever changed for the whole day, and not for the cue windows, falls out. For one entry (one window, band, measure and region pair), minus FP is worked out like this:',
+      steps: [
+        'Every cue pair of the day gives the entry one number, measured in its window (Cue 1, say: ten seconds). Both pairings count. A cue pair whose wires were clipped in that window gives none, and is left out rather than filled in.',
+        'Rest, the same day: the rat was also recorded with no cues, in FP1 and FP2. From those Jarvis cut ten-second epochs — as many as the day had cue pairs of one pairing (eight, say) — spread evenly across FP1 and FP2, at least ten seconds in from each end, and checked for clipping by the same detector as the cue windows. Each epoch gives the entry one number: same band, same measure, same two regions, same wires where they survive.',
+        'The first averaging, within the day. Cue: the mean over the day’s cue pairs, with its standard error (their spread ÷ √n). Rest: the mean over the day’s rest epochs, with its standard error. Rest has only the one ten-second window, so the same rest mean stands against every cue window — Baseline, Cue 1, Cue 2, After, and the three transitions.',
+        'The subtraction: the day’s value is the cue mean − the rest mean. Its uncertainty adds rather than cancels: SE² = SE²(cue) + SE²(rest). Taking one noisy number from another makes the result noisier, never cleaner.',
+        'The rat’s change: (cue − rest) on Precon4 minus (cue − rest) on Precon1, its variance the two days’ SE² added together. Raw is the same with the rest terms left out: cue on Precon4 minus cue on Precon1.',
+        'The second averaging, over rats: every rat’s change pooled DerSimonian–Laird — each weighted by 1 ÷ (its own variance + τ², the spread between rats beyond their own noise) — and tested Hartung–Knapp on k − 1 degrees of freedom. It needs at least five rats with both days.',
+      ],
+      example: 'Say r3’s Cue 1 coherence at 10 Hz averaged 0.42 over its Precon1 cue pairs and 0.38 over its Precon1 rest epochs; on Precon4, 0.49 and 0.43. Raw change: 0.49 − 0.42 = +0.07. Minus FP: (0.49 − 0.43) − (0.42 − 0.38) = 0.06 − 0.04 = +0.02. Five hundredths of the seven were in rest as well: the rat’s whole day moved, and only two hundredths belong to the cue window.',
+      look: 'An edge in raw that survives minus FP changed with the cues, relative to rest. One that vanishes changed in rest by about as much — the day changed (an electrode settling, the rat calmer, the recording quieter), not the response to the cues. One that appears only in minus FP is a cue change raw could not see, because rest moved the other way.',
+      traps: 'Minus FP is noisier — both days carry rest’s error too — so a real but small cue change can fall below the line there. It assumes the day moves cue and rest by the same amount (additively); a change that scales everything is not removed exactly. Rest is a separate recording from the cue session, minutes apart, so it takes away what changed over the day, not what differs between rest and cues within one session. The transition windows are shorter than the ten-second rest epochs, and measures biased by window length (coherence, PLV) differ by that bias within a day — but the bias is the same on both days, so it cancels from the change.',
       demo: 'minus_fp',
     },
     windows: {
@@ -289,6 +298,36 @@ window.MONO_HELP = (function () {
       look: 'The number at the top of each picture is the analysis’s own, recomputed here; “matches” says it equals the stored value.',
       traps: 'One cue pair is one noisy sample: the pooled edge is what counts.',
     },
+    averaged: {
+      title: 'When we averaged',
+      plain: 'One line of the circuit, followed from the recording up, with its own numbers. A wire’s trace is cleaned (mains out, brought down to 1000 Hz), cut to one window, filtered to one band, and measured: one number per cue pair. That is repeated for every cue pair of a day and averaged — the first averaging — giving one number per day (minus FP: less that day’s rest). Precon4 − Precon1 gives one change per rat. Those are averaged over rats — the second averaging, weighted by how sure each rat is — giving one change and one p, and the line is drawn if p passes the slider.',
+      look: 'Where the number comes from: a pooled change carried by every rat, or by one; a day’s mean carried by every cue pair, or by a few.',
+      traps: 'The traces shown are one cue pair of one rat on one day: a picture of how the number is made, not of the result. The result is step 7.',
+    },
+    split: {
+      title: 'Cue pairs: both, or one half',
+      plain: 'Every rat hears two pairings on every Precon day, and in every rat one of them has the Click in it and the other the Noise, one has the High tone and the other the Low tone. So each half of the cue pairs -- the Click pair, the Noise pair, the High-tone pair, the Low-tone pair -- is there in all eight rats, and is pooled exactly as the whole is: each rat’s Precon4 − Precon1 over that half’s cue pairs only, then over rats. The third way to halve them is by what conditioning later did: the pair whose second cue was followed by food, read from each rat’s own Con TTLs, and the other.',
+      look: 'A change that is in both halves of a split is about the cue pairs in general; one that is in only one half is about that sound, that tone or that pair’s later meaning. During Precon a rat cannot yet tell the food pair from the other, so a real difference there would be a surprise worth checking.',
+      traps: 'A half has half the cue pairs, so its days are noisier and fewer entries pass. Why not split by the exact pairing, Click → Low tone? The cohort is counterbalanced: each exact pairing is heard by only two rats, and two rats cannot be pooled.',
+    },
+    range: {
+      title: 'A frequency range',
+      plain: 'Pull the frequency slider’s two knobs apart and the circuit is drawn over every 1 Hz band between them. A line appears where the pair passes the significance slider at any, most (more than half), or every one of those bands; its colour and width are the median change over the range. Clicking it opens the band where it is strongest.',
+      look: 'A change that holds across most of a range is a rhythm changing; one that passes at a single band of a wide range is more likely chance.',
+      traps: '“Any” band in a range is a lenient rule: with ten bands, a pair passes it far more often than at one band by chance alone. “Most” or “every” is the honest reading of a range.',
+    },
+    filter: {
+      title: 'Filtering the points of interest',
+      plain: 'Narrows the list to what you are interested in: one measure or a family of them, one region or one pair, a frequency range (with or without the named bands inside it), state windows or transitions or one window, which way the change went, and whether broadband entries are in. The list is ranked again from every entry, by the same rule as the full list: p < .05, most rats the same way, then p, at most three a region pair.',
+      look: 'A lead that keeps coming back however you slice it, and the count of entries that pass with the filter on.',
+      traps: 'Narrowing a list does not make what is in it truer: every p is still uncorrected, and a filter chosen after looking at the data is a way of finding what you hoped to find.',
+    },
+    excluded: {
+      title: 'Wires left out',
+      plain: 'Each region has two or four wires; a window is computed on the first that is usable. A wire is left out of a window when histology says the probe is not in that region, when it is marked bad for the whole recording, or when the clipping check found it at the rail there. These are read anyway, so you can see what was left out and judge the reason yourself.',
+      look: 'A clipped wire should show flat tops or sharp steps where it is marked red. A wire that looks clean but was left out deserves a second look at the clipping check.',
+      traps: 'The traces are notched and brought down to 250 Hz for display, which rounds off the very flat tops the check looks for in the raw 32 kHz samples; the red marks come from the raw samples, not from this picture.',
+    },
     damage: {
       title: 'What was lost',
       plain: 'Everything the Monolith could have measured and did not, read from what the cluster actually did: the wire each region was read on in each window of each cue pair, or none. A region gives nothing in a window when histology says the probe is not in it, when its wires are marked bad, or when every wire it has was clipped there. A cue pair is kept when every region histology allows was read in every window, partly kept when some were not, and lost when no two regions were read anywhere.',
@@ -433,6 +472,17 @@ window.MONO_HELP = (function () {
       root.appendChild(p);
     };
     add('qplain', '', t.plain);
+    if ((t.steps || []).length) {
+      const ol = document.createElement('ol');
+      ol.className = 'qsteps';
+      for (const x of t.steps) {
+        const li = document.createElement('li');
+        li.textContent = x;
+        ol.appendChild(li);
+      }
+      root.appendChild(ol);
+    }
+    add('qexample', 'For example:', t.example);
     add('qlook', 'What to look for:', t.look);
     add('qtraps', 'What fools it:', t.traps);
     if (opts.here) add('qhere', 'This one:', opts.here);

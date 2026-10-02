@@ -295,6 +295,30 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
                      : /nothing in the State view/.test(txt(other()))),
         txt(other()));
 
+  /* The verdict names the channels going in groups, by what each loses,
+     with runs written as ranges -- "CSC33–64 (32 channels)" -- rather than
+     a wall of one entry per channel. Every channel going must still be in
+     it exactly once. */
+  const goingT = (val(C + '.dropping(' + PID + ', "transition")') || []).map(Number).sort((a, b) => a - b);
+  const grp = $$('#arcPanel .arc-verdict-grp');
+  const expand = (t) => t.replace(/\s*\(\d+ channels\)/, '').split(', ').flatMap((x) => {
+    const m = /^CSC(\d+)(?:–(\d+))?$/.exec(x.trim());
+    if (!m) return [NaN];
+    const a = Number(m[1]), b = m[2] ? Number(m[2]) : a;
+    return Array.from({ length: b - a + 1 }, (_v, i) => a + i);
+  });
+  if (goingT.length) {
+    const named = grp.flatMap((g) => expand(txt(g.querySelector('.arc-verdict-chans')))).sort((a, b) => a - b);
+    check('the verdict names every channel going exactly once, grouped by what it loses ('
+          + grp.length + ' line' + (grp.length === 1 ? '' : 's') + ' for ' + goingT.length + ' channels)',
+          same(named, goingT) && grp.length >= 1 && grp.length <= goingT.length, named.join(',') + ' vs ' + goingT.join(','));
+    check('  each line says the windows its channels lose',
+          grp.every((g) => g.children.length === 2 && /onset|cue|offset|switch/.test(txt(g.children[1]))));
+  } else {
+    say('note', '  (this pair has no transition block going, so the grouped list is not checked here)');
+  }
+  if (new URLSearchParams(location.search).get('stop') === 'clean') { document.title = 'stopped at clean'; return; }
+
   // One block, clicked, and clicked back.
   const exT = () => val(C + '.excluded(' + PID + ', "transition")');
   const exS = () => val(C + '.excluded(' + PID + ', "state")');

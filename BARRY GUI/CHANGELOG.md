@@ -15,6 +15,170 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.02.8 - The Monolith: what was lost, each half of the cue pairs, delta, and how it was averaged
+
+### Added
+
+- **What was lost.** A new section of the Monolith page, linked from the
+  counts. It covers the whole run, then each rat and each day:
+  - cue pairs kept, partly kept and lost;
+  - rest epochs kept;
+  - a rat × region map per day, showing each region's share of cue-pair
+    windows kept, with histology hatched and the reasons on hover
+    (histology, a bad wire, clipping, not measured);
+  - which entries went untested and why.
+
+  It is read from the wires the cluster actually used.
+  On the real Monolith: 242 cue pairs, of which 133 kept every region, 103
+  lost one somewhere and 6 were lost entirely. All 125 rest epochs were
+  usable.
+- **Wires left out, shown anyway.** In the cue-pair view, every wire of the
+  two regions that was not used in that window is read from the VACC and
+  drawn dashed, with the reason. Clipped stretches are marked in red,
+  measured again by Spark's own detector. On real data, r3 Precon1 p08
+  Baseline shows Right ACC's CSC19/20 at the rail for 2.1% and 2.7% of the
+  window.
+- **The aliasing check** (`tools/check_aliasing.py`). Its result appears in
+  "What was lost". Nothing is aliased:
+  - every recording's hardware low-pass (8 kHz) is below half its 32 kHz
+    rate;
+  - decimating to 1000 Hz lets nothing that folds into 1–55 Hz through
+    above −171 dB, and decimating to 250 Hz nothing above −145 dB;
+  - on 62 real channels the 1–55 Hz spectrum matches a steep reference
+    within 0.0003 dB, once the anti-alias filter's own 0.2 dB passband
+    ripple (a gain that cancels) is taken out;
+  - the control: with no anti-alias filter, the same data would have been
+    up to 9.8 dB too high.
+- **A filter on the points of interest.** Filter by measure or measure
+  family, region or region pair, frequency range (with or without the named
+  bands), window or window type, direction of change, broadband, and which
+  cue pairs. The list is ranked again from every entry by the server's own
+  rule. A new harness, `_dev/monolithrank.html`, proves that on the built
+  Monolith: with no filter, the browser's ranking is the server's top 50
+  exactly, in both layers.
+- **The frequency slider has two knobs.** With the knobs apart, the
+  circuit is drawn over the range between them. A line appears where the
+  pair passes at any, most or every 1 Hz band in the range, its width and
+  colour set by the median change. Its hover lists which bands pass.
+  Clicking it opens the band where it is strongest.
+- **Each half of the cue pairs.** Every rat has a Click pair and a Noise
+  pair, and a High-tone pair and a Low-tone pair, so each half has all
+  eight rats and is pooled exactly as the whole is. A third split is by
+  role: the pair that later gets food (read from each rat's own Con TTLs)
+  and the other.
+  - The page has a Cue pairs control, and so does the
+    points-of-interest filter.
+  - Each half has its own points of interest, counts and drill-down.
+  - The split is built after every fetch, or with one button (30 s on the
+    real data).
+  - Splitting by the exact pairing (Click → Low Tone) is not offered: the
+    cohort is counterbalanced, so each pairing has only two rats.
+- **When we averaged**, a second tab. It follows one line of the circuit
+  from the recording to the circuit in nine steps, with that entry's own
+  numbers: the raw cue pair, the window, the band, the measure, each day's
+  mean (the first averaging), the rat's change, the pooled change with each
+  rat's weight (the second averaging), and the line it becomes.
+- **The delta band (1–4 Hz)**, a fourth named band. It has 2 s lags, 2 s
+  Welch pieces and slow transitions, and is sweep-only, so the circuits'
+  three bands are untouched.
+- **PAC at the transitions**, in the slow −3/+3 s windows, which give the
+  2 Hz phase enough cycles. The PAC panel shows them beside the states.
+- **Adding to a built Monolith.** Drift → Monolith offers a small run that
+  measures only what the built Monolith lacks (delta, PAC at the
+  transitions). Fetching it rebuilds the Monolith from both runs; nothing
+  already measured is measured again.
+
+### Changed
+
+- **Minus FP's ? explains the averaging in full**: what each step averages,
+  where the rest is taken off and how its error adds, a worked example, and
+  this entry's own numbers when its drill-down is open.
+- **Clean cue pairs is less cramped.**
+  - The verdict groups channels by what they lose, with runs written as
+    ranges ("CSC1–16, CSC18, CSC19… (25 channels): cue 1 onset, cue 2
+    offset") instead of a wall of one entry per channel.
+  - The bar wraps, and its key hints have a line of their own.
+  - Per-row words are drawn only where a row has room. Otherwise only the
+    channel being edited gets them.
+
+### Checks
+
+- `tools/check_monolith.py` (156):
+  - the damage report;
+  - the split, cross-checked against the scalar drift functions;
+  - an addition merged with the run before it;
+  - the left-out wires.
+- `tools/check_sweep.py` (68), including delta.
+- `tools/check_sweep_real.py` (11), including PAC at the transitions on a
+  real recording.
+- `_dev/monolith.html` (224).
+- `_dev/driftmono.html` (54).
+- `_dev/arctrans.html` (69).
+
+**Restart Jarvis**: backend changes. To get delta and PAC at the
+transitions into your Monolith:
+
+1. Drift → Monolith → **Check VACC status**.
+2. Press **Add the delta band and phase–amplitude coupling at the
+   transitions**.
+3. Check again until it is done, then **Fetch**. The fetch also splits it.
+
+## 2026.10.02.7 - AI Beta: catch the garbage first, and a second read
+
+### Added
+
+- **A garbage-first scorecard on every run.** Each target (catch 100%,
+  99%, 98%, 95% or 90% of the garbage) is set inside the training mice.
+  The scorecard says how much garbage was really caught on the mice held
+  out, and how many real spikes were flagged with it. The Runs list shows
+  "real DS flagged to catch 95%" and "to catch 99%".
+- **A second read: what makes a dentate spike one.** It reads ±1.1 s
+  around each candidate, including the full 30 kHz signal, and offers
+  these as toggles under Physiology:
+  - sink and source;
+  - laminar delay;
+  - unit firing (300–3000 Hz);
+  - ripple (120–250 Hz);
+  - brain state;
+  - likeness to the recording's typical candidate;
+  - saturation;
+  - polarity reversal;
+  - spike shape;
+  - ±500 ms of context.
+
+  Every depth is measured from the candidate's own peak channel, and no
+  layer sheet is used. Movement (from `VT1.nvt`) and event markers (from
+  `Events.nev`) are built but carry nothing here: the tracker lost the
+  animal in every frame, and the event files hold only start and stop
+  markers. The read takes about an hour the first time, six recordings
+  at a time, and is cached.
+- **Runs can be pinned to one dataset** (`pin`: entry → version). The
+  bank changed during the comparison: three sets were finished and one
+  moved to a new version. Without pinning, two runs meant to differ only
+  in their inputs also differed in their data.
+
+### Measured
+
+All rows below use the same 45 recordings: 12,374 candidates, 1,392 of
+them Garbage. Each score is on mice the model never saw.
+
+| Inputs | Model | DS flagged to catch 95% | to catch 99% | AUC |
+|---|---|---|---|---|
+| today's | gradient-boosted trees | 42.8% | 66.1% | 0.900 |
+| + context ±500 ms | gradient-boosted trees | 43.4% | 68.7% | 0.905 |
+| ... + any one new input | gradient-boosted trees | 40.3–42.3% | 59.8–68.3% | 0.904–0.909 |
+| everything | gradient-boosted trees | 35.4% | 54.8% | 0.916 |
+| today's + context | random forest | 32.4% | 47.0% | 0.901 |
+| everything | random forest | **31.0%** | **41.5%** | 0.912 |
+
+- No single new input moves it much: each saves 1–3 points.
+  "Likeness to the typical candidate" and "saturation" help most.
+- Together the new inputs save about 8 points, and switching to a random
+  forest saves about as much again.
+- The bars are set in the training mice, so the garbage actually caught
+  on the held-out mice runs a little under each target: 95.3–97.6% at the
+  95% bar, and 98.6–100% at 99%.
+
 ## 2026.10.02.6 - The Monolith shows a newcomer around
 
 ### Added

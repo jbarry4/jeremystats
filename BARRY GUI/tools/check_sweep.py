@@ -69,8 +69,19 @@ def bands_table():
     print("\nThe bands")
     B = SW.BANDS
     bins = [b for b in B if not b["named"]]
-    check("55 one-hertz bands and 3 named", len(bins) == 55
-          and [b["id"] for b in B if b["named"]] == list(coupling.BAND_ORDER))
+    check("55 one-hertz bands, the circuits' 3 named, then delta", len(bins) == 55
+          and [b["id"] for b in B if b["named"]] == list(coupling.BAND_ORDER) + ["delta"]
+          and SW.BAND_IDS[-1] == "delta")
+    dl = SW.BAND_BY_ID["delta"]
+    check("delta: 1-4 Hz, slow, lags over 2 s, Welch pieces of 2 s",
+          (dl["low"], dl["high"], dl["speed"], dl["lag_s"]) == (1.0, 4.0, "slow", 2.0)
+          and SW.welch_len_s(dl) == 2.0 and "delta" in SW.bands_for("trans_slow")
+          and "delta" not in SW.bands_for("trans_fast"))
+    check("the circuits' own bands are untouched", "delta" not in coupling.BANDS)
+    u = {"pair": {"opener_t": 100.0, "closer_t": 110.0, "offset_t": 120.0}}
+    check("PAC at the transitions takes the slow windows (-3/+3 s)",
+          SW._windows_for("pac_trans", u) == SW._windows_for("trans_slow", u)
+          and SW.bands_for("pac_trans") == [] and "pac_trans" in SW.KINDS)
     f1 = SW.BAND_BY_ID["f01"]
     check("1 Hz is 0.5-1.5 Hz", (f1["low"], f1["high"]) == (0.5, 1.5), f1)
     f20 = SW.BAND_BY_ID["f20"]
@@ -89,8 +100,8 @@ def bands_table():
               == (c["low"], c["high"], c["max_lag_ms"]))
     slow = SW.bands_for("trans_slow")
     fast = SW.bands_for("trans_fast")
-    check("slow transition bands are 1-12 Hz and theta",
-          slow == ["f%02d" % f for f in range(1, 13)] + ["theta"], slow)
+    check("slow transition bands are 1-12 Hz, theta and delta",
+          slow == ["f%02d" % f for f in range(1, 13)] + ["theta", "delta"], slow)
     check("fast transition bands are 13-55 Hz, beta and low gamma",
           fast == ["f%02d" % f for f in range(13, 56)] + ["beta", "gamma_low"])
     check("lag bound is two cycles of each bin",
@@ -438,8 +449,32 @@ def explain_agrees():
           miss > 0.1)
 
 
+def delta_band():
+    print("\nDelta")
+    from scipy.signal import butter, sosfiltfilt
+    rng = np.random.default_rng(31)
+    n = 10000
+    sos = butter(4, [1.0 / (FS / 2), 4.0 / (FS / 2)], btype="band", output="sos")
+    # Delta activity filling the band, shared by two regions (the second
+    # 30 ms behind); a third region has its own.
+    s = sosfiltfilt(sos, rng.standard_normal(n + 400))
+    s /= s.std()
+    own = sosfiltfilt(sos, rng.standard_normal(n))
+    own /= own.std()
+    a = 60 * s[200:200 + n] + noise(rng, n, 10)
+    b = 60 * s[170:170 + n] + noise(rng, n, 10)
+    c = 60 * own + noise(rng, n, 10)
+    v, pw, _n = SW.window_measures([a, b, c], ["delta"])
+    co = v[0, MI["coherence"]]
+    check("shared 1-4 Hz activity is coherent in delta (%.3f); a region with "
+          "its own is not (%.3f)" % (co[0], co[1]), co[0] > 0.8 and co[1] < 0.5)
+    lag = v[0, MI["raw_cc"], 0]
+    check("and correlated at its lag (%.3f)" % lag, abs(lag) > 0.8)
+
+
 def main():
     explain_agrees()
+    delta_band()
     bands_table()
     named_equal_coupling()
     bin_raw_cc_equals_coupling()

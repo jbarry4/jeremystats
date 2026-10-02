@@ -88,7 +88,17 @@ TOOL_STAGES = ["sweep units"]
 #: band per window, by window length; PAC per window. The cluster's cores
 #: are of the same order; the estimate says so.
 RATE_S = {"state": 15.6 / 58, "trans_slow": 4.45 / 13, "trans_fast": 3.3 / 45,
-          "rest": 15.6 / 58, "pac": 2.2, "pac_rest": 2.2}
+          "rest": 15.6 / 58, "pac": 2.2, "pac_rest": 2.2, "pac_trans": 2.2}
+
+#: PAC windows: the four state windows, then the three transitions (the
+#: slow -3/+3 s ones; user, 2026-10-02). A Monolith built before the
+#: transitions were added has the first four only.
+PAC_WINDOWS = list(sweep.STATE) + list(sweep.TRANSITION)
+
+#: What a small run can add to a Monolith already built, without running
+#: the rest again: named bands it lacks, and PAC at the transitions.
+ADDITIONS_SAY = {"delta": "the delta band (1–4 Hz)",
+                 "pac_trans": "phase–amplitude coupling at the transitions"}
 
 WINDOWS = list(sweep.STATE) + list(sweep.TRANSITION)
 WINDOW_SAY = {"pre": "Baseline", "cue1": "Cue 1", "cue2": "Cue 2",
@@ -548,11 +558,16 @@ def _chunks(seq, n):
     return [seq[i:i + k] for i in range(0, len(seq), k)]
 
 
-def plan_tasks(man, chk):
+def plan_tasks(man, chk, extra=None):
     """Every task of the run: [{key, rat, day, kind, chunk, spec, est_s}].
 
     A rat goes only when both its days' SPC are whole on the cluster; its
-    rest goes when both FP folders are."""
+    rest goes when both FP folders are.
+
+    `extra` plans an ADDITION to a Monolith already built instead: only
+    `{"bands": [...]}` (in the state, transition and rest tasks that
+    measure them) and/or `{"pac_trans": True}`. Its tasks are keyed apart
+    ("..._x") so they never overwrite the run they add to."""
     by = {(d["rat"], d["day"]): d for d in man.get("days") or []}
     ready = {(x["rat"], x["day"]): x for x in chk["days"]}
     rats = set(chk["ready_rats"])
@@ -570,14 +585,16 @@ def plan_tasks(man, chk):
                       "manual": u["manual"]} for u in d["units"]]
 
         def add(kind, chunk, bands, units, folder=None):
-            key = "r%d_%s_%s%s" % (rat, day, kind,
-                                   "" if chunk is None else "_%d" % chunk)
+            key = "r%d_%s_%s%s%s" % (rat, day, kind,
+                                     "" if chunk is None else "_%d" % chunk,
+                                     "_x" if extra else "")
             spec = dict(base, kind=kind, bands=bands, units=units,
                         folder=folder,
                         task={"rat": rat, "day": day, "kind": kind,
                               "chunk": chunk, "key": key})
             n_w = (4 if kind in ("state", "pac") else
-                   3 if kind.startswith("trans") else 1)
+                   3 if kind.startswith("trans") or kind == "pac_trans"
+                   else 1)
             per = RATE_S[kind] * (1 if kind.startswith("pac")
                                   else len(bands or []))
             tasks.append({"key": key, "rat": rat, "day": day, "kind": kind,
@@ -585,6 +602,27 @@ def plan_tasks(man, chk):
                           "est_s": round(len(units) * n_w * per, 1),
                           "spec": spec})
 
+        if extra is not None:
+            xb = list((extra or {}).get("bands") or [])
+            sl = [b for b in sweep.bands_for("trans_slow") if b in xb]
+            fa = [b for b in sweep.bands_for("trans_fast") if b in xb]
+            if cue_units:
+                if xb:
+                    add("state", None, xb, cue_units, spc)
+                if sl:
+                    add("trans_slow", None, sl, cue_units, spc)
+                if fa and d.get("fast_banked"):
+                    add("trans_fast", None, fa, cue_units, spc)
+                if (extra or {}).get("pac_trans"):
+                    add("pac_trans", None, [], cue_units, spc)
+            if xb and rd["rest_ready"] and d["rest"]:
+                fp_where = {r["gid"]: r["remote"] for r in rd["folders"]
+                            if r["role"] != "SPC"}
+                add("rest", None, xb, [
+                    {"id": u["id"], "pair": u["pair"], "drop": u["drop"],
+                     "why": u.get("why"), "folder": fp_where.get(u["fp_gid"])}
+                    for u in d["rest"]])
+            continue
         if cue_units:
             for ci, bands in enumerate(_chunks(sweep.bands_for("state"),
                                                STATE_CHUNKS)):
@@ -597,6 +635,7 @@ def plan_tasks(man, chk):
             add("trans_fast", None, sweep.bands_for("trans_fast"), fast_units,
                 spc)
             add("pac", None, [], cue_units, spc)
+            add("pac_trans", None, [], cue_units, spc)
         if rd["rest_ready"] and d["rest"]:
             fp_where = {r["gid"]: r["remote"] for r in rd["folders"]
                         if r["role"] != "SPC"}
@@ -1045,7 +1084,18 @@ def assemble(man, run, raw_dir, out_dir, progress=None):
     B = len(sweep.BAND_IDS)
     M = len(sweep.ALL_METHODS)
     C = len(sweep.PAC_CELLS)
-    tasks = {t["key"]: t for t in run["tasks"]}
+    # A run that ADDS to an earlier one is assembled with it: every part's
+    # answers from its own folder, the later part's over the earlier's.
+    srcs = []
+    for part in run.get("parts") or []:
+        srcs.append((part["tasks"], os.path.join(run_dir_local(part["rid"]),
+                                                  "raw")))
+    srcs.append((run["tasks"], raw_dir))
+    tasks, where = {}, {}
+    for ts, rdir in srcs:
+        for t in ts:
+            tasks[t["key"]] = t
+            where[t["key"]] = rdir
     by_day = {}
     for key, t in tasks.items():
         by_day.setdefault((t["rat"], t["day"]), []).append(t)
@@ -1061,7 +1111,7 @@ def assemble(man, run, raw_dir, out_dir, progress=None):
         rix = {u["id"]: i for i, u in enumerate(d["rest"])}
         E = np.full((U, 7, B, M, P), np.nan, np.float32)
         Pw = np.full((U, 7, B, R), np.nan, np.float32)
-        PAC = np.full((U, 4, C, R * R), np.nan, np.float32)
+        PAC = np.full((U, len(PAC_WINDOWS), C, R * R), np.nan, np.float32)
         Wst = np.full((U, 4, R), -1, np.int16)
         Wsl = np.full((U, 3, R), -1, np.int16)
         Wfa = np.full((U, 3, R), -1, np.int16)
@@ -1070,7 +1120,7 @@ def assemble(man, run, raw_dir, out_dir, progress=None):
         PACr = np.full((Ur, 1, C, R * R), np.nan, np.float32)
         Wr = np.full((Ur, 1, R), -1, np.int16)
         for t in ts:
-            path = os.path.join(raw_dir, "out", t["key"] + ".npz")
+            path = os.path.join(where[t["key"]], "out", t["key"] + ".npz")
             if not os.path.isfile(path):
                 missing.append(t["key"])
                 continue
@@ -1082,12 +1132,16 @@ def assemble(man, run, raw_dir, out_dir, progress=None):
             index = rix if rest else uix
             rows = [index.get(u) for u in meta["units"]]
             if kind.startswith("pac"):
+                p0 = 4 if kind == "pac_trans" else 0
                 for j, i in enumerate(rows):
                     if i is None:
                         continue
-                    (PACr if rest else PAC)[i] = arrays["values"][j]
                     if rest:
+                        PACr[i] = arrays["values"][j]
                         Wr[i] = arrays["wires"][j]
+                    else:
+                        v = arrays["values"][j]
+                        PAC[i, p0:p0 + v.shape[0]] = v
                 filled.append(t["key"])
                 continue
             bi = _bi(meta["bands"])
@@ -1129,17 +1183,27 @@ def _load_day(out_dir, rat, day, name, mmap=None):
     return np.load(path, mmap_mode=mmap)
 
 
-def pooled(out_dir, man, what):
-    """{layer: {quantity: array}} for edges, power or pac."""
+def pooled(out_dir, man, what, keep=None):
+    """{layer: {quantity: array}} for edges, power or pac.
+
+    `keep(day, unit) -> bool`, when given, pools only those cue pairs (a
+    split by cue pair, `SPLITS`); a rat-day with none of them leaves that
+    rat out. Rest epochs are never split: they have no cue."""
     cue_name, rest_name = {"edges": ("edges", "edges_rest"),
                            "power": ("power", "power_rest"),
                            "pac": ("pac", "pac_rest")}[what]
     cue, rest = {}, {}
     for d in man["days"]:
         key = (d["rat"], d["day"])
-        X = _load_day(out_dir, d["rat"], d["day"], cue_name)
+        X = _load_day(out_dir, d["rat"], d["day"], cue_name,
+                      mmap="r" if keep else None)
         if X is None or not X.shape[0]:
             continue
+        if keep is not None:
+            idx = [i for i, u in enumerate(d["units"]) if keep(d, u)]
+            if not idx:
+                continue
+            X = np.asarray(X[idx])
         cue[key] = day_stats(X)
         Xr = _load_day(out_dir, d["rat"], d["day"], rest_name)
         if Xr is not None and Xr.shape[0]:
@@ -1157,13 +1221,188 @@ def pooled(out_dir, man, what):
     return out
 
 
+#: The Monolith split by cue pair. Every rat hears two pairings, and in
+#: every rat one of them has Click in it and the other Noise, one has the
+#: High tone and the other the Low tone -- so each of these halves has all
+#: eight rats, and can be pooled exactly as the whole is. (Split by the
+#: exact pairing instead, "Click -> Low Tone", and each has two rats: the
+#: cohort is counterbalanced, and two rats cannot be pooled.) The third
+#: split is by what conditioning later did, read from each rat's own Con
+#: TTLs (cueroles.py). User, 2026-10-02.
+SPLITS = (
+    ("snd_click", "Click pair", "sound"),
+    ("snd_noise", "Noise pair", "sound"),
+    ("tone_high", "High-tone pair", "tone"),
+    ("tone_low", "Low-tone pair", "tone"),
+    ("role_food", "The pair that later gets food", "role"),
+    ("role_other", "The other pair", "role"),
+)
+SPLIT_IDS = tuple(g for g, _l, _f in SPLITS)
+SPLIT_FAMILY_SAY = {
+    "sound": "by the pair's noise-like cue: the one with Click in it, and "
+             "the one with Noise",
+    "tone": "by the pair's tone: the one with the High tone, and the one "
+            "with the Low tone",
+    "role": "by what conditioning later did: the pair whose second cue "
+            "was followed by food, and the other",
+}
+
+
+def split_member(group, cue_type, role=None):
+    """Whether a cue pair of this type (and role) belongs to a split."""
+    ct = str(cue_type or "")
+    return {"snd_click": "Click" in ct, "snd_noise": "Noise" in ct,
+            "tone_high": "HighTone" in ct, "tone_low": "LowTone" in ct,
+            "role_food": role == "food",
+            "role_other": role == "no_food"}.get(group, False)
+
+
+def split_keep(group, roles):
+    """keep(day, unit) for pooled(): `roles` is {rat: {cue_type: role}}."""
+    def keep(d, u):
+        r = (roles.get(int(d["rat"])) or {}).get(u.get("cue_type"))
+        return split_member(group, u.get("cue_type"), r)
+    return keep
+
+
+def split_build(man, summary, out_dir, roles, role_notes=None,
+                progress=None, check=None):
+    """Every split pooled exactly as the whole is: the page's files
+    `<edges|power|pac>_<layer>__<group>.f32`, each split's points of
+    interest and counts, written into the summary under `splits`."""
+    say = progress or (lambda *a: None)
+    names = summary["regions"]
+    pairs = [tuple(p) for p in summary["pairs"]]
+    # The shapes this build has (a Monolith built before a band or the
+    # PAC transitions were added has fewer), not the code's.
+    shapes = {w: tuple(summary["files"]["%s_raw.f32" % w]["shape"][1:])
+              for w in ("edges", "power", "pac")}
+    files, top, cnt, groups = {}, {}, {}, []
+    for n_, (g, label, fam) in enumerate(SPLITS):
+        keep = split_keep(g, roles)
+        rats = sorted({int(d["rat"]) for d in man["days"]
+                       if any(keep(d, u) for u in d["units"])})
+        n_units = sum(1 for d in man["days"] for u in d["units"]
+                      if keep(d, u))
+        groups.append({"id": g, "label": label, "family": fam,
+                       "rats": rats, "n_units": n_units})
+        for what in ("edges", "power", "pac"):
+            say("split", n_, len(SPLITS), "%s · %s" % (label, what))
+            if check:
+                check()
+            got = pooled(out_dir, man, what, keep=keep)
+            for layer, gl in got.items():
+                fname = "%s_%s__%s.f32" % (what, layer, g)
+                path = os.path.join(out_dir, fname)
+                nbytes = write_layer(path, gl, shapes[what])
+                files[fname] = {"bytes": nbytes, "sha256": _sha(path),
+                                "shape": [len(QUANTITIES)] + list(
+                                    shapes[what])}
+                if what == "edges":
+                    top.setdefault(g, {})[layer] = points(gl, layer, names,
+                                                          pairs)
+                    cnt.setdefault(g, {})[layer] = counts(gl)
+    summary["splits"] = {
+        "at": now_iso(), "groups": groups, "files": files, "top": top,
+        "counts": cnt, "family_say": SPLIT_FAMILY_SAY,
+        "roles": {str(k): v for k, v in (role_notes or {}).items()},
+        "role_map": {str(k): dict(v) for k, v in (roles or {}).items()},
+    }
+    _write_json(os.path.join(out_dir, "summary.json"), summary)
+    return summary["splits"]
+
+
+def split_role_map(summary):
+    """{rat: {cue_type: role}} as the split was built with."""
+    rm = (summary.get("splits") or {}).get("role_map") or {}
+    return {int(k): v for k, v in rm.items()}
+
+
+def roles_of(man, records=None):
+    """{rat: {cue_type: "food" | "no_food"}} and what each was read from,
+    from the rats' own conditioning (cueroles.py). A rat whose roles cannot
+    be read is left out of the role split, and said."""
+    from . import cueroles
+    roles, notes = {}, {}
+    if records is None:
+        records = cueroles.load_records()
+    for rat in sorted({int(d["rat"]) for d in man["days"]}):
+        pairings = sorted({u.get("cue_type") for d in man["days"]
+                           if int(d["rat"]) == rat for u in d["units"]
+                           if u.get("cue_type")})
+        try:
+            t = cueroles.role_table(rat, records, pairings=pairings)
+            roles[rat] = dict(t["roles"])
+            notes[rat] = {"food_pair": t["food_pair"],
+                          "food_cue": t["food_cue"],
+                          "sessions": len(t["source"]["sessions"])}
+        except Exception as exc:                         # noqa: BLE001
+            notes[rat] = {"error": str(exc)}
+    return roles, notes
+
+
+def split_work(worker, artifacts=None, by=None, roles_reader=None):
+    """Split the built Monolith by cue pair, here: about two minutes."""
+    d = data_dir()
+    summ = summary_now()
+    man = _read_json(_path("manifest.json"))
+    if not d or not summ or not man:
+        raise MonolithError("The Monolith has not been built yet.", 409)
+    worker.note(phase="roles")
+    roles, notes = (roles_reader or roles_of)(man)
+    worker.note(phase="splitting")
+    got = split_build(man, summ, d, roles, notes,
+                      progress=lambda what, i, of, item: worker.note(
+                          phase="splitting", i=i, of=of, item=item),
+                      check=worker.check)
+    if artifacts is not None:
+        worker.note(phase="filing")
+        rec = file_artifact(artifacts, summ, man, by=by)
+        st = get_state().get("built") or {}
+        save_state(built=dict(st, artifact_id=rec.get("id"),
+                              version=rec.get("version"), split_at=got["at"]))
+    return {"groups": [g["id"] for g in got["groups"]], "at": got["at"]}
+
+
+def additions_of(band_ids, pac_windows):
+    """What a build has of the additions: {"delta": bool, "pac_trans":
+    bool}."""
+    return {"delta": "delta" in band_ids,
+            "pac_trans": len(pac_windows) > len(sweep.STATE)}
+
+
+def missing_additions(summary):
+    """The additions the built Monolith lacks, as a run would plan them."""
+    if not summary:
+        return None
+    bands = [b["id"] for b in summary.get("bands") or []]
+    pacw = (summary.get("files") or {}).get("pac_raw.f32", {}).get(
+        "shape", [0, 4])[1]
+    out = {}
+    if "delta" not in bands:
+        out["bands"] = ["delta"]
+    if pacw <= len(sweep.STATE):
+        out["pac_trans"] = True
+    return out
+
+
 def write_layer(path, got, shape):
     """The page's binary: QUANTITIES stacked, float32, C order."""
     stack = np.stack([np.asarray(got[q], dtype=np.float32).reshape(shape)
                       for q in QUANTITIES])
     tmp = path + ".part"
     stack.tofile(tmp)
-    os.replace(tmp, path)
+    # On Windows a file the page is still being sent (or a memory map that
+    # has not been let go) cannot be replaced for a moment; wait for it
+    # rather than fail the whole build.
+    for i in range(50):
+        try:
+            os.replace(tmp, path)
+            break
+        except PermissionError:
+            if i == 49:
+                raise
+            time.sleep(0.2)
     return stack.nbytes
 
 
@@ -1314,7 +1553,8 @@ def build(man, run, raw_dir, out_dir, progress=None):
     shapes = {"edges": (len(WINDOWS), len(sweep.BAND_IDS), len(METHODS),
                         len(pairs)),
               "power": (len(WINDOWS), len(sweep.BAND_IDS), len(names)),
-              "pac": (4, len(sweep.PAC_CELLS), len(names) ** 2)}
+              "pac": (len(PAC_WINDOWS), len(sweep.PAC_CELLS),
+                      len(names) ** 2)}
     files, top, pac_top, cnt, rats_by = {}, {}, {}, {}, {}
     for what in ("edges", "power", "pac"):
         say("pool", 0, 1, what)
@@ -1366,7 +1606,10 @@ def build(man, run, raw_dir, out_dir, progress=None):
         "refusals": asm["refusals"][:200],
         "manifest": {"digest": man.get("digest"), "at": man.get("at"),
                      "notes": man.get("notes") or []},
+        "pac_windows": PAC_WINDOWS,
+        "additions": additions_of(sweep.BAND_IDS, PAC_WINDOWS),
         "run": {"rid": run["rid"], "dest": run.get("dest"),
+                "parts": [p_["rid"] for p_ in run.get("parts") or []],
                 "arrays": [a["id"] for a in run.get("arrays") or []],
                 "code": run.get("code"), "submitted_at":
                 run.get("submitted_at"), "n_tasks": len(run["tasks"])},
@@ -1401,7 +1644,8 @@ def file_artifact(artifacts, summary, man, by=None):
 # ==========================================================================
 # One entry, all the way down
 # ==========================================================================
-def entry_detail(out_dir, man, summary, what, layer, at):
+def entry_detail(out_dir, man, summary, what, layer, at, group=None,
+                 roles=None):
     """Everything behind one entry: each rat's change and weight, each day's
     mean, and every cue pair and rest epoch, recomputed here with
     drift.pool_rats + drift.hk_test (the scalar functions every drift uses)
@@ -1426,6 +1670,11 @@ def entry_detail(out_dir, man, summary, what, layer, at):
             units = [{"id": u["id"], "label": u["label"], "cue":
                       u["cue_label"], "v": _f(v)} for u, v in
                      zip(d["units"], vals)]
+            # One split: only its cue pairs, by index into the day's.
+            pick = list(range(len(units)))
+            if group:
+                kk = split_keep(group, roles or {})
+                pick = [i for i, u in enumerate(d["units"]) if kk(d, u)]
             if what == "edges":
                 wkey = wires_key(at[0], at[1])
                 Wt = _load_day(out_dir, rat, day, wkey, mmap="r")
@@ -1439,7 +1688,11 @@ def entry_detail(out_dir, man, summary, what, layer, at):
                                 summary, rat, day, u["id"],
                                 [int(x) for x in Wt[i, wi]], names[a],
                                 names[b], u["wires"])
-            m, s2, n = day_stats(vals[:, None])
+            units = [units[i] for i in pick]
+            if not units:
+                gone = "%s: no cue pair of this kind" % day
+                break
+            m, s2, n = day_stats(vals[pick][:, None])
             slot = {"cue": _f(m[0]), "cue_se2": _f(s2[0]), "n": int(n[0]),
                     "of": len(units), "units": units}
             if layer == "minus_fp":
@@ -1494,9 +1747,12 @@ def entry_detail(out_dir, man, summary, what, layer, at):
     for rec in per_rat:
         rec["weight"] = weights.get("r%d" % rec["rat"])
     pooled_says = None
-    path = os.path.join(out_dir, "%s_%s.f32" % (what, layer))
-    if os.path.isfile(path):
-        shape = summary["files"]["%s_%s.f32" % (what, layer)]["shape"]
+    fname = "%s_%s%s.f32" % (what, layer, "__" + group if group else "")
+    path = os.path.join(out_dir, fname)
+    fmap = ((summary.get("splits") or {}).get("files") or {}) if group \
+        else summary["files"]
+    if os.path.isfile(path) and fname in fmap:
+        shape = fmap[fname]["shape"]
         arr = np.memmap(path, dtype=np.float32, mode="r",
                         shape=tuple(shape))
         pooled_says = {q: _f(arr[(i,) + at]) for i, q in
@@ -1519,7 +1775,7 @@ def entry_detail(out_dir, man, summary, what, layer, at):
         if rec.get("v") is not None and rec["v"] >= 0:
             half = 1.959964 * math.sqrt(rec["v"])
             rec["ci"] = [rec["delta"] - half, rec["delta"] + half]
-    return {"what": what, "layer": layer, "at": list(at),
+    return {"what": what, "layer": layer, "at": list(at), "split": group,
             "rats": per_rat, "pooled": {
                 "est": mp.get("mean"), "se": t.get("se") if p is not None
                 else None, "p": p, "df": t.get("df"), "k": mp["k"],
@@ -2070,7 +2326,7 @@ class Worker(object):
 
 _WORK = {"now": None}
 _WORK_SAY = {"upload": "uploading", "fetch": "fetching and building the "
-             "Monolith"}
+             "Monolith", "split": "splitting the Monolith by cue pair"}
 
 
 def work_now():
@@ -2331,9 +2587,13 @@ def again_of(st):
                                                            "unknown")]
 
 
-def run_now(man, cfg, app_dir, ssh=None):
-    """Submit the run, or run again what did not finish."""
+def run_now(man, cfg, app_dir, ssh=None, extra=None):
+    """Submit the run, or run again what did not finish -- or, with
+    `extra`, a small run that ADDS to the Monolith already built (see
+    plan_tasks); fetching it rebuilds the Monolith from both."""
     st = get_state()
+    if extra:
+        return run_addition(man, cfg, app_dir, st, extra, ssh=ssh)
     chk = st.get("check")
     if not chk:
         raise MonolithError("Check the VACC first: the run goes only where "
@@ -2368,7 +2628,37 @@ def run_now(man, cfg, app_dir, ssh=None):
     return run
 
 
-def fetch_and_build(worker, man, cfg, artifacts, by=None, fetcher=None):
+def run_addition(man, cfg, app_dir, st, extra, ssh=None):
+    run = st.get("run")
+    built = st.get("built") or {}
+    pl = st.get("poll") or {}
+    if not run or built.get("rid") != run.get("rid"):
+        raise MonolithError("Build the Monolith first: an addition is run "
+                            "beside a Monolith that has been fetched.", 409)
+    if pl.get("active"):
+        raise MonolithError("A run is still going on the cluster.", 409)
+    chk = st.get("check")
+    if not chk:
+        raise MonolithError("Check the VACC first: the recordings have to "
+                            "be whole on the cluster still.", 409)
+    tasks = plan_tasks(man, chk, extra=extra)
+    if not tasks:
+        raise MonolithError("There is nothing to add: no rat has both days "
+                            "whole on the cluster.", 409)
+    dest = run.get("dest") or (st.get("upload") or {}).get("dest") or \
+        "scratch"
+    new = submit(cfg, tasks, dest, app_dir, ssh=ssh)
+    new["parts"] = list(run.get("parts") or []) + [
+        {"rid": run["rid"], "tasks": run["tasks"]}]
+    new["adds"] = extra
+    new["ready_rats"] = chk.get("ready_rats")
+    new["manifest"] = man.get("digest")
+    save_state(run=new, poll=None, fetch=None)
+    return new
+
+
+def fetch_and_build(worker, man, cfg, artifacts, by=None, fetcher=None,
+                    roles_reader=None):
     """Bring every answer home, pool, write the page's files, file the
     artifact."""
     st = get_state()
@@ -2394,6 +2684,19 @@ def fetch_and_build(worker, man, cfg, artifacts, by=None, fetcher=None):
                     worker.note(phase="building", step=what, i=i, of=of,
                                 item=w))
     worker.check()
+    # Split by cue pair as well, so the page can show each half.
+    try:
+        worker.note(phase="splitting")
+        roles, notes = (roles_reader or roles_of)(man)
+        split_build(man, summary, data, roles, notes,
+                    progress=lambda what, i, of, item: worker.note(
+                        phase="splitting", i=i, of=of, item=item),
+                    check=worker.check)
+    except Stopped:
+        raise
+    except Exception as exc:                             # noqa: BLE001
+        summary["splits_error"] = "%s: %s" % (type(exc).__name__, exc)
+        _write_json(os.path.join(data, "summary.json"), summary)
     worker.note(phase="filing")
     rec = file_artifact(artifacts, summary, man, by=by)
     built = {"rid": run["rid"], "at": now_iso(),
@@ -2430,4 +2733,8 @@ def status(cfg, vstatus=None):
         "vacc": {k: (vstatus or {}).get(k) for k in
                  ("configured", "available", "why", "netid", "host")},
         "min_rats": MIN_RATS, "concurrency": CONCURRENCY,
+        # What a small run could still add to the built Monolith.
+        "missing": missing_additions(summary_now()) if st.get("built")
+        else None,
+        "additions_say": ADDITIONS_SAY,
     }

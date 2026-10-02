@@ -28,8 +28,14 @@
      - the circuit draws exactly the edges that pass the slider (counted
        here from the arrays), stricter to the right; a region with nothing
        measured is grey
-     - the frequency slider walks the 1 Hz bands; the snaps are the named
-       bands; transitions say which window length a band uses
+     - the frequency slider walks the 1 Hz bands with its two knobs
+       together; the snaps are the named bands; transitions say which
+       window length a band uses
+     - A FREQUENCY RANGE: the knobs apart draw exactly the pairs that pass
+       at any / most / every band between them (counted from the arrays),
+       the median change, the hover's tally, the ghost opening at the
+       pair's strongest band, the spectrum shading the range; the knobs
+       cross over as a person drags them; together again, one band
      - Granger net draws arrows the way the net drive grew; the arrows
        toggle draws them over another measure; every arrow measured: its
        head wider than its line, the line stopping where the head begins,
@@ -53,10 +59,26 @@
        measured", and a recording that is gone said so, with nothing drawn
      - the Guide page: every ? as an entry, each figure drawn, a link lands
        on its entry
+     - THE FILTER on the points of interest: by measure, region (and pair),
+       frequency range, window type, direction and broadband, set from the
+       panel itself; every entry listed obeys it, the count is the brute
+       force's, the first is the brute force's best; nothing-passes says
+       so; Clear brings the full list back
+     - CUE PAIRS, BOTH OR ONE HALF: the split control (both, Click / Noise,
+       High / Low tone, food / other); a half draws exactly what passes in
+       its own arrays, has its own points of interest, says so in the
+       counts, asks the drill-down for its half; the filter ranks any half
+       and a point from another half snaps the view to it; a Monolith with
+       no split offers to split it, waits for it, and then shows the halves
      - WHAT WAS LOST: the whole thing in words and bars, a rat x region map
        per day (histology hatched, a clipped region's share and its reasons
        on hover), a rat x day table whose totals are the sums of its rows,
        the verdict's line linking to it, untested entries and aliasing
+     - WHEN WE AVERAGED: the second tab walks one line from the recording to
+       the circuit in nine steps, with the two averagings marked; each
+       step's numbers are the entry's own (the measure's value, each day's
+       mean, the rat's change, the pooled change); another rat follows;
+       minus FP shows the rest taken off; the first tab comes back
      - THE TOUR: on a first visit it starts by itself (and is remembered);
        its 14 steps each light up their own target, measured; Next performs
        a click step and moves on exactly one; a reader's own click moves it
@@ -67,7 +89,7 @@
        (negative control: with the visit remembered it does not start)
 
    ?stop=<step> leaves the frame at a step for a screenshot: lifted, rats,
-   days, units, leaf, help, granger (add &dark=1 for the dark tokens), tour<n> (the tour at step n,
+   days, units, leaf, help, granger (add &dark=1 for the dark tokens), range, avg, tour<n> (the tour at step n,
    from 0; &phone=1 at 390 px, &dark=1 dark). Negative control: a planted edge moved out of the
    slider's reach is not drawn. */
 const out = document.getElementById('out');
@@ -263,6 +285,53 @@ const SUMMARY = {
   missing_tasks: [], n_refusals: 3, manifest: { digest: 'abc123', at: '2026-10-01', notes: ['r7 Precon1: FP1 passed over.'] },
   run: { rid: 'abcdef012345', dest: 'temp', arrays: ['777001'], code: 'deadbeefcafe0000', n_tasks: 144 },
 };
+/* The cue-pair split: six halves, each with its own arrays (made when
+   first asked for), points of interest and counts. The Click half has a
+   change of its own -- pre, 30 Hz, envelope cc, Right ACC – Left OFC
+   (pair 9) -- that the whole does not. */
+const SPLITS = [['snd_click', 'Click pair', 'sound'], ['snd_noise', 'Noise pair', 'sound'], ['tone_high', 'High-tone pair', 'tone'],
+                ['tone_low', 'Low-tone pair', 'tone'], ['role_food', 'The pair that later gets food', 'role'], ['role_other', 'The other pair', 'role']];
+const PLANT3 = { w: 0, b: 29, m: 3, p: 9 };
+// Not in the whole: there it is an ordinary entry.
+ARR.edges_raw[(((1 * N.W + PLANT3.w) * N.B + PLANT3.b) * N.M + PLANT3.m) * N.P + PLANT3.p] = 0.6;
+function splitTop(g, layer) {
+  if (g !== 'snd_click') return topList(layer).slice(5, 25).map((t, i) => Object.assign({}, t, { rank: i + 1, more: [], n_more: 0 }));
+  return [{ layer, w: 'pre', wi: 0, kind: 'state', band: 'f30', bi: 29, hz: 30, m: 'env_cc', mi: 3, pair: PLANT3.p,
+            a: REG[PAIRS[PLANT3.p][0]], b: REG[PAIRS[PLANT3.p][1]], est: 0.4, se: 0.02, p: 1e-7, k: 8, same: 8, up: true, rank: 1, more: [], n_more: 0 }]
+    .concat(topList(layer).slice(2, 20).map((t, i) => Object.assign({}, t, { rank: i + 2, more: [], n_more: 0 })));
+}
+function splitsBlock() {
+  const files = {};
+  for (const [g] of SPLITS) for (const layer of ['raw', 'minus_fp']) {
+    files['edges_' + layer + '__' + g + '.f32'] = { shape: SHAPES.edges };
+    files['power_' + layer + '__' + g + '.f32'] = { shape: SHAPES.power };
+    files['pac_' + layer + '__' + g + '.f32'] = { shape: SHAPES.pac };
+  }
+  const top = {}, counts = {};
+  for (const [g] of SPLITS) {
+    top[g] = { raw: splitTop(g, 'raw'), minus_fp: splitTop(g, 'minus_fp') };
+    counts[g] = { raw: { tested: 300000, p05: 15000, p01: 3000, p001: 300, chance_p05: 15000, agree: {} },
+                  minus_fp: { tested: 290000, p05: 14500, p01: 2900, p001: 290, chance_p05: 14500, agree: {} } };
+  }
+  return { at: '2026-10-02T17:00:00', groups: SPLITS.map(([id, label, family]) => ({ id, label, family, rats: SUMMARY.rats.slice(), n_units: 96 })),
+           files, top, counts, family_say: {}, roles: {}, role_map: {} };
+}
+SUMMARY.splits = splitsBlock();
+let splitAsked = [];
+let splitDone = true;
+function splitArray(name) {
+  const m = /^(edges|power|pac)_(raw|minus_fp)__(\w+)$/.exec(name);
+  if (!m) return null;
+  const seed = 100 + SPLITS.findIndex((x) => x[0] === m[3]) * 7 + (m[2] === 'raw' ? 0 : 3);
+  const a = m[1] === 'edges' ? makeEdges(seed) : m[1] === 'power' ? makePower(seed) : makePac(seed);
+  if (m[1] === 'edges' && m[3] === 'snd_click') {
+    const at6 = (q) => (((q * N.W + PLANT3.w) * N.B + PLANT3.b) * N.M + PLANT3.m) * N.P + PLANT3.p;
+    a[at6(0)] = 0.4; a[at6(1)] = 1e-7; a[at6(3)] = 8;
+  }
+  ARR[name] = a;
+  return a;
+}
+
 let entryAsked = [];
 function detail(layer, at) {
   const r = rng(at.reduce((s, x) => s * 31 + x, 7));
@@ -313,7 +382,13 @@ function leafOf(q) {
     span: { t0, t1, fs, a: wave(0), b: wave(0.6) }, marks, regions: [REG[PAIRS[at[3]][0]], REG[PAIRS[at[3]][1]]], wires: [5, 21],
     band: BANDS[at[1]], method: METHODS[at[2]].id, layer, stored: null, remote: '/gpfs3/scratch/fake/r' + rat, units };
   if (unit === 'p04') {
-    out.measured = false; out.why = 'no usable wire in ' + out.regions[1]; out.span = { t0, t1 };
+    // Region B had no usable wire: both of its wires come back anyway, one
+    // clipped (with where), one ruled out by histology.
+    out.measured = false; out.why = 'no usable wire in ' + out.regions[1]; out.span = { t0, t1, fs };
+    out.excluded = [
+      { side: 'B', region: out.regions[1], channel: 29, why: 'clipped', say: 'left out of ' + wm.name + ': the clipping check found it at the rail there',
+        trace: wave(1.2), clip: { lost: true, frac: 0.012, run_ms: 22, spans: [[wm.t0 + 2, wm.t0 + 2.03], [wm.t0 + 6, wm.t0 + 6.5]] } },
+      { side: 'B', region: out.regions[1], channel: 30, why: 'histology', say: 'histology says this probe is not in ' + out.regions[1], trace: wave(2.1), clip: null }];
     return out;
   }
   const ex = JSON.parse(JSON.stringify(GUIDE.scenarios.zero_lag.strong));
@@ -366,13 +441,18 @@ window.MONO_FIXTURE = {
   async json(path) {
     if (path === '/data/summary') return JSON.parse(JSON.stringify(SUMMARY));
     if (path === '/damage') return JSON.parse(JSON.stringify(DAMAGE));
-    const m = /^\/entry\?what=(\w+)&layer=(\w+)&at=([\d,]+)$/.exec(path);
+    const m = /^\/entry\?what=(\w+)&layer=(\w+)&at=([\d,]+)(&split=\w+)?$/.exec(path);
     if (m) { entryAsked.push(path); return detail(m[2], m[3].split(',').map(Number)); }
+    if (path === '/status') return { ok: true, work: { what: 'split', status: splitDone ? 'done' : 'running', progress: { item: 'Click pair · edges', i: 0, of: 6 } } };
     if (path.indexOf('/leaf?') === 0) return leafOf(new URLSearchParams(path.slice(6)));
     throw new Error('no fixture for ' + path);
   },
+  async post(path, body) {
+    if (path === '/split') { splitAsked.push(body); splitDone = true; return { ok: true }; }
+    throw new Error('no fixture for POST ' + path);
+  },
   async array(name, shape) {
-    const a = ARR[name];
+    const a = ARR[name] || splitArray(name);
     if (!a) throw new Error('no fixture array ' + name);
     const want = shape.reduce((x, y) => x * y, 1);
     if (a.length !== want) throw new Error(name + ' has ' + a.length + ', shape says ' + want);
@@ -507,6 +587,145 @@ window.MONO_FIXTURE = {
   const bb = M.bbCount('raw', PLANT2.w, PLANT2.m, PLANT2.p);
   check('counted over the 1 Hz bands: 41 of 55', bb.n === 41 && bb.of === 55, JSON.stringify(bb));
 
+  head('the filter on the points of interest');
+  const at5 = (a, q, w, b, m, p) => a[(((q * N.W + w) * N.B + b) * N.M + m) * N.P + p];
+  /* Every entry with p < .05 the filter lets through, straight from the
+     array: [{w, b, m, p, pv, same, est}]. */
+  function brute(F) {
+    const out = [];
+    for (let w = 0; w < N.W; w++) for (let b = 0; b < N.B; b++) for (let m = 0; m < N.M; m++) for (let p = 0; p < N.P; p++) {
+      const pv = at5(ARR.edges_raw, 1, w, b, m, p);
+      if (!(pv < 0.05)) continue;
+      const est = at5(ARR.edges_raw, 0, w, b, m, p);
+      if (F.measure && METHODS[m].id !== F.measure) continue;
+      if (F.pair != null && p !== F.pair) continue;
+      if (F.region != null && PAIRS[p].indexOf(F.region) < 0) continue;
+      if (F.from != null && (BANDS[b].named || BANDS[b].hz < F.from || BANDS[b].hz > F.to)) continue;
+      if (F.kind && WINDOWS[w].kind !== F.kind) continue;
+      if (F.dir === 'down' && !(est < 0)) continue;
+      out.push({ w, b, m, p, pv, est, same: at5(ARR.edges_raw, 3, w, b, m, p) });
+    }
+    out.sort((x, y) => (y.same - x.same) || (x.pv - y.pv));
+    return out;
+  }
+  const listed = () => M.filteredPoints('raw', Object.assign({ measure: 'any', region: 'any', withRegion: 'any', from: 1, to: 55, named: true, bins: true,
+                                                               win: 'any', dir: 'either', bb: 'show' }, M.state.filt || {}));
+  const fsel = (id, v) => { const x = D().getElementById(id); x.value = v; x.dispatchEvent(new Event('change')); };
+  // From the panel itself, as a person would.
+  if (!D().querySelector('#poi details.fwrap').open) D().querySelector('#poi details.fwrap > summary').click();
+  fsel('f-measure', 'plv');
+  await sleep(30);
+  let L = listed(), B = brute({ measure: 'plv' });
+  check('by measure: everything listed is PLV', L.length > 0 && L.every((t) => t.m === 'plv'), L.map((t) => t.m).join(','));
+  check('the count is every PLV entry with p < .05 (' + B.length + ')', M.filtN === B.length && new RegExp(B.length.toLocaleString() + ' entries pass').test(txt(D().getElementById('filtsay'))), M.filtN);
+  check('and the first is the best of them: most rats the same way, then p', L[0].same === B[0].same && Math.abs(L[0].p - B[0].pv) < 1e-12
+        && L[0].pair === B[0].p, JSON.stringify([L[0].same, L[0].p, B[0].same, B[0].pv]));
+  check('the list says it is filtered', /Filtered: PLV/.test(txt(D().querySelector('#poi details.fwrap > summary'))) && items().length === Math.min(10, L.length));
+  fsel('f-measure', 'any');
+  fsel('f-region', 'Right ACC');
+  fsel('f-with', 'Right OFC');
+  await sleep(30);
+  L = listed();
+  check('by region pair: only Right ACC – Right OFC, the planted change first', L.length > 0 && L.every((t) => t.pair === 0)
+        && L[0].m === 'coherence' && L[0].band === 'f10' && L[0].w === 'cue1' && M.filtN === brute({ pair: 0 }).length, L.length + ' / ' + M.filtN);
+  check('at most three for the pair, the rest listed under them', L.length <= 3);
+  fsel('f-with', 'any');
+  await sleep(30);
+  L = listed();
+  check('by one region: every pair has Right ACC in it', L.every((t) => t.a === 'Right ACC' || t.b === 'Right ACC') && M.filtN === brute({ region: 0 }).length);
+  fsel('f-region', 'any');
+  M.setFilt({ from: 18, to: 22, named: false });
+  await sleep(30);
+  L = listed();
+  check('by frequency: 18–22 Hz only, the planted 20 Hz change first', L.length > 0 && L.every((t) => t.hz >= 18 && t.hz <= 22)
+        && L[0].pair === PLANT2.p && L[0].band === 'f20' && M.filtN === brute({ from: 18, to: 22 }).length, L[0] && L[0].band);
+  M.setFilt({ from: 1, to: 55, named: true, win: 'transition' });
+  await sleep(30);
+  L = listed();
+  check('by window type: transitions only', L.length > 0 && L.every((t) => t.kind === 'transition') && M.filtN === brute({ kind: 'transition' }).length);
+  M.setFilt({ win: 'any', dir: 'down' });
+  await sleep(30);
+  L = listed();
+  check('by direction: only what weakened', L.length > 0 && L.every((t) => t.est < 0) && M.filtN === brute({ dir: 'down' }).length);
+  M.setFilt({ dir: 'either', bb: 'only' });
+  await sleep(30);
+  L = listed();
+  check('broadband only: every one flagged (the planted pair)', L.length > 0 && L.every((t) => M.broadband('raw', t.wi, t.mi, t.pair))
+        && items()[0] && !!items()[0].querySelector('.chip.bb'));
+  M.setFilt({ bb: 'hide' });
+  await sleep(30);
+  L = listed();
+  check('broadband left out: none flagged', L.length > 0 && !L.some((t) => M.broadband('raw', t.wi, t.mi, t.pair)));
+  M.setFilt({ bb: 'show', region: REG[GREY] });
+  await sleep(30);
+  check('nothing passes: said so', listed().length === 0 && /Nothing passes p < \.05 with these filters/.test(txt(D().getElementById('poi'))));
+  D().getElementById('f-clear').click();
+  await sleep(30);
+  check('Clear brings the full list back', !M.state.filt && items().length === 10 && /Right ACC – Right OFC/.test(txt(items()[0])));
+  const fw = D().getElementById('poi');
+  f.style.width = '390px';
+  await sleep(120);
+  check('the filter fits at 390 px', D().scrollingElement.scrollWidth <= D().scrollingElement.clientWidth + 1, D().scrollingElement.scrollWidth);
+  f.style.width = '';
+  await sleep(60);
+
+  head('cue pairs: both, or one half');
+  const viewWas = M.state;
+  const sc = () => D().getElementById('splitctl');
+  check('a Cue pairs control: both pooled, and each half', !!sc() && sc().querySelectorAll('.seg button').length === 7
+        && sc().querySelector('.seg button[aria-pressed="true"]').dataset.id === 'all', sc() && txt(sc()));
+  M.set({ kind: 'state', win: 'pre', band: 'f30', hi: null, method: 'env_cc', level: 1 });
+  await sleep(20);
+  const drawnAll = D().querySelectorAll('#circsvg path.edge').length;
+  sc().querySelector('.seg button[data-id="snd_click"]').click();
+  await until(() => M.split === 'snd_click' && M.data.edges['raw__snd_click'], 120);
+  const countIn = (arr) => { let n = 0; for (let p = 0; p < N.P; p++) { const pv = at(arr, 1, 0, 29, 3, p); if (isFinite(pv) && pv < 0.05) n++; } return n; };
+  check('the Click pair: exactly what passes in its own arrays is drawn (' + countIn(ARR['edges_raw__snd_click']) + ')',
+        D().querySelectorAll('#circsvg path.edge').length === countIn(ARR['edges_raw__snd_click'])
+        && !!D().querySelector('#circsvg path.edge[data-pair="' + PLANT3.p + '"]'), D().querySelectorAll('#circsvg path.edge').length);
+  check('CONTROL: its change is not in the whole', at(ARR.edges_raw, 1, 0, 29, 3, PLANT3.p) >= 0.05 || !isFinite(at(ARR.edges_raw, 1, 0, 29, 3, PLANT3.p)));
+  check('the view says which half', /Pre · 30 Hz · Envelope cc · Raw · Click pair|Baseline · 30 Hz · Envelope cc · Raw · Click pair/.test(txt(D().getElementById('ctitle'))), txt(D().getElementById('ctitle')));
+  check('its own points of interest, its change first', /Right ACC – Left OFC/.test(txt(items()[0])) && /Envelope cc/.test(txt(items()[0])), txt(items()[0]));
+  check('the counts say only that half is shown', /Showing the click pair only: 8 rats, 96 cue pairs/.test(txt(D().getElementById('verdict'))), txt(D().getElementById('verdict')).slice(0, 300));
+  entryAsked = [];
+  D().querySelector('#circsvg path.edge[data-pair="' + PLANT3.p + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => entryAsked.length, 80);
+  check('opening an edge asks for that half', /&split=snd_click$/.test(entryAsked[0] || ''), entryAsked.join(' '));
+  M.closeGhost(true);
+  sc().querySelector('.seg button[data-id="all"]').click();
+  await until(() => M.split === 'all' && !/Click pair/.test(txt(D().getElementById('ctitle'))), 80);
+  check('and Both brings the whole back', D().querySelectorAll('#circsvg path.edge').length === drawnAll && !/Click pair/.test(txt(D().getElementById('ctitle'))));
+  // The filter ranks any half; a point from another half snaps the view to it.
+  if (!D().querySelector('#poi details.fwrap').open) D().querySelector('#poi details.fwrap > summary').click();
+  fsel('f-split', 'snd_click');
+  await until(() => M.data.edges['raw__snd_click'] && /Click pair/.test(txt(D().querySelector('#poi details.fwrap > summary'))), 80);
+  const LS = listed();
+  check('the filter ranks the Click pair\'s entries while the view shows both', M.split === 'all' && LS[0] && LS[0].pair === PLANT3.p
+        && LS[0].split === 'snd_click' && /Click pair/.test(txt(D().querySelector('#poi details.fwrap > summary'))), LS[0] && JSON.stringify([LS[0].pair, LS[0].split]));
+  items()[0].click();
+  await until(() => M.split === 'snd_click', 80);
+  check('and clicking one snaps the view to its half', M.split === 'snd_click' && M.state.sel === PLANT3.p && M.state.band === 'f30');
+  D().getElementById('f-clear').click();
+  await sleep(20);
+  await M.switchSplit('all');
+  await sleep(20);
+  // A Monolith built before the split: offered, run, waited for, shown.
+  const keepSplits = SUMMARY.splits;
+  delete M.data.S.splits;
+  SUMMARY.splits = keepSplits;
+  splitDone = false; splitAsked = [];
+  M.renderAll();
+  check('a Monolith with no split offers to split it', !!D().getElementById('splitnow') && /not been split/.test(txt(sc())));
+  D().getElementById('splitnow').click();
+  await until(() => splitAsked.length, 80);
+  await until(() => M.data.S.splits && sc() && sc().querySelectorAll('.seg button').length === 7, 160);
+  check('pressed, it splits, waits, and then shows the halves', splitAsked.length === 1 && !!M.data.S.splits
+        && sc().querySelectorAll('.seg button').length === 7);
+  // Back to the view the page opened on, for the checks that follow.
+  M.set({ kind: viewWas.kind, win: viewWas.win, band: viewWas.band, method: viewWas.method, level: viewWas.level,
+          sel: viewWas.sel, hi: null });
+  await sleep(20);
+
   head('the circuit');
   // It opened on the first point of interest.
   const st0 = M.state;
@@ -537,10 +756,14 @@ window.MONO_FIXTURE = {
     const p = Number(e.dataset.pair); return PAIRS[p][0] === GREY || PAIRS[p][1] === GREY; }));
 
   head('frequency');
-  const slider = D().getElementById('freq');
-  slider.value = '20'; slider.dispatchEvent(new Event('input'));
+  const slider = D().getElementById('freq'), slider2 = D().getElementById('freqhi');
+  check('the frequency slider has two knobs', !!slider && !!slider2 && D().querySelectorAll('#freqctl input.knob').length === 2);
+  // Both knobs together: one band.
+  slider.value = '20'; slider2.value = '20'; slider.dispatchEvent(new Event('input'));
   await sleep(20);
-  check('the slider walks the 1 Hz bands', M.state.band === 'f20' && /20 Hz/.test(txt(D().getElementById('ctitle'))), M.state.band);
+  check('with the knobs together it walks the 1 Hz bands', M.state.band === 'f20' && M.state.hi == null
+        && /20 Hz/.test(txt(D().getElementById('ctitle'))) && !M.rangeBins(), M.state.band + ' ' + M.state.hi);
+  check('the knob in the hand is not rebuilt while it moves', D().getElementById('freq') === slider);
   check('and says the band and its lag', /band 17\.00–23\.00 Hz · lag up to ±100 ms/.test(txt(D().getElementById('freqsay'))), txt(D().getElementById('freqsay')));
   D().querySelector('#controls .seg button[data-id="theta"]').click();
   await sleep(20);
@@ -554,6 +777,77 @@ window.MONO_FIXTURE = {
   await sleep(20);
   check('and 30 Hz −1/+2 s', /−1 s \/ \+2 s around each boundary/.test(txt(D().getElementById('freqsay'))));
   check('the spectrum marks where the window length changes', /−3\/\+3 s/.test(txt(D().getElementById('specsvg'))));
+
+  head('a frequency range');
+  M.set({ kind: 'state', win: 'cue1', band: 'f08', hi: null, method: 'coherence', level: 1, rangeRule: 'most' });
+  await sleep(20);
+  const k1 = D().getElementById('freq'), k2 = D().getElementById('freqhi');
+  k1.value = '8'; k2.value = '12';
+  k2.dispatchEvent(new Event('input')); k2.dispatchEvent(new Event('change'));
+  await sleep(30);
+  check('pulling the knobs apart makes a range: 8–12 Hz', M.state.band === 'f08' && M.state.hi === 12
+        && /Cue 1 · 8–12 Hz · Coherence/.test(txt(D().getElementById('ctitle'))) && M.rangeBins().length === 5, txt(D().getElementById('ctitle')));
+  if (STOP === 'range') { restore(); document.title = 'stopped at range'; return; }
+  const rangeCount = (rule) => {
+    let n = 0;
+    for (let p = 0; p < N.P; p++) {
+      let tested = 0, hits = 0;
+      for (let b = 7; b <= 11; b++) {
+        const pv = at(ARR.edges_raw, 1, 1, b, 0, p);
+        if (!isFinite(pv)) continue;
+        tested++;
+        if (pv < 0.05) hits++;
+      }
+      if (tested && (rule === 'any' ? hits >= 1 : rule === 'every' ? hits === tested : hits > tested / 2)) n++;
+    }
+    return n;
+  };
+  const counts = {};
+  for (const rule of ['most', 'any', 'every']) {
+    const btn = D().querySelector('#freqctl .rangerule .seg button[data-id="' + rule + '"]');
+    if (btn) btn.click();
+    await sleep(20);
+    counts[rule] = drawn();
+    check('“' + rule + '” band in the range: exactly the pairs that pass so (' + rangeCount(rule) + ')', drawn() === rangeCount(rule) && M.state.rangeRule === rule, drawn());
+  }
+  check('every ≤ most ≤ any', counts.every <= counts.most && counts.most <= counts.any, JSON.stringify(counts));
+  // The planted 10 Hz change is in 8–12 Hz at one band of five: it passes "any", not "most".
+  check('the planted 10 Hz change passes at one band of five: drawn for “any”, not for “most”',
+        (() => { M.set({ rangeRule: 'any' }); return !!D().querySelector('#circsvg path.edge[data-pair="0"]'); })()
+        && (() => { M.set({ rangeRule: 'most' }); return !D().querySelector('#circsvg path.edge[data-pair="0"]'); })());
+  M.set({ rangeRule: 'any' });
+  await sleep(20);
+  const re = D().querySelector('#circsvg path.edge[data-pair="0"]');
+  re.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 200 }));
+  await sleep(10);
+  const rtip = txt(D().getElementById('tip'));
+  check('its hover: the median change, how many bands pass and which, its strongest', /median change over 8–12 Hz/.test(rtip)
+        && /passes p < \.05 at 1 of 5 bands \(10 Hz\)/.test(rtip) && /strongest at 10 Hz/.test(rtip), rtip);
+  re.dispatchEvent(new MouseEvent('mouseleave'));
+  entryAsked = [];
+  re.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => M.ghost.lifted && entryAsked.length, 120);
+  check('clicking it opens the ghost at its strongest band (10 Hz)', /at=1,9,0,0$/.test(entryAsked[0] || ''), entryAsked.join(' '));
+  M.closeGhost(true);
+  check('the spectrum shades the range', !!D().querySelector('#specsvg rect[data-range="8-12"]'));
+  const k1b = D().getElementById('freq'), k2b = D().getElementById('freqhi');
+  k1b.value = '14'; k1b.dispatchEvent(new Event('input'));
+  await sleep(20);
+  check('dragging one knob past the other just turns the range round: 12–14 Hz', M.state.band === 'f12' && M.state.hi === 14, M.state.band + ' ' + M.state.hi);
+  k2b.value = '14'; k2b.dispatchEvent(new Event('input')); k2b.dispatchEvent(new Event('change'));
+  await sleep(20);
+  check('the knobs together again: one band, 14 Hz', M.state.band === 'f14' && M.state.hi == null && !M.rangeBins());
+  M.set({ band: 'f08', hi: 12 });
+  await sleep(20);
+  D().querySelector('#controls .seg button[data-id="theta"]').click();
+  await sleep(20);
+  check('a named band snaps the range away', M.state.band === 'theta' && M.state.hi == null);
+  M.set({ band: 'f08', hi: 12 });
+  await sleep(20);
+  items()[0].click();
+  await sleep(30);
+  check('and so does a point of interest', M.state.hi == null && M.state.band === 'f10');
+  M.set({ rangeRule: 'most', level: 1 });
 
   head('Granger');
   M.set({ kind: 'state', win: 'cue1', band: 'f10', method: 'gc_net', level: 1 });
@@ -728,7 +1022,15 @@ window.MONO_FIXTURE = {
   await leafReady('p03');
   D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
   await until(() => M.leaf.unit === 'p04' && LP() && /Not measured here/.test(txt(LP())), 120);
-  check('a cue pair with no value says why, and draws nothing', /Not measured here: no usable wire in Right RSC/.test(txt(LP())) && !LP().querySelector('.lcard'), txt(LP()).slice(0, 300));
+  check('a cue pair with no value says why, and draws no measure', /Not measured here: no usable wire in Right RSC/.test(txt(LP())) && !LP().querySelector('.lcard'), txt(LP()).slice(0, 300));
+  const xw = Array.from(LP().querySelectorAll('.xwire'));
+  check('the wires left out are drawn anyway, dashed, each saying why', xw.length === 2
+        && xw.map((x) => x.dataset.why).join() === 'clipped,histology'
+        && xw.every((x) => x.querySelector('svg.mfig path[stroke-dasharray]')), xw.map((x) => x.dataset.why).join());
+  check('the clipped one marks where it hit the rail, and how much', xw[0] && xw[0].querySelectorAll('svg rect.span').length === 2
+        && /CSC29 · Right RSC \(B\)/.test(txt(xw[0])) && /1\.20% at the rail, longest run 22\.00 ms/.test(txt(xw[0])), xw[0] && txt(xw[0]).slice(0, 200));
+  check('the one histology rules out says so, with no rail marks', xw[1] && /histology says this probe is not in Right RSC/.test(txt(xw[1]))
+        && xw[1].querySelectorAll('svg rect.span').length === 0);
   LP().querySelector('.leafctl .seg button[data-id="Precon1"]').click();
   await leafReady('p04');
   check('the day switch: the same cue pair on Precon1', M.leaf.day === 'Precon1' && /day=Precon1&unit=p04/.test(leafAsked[leafAsked.length - 1]));
@@ -848,6 +1150,43 @@ window.MONO_FIXTURE = {
   await sleep(20);
   check('the planted edge moved to p = .5 is not drawn at p < .05', !D().querySelector('#circsvg path.edge[data-pair="0"]'));
   ARR.edges_raw[(((1 * N.W + PLANT.w) * N.B + PLANT.b) * N.M + PLANT.m) * N.P + PLANT.p] = 1e-6;
+
+  head('when we averaged');
+  M.closeLeaf(); M.closeGhost(true);
+  M.set({ kind: 'state', win: 'cue1', band: 'f10', hi: null, method: 'coherence', level: 1, sel: PLANT.p, layer: 'raw' });
+  await sleep(20);
+  D().getElementById('tab-avg').click();
+  await until(() => M.avg.detail && M.avg.leaf && D().querySelectorAll('#avgflow li.avgstep').length === 9, 160);
+  if (STOP === 'avg') { restore(); document.title = 'stopped at avg'; return; }
+  const steps = () => Array.from(D().querySelectorAll('#avgflow li.avgstep'));
+  const stepTxt = (n) => txt(steps()[n - 1]);
+  check('the second tab shows the walk-through and hides the circuit', D().getElementById('mainpane').hidden && !D().getElementById('avgpane').hidden
+        && D().getElementById('tab-avg').getAttribute('aria-selected') === 'true');
+  check('nine steps, from the recording to the Monolith', steps().length === 9
+        && /^1The recording/.test(stepTxt(1)) && /^9The Monolith/.test(stepTxt(9)), steps().map((x) => txt(x.querySelector('h3'))).join(' | '));
+  const ops = Array.from(D().querySelectorAll('#avgflow li.avgop.avg')).map((x) => txt(x));
+  check('the two averagings are marked between the steps', ops.length === 2 && /FIRST AVERAGING/.test(ops[0]) && /SECOND AVERAGING/.test(ops[1]), ops.join(' | '));
+  const exv = GUIDE.scenarios.zero_lag.strong.values.coherence;
+  check('step 4: this cue pair’s number is the measure’s own', new RegExp('Coherence in this window: ' + W().MONO_FIGS.sig(exv).replace('.', '\\.')).test(stepTxt(4)), stepTxt(4).slice(0, 120));
+  const det = M.avg.detail, r0 = det.rats.find((x) => x.rat === M.avg.rat);
+  check('step 5: each day’s mean, over its cue pairs', /Precon1: the mean of 11 cue pairs is 0\.420/.test(stepTxt(5)) && steps()[4].querySelectorAll('svg circle').length >= 20, stepTxt(5).slice(0, 160));
+  check('step 6: the rat’s change, Precon4 − Precon1', stepTxt(6).indexOf('= +' + (r0.delta).toFixed(3)) >= 0, stepTxt(6));
+  check('step 7: pooled over rats, with each rat’s weight and the test', /The pooled change is \+0\.050/.test(stepTxt(7)) && /r3 14%/.test(stepTxt(7)) && /p = \.002/.test(stepTxt(7)), stepTxt(7).slice(0, 220));
+  check('step 8: whether it is drawn, and the circuit it is drawn on', /passes “p < \.05”, so it is drawn/.test(stepTxt(8)) && !!steps()[7].querySelector('svg.mfig'));
+  const aw = figWords(D().getElementById('avgpane'));
+  check('no word in its pictures cut off or overlapping', aw.length === 0, aw.slice(0, 4).join(' | '));
+  const sr = D().getElementById('avg-rat');
+  sr.value = '6'; sr.dispatchEvent(new Event('change'));
+  await until(() => M.avg.rat === 6 && /^6One change for the rat r6:/.test(stepTxt(6)), 80);
+  check('another rat: the steps follow it', M.avg.rat === 6 && /r6/.test(stepTxt(5)), stepTxt(6));
+  D().querySelector('#controls .seg button[data-id="minus_fp"]').click();
+  await until(() => M.state.layer === 'minus_fp' && M.avg.detail && /rest/.test(stepTxt(5)), 160);
+  check('minus FP: each day’s rest is taken off in step 5', /so the day is 0\.420 − 0\.380 = /.test(stepTxt(5)), stepTxt(5).slice(0, 220));
+  D().querySelector('#controls .seg button[data-id="raw"]').click();
+  await until(() => M.state.layer === 'raw', 80);
+  D().getElementById('tab-main').click();
+  await sleep(20);
+  check('and the first tab comes back', !D().getElementById('mainpane').hidden && D().getElementById('avgpane').hidden);
 
   head('the tour');
   M.closeLeaf(); M.closeGhost(true);

@@ -311,8 +311,15 @@ def _first_pass(bank, rec, named, target, target_events):
             "compared": len(pairs)}
 
 
-def dataset(bank, curate=None):
+def dataset(bank, curate=None, pin=None):
     """Every entry the model can learn from, and every one it cannot, why.
+
+    `pin` is {entry id: version key}: learn from exactly that version of
+    exactly those entries, whatever has been curated since. The bank is
+    live -- three recordings were settled, and another moved to a new
+    version, during one afternoon's comparison on 2026-10-02 -- so two runs
+    meant to differ only in their inputs have to be pinned to one dataset or
+    they differ in their data too.
 
     Returns {"entries": [...], "skipped": [...]}. An entry carries the
     settled version, its events as {t_bank, y}, and how a first pass by a
@@ -342,10 +349,19 @@ def dataset(bank, curate=None):
                 break
             before.append((ver, name))
         target = tname = None
-        for ver, name in reversed(before):
-            if _settled(ver.get("by_label")):
-                target, tname = ver, name
-                break
+        if pin is not None:
+            want_ref = pin.get(rec.get("id"))
+            if want_ref is None:
+                continue
+            for ver, name in named:
+                if bank.version_key(ver) == want_ref:
+                    target, tname = ver, name
+                    break
+        else:
+            for ver, name in reversed(before):
+                if _settled(ver.get("by_label")):
+                    target, tname = ver, name
+                    break
         if target is None:
             skipped.append({"label": label, "entry_id": rec.get("id"),
                             "gid": rec.get("gid"),
@@ -1465,7 +1481,7 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
                                           or [f["id"] for f in FAMILIES
                                               if f["default"]])]
     model_id = settings.get("model") or "hgb"
-    ds = dataset(bank, curate)
+    ds = dataset(bank, curate, pin=settings.get("pin"))
     want = settings.get("entries")
     ents = [e for e in ds["entries"]
             if not want or e["entry_id"] in set(want)]

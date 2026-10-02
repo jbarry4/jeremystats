@@ -17264,6 +17264,9 @@ def api_arc_precon_file(which):
 #   POST /api/arc/monolith/forget                  drop an interrupted note
 #   GET  /api/arc/monolith/data/<name>             summary, or a layer's .f32
 #   GET  /api/arc/monolith/entry?what&layer&at     one entry, all the way down
+#        [&split=<group>]                          ... over one cue-pair split
+#   POST /api/arc/monolith/split                   split by cue pair, here
+#   GET  /api/arc/monolith/damage                  what was lost
 # ==========================================================================
 from . import monolith as monolithmod                        # noqa: E402
 
@@ -17274,6 +17277,9 @@ monolithmod.configure(LOGS_DIR)
 MONO_REMOTE = None
 MONO_SSH = None
 MONO_FETCH = None
+# Who reads each rat's food pair for the split (cueroles, from its Con
+# TTLs); the checks hand in a stand-in. None: the real reading.
+MONO_ROLES = None
 
 
 def _mono_cfg():
@@ -17408,7 +17414,19 @@ def api_arc_monolith_run():
         if not man:
             raise monolithmod.MonolithError("Ask for the upload plan first.",
                                             409)
-        run = monolithmod.run_now(man, cfg, APP_DIR, ssh=MONO_SSH)
+        # An addition to the built Monolith: only what it lacks, and only
+        # the additions this code knows.
+        extra = body.get("extra") or None
+        if extra is not None:
+            known = monolithmod.sweep.SWEEP_NAMED
+            if not isinstance(extra, dict) or \
+                    set(extra) - {"bands", "pac_trans"} or \
+                    any(b not in known for b in extra.get("bands") or []):
+                return jsonify({"ok": False, "error": "An addition is "
+                                "`{bands: [...], pac_trans: true}`, of "
+                                "the sweep's own named bands."}), 400
+        run = monolithmod.run_now(man, cfg, APP_DIR, ssh=MONO_SSH,
+                                  extra=extra)
     except monolithmod.MonolithError as exc:
         return _mono_refused(exc)
     except vaccmod.SSHError as exc:
@@ -17462,7 +17480,8 @@ def api_arc_monolith_fetch():
         w = monolithmod.start_work("fetch", lambda w: monolithmod
                                    .fetch_and_build(w, man, cfg, ARTIFACTS,
                                                     by=by,
-                                                    fetcher=MONO_FETCH))
+                                                    fetcher=MONO_FETCH,
+                                                    roles_reader=MONO_ROLES))
     except monolithmod.MonolithError as exc:
         return _mono_refused(exc)
     except Exception as exc:                                 # noqa: BLE001
@@ -17504,12 +17523,16 @@ def api_arc_monolith_data(name):
     if name in _MONO_DATA:
         fname, mime = _MONO_DATA[name]
     else:
-        what, _, layer = name.partition("_")
+        # <what>_<layer>, or <what>_<layer>__<split> for one cue-pair split.
+        what, _, rest = name.partition("_")
+        layer, _, split = rest.partition("__")
         if what not in ("edges", "power", "pac") or \
-                layer not in monolithmod.LAYERS:
+                layer not in monolithmod.LAYERS or \
+                (split and split not in monolithmod.SPLIT_IDS):
             return jsonify({"ok": False, "error": "No such Monolith file: "
                             "%s" % name}), 404
-        fname, mime = "%s_%s.f32" % (what, layer), "application/octet-stream"
+        fname = "%s_%s%s.f32" % (what, layer, "__" + split if split else "")
+        mime = "application/octet-stream"
     path = os.path.join(d, fname)
     if not os.path.isfile(path):
         return jsonify({"ok": False, "error": "No such Monolith file: %s"
@@ -17607,11 +17630,38 @@ def api_arc_monolith_entry():
     if any(not 0 <= a < s for a, s in zip(at, shape)):
         return jsonify({"ok": False, "error": "That entry is outside the "
                         "Monolith (%s)." % (shape,)}), 400
+    split = request.args.get("split") or None
+    if split in ("all", ""):
+        split = None
+    if split and (split not in monolithmod.SPLIT_IDS
+                  or not (summ.get("splits") or {}).get("files")):
+        return jsonify({"ok": False, "error": "This Monolith has no split "
+                        "called %s." % split}), 404
     try:
-        got = monolithmod.entry_detail(d, man, summ, what, layer, at)
+        got = monolithmod.entry_detail(
+            d, man, summ, what, layer, at, group=split,
+            roles=monolithmod.split_role_map(summ) if split else None)
     except Exception as exc:                                 # noqa: BLE001
         return fail("arc/monolith/entry", exc, 500)
     return jsonify(dict({"ok": True}, **got))
+
+
+@app.route("/api/arc/monolith/split", methods=["POST"])
+def api_arc_monolith_split():
+    """Split the built Monolith by cue pair -- the Click pair and the
+    Noise pair, the High-tone pair and the Low-tone pair, the pair that
+    later gets food and the other -- each pooled over rats exactly as the
+    whole is. Here, from the arrays already fetched; about two minutes."""
+    try:
+        by = (STORE.provenance() or {}).get("user")
+        w = monolithmod.start_work("split", lambda w: monolithmod.split_work(
+            w, artifacts=ARTIFACTS, by=by, roles_reader=MONO_ROLES))
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/split", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.split", "detail": {}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
 # ============================= end of Drift ===============================
 
 

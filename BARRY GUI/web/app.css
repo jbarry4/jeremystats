@@ -9247,11 +9247,19 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
   background: var(--bg-2); border-top: 2px solid var(--mode);
 }
 .arc-bar {
-  display: flex; align-items: center; gap: var(--sp-10); flex: none;
-  padding: 5px var(--sp-12);
+  display: flex; align-items: center; gap: var(--sp-8) var(--sp-12); flex: none;
+  flex-wrap: wrap;
+  padding: var(--sp-8) var(--sp-12);
   background: var(--bg-2); border-bottom: 1px solid var(--line-soft);
   font-size: var(--fs-115);
 }
+/* Room to breathe (2026-10-02): the pair's name is never broken across two
+ * lines, its "why" takes what is left and wraps inside itself, and the key
+ * reminders get a line of their own under everything rather than being
+ * squeezed between the switch and the buttons. */
+.arc-bar-pair { white-space: nowrap; }
+.arc-bar-why { flex: 1 1 220px; min-width: 0; }
+.arc-bar-keys { order: 10; flex-basis: 100%; row-gap: var(--sp-4); }
 .arc-bar strong { color: var(--mode); }
 .arc-bar-n {
   font-variant-numeric: tabular-nums; font-family: var(--mono);
@@ -9296,9 +9304,17 @@ body.solo-window #app { grid-template-columns: 1fr !important; }
 .arc-verdict strong { color: var(--err); font-size: var(--fs-135); }
 .arc-verdict.none { background: var(--ok-soft); }
 .arc-verdict.none strong { color: var(--ok); }
-.arc-verdict-who, .arc-verdict-kept {
+.arc-verdict-kept {
   font-family: var(--mono); font-size: var(--fs-11);
 }
+/* The channels going, one line per thing they lose, under the sentence:
+ * a group of channels and the windows they lose, never a wall of them. */
+.arc-verdict-who {
+  flex-basis: 100%; display: flex; flex-direction: column; gap: var(--sp-4);
+  font-size: var(--fs-12); line-height: 1.5;
+}
+.arc-verdict-grp { display: flex; flex-wrap: wrap; gap: 2px var(--sp-8); }
+.arc-verdict-chans { font-family: var(--mono); font-weight: 600; }
 .arc-verdict-who { color: var(--err); }
 .arc-verdict.none .arc-verdict-who { color: var(--ok); }
 .arc-verdict-kept { color: var(--ok); }

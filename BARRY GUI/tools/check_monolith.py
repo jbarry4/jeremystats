@@ -29,6 +29,10 @@ that records what it was sent, and the artifact store is a stand-in.
     region pair, near neighbours listed under; entry_detail agrees with the
     arrays; the page's files have the shapes the summary says
   - the routes, with all of the above stood in for
+  - split by cue pair: each half pooled exactly as the whole is (its
+    entry_detail, from the scalar drift functions, agrees with its arrays);
+    the role split equals the half it names; a half no rat has is empty;
+    the split files served, the split asked for by the entry route
   - what was lost (damage): each lost region-window put down to the right
     reason -- histology, a bad wire, the bank's clipping, not measured --
     cue pairs counted kept, partly kept and lost, the whole the sum of the
@@ -280,14 +284,30 @@ def data_and_tasks():
     for t in tasks:
         kinds[t["kind"]] = kinds.get(t["kind"], 0) + 1
     nd = 12
-    check("per rat-day: 4 state chunks, slow, fast, PAC, rest, PAC rest",
+    check("per rat-day: 4 state chunks, slow, fast, PAC, PAC at the "
+          "transitions, rest, PAC rest",
           kinds == {"state": 4 * nd, "trans_slow": nd, "trans_fast": nd,
-                    "pac": nd, "rest": nd, "pac_rest": nd}, kinds)
+                    "pac": nd, "pac_trans": nd, "rest": nd, "pac_rest": nd},
+          kinds)
     one = [t for t in tasks if t["rat"] == MO.RATS[0]
            and t["day"] == "Precon1"]
     sb = [b for t in one if t["kind"] == "state" for b in t["spec"]["bands"]]
-    check("the state chunks cover all 58 bands once",
-          sorted(sb) == sorted(sweep.BAND_IDS) and len(sb) == 58)
+    check("the state chunks cover all %d bands once (delta among them)"
+          % len(sweep.BAND_IDS), sorted(sb) == sorted(sweep.BAND_IDS)
+          and len(sb) == len(sweep.BAND_IDS) and "delta" in sb)
+    # An addition: only delta, and PAC at the transitions, keyed apart.
+    xt = MO.plan_tasks(man, chk, extra={"bands": ["delta"], "pac_trans": True})
+    xk = {}
+    for t in xt:
+        xk[t["kind"]] = xk.get(t["kind"], 0) + 1
+    check("an addition plans only delta (state, slow transitions, rest) and "
+          "PAC at the transitions", xk == {"state": nd, "trans_slow": nd,
+                                         "rest": nd, "pac_trans": nd}, xk)
+    check("  each measuring delta alone, every key apart from the run's",
+          all(t["spec"]["bands"] == (["delta"] if t["kind"] != "pac_trans"
+                                     else []) for t in xt)
+          and all(t["key"].endswith("_x") for t in xt)
+          and not {t["key"] for t in xt} & {t["key"] for t in tasks})
     sl = [t for t in one if t["kind"] == "trans_slow"][0]
     fa = [t for t in one if t["kind"] == "trans_fast"][0]
     check("slow and fast transitions in their own bands",
@@ -461,10 +481,10 @@ PLANT = {"w": 1, "band": "f10", "m": "coherence", "pair": 0}
 BOTH = {"w": 2, "band": "f20", "m": "plv", "pair": 5}
 
 
-def fake_outputs(man, run, raw, seed=8, null=False):
+def fake_outputs(man, run, raw, seed=8, null=False, bands_of=None):
     """Every task's npz, made up. Under `null` there is no change at all;
     otherwise PLANT rises 1.0 from Precon1 to Precon4 in every rat, and
-    BOTH rises by 0.4 in cue AND rest (so minus FP takes it away)."""
+    BOTH rises by 0.8 in cue AND rest (so minus FP takes it away)."""
     rng = np.random.default_rng(seed)
     os.makedirs(os.path.join(raw, "out"), exist_ok=True)
     days = {(d["rat"], d["day"]): d for d in man["days"]}
@@ -480,6 +500,8 @@ def fake_outputs(man, run, raw, seed=8, null=False):
         W = 4 if kind in ("state", "pac") else 3 if kind.startswith(
             "trans") else 1
         up = (t["day"] == "Precon4") and not null
+        if kind == "pac_trans":
+            W = 3
         if kind.startswith("pac"):
             v = rng.normal(0.01, 0.003, (U, W, len(sweep.PAC_CELLS), R * R))
             arrays = {"values": v.astype(np.float32),
@@ -487,7 +509,9 @@ def fake_outputs(man, run, raw, seed=8, null=False):
             meta = {"kind": kind, "units": [u["id"] for u in units],
                     "bands": [], "why": []}
         else:
-            if kind == "state":
+            if bands_of is not None:
+                bands = bands_of(t)
+            elif kind == "state":
                 ci = t["chunk"]
                 bands = MO._chunks(sweep.bands_for("state"),
                                    MO.STATE_CHUNKS)[ci]
@@ -502,7 +526,7 @@ def fake_outputs(man, run, raw, seed=8, null=False):
             if up and kind in ("state", "rest") and BOTH["band"] in bands:
                 w = 0 if rest else BOTH["w"]
                 v[:, w, bands.index(BOTH["band"]), MI(BOTH["m"]),
-                  BOTH["pair"]] += 0.4
+                  BOTH["pair"]] += 0.8
             arrays = {"values": v.astype(np.float32),
                       "power": pw.astype(np.float32),
                       "wires": np.full((U, W, R), 2, np.int16)}
@@ -536,7 +560,12 @@ def build_end_to_end(man, tasks, work):
     check("built (%.0f s)" % (time.time() - t0), bool(summ))
     shape = summ["files"]["edges_raw.f32"]["shape"]
     check("the edges file: quantities x windows x bands x methods x pairs",
-          shape == [len(MO.QUANTITIES), 7, 58, len(MO.METHODS), 66], shape)
+          shape == [len(MO.QUANTITIES), 7, len(sweep.BAND_IDS),
+                    len(MO.METHODS), 66], shape)
+    pshape = summ["files"]["pac_raw.f32"]["shape"]
+    check("PAC over seven windows: the four states and the three transitions",
+          pshape[1] == 7 and summ.get("pac_windows") == MO.PAC_WINDOWS
+          and summ["additions"] == {"delta": True, "pac_trans": True}, pshape)
     size = os.path.getsize(os.path.join(data, "edges_raw.f32"))
     check("and holds exactly that many float32",
           size == 4 * int(np.prod(shape)), size)
@@ -624,6 +653,126 @@ def build_end_to_end(man, tasks, work):
     check("its payload names the data files by digest",
           all(len(f["sha256"]) == 64 for f in payload["files"].values()))
     return run, summ, raw
+
+
+def fake_roles(man):
+    """Every rat's Click pair is the one that later gets food."""
+    roles, notes = {}, {}
+    for d in man["days"]:
+        for u in d["units"]:
+            roles.setdefault(int(d["rat"]), {})[u["cue_type"]] = (
+                "food" if "Click" in u["cue_type"] else "no_food")
+    for rat in roles:
+        notes[rat] = {"food_pair": "Click_LowTone", "food_cue": "Low Tone",
+                      "sessions": 1}
+    return roles, notes
+
+
+def split_check(man, summ, data):
+    print("\nSplit by cue pair")
+    import copy
+    m2 = copy.deepcopy(man)
+    # Two kinds of cue pair a day, alternating: Click -> Low Tone and
+    # Noise -> High tone, as a real rat has.
+    for d in m2["days"]:
+        for i, u in enumerate(d["units"]):
+            u["cue_type"] = "Click_LowTone" if i % 2 == 0 else "Noise_HighTone"
+            u["cue_label"] = "Click → Low Tone" if i % 2 == 0 else "Noise → High tone"
+    roles, notes = fake_roles(m2)
+    s2 = copy.deepcopy(summ)
+    t0 = time.time()
+    got = MO.split_build(m2, s2, data, roles, notes)
+    check("built every split (%.0f s)" % (time.time() - t0),
+          [g["id"] for g in got["groups"]] == list(MO.SPLIT_IDS))
+    want = {"%s_%s__%s.f32" % (w, l, g) for w in ("edges", "power", "pac")
+            for l in MO.LAYERS for g in MO.SPLIT_IDS}
+    check("its files: every split, layer and kind, at the whole's shapes",
+          set(got["files"]) == want and all(
+              got["files"][f]["shape"] == summ["files"][f.split("__")[0] + ".f32"]["shape"]
+              for f in want) and all(os.path.isfile(os.path.join(data, f)) for f in want))
+    gc = next(g for g in got["groups"] if g["id"] == "snd_click")
+    gh = next(g for g in got["groups"] if g["id"] == "tone_high")
+    n_all = sum(len(d["units"]) for d in m2["days"])
+    check("the Click half has every rat and the even cue pairs; the High-tone half the odd",
+          len(gc["rats"]) == 6 and gc["n_units"] == sum((len(d["units"]) + 1) // 2 for d in m2["days"])
+          and gh["n_units"] == n_all - gc["n_units"], (gc, gh))
+    p0 = summ["top"]["raw"][0]
+    at = (p0["wi"], p0["bi"], p0["mi"], p0["pair"])
+    ok_all = True
+    for g in ("snd_click", "tone_high", "role_food"):
+        det = MO.entry_detail(data, m2, s2, "edges", "raw", at, group=g, roles=roles)
+        n_u = len(det["rats"][0]["days"]["Precon1"]["units"])
+        ok_all = ok_all and det["agree"] and n_u == 2
+    check("one entry of each half, from the scalar drift functions, agrees with "
+          "its arrays, over that half's cue pairs only", ok_all)
+    def arr(name):
+        sh = got["files"][name]["shape"]
+        return np.fromfile(os.path.join(data, name), dtype="<f4").reshape(sh)
+    a_food, a_click = arr("edges_raw__role_food.f32"), arr("edges_raw__snd_click.f32")
+    check("the pair that later gets food is, here, the Click pair: the same arrays",
+          np.array_equal(a_food, a_click, equal_nan=True))
+    a_low = arr("edges_raw__tone_low.f32")
+    check("the Low-tone half (here also the Click half) the same again",
+          np.array_equal(a_low, a_click, equal_nan=True))
+    whole = np.fromfile(os.path.join(data, "edges_raw.f32"), dtype="<f4").reshape(
+        summ["files"]["edges_raw.f32"]["shape"])
+    check("CONTROL: a half is not the whole", not np.array_equal(a_click, whole, equal_nan=True))
+    est = a_click[0][at]
+    check("the planted change (in every cue pair) is in the half too (%.3f)" % est, abs(est - 1.0) < 0.15)
+    check("each half has its points of interest and counts",
+          all(got["top"][g]["raw"] and got["counts"][g]["raw"]["tested"] > 0
+              for g in MO.SPLIT_IDS if g != "role_other" or True))
+    return m2, roles
+
+
+def addition_merge(man, work):
+    """A Monolith built before delta and PAC at the transitions existed,
+    then the small run that adds them, fetched and built from both."""
+    print("\nAn addition: delta and PAC at the transitions, run on their own")
+    every = {(d["rat"], d["day"], f["role"]) for d, f in MO.folders_of(man)}
+    chk = MO.check_data(man, listing_for(man, whole=every))
+    old = [t for t in MO.plan_tasks(man, chk)
+           if t["kind"] != "pac_trans"]
+    # The old run: every band but delta.
+    for t in old:
+        t["spec"]["bands"] = [b for b in t["spec"]["bands"] if b != "delta"]
+
+    def run_of(rid, ts):
+        return {"rid": rid, "dest": "scratch", "arrays": [{"id": "1", "indices": None}],
+                "tasks": [{"i": i, "key": t["key"], "rat": t["rat"], "day": t["day"],
+                           "kind": t["kind"], "chunk": t["chunk"], "n_units": t["n_units"],
+                           "est_s": t["est_s"], "bands": t["spec"]["bands"]} for i, t in enumerate(ts)]}
+    base = run_of("b05e00000001", old)
+    base_raw = os.path.join(MO.run_dir_local(base["rid"]), "raw")
+    fake_outputs(man, base, base_raw, bands_of=lambda t: t["bands"])
+    add = MO.plan_tasks(man, chk, extra={"bands": ["delta"], "pac_trans": True})
+    supp = run_of("add000000001", add)
+    supp["parts"] = [{"rid": base["rid"], "tasks": base["tasks"]}]
+    supp_raw = os.path.join(MO.run_dir_local(supp["rid"]), "raw")
+    fake_outputs(man, supp, supp_raw, bands_of=lambda t: t["bands"], seed=9)
+    data = os.path.join(MO.run_dir_local(supp["rid"]), "data")
+    summ = MO.build(man, supp, supp_raw, data)
+    d0 = man["days"][0]
+    E = np.load(os.path.join(data, "days", "r%d_%s_edges.npy" % (d0["rat"], d0["day"])))
+    P = np.load(os.path.join(data, "days", "r%d_%s_pac.npy" % (d0["rat"], d0["day"])))
+    di = sweep.BAND_IDS.index("delta")
+    check("built from both: delta filled from the addition, every other band "
+          "from the run before", np.isfinite(E[:, :4, di]).all()
+          and np.isfinite(E[:, 4:, di]).all() and np.isfinite(E[:, :, 9]).all())
+    check("PAC: the states from the run before, the transitions from the "
+          "addition", np.isfinite(P[:, :4]).all() and np.isfinite(P[:, 4:]).all()
+          and P.shape[1] == 7)
+    check("the summary names both runs and has both additions",
+          summ["run"]["parts"] == [base["rid"]] and summ["additions"]
+          == {"delta": True, "pac_trans": True}
+          and summ["files"]["pac_raw.f32"]["shape"][1] == 7)
+    old_summ = dict(summ, bands=[b for b in summ["bands"] if b["id"] != "delta"],
+                    files=dict(summ["files"], **{"pac_raw.f32": dict(
+                        summ["files"]["pac_raw.f32"], shape=[6, 4] +
+                        summ["files"]["pac_raw.f32"]["shape"][2:])}))
+    check("a Monolith without them is said to lack both",
+          MO.missing_additions(old_summ) == {"bands": ["delta"], "pac_trans": True}
+          and MO.missing_additions(summ) == {})
 
 
 def damage_report(man, summ, data):
@@ -786,6 +935,8 @@ def routes(work, man, run_tasks, raw_src):
     appmod.MONO_REMOTE = lambda c: U.LocalRemote(far)
     appmod.MONO_SSH = fake
     appmod.MONO_FETCH = fetcher
+    real["roles"] = appmod.MONO_ROLES
+    appmod.MONO_ROLES = fake_roles
     appmod.ARTIFACTS = fa
     vacc.load_config = lambda d: dict(cfg)
     try:
@@ -922,6 +1073,26 @@ def routes(work, man, run_tasks, raw_src):
               e["ok"] and e["agree"] and len(e["rats"]) == 6)
         r = c.get("/api/arc/monolith/entry?what=edges&layer=raw&at=99,0,0,0")
         check("an entry outside it is refused", r.status_code == 400)
+        check("the fetch split it by cue pair too", bool((s.get("splits") or {}).get("files")))
+        b2 = c.get("/api/arc/monolith/data/edges_raw__snd_click")
+        check("a split's arrays are served", b2.status_code == 200 and len(b2.data) == 4 * int(
+            np.prod(s["splits"]["files"]["edges_raw__snd_click.f32"]["shape"])))
+        b2.close()
+        b.close()
+        check("a split that does not exist is refused",
+              c.get("/api/arc/monolith/data/edges_raw__nonsense").status_code == 404)
+        e2 = c.get("/api/arc/monolith/entry?what=edges&layer=raw&at=%d,%d,%d,%d&split=snd_click"
+                   % (p0["wi"], p0["bi"], p0["mi"], p0["pair"])).get_json()
+        check("one entry of one split, agreeing with its arrays", e2.get("ok") and e2.get("agree")
+              and e2.get("split") == "snd_click", e2.get("error"))
+        r = c.post("/api/arc/monolith/split", json={}).get_json()
+        t0 = time.time()
+        while time.time() - t0 < 300:
+            w = c.get("/api/arc/monolith/status").get_json()["work"]
+            if w and w["what"] == "split" and w["status"] != "running":
+                break
+            time.sleep(0.25)
+        check("splitting again, on its own, from the tab's button", r.get("ok") and w["status"] == "done", w)
         leaf_route(c, fake, man, s, p0)
         r = c.post("/api/arc/monolith/cancel", json={"confirm": True})
         check("cancel reaches the cluster by id and name",
@@ -931,6 +1102,7 @@ def routes(work, man, run_tasks, raw_src):
         appmod.MONO_REMOTE = real["remote"]
         appmod.MONO_SSH = real["ssh"]
         appmod.MONO_FETCH = real["fetch"]
+        appmod.MONO_ROLES = real.get("roles")
         appmod.ARTIFACTS = real["arts"]
         vacc.load_config = real["cfg"]
         if real_root:
@@ -1035,8 +1207,7 @@ def leaf_route(c, fake, man, s, p0):
             dd["units"][1]["drop"] = keep_drop
     MO.save_manifest(m3)
     check("a measured region with a spare wire it did not need shows no "
-          "excluded wire", not [x for x in lf["excluded"] if x["side"] == "A"]
-          or all(x["why"] != "unread" for x in lf["excluded"]))
+          "excluded wire", lf["excluded"] == [], lf["excluded"])
     Wt[1, wj, rb] = kept_w
     np.save(wp, Wt)
     # Temp purged: said, not read from anywhere else.
@@ -1115,6 +1286,8 @@ def main():
         submit_and_poll(man, tasks)
         run, summ, raw = build_end_to_end(man, tasks, work)
         damage_report(man, summ, os.path.join(work, "data"))
+        addition_merge(man, work)
+        split_check(man, summ, os.path.join(work, "data"))
         null_control(work)
         man2 = fake_manifest(root=os.path.join(work, "local"))
         every = {(d["rat"], d["day"], f["role"])

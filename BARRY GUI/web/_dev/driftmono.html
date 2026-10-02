@@ -287,6 +287,29 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
     btn(/^View Monolith Artifact$/).click();
     check('View opens the Monolith page', opened[0] === '/monolith.html', opened.join());
     check('Results knows a monolith artifact', ev('BARRY.artifacts.viewers().indexOf("monolith") >= 0'));
+    check('a Monolith with everything offers nothing to add', !btn(/^Add /));
+
+    head('adding to it: delta, and PAC at the transitions');
+    const builtS = { rid: run.rid, at: iso(1), artifact_id: 'zzmono', version: 1, missing_tasks: [],
+                     counts: { raw: { tested: 340000, p05: 18000, chance_p05: 17000 }, minus_fp: { tested: 330000, p05: 17000 } } };
+    const says = { delta: 'the delta band (1–4 Hz)', pac_trans: 'phase–amplitude coupling at the transitions' };
+    await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       missing: { bands: ['delta'], pac_trans: true }, additions_say: says }));
+    const addBtn = btn(/^Add the delta band/);
+    check('a Monolith built without them says so, and offers to add them', !!addBtn
+          && /built without the delta band \(1–4 Hz\) or phase–amplitude coupling at the transitions/.test(step('view').textContent)
+          && /nothing already measured is measured again/.test(step('view').textContent), step('view').textContent.slice(0, 300));
+    check('  it is not the next step: View still is', primaries().length === 1 && /^View Monolith Artifact$/.test(primaries()[0].textContent.trim()));
+    stub.calls.length = 0;
+    addBtn.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/run'), 60);
+    const addCall = stub.calls.find((c) => c.path === '/api/arc/monolith/run');
+    check('  pressed, it runs only what is missing, confirmed', addCall && addCall.body.confirm === true
+          && JSON.stringify(addCall.body.extra) === JSON.stringify({ bands: ['delta'], pac_trans: true }), addCall && JSON.stringify(addCall.body));
+    await show(Object.assign(base(), { check: null, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       missing: { pac_trans: true }, additions_say: says }));
+    const off2 = btn(/^Add phase–amplitude coupling at the transitions$/);
+    check('  without a check of the VACC it is off, and says why', off2 && off2.disabled && /Check the VACC first/.test(step('view').textContent));
 
     head('what goes wrong says so');
     await show(Object.assign(base(), { interrupted: { what: 'upload', id: 'x', started: iso(3600), status: 'running' } }));

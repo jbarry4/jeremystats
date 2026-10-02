@@ -85,7 +85,7 @@ window.MONO_TOUR = (function () {
 
   /* The lead the tour follows, and what the reader has opened on the way. */
   const T = { rat: null, day: 'Precon4', unit: null };
-  function lead() { return ((S().top || {})[M().state.layer] || [])[0] || null; }
+  function lead() { return (M().topOf ? M().topOf(M().state.layer) : ((S().top || {})[M().state.layer] || []))[0] || null; }
   function leadSay(t) {
     const s = S();
     const w = s.windows.find((x) => x.id === t.w) || {};

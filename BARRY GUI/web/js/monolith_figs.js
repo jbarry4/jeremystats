@@ -113,6 +113,14 @@ window.MONO_FIGS = (function () {
       s.appendChild(sv('rect', { x: X(Math.max(h0, xr[0])), y: m.t, width: Math.max(1, X(Math.min(h1, xr[1])) - X(Math.max(h0, xr[0]))),
                                  height: H - m.t - m.b, fill: css('--focus'), 'fill-opacity': 0.13 }));
     }
+    // Stretches to flag (where a wire hit the rail): red, at least 2 px so
+    // a few milliseconds still show.
+    for (const [a, b] of o.spans || []) {
+      if (b < xr[0] || a > xr[1]) continue;
+      const x0 = X(Math.max(a, xr[0])), x1 = X(Math.min(b, xr[1]));
+      s.appendChild(sv('rect', { x: Math.min(x0, x1 - 2), y: m.t, width: Math.max(2, x1 - x0), height: H - m.t - m.b,
+                                 fill: css('--up'), 'fill-opacity': 0.35, class: 'span' }));
+    }
     series.forEach((se, i) => {
       const y0 = m.t + i * rowH, y1 = y0 + rowH;
       const yr = se.range || ext([se.y], 0.05, se.sym);
@@ -120,7 +128,8 @@ window.MONO_FIGS = (function () {
       if (se.zero && yr[0] < 0 && yr[1] > 0) {
         s.appendChild(sv('line', { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), stroke: css('--line'), 'stroke-width': 0.6 }));
       }
-      s.appendChild(sv('path', { d: path(t, se.y, X, Y), fill: 'none', stroke: se.color || css('--ink'), 'stroke-width': se.width || 1 }));
+      s.appendChild(sv('path', { d: path(t, se.y, X, Y), fill: 'none', stroke: se.color || css('--ink'), 'stroke-width': se.width || 1,
+                                 'stroke-dasharray': se.dash || null }));
       if (se.y2) {
         s.appendChild(sv('path', { d: path(t, se.y2, X, Y), fill: 'none', stroke: se.color2 || css('--ink-3'), 'stroke-width': se.width || 1 }));
       }

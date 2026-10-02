@@ -118,7 +118,20 @@ WINDOWS = STATE + TRANSITION
 SLOW_LEN = (3.0, 3.0)
 FAST_LEN = (spark.TRANSITION_BEFORE_S, spark.TRANSITION_AFTER_S)
 
-KINDS = ("state", "trans_slow", "trans_fast", "rest", "pac", "pac_rest")
+KINDS = ("state", "trans_slow", "trans_fast", "rest", "pac", "pac_rest",
+         "pac_trans")
+
+#: Named bands of the sweep's own, beyond the circuits' three (coupling's
+#: BANDS, which the circuits share and this does not touch). Appended AFTER
+#: them, so a Monolith built before one was added is the same arrays with
+#: one band fewer at the end, and can have it added by a small run.
+#: Delta (user, 2026-10-02): 1-4 Hz; lags searched over two cycles of its
+#: slowest edge, 2 s; Welch pieces of 2 s so its lowest hertz has two cycles
+#: in each (the 1 s pieces of the faster bands would hold one).
+SWEEP_NAMED = {
+    "delta": {"id": "delta", "low": 1.0, "high": 4.0, "max_lag_ms": 2000.0,
+              "label": "Delta", "welch_s": 2.0},
+}
 
 PAC_PHASE_HZ = tuple(range(2, 13))
 PAC_AMP_HZ = tuple(range(15, 51, 5))
@@ -159,6 +172,14 @@ def bands():
                     "named": True, "pad": False,
                     "label": "%s %g–%g Hz" % (coupling.BAND_LABELS[bid],
                                               b["low"], b["high"])})
+    for bid, b in SWEEP_NAMED.items():
+        out.append({"id": bid, "hz": None, "low": float(b["low"]),
+                    "high": float(b["high"]),
+                    "lag_s": float(b["max_lag_ms"]) / 1000.0,
+                    "speed": "slow" if b["high"] <= SPLIT_HZ else "fast",
+                    "named": True, "pad": False, "welch_s": b["welch_s"],
+                    "label": "%s %g–%g Hz" % (b["label"], b["low"],
+                                              b["high"])})
     return out
 
 
@@ -175,13 +196,16 @@ def bands_for(kind):
         return [b for b in BAND_IDS if BAND_BY_ID[b]["speed"] == "fast"]
     if kind in ("state", "rest"):
         return list(BAND_IDS)
-    if kind in ("pac", "pac_rest"):
+    if kind in ("pac", "pac_rest", "pac_trans"):
         return []
     raise SweepError("There is no %r kind of sweep task." % (kind,))
 
 
 def welch_len_s(band):
-    """Welch segment length for a band: 1 s unless it is too narrow."""
+    """Welch segment length for a band: 1 s unless it is too narrow (or
+    the band says its own, as delta does)."""
+    if band.get("welch_s"):
+        return float(band["welch_s"])
     half = (float(band["high"]) - float(band["low"])) / 2.0
     if half < 0.55:
         return 2.0
@@ -713,7 +737,10 @@ def _windows_for(kind, unit):
     pair = unit.get("pair") or {}
     if kind in ("state", "pac"):
         return spark.pair_windows(pair, spark.CLIP_PAD_S)
-    if kind == "trans_slow":
+    if kind in ("trans_slow", "pac_trans"):
+        # PAC at the transitions takes the slow windows, -3/+3 s: its phase
+        # runs from 2 Hz, and the fast windows' -1/+2 s would hold three
+        # cycles of that before the boundary.
         return spark.transition_windows(pair, *SLOW_LEN)
     if kind == "trans_fast":
         return spark.transition_windows(pair, *FAST_LEN)
@@ -766,9 +793,11 @@ def run_task(spec, progress=None):
     blocked = spec.get("blocked") or {}
     bad = sorted(int(c) for c in (spec.get("bad") or []))
     wnames = (STATE if kind in ("state", "pac") else
-              TRANSITION if kind.startswith("trans") else REST)
+              TRANSITION if kind.startswith("trans") or kind == "pac_trans"
+              else REST)
     U, W = len(units), len(wnames)
-    pac = kind in ("pac", "pac_rest")
+    pac = kind in ("pac", "pac_rest", "pac_trans")
+    slowish = kind in ("trans_slow", "pac_trans")
     if pac:
         arr = np.full((U, W, len(PAC_CELLS), R * R), np.nan, np.float32)
         power = None
@@ -780,7 +809,7 @@ def run_task(spec, progress=None):
     why = []
 
     slow = {}
-    if kind == "trans_slow":
+    if slowish:
         only = sorted({int(c) for n_, cs in chan_map.items()
                        if n_ not in blocked for c in cs})
         by_folder = {}
@@ -796,7 +825,7 @@ def run_task(spec, progress=None):
             progress(ui, U)
         folder = u.get("folder") or spec.get("folder")
         wins = _windows_for(kind, u)
-        if kind == "trans_slow":
+        if slowish:
             lost = slow.get(u["id"])
             if lost is None:
                 why.append({"unit": u["id"], "why": "the slow windows' "
