@@ -1,60 +1,123 @@
 {
   "_at": {
-    "created": "2026-09-18T15:43:36.053411+00:00",
-    "gid": "2026-09-18T15:43:36.053411+00:00",
+    "bad_channels": "2026-10-02T11:51:59.332092+00:00",
+    "converted": "2026-09-18T15:34:22.733146+00:00",
+    "created": "2026-09-18T15:34:22.733146+00:00",
+    "duration_s": "2026-09-18T15:34:22.733146+00:00",
+    "first_seen_by": "2026-09-18T15:34:22.733146+00:00",
+    "fs": "2026-09-18T15:34:22.733146+00:00",
+    "gid": "2026-09-18T15:34:22.733146+00:00",
     "group": "2026-09-18T15:43:36.053411+00:00",
-    "key": "2026-09-18T15:43:36.053411+00:00",
-    "label": "2026-09-18T15:43:36.053411+00:00",
-    "loose_key": "2026-09-18T15:43:36.053411+00:00",
-    "mouse": "2026-09-18T15:43:36.053411+00:00",
+    "key": "2026-09-18T15:49:38.242422+00:00",
+    "label": "2026-09-18T15:49:38.242422+00:00",
+    "loose_key": "2026-09-18T15:49:38.242422+00:00",
+    "mouse": "2026-09-18T15:49:38.242422+00:00",
+    "n_channels": "2026-09-18T15:34:22.733146+00:00",
+    "probe": "2026-10-02T11:51:59.332092+00:00",
+    "probe_source": "2026-10-02T11:51:59.332092+00:00",
     "project": "2026-09-18T19:20:27.439918+00:00",
-    "project_source": "2026-09-18T15:43:36.053411+00:00",
-    "retired": "2026-09-18T15:43:36.053411+00:00",
-    "schema": "2026-09-18T15:43:36.053411+00:00",
-    "session": "2026-09-18T15:43:36.053411+00:00",
-    "start": "2026-09-18T15:43:36.053411+00:00",
-    "updated": "2026-09-18T19:20:27.439918+00:00"
+    "project_source": "2026-09-18T15:49:38.242422+00:00",
+    "retired": "2026-09-18T15:49:38.242422+00:00",
+    "schema": "2026-09-18T15:49:38.242422+00:00",
+    "session": "2026-09-18T15:49:38.242422+00:00",
+    "start": "2026-09-18T15:49:38.242422+00:00",
+    "updated": "2026-10-02T11:51:59.332092+00:00"
   },
   "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-02T11:51:59.332092+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-02T11:51:59.332092+00:00"
+      ]
+    },
     "paths": {
       "D:\\KCNT1\\urethane\\hom\\KCNTM7_YH\\kcnt1m7_s2jul26\\2022-07-26_16-37-40": [
         "set",
-        "2026-09-18T15:50:59.535351+00:00"
+        "2026-09-18T15:55:09.659775+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-10-01T16:20:06.356627+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-18T19:20:27.439918+00:00",
+    "at": "2026-10-02T11:51:59.332092+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
+  "bad_channels": [
+    59
+  ],
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": "Hippocampus",
+      "said_by": "Shahriar Tafti",
+      "said_via": "probe:dual"
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": "M2",
+      "said_by": "Shahriar Tafti",
+      "said_via": "probe:dual"
+    }
+  ],
+  "converted": true,
   "created": {
-    "app_version": "2026.09.17.2",
-    "at": "2026-09-18T11:43:36-04:00",
-    "email": "rain.younger@uvm.edu",
-    "host": "BarryLab",
-    "machine": "Strawbarry",
+    "app_version": "2026.09.17.14",
+    "at": "2026-09-18T11:34:22-04:00",
+    "commit": "f693752",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Rain Younger"
+    "user": "Shahriar Tafti"
   },
+  "duration_s": 963.584,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
   "gid": "s89d6fc3cf2d3",
   "group": null,
   "key": "m007_s002_2022-07-26_16-37-40",
   "label": "KCNT1 m7 s2 2022-07-26",
   "loose_key": "m007_s002",
   "mouse": 7,
+  "n_channels": 128,
   "paths": [
     "D:\\KCNT1\\urethane\\hom\\KCNTM7_YH\\kcnt1m7_s2jul26\\2022-07-26_16-37-40"
   ],
+  "probe": "dual",
+  "probe_source": "manual",
   "project": "KCNT1 Urethane",
   "project_source": "guessed",
   "retired": false,
   "schema": 1,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-10-01T12:20:06-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\KCNT1\\urethane\\hom\\KCNTM7_YH\\kcnt1m7_s2jul26\\2022-07-26_16-37-40",
+      "root": null,
+      "scan": null
+    }
+  },
   "session": 2,
   "start": "2022-07-26T20:37:40+00:00",
   "updated": {
-    "app_version": "2026.09.17.2",
-    "at": "2026-09-18T15:20:27-04:00",
+    "app_version": "2026.10.01.2",
+    "at": "2026-10-02T07:51:59-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",

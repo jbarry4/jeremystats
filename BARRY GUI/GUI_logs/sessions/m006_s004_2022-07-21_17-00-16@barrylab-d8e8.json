@@ -1,5 +1,6 @@
 {
   "_at": {
+    "bad_channels": "2026-10-02T11:51:56.599704+00:00",
     "created": "2026-09-18T15:34:03.767487+00:00",
     "duration_s": "2026-09-18T15:34:03.767487+00:00",
     "first_seen_by": "2026-09-18T15:34:03.767487+00:00",
@@ -11,23 +12,25 @@
     "loose_key": "2026-09-18T15:48:59.192379+00:00",
     "mouse": "2026-09-18T15:48:59.192379+00:00",
     "n_channels": "2026-09-18T15:34:03.767487+00:00",
+    "probe": "2026-10-02T11:51:56.599704+00:00",
+    "probe_source": "2026-10-02T11:51:56.599704+00:00",
     "project": "2026-09-18T16:10:06.275915+00:00",
     "project_source": "2026-09-18T15:48:59.192379+00:00",
     "retired": "2026-09-18T15:48:59.192379+00:00",
     "schema": "2026-09-18T15:48:59.192379+00:00",
     "session": "2026-09-18T15:48:59.192379+00:00",
     "start": "2026-09-18T15:48:59.192379+00:00",
-    "updated": "2026-09-25T18:41:09.112886+00:00"
+    "updated": "2026-10-02T11:51:56.599704+00:00"
   },
   "_keys": {
     "channel_banks": {
       "b1": [
         "set",
-        "2026-09-18T15:45:16.325165+00:00"
+        "2026-10-02T11:51:56.599704+00:00"
       ],
       "b2": [
         "set",
-        "2026-09-18T15:45:16.325165+00:00"
+        "2026-10-02T11:51:56.599704+00:00"
       ]
     },
     "paths": {
@@ -48,22 +51,29 @@
     }
   },
   "_shard": {
-    "at": "2026-09-25T18:41:09.112886+00:00",
+    "at": "2026-10-02T11:51:56.599704+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
+  "bad_channels": [
+    59
+  ],
   "channel_banks": [
     {
       "first": 1,
       "id": "b1",
       "last": 64,
-      "region": null
+      "region": "Hippocampus",
+      "said_by": "Shahriar Tafti",
+      "said_via": "probe:dual"
     },
     {
       "first": 65,
       "id": "b2",
       "last": 128,
-      "region": null
+      "region": "M2",
+      "said_by": "Shahriar Tafti",
+      "said_via": "probe:dual"
     }
   ],
   "created": {
@@ -90,6 +100,8 @@
     "D:\\KCNT1\\urethane\\wt\\KCNTM6_wt\\kcnt1m6s4jul21\\2022-07-21_17-00-16",
     "/gpfs2/scratch/sakhava1/KCNT1 Urethane/KCNT1_DATA/Kcnt1_M6s4/2022-07-21_17-00-16"
   ],
+  "probe": "dual",
+  "probe_source": "manual",
   "project": "KCNT1 Urethane",
   "project_source": "guessed",
   "retired": false,
@@ -107,8 +119,8 @@
   "session": 4,
   "start": "2022-07-21T21:00:16+00:00",
   "updated": {
-    "app_version": "2026.09.24.2",
-    "at": "2026-09-25T14:41:09-04:00",
+    "app_version": "2026.10.01.2",
+    "at": "2026-10-02T07:51:56-04:00",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
