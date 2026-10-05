@@ -1434,6 +1434,24 @@ below.
 11. ~~**Every importer of `backend.app` was a sync client.**~~ Fixed: see
     above. The harness pushed its test writes into the lab's database,
     which is how `harness@test` reached the shared roster.
+12. ~~**Two hundred 10 MB payloads in one request.**~~ Fixed 2026-10-05.
+    This is the one that took the database DOWN rather than costing too
+    much: a push sent artifact payloads as plain JSON into
+    `artifact_snapshots`, up to `BATCH` of them in one POST, into a free-tier
+    instance with 0.5 GB of memory. Every machine had the same payloads
+    (they travel in git), so every machine retried the same request each
+    time the database came back. A failed push saves no cursor, so each
+    retry also re-sent everything since the last good one. Now
+    `cloud.upsert` caps a request at `MAX_BODY` bytes and refuses rows over
+    `MAX_ROW`, and payloads travel gzipped in `artifact_payloads.gz`, fetched
+    by key one at a time (migration 20).
+
+**Rule 12, from leak 12: size a request by bytes, not rows.** A table whose
+rows can be large (payloads, snapshots, tool results) goes through the
+byte budget like every other table, and a blob is compressed before it
+goes. A request the database cannot finish is not one it should ever be
+sent twice. Test with the real data, not a three-row fixture: the fixture
+was a few kilobytes and passed for a week.
 
 **Open: the pull cursor is a client stamp.** `last_pull` is the newest
 `updated_at` seen, and `updated_at` is written by the machine that made the

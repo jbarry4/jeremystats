@@ -329,23 +329,38 @@ def _run(tmp):
 
 class FakeCloud:
     """The two artifact tables, with the database's own rules: newest
-    updated_at wins on `artifacts`, and `artifact_snapshots` refuses
-    updates (migration 18's add-only trigger)."""
+    updated_at wins on `artifacts`, and `artifact_payloads` refuses
+    updates (migration 20's add-only trigger). Payload rows carry `gz`, the
+    payload gzipped and base64'd; a key-only read leaves it out."""
 
     def __init__(self):
         self.art, self.snaps, self.requests = {}, {}, 0
+        self.biggest = 0                  # largest single payload row sent
 
-    def select_all(self, table, query=""):
+    def select_all(self, table, query="", columns=None):
         self.requests += 1
-        return [dict(r) for r in (self.art.values() if table == "artifacts"
-                                  else self.snaps.values())]
+        if table == "artifacts":
+            return [dict(r) for r in self.art.values()]
+        cols = [c for c in (columns or "").split(",") if c]
+        return [({k: r.get(k) for k in cols} if cols else dict(r))
+                for r in self.snaps.values()]
+
+    def select(self, table, query="", limit=1000, offset=0, columns=None):
+        """One payload row, by key -- how a pull fetches a payload."""
+        self.requests += 1
+        want = dict(p.split("=eq.", 1) for p in query.split("&")
+                    if "=eq." in p)
+        got = self.snaps.get((want.get("artifact_id"), want.get("version_id")))
+        return [dict(got)] if got else []
 
     def push(self, rows):
+        import json as _json
         for r in rows.get("artifacts") or []:
             old = self.art.get(r["id"])
             if not old or r["updated_at"] >= old["updated_at"]:
                 self.art[r["id"]] = dict(r)
-        for r in rows.get("artifact_snapshots") or []:
+        for r in rows.get("artifact_payloads") or []:
+            self.biggest = max(self.biggest, len(_json.dumps(r)))
             self.snaps.setdefault((r["artifact_id"], r["version_id"]), dict(r))
 
 
@@ -354,6 +369,7 @@ def _sync_for(store, fake):
     s = cloudsync.Sync.__new__(cloudsync.Sync)
     s.artifacts, s.cloud, s.machine = store, fake, shards.machine_id()
     s._art_sent_sig = s._art_pending_sig = None
+    s._pending = {}                     # what push() starts each run with
     return s
 
 
@@ -364,8 +380,11 @@ def _push(s, fake):
 
 
 def _pull(s, fake):
+    from backend import cloudsync
     s._apply_artifacts(list(fake.art.values()))
-    s._apply_artifact_snapshots(list(fake.snaps.values()))
+    keys = fake.select_all("artifact_payloads",
+                           columns=cloudsync.PAYLOAD_KEY_COLUMNS)
+    s._apply_artifact_payloads(keys)
 
 
 def sync_checks():
@@ -416,9 +435,12 @@ def sync_checks():
         shards._MACHINE = "sync-b"
         got = cb.rows_artifacts()
         check("sync: a quiet push sends nothing and asks nothing",
-              not got["artifacts"] and not got["artifact_snapshots"]
+              not got["artifacts"] and not got["artifact_payloads"]
               and fake.requests == before,
               "%d requests" % (fake.requests - before))
+        check("sync: payloads travel gzipped, not as JSON",
+              all("gz" in r and "payload" not in r
+                  for r in fake.snaps.values()))
 
         # The tables appear WHILE Jarvis is running (migration 18 run from the
         # dashboard). Found 2026-09-28: the absent answer used to mark every
@@ -426,12 +448,12 @@ def sync_checks():
         class Missing(FakeCloud):
             missing = True
 
-            def select_all(self, table, query=""):
+            def select_all(self, table, query="", columns=None):
                 self.requests += 1
                 if self.missing:
                     raise Exception("404 PGRST205 Could not find the table "
                                     "'public.%s'" % table)
-                return FakeCloud.select_all(self, table, query)
+                return FakeCloud.select_all(self, table, query, columns)
         dd = tempfile.mkdtemp(prefix="jarvis-artifacts-sync-d-")
         try:
             shards._MACHINE = "sync-d"
@@ -451,9 +473,9 @@ def sync_checks():
             got2 = cd.rows_artifacts()
             check("sync: once the tables exist, it sends with nothing "
                   "changed here", len(got2["artifacts"]) == 1
-                  and len(got2["artifact_snapshots"]) == 1,
+                  and len(got2["artifact_payloads"]) == 1,
                   "%d / %d" % (len(got2["artifacts"]),
-                               len(got2["artifact_snapshots"])))
+                               len(got2["artifact_payloads"])))
             # The old rule, reproduced: the absent answer marked the store's
             # signature as sent. The check above must be able to tell.
             cd._art_sent_sig = cd._art_pending_sig = SD.signature()
@@ -464,10 +486,15 @@ def sync_checks():
         finally:
             shutil.rmtree(dd, ignore_errors=True)
         # A snapshot that arrives altered is a conflict, not a file.
+        import base64 as _b64
+        import gzip as _gz
+        import json as _json
         vid = va[-1]["id"]
         key = (x["id"], vid)
-        bad = dict(fake.snaps[key],
-                   payload=dict(fake.snaps[key]["payload"], n_pairs=77))
+        sent = _json.loads(_gz.decompress(
+            _b64.b64decode(fake.snaps[key]["gz"])).decode("utf-8"))
+        bad = dict(fake.snaps[key], payload=dict(sent, n_pairs=77))
+        bad.pop("gz", None)
         dc = tempfile.mkdtemp(prefix="jarvis-artifacts-sync-c-")
         try:
             shards._MACHINE = "sync-c"

@@ -16175,6 +16175,9 @@ COLUMN_MIGRATIONS = {
     "params_hash": "16_results_museum.sql",
     # Which code each computer runs, sent with its heartbeat.
     "jarvis_version": "19_request_budget.sql",
+    # artifact_payloads, which replaces artifact_snapshots: a whole table,
+    # found missing the same way as health_checks above.
+    "gz": "20_artifact_payloads.sql",
 }
 
 
@@ -16209,6 +16212,7 @@ COLUMN_TABLES = {
     "recipe": "runs",
     "params_hash": "tool_results",
     "jarvis_version": "machines",
+    "gz": "artifact_payloads",
 }
 
 

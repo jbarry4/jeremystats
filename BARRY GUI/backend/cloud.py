@@ -248,6 +248,37 @@ def _explain(method, path, code, detail):
 PAGE = 1000            # PostgREST's own default ceiling
 BATCH = 200            # rows per upsert; keeps request bodies sane
 
+# ...and bytes per upsert, because rows are not all small. From 2026-09-30 a
+# push sent up to 200 artifact payloads of up to 10 MB each in ONE request;
+# the free-tier database (half a gigabyte of memory) fell over, every
+# machine retried the same request whenever it came back, and it went down
+# again each time, for a week. A request now carries at most MAX_BODY bytes
+# of rows; a single row bigger than that goes alone; a row bigger than
+# MAX_ROW is not sent at all -- it is kept here and counted in OVERSIZE so
+# it can be said.
+MAX_BODY = 1000000
+MAX_ROW = 4000000
+
+# {table: number of rows held back for being bigger than MAX_ROW}.
+OVERSIZE = {}
+
+
+def _sized_chunks(rows, table):
+    """`rows` in requests of at most BATCH rows and MAX_BODY bytes."""
+    chunk, size = [], 0
+    for r in rows:
+        n = len(json.dumps(r, default=str))
+        if n > MAX_ROW:
+            OVERSIZE[table] = OVERSIZE.get(table, 0) + 1
+            continue
+        if chunk and (len(chunk) >= BATCH or size + n > MAX_BODY):
+            yield chunk
+            chunk, size = [], 0
+        chunk.append(r)
+        size += n
+    if chunk:
+        yield chunk
+
 # Columns this machine tried to send that the database has not got, per
 # table. Kept so a pending migration is something the interface can say
 # rather than something somebody eventually notices.
@@ -721,8 +752,7 @@ class Cloud:
         # migration nobody has run used to stop every table after this one
         # from syncing, for everybody.
         dropped = set(PENDING_COLUMNS.get(table) or ())
-        for i in range(0, len(rows), BATCH):
-            chunk = rows[i:i + BATCH]
+        for chunk in _sized_chunks(rows, table):
             path = "/rest/v1/" + table
             if on_conflict:
                 path += "?on_conflict=" + urllib.parse.quote(on_conflict)

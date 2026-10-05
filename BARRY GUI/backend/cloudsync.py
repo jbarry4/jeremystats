@@ -21,6 +21,8 @@ is the thing a jsonb blob cannot do however carefully you merge it.
 """
 from __future__ import annotations
 
+import base64
+import gzip
 import json
 import os
 import re
@@ -58,6 +60,13 @@ GID_TABLES = (
 #: before asking again. One request per interval is the whole cost.
 ART_ABSENT_RETRY_S = 15 * 60
 
+#: A payload bigger than this once gzipped and base64'd is not sent. The
+#: largest one on record is ~10 MB of JSON and ~0.7 MB like this.
+PAYLOAD_GZ_MAX = 3000000
+
+#: What a pull asks of artifact_payloads: everything but the payload.
+PAYLOAD_KEY_COLUMNS = "artifact_id,version_id,v,digest,bytes,machine,updated_at"
+
 ORDER = [
     "machines", "sessions", "session_paths", "session_sightings", "mice",
     "bank_entries",
@@ -87,7 +96,10 @@ ORDER = [
     "tool_results",
     # Jarvis Artifacts (migration 18): the record, then its payloads, which
     # reference it. Last, because nothing else references either.
-    "artifacts", "artifact_snapshots",
+    # `artifact_payloads`, not `artifact_snapshots` (migration 20): the
+    # payloads go up gzipped, one bounded request at a time, and are fetched
+    # by key, never in bulk. See rows_artifacts.
+    "artifacts", "artifact_payloads",
 ]
 PUSH_ONLY =["runs", "activity", "errors", "error_marks"]
 
@@ -314,6 +326,10 @@ class Sync:
         # that only a pull that saw `results` move sets it.
         self.results_moved = True
         self._full = False
+        # Migration 20 not run yet: when to ask about artifact_payloads
+        # again, and how many payloads were too big to send at all.
+        self._payloads_absent_until = 0.0
+        self.payloads_held = 0
         self.repo_root = repo_root
         self.cloud = cloud.Cloud(self.logs, store)
         self.machine = shards.machine_id()
@@ -702,7 +718,7 @@ class Sync:
         changed since the last successful push (or a pull found the cloud
         behind). A quiet push costs nothing.
         """
-        empty = {"artifacts": [], "artifact_snapshots": []}
+        empty = {"artifacts": [], "artifact_payloads": []}
         store = self.artifacts
         if store is None:
             return empty
@@ -722,10 +738,6 @@ class Sync:
         try:
             there = {str(r.get("id")): r.get("fp") for r in
                      self.cloud.select_all("artifacts", query="select=id,fp")}
-            have = {(str(r.get("artifact_id")), str(r.get("version_id")))
-                    for r in self.cloud.select_all(
-                        "artifact_snapshots",
-                        query="select=artifact_id,version_id")}
         except Exception as exc:                         # noqa: BLE001
             # Migration 18 not run: nothing to send to. Ask again in a while
             # -- NOT "once something here changes". Marking the signature
@@ -772,22 +784,81 @@ class Sync:
                 "updated_at": now,
                 "updated_by": added.get("by") or self.machine,
             })
-        snaps = []
-        for aid, ver, payload in store.snapshots():
-            if aid not in live or (aid, str(ver.get("id"))) in have:
-                continue
-            snaps.append({
-                "artifact_id": aid, "version_id": ver.get("id"),
-                "v": _int(ver.get("v")), "digest": ver.get("digest"),
-                "payload": payload, "machine": ver.get("machine"),
-                "updated_at": now,
-            })
+        snaps = self._artifact_payload_rows(store, recs, live, now)
         self._art_pending_sig = sig
         self._art_fp_pending = fp_after
         # Kept in the sync state with the cursor, so a restarted Jarvis can
         # still say which artifacts are up there before its first push.
         self._pending["art_fp"] = fp_after
-        return {"artifacts": rows, "artifact_snapshots": snaps}
+        return {"artifacts": rows, "artifact_payloads": snaps}
+
+    def _artifact_payload_rows(self, store, recs, live, now):
+        """The payloads the cloud has not got, gzipped, one row each.
+
+        They used to go up as plain JSON into `artifact_snapshots` -- up to
+        two hundred in one request, some of them 10 MB. That took the
+        database down on 2026-09-30, and every machine (the payloads travel
+        in git too, so every machine has them) sent the same request again
+        whenever it came back. Now:
+
+        - the cloud is asked which keys it has, and only the missing ones
+          are read from disk (reading all 290 MB to send three was the
+          other half of the cost);
+        - each payload is gzipped -- these are numbers, ~10-18x -- and sent
+          as base64 text in `artifact_payloads.gz`, so the database stores
+          and serves a string, not a document it has to parse;
+        - cloud.upsert's byte budget keeps each request near a megabyte;
+        - a payload still bigger than PAYLOAD_GZ_MAX compressed is kept
+          here and counted in `payloads_held` rather than sent.
+
+        Asking which keys exist is one request, made only when this
+        machine's artifacts changed (rows_artifacts' signature).
+        """
+        if getattr(self, "_payloads_absent_until", 0.0) > time.time():
+            return []
+        try:
+            have = {(str(r.get("artifact_id")), str(r.get("version_id")))
+                    for r in self.cloud.select_all(
+                        "artifact_payloads",
+                        columns="artifact_id,version_id")}
+        except Exception as exc:                         # noqa: BLE001
+            # Migration 20 not run: the records still go up, the payloads
+            # wait, and the question is asked again in a while.
+            if _absent(exc):
+                self._payloads_absent_until = (time.time()
+                                               + ART_ABSENT_RETRY_S)
+            return []
+        out, held = [], 0
+        for rec, _nick_at in recs:
+            aid = rec["id"]
+            if aid not in live:
+                continue
+            for ver in rec.get("versions") or []:
+                vid = str(ver.get("id"))
+                if (aid, vid) in have or not store.has_payload(aid, ver):
+                    continue
+                try:
+                    with open(store.snap_path(aid, ver["v"], ver["digest"]),
+                              "rb") as fh:
+                        raw = fh.read()
+                    payload = json.loads(raw.decode("utf-8"))
+                except (OSError, ValueError, KeyError, TypeError):
+                    continue
+                plain = json.dumps(payload, sort_keys=True,
+                                   separators=(",", ":"), ensure_ascii=False,
+                                   allow_nan=False).encode("utf-8")
+                gz = base64.b64encode(gzip.compress(plain, 6)).decode("ascii")
+                if len(gz) > PAYLOAD_GZ_MAX:
+                    held += 1
+                    continue
+                out.append({
+                    "artifact_id": aid, "version_id": ver.get("id"),
+                    "v": _int(ver.get("v")), "digest": ver.get("digest"),
+                    "bytes": len(plain), "gz": gz,
+                    "machine": ver.get("machine"), "updated_at": now,
+                })
+        self.payloads_held = held
+        return out
 
     def rows_curation(self):
         sets, events, reviews = [], [], []
@@ -1509,7 +1580,7 @@ class Sync:
     # out what is missing by asking the database -- filtering that answer by
     # those stamps would drop every snapshot older than the last push, which
     # is all of them.
-    NO_INCREMENTAL = {"bank_snapshots", "artifacts", "artifact_snapshots"}
+    NO_INCREMENTAL = {"bank_snapshots", "artifacts", "artifact_payloads"}
 
     ON_CONFLICT = {
         # Keyed on the permanent id, and stated rather than left to the
@@ -1533,7 +1604,7 @@ class Sync:
         "layer_labels": "gid,channel",
         "presets": "kind,id",
         "artifacts": "id",
-        "artifact_snapshots": "artifact_id,version_id",
+        "artifact_payloads": "artifact_id,version_id",
     }
 
     def push(self, include_history=True, on_progress=None, dry_run=False,
@@ -1924,7 +1995,7 @@ class Sync:
             self._unlisted_at = time.time()
             self._unlisted_since = since
 
-        def fetch(table):
+        def fetch(table, columns=None):
             # Skipped entirely when the watermark says this table has not
             # moved. That is the whole saving: on a quiet cycle every one of
             # these returns without a request being made at all.
@@ -1940,7 +2011,7 @@ class Sync:
             if on_table:
                 on_table(table)
             try:
-                rows = self.cloud.select_all(table, tq)
+                rows = self.cloud.select_all(table, tq, columns=columns)
             except Exception as exc:                     # noqa: BLE001
                 # A table this database has never been given. Reported and
                 # skipped, because the alternative is what actually
@@ -1988,8 +2059,10 @@ class Sync:
         if self.artifacts is not None:
             # The record before its payloads, as for the bank.
             applied["artifacts"] = self._apply_artifacts(fetch("artifacts"))
-            applied["artifact_snapshots"] = self._apply_artifact_snapshots(
-                fetch("artifact_snapshots"))
+            # Keys only. Each missing payload is then fetched on its own, so
+            # no answer is ever two hundred payloads long.
+            applied["artifact_payloads"] = self._apply_artifact_payloads(
+                fetch("artifact_payloads", columns=PAYLOAD_KEY_COLUMNS))
         if on_progress:
             on_progress(applied)
 
@@ -2510,6 +2583,58 @@ class Sync:
             mine = store.get(r.get("id"))
             if mine and store.cloud_fingerprint(mine) != r.get("fp"):
                 store.cloud_dirty = True
+        return n
+
+    def _apply_artifact_payloads(self, keys):
+        """Fetch, one at a time, the payloads this machine is missing.
+
+        `keys` are payload rows without their payload. A key whose artifact
+        or version has not reached this machine yet is kept and tried again
+        on later pulls, because the cursor has already moved past it.
+        """
+        store = self.artifacts
+        if store is None:
+            return 0
+        waiting = getattr(self, "_payloads_waiting", None) or {}
+        for r in keys or []:
+            waiting[(str(r.get("artifact_id")), str(r.get("version_id")))] = r
+        n = 0
+        for key, r in list(waiting.items()):
+            aid, vid = key
+            rec = store.get(aid)
+            ver = next((x for x in (rec or {}).get("versions") or []
+                        if str(x.get("id")) == vid), None)
+            if ver is None:
+                continue                     # its record has not come yet
+            if store.has_payload(aid, ver):
+                waiting.pop(key, None)
+                continue
+            try:
+                got = self.cloud.select(
+                    "artifact_payloads",
+                    "artifact_id=eq.%s&version_id=eq.%s" % (aid, vid),
+                    limit=1, columns="gz,digest,v")
+            except cloud.CloudError as exc:
+                self._art_clash("artifact %s %s: %s" % (aid, vid, exc))
+                continue
+            if not got:
+                waiting.pop(key, None)
+                continue
+            try:
+                payload = json.loads(gzip.decompress(
+                    base64.b64decode(got[0].get("gz") or "")).decode("utf-8"))
+            except (ValueError, OSError) as exc:
+                self._art_clash("artifact %s %s: unreadable payload (%s)"
+                                % (aid, vid, exc))
+                waiting.pop(key, None)
+                continue
+            n += self._apply_artifact_snapshots([{
+                "artifact_id": aid, "version_id": vid,
+                "v": got[0].get("v") or r.get("v"),
+                "digest": got[0].get("digest") or r.get("digest"),
+                "payload": payload}])
+            waiting.pop(key, None)
+        self._payloads_waiting = waiting
         return n
 
     def _apply_artifact_snapshots(self, rows):

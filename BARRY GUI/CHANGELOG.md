@@ -15,6 +15,41 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.05.1 - Artifact payloads stop taking the database down
+
+From 30 September the shared database kept going down (Cloudflare
+520/521/522 on every request). Every outage started with this:
+
+1. A push sent up to two hundred artifact payloads to `artifact_snapshots`
+   in one request. Some payloads are 10 MB of JSON, and the free-tier
+   database has half a gigabyte of memory. The request timed out and the
+   database fell over.
+2. The payloads travel in git as well, so every machine had them and every
+   machine sent the same request again as soon as the database was back.
+3. A push that fails saves nothing, so each retry also re-sent everything
+   since the last good push. This machine's last good push was 2 October;
+   it tried five times this morning, each time ending in that request.
+
+**Run `supabase/20_artifact_payloads.sql` straight after restarting the
+project,** before any Jarvis is back on. It renames `artifact_snapshots`,
+so a Jarvis that hasn't been updated finds the table gone and stops sending
+payloads, with no change on that machine. Then pull and restart Jarvis on
+each machine.
+
+### Changed
+
+- **Payloads go up gzipped, as text, one bounded request at a time,** into
+  the new `artifact_payloads` table. They're numbers and compress 10–18×:
+  this machine's 327 payloads are 290 MB of JSON and 36 MB this way, in 48
+  requests of at most about a megabyte. Only the payloads the cloud hasn't
+  got are read from disk. A pull asks for keys, then fetches each missing
+  payload on its own.
+- **No upsert sends more than about a megabyte in one request,** whatever
+  the table. A single row bigger than that goes alone. A row over 4 MB isn't
+  sent at all; it's kept here and counted.
+
+---
+
 ## 2026.10.03.1 - Avery Garbage Dystrophy+, a tolerance for lost spikes, and a sweep screen that starts at once
 
 ### Added
