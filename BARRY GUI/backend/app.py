@@ -11764,11 +11764,14 @@ def api_aibeta_plan():
     rest -- said before anything is spent (constitution 6b)."""
     body = request.get_json(force=True, silent=True) or {}
     want = body.get("entries")
+    which = body.get("channels") or "all"
     try:
         ds = aibetamod.dataset(BANK, CURATE)
         ents = [e for e in ds["entries"]
                 if not want or e["entry_id"] in set(want)]
-        rows = aibetamod.plan(ents, _aibeta_open, AIBETA)
+        rows = aibetamod.plan(
+            ents, lambda e: aibetamod.subset_channels(_aibeta_open(e), which),
+            AIBETA)
     except Exception as exc:                             # noqa: BLE001
         return fail("aibeta/plan", exc, 400)
     todo = [r for r in rows if r["ok"] and not r["cached"]]
@@ -11811,8 +11814,12 @@ def api_aibeta_train():
     if body.get("families") is not None and not fams:
         return jsonify({"ok": False, "error": "Pick at least one kind of "
                                               "input."}), 400
+    if (body.get("channels") or "all") not in aibetamod.CHANNEL_SETS:
+        return jsonify({"ok": False, "error": "No channel set %r."
+                        % body.get("channels")}), 400
     settings = {"entries": body.get("entries") or None,
-                "families": fams or None, "model": model_id}
+                "families": fams or None, "model": model_id,
+                "channels": body.get("channels") or "all"}
     prov = STORE.provenance()
 
     def work(job):

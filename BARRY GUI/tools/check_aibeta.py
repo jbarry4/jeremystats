@@ -317,6 +317,40 @@ ck("Avery Garbage Dystrophy+ is a model a sweep can use",
    and AI.SLOT_NAMES["avery_gd"] == "Avery Garbage Dystrophy+")
 
 # --------------------------------------------------------------------------
+print("\nEven channels only")
+from backend import aibetaphys as PH                      # noqa: E402
+lin = {"channels": [{"number": n} for n in range(1, 65)], "probe": "h3",
+       "bad": [3, 8, 13], "spacing": None, "session": None}
+ev_ = AI.subset_channels(lin, "even")
+ck("CSC 2, 4 ... 64 and nothing else",
+   [c["number"] for c in ev_["channels"]] == list(range(2, 65, 2)),
+   [c["number"] for c in ev_["channels"]][:6])
+ck("only the bad channels among them stay bad", ev_["bad"] == [8], ev_["bad"])
+ck("read as twice the pitch apart",
+   ev_["spacing"] == 2 * AI.dspca.spacing_for("h3"), ev_["spacing"])
+ck("all channels is the recording as it was",
+   AI.subset_channels(lin, "all") is lin and AI.subset_channels(lin, None) is lin)
+try:
+    AI.subset_channels(dict(lin, probe="h10d"), "even")
+    refused = False
+except AI.AiBetaError:
+    refused = True
+ck("refused on a probe laid out in columns", refused)
+e_k = {"entry_id": "E", "version": 1, "basis": None,
+       "events": [{"t_bank": 1.0, "y": 1}]}
+ck("a full read keeps the key it always had",
+   AI.cache_key(e_k, "h3", None, [3]) == AI.cache_key(e_k, "h3", None, [3], None))
+ck("an even read is filed apart",
+   AI.cache_key(e_k, "h3", 100.0, [8], "even")
+   != AI.cache_key(e_k, "h3", 100.0, [8]))
+ck("every contact: the second read's windows as they always were",
+   PH._row_windows(1.0) == {"near": 4, "far": 12, "lat": 10,
+                            "depth": PH.ALIGN_DEPTH}, PH._row_windows(1.0))
+ck("every other contact: half the rows, the same depth",
+   PH._row_windows(0.5) == {"near": 2, "far": 6, "lat": 5,
+                            "depth": PH.ALIGN_DEPTH // 2}, PH._row_windows(0.5))
+
+# --------------------------------------------------------------------------
 print("\nThe blend")
 import io                                                 # noqa: E402
 import joblib                                             # noqa: E402

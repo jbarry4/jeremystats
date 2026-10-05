@@ -27,6 +27,7 @@ BARRY.aibeta = (function () {
     entries: null,          // a Set of entry ids, or null for every one
     families: null,         // a Set of family ids
     model: 'hgb',
+    channels: 'all',        // 'all', or 'even' for CSC 2, 4 ... 64 only
     choosing: false,        // the recording list unfolded
     skipped: false,         // the "not used" list unfolded
     byRec: false,           // the per-recording results unfolded
@@ -121,7 +122,8 @@ BARRY.aibeta = (function () {
     let got = null;
     try {
       got = await apiPost('/api/aibeta/plan', {
-        entries: pick.entries ? chosenIds() : null });
+        entries: pick.entries ? chosenIds() : null,
+        channels: pick.channels });
     } catch (e) {
       got = { ok: false, error: e.message };
     }
@@ -146,6 +148,7 @@ BARRY.aibeta = (function () {
         entries: pick.entries ? ids : null,
         families: Array.from(pick.families),
         model: pick.model,
+        channels: pick.channels,
       });
     } catch (e) {
       toast(e.message, 'err', 9000);
@@ -320,6 +323,22 @@ BARRY.aibeta = (function () {
                             pick.model,
                             (v) => { pick.model = v; render(); }),
       hint: m ? m.blurb : null,
+    }));
+
+    /* Which contacts the reads see. Even only is every other contact on a
+       linear array, read as such: twice the pitch apart, with the windows
+       that are counted in contacts halved to cover the same depth. Its
+       reads are cached apart from the full ones. */
+    card.appendChild(BARRY.ui.field({
+      label: 'Channels',
+      control: BARRY.ui.seg([
+        ['all', 'All', 'Every channel the recording has.'],
+        ['even', 'Even only', 'CSC 2, 4, 6 and on: every other contact.'],
+      ], pick.channels, (v) => { pick.channels = v; render(); requestPlan(); }),
+      hint: pick.channels === 'even'
+        ? 'Every other contact, read as twice the pitch apart. Read '
+          + 'separately from the full channels the first time.'
+        : 'Every channel the recording has.',
     }));
 
     card.appendChild(BARRY.ui.field({
@@ -549,7 +568,8 @@ BARRY.aibeta = (function () {
       el('span', { class: 'hint', text:
         when(run.at) + (run.by ? ' · ' + run.by : '') + ' · '
         + modelName(s.model) + ' · ' + (s.families || []).map(famName)
-                                                          .join(', ') }),
+                                                          .join(', ')
+        + (s.channels === 'even' ? ' · even channels only' : '') }),
       el('div', { class: 'spacer' }),
       /* Avery is the run Checkup's "Avery sweep" sorts sets with. Only a
          run trained with Avery's four bars can be it. */
@@ -864,7 +884,9 @@ BARRY.aibeta = (function () {
             + (st && st.avery_gd && st.avery_gd.run_id === r.id
                ? ' · Garbage Dystrophy+' : '') }),
           el('td', { class: 'ai-wrap', text: ((r.settings || {}).families
-                                              || []).map(famName).join(', ') }),
+                                              || []).map(famName).join(', ')
+            + ((r.settings || {}).channels === 'even'
+               ? ' · even channels only' : '') }),
           el('td', { text: num(r.n_events) }),
           el('td', { text: r.auc === null || r.auc === undefined ? '—'
                                                  : r.auc.toFixed(3) }),

@@ -222,7 +222,10 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
     if not events:
         raise AI.AiBetaError("That set has no candidates.")
     basis, basis_from = set_basis(cur, bank, gid, kind)
-    rec = open_recording(gid)
+    # The channels the model was trained on, and only those.
+    which = (run_rec.get("settings") or {}).get("channels") \
+        or bundle.get("channels") or "all"
+    rec = AI.subset_channels(open_recording(gid), which)
     sess = rec["session"]
     report = None
     try:
@@ -241,7 +244,8 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
         "t": [None if t is None else round(t, 6) for t in times],
         "probe": rec["probe"], "bad": sorted(rec["bad"]),
         "fv": AI.FEATURE_VERSION, "pv": phys.PHYS_VERSION if want_phys
-        else None}).encode("utf-8")).hexdigest()[:20]
+        else None, **({"channels": which} if which != "all" else {})})
+        .encode("utf-8")).hexdigest()[:20]
     path = _cache_path(runs, gid, key)
     # Which candidates the scanning screen will draw, chosen before the read
     # so the read can keep their channels: one from each twelfth of the set
@@ -291,7 +295,8 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
             if job:
                 job.tick("avery read", k)
         got1 = AI.read_entry(sess, rec["channels"], rec["probe"], rec["bad"],
-                             times, report=report, job=job, on_span=tick1,
+                             times, spacing=rec.get("spacing"),
+                             report=report, job=job, on_span=tick1,
                              workers=READ_WORKERS, trace_ids=picks)
         fam = dict(got1["fam"])
         ok = got1["ok"].astype(bool)
@@ -315,7 +320,8 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
                                     rec["bad"], times, report=report,
                                     folder=sess.get("path"), job=job,
                                     on_span=tick2, aibeta=AI,
-                                    workers=READ_WORKERS)
+                                    workers=READ_WORKERS,
+                                    spacing=rec.get("spacing"))
             fam.update(got2["fam"])
             ok = ok & got2["ok"].astype(bool)
         os.makedirs(os.path.dirname(path), exist_ok=True)

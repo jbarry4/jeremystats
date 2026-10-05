@@ -1,0 +1,88 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>probe — Root Canal redraw latency (real time)</title>
+<body style="margin:0;display:flex"><iframe id="app" src="/#toolkit" style="width:1600px;height:1000px;border:0"></iframe>
+<script>
+/* A throwaway probe, run on the WALL CLOCK (not under the harness runner's
+   virtual time, which invents durations): how long from a press to the
+   picture showing it. Posts its numbers to /_dev/rcperf-report. Deleted once
+   the delay is understood. */
+const ENTRY = '46fd29a77cc7';
+const out = { steps: [] };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = performance.now();
+  while (performance.now() - t0 < ms) {
+    try { if (fn()) return performance.now() - t0; } catch (e) { /* not yet */ }
+    await sleep(5);
+  }
+  return null;
+}
+(async () => { try {
+  const A = document.getElementById('app');
+  await new Promise((r) => A.addEventListener('load', r, { once: true }));
+  const W = A.contentWindow, D = () => A.contentDocument;
+  const ev = (c) => W.eval(c);
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.rootcanal'), 60000);
+  try { W.localStorage.setItem('barry.rootcanal.view', 'single'); } catch (e) {}
+  const step = await until(() => Array.from(D().querySelectorAll('.tk-step'))
+    .find((b) => /Root Canal/.test(b.textContent)), 30000);
+  Array.from(D().querySelectorAll('.tk-step')).find((b) => /Root Canal/.test(b.textContent)).click();
+  await until(() => (ev('BARRY.rootcanal._state()').cands || []).length, 60000);
+  ev('BARRY.rootcanal._pickSet(' + JSON.stringify(ENTRY) + ')');
+  ev('BARRY.rootcanal._read()');
+  await until(() => { const s = ev('BARRY.rootcanal._state()');
+                      return s.q.read && s.fit && s.fit.ok && !s.fitting; }, 120000);
+  await sleep(1500);
+  const st = () => ev('BARRY.rootcanal._state()');
+  const g = () => ev('BARRY.rootcanal._geom()');
+  const nC = () => ((g().space || {}).centres || []).length;
+
+  async function measure(name, act, fitDone, drawn) {
+    const t0 = performance.now();
+    act();
+    const tf = await until(fitDone, 30000);
+    const td = await until(drawn, 30000);
+    out.steps.push({ name, fit_ms: tf, drawn_ms: td,
+                     total_ms: performance.now() - t0 });
+    await sleep(800);
+  }
+  const kBtn = (v) => Array.from(D().querySelectorAll('.rc-k .rc-kseg button'))
+    .find((b) => b.textContent.trim() === String(v));
+
+  await measure('k 2 -> 3, Recompute pressed',
+    () => { kBtn(3).click(); D().querySelector('.rc-recompute').click(); },
+    () => st().fit.k === 3 && !st().fitting, () => nC() === 3);
+  await measure('k 3 -> 6, Recompute pressed',
+    () => { kBtn(6).click(); D().querySelector('.rc-recompute').click(); },
+    () => st().fit.k === 6 && !st().fitting, () => nC() === 6);
+  await measure('relabel cluster 1 (chip)',
+    () => D().querySelector('.rc-why .rc-clu').click(),
+    () => st().fit.clusters[0].call_by === 'hand' && !st().fitting,
+    () => ((g().space || {}).centres || [])[0].cls === st().fit.clusters[0].call);
+  await measure('colour by cluster (seg)',
+    () => Array.from(D().querySelectorAll('.rc-colour-by button'))
+      .find((b) => /cluster/.test(b.textContent)).click(),
+    () => true,
+    () => ev('BARRY.rootcanal._singleColour()') === 'cluster'
+          && !!D().querySelector('.rc-colour-by button.active')
+          && /cluster/.test(D().querySelector('.rc-colour-by button.active').textContent));
+  await measure('k 6 -> 2, Recompute pressed',
+    () => { kBtn(2).click(); D().querySelector('.rc-recompute').click(); },
+    () => st().fit.k === 2 && !st().fitting, () => nC() === 2);
+  /* What each press does to the page: how many full renders and canvas
+     draws, counted by wrapping them for one more press. */
+  ev('(function(){ var R = BARRY.rootcanal; window.__n = { draw: 0 };'
+     + ' var C = window.CanvasRenderingContext2D.prototype;'
+     + ' if (!C.__pc) { C.__pc = C.clearRect; C.clearRect = function(){'
+     + ' window.__n.draw++; return C.__pc.apply(this, arguments); }; } })()');
+  await measure('k 2 -> 4, counted',
+    () => { kBtn(4).click(); D().querySelector('.rc-recompute').click(); },
+    () => st().fit.k === 4 && !st().fitting, () => nC() === 4);
+  out.counted = JSON.parse(ev('JSON.stringify(window.__n)'));
+} catch (e) { out.error = String(e && e.stack || e); }
+await fetch('/_dev/rcperf-report', { method: 'POST',
+  headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(out) });
+})();
+</script>
+</body>

@@ -71,10 +71,13 @@ const KEY = 'barry.checkupPane';
 
     /* Count any attempt to train. */
     const trains = [];
+    const trainBodies = [];
     const realFetch = W().fetch.bind(W());
     W().fetch = (url, opts) => {
       if (String(url).indexOf('/api/aibeta/train') >= 0) {
         trains.push(url);
+        try { trainBodies.push(JSON.parse((opts && opts.body) || '{}')); }
+        catch (e) { trainBodies.push({}); }
         return Promise.resolve(new W().Response(
           JSON.stringify({ ok: false, error: 'blocked by the harness' }),
           { status: 400, headers: { 'Content-Type': 'application/json' } }));
@@ -193,6 +196,32 @@ const KEY = 'barry.checkupPane';
     check('the inputs are as they were', back.join() === wasOn.join(),
           back.join() + ' vs ' + wasOn.join());
 
+    /* Which channels: all, or the even ones only, and the run is asked
+       for with the one chosen. */
+    const chanSeg = () => Array.from(D().querySelectorAll('#aiBeta .ui-field'))
+      .find((f) => /^Channels$/i.test((f.querySelector('.section-label') || {})
+        .textContent || ''));
+    const cs = chanSeg();
+    const csBtns = cs ? Array.from(cs.querySelectorAll('.seg button')) : [];
+    check('it offers all channels or the even ones only',
+          csBtns.map((b) => b.textContent.trim()).join('|') === 'All|Even only',
+          csBtns.map((b) => b.textContent.trim()).join('|'));
+    check('all of them to start with',
+          !!cs && (cs.querySelector('.seg .active') || {}).textContent === 'All');
+    if (csBtns[1]) csBtns[1].click();
+    await sleep(200);
+    const goEven = D().getElementById('aiTrain');
+    if (goEven && !goEven.disabled) goEven.click();
+    const sent = await untilN(() => trainBodies.length, 100);
+    check('training is asked for with even channels only',
+          !!sent && trainBodies[trainBodies.length - 1].channels === 'even',
+          JSON.stringify(trainBodies[trainBodies.length - 1] || null));
+    const allBtn = chanSeg() && chanSeg().querySelector('.seg button');
+    if (allBtn) allBtn.click();
+    await sleep(200);
+    check('and back to all of them',
+          (chanSeg().querySelector('.seg .active') || {}).textContent === 'All');
+
     const plan = await untilN(() => {
       const p = D().getElementById('aiPlan');
       const t = p ? p.textContent : '';
@@ -260,7 +289,9 @@ const KEY = 'barry.checkupPane';
             || t.querySelector('.tk-loading')) ? t : null;
     }, 300);
     check('Sets puts the sets back, and the AI panel is gone', !!sets);
-    check('nothing tried to train', trains.length === 0, trains.join(', '));
+    // The one the channel check asked for, which the harness blocked.
+    check('nothing else tried to train', trains.length === 1,
+          trains.join(', '));
   } catch (e) {
     say('bad', 'harness threw: ' + e.message);
   } finally {

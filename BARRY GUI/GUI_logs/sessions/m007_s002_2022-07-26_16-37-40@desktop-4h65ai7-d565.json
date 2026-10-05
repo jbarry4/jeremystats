@@ -22,8 +22,8 @@
     "schema": "2026-09-18T15:49:38.242422+00:00",
     "session": "2026-09-18T15:49:38.242422+00:00",
     "start": "2026-09-18T15:49:38.242422+00:00",
-    "updated": "2026-10-03T22:24:02.085088+00:00",
-    "view_state": "2026-10-01T17:52:57.118244+00:00"
+    "updated": "2026-10-05T14:52:12.898329+00:00",
+    "view_state": "2026-10-05T14:52:12.898329+00:00"
   },
   "_keys": {
     "channel_banks": {
@@ -45,12 +45,12 @@
     "seen": {
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-10-03T22:24:02.085088+00:00"
+        "2026-10-05T13:22:03.280066+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-03T22:24:02.085088+00:00",
+    "at": "2026-10-05T14:52:12.898329+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -108,7 +108,7 @@
   "schema": 1,
   "seen": {
     "desktop-4h65ai7-d565": {
-      "at": "2026-10-03T18:24:02-04:00",
+      "at": "2026-10-05T09:21:46-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\KCNT1\\urethane\\hom\\KCNTM7_YH\\kcnt1m7_s2jul26\\2022-07-26_16-37-40",
@@ -119,9 +119,9 @@
   "session": 2,
   "start": "2022-07-26T20:37:40+00:00",
   "updated": {
-    "app_version": "2026.10.02.13",
-    "at": "2026-10-03T18:24:02-04:00",
-    "commit": "deb2b3ac",
+    "app_version": "2026.10.03.1",
+    "at": "2026-10-05T10:52:12-04:00",
+    "commit": "d1f55aab",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -260,10 +260,9 @@
       127
     ],
     "clim": null,
-    "even_only": false,
     "fdefault": null,
     "flock": true,
-    "gain": 66.50513460159304,
+    "gain": 5,
     "hp": 0,
     "invert": true,
     "lp": 0,
@@ -272,7 +271,7 @@
     "notch": 0,
     "probe": "dual",
     "spacing": 50,
-    "span": 36.6,
+    "span": 54.47544,
     "stft_mode": null,
     "t0": 0,
     "ylim": 8533.779478060065

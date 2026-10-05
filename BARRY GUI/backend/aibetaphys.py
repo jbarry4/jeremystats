@@ -224,14 +224,35 @@ def _band_power(x, fs, bands):
     return out
 
 
+def _row_windows(scale):
+    """The windows counted in rows, for rows `1/scale` contacts apart.
+
+    At scale 1 -- every contact -- these are the numbers the read has always
+    used: 4 rows either side is "near", more than 12 is "far", the laminar
+    delay is taken over 10 either side and Braces' band is 16 deep. Every
+    other contact is scale 0.5, and the same depths are half the rows.
+    """
+    def r(n, lo=1):
+        return max(lo, int(round(n * scale)))
+    return {"near": r(4), "far": r(12), "lat": r(10),
+            "depth": r(ALIGN_DEPTH, 3)}
+
+
 def read_physio(session, channels, probe, bad, times,
                 report=None, folder=None, job=None, on_span=None,
-                aibeta=None, workers=1):
-    """The second read. Returns {"fam": {id: array}, "ok": bool array}."""
+                aibeta=None, workers=1, spacing=None):
+    """The second read. Returns {"fam": {id: array}, "ok": bool array}.
+
+    `spacing` is the distance between neighbouring rows of `channels` when
+    that is not the probe's own pitch -- every other contact, say. The
+    windows counted in rows are scaled by it (`_row_windows`), so they
+    cover the same depth whichever contacts are read.
+    """
     AI = aibeta
     p = dspca.Params(probe=probe, invert=True, bad=sorted(int(b)
                                                          for b in bad or []))
-    p.spacing = dspca.spacing_for(p.probe)
+    p.spacing = float(spacing) if spacing else dspca.spacing_for(p.probe)
+    RW = _row_windows(dspca.spacing_for(p.probe) / p.spacing)
     spec = p.spec()
     badd = {int(b): "marked" for b in (bad or [])}
     geo, _ = dspca.geometry(p.probe, channels)
@@ -485,7 +506,8 @@ def read_physio(session, channels, probe, bad, times,
                             abs(kpos - kneg) / float(max(1, col.size)),
                             abs(col[kneg]) / (abs(col[kpos]) + 1e-9)]
 
-        lat_rows = list(range(max(0, r - 10), min(nr, r + 11)))
+        lat_rows = list(range(max(0, r - RW["lat"]),
+                             min(nr, r + RW["lat"] + 1)))
         lw = int(round(15 / 1000.0 * fs))
         seg = np.abs(blk[lat_rows, c - lw:c + lw + 1])
         lat = (np.argmax(seg, axis=1) - lw) / fs * 1000.0
@@ -501,8 +523,8 @@ def read_physio(session, channels, probe, bad, times,
         ev = slice(c - P, c + P + 1)
         m_ratio = np.log((st["mua"][:, ev].mean(axis=1) + 1e-9)
                          / (st["mua_base"] + 1e-9))
-        near = slice(max(0, r - 4), min(nr, r + 5))
-        far = [k for k in range(nr) if abs(k - r) > 12]
+        near = slice(max(0, r - RW["near"]), min(nr, r + RW["near"] + 1))
+        far = [k for k in range(nr) if abs(k - r) > RW["far"]]
         fam["mua"][i] = [float(m_ratio[r]), float(m_ratio[near].mean()),
                          float(m_ratio[far].mean()) if far else np.nan,
                          float(m_ratio.max()), float(np.median(m_ratio))]
@@ -543,8 +565,8 @@ def read_physio(session, channels, probe, bad, times,
                               rank(amps[j], amps), rank(csdpk[j], csdpk)]
         fam["clipping"][i] = st["clip"]
 
-        above = prof[:max(0, r - 4)]
-        below = prof[r + 5:]
+        above = prof[:max(0, r - RW["near"])]
+        below = prof[r + RW["near"] + 1:]
         va = float(above.mean()) / vmax if above.size else np.nan
         vb = float(below.mean()) / vmax if below.size else np.nan
         sg = np.sign(prof[r])
@@ -606,7 +628,7 @@ def read_physio(session, channels, probe, bad, times,
             float(bw[ex].max()) / amp if ex.any() else 0.0]
         ok[i] = True
 
-    _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam)
+    _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam, RW)
 
     sp_arr = np.array(speeds, float)
     fin = sp_arr[np.isfinite(sp_arr)]
@@ -620,7 +642,8 @@ def read_physio(session, channels, probe, bad, times,
             "n_markers": int(nev_us.size)}
 
 
-def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam):
+def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam,
+           RW=None):
     """Braces' rule over every candidate, then +-15 ms at where it landed.
 
     The measure is Braces': the mains-free 5-100 Hz CSD, |CSD| averaged
@@ -631,6 +654,8 @@ def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam):
     """
     if not have:
         return
+    RW = RW or _row_windows(1.0)
+    depth = RW["depth"]
     n = len(have)
     W = store[have[0]]["band"].shape[1]
     S = int(round(ALIGN_WINDOW_MS / 1000.0 * fs))
@@ -643,9 +668,9 @@ def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam):
     strength = np.median(np.stack([
         np.abs(f[2][:, H - P:H + P + 1]).mean(axis=1) for f in first]), axis=0)
     k0 = int(np.argmax(strength))
-    lo_r = max(0, k0 - ALIGN_DEPTH // 2)
-    hi_r = min(strength.size, lo_r + ALIGN_DEPTH)
-    lo_r = max(0, hi_r - ALIGN_DEPTH)
+    lo_r = max(0, k0 - depth // 2)
+    hi_r = min(strength.size, lo_r + depth)
+    lo_r = max(0, hi_r - depth)
 
     full, traces, t0s, stamps_c, windows = [], [], [], [], []
     peaks = []
@@ -770,12 +795,12 @@ def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam):
             wd = np.nan
         m_ratio = np.log((st["mua"][:, a - q5:a + q5 + 1].mean(axis=1) + 1e-9)
                          / (st["mua_base"] + 1e-9))
-        near = slice(max(0, r - 4), min(nr, r + 5))
-        far = [q for q in range(nr) if abs(q - r) > 12]
+        near = slice(max(0, r - RW["near"]), min(nr, r + RW["near"] + 1))
+        far = [q for q in range(nr) if abs(q - r) > RW["far"]]
         prof = blk[:, a]
         vmax = float(np.abs(prof).max()) + 1e-9
-        above = prof[:max(0, r - 4)]
-        below = prof[r + 5:]
+        above = prof[:max(0, r - RW["near"])]
+        below = prof[r + RW["near"] + 1:]
         va = float(above.mean()) / vmax if above.size else np.nan
         vb = float(below.mean()) / vmax if below.size else np.nan
         sg = np.sign(prof[r])
@@ -796,7 +821,8 @@ def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam):
             while 0 <= q < cn.size and sgn * cn[q] >= half:
                 w += 1
                 q += d
-        lat_rows = list(range(max(0, r - 10), min(nr, r + 11)))
+        lat_rows = list(range(max(0, r - RW["lat"]),
+                             min(nr, r + RW["lat"] + 1)))
         seg = np.abs(blk[lat_rows, a - A:a + A + 1])
         lat = (np.argmax(seg, axis=1) - A) / fs * 1000.0
         slope = float(np.polyfit(np.arange(len(lat_rows)), lat, 1)[0]) \

@@ -81,7 +81,7 @@ import numpy as np
 
 from . import aibetaphys as phys
 from . import aiwave
-from . import braces, continuity, csc, dspca, incisor, retime, shards
+from . import braces, continuity, csc, dspca, incisor, probes, retime, shards
 from . import versions as versionsmod
 
 # Loaded on first use, not at start-up; see lazyimp.py for why.
@@ -618,7 +618,38 @@ def true_times(entry, report):
     return out
 
 
-def cache_key(entry, probe, spacing, bad):
+# WHICH CHANNELS A RUN IS SHOWN (the user, 2026-10-05: "re run all current
+# models and only feed them even channels"). "even" keeps CSC 2, 4 ... 64 --
+# the channels Toothy's LL input and the sweep screen use -- and reads them
+# as what they are on a linear array: every other contact, so twice the
+# pitch apart. The CSD is taken over that pitch, and the second read's
+# windows that are counted in contacts are halved so they cover the same
+# depth. Only for a single linear array: on the H10-D or the dual array the
+# even channels are not a line.
+CHANNEL_SETS = ("all", "even")
+
+
+def subset_channels(rec, which):
+    """`rec` (from an opener) with only the channels `which` asks for."""
+    if which in (None, "all"):
+        return rec
+    if which not in CHANNEL_SETS:
+        raise AiBetaError("No channel set %r." % which)
+    if (probes.get(rec["probe"]) or {}).get("columns"):
+        raise AiBetaError(
+            "Even channels only is for a single linear array; this "
+            "recording's probe (%s) is laid out in columns." % rec["probe"])
+    chans = [c for c in rec["channels"] if int(c["number"]) % 2 == 0]
+    if len(chans) < 3:
+        raise AiBetaError("Fewer than three even channels on this "
+                          "recording.")
+    pitch = rec.get("spacing") or dspca.spacing_for(rec["probe"])
+    return dict(rec, channels=chans,
+                bad=[int(b) for b in (rec.get("bad") or []) if int(b) % 2 == 0],
+                spacing=2.0 * float(pitch), subset=which)
+
+
+def cache_key(entry, probe, spacing, bad, subset=None):
     """Everything that changes what is read, and the labels it is filed with."""
     body = {
         "fv": FEATURE_VERSION,
@@ -631,6 +662,10 @@ def cache_key(entry, probe, spacing, bad):
         ).encode("utf-8")).hexdigest()[:16],
         "half": HALF_MS, "search": SEARCH_MS, "run": CLOCK_RUN,
     }
+    if subset:
+        # Only when it is a subset, so every key made before there was a
+        # choice is still the key of the same read.
+        body["channels"] = subset
     raw = json.dumps(body, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
 
@@ -1650,7 +1685,8 @@ def plan(entries, open_recording, runs):
         row = {"entry_id": e["entry_id"], "label": e["label"], "n": e["n"]}
         try:
             rec = open_recording(e)
-            key = cache_key(e, rec["probe"], rec.get("spacing"), rec["bad"])
+            key = cache_key(e, rec["probe"], rec.get("spacing"), rec["bad"],
+                            rec.get("subset"))
             path = runs.feature_path(e["gid"], key)
             row.update({"ok": True, "cached": os.path.exists(path),
                         "key": key, "path": path, "rec": rec})
@@ -1673,6 +1709,13 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
                                           or [f["id"] for f in FAMILIES
                                               if f["default"]])]
     model_id = settings.get("model") or "hgb"
+    which = settings.get("channels") or "all"
+    if which not in CHANNEL_SETS:
+        raise AiBetaError("No channel set %r." % which)
+    opener = open_recording
+    if which != "all":
+        def opener(e):
+            return subset_channels(open_recording(e), which)
     ds = dataset(bank, curate, pin=settings.get("pin"))
     want = settings.get("entries")
     ents = [e for e in ds["entries"]
@@ -1681,7 +1724,7 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
         raise AiBetaError("None of the chosen recordings has a settled "
                           "version to learn from.")
 
-    rows = plan(ents, open_recording, runs)
+    rows = plan(ents, opener, runs)
     if job:
         job.members_init([{"id": r["entry_id"], "label": r["label"]}
                           for r in rows])
@@ -1781,7 +1824,8 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
                 rec["session"], rec["channels"], rec["probe"], rec["bad"],
                 times, report=report,
                 folder=rec["session"].get("path"), job=job,
-                on_span=on_span, aibeta=sys.modules[__name__])
+                on_span=on_span, aibeta=sys.modules[__name__],
+                spacing=rec.get("spacing"))
             phys.save(r["phys_path"], got)
             return r
 
@@ -1864,6 +1908,7 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
                      "phys_version": phys.PHYS_VERSION if want_phys else None,
                      "same_events": bool(settings.get("same_events")),
                      "policy": settings.get("policy"),
+                     "channels": which,
                      "note": settings.get("note")},
         "data": {
             "entries": used,
@@ -1889,6 +1934,7 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
               "policy": results.get("policy"),
               "threshold": float(thr), "feature_version": FEATURE_VERSION,
               "keep_ds": KEEP_DS, "run_id": rid, "trained_at": rec["at"],
+              "channels": which,
               "entries": [(u["entry_id"], u["version"]) for u in used]}
     runs.save(rec, bundle)
     return rec
