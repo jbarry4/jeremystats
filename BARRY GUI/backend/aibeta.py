@@ -80,6 +80,7 @@ import uuid
 import numpy as np
 
 from . import aibetaphys as phys
+from . import aiwave
 from . import braces, continuity, csc, dspca, incisor, retime, shards
 from . import versions as versionsmod
 
@@ -169,6 +170,23 @@ CATCH = (1.0, 0.99, 0.98, 0.95, 0.90)
 AVERY_TAG = "avery"
 AVERY_BY = "Avery (AI)"
 POLICY = {"ds_catch": 0.99, "review_catch": 0.98, "garbage_purity": 0.90}
+
+# AVERY+ (the user, 2026-10-02): every garbage marked so, as few real
+# spikes lost as that allows, and fewer flags -- "we'd prefer to lose spikes
+# than to get garbage in". So the Garbage bar is set by the spikes it may
+# cost, 5% of them, instead of by how pure its calls are; the DS bar stays
+# where 99% of garbage is under it, and Flag is whatever is left between.
+POLICY_PLUS = {"ds_catch": 0.99, "review_catch": 0.98,
+               "garbage_ds_loss": 0.05}
+
+# Which model a sweep can use: Avery, and Avery+ once a run is made it.
+# AVERY GARBAGE DYSTROPHY+ (named by the user, 2026-10-03): the detector
+# built to leave people as little garbage to sift through as possible --
+# catch as much of it as it can, at a share of real spikes the person
+# sweeping chooses.
+SLOTS = ("avery", "avery_plus", "avery_gd")
+SLOT_NAMES = {"avery": "Avery", "avery_plus": "Avery+",
+              "avery_gd": "Avery Garbage Dystrophy+"}
 POLICY_LABELS = ("spike", "review", "flag", "garbage")
 
 
@@ -182,11 +200,16 @@ def label_policy(p, y, targets=None):
         raise AiBetaError("No garbage in the held-out scores to set bars by.")
     t_ds = float(np.quantile(pg, t["ds_catch"])) + 1e-9
     t_review = min(t_ds, float(np.quantile(pg, t["review_catch"])) + 1e-9)
-    order = np.argsort(p, kind="mergesort")
-    ps, ys = p[order], y[order]
-    purity = np.cumsum(ys == 0) / np.arange(1, ps.size + 1)
-    ok = np.where((purity >= t["garbage_purity"]) & (ps < t_review))[0]
-    t_garbage = float(ps[ok.max()]) + 1e-9 if ok.size else 0.0
+    if t.get("garbage_ds_loss") is not None and (y == 1).any():
+        # Set by the real spikes it may cost, never above the review band.
+        t_garbage = min(t_review, float(np.quantile(
+            p[y == 1], float(t["garbage_ds_loss"]))))
+    else:
+        order = np.argsort(p, kind="mergesort")
+        ps, ys = p[order], y[order]
+        purity = np.cumsum(ys == 0) / np.arange(1, ps.size + 1)
+        ok = np.where((purity >= t["garbage_purity"]) & (ps < t_review))[0]
+        t_garbage = float(ps[ok.max()]) + 1e-9 if ok.size else 0.0
     pol = {"t_ds": round(t_ds, 6), "t_review": round(t_review, 6),
            "t_garbage": round(t_garbage, 6), "targets": t}
     labs = apply_policy(p, pol)
@@ -247,12 +270,14 @@ FAMILIES = [
 # The second read's inputs (aibetaphys.py): physiology rather than shape.
 # Off until asked for, and read only when one of them is.
 FAMILIES.extend(dict(f, default=False, phys=True) for f in phys.FAMILIES)
+# Last, so a run without it keeps its columns where they always were.
+FAMILIES.append(dict(aiwave.FAMILY, default=False))
 FAMILY_IDS = [f["id"] for f in FAMILIES]
 PHYS_IDS = frozenset(phys.FAMILY_IDS)
 # Worked out from the others when features are loaded, never read from the
 # recording or stored: a change to how they are summarised then costs a
 # retrain, not a re-read.
-DERIVED = ("recording",)
+DERIVED = ("recording", "wavebits")
 # Neither read by the first pass nor kept in its cache.
 NOT_FIRST = frozenset(DERIVED) | PHYS_IDS
 
@@ -266,8 +291,17 @@ MODELS = [
     {"id": "logistic", "name": "Logistic regression", "default": False,
      "blurb": "One weighted sum. A baseline: if the trees cannot beat it, "
               "the inputs are what matter, not the model."},
+    {"id": "blend", "name": "Blend of boosted trees", "default": False,
+     "blurb": "Five sets of boosted trees, each balanced on its own draw of "
+              "the garbage and seeing half the inputs at each split, "
+              "averaged. Five times slower to train; steadier on the most "
+              "spike-like garbage, which is what sets how much is flagged."},
 ]
 MODEL_IDS = [m["id"] for m in MODELS]
+# What "blend" averages. Chosen 2026-10-03 on Avery+'s 45 recordings,
+# whole-mouse CV, against one set of boosted trees on two seeds -- see the
+# CHANGELOG for the numbers.
+BLEND_MEMBERS = ("hgb_sub",) * 5
 
 
 class AiBetaError(Exception):
@@ -761,10 +795,12 @@ _NAMES = {
                                             / IMG_STEP_MS)))],
 }
 _NAMES.update(phys.NAMES)
+_NAMES["wavebits"] = list(aiwave.NAMES)
 
 
 def read_entry(session, channels, probe, bad, times, spacing=None,
-               report=None, job=None, stop=None, on_span=None, workers=1):
+               report=None, job=None, stop=None, on_span=None, workers=1,
+               trace_ids=None):
     """Read every stamp's surround once, and turn each into features.
 
     `times` are on the recording's own clock already (None for an event that
@@ -1010,6 +1046,24 @@ def read_entry(session, channels, probe, bad, times, spacing=None,
 
     for k in fam:
         fam[k][~np.isfinite(fam[k])] = np.nan
+
+    # Every even channel's 5-100 Hz trace, +-50 ms around the corrected
+    # stamp at 2 ms steps, for the few candidates a sweep's scanning screen
+    # draws (`trace_ids`). Stacked in probe order; microvolts.
+    traces = {}
+    if trace_ids:
+        want = {int(t) for t in trace_ids}
+        even = [k for k, ch in enumerate(channels)
+                if int(ch["number"]) % 2 == 0] or list(range(len(channels)))
+        st_ = max(1, int(round(2 / 1000.0 * fs)))
+        for j, i in enumerate(have):
+            if i not in want:
+                continue
+            c = int(centre[j])
+            traces[int(i)] = np.round(
+                B[j][even][:, c - H:c + H + 1:st_].astype(np.float64), 1)
+        traces = {"chans": [int(channels[k]["number"]) for k in even],
+                  "by_event": traces}
     clock = {
         "median_ms": float(np.median(corr[trusted])) if trusted.any() else 0.0,
         "max_abs_ms": float(np.max(np.abs(corr[trusted]))) if trusted.any()
@@ -1019,7 +1073,7 @@ def read_entry(session, channels, probe, bad, times, spacing=None,
     }
     return {"fam": fam, "ok": ok, "fs": fs, "clock": clock,
             "run": best_run.get("label"), "n_rows": rows_n,
-            "missed": int(n_all - ok.sum())}
+            "missed": int(n_all - ok.sum()), "traces": traces}
 
 
 def save_features(path, entry, got):
@@ -1050,7 +1104,15 @@ def load_features(path):
     except Exception:                                    # noqa: BLE001
         return None
     fam["recording"] = derive_recording(fam, ok)
+    fam["wavebits"] = derive_wavebits(fam, ok)
     return {"fam": fam, "ok": ok, "y": y, **meta}
+
+
+def derive_wavebits(fam, ok):
+    """The waveform measures (aiwave.py), from the stored "waves" block."""
+    return aiwave.derive(fam["waves"], ok,
+                         len(_NAMES["waves"]) - PROFILE_ROWS,
+                         WAVE_STEP_MS, PROFILE_ROWS)
 
 
 def derive_recording(fam, ok):
@@ -1131,7 +1193,10 @@ def _model(model_id, seed=0):
     from sklearn.ensemble import HistGradientBoostingClassifier
     return HistGradientBoostingClassifier(
         max_iter=200, learning_rate=0.06, max_leaf_nodes=31,
-        l2_regularization=1.0, early_stopping=False, random_state=seed)
+        l2_regularization=1.0, early_stopping=False, random_state=seed,
+        # A blend's members each see a random half of the inputs at every
+        # split, so they differ by more than their draw of the garbage.
+        max_features=0.5 if model_id == "hgb_sub" else 1.0)
 
 
 def _fit(model_id, X, y, seed=0):
@@ -1142,8 +1207,10 @@ def _fit(model_id, X, y, seed=0):
     on the fast path. The forest and the regression take their own
     `class_weight`, which costs them nothing.
     """
+    if model_id == "blend":
+        return Blend(BLEND_MEMBERS, seed).fit(X, y)
     m = _model(model_id, seed)
-    if model_id != "hgb":
+    if model_id not in ("hgb", "hgb_sub"):
         return m.fit(X, y)
     rng = np.random.default_rng(seed)
     idx = np.arange(y.size)
@@ -1153,6 +1220,34 @@ def _fit(model_id, X, y, seed=0):
         extra = rng.choice(small, big.size - small.size, replace=True)
         idx = np.concatenate([idx, extra])
     return m.fit(X[idx], y[idx])
+
+
+class Blend:
+    """Several models' scores, averaged: `members` are model ids.
+
+    Each member is fitted the way it would be on its own (`_fit`), the
+    gradient-boosted ones on different seeds so their balancing draws
+    different garbage. What it is for is the far end of the garbage: the
+    DS bar sits above 99% of it, so a handful of the most spike-like
+    garbage decide where it goes and with it how many real spikes are left
+    flagged. One model puts those few wherever its draw happened to; an
+    average of several is steadier there.
+    """
+
+    def __init__(self, members, seed=0):
+        self.members = list(members)
+        self.seed = seed
+        self.fitted = []
+        self.classes_ = np.array([0, 1])
+
+    def fit(self, X, y):
+        self.fitted = [_fit(mid, X, y, self.seed + k)
+                       for k, mid in enumerate(self.members)]
+        return self
+
+    def predict_proba(self, X):
+        p = np.mean([m.predict_proba(X)[:, 1] for m in self.fitted], axis=0)
+        return np.column_stack([1.0 - p, p])
 
 
 def _proba(m, X):
@@ -1221,7 +1316,8 @@ def metrics(y, p, t):
 
 
 def train_and_test(data, families, model_id="hgb", job=None,
-                   keep=KEEP_DS, folds=N_FOLDS, inner=N_INNER, seed=0):
+                   keep=KEEP_DS, folds=N_FOLDS, inner=N_INNER, seed=0,
+                   policy=None):
     """Whole-mouse cross-validation, then one model on everything.
 
     `data` is [(entry, features)] with features from `read_entry`/the cache.
@@ -1486,7 +1582,12 @@ def train_and_test(data, families, model_id="hgb", job=None,
         "by_kind": by_kind,
         "tradeoff": tradeoff,
         "catch": catch,
-        "policy": label_policy(oof, y),
+        "policy": label_policy(oof, y, policy),
+        # Every held-out score with its answer and its recording, so a
+        # different set of bars can be tried without training again.
+        "oof": {"p": [round(float(v), 4) for v in oof],
+                "y": [int(v) for v in y],
+                "rec": [int(v) for v in ent]},
         "n_features": len(names),
         "keep_ds": keep,
         "final_threshold": round(t_final, 4),
@@ -1744,7 +1845,8 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
                           "train on.")
 
     t_train = time.time()
-    results, model, names, thr = train_and_test(data, fams, model_id, job)
+    results, model, names, thr = train_and_test(
+        data, fams, model_id, job, policy=settings.get("policy"))
     train_s = time.time() - t_train
 
     rid = runs.new_id()
@@ -1761,6 +1863,7 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
                      "feature_version": FEATURE_VERSION,
                      "phys_version": phys.PHYS_VERSION if want_phys else None,
                      "same_events": bool(settings.get("same_events")),
+                     "policy": settings.get("policy"),
                      "note": settings.get("note")},
         "data": {
             "entries": used,
@@ -1849,12 +1952,14 @@ class Runs:
         out.sort(key=lambda r: r.get("at") or "", reverse=True)
         return out
 
-    def avery(self):
-        """{run_id, at, by} for the run Avery is, or None."""
-        rec = self.avery_book.read("avery") or {}
+    def avery(self, slot="avery"):
+        """{run_id, at, by} for the run a slot (Avery, Avery+) is, or None."""
+        if slot not in SLOTS:
+            raise AiBetaError("No such model %r." % slot)
+        rec = self.avery_book.read(slot) or {}
         return rec if rec.get("run_id") else None
 
-    def set_avery(self, run_id, prov=None):
+    def set_avery(self, run_id, prov=None, slot="avery"):
         rec = self.get(run_id)
         if not rec:
             raise AiBetaError("No AI Beta run %s." % run_id)
@@ -1863,8 +1968,10 @@ class Runs:
                 "That run predates Avery's four bars, so it cannot sort a "
                 "set into DS, Flag, Flag for Deep Review and Garbage. Train "
                 "it again and use the new run.")
+        if slot not in SLOTS:
+            raise AiBetaError("No such model %r." % slot)
         prov = prov or {}
-        return self.avery_book.write("avery", {
+        return self.avery_book.write(slot, {
             "run_id": run_id, "at": _now(), "by": prov.get("user"),
             "machine": prov.get("machine")})
 

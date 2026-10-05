@@ -54,7 +54,7 @@ from . import braces, continuity, csc, dspca, incisor, nlx
 from . import lazyimp  # noqa: E402
 _sig = lazyimp.module("scipy.signal")
 
-PHYS_VERSION = 2
+PHYS_VERSION = 3
 
 SEARCH_MS = 100.0
 BASE_MS = 1000.0
@@ -67,6 +67,26 @@ PAD_S = 0.35
 MAX_SPAN_S = 8.0
 MUA_BAND = (300.0, 3000.0)
 RIPPLE_BAND = (120.0, 250.0)
+
+# BRACES' RULE, for every candidate (the user, 2026-10-02: "align all, keep
+# both"). Braces' own numbers, read from Braces so the two cannot drift:
+# the window a stamp may move in, the spacing two candidate peaks may have,
+# the depth band the CSD is averaged over, and what counts as a move to the
+# edge, an unusual move, or no move at all. Braces itself refuses to align
+# Garbage, because a garbage stamp beside a real spike would take that
+# spike's peak; here nobody knows yet which is which, so every candidate
+# goes through the rule, and HOW it went through -- no peak, a move to the
+# edge, a peak another stamp took -- is itself an input.
+ALIGN_WINDOW_MS = braces.WINDOW_MS
+ALIGN_DIST_MS = braces.CAND_DIST_MS
+ALIGN_DEPTH = braces.DEPTH_BAND
+ALIGN_EDGE = braces.EDGE_FRAC
+ALIGN_OUTLIER_MADS = braces.OUTLIER_MADS
+ALIGN_OUTLIER_FLOOR_MS = braces.OUTLIER_FLOOR_MS
+ALIGN_SAME_MS = braces.SAME_MS
+# The window measured at the aligned peak. A dentate spike is 10-20 ms
+# wide, so +-15 ms is the event and almost nothing else.
+AL_MS = 15.0
 
 
 FAMILIES = [
@@ -102,6 +122,15 @@ FAMILIES = [
     {"id": "polarity", "name": "Polarity reversal",
      "blurb": "The voltage at the peak above and below its own peak "
               "channel, signed, and how far away it changes sign."},
+    {"id": "braces", "name": "Braces alignment",
+     "blurb": "How the candidate went through Braces' rule: whether it "
+              "found a peak, how far it moved, whether it hit the edge of "
+              "the window, whether the move was unusual for this recording, "
+              "and whether the nearest peak went to another stamp."},
+    {"id": "aligned15", "name": "+-15 ms at the aligned peak",
+     "blurb": "The event itself, re-measured in the 30 ms around the peak "
+              "Braces put it on: its shape and sharpness, unit firing, "
+              "polarity, sink and source, laminar delay and likeness."},
     {"id": "shape", "name": "Spike shape",
      "blurb": "Rise and decay times, ringing, zero crossings and where its "
               "power sits in frequency."},
@@ -125,6 +154,21 @@ NAMES = {
                  "csd_rank"],
     "clipping": ["raw_max_sd", "raw_step_sd", "flat_frac", "frac_ch_over_20sd"],
     "polarity": ["v_above", "v_below", "opposite", "reversal_rows"],
+    "braces": ["al_found", "al_move_ms", "al_move_frac", "al_edge",
+               "al_outlier", "al_same", "al_peak_rel", "al_n_peaks",
+               "al_nearest_ms", "al_nearest_taken"],
+    "aligned15": (["a15_wave_%+d" % k for k in range(-14, 16, 2)]
+                  + ["a15_csd_%+d" % k for k in range(-14, 16, 2)]
+                  + ["a15_sharpness", "a15_half_width_ms",
+                     "a15_mua_peak_ch", "a15_mua_near", "a15_mua_far",
+                     "a15_mua_max", "a15_mua_median",
+                     "a15_v_above", "a15_v_below", "a15_opposite",
+                     "a15_reversal_rows",
+                     "a15_n_pos", "a15_n_neg", "a15_main_width",
+                     "a15_pos_neg_dist", "a15_neg_pos_ratio",
+                     "a15_lat_std_ms", "a15_lat_slope",
+                     "a15_patch_vs_typical", "a15_trace_vs_typical",
+                     "a15_concentration"]),
     "shape": ["rise_ms", "decay_ms", "zero_crossings", "ringing",
               "centroid_hz", "low_over_high"],
 }
@@ -562,6 +606,8 @@ def read_physio(session, channels, probe, bad, times,
             float(bw[ex].max()) / amp if ex.any() else 0.0]
         ok[i] = True
 
+    _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam)
+
     sp_arr = np.array(speeds, float)
     fin = sp_arr[np.isfinite(sp_arr)]
     for j, i in enumerate(have):
@@ -572,6 +618,208 @@ def read_physio(session, channels, probe, bad, times,
     return {"fam": fam, "ok": ok, "missed": int(n_all - ok.sum()),
             "has_video": bool(nvt[0] is not None),
             "n_markers": int(nev_us.size)}
+
+
+def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam):
+    """Braces' rule over every candidate, then +-15 ms at where it landed.
+
+    The measure is Braces': the mains-free 5-100 Hz CSD, |CSD| averaged
+    over the 16 rows around the depth where this recording's candidates are
+    strongest, local maxima at least 12 ms apart within 100 ms of each
+    stamp, and the assignment Braces makes -- largest peak first, one peak
+    per stamp, never crossing. The stamps are the clock-corrected ones.
+    """
+    if not have:
+        return
+    n = len(have)
+    W = store[have[0]]["band"].shape[1]
+    S = int(round(ALIGN_WINDOW_MS / 1000.0 * fs))
+    A = int(round(AL_MS / 1000.0 * fs))
+    dist = max(1, int(round(ALIGN_DIST_MS / 1000.0 * fs)))
+    H = int(round(50 / 1000.0 * fs))
+
+    # The depth band: where |CSD| is largest at the corrected stamps, over
+    # every candidate.
+    strength = np.median(np.stack([
+        np.abs(f[2][:, H - P:H + P + 1]).mean(axis=1) for f in first]), axis=0)
+    k0 = int(np.argmax(strength))
+    lo_r = max(0, k0 - ALIGN_DEPTH // 2)
+    hi_r = min(strength.size, lo_r + ALIGN_DEPTH)
+    lo_r = max(0, hi_r - ALIGN_DEPTH)
+
+    full, traces, t0s, stamps_c, windows = [], [], [], [], []
+    peaks = []
+    for j, i in enumerate(have):
+        blk = store[i]["band"].astype(np.float64)
+        cs = braces.csd_of(blk, spec)
+        tr = np.abs(cs[lo_r:hi_r]).mean(axis=0)
+        full.append(cs)
+        traces.append(tr)
+        t0 = float(times[i]) - Bk / fs
+        t0s.append(t0)
+        c = Bk + int(shift[j])
+        stamps_c.append(t0 + c / fs)
+        lo = max(A + 1, c - S)
+        hi = min(W - A - 1, c + S + 1)
+        windows.append((lo, hi))
+        if hi - lo < 3:
+            continue
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            pk, _ = _sig.find_peaks(tr[lo:hi], distance=dist)
+        for q in pk:
+            peaks.append((t0 + (lo + q) / fs, float(tr[lo + q])))
+    peaks.sort()
+    merged = []
+    for t, h in peaks:
+        if merged and t - merged[-1][0] < 0.5 / fs + 1e-6:
+            if h > merged[-1][1]:
+                merged[-1] = (t, h)
+            continue
+        merged.append((t, h))
+    p_t = [m[0] for m in merged]
+    p_h = [m[1] for m in merged]
+
+    order = sorted(range(n), key=lambda j: stamps_c[j])
+    taken = braces.assign([stamps_c[j] for j in order], p_t,
+                          ALIGN_WINDOW_MS, amps=p_h or None) \
+        if p_t else [None] * n
+    got = [None] * n
+    for rank, j in enumerate(order):
+        got[j] = taken[rank]
+    owner = {}
+    for j, k in enumerate(got):
+        if k is not None:
+            owner[k] = j
+
+    moves = np.array([(p_t[k] - stamps_c[j]) * 1000.0
+                      if k is not None else np.nan
+                      for j, k in enumerate(got)])
+    fin = moves[np.isfinite(moves)]
+    med = float(np.median(fin)) if fin.size else 0.0
+    mad = float(np.median(np.abs(fin - med))) * 1.4826 if fin.size else 0.0
+    out_lim = max(ALIGN_OUTLIER_MADS * mad, ALIGN_OUTLIER_FLOOR_MS)
+    h_med = float(np.median([p_h[k] for k in got if k is not None])) \
+        if any(k is not None for k in got) else 1.0
+    p_arr = np.array(p_t) if p_t else np.empty(0)
+
+    aligned = []
+    for j, i in enumerate(have):
+        k = got[j]
+        lo, hi = windows[j]
+        inwin = int(np.sum((p_arr >= t0s[j] + lo / fs)
+                           & (p_arr < t0s[j] + hi / fs))) if p_arr.size else 0
+        if p_arr.size:
+            near = int(np.argmin(np.abs(p_arr - stamps_c[j])))
+            near_ms = (p_arr[near] - stamps_c[j]) * 1000.0
+            near_taken = float(near in owner and owner[near] != j)
+        else:
+            near_ms, near_taken = np.nan, np.nan
+        mv = moves[j]
+        fam["braces"][i] = [
+            float(k is not None), mv,
+            abs(mv) / ALIGN_WINDOW_MS if np.isfinite(mv) else np.nan,
+            float(abs(mv) > ALIGN_EDGE * ALIGN_WINDOW_MS)
+            if np.isfinite(mv) else np.nan,
+            float(abs(mv - med) > out_lim) if np.isfinite(mv) else np.nan,
+            float(abs(mv) < ALIGN_SAME_MS) if np.isfinite(mv) else np.nan,
+            p_h[k] / (h_med or 1.0) if k is not None else np.nan,
+            inwin, near_ms, near_taken]
+        c = Bk + int(shift[j])
+        a = int(round((p_t[k] - t0s[j]) * fs)) if k is not None else c
+        a = int(np.clip(a, A + 1, W - A - 2))
+        aligned.append(a)
+
+    # Typical aligned patch and trace, over every candidate.
+    usual_r = int(np.bincount([f[0] for f in first]).argmax())
+    patches = [full[j][:, aligned[j] - A:aligned[j] + A + 1]
+               for j in range(n)]
+    typical_patch = np.median(np.stack(patches), axis=0)
+    typical_trace = np.median(np.stack(
+        [store[i]["band"][usual_r, aligned[j] - A:aligned[j] + A + 1]
+         for j, i in enumerate(have)]), axis=0)
+
+    def corr2(x, y):
+        x = np.asarray(x, float).ravel()
+        y = np.asarray(y, float).ravel()
+        if x.std() == 0 or y.std() == 0:
+            return np.nan
+        return float(np.corrcoef(x, y)[0, 1])
+
+    step = max(1, int(round(2 / 1000.0 * fs)))
+    q5 = max(1, int(round(5 / 1000.0 * fs)))
+    for j, i in enumerate(have):
+        st = store[i]
+        a = aligned[j]
+        blk = st["band"].astype(np.float64)
+        cs = full[j]
+        win = blk[:, a - 3:a + 4]
+        r = int(np.argmax(win.max(axis=1)))
+        tr = blk[r]
+        amp = float(tr[a]) or 1e-9
+        wave = tr[a - A + 1:a + A + 1:step] / abs(amp)
+        ct = traces[j][a - A + 1:a + A + 1:step]
+        ct = ct / (float(ct.max()) + 1e-9)
+        sharp = (2 * tr[a] - tr[a - 2] - tr[a + 2]) / abs(amp)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                wd = _sig.peak_widths(tr, [a], rel_height=0.5,
+                                      wlen=2 * A + 1)[0][0] / fs * 1000.0
+        except Exception:                                # noqa: BLE001
+            wd = np.nan
+        m_ratio = np.log((st["mua"][:, a - q5:a + q5 + 1].mean(axis=1) + 1e-9)
+                         / (st["mua_base"] + 1e-9))
+        near = slice(max(0, r - 4), min(nr, r + 5))
+        far = [q for q in range(nr) if abs(q - r) > 12]
+        prof = blk[:, a]
+        vmax = float(np.abs(prof).max()) + 1e-9
+        above = prof[:max(0, r - 4)]
+        below = prof[r + 5:]
+        va = float(above.mean()) / vmax if above.size else np.nan
+        vb = float(below.mean()) / vmax if below.size else np.nan
+        sg = np.sign(prof[r])
+        flips = [abs(q - r) for q in range(nr) if np.sign(prof[q]) != sg]
+        col = cs[:, a]
+        cn = col / (float(np.abs(col).max()) + 1e-9)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            pp, _ = _sig.find_peaks(cn, prominence=0.3)
+            nn, _ = _sig.find_peaks(-cn, prominence=0.3)
+        kpos, kneg = int(np.argmax(col)), int(np.argmin(col))
+        main = kpos if abs(col[kpos]) >= abs(col[kneg]) else kneg
+        half = abs(cn[main]) / 2.0
+        sgn = np.sign(cn[main])
+        w = 0
+        for d in (1, -1):
+            q = main
+            while 0 <= q < cn.size and sgn * cn[q] >= half:
+                w += 1
+                q += d
+        lat_rows = list(range(max(0, r - 10), min(nr, r + 11)))
+        seg = np.abs(blk[lat_rows, a - A:a + A + 1])
+        lat = (np.argmax(seg, axis=1) - A) / fs * 1000.0
+        slope = float(np.polyfit(np.arange(len(lat_rows)), lat, 1)[0]) \
+            if len(lat_rows) >= 3 else np.nan
+        conc = float(traces[j][a - q5:a + q5 + 1].mean()) / \
+            (float(traces[j][a - A:a + A + 1].mean()) + 1e-9)
+        fam["aligned15"][i] = np.concatenate([
+            wave[:15], ct[:15], [
+                sharp, wd,
+                float(m_ratio[r]), float(m_ratio[near].mean()),
+                float(m_ratio[far].mean()) if far else np.nan,
+                float(m_ratio.max()), float(np.median(m_ratio)),
+                va, vb,
+                float(np.sign(va) != np.sign(vb))
+                if np.isfinite(va) and np.isfinite(vb) else np.nan,
+                (min(flips) / float(nr)) if flips else np.nan,
+                pp.size, nn.size, max(0, w - 1),
+                abs(kpos - kneg) / float(max(1, col.size)),
+                abs(col[kneg]) / (abs(col[kpos]) + 1e-9),
+                float(np.std(lat)), slope,
+                corr2(patches[j], typical_patch),
+                corr2(blk[usual_r, a - A:a + A + 1], typical_trace),
+                conc]])
 
 
 def save(path, got):

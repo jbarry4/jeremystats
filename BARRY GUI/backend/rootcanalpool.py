@@ -351,7 +351,9 @@ def switch_tables(events, members):
 # The pool
 # --------------------------------------------------------------------------
 def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
-             n_init=N_INIT, gmm_n_init=GMM_N_INIT):
+             n_init=N_INIT, gmm_n_init=GMM_N_INIT, complete_only=False,
+             k=rootcanal.K_DEFAULT, cluster_calls=None, margin=None,
+             margin_mode="fixed"):
     """Pool the members' rows and answer the three questions.
 
     `members` is a list of dicts as `app.py` builds them: key, entry_id,
@@ -362,6 +364,12 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
     """
     if not HAVE_SKLEARN:
         raise PoolError(rootcanal.dspca.NO_SKLEARN)
+    # Taken now: the member loop below reuses the name `k`, and the number
+    # of clusters asked for must not become the last member's index.
+    k_want = int(k)
+    if not rootcanal.K_MIN <= k_want <= rootcanal.K_MAX:
+        raise PoolError("The number of clusters has to be %d to %d, not %d."
+                        % (rootcanal.K_MIN, rootcanal.K_MAX, k_want))
     if not members:
         raise PoolError("A pool needs at least one member. Add a recording.")
     keys = [m["key"] for m in members]
@@ -411,43 +419,60 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
                        "wide": bool(r.get("wide")),
                        "mouse_key": m["mouse_key"], "mouse_type": mtype})
     X = np.asarray(X, dtype=float).reshape(-1, 3)
+
+    # COMPLETE EVENTS ONLY, when asked. An event missing an axis -- a
+    # half-width that never came back to half amplitude, an HF window too
+    # near an edge -- is normally assigned on the two it has and marked.
+    # With this on it is left out of the pool altogether: not scaled, not
+    # clustered, not in the GMM or the switch tables, and not drawn. The
+    # count of what was left out travels with the answer, because a pool
+    # that quietly lost its slowest events would read as cleaner than it is.
+    n_excluded = 0
+    by_member_excluded = {}
+    if complete_only and len(ev):
+        keep = np.isfinite(X).all(axis=1)
+        n_excluded = int((~keep).sum())
+        for j in np.where(~keep)[0]:
+            k = ev[j]["m"]
+            by_member_excluded[k] = by_member_excluded.get(k, 0) + 1
+        X = X[keep]
+        ev = [e for e, kp in zip(ev, keep) if kp]
+        if not len(ev):
+            raise PoolError(
+                "Every pooled event is missing at least one axis, so "
+                "keeping complete events only leaves nothing to pool.")
     n = X.shape[0]
-    have = np.isfinite(X)
-    n_axes = have.sum(axis=1)
-    use, part = n_axes == 3, n_axes == 2
-    placed = use | part
-    n_used = int(use.sum())
-    if n_used < 3:
-        raise PoolError(
-            "Only %d of %d pooled events were measured on all three axes; "
-            "two clusters need more than that." % (n_used, n))
+    # Pooled raw, z-scored once (see the module docstring) -- or, with a
+    # margin, on the margin's own scale. The clustering is Single's own
+    # `cluster_core`, so the two views cannot drift apart.
+    try:
+        core = rootcanal.cluster_core(
+            X, k=k_want, seed=seed, n_init=n_init, cluster_calls=cluster_calls,
+            margin=margin, margin_mode=margin_mode, what="pooled events")
+    except rootcanal.RootCanalError as exc:
+        raise PoolError(str(exc))
+    have, n_axes = core["have"], core["n_axes"]
+    use, part, placed = core["use"], core["part"], core["placed"]
+    n_used, mu, sd, Z = core["n_used"], core["mu"], core["sd"], core["Z"]
+    C, raw_c, lab = core["C"], core["raw_c"], core["lab"]
+    cls_of = {r: core["calls"][r] for r in range(core["k"])}
 
-    # Pooled raw, z-scored once. See the module docstring.
-    mu = X[use].mean(axis=0)
-    sd = X[use].std(axis=0)
-    sd[~np.isfinite(sd) | (sd == 0)] = 1.0
-    Z = np.where(have, (X - mu) / sd, np.nan)
-
-    km = KMeans(n_clusters=2, random_state=seed, n_init=n_init)
-    km.fit(Z[use])
-    C = np.asarray(km.cluster_centers_, dtype=float)
-    raw_c = C * sd + mu
-    if raw_c[0, 2] > raw_c[1, 2]:            # DS first, as in Single
-        C, raw_c = C[::-1].copy(), raw_c[::-1].copy()
-    lab = np.full(n, -1, dtype=int)
-    diff = np.where(have[placed][:, None, :],
-                    Z[placed][:, None, :] - C[None, :, :], 0.0)
-    lab[placed] = np.argmin((diff ** 2).sum(axis=2), axis=1)
-    ied_c = int(np.argmax(raw_c[:, 2])) if raw_c[0, 2] != raw_c[1, 2] else 1
-    cls_of = {ied_c: "ied", 1 - ied_c: "ds"}
-
-    # The split axis: the line through the two centres, 0 at the midpoint.
-    u = C[1] - C[0]
-    norm = float(np.linalg.norm(u)) or 1.0
-    u = u / norm
-    mid = (C[0] + C[1]) / 2.0
-    if cls_of[0] == "ied":                    # DS negative, whatever order
-        u = -u
+    # THE SPLIT AXIS: from the mean of the DS-called events to the mean of
+    # the IED-called ones (complete events, z), 0 at their midpoint, DS
+    # negative. At k = 2 by k-means that is the line through the two
+    # centres -- a k-means centre IS the mean of its events -- and it means
+    # the same thing at any k. With one call only (k = 1, or every cluster
+    # relabelled alike) there is no line, and it says so.
+    call_of = np.array([cls_of[int(c)] if c >= 0 else "" for c in lab])
+    ds_m = use & (call_of == "ds")
+    ied_m = use & (call_of == "ied")
+    split_ok = bool(ds_m.any() and ied_m.any())
+    if split_ok:
+        a, b = Z[ds_m].mean(axis=0), Z[ied_m].mean(axis=0)
+        u = b - a
+        norm = float(np.linalg.norm(u)) or 1.0
+        u = u / norm
+        mid = (a + b) / 2.0
 
     counts = {"ds": 0, "ied": 0, "unmeasured": 0, "partial": 0, "wide": 0}
     why_part = {}
@@ -472,12 +497,13 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
             why_part[e["missing"][0]] = why_part.get(e["missing"][0], 0) + 1
         if e["wide"]:
             counts["wide"] += 1
-        split_vals.append(float(np.dot(Z[j] - mid, u)) if use[j] else None)
+        split_vals.append(float(np.dot(Z[j] - mid, u))
+                          if (use[j] and split_ok) else None)
 
-    centres = [{"z": [float(v) for v in C[k]],
-                "raw": [float(v) for v in raw_c[k]],
-                "cls": cls_of[k], "n": int((lab == k).sum())}
-               for k in range(2)]
+    centres = [{"z": [float(v) for v in C[r]],
+                "raw": [float(v) for v in raw_c[r]],
+                "cls": cls_of[r], "n": int((lab == r).sum())}
+               for r in range(core["k"])]
     gids = {m.get("gid") for m in members}
     mice = {m["mouse_key"] for m in members}
     band_label = "%s–%s Hz power" % (rootcanal._g(band[0]),
@@ -495,15 +521,23 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
     if counts["wide"]:
         extra.append("; %d resolved only with a half-width search widened "
                      "past 50 ms" % counts["wide"])
-    rule = ("Pooled over %d recording%s from %d %s, in pooled raw units: "
-            "the cluster whose centre has more %s is called IED: %s dB "
-            "against %s dB for the other, which is called DS (%d DS, %d "
-            "IED%s)."
-            % (len(gids), "" if len(gids) == 1 else "s", len(mice),
-               "mouse" if len(mice) == 1 else "mice",
-               band_label, rootcanal._db_s(raw_c[ied_c, 2]),
-               rootcanal._db_s(raw_c[1 - ied_c, 2]), counts["ds"],
-               counts["ied"], "".join(extra)))
+    general = rootcanal.k_sentence(core, band_label)
+    where = ("Pooled over %d recording%s from %d %s, in %s: "
+             % (len(gids), "" if len(gids) == 1 else "s", len(mice),
+                "mouse" if len(mice) == 1 else "mice",
+                "the margin's own scale" if margin else "pooled raw units"))
+    if general:
+        rule = ("%s%s (%d DS, %d IED%s)."
+                % (where, general, counts["ds"], counts["ied"],
+                   "".join(extra)))
+    else:
+        ied_c = int(np.argmax(raw_c[:, 2]))
+        rule = ("%sthe cluster whose centre has more %s is called IED: %s "
+                "dB against %s dB for the other, which is called DS (%d DS, "
+                "%d IED%s)."
+                % (where, band_label, rootcanal._db_s(raw_c[ied_c, 2]),
+                   rootcanal._db_s(raw_c[1 - ied_c, 2]), counts["ds"],
+                   counts["ied"], "".join(extra)))
 
     calls = [e["cls_pool"] for e in ev]
     gmm = gmm_test(Z[use], mu, sd, seed, gmm_n_init,
@@ -538,12 +572,25 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
         "gmm": gmm,
         "gmm_focus": gmm_focus,
         "switches": switch_tables(ev, mem_out),
-        "split_axis": {"centres_z": [[float(v) for v in C[0]],
-                                     [float(v) for v in C[1]]],
+        "split_axis": {"centres_z": ([[float(v) for v in a],
+                                      [float(v) for v in b]]
+                                     if split_ok else None),
                        "values": split_vals,
-                       "unit": "z, 0 at the midpoint, DS negative"},
-        "counts": counts,
-        "params": pool_params(seed, n_init, gmm_n_init, band),
+                       "unit": "z, 0 at the midpoint, DS negative",
+                       "why_none": (None if split_ok else
+                                    "every cluster has the same call, so "
+                                    "there is no DS-to-IED line")},
+        "k": core["k"],
+        "clusters": rootcanal.clusters_out(core),
+        "counts": dict(counts, excluded=n_excluded),
+        "excluded": {"n": n_excluded, "complete_only": bool(complete_only),
+                     "by_member": [{"key": mem_out[k]["key"], "n": v}
+                                   for k, v in sorted(
+                                       by_member_excluded.items())]},
+        "params": dict(pool_params(seed, n_init, gmm_n_init, band),
+                       complete_only=bool(complete_only), k=core["k"],
+                       cluster_calls=dict(cluster_calls or {}),
+                       margin_mode=(margin_mode if margin else None)),
     }
 
 

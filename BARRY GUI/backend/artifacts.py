@@ -463,6 +463,38 @@ register_kind("rootcanal_pool", _rcpool_key, _rcpool_name, _rcpool_summary,
               _rcpool_gids, "Root Canal pool")
 
 
+# A Root Canal MARGIN: a set of k cluster centres and their DS / IED calls,
+# saved under a name so the same boundary can be applied to any other
+# Single or Pooled analysis. Its own subject, like a pool: the same group
+# can be cut twice on purpose, so the identity is a minted key.
+def _rcmargin_key(subject):
+    _need(subject, ("margin_key",), "Root Canal margin")
+    return "rootcanal_margin|%s" % subject["margin_key"]
+
+
+def _rcmargin_name(subject):
+    return subject.get("name") or "Root Canal margin"
+
+
+def _rcmargin_summary(payload):
+    p = payload or {}
+    cl = p.get("clusters") or []
+    src = p.get("source") or {}
+    return {"k": p.get("k"),
+            "ied": sum(1 for c in cl if c.get("call") == "ied"),
+            "ds": sum(1 for c in cl if c.get("call") == "ds"),
+            "source": src.get("kind"), "events": src.get("n_events"),
+            "filter": (p.get("measure") or {}).get("filter_label")}
+
+
+def _rcmargin_gids(subject):
+    return [g for g in (subject.get("gids") or []) if g]
+
+
+register_kind("rootcanal_margin", _rcmargin_key, _rcmargin_name,
+              _rcmargin_summary, _rcmargin_gids, "Root Canal margin")
+
+
 def subject_key(kind, subject):
     if kind not in KINDS:
         raise ArtifactError(

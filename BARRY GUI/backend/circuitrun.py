@@ -1721,10 +1721,16 @@ def batch_plan(host, gids, cue_types="all", kind="state", body_params=None,
                 got = states.get(gid) or {}
                 if not (got.get("state") in (vacc.NATIVE, vacc.STAGED)
                         and got.get("remote")):
-                    blocked.append({"gid": gid, "cue_type": ct, "why": (
-                        "The cluster holds no copy of this recording (%s). "
-                        "Upload it to VACC first." % (
-                            got.get("why") or "not found there"))})
+                    # `can_upload`, so the plan can offer the button
+                    # rather than only the instruction. We are past the
+                    # "this computer cannot read it" check above, so there
+                    # is certainly something here to send.
+                    blocked.append({"gid": gid, "cue_type": ct,
+                                    "label": prep.get("label"),
+                                    "can_upload": True,
+                                    "why": (
+                        "the cluster holds no copy of this recording (%s)"
+                        % (got.get("why") or "not found there"))})
                     continue
                 prep["remote"] = got["remote"]
                 prep["vacc_where"] = ("vacc:netfiles"

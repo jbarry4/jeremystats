@@ -91,7 +91,7 @@ BARRY.rootcanal = (function () {
   const FILTER_ORDER = ['none', 'ds', 'lfp', 'custom'];
   const presetOf = (f) => (f && f !== 'custom' && FILTERS[f]) || null;
 
-  const DEF = { filt: 'lfp', mains_out: true,
+  const DEF = { filt: 'lfp', mains_out: true, k: 2,
                 lo_hz: 1, hi_hz: 100, win_ms: 25, band_lo: 500, band_hi: 1000,
                 /* How far either side of the peak the half-amplitude
                    crossings are hunted. 50 ms is v1's own search; wider finds
@@ -124,9 +124,14 @@ BARRY.rootcanal = (function () {
     from_version: null,   // a version ref, or null for "as it is now"
     gid: null,
     read: null,           // the read hash, once there is one
-    filt: DEF.filt, mains_out: DEF.mains_out,
+    filt: DEF.filt, mains_out: DEF.mains_out, k: DEF.k,
     lo_hz: DEF.lo_hz, hi_hz: DEF.hi_hz, win_ms: DEF.win_ms,
     band_lo: DEF.band_lo, band_hi: DEF.band_hi, cross_ms: DEF.cross_ms,
+    /* Calls given by hand to whole clusters, by rank: {"2": "ied"}. Like a
+       flip, applied at once rather than through Recompute. */
+    cluster_calls: {},
+    /* A saved margin to apply: { artifact_id, version, mode }. */
+    margin: null,
     /* The two overrides, both FIT params so a result can be rebuilt from
        params alone: the event indices flipped by hand, and the centres in
        z-space (null means "k-means placed them"). */
@@ -141,12 +146,21 @@ BARRY.rootcanal = (function () {
      band -- the picture would change for a reason nobody asked for. These
      only reach `q` when Recompute is pressed. */
   const pend = {
-    filt: DEF.filt, mains_out: DEF.mains_out,
+    filt: DEF.filt, mains_out: DEF.mains_out, k: DEF.k,
     lo_hz: DEF.lo_hz, hi_hz: DEF.hi_hz, win_ms: DEF.win_ms,
     band_lo: DEF.band_lo, band_hi: DEF.band_hi, cross_ms: DEF.cross_ms,
   };
-  const PKEYS = ['filt', 'mains_out', 'lo_hz', 'hi_hz', 'win_ms', 'band_lo',
-                 'band_hi', 'cross_ms'];
+  const PKEYS = ['filt', 'mains_out', 'k', 'lo_hz', 'hi_hz', 'win_ms',
+                 'band_lo', 'band_hi', 'cross_ms'];
+  /* How many clusters k-means looks for: 1 to 6, two by default. */
+  const K_MAX = 6;
+  /* Saved margins, for the picker in both views; and the last refusal of
+     one, said in the card rather than only in a toast. */
+  let margins = null;
+  let marginsErr = null;
+  let marginErr = null;
+  /* Single's dots coloured by DS / IED call, or by cluster. */
+  let singleColour = 'call';
   /* Two of them are not numbers: the filter's name and the mains box. */
   const asParam = (k, v) => (k === 'filt' ? String(v)
     : k === 'mains_out' ? (v === true || v === 'true') : Number(v));
@@ -208,6 +222,10 @@ BARRY.rootcanal = (function () {
     types: {},          // mouse_key -> type: the overrides, never the defaults
     focus: null,        // { mouse_key } | { mouse_type } | { member } | null
     colour: 'pool',
+    /* The pool's own clustering: k, calls by hand, a margin, its own HF
+       band (null: each member's own) and complete events only. */
+    k: 2, cluster_calls: {}, margin: null, marginErr: null,
+    band_lo: '', band_hi: '', complete_only: false,
     fit: null, fitting: false, gen: 0, lastBody: null, dirty: false,
     evs: null, evsFor: null,
     picked: null, evData: null, evFor: null, evGen: 0, evBusy: false,
@@ -404,6 +422,9 @@ BARRY.rootcanal = (function () {
       hi_hz: presetOf(q.filt) ? presetOf(q.filt).hi_hz : +q.hi_hz,
       win_ms: +q.win_ms,
       band_lo: +q.band_lo, band_hi: +q.band_hi, cross_ms: +q.cross_ms,
+      k: +q.k,
+      cluster_calls: Object.assign({}, q.cluster_calls),
+      margin: q.margin ? Object.assign({}, q.margin) : null,
       flips: q.flips.slice(),
       centres: q.centres ? q.centres.map((c) => c.slice()) : null,
     }, extra || {});
@@ -424,12 +445,24 @@ BARRY.rootcanal = (function () {
       got = await apiPost('/api/rootcanal/fit', body);
     } catch (e) {
       if (mine !== fitGen) return;
+      /* A REFUSED MARGIN is about the margin, not the set: it is said in
+         the margin card, the margin is taken off, and the set is fitted as
+         it was -- the picture should not vanish because a boundary from
+         another measurement did not fit. */
+      if (body.margin) {
+        marginErr = e.message;
+        q.margin = null;
+        fitting = false;
+        refit();
+        return;
+      }
       fit = { ok: false, error: e.message };
       fitting = false;
       live = null;
       render();
       return;
     }
+    if (body.margin) marginErr = null;
     if (mine !== fitGen) return;
     fit = got;
     fitting = false;
@@ -487,6 +520,9 @@ BARRY.rootcanal = (function () {
                  + LP_MAX + ' Hz');
       }
     }
+    if (!(n('k') >= 1) || n('k') > K_MAX || n('k') !== Math.round(n('k'))) {
+      out.push('the number of clusters has to be 1 to ' + K_MAX);
+    }
     if (!(n('win_ms') >= 1) || n('win_ms') > WIN_MAX) {
       out.push('the amp window has to be 1 to ' + WIN_MAX + ' ms either side '
                + 'of the stamp');
@@ -523,6 +559,10 @@ BARRY.rootcanal = (function () {
     if (!pending() || fitting) return false;
     const bad = problems(pend);
     if (bad.length) { toast('Not yet: ' + bad[0] + '.', 'warn', 7000); return false; }
+    /* A NEW k OUTDATES what was given for the old one: dragged centres are
+       one per cluster (the server refuses the wrong number), and a call
+       given to "cluster 2" of three is about a different cluster at five. */
+    if (Number(pend.k) !== Number(q.k)) { q.centres = null; q.cluster_calls = {}; }
     for (const k of PKEYS) q[k] = asParam(k, pend[k]);
     refit();
     swapTop();
@@ -1178,6 +1218,15 @@ BARRY.rootcanal = (function () {
           el('span', { class: 'rc-num-l', text: '60 Hz out' }),
         ]) : el('span', { class: 'hint rc-filt-is',
                           text: filterWords(pend).replace(/^\S+ /, '') }),
+        null,
+      ].filter(Boolean)),
+      el('div', { class: 'rc-group rc-k' }, [
+        el('span', { class: 'rc-group-l', text: 'Clusters' }),
+        kControl(pend.k, (v) => { pend.k = v; swapTop(); tickPending(); },
+                 q.margin ? marginNick() : null),
+      ]),
+      el('div', { class: 'rc-group' }, [
+        el('span', { class: 'rc-group-l', text: 'Window and search' }),
         num('win_ms', 'window ±', { unit: 'ms', min: 1, max: WIN_MAX, title:
           'How far either side of the stamp the max-amp contact and its '
           + 'peak are looked for. v4 used 25 ms.' }),
@@ -1290,10 +1339,18 @@ BARRY.rootcanal = (function () {
             title: 'Their half-width was found only with the search reaching '
                  + 'past v1’s ' + CROSS_V1 + ' ms. Drawn with a dashed '
                  + 'outline.' }) : null,
-          cs.length === 2 ? BARRY.ui.chip(
+          cs.length ? BARRY.ui.chip(
             (fit.n_placed != null ? fit.n_placed : fit.n_used) + ' of '
             + fit.n + ' classified') : null,
+          BARRY.ui.seg([['call', 'by call'], ['cluster', 'by cluster']],
+            singleColour, (v) => { singleColour = v; render(); },
+            { extra: 'rc-colour-by' }),
         ].filter(Boolean)),
+        clusterChips(fit.clusters,
+          (rank, call) => { q.cluster_calls[String(rank)] = call; refit(); },
+          () => { q.cluster_calls = {}; refit(); },
+          (fit.clusters || []).some((c) => c.call_by === 'hand')),
+        marginCard(singleMarginCtx()),
       ]),
       BARRY.ui.actions([
         BARRY.ui.button({ kind: 'primary', text: bankLabel(),
@@ -1305,6 +1362,198 @@ BARRY.rootcanal = (function () {
       ]),
     ];
     return el('div', { class: 'card rc-why' }, kids);
+  }
+
+  /* How many clusters: a seg of 1..6, or -- while a margin is applied -- a
+     line saying the margin sets it. */
+  function kControl(cur, onPick, fromMargin) {
+    if (fromMargin) {
+      return el('span', { class: 'hint rc-k-margin',
+        text: 'k is set by the margin ‘' + fromMargin + '’' });
+    }
+    return BARRY.ui.seg(
+      Array.from({ length: K_MAX }, (_, j) => [String(j + 1), String(j + 1),
+        j === 0 ? 'One cluster: no split, every event DS — the null a split '
+                  + 'is compared against.'
+        : j === 1 ? 'Two clusters: DS and IED, as this tool was built.'
+        : (j + 1) + ' clusters, ranked by HF power; the highest is IED by '
+          + 'the rule, and any can be relabelled.']),
+      String(cur), (v) => onPick(Number(v)), { extra: 'rc-kseg' });
+  }
+
+  /* One chip per cluster, lowest HF first: its colour, n, its centre in
+     raw units and its call -- and pressing it calls that cluster the other
+     thing. The rule's call, a margin's and a hand's are said apart. */
+  function clusterChips(clusters, onToggle, onReset, anyHand) {
+    if (!clusters || !clusters.length) return null;
+    const row = clusters.map((c) => el('button', {
+      type: 'button',
+      class: 'rc-clu' + (c.call === 'ied' ? ' ied' : ' ds')
+             + (c.call_by === 'hand' ? ' hand' : ''),
+      title: 'Cluster ' + (c.rank + 1) + ' of ' + clusters.length + ': '
+           + (c.n || 0) + ' events, centre ' + hz(c.centre_raw[0]) + ' µV, '
+           + hz(c.centre_raw[1]) + ' ms, ' + hz(c.centre_raw[2]) + ' dB. '
+           + 'Called ' + c.call.toUpperCase() + ' '
+           + (c.call_by === 'hand' ? 'by hand' : c.call_by === 'margin'
+              ? 'by the margin' : 'by the rule') + '. Press to call it '
+           + (c.call === 'ied' ? 'DS' : 'IED') + '.',
+      onclick: () => onToggle(c.rank, c.call === 'ied' ? 'ds' : 'ied'),
+    }, [
+      el('i', { class: 'rc-swatch', style: 'background:' + cluColour(c.rank) }),
+      el('span', { text: '#' + (c.rank + 1) + ' ' + c.call.toUpperCase()
+                         + ' · ' + (c.n || 0)
+                         + (c.call_by === 'hand' ? ' · by hand'
+                            : c.call_by === 'margin' ? ' · margin' : '') }),
+    ]));
+    if (anyHand) {
+      row.push(BARRY.ui.button({ kind: 'mini', text: 'Calls back to the rule',
+        title: 'Undo every cluster called by hand.', onclick: onReset }));
+    }
+    return el('div', { class: 'chip-row rc-clusters' }, row);
+  }
+
+  function cluColour(rank) {
+    return tok('--c' + ((Number(rank || 0) % CAT_N) + 1));
+  }
+
+  async function loadMargins() {
+    try {
+      const got = await api('/api/rootcanal/margins');
+      margins = got.margins || [];
+      marginsErr = null;
+    } catch (e) {
+      margins = [];
+      marginsErr = e.message;
+    }
+    render();
+  }
+
+  function marginNick(ref) {
+    const r = ref || q.margin;
+    if (!r) return null;
+    const m = (margins || []).find((x) => x.artifact_id === r.artifact_id);
+    return (m && (m.nickname || m.name)) || r.artifact_id;
+  }
+
+  function marginWords(m) {
+    return (m.nickname || m.name) + ' · k = ' + (m.k || '?') + ' · '
+      + ((m.calls && m.calls.ied) || 0) + ' IED / '
+      + ((m.calls && m.calls.ds) || 0) + ' DS · from '
+      + (m.source === 'pool_group' ? 'a group' : m.source || '?')
+      + (m.measure ? ' · ' + m.measure : '');
+  }
+
+  /* THE MARGINS CARD, for both views. Pick a saved margin and how to use
+     it, apply or clear it, and save this view's own. A refusal -- a margin
+     measured some other way -- is said here, in place. */
+  function marginCard(ctx) {
+    if (margins === null) { loadMargins(); }
+    const list = margins || [];
+    let pickId = ctx.applied ? ctx.applied.artifact_id
+                             : (list[0] && list[0].artifact_id) || '';
+    let mode = (ctx.applied && ctx.applied.mode) || 'fixed';
+    const sel = el('select', { class: 'rc-margin-pick',
+      'aria-label': 'saved margin',
+      onchange: (e) => { pickId = e.target.value; } },
+      list.length ? list.map((m) => el('option', { value: m.artifact_id,
+          text: marginWords(m),
+          selected: m.artifact_id === pickId ? 'selected' : null }))
+        : [el('option', { value: '', text: 'no margins saved yet' })]);
+    const modeSeg = BARRY.ui.seg([
+      ['fixed', 'Fixed', 'Every event to the nearest saved centre, on the '
+                       + 'margin’s own scale. Nothing moves: one rule '
+                       + 'across sets.'],
+      ['refine', 'Refine', 'k-means on this data, started from the saved '
+                         + 'centres, on the margin’s scale. Each cluster '
+                         + 'keeps the call it started with.']],
+      mode, (v) => { mode = v; ctx.onApply({ artifact_id: pickId, version: null,
+                                              mode: v }); },
+      { extra: 'rc-margin-mode' });
+    const used = ctx.used;
+    const kids = [
+      el('div', { class: 'rc-group-l', text: 'Margins' }),
+      used ? BARRY.ui.chip('margin ‘' + used.nickname + '’ v' + used.version
+                           + ' · ' + used.mode, { extra: 'rc-margin-on',
+        title: 'The boundary here is the saved margin ‘' + used.nickname
+             + '’, version ' + used.version + ', applied ' + used.mode
+             + '. Cleared, k-means goes back to finding its own.' }) : null,
+      sel, modeSeg,
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Apply',
+        extra: 'rc-margin-apply', disabled: !pickId || null,
+        onclick: () => ctx.onApply({ artifact_id: pickId, version: null,
+                                     mode }) }),
+      ctx.applied ? BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Clear',
+        extra: 'rc-margin-clear', onclick: () => ctx.onApply(null) }) : null,
+      el('span', { class: 'spacer' }),
+    ].concat(ctx.saves.map((sv) => BARRY.ui.button({ kind: 'ghost',
+      size: 'sm', text: sv.label, title: sv.title, extra: 'rc-margin-save',
+      onclick: () => saveMargin(sv) })));
+    /* FOLDED to one line unless a margin is on or was just refused: the
+       card sits above the pictures, and an open one pushed the event's own
+       controls below the fold. */
+    const open = !!(ctx.applied || ctx.err || ctx.used);
+    return el('details', { class: 'card rc-margins',
+                           open: open ? 'open' : null }, [
+      el('summary', { class: 'rc-margin-sum', text: 'Margins'
+        + (used ? ' · ‘' + used.nickname + '’ v' + used.version + ' · '
+                  + used.mode
+                : ' · none applied — use a saved one, or save these') }),
+      el('div', { class: 'rc-margin-row' }, kids.filter(Boolean)),
+      ctx.err ? el('p', { class: 'hint rc-warn rc-margin-err',
+                          text: 'Not applied: ' + ctx.err }) : null,
+      marginsErr ? el('p', { class: 'hint rc-warn',
+                             text: 'Saved margins could not be listed: '
+                                 + marginsErr }) : null,
+    ].filter(Boolean));
+  }
+
+  /* Save a margin, through the one naming dialog: a label is required and
+     there is no default -- it is the name the margin is chosen by in every
+     other analysis. The server cuts it again from the request; the picture
+     is never what is filed. */
+  function saveMargin(sv) {
+    let rep = null;
+    const what = el('div', { class: 'rc-ask' }, [
+      el('p', { text: sv.what }),
+      el('ul', {}, [
+        el('li', { text: 'Kept: each cluster’s centre in µV, ms and dB, its '
+          + 'DS / IED call, and the scale it was cut on, so it reads the same '
+          + 'wherever it is applied.' }),
+        el('li', { text: 'And how it was measured -- filter, band, window and '
+          + 'search. It can only be applied where those match.' }),
+      ]),
+    ]);
+    return BARRY.ui.bankDialog({
+      kind: 'entry', title: 'Save these margins', name: '', what,
+      okText: 'Save margins',
+      onBank: async ({ name, note }) => {
+        const nick = String(name || '').trim();
+        if (!nick) throw new Error('A margin needs a label to be saved under.');
+        rep = await apiPost('/api/rootcanal/margin/save', {
+          nickname: nick, extract: sv.extract(), note: note || '' });
+      },
+    }).then((ok) => {
+      if (!ok || !rep) return null;
+      toast(rep.confirmed ? 'Nothing has changed, so v' + rep.version + ' of ‘'
+                            + rep.nickname + '’ is confirmed.'
+                          : 'Saved as ‘' + rep.nickname + '’ v' + rep.version
+                            + '.', rep.confirmed ? 'warn' : 'ok', 8000);
+      margins = null;
+      loadMargins();
+      return rep;
+    });
+  }
+
+  function singleMarginCtx() {
+    return {
+      applied: q.margin, used: fit && fit.margin_used, err: marginErr,
+      onApply: (ref) => { q.margin = ref; marginErr = null; refit(); },
+      saves: [{ label: 'Save these margins…',
+        title: 'This recording’s clusters as a named margin.',
+        what: 'Saves this recording’s ' + ((fit && fit.k) || q.k)
+            + ' cluster centres and their calls as a named margin.',
+        extract: () => Object.assign({ source: 'single' }, fitBody()) }],
+    };
   }
 
   function chipC(text, cls) {
@@ -2123,7 +2372,8 @@ BARRY.rootcanal = (function () {
       fitCentres: fit.centres || [],
       params: shownParams(),
       picked,
-      fill: (e) => colOf(e.cls),
+      fill: (e) => (singleColour === 'cluster' && e.cluster != null
+                    ? cluColour(e.cluster) : colOf(e.cls)),
       shape: () => null,
       alpha: () => 1,
       ringed: (e) => !!e.flipped,
@@ -3526,12 +3776,91 @@ BARRY.rootcanal = (function () {
   }
 
   function poolBody() {
+    const lo = String(pool.band_lo).trim(), hi = String(pool.band_hi).trim();
     return {
       members: pool.sel.map((m) => (m.params ? { key: m.key, params: m.params }
                                              : { key: m.key })),
       mouse_types: Object.assign({}, pool.types),
       focus: serverFocus(),
+      k: pool.k,
+      cluster_calls: Object.assign({}, pool.cluster_calls),
+      margin: pool.margin ? Object.assign({}, pool.margin) : null,
+      /* The pool's own HF band, when both edges are given; otherwise every
+         member keeps the band it was fitted with. */
+      band: (lo !== '' && hi !== '') ? [Number(lo), Number(hi)] : null,
+      complete_only: !!pool.complete_only,
     };
+  }
+
+  /* The pool's own settings, beside its Pool button: how many clusters,
+     its HF band, and whether events missing an axis are kept. Each marks
+     the picture as changed; Pool applies them. */
+  function poolSettings() {
+    const mark = () => { pool.dirty = true; render(); };
+    const bandIn = (key, ph) => el('input', {
+      type: 'number', class: 'rc-in rc-pool-band', min: '0',
+      max: String(BAND_MAX), step: 'any', placeholder: ph,
+      value: String(pool[key]),
+      title: 'The pool’s own HF band. Every member is measured over it '
+           + '(from its read -- no recording is read again); a banked member '
+           + 'fitted over another band is re-measured and marked. Leave both '
+           + 'empty to keep each member’s own band. Stops at ' + BAND_MAX
+           + ' Hz, the anti-alias corner.',
+      onchange: (e) => {
+        const v = clampTo(e.target.value, 0, BAND_MAX);
+        e.target.value = v; pool[key] = v; mark();
+      },
+    });
+    return el('div', { class: 'rc-pool-settings' }, [
+      el('span', { class: 'rc-group-l', text: 'Clusters' }),
+      kControl(pool.k, (v) => { pool.k = v; pool.cluster_calls = {}; mark(); },
+               pool.margin ? marginNick(pool.margin) : null),
+      el('span', { class: 'rc-group-l', text: 'HF band' }),
+      bandIn('band_lo', 'own'), el('span', { class: 'rc-num-u', text: '–' }),
+      bandIn('band_hi', 'own'), el('span', { class: 'rc-num-u', text: 'Hz' }),
+      el('label', { class: 'rc-num rc-complete',
+        title: 'Leave out every event missing an axis -- a half-width that '
+             + 'never came back to half amplitude, an HF window too near an '
+             + 'edge -- instead of placing it on the two it has. Not scaled, '
+             + 'clustered, tested or drawn; the count is said.' }, [
+        el('input', { type: 'checkbox',
+          checked: pool.complete_only ? 'checked' : null,
+          onchange: (e) => { pool.complete_only = e.target.checked; mark(); } }),
+        el('span', { class: 'rc-num-l', text: 'only events measured on all 3 axes' }),
+      ]),
+    ]);
+  }
+
+  function poolMarginCtx() {
+    const f = pool.focus;
+    const group = f && (f.mouse_key ? { mouse_key: f.mouse_key }
+      : f.mouse_type ? { mouse_type: f.mouse_type }
+      : f.member ? { gid: (poolMemberByKey(f.member) || {}).gid } : null);
+    const saves = [{ label: 'Save the pool’s margins…',
+      title: 'The whole pool’s clusters as a named margin, on the pool’s scale.',
+      what: 'Saves the whole pool’s cluster centres and their calls.',
+      extract: () => Object.assign({ source: 'pool' }, poolBody()) }];
+    if (group) {
+      saves.push({ label: 'Save this group’s margins…',
+        title: 'Clusters this group ALONE -- its members only, on their own '
+             + 'scale -- and saves that as a margin.',
+        what: 'Re-clusters only the focused group, on its own scale, and saves '
+            + 'its centres and calls.',
+        extract: () => Object.assign({ source: 'pool_group' }, poolBody(),
+                                     { focus: group }) });
+    }
+    return {
+      applied: pool.margin, used: pool.fit && pool.fit.margin_used,
+      err: pool.marginErr,
+      onApply: (ref) => { pool.margin = ref; pool.marginErr = null;
+                          if (pool.sel.length) runPool(); else render(); },
+      saves,
+    };
+  }
+
+  function poolMemberByKey(key) {
+    return ((pool.fit && pool.fit.members) || []).find((m) => m.key === key)
+      || null;
   }
 
   async function runPool() {
@@ -3554,6 +3883,15 @@ BARRY.rootcanal = (function () {
          measured over different HF bands, most often, which cannot share
          one power axis. The picture that was on screen stays: it is still
          the answer for the members it was drawn from. */
+      /* A refused margin is the margin's problem: said in its card, taken
+         off, and the pool fitted without it. */
+      if (body.margin) {
+        pool.marginErr = e.message;
+        pool.margin = null;
+        pool.fitting = false;
+        render();
+        return runPool();
+      }
       pool.fitErr = e.message;
       if (!pool.fit || !pool.fit.ok) pool.fit = { ok: false, error: e.message };
       toast(e.message, 'err', 10000);
@@ -3606,6 +3944,7 @@ BARRY.rootcanal = (function () {
   const COLOURS = [
     ['pool', 'pooled call'], ['single', 'single call'], ['switches', 'switches'],
     ['recording', 'recording'], ['mouse', 'mouse'], ['type', 'mouse type'],
+    ['cluster', 'cluster'],
   ];
   /* The categorical palette is the theme's own (`--c1`..`--c4`, what
      `BARRY.hues` hands out once its neutral is dropped). Past four the
@@ -3669,6 +4008,8 @@ BARRY.rootcanal = (function () {
 
   function poolFill(e) {
     const mode = pool.colour;
+    if (mode === 'cluster') return e.cluster != null ? cluColour(e.cluster)
+                                                     : tok('--text-3');
     if (mode === 'single') return colOf(e.cls_single);
     if (mode === 'switches') {
       const sk = switchKind(e);
@@ -4110,6 +4451,7 @@ BARRY.rootcanal = (function () {
       kids.push(el('p', { class: 'hint rc-warn rc-pool-refused',
                           text: 'Not pooled: ' + pool.fitErr }));
     }
+    kids.push(poolSettings());
     kids.push(BARRY.ui.actions([
       el('span', { class: 'hint', text: pool.sel.length + ' recording'
         + (pool.sel.length === 1 ? '' : 's') + ' ticked, ' + nMice + ' mice'
@@ -4154,12 +4496,45 @@ BARRY.rootcanal = (function () {
     }
     return el('div', { class: 'rc-work rc-pool-work' }, [
       poolTop(),
+      poolClusterBar(),
       poolPickBar(),
       poolLegend(),
       el('div', { class: 'rc-main' }, [spacePane(), flatsPane(), eventPane()]),
       gmmPanel(),
       switchPanel(),
     ]);
+  }
+
+  /* The pool's clusters, its margins, and what it left out or re-measured. */
+  function poolClusterBar() {
+    const f = pool.fit;
+    const c = (f && f.counts) || {};
+    const reb = ((f && f.members) || []).filter((m) => m.rebanded_from);
+    const notes = [];
+    if (c.excluded) {
+      notes.push(BARRY.ui.chip(c.excluded + ' left out: missing an axis', {
+        kind: 'warn', extra: 'rc-count-excluded',
+        title: 'Only events measured on all three axes are pooled. By '
+             + 'recording: ' + ((f.excluded && f.excluded.by_member) || [])
+               .map((x) => ((poolMemberByKey(x.key) || {}).session_label
+                            || x.key) + ' ' + x.n).join(', ') }));
+    }
+    if (reb.length) {
+      notes.push(BARRY.ui.chip(reb.length + ' re-banded', {
+        kind: 'warn', extra: 'rc-count-rebanded',
+        title: reb.map((m) => (m.session_label || m.key) + ': banked over '
+          + m.rebanded_from.map(hz).join('–') + ' Hz, measured here over '
+          + 'the pool’s band -- its single call is at the pool’s band, not '
+          + 'the one that was banked').join('; ') }));
+    }
+    return el('div', { class: 'card rc-pool-clusters' }, [
+      el('div', { class: 'chip-row' }, notes),
+      clusterChips(f && f.clusters,
+        (rank, call) => { pool.cluster_calls[String(rank)] = call; runPool(); },
+        () => { pool.cluster_calls = {}; runPool(); },
+        ((f && f.clusters) || []).some((x) => x.call_by === 'hand')),
+      marginCard(poolMarginCtx()),
+    ].filter(Boolean));
   }
 
   const pct = (r) => (r == null || !isFinite(r) ? '—'
@@ -4686,6 +5061,18 @@ BARRY.rootcanal = (function () {
       : { key: m.key }));
     pool.types = Object.assign({}, pay.mouse_types || {});
     pool.focus = pay.focus || null;
+    const pp = pay.params || {};
+    pool.k = pp.k || 2;
+    pool.cluster_calls = Object.assign({}, pp.cluster_calls || {});
+    pool.complete_only = !!pp.complete_only;
+    const mu = pay.margin_used;
+    pool.margin = mu ? { artifact_id: mu.artifact_id, version: mu.version,
+                         mode: mu.mode || 'fixed' } : null;
+    /* The band reopens as the pool's own only when it set one: a pool that
+       kept each member's band saved that band in params all the same. */
+    // `band_pool` is the server's record that the pool set its own band.
+    pool.band_lo = pp.band_pool && pp.band ? String(pp.band[0]) : '';
+    pool.band_hi = pp.band_pool && pp.band ? String(pp.band[1]) : '';
     pool.open = {
       artifact_id: art.artifact_id || art.id || id,
       version: art.version != null ? art.version : pay.version,
@@ -4820,6 +5207,13 @@ BARRY.rootcanal = (function () {
     _endBulk: () => { bulk.job = null; bulk.on = false; render(); },
     /* Pooled, for web/_dev/rootcanalpool.html. */
     _setView: setView,
+    _margins: () => margins,
+    _loadMargins: loadMargins,
+    _setMargin: (ref) => { q.margin = ref; marginErr = null; refit(); },
+    _marginErr: () => marginErr,
+    _relabel: (rank, call) => { q.cluster_calls[String(rank)] = call; refit(); },
+    _singleColour: (v) => { if (v) { singleColour = v; render(); }
+                            return singleColour; },
     _viewMode: () => viewMode,
     _pool: () => pool,
     _poolLoad: loadPool,

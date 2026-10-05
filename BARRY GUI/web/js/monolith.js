@@ -104,7 +104,7 @@ window.MONO = (function () {
   function remember() {
     try {
       const keep = {};
-      for (const k of ['layer', 'kind', 'win', 'band', 'method', 'level', 'arrows', 'power', 'pacWin', 'filt', 'hi', 'rangeRule', 'split', 'tab', 'rank']) keep[k] = st[k];
+      for (const k of ['layer', 'kind', 'win', 'band', 'method', 'level', 'arrows', 'power', 'pacWin', 'pacRegion', 'filt', 'hi', 'rangeRule', 'split', 'tab', 'rank']) keep[k] = st[k];
       localStorage.setItem(VIEW_KEY, JSON.stringify(keep));
     } catch (e) { /* per viewer only */ }
   }
@@ -482,6 +482,8 @@ window.MONO = (function () {
           el('div', { class: 'hrow' }, [el('h2', { id: 'spectitle' }), qh('spectrum')]), el('div', { id: 'spec' }),
           el('p', { class: 'small muted', id: 'specsay' }),
         ]),
+        el('div', { class: 'card', id: 'trajcard' }),
+        el('div', { class: 'card', id: 'pacself' }),
         el('div', { class: 'card', id: 'paccard' }),
       ]),
       el('div', { class: 'col-ctl' }, [el('div', { class: 'card', id: 'controls' })]),
@@ -540,7 +542,7 @@ window.MONO = (function () {
     Object.assign(AV, { key, at, detail: null, leaf: null, err: null, leafErr: null });
     renderAvg();
     try {
-      const d = await getJSON('/entry?what=edges&layer=' + st.layer + '&at=' + [at.w, at.b, at.m, at.p].join(',') + splitQ());
+      const d = await entryJSON('/entry?what=edges&layer=' + st.layer + '&at=' + [at.w, at.b, at.m, at.p].join(',') + splitQ());
       if (seq !== AV.seq) return;
       AV.detail = d;
       const r = (d.rats || []).find((x) => x.rat === AV.rat && x.delta != null) || (d.rats || []).find((x) => x.delta != null);
@@ -893,6 +895,18 @@ window.MONO = (function () {
     closeGhost(true);
     set({ split: g });
   }
+  /* One entry, asked for once: the ghost, the walk-through and the
+     trajectory all want the same thing when they look at the same line. */
+  const ENTRY = new Map();
+  function entryJSON(path) {
+    if (!ENTRY.has(path)) {
+      const p = getJSON(path);
+      p.catch(() => ENTRY.delete(path));
+      ENTRY.set(path, p);
+      if (ENTRY.size > 40) ENTRY.delete(ENTRY.keys().next().value);
+    }
+    return ENTRY.get(path);
+  }
   async function postJSON(path, body) {
     if (FIX && FIX.post) return FIX.post(path, body);
     const r = await fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
@@ -925,6 +939,7 @@ window.MONO = (function () {
         break;
       }
       adopt(await getJSON('/data/summary'));
+      ENTRY.clear();
     } catch (e) {
       SPL.err = e.message;
     }
@@ -1575,7 +1590,10 @@ window.MONO = (function () {
     const S = D.S;
     const host = $('paccard');
     host.innerHTML = '';
-    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'Phase–amplitude coupling · ' + layerSay(st.layer) }), qh('pac')]));
+    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'Phase–amplitude coupling across regions · ' + layerSay(st.layer) }), qh('pac')]));
+    host.appendChild(el('p', { class: 'xplore', id: 'pacxwarn' }, [el('strong', { text: 'Exploratory — interpretation under validation. ' }),
+      'Phase in one region and amplitude in another can couple through a shared reference or volume conduction rather than '
+      + 'one region organising the other. Read it as a lead; the within-region comodulogram above is the conventional measure.']));
     if (!D.pac[kk(st.layer)]) {
       host.appendChild(el('p', { class: 'empty', text: 'No PAC was built for this layer.' }));
       return;
@@ -1588,14 +1606,10 @@ window.MONO = (function () {
     host.appendChild(el('p', { class: 'small muted', text: (hasTrans
       ? 'Measured in the four 10 s state windows, the three transitions (−3 s / +3 s around each boundary) and rest: '
       : 'Measured in the four 10 s state windows (and rest): ')
-      + 'phase from 2–12 Hz in one region, amplitude around 15–50 Hz in another or the same one (Tort’s '
-      + 'modulation index). Shown: the change Precon1 → Precon4. A cell with no colour cannot carry its sidebands.'
+      + 'phase from 2–12 Hz in one region, amplitude around 15–50 Hz in the other (Tort’s modulation index), each way. '
+      + 'Shown: the change Precon1 → Precon4. A cell with no colour cannot carry its sidebands.'
       + (hasTrans ? '' : ' The transitions are not in this Monolith yet; Drift → Monolith can add them with a small run.') }));
-    const sw = states.filter((w) => w.kind === 'state'), tw = states.filter((w) => w.kind === 'transition');
-    host.appendChild(el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Window' }),
-      seg(sw.map((w) => [w.id, w.label]), st.pacWin, (id) => { st.pacWin = id; remember(); renderPac(); }),
-      tw.length ? seg(tw.map((w) => [w.id, w.label, w.label + ': −3 s / +3 s around the boundary']), st.pacWin,
-        (id) => { st.pacWin = id; remember(); renderPac(); }) : null]));
+    host.appendChild(pacWinCtl());
     const pw = states.findIndex((w) => w.id === st.pacWin);
     const R = S.regions.length;
     let pair = st.sel != null ? S.pairs[st.sel] : st.pacPair;
@@ -1606,7 +1620,8 @@ window.MONO = (function () {
     }
     if (!pair) pair = [0, 1];
     const [a, b] = pair;
-    const combos = [[a, a], [a, b], [b, a], [b, b]];
+    // Across regions only: each region with itself is the card above.
+    const combos = [[a, b], [b, a]];
     const cells = S.pac_cells;
     const fps = [...new Set(cells.map((c) => c.fp))];
     const fas = [...new Set(cells.map((c) => c.fa))];
@@ -1641,7 +1656,7 @@ window.MONO = (function () {
           cell.amp_band ? 'amplitude band ' + sig(cell.amp_band[0]) + '–' + sig(cell.amp_band[1]) + ' Hz' : 'not measured: the amplitude band cannot carry the sidebands',
           'change in MI ' + f3(v) + (isFinite(p) ? ', p ' + fp(p) + ' (uncorrected), ' + same + '/' + k + ' rats' : ''),
           'Click for the PAC circuit at this cell.']);
-        rect.addEventListener('click', () => { st.pacCell = c; renderPac(); });
+        rect.addEventListener('click', () => { st.pacCell = c; renderPac(); renderPacSelf(); });
         svg.appendChild(rect);
       });
       fps.forEach((f, i) => { if (f % 2 === 0) svg.appendChild(sv('text', { x: l + (i + 0.5) * cw, y: GH - bo + 13, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-3') }, String(f))); });
@@ -1701,8 +1716,8 @@ window.MONO = (function () {
         + live.length + '). A filled node: its own PAC changed.' }));
       circ.appendChild(svg);
     }
-    const tops = el('div', {}, [el('h3', { text: 'Strongest PAC changes' }),
-      el('ol', { class: 'top' }, top.slice(0, 6).map((x, i) => {
+    const tops = el('div', {}, [el('h3', { text: 'Strongest cross-region PAC changes' }),
+      el('ol', { class: 'top' }, top.filter((x) => Math.floor(x.op / R) !== x.op % R).slice(0, 6).map((x, i) => {
         const li = el('li', { tabindex: '0' }, [el('span', { class: 'rk', text: String(i + 1) }),
           el('span', { class: 'pr' }, [short(x.phase) + ' → ' + short(x.amp), el('span', { class: 'chip' + (x.same === x.k ? ' all' : ''), text: x.same + '/' + x.k })]),
           el('span', { class: 'bs num', text: S.windows[x.wi].label + ' · ' + x.fp + ' × ' + x.fa + ' Hz: ' + f3(x.est) + ', p ' + fp(x.p) })]);
@@ -1715,6 +1730,363 @@ window.MONO = (function () {
         return li;
       }))]);
     host.appendChild(el('div', { class: 'pacrow' }, [grids, el('div', {}, [circ, tops])]));
+  }
+
+  /* ---------------- across the four sessions: the trajectory ----------------
+     The selected line's value in every session -- Precon1, Precon2,
+     Precon3, Precon4 -- presentation by presentation and session by
+     session, each rat its own line. Descriptive: no test (the lab
+     meeting, 2026-10-02). Precon2 and Precon3 are there once they have
+     been run as an addition (Drift → Monolith). */
+  const TJ = { key: null, detail: null, err: null, seq: 0 };
+  const TRAJ_ORDER = ['Precon1', 'Precon2', 'Precon3', 'Precon4'];
+  const ratColor = (i, n) => 'hsl(' + Math.round(360 * i / Math.max(1, n)) + ', 55%, 45%)';
+  function trajAt() {
+    if (st.sel == null) return null;
+    // Over a range of frequencies: its strongest band, as the ghost opens.
+    const rb = rangeBins();
+    const w = wi(), m = mi();
+    let b = bi();
+    if (rb) {
+      const R = overRange((q, bb) => E(st.layer, q, w, bb, m, st.sel), rb);
+      if (R.best) b = R.best.b;
+    }
+    return [w, b, m, st.sel];
+  }
+  function loadTraj() {
+    const at = trajAt();
+    const path = at ? '/entry?what=edges&layer=' + st.layer + '&at=' + at.join(',') + splitQ() : null;
+    if (TJ.key === path) return;
+    Object.assign(TJ, { key: path, detail: null, err: null });
+    if (!path) return;
+    const seq = ++TJ.seq;
+    entryJSON(path).then((d) => { if (seq === TJ.seq) { TJ.detail = d; renderTraj(); } })
+      .catch((e) => { if (seq === TJ.seq) { TJ.err = e.message; renderTraj(); } });
+  }
+  /* Each rat's value in each session it has: {rat: {day: {x, units: [v]}}}. */
+  function trajRows(d) {
+    const out = [];
+    for (const r of d.rats || []) {
+      const row = { rat: r.rat, days: {} };
+      for (const day of TRAJ_ORDER) {
+        const s = (r.days || {})[day] || (r.traj || {})[day];
+        if (!s) continue;
+        const minus = st.layer === 'minus_fp';
+        const units = (s.units || []).map((u) => (u.v == null ? null : (minus && s.rest != null ? u.v - s.rest : u.v)));
+        row.days[day] = { x: s.x != null ? s.x : null, units };
+      }
+      out.push(row);
+    }
+    return out;
+  }
+  function renderTraj() {
+    const S = D.S;
+    const host = $('trajcard');
+    if (!host) return;
+    host.innerHTML = '';
+    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'Across the four sessions' }), qh('trajectory')]));
+    const T = S.trajectory || { days: [] };
+    const have = TRAJ_ORDER.filter((d) => d === 'Precon1' || d === 'Precon4' || (T.days || []).includes(d));
+    host.appendChild(el('p', { class: 'small muted', text: 'The selected line’s value in each session, presentation by presentation, '
+      + 'each rat its own colour' + (st.layer === 'minus_fp' ? ', each session less its flower-pot rest' : '') + '. Descriptive: '
+      + 'nothing here is tested.' + ((T.days || []).length < 2 ? ' Precon2 and Precon3 are not in this Monolith yet: Drift → Monolith '
+      + 'adds them (Add Precon2 and Precon3, upload, check, run, fetch).' : '') }));
+    loadTraj();
+    if (st.sel == null) { host.appendChild(el('p', { class: 'empty', text: 'Pick a line on the circuit (or a point of interest) to follow it across the sessions.' })); return; }
+    if (TJ.err) { host.appendChild(el('p', { class: 'warn', text: 'Could not read it: ' + TJ.err })); return; }
+    if (!TJ.detail) { host.appendChild(el('p', { class: 'loading', text: 'Reading every session…' })); return; }
+    const [a, b] = S.pairs[st.sel];
+    host.appendChild(el('p', { class: 'small', id: 'trajsay', text: short(S.regions[a]) + ' – ' + short(S.regions[b]) + ' · ' + viewSay() }));
+    const rows = trajRows(TJ.detail);
+    const n = rows.length;
+    // 1. Presentation by presentation, a panel a session.
+    const PW2 = 200, PH = 170, gap = 12, l = 40, top = 18, bo = 26;
+    const W2 = l + have.length * (PW2 + gap);
+    const vals = [];
+    for (const r of rows) for (const day of have) for (const v of ((r.days[day] || {}).units || [])) if (v != null) vals.push(v);
+    const lo = vals.length ? Math.min(...vals) : 0, hi = vals.length ? Math.max(...vals) : 1;
+    const Y = (v) => top + (PH - top - bo) * (1 - (v - lo) / Math.max(1e-15, hi - lo));
+    const svg = sv('svg', { viewBox: '0 0 ' + W2 + ' ' + PH, width: '100%', class: 'mfig trajfig', style: 'max-width:' + W2 + 'px',
+                            role: 'img', 'aria-label': 'Every presentation in every session, rat by rat' });
+    [lo, (lo + hi) / 2, hi].forEach((v) => {
+      svg.appendChild(sv('text', { x: l - 4, y: Y(v) + 3, 'text-anchor': 'end', 'font-size': 9.5, fill: css('--ink-3') }, sig(v)));
+    });
+    have.forEach((day, k) => {
+      const x0 = l + k * (PW2 + gap);
+      const g = sv('g', { 'data-day': day });
+      g.appendChild(sv('rect', { x: x0, y: top, width: PW2, height: PH - top - bo, fill: css('--surface-2'), stroke: css('--line') }));
+      g.appendChild(sv('text', { x: x0 + PW2 / 2, y: 12, 'text-anchor': 'middle', 'font-size': 10.5, fill: css('--ink'), 'font-weight': 600 }, day));
+      const m = Math.max(1, ...rows.map((r) => ((r.days[day] || {}).units || []).length));
+      const X = (i) => x0 + 6 + (PW2 - 12) * (m === 1 ? 0.5 : i / (m - 1));
+      rows.forEach((r, ri) => {
+        const us = (r.days[day] || {}).units || [];
+        let dd = '';
+        us.forEach((v, i) => { if (v != null) dd += (dd ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); });
+        if (dd) g.appendChild(sv('path', { d: dd, fill: 'none', stroke: ratColor(ri, n), 'stroke-width': 1, 'stroke-opacity': 0.7, 'data-rat': String(r.rat) }));
+      });
+      // The mean over rats, presentation by presentation.
+      let md = '';
+      for (let i = 0; i < m; i++) {
+        const xs = rows.map((r) => ((r.days[day] || {}).units || [])[i]).filter((v) => v != null);
+        if (xs.length) md += (md ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(xs.reduce((s2, v) => s2 + v, 0) / xs.length).toFixed(1);
+      }
+      if (md) g.appendChild(sv('path', { d: md, fill: 'none', stroke: css('--ink'), 'stroke-width': 2.2, class: 'trajmean' }));
+      g.appendChild(sv('text', { x: x0 + PW2 / 2, y: PH - 8, 'text-anchor': 'middle', 'font-size': 9.5, fill: css('--ink-3') },
+        m + ' presentation' + (m === 1 ? '' : 's') + ', in order'));
+      if (!rows.some((r) => r.days[day])) g.appendChild(sv('text', { x: x0 + PW2 / 2, y: PH / 2, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-3') }, 'not measured'));
+      svg.appendChild(g);
+    });
+    host.appendChild(el('div', { class: 'trajwrap' }, [svg]));
+    // 2. Session by session: the matrix, rats by sessions, and the mean.
+    const tb = el('table', { class: 'linetable trajmat', id: 'trajmat' });
+    tb.appendChild(el('thead', {}, [el('tr', {}, [el('th', { text: 'Rat' })].concat(have.map((d) => el('th', { text: d }))))]));
+    const body = el('tbody');
+    const all = [];
+    for (const r of rows) for (const day of have) { const x = (r.days[day] || {}).x; if (x != null) all.push(x); }
+    const m0 = all.length ? Math.min(...all) : 0, m1 = all.length ? Math.max(...all) : 1;
+    const shade = (x) => (x == null ? null : 'background:' + mix(css('--surface'), css('--arrow'), 0.05 + 0.5 * (x - m0) / Math.max(1e-15, m1 - m0)));
+    rows.forEach((r, ri) => {
+      body.appendChild(el('tr', { 'data-rat': String(r.rat) }, [el('th', {}, [el('b', { class: 'sw', style: 'background:' + ratColor(ri, n) }), 'r' + r.rat])]
+        .concat(have.map((day) => { const x = (r.days[day] || {}).x; return el('td', { class: 'num', style: shade(x), text: x == null ? '—' : sig(x) }); }))));
+    });
+    const meanRow = el('tr', { class: 'dtot' }, [el('th', { text: 'Mean ± SE' })].concat(have.map((day) => {
+      const xs = rows.map((r) => (r.days[day] || {}).x).filter((v) => v != null);
+      if (!xs.length) return el('td', { class: 'num', text: '—' });
+      const mu = xs.reduce((s2, v) => s2 + v, 0) / xs.length;
+      const se = xs.length > 1 ? Math.sqrt(xs.reduce((s2, v) => s2 + (v - mu) ** 2, 0) / (xs.length - 1) / xs.length) : null;
+      return el('td', { class: 'num', text: sig(mu) + (se != null ? ' ± ' + sig(se) : '') + ' (' + xs.length + ')' });
+    })));
+    body.appendChild(meanRow);
+    tb.appendChild(body);
+    host.appendChild(el('div', { class: 'dtwrap' }, [tb]));
+    host.appendChild(el('p', { class: 'small muted', text: 'A session’s value is the mean over its presentations'
+      + (st.layer === 'minus_fp' ? ', less the mean over its flower-pot rest epochs' : '') + '. Precon1 and Precon4 are the two '
+      + 'the Monolith’s change is taken between; Precon2 and Precon3 never enter it.' }));
+  }
+
+  /* ---------------- PAC within a region: the conventional route ----------------
+     Each region's own comodulogram -- phase and amplitude from its own
+     wire -- in each session, the change between them, every region at the
+     chosen cell, and a typical presentation of each session to open. */
+  const PS = { key: null, data: null, err: null, seq: 0 };
+  const pacWins = () => D.S.windows.slice(0, dims().PW);
+  function pacWinIndex() {
+    const ws = pacWins();
+    if (ws.findIndex((w) => w.id === st.pacWin) < 0) st.pacWin = 'cue1';
+    return ws.findIndex((w) => w.id === st.pacWin);
+  }
+  function pacWinCtl() {
+    const ws = pacWins();
+    const sw = ws.filter((w) => w.kind === 'state'), tw = ws.filter((w) => w.kind === 'transition');
+    const pick = (id) => { st.pacWin = id; remember(); renderPacSelf(); renderPac(); };
+    return el('div', { class: 'ctl' }, [el('span', { class: 'lab', text: 'Window' }),
+      seg(sw.map((w) => [w.id, w.label]), st.pacWin, pick),
+      tw.length ? seg(tw.map((w) => [w.id, w.label, w.label + ': −3 s / +3 s around the boundary']), st.pacWin, pick) : null]);
+  }
+  function pacRegion() {
+    const S = D.S;
+    if (st.pacRegion != null && st.pacRegion >= 0 && st.pacRegion < S.regions.length) return st.pacRegion;
+    return st.sel != null ? S.pairs[st.sel][0] : 0;
+  }
+  function loadPacSelf() {
+    const pw = pacWinIndex();
+    const key = [kk(st.layer), pw, pacCellNow()].join('|');
+    if (PS.key === key) return;
+    Object.assign(PS, { key, data: null, err: null });
+    const seq = ++PS.seq;
+    getJSON('/pacself?layer=' + st.layer + '&window=' + pw + '&cell=' + pacCellNow() + splitQ())
+      .then((d) => { if (seq === PS.seq) { PS.data = d; renderPacSelf(); } })
+      .catch((e) => { if (seq === PS.seq) { PS.err = e.message; renderPacSelf(); } });
+  }
+  /* A pair with this region in it, to open a presentation by: the selected
+     one if it has it, else the first. */
+  function pairWith(r) {
+    const S = D.S;
+    if (st.sel != null && S.pairs[st.sel].indexOf(r) >= 0) return st.sel;
+    return S.pairs.findIndex((x) => x[0] === r || x[1] === r);
+  }
+  function openPacExample(r, day) {
+    const S = D.S, d = PS.data;
+    const ex = d && d.examples && d.examples[r] && d.examples[r][day];
+    if (!ex) return;
+    const pw = pacWinIndex();
+    // A transition's PAC was measured on the slow (−3/+3 s) windows.
+    let b = bi();
+    if (S.windows[pw].kind === 'transition' && S.bands[b].speed !== 'slow') b = S.bands.findIndex((x) => x.id === 'theta');
+    openLeaf(ex.rat, day, ex.unit, { at: [pw, b, mi(), pairWith(r)], units: (d.units || {})[String(ex.rat)] || null, layer: 'raw' });
+  }
+  /* One comodulogram: cells by phase (x) and amplitude (y) Hz. */
+  function comod(o) {
+    const S = D.S, cells = S.pac_cells;
+    const fps = [...new Set(cells.map((c) => c.fp))], fas = [...new Set(cells.map((c) => c.fa))];
+    const GW = 250, GH2 = 180, l = 30, t = 6, r = 4, bo = 28;
+    const cw = (GW - l - r) / fps.length, ch = (GH2 - t - bo) / fas.length;
+    const svg = sv('svg', { viewBox: '0 0 ' + GW + ' ' + GH2, role: 'img', class: 'comod', 'data-kind': o.kind, 'aria-label': o.label });
+    cells.forEach((cell, c) => {
+      const x = l + fps.indexOf(cell.fp) * cw, y = t + (fas.length - 1 - fas.indexOf(cell.fa)) * ch;
+      const v = o.value(c), pv = o.p ? o.p(c) : NaN;
+      const ok = isFinite(pv) && pass(pv);
+      let fill = css('--chip');
+      if (!cell.amp_band) fill = 'none';
+      else if (isFinite(v)) fill = o.color(v);
+      const rect = sv('rect', { x: x + 0.5, y: y + 0.5, width: cw - 1, height: ch - 1, fill, class: 'cell',
+        stroke: st.pacCell === c ? css('--focus') : ok ? css('--ink') : css('--line'),
+        'stroke-width': st.pacCell === c ? 2 : ok ? 1.5 : 0.5, 'data-cell': String(c) });
+      hover(rect, () => [cell.fp + ' Hz phase × ' + cell.fa + ' Hz amplitude, ' + o.region,
+        cell.amp_band ? o.say(c) : 'not measured: the amplitude band cannot carry the sidebands', 'Click to choose this cell.']);
+      rect.addEventListener('click', () => { st.pacCell = c; renderPacSelf(); renderPac(); });
+      svg.appendChild(rect);
+    });
+    fps.forEach((f, i) => { if (f % 2 === 0) svg.appendChild(sv('text', { x: l + (i + 0.5) * cw, y: GH2 - bo + 12, 'text-anchor': 'middle', 'font-size': 9.5, fill: css('--ink-3') }, String(f))); });
+    fas.forEach((f, i) => svg.appendChild(sv('text', { x: l - 4, y: t + (fas.length - 1 - i + 0.5) * ch + 3, 'text-anchor': 'end', 'font-size': 9.5, fill: css('--ink-3') }, String(f))));
+    svg.appendChild(sv('text', { x: l + (GW - l - r) / 2, y: GH2 - 3, 'text-anchor': 'middle', 'font-size': 9.5, fill: css('--ink-3') }, 'phase Hz (amplitude Hz up the side)'));
+    return el('div', { class: 'pacgrid' }, [el('div', { class: 'cap', text: o.title }), svg]);
+  }
+  function renderPacSelf() {
+    const S = D.S;
+    const host = $('pacself');
+    if (!host) return;
+    host.innerHTML = '';
+    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'Phase–amplitude coupling within a region · ' + layerSay(st.layer) }), qh('pac.self')]));
+    if (!D.pac[kk(st.layer)]) {
+      host.appendChild(el('p', { class: 'empty', text: 'No PAC was built for this layer.' }));
+      return;
+    }
+    host.appendChild(el('p', { class: 'small muted', text: 'The conventional comodulogram: phase (2–12 Hz) and amplitude (15–50 Hz) from '
+      + 'the same region’s wire, Tort’s modulation index (MI). Each session is the mean over rats of each rat’s mean over its '
+      + 'presentations' + (st.layer === 'minus_fp' ? ', less its flower-pot rest' : '') + '; the change is pooled over rats exactly '
+      + 'as everything else here, and a ringed cell passes the slider.' }));
+    const R = S.regions.length;
+    const r = pacRegion();
+    const pw = pacWinIndex();
+    // One cell for both PAC cards: the strongest PAC change there is.
+    if (st.pacCell == null) {
+      const t0 = ((S.pac_top || {})[st.layer] || [])[0];
+      if (t0) st.pacCell = t0.cell;
+    }
+    const c0 = pacCellNow(), cell0 = S.pac_cells[c0];
+    const regSel = el('select', { id: 'pacself-region', 'aria-label': 'Region' }, S.regions.map((n, i) =>
+      el('option', { value: String(i), text: n, selected: i === r ? 'selected' : null })));
+    regSel.addEventListener('change', () => { st.pacRegion = Number(regSel.value); remember(); renderPacSelf(); });
+    host.appendChild(el('div', { class: 'hrow pacselfctl' }, [el('span', { class: 'lab', text: 'Region' }), regSel]));
+    host.appendChild(pacWinCtl());
+    loadPacSelf();
+    const d = PS.data;
+    const op = r * R + r;
+    const est = (c) => PAC(st.layer, Q.est, pw, c, op), pv = (c) => PAC(st.layer, Q.p, pw, c, op);
+    const k = (c) => PAC(st.layer, Q.k, pw, c, op), same = (c) => PAC(st.layer, Q.same, pw, c, op);
+    // The two sessions on one colour scale, so they can be compared by eye.
+    const sess = (day) => (d && d.sessions[day] ? d.sessions[day].mean[r] : null);
+    const m1 = sess('Precon1'), m4 = sess('Precon4');
+    const vals = [].concat(m1 || [], m4 || []).filter((x) => x != null && isFinite(x));
+    const lo = vals.length ? Math.min(...vals) : 0, hi = vals.length ? Math.max(...vals) : 1;
+    const signed = st.layer === 'minus_fp';
+    const vabs = Math.max(1e-12, ...vals.map(Math.abs));
+    const seqCol = (v) => (signed ? mix(css('--surface'), v >= 0 ? css('--up') : css('--down'), 0.08 + 0.8 * Math.min(1, Math.abs(v) / vabs))
+      : mix(css('--surface'), css('--arrow'), 0.06 + 0.86 * Math.max(0, Math.min(1, (v - lo) / Math.max(1e-15, hi - lo)))));
+    let dmax = 1e-12;
+    S.pac_cells.forEach((_c, c) => { const v = est(c); if (isFinite(v)) dmax = Math.max(dmax, Math.abs(v)); });
+    const nAt = (day, c) => (d && d.sessions[day] ? d.sessions[day].n[r][c] : 0);
+    const grids = el('div', { class: 'pacgrids three', id: 'pacselfgrids' });
+    for (const day of ['Precon1', 'Precon4']) {
+      const m = sess(day);
+      grids.appendChild(m ? comod({ kind: day, region: S.regions[r], title: day + ': mean MI' + (signed ? ' less rest' : ''),
+        label: S.regions[r] + ' with itself, ' + day, value: (c) => (m[c] == null ? NaN : m[c]), color: seqCol,
+        say: (c) => 'mean MI ' + sig(m[c]) + ' over ' + nAt(day, c) + ' rats' }) : el('div', { class: 'pacgrid' }, [
+        el('div', { class: 'cap', text: day }), el('p', { class: PS.err ? 'warn' : 'loading', text: PS.err ? 'Could not read it: ' + PS.err : 'Reading each session…' })]));
+    }
+    grids.appendChild(comod({ kind: 'change', region: S.regions[r], title: 'Change, Precon4 − Precon1 (pooled)',
+      label: S.regions[r] + ' with itself, the change', value: est, p: pv,
+      color: (v) => mix(css('--surface'), v >= 0 ? css('--up') : css('--down'), 0.08 + 0.8 * Math.min(1, Math.abs(v) / dmax)),
+      say: (c) => 'change ' + f3(est(c)) + (isFinite(pv(c)) ? ', p ' + fp(pv(c)) + ' (uncorrected), ' + same(c) + '/' + k(c) + ' rats the same way' : ', not tested') }));
+    host.appendChild(grids);
+    host.appendChild(el('p', { class: 'small muted', text: signed
+      ? 'Sessions: red, coupling above that day’s rest; blue, below. Change: red stronger on Precon4, blue weaker.'
+      : 'Sessions: darker is stronger coupling (MI ' + sig(lo) + ' to ' + sig(hi) + '). Change: red stronger on Precon4, blue weaker.' }));
+    // Every region at the chosen cell.
+    const ws = S.windows[pw];
+    host.appendChild(el('h3', { text: 'Every region at ' + cell0.fp + ' Hz phase × ' + cell0.fa + ' Hz amplitude · ' + ws.label }));
+    if (d && d.sessions) {
+      const W2 = 600, RH = 22, top = 22, L0 = 70, X0 = 80, X1 = 400;
+      const H2 = top + RH * R + 8;
+      const svg = sv('svg', { viewBox: '0 0 ' + W2 + ' ' + H2, width: '100%', class: 'mfig pacregions', style: 'max-width:' + W2 + 'px',
+        role: 'img', 'aria-label': 'Every region at this cell, Precon1 and Precon4' });
+      const at = (day, i) => {
+        const S2 = d.sessions[day];
+        return { m: S2.mean[i][c0], se: S2.se[i][c0] };
+      };
+      const xs = [];
+      for (let i = 0; i < R; i++) for (const day of ['Precon1', 'Precon4']) {
+        const x = at(day, i);
+        if (x.m != null) { xs.push(x.m - (x.se || 0)); xs.push(x.m + (x.se || 0)); }
+      }
+      const a0 = xs.length ? Math.min(...xs, signed ? 0 : Infinity) : 0, a1 = xs.length ? Math.max(...xs, signed ? 0 : -Infinity) : 1;
+      const X = (v) => X0 + (X1 - X0) * (v - a0) / Math.max(1e-15, a1 - a0);
+      svg.appendChild(sv('text', { x: X0, y: 12, 'font-size': 9.5, fill: css('--ink-3') }, sig(a0)));
+      svg.appendChild(sv('text', { x: X1, y: 12, 'font-size': 9.5, fill: css('--ink-3'), 'text-anchor': 'end' }, sig(a1)));
+      svg.appendChild(sv('text', { x: (X0 + X1) / 2, y: 12, 'font-size': 9.5, fill: css('--ink-3'), 'text-anchor': 'middle' },
+        '○ Precon1  ● Precon4, mean MI ± SE'));
+      svg.appendChild(sv('text', { x: X1 + 14, y: 12, 'font-size': 9.5, fill: css('--ink-3') }, 'pooled change, p, rats the same way'));
+      if (signed && a0 < 0 && a1 > 0) svg.appendChild(sv('line', { x1: X(0), x2: X(0), y1: top - 4, y2: H2 - 6, stroke: css('--line-2') }));
+      for (let i = 0; i < R; i++) {
+        const y = top + RH * i + RH / 2;
+        const row = sv('g', { class: 'pacrow-r', 'data-region': String(i), style: 'cursor:pointer' });
+        if (i === r) row.appendChild(sv('rect', { x: 0, y: y - RH / 2, width: W2, height: RH, fill: mix(css('--surface'), css('--focus'), 0.16) }));
+        row.appendChild(sv('text', { x: L0, y: y + 3.5, 'text-anchor': 'end', 'font-size': 10, fill: css('--ink'), 'font-weight': i === r ? 700 : 400 }, short(S.regions[i])));
+        const p1 = at('Precon1', i), p4 = at('Precon4', i);
+        if (p1.m == null && p4.m == null) {
+          row.appendChild(sv('text', { x: X0, y: y + 3.5, 'font-size': 9.5, fill: css('--ink-3') }, 'not measured'));
+        } else {
+          const e = PAC(st.layer, Q.est, pw, c0, i * R + i), q = PAC(st.layer, Q.p, pw, c0, i * R + i);
+          const col = isFinite(e) ? (e >= 0 ? css('--up') : css('--down')) : css('--ink-3');
+          if (p1.m != null && p4.m != null) row.appendChild(sv('line', { x1: X(p1.m), x2: X(p4.m), y1: y, y2: y, stroke: col, 'stroke-width': 2 }));
+          for (const [x, filled] of [[p1, false], [p4, true]]) {
+            if (x.m == null) continue;
+            if (x.se != null) row.appendChild(sv('line', { x1: X(x.m - x.se), x2: X(x.m + x.se), y1: y, y2: y, stroke: css('--ink-3'), 'stroke-width': 1 }));
+            row.appendChild(sv('circle', { cx: X(x.m), cy: y, r: 4, fill: filled ? css('--ink') : css('--surface'), stroke: css('--ink'), 'stroke-width': 1.3 }));
+          }
+          const passTxt = isFinite(q) ? f3(e) + ', p ' + fp(q) + ', ' + PAC(st.layer, Q.same, pw, c0, i * R + i) + '/' + PAC(st.layer, Q.k, pw, c0, i * R + i)
+            : 'not tested (too few rats)';
+          row.appendChild(sv('text', { x: X1 + 14, y: y + 3.5, 'font-size': 10, fill: isFinite(q) && pass(q) ? col : css('--ink-2'),
+            'font-weight': isFinite(q) && pass(q) ? 700 : 400 }, passTxt));
+        }
+        hover(row, [S.regions[i] + ' with itself', 'Precon1 ' + sig(p1.m) + ', Precon4 ' + sig(p4.m), 'Click to show its comodulograms.']);
+        row.addEventListener('click', () => { st.pacRegion = i; remember(); renderPacSelf(); });
+        svg.appendChild(row);
+      }
+      host.appendChild(svg);
+    } else host.appendChild(el('p', { class: PS.err ? 'warn' : 'loading', text: PS.err ? 'Could not read the sessions: ' + PS.err : 'Reading each session…' }));
+    // A typical presentation of each session, to open.
+    host.appendChild(el('h3', { text: 'Example presentations · ' + short(S.regions[r]) }));
+    const exs = d && d.examples ? d.examples[r] : null;
+    const exRow = el('div', { class: 'pacex', id: 'pacex' });
+    for (const day of ['Precon1', 'Precon4']) {
+      const ex = exs ? exs[day] : null;
+      exRow.appendChild(el('div', { class: 'lcard', 'data-day': day }, ex ? [
+        el('h4', { text: day }),
+        el('p', { class: 'small', text: 'r' + ex.rat + ' · ' + ex.unit + ': MI ' + sig(ex.v) + ' at this cell, the presentation nearest the median of '
+          + ex.n + ' (' + sig(ex.median) + ').' }),
+        el('button', { type: 'button', class: 'more-btn', text: 'Open its signals', onclick: () => openPacExample(r, day) })]
+        : [el('h4', { text: day }), el('p', { class: 'small muted', text: d ? 'No presentation of this region has a value at this cell.' : 'Reading…' })]));
+    }
+    host.appendChild(exRow);
+    host.appendChild(el('p', { class: 'small muted', text: 'Opening one reads its recording from the VACC copy and draws the phase-binned '
+      + 'amplitude at this cell; the card “A phase → A amplitude” (or B → B) is this region with itself.' }));
+    // The strongest within-region changes anywhere.
+    const own = ((S.pac_top || {})[st.layer] || []).filter((x) => Math.floor(x.op / R) === x.op % R).slice(0, 6);
+    if (own.length) {
+      host.appendChild(el('h3', { text: 'Strongest within-region changes' }));
+      host.appendChild(el('ol', { class: 'top', id: 'pacselftop' }, own.map((x, i) => {
+        const li = el('li', { tabindex: '0' }, [el('span', { class: 'rk', text: String(i + 1) }),
+          el('span', { class: 'pr' }, [x.phase + ' with itself', el('span', { class: 'chip' + (x.same === x.k ? ' all' : ''), text: x.same + '/' + x.k })]),
+          el('span', { class: 'bs num', text: S.windows[x.wi].label + ' · ' + x.fp + ' × ' + x.fa + ' Hz: ' + f3(x.est) + ', p ' + fp(x.p) })]);
+        li.addEventListener('click', () => {
+          st.pacWin = S.windows[x.wi].id; st.pacCell = x.cell; st.pacRegion = Math.floor(x.op / R);
+          remember(); renderPacSelf(); renderPac();
+        });
+        return li;
+      })));
+    }
   }
 
   /* ---------------- the verdict and the foot ---------------- */
@@ -1840,7 +2212,7 @@ window.MONO = (function () {
     [line, na, nb, la, lb].forEach((n) => g.appendChild(n));
     renderCrumbs();
     GH.split = st.split || 'all';
-    const want = getJSON('/entry?what=edges&layer=' + st.layer + '&at=' + GH.at.join(',') + splitQ())
+    const want = entryJSON('/entry?what=edges&layer=' + st.layer + '&at=' + GH.at.join(',') + splitQ())
       .then((d) => { GH.detail = d; }).catch((e) => { GH.err = e.message; });
     await new Promise((resolve) => tween(560, (t) => {
       const th = th0 + (th1 - th0) * t;
@@ -1898,7 +2270,7 @@ window.MONO = (function () {
       GH.detail = null;
       GH.info = null;
       drawLevel(false);
-      getJSON('/entry?what=edges&layer=' + st.layer + '&at=' + at.join(',') + splitQ())
+      entryJSON('/entry?what=edges&layer=' + st.layer + '&at=' + at.join(',') + splitQ())
         .then((d) => { GH.detail = d; drawLevel(false); })
         .catch((e) => { GH.err = e.message; drawLevel(false); });
     }
@@ -2264,15 +2636,20 @@ window.MONO = (function () {
       + '&unit=' + encodeURIComponent(unit) + '&cell=' + pacCellNow();
   }
   function leafUnits(day) {
+    if (LF.own) return (LF.units && LF.units[day]) || [];
     const r = GH.detail && (GH.detail.rats || []).find((x) => x.rat === LF.rat);
     const s = r && (r.days || {})[day];
     if (!s) return [];
     const rest = String(LF.unit || '').charAt(0) === 'e';
     return (rest ? s.rest_units || [] : s.units || []).map((u) => u.id);
   }
-  async function openLeaf(rat, day, unit) {
-    Object.assign(LF, { open: true, rat, day, unit, data: null, err: null, at: (GH.at || [wi(), bi(), mi(), st.sel]).slice(),
-                        layer: GH.layer || st.layer });
+  /* `o` {at, units, layer}: a presentation opened from somewhere other
+     than the ghost (the within-region PAC); stepping keeps it. */
+  async function openLeaf(rat, day, unit, o) {
+    const own = o || (LF.open && LF.own ? { at: LF.at, units: LF.units, layer: LF.layer } : null);
+    Object.assign(LF, { open: true, rat, day, unit, data: null, err: null,
+                        at: (own ? own.at : (GH.at || [wi(), bi(), mi(), st.sel])).slice(),
+                        layer: (own && own.layer) || GH.layer || st.layer, units: own ? own.units || null : null, own: !!own });
     const seq = ++LF.seq;
     hideTip();
     renderLeaf();
@@ -2294,6 +2671,7 @@ window.MONO = (function () {
   }
   function closeLeaf() {
     LF.open = false;
+    LF.own = false;
     LF.seq++;
     const h = $('leaf');
     if (h) h.remove();
@@ -2639,7 +3017,7 @@ window.MONO = (function () {
       const x = left + cell * c, y = top + cell * (r - 1);
       const tested = E0 && E0.by_pair ? E0.by_pair[pi] : null;
       const rect = sv('rect', { x: x + 1, y: y + 1, width: cell - 2, height: cell - 2, rx: 3,
-        fill: pr.enough ? okCol : noCol, 'fill-opacity': pr.enough ? 0.2 + 0.6 * pr.n / 8 : 0.35,
+        fill: pr.enough ? okCol : noCol, 'fill-opacity': pr.enough ? 0.15 + 0.4 * pr.n / 8 : 0.45,
         'data-pair': pr.a + '|' + pr.b, 'data-n': String(pr.n) });
       hover(rect, [pr.a + ' – ' + pr.b, pr.n + ' rat' + (pr.n === 1 ? '' : 's') + ' have both regions on both sessions'
         + (pr.rats.length ? ' (' + pr.rats.map((x2) => 'r' + x2).join(', ') + ')' : ''),
@@ -2687,7 +3065,7 @@ window.MONO = (function () {
     const causes = ['clipped', 'histology', 'bad', 'unread'].filter((k) => tS[k]).map((k) =>
       REASON_LABEL[k] + ': ' + tS[k].toLocaleString() + ' (' + pct(tS[k], tS.of) + ')');
     host.appendChild(el('p', { class: 'small', id: 'causes' }, [el('strong', { text: 'Lost region-windows, by cause: ' }),
-      causes.join(' · ') + ' — of ' + tS.of.toLocaleString() + ' (presentations × 4 windows × ' + d.regions.length + ' regions).']));
+      (causes.length ? causes.join(' · ') + ' — of ' : 'none, of ') + tS.of.toLocaleString() + ' (presentations × 4 windows × ' + d.regions.length + ' regions).']));
     const row = (label, t) => el('div', { class: 'drow' }, [el('span', { class: 'dlab small', text: label }), damageBar(t, 520),
       el('span', { class: 'small muted', text: pct(t.kept, t.of) + ' kept' })]);
     host.appendChild(el('div', { class: 'dbars' }, [
@@ -2763,6 +3141,8 @@ window.MONO = (function () {
     renderCircuit();
     renderSpectrum();
     renderTop();
+    renderTraj();
+    renderPacSelf();
     renderPac();
     if (viewChanged === undefined) { renderVerdict(); renderFoot(); }
   }
@@ -2814,6 +3194,9 @@ window.MONO = (function () {
     get ghost() { return { pair: GH.pair, stack: GH.stack.slice(), lifted: GH.lifted, detail: GH.detail, info: GH.info }; },
     get ready() { return !!D.ready; },
     set, go, openGhost, closeGhost, push, ghostTo, renderAll, LEVELS, Q, openLeaf, closeLeaf, stepLeaf, switchDay,
-    rangeBins, switchSplit, topOf, showTab, renderTrail, levelMeans, get avg() { return Object.assign({}, AV); }, get split() { return st.split || 'all'; }, get leaf() { return Object.assign({}, LF); }, broadband, bbCount, here, arrowGeom, filteredPoints, setFilt, get filtN() { return FCACHE.n; }, get damage() { return DMG.data; }, renderDamage,
+    rangeBins, switchSplit, topOf, showTab, renderTrail, levelMeans, renderPacSelf, openPacExample, get pacSelf() { return PS; },
+    // For js/monolith_events.js: the same door to the server (and to the
+    // harness's fixture), the same ? and the same hover.
+    getJSON, postJSON, qh, el, hover, renderTraj, get traj() { return TJ; }, get avg() { return Object.assign({}, AV); }, get split() { return st.split || 'all'; }, get leaf() { return Object.assign({}, LF); }, broadband, bbCount, here, arrowGeom, filteredPoints, setFilt, get filtN() { return FCACHE.n; }, get damage() { return DMG.data; }, renderDamage,
   };
 })();

@@ -111,15 +111,13 @@ KINDS = {
             # "is this a real event" reads `good` and is unaffected.
             # Colours match `dspca.CLASS_COLORS[0:2]`, which the scatter, the
             # profile and the class rasters all draw from.
-            # Five, because the panel offers up to five classes and the
-            # ordering generalises -- DS1 is the shallowest, whatever the
-            # count. Committing three classes wrote a `ds3` that no
-            # vocabulary knew, so `_n_good` stopped counting those events
-            # and the set read as though two of its spikes had gone.
             #
-            # Toothy only ever makes two. Three or more is exploration, and
-            # the vocabulary has to be able to say what was explored or the
-            # record cannot.
+            # TWO, because there are two (the user, 2026-10-02: "it goes up
+            # to 2"). DS3 to DS5 used to be here because X-ray's panel let
+            # somebody ask for up to five classes; nobody ever committed
+            # one, and every set card showed three empty chips for them.
+            # The panel now asks for two, and `RETIRED` below takes them
+            # out of the vocabulary each older set copied in.
             #
             # The colours are `dspca.CLASS_COLORS`, written out rather than
             # imported: that module pulls in scipy and scikit-learn, and the
@@ -128,12 +126,6 @@ KINDS = {
              "color": "#1a7f37", "good": True, "computed": True},
             {"id": "ds2", "name": "Dentate Spike (DS2)",
              "color": "#7b3fa0", "good": True, "computed": True},
-            {"id": "ds3", "name": "Dentate Spike (DS3)",
-             "color": "#b8620a", "good": True, "computed": True},
-            {"id": "ds4", "name": "Dentate Spike (DS4)",
-             "color": "#1f6feb", "good": True, "computed": True},
-            {"id": "ds5", "name": "Dentate Spike (DS5)",
-             "color": "#a3155f", "good": True, "computed": True},
         ],
     },
     "ied": {
@@ -154,6 +146,18 @@ KINDS = {
         ],
     },
 }
+
+
+# Labels a set may still carry in the vocabulary it copied in, and that are
+# shown only where a candidate actually holds one. See the DS vocabulary.
+RETIRED = frozenset({"ds3", "ds4", "ds5"})
+
+
+def live_labels(rec):
+    """A set's vocabulary without the retired labels nothing uses."""
+    used = {e.get("label") for e in (rec.get("events") or [])}
+    return [l for l in (rec.get("labels") or [])
+            if l.get("id") not in RETIRED or l.get("id") in used]
 
 
 class CurationError(Exception):
@@ -331,6 +335,7 @@ class Curation:
             raise CurationError("Unknown kind %r." % kind)
         rec = self._read(gid, kind)
         if rec:
+            rec["labels"] = live_labels(rec)
             # An old set may carry a key the mode has since reserved.
             for lab in rec.get("labels") or []:
                 lab["keys"] = _usable_keys(lab.get("keys"))
@@ -381,7 +386,7 @@ class Curation:
             "source": rec.get("source") or {},
             "created": rec.get("created") or {},
             "updated": rec.get("updated") or {},
-            "labels": rec.get("labels") or kind.get("labels") or [],
+            "labels": live_labels(rec) or kind.get("labels") or [],
             "archived": bool(rec.get("archived")),
             # The workbench facts. A set is either something somebody is
             # working on or it is not, and the list is unreadable without

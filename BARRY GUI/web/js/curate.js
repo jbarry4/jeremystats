@@ -314,6 +314,7 @@ BARRY.curate = (function () {
       BARRY.views.toolkit.curationChanged();
     }
     set_ = null; kind = null; sess = null; history = []; vhist = [];
+    marksStamp = 0;
     const bar = $('#curBar');
     if (bar) bar.remove();
     document.removeEventListener('keydown', keys, true);
@@ -338,19 +339,16 @@ BARRY.curate = (function () {
 
   function openAids() {
     if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return; }
-    const every8 = (sess.info.channels || [])
-      .filter((c, i) => i % 8 === 0).map((c) => c.index);
+    /* The CSD raster alone. There were four -- CSD, theta, a voltage raster
+       and a stacked spectrogram -- and the CSD is the one a dentate spike
+       is judged on, so it gets the whole window instead of a quarter of it.
+       Each of the others is still a panel switch away in that window. */
     aidWin = BARRY.views.xplore.popOutPanes(sess, [
       { panel: 'csd' },
-      { panel: 'theta' },
-      { panel: 'voltage' },
-      { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
-        fmin: 1, fmax: 250 },
     ], { role: 'aids', name: 'barry-curate-aids', width: 720, height: 1000,
-         // Folded on arrival. These four are for glancing at: the headers,
-         // control strips and channel lists cost more of a short pane than
-         // they are worth, and every one of them has a sliver to bring it
-         // back if you want it.
+         // Folded on arrival. It is for glancing at: the header, control
+         // strip and channel list cost more of the pane than they are
+         // worth, and each has a sliver to bring it back if you want it.
          chrome: 'notabs,noheads,nostrip,nochannels' });
   }
 
@@ -400,6 +398,10 @@ BARRY.curate = (function () {
      does the aid window -- a separate page with no curate module in it. This
      is the only path by which any of them learn about a candidate. */
   let lastChange = null;
+  /* Bumped whenever the set is re-read because something else changed it
+     (an Avery sweep), and sent on every pointer from then on: a window
+     that sees a stamp it does not hold reads the set again. */
+  let marksStamp = 0;
 
   function publishMarks(opts) {
     if (!sess || !set_) return;
@@ -416,7 +418,7 @@ BARRY.curate = (function () {
     // caller that actually settles the position does the publishing.
     if (opts && opts.local) return;
     if (BARRY.views.xplore.publishCuration) {
-      BARRY.views.xplore.publishCuration(sess, {
+      BARRY.views.xplore.publishCuration(sess, Object.assign({
         gid: set_.gid, kind: set_.kind, index,
         at: (current() || {}).start, n: events().length,
         rev: markRev,
@@ -426,7 +428,16 @@ BARRY.curate = (function () {
            something -- the live slot holds the latest value, so a burst of
            fast keystrokes can coalesce. */
         changed: lastChange,
-      });
+      }, marksStamp ? { marks: marksStamp } : {},
+      (opts && opts.withMarks) ? {
+        /* Every mark, for a change made somewhere else -- an Avery sweep
+           relabelling a few hundred candidates at once. Without them the
+           support panels kept their old colours: a jump in the revision is
+           not a reason to re-read, and a single `changed` cannot say what
+           happened to three hundred. */
+        events: sess.curationMarks.events,
+        labels: sess.curationMarks.labels,
+      } : {}));
     }
   }
 
@@ -937,7 +948,12 @@ BARRY.curate = (function () {
       review = pass;
       if (!nWanted()) review = was;
     }
-    publishMarks();
+    lastChange = null;
+    marksStamp = Date.now();
+    publishMarks({ withMarks: true });
+    // This window's panes read the marks too, and nothing else here moves
+    // the window, so nothing else would repaint them.
+    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
     if (!wanted(current())) {
       const i = events().findIndex(wanted);
       if (i >= 0) { goTo(i, true); }
@@ -1736,6 +1752,9 @@ BARRY.curate = (function () {
     },
     get banked() { return vhist; },
     switchVersion: () => switchVersion(),
+    /* Re-read the set after something else wrote to it -- what an
+       accepted Avery sweep does -- and tell every window. */
+    refresh: (pass) => refreshSet(pass),
     get state() {
       return set_ ? { gid: set_.gid, kind: set_.kind, index,
                       total: events().length, left: left() } : null;

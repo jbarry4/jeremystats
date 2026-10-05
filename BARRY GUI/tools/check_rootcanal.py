@@ -242,6 +242,7 @@ def main():
         _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp,
                 stamp_t, kinds, fake)
         _filter_choices()
+        _k_and_margins_core()
         _pool_gmm_agreement()
         _pool_synthetic(A)
         _pool_routes(A, tmp, fake)
@@ -1081,6 +1082,124 @@ def _member(pool, key, project, mouse, rows, gid=None):
             "band": [500.0, 1000.0], "rows": rows}
 
 
+def _k_and_margins_core():
+    """k = 1..6, the HF ranking, relabels, and margins in the shared core."""
+    from backend import rootcanal as rc
+    from backend import rootcanalpool as pool
+    rng = np.random.default_rng(21)
+    head("k CLUSTERS, RANKED BY HF, AND RELABELS")
+    ck("k = 2 is still the default", rc.Params().k == 2)
+    for bad, what in ((0, "k = 0"), (7, "k = 7"), (2.5, "k = 2.5")):
+        try:
+            rc.Params(k=bad)
+            ck("%s is refused" % what, False, "accepted")
+        except rc.RootCanalError:
+            ck("%s is refused" % what, True)
+    try:
+        rc.Params(k=3, centres=[[0, 0, 0], [1, 1, 1]])
+        ck("two dragged centres for three clusters are refused", False)
+    except rc.RootCanalError:
+        ck("two dragged centres for three clusters are refused", True)
+    try:
+        rc.Params(cluster_calls={"0": "maybe"})
+        ck("a relabel to neither DS nor IED is refused", False)
+    except rc.RootCanalError:
+        ck("a relabel to neither DS nor IED is refused", True)
+
+    # Three blobs, separated on HF (the third column) and on amplitude.
+    blobs = [(100.0, 20.0, 5.0), (300.0, 15.0, 12.0), (600.0, 10.0, 25.0)]
+    X = np.vstack([rng.normal(c, (8.0, 1.0, 0.8), size=(120, 3))
+                   for c in blobs])
+    core = rc.cluster_core(X, k=3)
+    hf = core["raw_c"][:, 2]
+    ck("k = 3 finds three clusters, ranked by HF lowest first",
+       core["k"] == 3 and list(hf) == sorted(hf), list(hf))
+    ck("and each is one blob", sorted(int((core["lab"] == r).sum())
+                                      for r in range(3)) == [120, 120, 120])
+    ck("the highest-HF cluster is IED and the rest DS by the rule",
+       core["calls"] == ["ds", "ds", "ied"]
+       and core["call_by"] == ["rule"] * 3, core["calls"])
+    one_ = rc.cluster_core(X, k=1)
+    ck("k = 1 is no split: one cluster, every event DS",
+       one_["k"] == 1 and one_["calls"] == ["ds"]
+       and (one_["lab"] == 0).all())
+    ck("and says so in words",
+       "no split" in (rc.k_sentence(one_, "500–1000 Hz power") or ""))
+    rl = rc.cluster_core(X, k=3, cluster_calls={"1": "ied"})
+    ck("a relabel wins over the rule, and is marked as by hand",
+       rl["calls"] == ["ds", "ied", "ied"]
+       and rl["call_by"] == ["rule", "hand", "rule"], rl["call_by"])
+    six = rc.cluster_core(X, k=6)
+    ck("k = 6 runs, ranked, with one IED by the rule",
+       six["k"] == 6 and six["calls"].count("ied") == 1
+       and list(six["raw_c"][:, 2]) == sorted(six["raw_c"][:, 2]))
+    ck("at k = 2 by the rule the original sentence is kept, word for word",
+       rc.k_sentence(rc.cluster_core(X, k=2), "x") is None)
+
+    head("MARGINS: READ ON THE SOURCE'S SCALE, FIXED OR REFINED")
+    src = rc.cluster_core(X, k=2)
+    margin = {"k": 2, "scale": {"mean": list(src["mu"]),
+                                "sd": list(src["sd"])},
+              "clusters": [{"rank": r, "call": src["calls"][r],
+                            "centre_raw": list(src["raw_c"][r])}
+                           for r in range(2)]}
+    back = rc.cluster_core(X, margin=margin, margin_mode="fixed")
+    ck("a margin applied fixed to its own source gives its own calls back",
+       (back["lab"] == src["lab"]).all() and back["calls"] == src["calls"]
+       and back["call_by"] == ["margin", "margin"])
+    ck("and fixed means nothing moved",
+       np.allclose(back["raw_c"], src["raw_c"]))
+    # The boundary is raw: halfway between the two raw centres along HF,
+    # an event either side lands either side, whatever the target's spread.
+    mid = (src["raw_c"][0] + src["raw_c"][1]) / 2.0
+    step = (src["raw_c"][1] - src["raw_c"][0]) * 0.05
+    probe = np.vstack([mid - step, mid + step])
+    pr = rc.cluster_core(probe, margin=margin)
+    ck("on a target with a different spread, events cross where the raw "
+       "boundary says", list(pr["lab"]) == [0, 1], list(pr["lab"]))
+    shifted = X + np.array([0.0, 0.0, 6.0])
+    rf = rc.cluster_core(shifted, margin=margin, margin_mode="refine")
+    ck("refined, the centres move to fit the data and keep their calls",
+       not np.allclose(rf["raw_c"], src["raw_c"])
+       and rf["calls"] == src["calls"] and rf["call_by"] == ["margin"] * 2)
+    ck("a margin sets k, whatever was asked",
+       rc.cluster_core(X, k=5, margin=margin)["k"] == 2)
+    m_lfp = {"measure": rc.measure_of(rc.Params())}
+    diff = rc.margin_mismatch(m_lfp, rc.Params(filt="ds", band_lo=600,
+                                               band_hi=900, cross_ms=80))
+    ck("a margin from other settings names every difference",
+       len(diff) == 3 and any("DS filter" in d for d in diff)
+       and any("600" in d for d in diff) and any("80" in d for d in diff),
+       diff)
+    ck("and the same settings have none",
+       rc.margin_mismatch(m_lfp, rc.Params()) == [])
+
+    head("POOLED: k, AND COMPLETE EVENTS ONLY")
+    rows = []
+    for j, (a, w, h) in enumerate(X):
+        rows.append({"i": j, "t": 1.0 + j, "amp_uV": float(a),
+                     "hw_ms": float(w), "hf_db": float(h), "cls": "ds"})
+    rows[0]["hw_ms"] = None
+    mem = _member(pool, "K", "PTEN", 7, rows)
+    r3 = pool.fit_pool([mem], k=3)
+    ck("a pool clusters at k = 3 through the same core",
+       r3["k"] == 3 and len(r3["clusters"]) == 3
+       and r3["counts"]["ied"] == 120, r3["counts"])
+    ck("its split axis runs DS-called to IED-called",
+       r3["split_axis"]["centres_z"] is not None)
+    r1 = pool.fit_pool([mem], k=1)
+    ck("at k = 1 there is no split axis, and it says why",
+       r1["split_axis"]["centres_z"] is None
+       and r1["split_axis"]["why_none"])
+    co = pool.fit_pool([mem], complete_only=True)
+    ck("complete events only leaves out the one missing an axis, and counts it",
+       co["n"] == len(rows) - 1 and co["counts"]["excluded"] == 1
+       and co["excluded"]["by_member"] == [{"key": "K", "n": 1}]
+       and co["counts"]["partial"] == 0)
+    ck("and by default it is kept, placed on its two axes",
+       pool.fit_pool([mem])["counts"]["partial"] == 1)
+
+
 def _filter_choices():
     """None, DS, LFP or custom: what each one is, and that each is itself."""
     from backend import rootcanal as rc
@@ -1454,6 +1573,76 @@ def _pool_routes(A, tmp, fake):
        and row[0]["nickname"] == "check renamed" and row[0]["version"] == 3
        and row[0]["n_members"] == len(members) - 1
        and row[0]["n_unbanked"] is not None and row[0]["updated"], row)
+    head("POOLED BAND AND MARGIN ROUTES (the same throwaway store)")
+    unb = [{"key": s["key"]} for s in unbanked]
+    fb = c.post("/api/rootcanal/pool/fit",
+                json={"members": unb, "band": [600, 900]}).get_json()
+    ck("a pool can set its own HF band, and every member is measured on it",
+       fb.get("ok") and fb["params"]["band"] == [600.0, 900.0],
+       fb.get("error"))
+    r = c.post("/api/rootcanal/pool/fit",
+               json={"members": unb, "band": [600, 2400]})
+    ck("a pooled band past the anti-alias corner is refused",
+       r.status_code == 400 and "2000" in r.get_json()["error"])
+    ck("the margin kind is registered",
+       "rootcanal_margin" in artifactsmod.KINDS)
+    ext = {"source": "pool", "members": unb, "k": 2}
+    r = c.post("/api/rootcanal/margin/save", json={"extract": ext})
+    ck("a margin without a label is refused, with a sentence",
+       r.status_code == 400 and "label" in r.get_json()["error"])
+    m1 = c.post("/api/rootcanal/margin/save",
+                json={"nickname": "chk margin", "extract": ext}).get_json()
+    ck("a margin saves with its label", m1.get("ok") and m1["version"] == 1,
+       m1.get("error"))
+    mg = c.get("/api/rootcanal/margin/%s" % m1["artifact_id"]).get_json()
+    ck("and reopens with its centres, scale, measurement and source",
+       mg.get("ok") and mg["payload"]["k"] == 2
+       and len(mg["payload"]["clusters"]) == 2
+       and {"mean", "sd"} <= set(mg["payload"]["scale"])
+       and mg["payload"]["measure"]["filter_label"]
+       and mg["payload"]["source"]["kind"] == "pool")
+    m2 = c.post("/api/rootcanal/margin/save",
+                json={"nickname": "chk margin", "extract": ext,
+                      "artifact_id": m1["artifact_id"]}).get_json()
+    ck("an identical re-save confirms rather than versions",
+       m2.get("confirmed") is True and m2["version"] == 1, m2)
+    m3 = c.post("/api/rootcanal/margin/save",
+                json={"nickname": "chk margin", "artifact_id": m1["artifact_id"],
+                      "extract": dict(ext, k=3)}).get_json()
+    ck("a changed one is a new version", m3.get("ok") and m3["version"] == 2,
+       m3)
+    ml = c.get("/api/rootcanal/margins").get_json()
+    ck("the margins list it, with k, calls, measurement and source",
+       ml.get("ok") and ml["margins"][0]["nickname"] == "chk margin"
+       and ml["margins"][0]["k"] == 3 and ml["margins"][0]["source"] == "pool")
+    ap = c.post("/api/rootcanal/pool/fit", json={
+        "members": unb, "margin": {"artifact_id": m1["artifact_id"],
+                                   "version": 1, "mode": "fixed"}}).get_json()
+    ck("a pool applies a margin, fixed, and says which",
+       ap.get("ok") and ap["margin_used"]["version"] == 1
+       and ap["margin_used"]["mode"] == "fixed" and ap["k"] == 2
+       and all(cl["call_by"] == "margin" for cl in ap["clusters"]),
+       ap.get("error"))
+    plain = c.post("/api/rootcanal/pool/fit", json={"members": unb}).get_json()
+    ck("and fixed on its own source it is that source's answer",
+       [e["cls_pool"] for e in ap["events"]]
+       == [e["cls_pool"] for e in plain["events"]])
+    r = c.post("/api/rootcanal/pool/fit", json={
+        "members": unb, "band": [600, 900],
+        "margin": {"artifact_id": m1["artifact_id"], "version": 1}})
+    ck("on another band it is refused, naming the difference",
+       r.status_code == 400 and "600–900" in r.get_json()["error"],
+       r.get_json().get("error"))
+    sp = c.post("/api/rootcanal/pool/save", json={
+        "nickname": "pool with margin", "members": unb,
+        "margin": {"artifact_id": m1["artifact_id"], "version": 1}}).get_json()
+    ck("a pool saved with a margin cites that margin version",
+       sp.get("ok") and A.ARTIFACTS.cited_by(m1["artifact_id"], 1),
+       sp.get("error"))
+    dl = c.post("/api/artifacts/%s/delete" % m1["artifact_id"], json={})
+    ck("so the margin cannot be deleted from under it",
+       dl.status_code >= 400, dl.status_code)
+
     bank_after = {r["id"]: len(r.get("versions") or [])
                   for r in A.BANK.all()}
     ck("nothing in Pooled wrote to the Event Bank", bank_before == bank_after)

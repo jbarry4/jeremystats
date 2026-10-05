@@ -67,6 +67,18 @@ RATS = (3, 4, 6, 7, 8, 9, 10, 11)
 EXCLUDED_RATS = {5: "no Precon4 recording, and no histology row"}
 DAYS = ((1, "Precon1"), (4, "Precon4"))
 DAY_NAMES = tuple(d for _n, d in DAYS)
+#: The two sessions between, for the trajectory only (the lab meeting,
+#: 2026-10-02): measured exactly as Precon1 and Precon4 are, read across
+#: the four sessions, never pooled into the change and never tested.
+TRAJ_DAYS = ((2, "Precon2"), (3, "Precon3"))
+TRAJ_NAMES = tuple(d for _n, d in TRAJ_DAYS)
+ALL_DAY_ORDER = ("Precon1", "Precon2", "Precon3", "Precon4")
+
+
+def core_view(man):
+    """The manifest as the change sees it: Precon1 and Precon4 only."""
+    return dict(man, days=[d for d in man.get("days") or []
+                           if d["day"] in DAY_NAMES])
 MIN_RATS = 5
 LAYERS = ("raw", "minus_fp")
 LAYER_SAY = {
@@ -300,15 +312,16 @@ def _files(local):
     return sent, {"n": left_n, "bytes": left_b}
 
 
-def select_days(host):
-    """{(rat, day name): gid} for the banked Precon1/Precon4 SPC
-    recordings of the rats, and the sentences for what is not there."""
+def select_days(host, days=DAYS):
+    """{(rat, day name): gid} for the banked Precon SPC recordings of the
+    rats (Precon1 and Precon4 unless `days` says), and the sentences for
+    what is not there."""
     rows = host.recordings(False) or []
     got, problems = {}, []
     for r in rows:
         if r.get("mouse") not in RATS or r.get("phase") != "Precon":
             continue
-        day = dict(DAYS).get(r.get("phase_n"))
+        day = dict(days).get(r.get("phase_n"))
         if day is None or (r.get("run") or "SPC") != "SPC":
             continue
         gid = r.get("gid")
@@ -321,7 +334,7 @@ def select_days(host):
             continue
         got[key] = gid
     for rat in RATS:
-        for _n, day in DAYS:
+        for _n, day in days:
             if (rat, day) not in got:
                 problems.append("r%d %s: no banked SPC recording" % (rat, day))
     return got, problems
@@ -339,85 +352,12 @@ def build_manifest(host, cfg, progress=None):
     for n, ((rat, day), gid) in enumerate(sorted(days.items())):
         if progress:
             progress(n, len(days), "r%d %s" % (rat, day))
-        entry = host.entry(gid)
-        sm = host.summary(gid) or {}
-        spc = circuitrun.cued_folder(sm, entry)
-        if not spc or not os.path.isdir(spc):
-            notes.append("r%d %s: its SPC folder cannot be opened here" %
-                         (rat, day))
+        rec = _day_record(host, cfg, roots, rat, day, gid, notes)
+        if rec is None:
             continue
-        bad = sorted(int(c) for c in (sm.get("bad_channels") or []))
-        _rat, probe = host.probe(sm)
-        blocked = host.blocked(probe) or {}
-        tm, tb, ta = host.measured_transition(entry)
-        fast_banked = bool(tm) and abs(float(tb) - sweep.FAST_LEN[0]) < 1e-9 \
-            and abs(float(ta) - sweep.FAST_LEN[1]) < 1e-9
-        units = []
-        for i, ev in enumerate(entry.get("events") or [], start=1):
-            pair = host.pair(ev, i)
-            ct = circuit.cue_type_of(pair)
-            if ct is None:
-                continue
-            units.append({
-                "id": "p%02d" % i, "pair_id": i, "cue_type": ct,
-                "cue_label": circuit.cue_label(ct),
-                "label": pair.get("label"),
-                "pair": {k: pair.get(k) for k in ("pair_id", "opener_t",
-                                                  "closer_t", "offset_t",
-                                                  "label")},
-                "drop": circuitrun.plain(host.drop(ev, bad)),
-                "manual": _manual(ev)})
-        rest_units, fps = [], []
-        try:
-            prep = circuitrun.prepare_rest(host, gid)
-            clip = circuitrun.rest_clipping(prep)
-            circuitrun.apply_rest_clipping(prep, clip)
-            for p in prep["pairs"]:
-                rest_units.append({
-                    "id": "e%02d" % p["pair_id"], "pair_id": p["pair_id"],
-                    "label": p["label"], "run": p["run"], "fp_gid": p["fp"],
-                    "local": p["path"], "pair": p["pair"], "drop": p["drop"],
-                    "why": p.get("unmeasured_why")})
-            seen = set()
-            for p in prep["pairs"]:
-                if p["path"] in seen:
-                    continue
-                seen.add(p["path"])
-                fps.append({"role": p["run"], "gid": p["fp"],
-                            "local": p["path"]})
-            notes.extend("r%d %s: %s" % (rat, day, x)
-                         for x in prep.get("fp_notes") or [])
-        except circuitrun.CircuitRunError as exc:
-            notes.append("r%d %s: no rest epochs (%s); its minus-FP layer "
-                         "leaves this rat out" % (rat, day, exc))
-        folders = [{"role": "SPC", "gid": gid, "local": spc}] + fps
-        for f in folders:
-            files, left = _files(f["local"])
-            f["files"] = files
-            f["n_files"] = len(files)
-            f["bytes"] = sum(files.values())
-            f["left_here"] = left
-            if not files:
-                f.setdefault("why", "no CSC files in it")
-            f["remote"] = {}
-            for dest, r in roots.items():
-                try:
-                    f["remote"][dest] = vaccupload.destination(
-                        cfg, {"project": sm.get("project") or PROJECT},
-                        f["local"], r["root"])
-                except vaccupload.UploadError as exc:
-                    f.setdefault("why", str(exc))
-        out_days.append({
-            "rat": rat, "day": day, "gid": gid,
-            "label": circuitrun.session_label(sm, spc),
-            "bad": bad, "blocked": blocked,
-            "grey": sorted(blocked),
-            "fast_banked": fast_banked,
-            "units": units, "rest": rest_units, "folders": folders,
-            "bank": {"entry": entry.get("id"), "version": entry.get("version")},
-        })
-        inputs.append({"kind": "bank", "entry": entry.get("id"),
-                       "version": entry.get("version")})
+        out_days.append(rec)
+        inputs.append({"kind": "bank", "entry": rec["bank"]["entry"],
+                       "version": rec["bank"]["version"]})
         gids.append(gid)
     man = {
         "schema": SCHEMA, "at": now_iso(), "rats": list(RATS),
@@ -428,6 +368,126 @@ def build_manifest(host, cfg, progress=None):
     }
     man["digest"] = _digest(man)
     return man
+
+
+def extend_manifest(host, cfg, progress=None):
+    """The manifest with Precon2 and Precon3 added, for the trajectory:
+    each worked out exactly as Precon1 and Precon4 were; the days already
+    in it are left as they are."""
+    man = manifest()
+    if not man:
+        raise MonolithError("Ask for the upload plan first: there is no "
+                            "manifest to add to.", 409)
+    days, problems = select_days(host, TRAJ_DAYS)
+    have = {(int(d["rat"]), d["day"]) for d in man["days"]}
+    roots = vacc.upload_roots(cfg)
+    notes = list(man.get("notes") or [])
+    for x in problems:
+        if x not in notes:
+            notes.append(x)
+    todo = sorted(k for k in days if k not in have)
+    added = []
+    for n, (rat, day) in enumerate(todo):
+        if progress:
+            progress(n, len(todo), "r%d %s" % (rat, day))
+        rec = _day_record(host, cfg, roots, rat, day, days[(rat, day)], notes)
+        if rec is None:
+            continue
+        man["days"].append(rec)
+        man["inputs"].append({"kind": "bank", "entry": rec["bank"]["entry"],
+                              "version": rec["bank"]["version"]})
+        man["gids"].append(rec["gid"])
+        added.append("r%d %s" % (rat, day))
+    order = {d: i for i, d in enumerate(ALL_DAY_ORDER)}
+    man["days"].sort(key=lambda d: (int(d["rat"]), order.get(d["day"], 9)))
+    man["notes"] = notes
+    man["trajectory_days"] = list(TRAJ_NAMES)
+    man["at"] = now_iso()
+    man["digest"] = _digest(man)
+    return man, added
+
+
+def _day_record(host, cfg, roots, rat, day, gid, notes):
+    """Everything one rat-day needs to be run: its cue pairs, rest epochs,
+    folders and where each goes. None (with a note) when its SPC folder
+    cannot be opened here."""
+    entry = host.entry(gid)
+    sm = host.summary(gid) or {}
+    spc = circuitrun.cued_folder(sm, entry)
+    if not spc or not os.path.isdir(spc):
+        notes.append("r%d %s: its SPC folder cannot be opened here" %
+                     (rat, day))
+        return None
+    bad = sorted(int(c) for c in (sm.get("bad_channels") or []))
+    _rat, probe = host.probe(sm)
+    blocked = host.blocked(probe) or {}
+    tm, tb, ta = host.measured_transition(entry)
+    fast_banked = bool(tm) and abs(float(tb) - sweep.FAST_LEN[0]) < 1e-9 \
+        and abs(float(ta) - sweep.FAST_LEN[1]) < 1e-9
+    units = []
+    for i, ev in enumerate(entry.get("events") or [], start=1):
+        pair = host.pair(ev, i)
+        ct = circuit.cue_type_of(pair)
+        if ct is None:
+            continue
+        units.append({
+            "id": "p%02d" % i, "pair_id": i, "cue_type": ct,
+            "cue_label": circuit.cue_label(ct),
+            "label": pair.get("label"),
+            "pair": {k: pair.get(k) for k in ("pair_id", "opener_t",
+                                              "closer_t", "offset_t",
+                                              "label")},
+            "drop": circuitrun.plain(host.drop(ev, bad)),
+            "manual": _manual(ev)})
+    rest_units, fps = [], []
+    try:
+        prep = circuitrun.prepare_rest(host, gid)
+        clip = circuitrun.rest_clipping(prep)
+        circuitrun.apply_rest_clipping(prep, clip)
+        for p in prep["pairs"]:
+            rest_units.append({
+                "id": "e%02d" % p["pair_id"], "pair_id": p["pair_id"],
+                "label": p["label"], "run": p["run"], "fp_gid": p["fp"],
+                "local": p["path"], "pair": p["pair"], "drop": p["drop"],
+                "why": p.get("unmeasured_why")})
+        seen = set()
+        for p in prep["pairs"]:
+            if p["path"] in seen:
+                continue
+            seen.add(p["path"])
+            fps.append({"role": p["run"], "gid": p["fp"],
+                        "local": p["path"]})
+        notes.extend("r%d %s: %s" % (rat, day, x)
+                     for x in prep.get("fp_notes") or [])
+    except circuitrun.CircuitRunError as exc:
+        notes.append("r%d %s: no rest epochs (%s); its minus-FP layer "
+                     "leaves this rat out" % (rat, day, exc))
+    folders = [{"role": "SPC", "gid": gid, "local": spc}] + fps
+    for f in folders:
+        files, left = _files(f["local"])
+        f["files"] = files
+        f["n_files"] = len(files)
+        f["bytes"] = sum(files.values())
+        f["left_here"] = left
+        if not files:
+            f.setdefault("why", "no CSC files in it")
+        f["remote"] = {}
+        for dest, r in roots.items():
+            try:
+                f["remote"][dest] = vaccupload.destination(
+                    cfg, {"project": sm.get("project") or PROJECT},
+                    f["local"], r["root"])
+            except vaccupload.UploadError as exc:
+                f.setdefault("why", str(exc))
+    return {
+        "rat": rat, "day": day, "gid": gid,
+        "label": circuitrun.session_label(sm, spc),
+        "bad": bad, "blocked": blocked,
+        "grey": sorted(blocked),
+        "fast_banked": fast_banked,
+        "units": units, "rest": rest_units, "folders": folders,
+        "bank": {"entry": entry.get("id"), "version": entry.get("version")},
+    }
 
 
 def _digest(obj):
@@ -537,15 +597,20 @@ def check_data(man, listing, prefer=None):
                      "spc_ready": bool(spc and spc["use"]),
                      "rest_ready": bool(fp_ok) and all(r["use"]
                                                        for r in fp_ok)})
-    ready_rats = sorted({x["rat"] for x in days if x["spc_ready"]
-                         and all(y["spc_ready"] for y in days
+    core = [x for x in days if x["day"] in DAY_NAMES]
+    ready_rats = sorted({x["rat"] for x in core if x["spc_ready"]
+                         and all(y["spc_ready"] for y in core
                                  if y["rat"] == x["rat"])
-                         and sum(1 for y in days if y["rat"] == x["rat"])
+                         and sum(1 for y in core if y["rat"] == x["rat"])
                          == len(DAYS)})
     n_folders = sum(len(x["folders"]) for x in days)
     n_ready = sum(1 for x in days for r in x["folders"] if r["use"])
+    # The sessions between: each on its own, for a rat in the change.
+    traj = [[x["rat"], x["day"]] for x in days if x["day"] in TRAJ_NAMES
+            and x["spc_ready"] and x["rat"] in ready_rats]
     return {"days": days, "ready_rats": ready_rats,
             "n_folders": n_folders, "n_ready": n_ready,
+            "traj_ready": traj,
             "can_run": len(ready_rats) >= MIN_RATS}
 
 
@@ -566,17 +631,29 @@ def plan_tasks(man, chk, extra=None):
 
     `extra` plans an ADDITION to a Monolith already built instead: only
     `{"bands": [...]}` (in the state, transition and rest tasks that
-    measure them) and/or `{"pac_trans": True}`. Its tasks are keyed apart
-    ("..._x") so they never overwrite the run they add to."""
+    measure them) and/or `{"pac_trans": True}`, on the days the Monolith
+    has (`on_days`, Precon1 and Precon4 unless said); or `{"days":
+    ["Precon2", "Precon3"]}`, every task of those days, for the
+    trajectory. Its tasks are keyed apart ("..._x") so they never
+    overwrite the run they add to."""
     by = {(d["rat"], d["day"]): d for d in man.get("days") or []}
     ready = {(x["rat"], x["day"]): x for x in chk["days"]}
     rats = set(chk["ready_rats"])
     tasks = []
     names = sweep.regions()
+    full_days = set((extra or {}).get("days") or []) if extra is not None \
+        else None
+    on_days = set((extra or {}).get("on_days") or DAY_NAMES)
     for (rat, day), d in sorted(by.items()):
-        if rat not in rats:
+        if rat not in rats or (rat, day) not in ready:
             continue
         rd = ready[(rat, day)]
+        if full_days:
+            # The sessions between: whole, or not at all.
+            if day not in full_days or not rd["spc_ready"]:
+                continue
+        elif extra is not None and day not in on_days:
+            continue
         where = {r["role"]: r["remote"] for r in rd["folders"]}
         spc = where.get("SPC")
         base = {"blocked": d["blocked"], "bad": d["bad"], "regions": names,
@@ -602,7 +679,7 @@ def plan_tasks(man, chk, extra=None):
                           "est_s": round(len(units) * n_w * per, 1),
                           "spec": spec})
 
-        if extra is not None:
+        if extra is not None and not full_days:
             xb = list((extra or {}).get("bands") or [])
             sl = [b for b in sweep.bands_for("trans_slow") if b in xb]
             fa = [b for b in sweep.bands_for("trans_fast") if b in xb]
@@ -1193,7 +1270,7 @@ def pooled(out_dir, man, what, keep=None):
                            "power": ("power", "power_rest"),
                            "pac": ("pac", "pac_rest")}[what]
     cue, rest = {}, {}
-    for d in man["days"]:
+    for d in core_view(man)["days"]:
         key = (d["rat"], d["day"])
         X = _load_day(out_dir, d["rat"], d["day"], cue_name,
                       mmap="r" if keep else None)
@@ -1278,11 +1355,12 @@ def split_build(man, summary, out_dir, roles, role_notes=None,
     shapes = {w: tuple(summary["files"]["%s_raw.f32" % w]["shape"][1:])
               for w in ("edges", "power", "pac")}
     files, top, cnt, groups = {}, {}, {}, []
+    core = core_view(man)["days"]
     for n_, (g, label, fam) in enumerate(SPLITS):
         keep = split_keep(g, roles)
-        rats = sorted({int(d["rat"]) for d in man["days"]
+        rats = sorted({int(d["rat"]) for d in core
                        if any(keep(d, u) for u in d["units"])})
-        n_units = sum(1 for d in man["days"] for u in d["units"]
+        n_units = sum(1 for d in core for u in d["units"]
                       if keep(d, u))
         groups.append({"id": g, "label": label, "family": fam,
                        "rats": rats, "n_units": n_units})
@@ -1339,6 +1417,34 @@ def roles_of(man, records=None):
         except Exception as exc:                         # noqa: BLE001
             notes[rat] = {"error": str(exc)}
     return roles, notes
+
+
+def extend_work(worker, host, cfg):
+    """Precon2 and Precon3 into the manifest, for the trajectory. Reads
+    only (the bank, the registry, histology, the rest clipping)."""
+    worker.note(phase="extending")
+    man, added = extend_manifest(host, cfg, progress=lambda i, n, item:
+                                 worker.note(i=i, of=n, item=item))
+    worker.check()
+    save_manifest(man)
+    return {"added": added, "digest": man["digest"]}
+
+
+def trajectory_status(st, man, summary):
+    """Where the trajectory is: in what goes, whole on the cluster, run,
+    built."""
+    chk = st.get("check") or {}
+    have = sorted({d["day"] for d in (man or {}).get("days") or []
+                   if d["day"] in TRAJ_NAMES})
+    return {"days": list(TRAJ_NAMES), "in_manifest": have,
+            "ready": chk.get("traj_ready") or [],
+            "checked_now": bool(man) and chk.get("manifest") == man.get(
+                "digest"),
+            # The run on the cluster now is the one that measures them.
+            "running": bool(((st.get("run") or {}).get("adds") or {})
+                            .get("days")),
+            "built": ((summary or {}).get("trajectory") or {}).get("days")
+            or []}
 
 
 def split_work(worker, artifacts=None, by=None, roles_reader=None):
@@ -1608,6 +1714,7 @@ def build(man, run, raw_dir, out_dir, progress=None):
                      "notes": man.get("notes") or []},
         "pac_windows": PAC_WINDOWS,
         "additions": additions_of(sweep.BAND_IDS, PAC_WINDOWS),
+        "trajectory": trajectory_of(man, out_dir),
         "run": {"rid": run["rid"], "dest": run.get("dest"),
                 "parts": [p_["rid"] for p_ in run.get("parts") or []],
                 "arrays": [a["id"] for a in run.get("arrays") or []],
@@ -1775,13 +1882,174 @@ def entry_detail(out_dir, man, summary, what, layer, at, group=None,
         if rec.get("v") is not None and rec["v"] >= 0:
             half = 1.959964 * math.sqrt(rec["v"])
             rec["ci"] = [rec["delta"] - half, rec["delta"] + half]
+    # The sessions between, for the trajectory: each rat's value there,
+    # worked out as the two days' are -- never in the change, never tested.
+    tdays = [x for x in TRAJ_NAMES if x in ((summary.get("trajectory") or
+                                            {}).get("days") or [])]
+    for rec in per_rat:
+        rec["traj"] = {}
+        for day in tdays:
+            d = days.get((rec["rat"], day))
+            X = _load_day(out_dir, rec["rat"], day, cue_name, mmap="r") \
+                if d else None
+            if X is None or not X.shape[0]:
+                continue
+            vals = np.asarray(X[(slice(None),) + at], dtype=np.float64)
+            pick = list(range(len(d["units"])))
+            if group:
+                kk = split_keep(group, roles or {})
+                pick = [i for i, u in enumerate(d["units"]) if kk(d, u)]
+            if not pick:
+                continue
+            m, s2, n = day_stats(vals[pick][:, None])
+            slot = {"cue": _f(m[0]), "cue_se2": _f(s2[0]), "n": int(n[0]),
+                    "of": len(pick), "units": [
+                        {"id": d["units"][i]["id"], "label": d["units"][i]["label"],
+                         "cue": d["units"][i]["cue_label"], "v": _f(vals[i])}
+                        for i in pick]}
+            x, se2 = slot["cue"], slot["cue_se2"]
+            if layer == "minus_fp":
+                Xr = _load_day(out_dir, rec["rat"], day, rest_name, mmap="r")
+                if Xr is None or not Xr.shape[0]:
+                    x = se2 = None
+                else:
+                    rv = np.asarray(Xr[(slice(None),) + rest_at],
+                                    dtype=np.float64)
+                    rm, rs2, rn = day_stats(rv[:, None])
+                    slot.update(rest=_f(rm[0]), rest_se2=_f(rs2[0]),
+                                n_rest=int(rn[0]))
+                    x = None if x is None or slot["rest"] is None else \
+                        x - slot["rest"]
+                    se2 = None if se2 is None or slot["rest_se2"] is None \
+                        else se2 + slot["rest_se2"]
+            slot["x"], slot["se2"] = x, se2
+            rec["traj"][day] = slot
     return {"what": what, "layer": layer, "at": list(at), "split": group,
+            "trajectory_days": tdays,
             "rats": per_rat, "pooled": {
                 "est": mp.get("mean"), "se": t.get("se") if p is not None
                 else None, "p": p, "df": t.get("df"), "k": mp["k"],
                 "tau2": mp.get("tau2"), "ci": ci,
                 "why": mp.get("why") or t.get("why")},
             "arrays": pooled_says, "agree": agree}
+
+
+
+def pac_self(out_dir, man, summary, layer, w, cell=None, group=None,
+             roles=None):
+    """Within-region PAC, the conventional way: each region's own
+    comodulogram -- phase and amplitude from its own wire -- for each
+    session, as the mean over rats of each rat's mean over its
+    presentations (minus FP: less the mean over its rest epochs). With, at
+    one cell, every rat's two sessions, and a typical presentation of each
+    session (the one nearest the session's median) to open. The change and
+    its p are the pooled arrays' (pac_<layer>.f32), as everywhere else."""
+    names = summary["regions"]
+    R = len(names)
+    C = len(summary["pac_cells"])
+    diag = [r * R + r for r in range(R)]
+    days = {(int(d["rat"]), d["day"]): d for d in man["days"]}
+    keep = split_keep(group, roles or {}) if group else None
+    per = {day: {} for day in DAY_NAMES}        # day -> rat -> (C, R)
+    pres = {}                                   # (rat, day) -> (ids, (U, C, R))
+    for rat in summary["rats"]:
+        for day in DAY_NAMES:
+            d = days.get((int(rat), day))
+            X = _load_day(out_dir, int(rat), day, "pac", mmap="r") if d \
+                else None
+            if X is None or not X.shape[0] or w >= X.shape[1]:
+                continue
+            pick = [i for i, u in enumerate(d["units"])
+                    if keep is None or keep(d, u)]
+            if not pick:
+                continue
+            V = np.asarray(X[:, w], dtype=np.float64)[pick][:, :, diag]
+            m, _s2, n = day_stats(V)
+            m = np.where(n > 0, m, np.nan)
+            if layer == "minus_fp":
+                Xr = _load_day(out_dir, int(rat), day, "pac_rest", mmap="r")
+                if Xr is None or not Xr.shape[0]:
+                    continue
+                mr, _r2, nr = day_stats(
+                    np.asarray(Xr[:, 0], dtype=np.float64)[:, :, diag])
+                m = np.where(nr > 0, m - mr, np.nan)
+            per[day][int(rat)] = m
+            pres[(int(rat), day)] = ([d["units"][i]["id"] for i in pick], V)
+
+    def over_rats(day):
+        rats = sorted(per[day])
+        if not rats:
+            nan = np.full((C, R), np.nan)
+            return nan, nan, np.zeros((C, R), int)
+        A = np.stack([per[day][r] for r in rats])
+        m, s2, n = day_stats(A)
+        return m, np.sqrt(s2), n
+
+    sessions = {}
+    for day in DAY_NAMES:
+        m, se, n = over_rats(day)
+        sessions[day] = {"mean": [[_f(x) for x in m[:, r]] for r in range(R)],
+                         "se": [[_f(x) for x in se[:, r]] for r in range(R)],
+                         "n": [[int(x) for x in n[:, r]] for r in range(R)]}
+    out = {"layer": layer, "window": w, "split": group, "regions": names,
+           "days": list(DAY_NAMES), "sessions": sessions}
+    if cell is None:
+        return out
+    c = int(cell)
+    # Every rat at this cell, region by region, and each session's typical
+    # presentation: the one nearest the median over every rat's
+    # presentations (as measured -- rest is never taken off a presentation).
+    rats = []
+    for rat in summary["rats"]:
+        row = {"rat": int(rat)}
+        for day in DAY_NAMES:
+            m = per[day].get(int(rat))
+            row[day] = None if m is None else [_f(x) for x in m[c]]
+        rats.append(row)
+    examples, units = [], {}
+    for r in range(R):
+        ex = {}
+        for day in DAY_NAMES:
+            pool_ = []
+            for rat in summary["rats"]:
+                got = pres.get((int(rat), day))
+                if not got:
+                    continue
+                ids, V = got
+                for uid, v in zip(ids, V[:, c, r]):
+                    if np.isfinite(v):
+                        pool_.append((float(v), int(rat), uid))
+            if not pool_:
+                ex[day] = None
+                continue
+            med = float(np.median([v for v, _r, _u in pool_]))
+            v, rat_, uid = min(pool_, key=lambda t: (abs(t[0] - med), t[1],
+                                                       t[2]))
+            ex[day] = {"rat": rat_, "unit": uid, "v": v, "median": med,
+                       "n": len(pool_)}
+            units.setdefault(str(rat_), {})
+            for dd in DAY_NAMES:
+                got = pres.get((rat_, dd))
+                units[str(rat_)][dd] = list(got[0]) if got else []
+        examples.append(ex)
+    out.update(cell=c, rats=rats, examples=examples, units=units)
+    return out
+
+def trajectory_of(man, out_dir):
+    """Which sessions between this build has, and in how many rats."""
+    have = {}
+    for d in man.get("days") or []:
+        if d["day"] not in TRAJ_NAMES:
+            continue
+        X = _load_day(out_dir, int(d["rat"]), d["day"], "edges", mmap="r")
+        if X is not None and X.shape[0] and np.isfinite(
+                np.asarray(X[:, 1, 0, 0, :], dtype=np.float64)).any():
+            have.setdefault(d["day"], []).append(int(d["rat"]))
+    days = [x for x in TRAJ_NAMES if x in have]
+    return {"days": days, "rats": {k: sorted(v) for k, v in have.items()},
+            "order": [x for x in ALL_DAY_ORDER if x in DAY_NAMES or x in days],
+            "in_manifest": sorted({d["day"] for d in man.get("days") or []
+                                   if d["day"] in TRAJ_NAMES})}
 
 
 def wires_key(w, b):
@@ -2347,7 +2615,9 @@ class Worker(object):
 
 _WORK = {"now": None}
 _WORK_SAY = {"upload": "uploading", "fetch": "fetching and building the "
-             "Monolith", "split": "splitting the Monolith by cue pair"}
+             "Monolith", "split": "splitting the Monolith by cue pair",
+             "events": "finding hippocampal events",
+             "extend": "adding Precon2 and Precon3 to what goes"}
 
 
 def work_now():
@@ -2662,10 +2932,20 @@ def run_addition(man, cfg, app_dir, st, extra, ssh=None):
     if not chk:
         raise MonolithError("Check the VACC first: the recordings have to "
                             "be whole on the cluster still.", 409)
+    if not extra.get("days"):
+        # Bands or PAC: on every day the Monolith already has.
+        built = {t["day"] for t in run["tasks"]}
+        for p_ in run.get("parts") or []:
+            built |= {t["day"] for t in p_["tasks"]}
+        extra = dict(extra, on_days=sorted(built))
     tasks = plan_tasks(man, chk, extra=extra)
     if not tasks:
-        raise MonolithError("There is nothing to add: no rat has both days "
-                            "whole on the cluster.", 409)
+        raise MonolithError(
+            "There is nothing to add: no Precon2 or Precon3 recording of a "
+            "rat in the Monolith is whole on the cluster. Add them to what "
+            "goes, upload, and check the VACC again." if extra.get("days")
+            else "There is nothing to add: no rat has both days whole on "
+            "the cluster.", 409)
     dest = run.get("dest") or (st.get("upload") or {}).get("dest") or \
         "scratch"
     new = submit(cfg, tasks, dest, app_dir, ssh=ssh)
@@ -2757,5 +3037,7 @@ def status(cfg, vstatus=None):
         # What a small run could still add to the built Monolith.
         "missing": missing_additions(summary_now()) if st.get("built")
         else None,
+        "trajectory": trajectory_status(st, man, summary_now()
+                                        if st.get("built") else None),
         "additions_say": ADDITIONS_SAY,
     }

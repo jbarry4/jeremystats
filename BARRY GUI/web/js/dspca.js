@@ -2020,24 +2020,12 @@ BARRY.dspca = (function () {
       }))));
     }
 
-    out.push(label('Classes'));
-    out.push(el('div', { class: 'dp-row' }, [
-      /* The number follows the thumb; the FIT waits for it to be let go.
-         `refit` ends in a `render`, and a render replaces this slider --
-         under the pointer dragging it, which drops the drag on the first
-         intermediate value. It also makes 2 -> 5 one fit rather than
-         four. */
-      el('input', {
-        type: 'range', min: 2, max: 5, step: 1, value: q.nclasses,
-        class: 'dp-slider',
-        oninput: (e) => {
-          const n = $('#dpK');
-          if (n) n.textContent = e.target.value;
-        },
-        onchange: (e) => { q.nclasses = +e.target.value; refit(); },
-      }),
-      el('span', { id: 'dpK', class: 'dp-val', text: String(q.nclasses) }),
-    ]));
+    /* No Classes slider: there are two kinds of dentate spike, DS1 and
+       DS2, and the panel used to offer up to five -- which is how three
+       empty "DS3-5" chips came to sit on every Checkup card (the user,
+       2026-10-02). `q.nclasses` stays 2; the backend still accepts more for
+       the arithmetic checks, which is not something a person picks. */
+    q.nclasses = 2;
 
     out.push(label('The features'));
     out.push(el('div', { class: 'dp-checks' }, [

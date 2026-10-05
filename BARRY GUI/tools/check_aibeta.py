@@ -14,7 +14,12 @@ loudly broken:
     guess where the offsets scatter;
   * the counts a threshold produces;
   * training never testing on a mouse it trained on, and finding a signal
-    that is there.
+    that is there;
+  * the sweep's tolerance -- more real spikes allowed to go cleaning more
+    garbage and flagging less, at the cost it states, the DS bar fixed;
+  * the blend averaging five draws, and saving like any model;
+  * the waveform measures reading a width, a lag, a symmetry and noise
+    off waveforms built to have them.
 
     python tools/check_aibeta.py
 
@@ -262,6 +267,140 @@ ck("taken over the readable candidates only",
        - np.median(amp)) < 1e-3)
 ck("off by default", not next(f for f in AI.FAMILIES
                               if f["id"] == "recording")["default"])
+
+# --------------------------------------------------------------------------
+print("\nHow many real spikes may be called Garbage")
+from backend import avery as AV                          # noqa: E402
+
+
+class FakeRuns:
+    def __init__(self, recs):
+        self.recs = recs
+
+    def get(self, run_id):
+        return self.recs.get(run_id)
+
+
+tr_ = np.random.default_rng(11)
+t_p = np.r_[tr_.beta(2, 5, 1500), tr_.beta(6, 2, 6000)]
+t_y = np.r_[np.zeros(1500, int), np.ones(6000, int)]
+t_base = AI.label_policy(t_p, t_y, AI.POLICY_PLUS)
+t_runs = FakeRuns({"r1": {"results": {"oof": {"p": t_p.tolist(),
+                                              "y": t_y.tolist()}}},
+                   "old": {"results": {}}})
+tab = AV.tolerance_table(t_runs, "r1", t_base)
+ck("one row for every tolerance offered",
+   [r["ds_loss"] for r in tab] == list(AV.TOLERANCES), tab)
+ck("the default is one of them", AV.DEFAULT_TOLERANCE in AV.TOLERANCES)
+ck("allowing more spikes to go cleans more garbage",
+   all(a["garbage_cleaned"] <= b["garbage_cleaned"]
+       for a, b in zip(tab, tab[1:])), [r["garbage_cleaned"] for r in tab])
+ck("and leaves fewer candidates flagged for a person",
+   all(a["flagged"] >= b["flagged"] for a, b in zip(tab, tab[1:])),
+   [r["flagged"] for r in tab])
+ck("and costs about the spikes it says it will",
+   all(abs(r["ds_called_garbage"] - r["ds_loss"]) < 0.01 for r in tab),
+   [(r["ds_loss"], r["ds_called_garbage"]) for r in tab])
+ck("the DS bar never moves with it, so garbage into DS does not change",
+   len({r["garbage_into_ds"] for r in tab}) == 1,
+   [r["garbage_into_ds"] for r in tab])
+moved = AV.policy_for(t_runs, "r1", t_base, 0.25)
+ck("moving the Garbage bar keeps the DS and review bars",
+   moved["t_ds"] == t_base["t_ds"] and moved["t_review"] == t_base["t_review"]
+   and moved["t_garbage"] > t_base["t_garbage"], (moved, t_base))
+ck("no tolerance asked for is the run's own bars",
+   AV.policy_for(t_runs, "r1", t_base, None) is t_base)
+ck("a run without held-out scores offers no tolerance",
+   AV.tolerance_table(t_runs, "old", t_base) == [])
+ck("Avery Garbage Dystrophy+ is a model a sweep can use",
+   "avery_gd" in AI.SLOTS
+   and AI.SLOT_NAMES["avery_gd"] == "Avery Garbage Dystrophy+")
+
+# --------------------------------------------------------------------------
+print("\nThe blend")
+import io                                                 # noqa: E402
+import joblib                                             # noqa: E402
+bx = np.random.default_rng(4).normal(size=(800, 6))
+by_ = (bx[:, 0] + 0.6 * np.random.default_rng(5).normal(size=800) > 1.0)
+by_ = by_.astype(int)
+bm = AI._fit("blend", bx, by_, 0)
+mean_ = np.mean([m.predict_proba(bx)[:, 1] for m in bm.fitted], axis=0)
+ck("a model to choose", "blend" in AI.MODEL_IDS)
+ck("five sets of boosted trees, each its own draw",
+   len(bm.fitted) == len(AI.BLEND_MEMBERS) == 5
+   and len({m.random_state for m in bm.fitted}) == 5,
+   [getattr(m, "random_state", None) for m in bm.fitted])
+ck("its score is their average", np.allclose(AI._proba(bm, bx), mean_))
+buf = io.BytesIO()
+joblib.dump(bm, buf)
+buf.seek(0)
+ck("it is saved and loaded like any other model",
+   np.allclose(joblib.load(buf).predict_proba(bx), bm.predict_proba(bx)))
+
+# --------------------------------------------------------------------------
+print("\nThe waveform measures")
+from backend import aiwave as WB                          # noqa: E402
+step = AI.WAVE_STEP_MS
+n_w = len(AI._NAMES["waves"]) - AI.PROFILE_ROWS
+half = n_w // 2
+t_ms = (np.arange(half) - half // 2) * step
+
+
+def bump(at_ms=0.0, sd_ms=5.0, decay_ms=None):
+    right = decay_ms or sd_ms
+    s = np.where(t_ms < at_ms, sd_ms, right)
+    return np.exp(-0.5 * ((t_ms - at_ms) / s) ** 2)
+
+
+def row(w, c=None, prof=None):
+    c = bump() if c is None else c
+    prof = np.r_[np.linspace(-0.3, 1, 20), np.linspace(1, 0.2, 12)] \
+        if prof is None else prof
+    return np.r_[w, c, prof]
+
+
+ix = {n: k for k, n in enumerate(WB.NAMES)}
+clean = bump()
+jag = clean + 0.15 * np.random.default_rng(5).standard_normal(half)
+late = bump(at_ms=6.0)
+skew_ = bump(sd_ms=3.0, decay_ms=10.0)
+fam_w = {"waves": np.vstack([row(clean), row(jag), row(late), row(skew_),
+                             row(clean, c=bump(at_ms=4.0)), row(clean)])}
+okw = np.array([True, True, True, True, True, False])
+wb = AI.derive_wavebits(fam_w, okw)
+ck("twenty-five of them", len(WB.NAMES) == 25 and wb.shape == (6, 25),
+   wb.shape)
+ck("in the run's inputs, after everything already there",
+   AI.FAMILY_IDS[-1] == "wavebits" and "wavebits" in AI.DERIVED
+   and AI.feature_names(["wavebits"]) == WB.NAMES)
+ck("off by default", not next(f for f in AI.FAMILIES
+                              if f["id"] == "wavebits")["default"])
+ck("a candidate that could not be read gets none", np.isnan(wb[5]).all())
+ck("a clean spike peaks on its stamp", wb[0, ix["wb_peak_ms"]] == 0.0,
+   wb[0, ix["wb_peak_ms"]])
+fw = 2.0 * np.sqrt(2.0 * np.log(2.0)) * 5.0
+ck("its width at half height is the width it has",
+   abs(wb[0, ix["wb_fwhm_ms"]] - fw) < 0.5, (wb[0, ix["wb_fwhm_ms"]], fw))
+ck("and it is symmetric", wb[0, ix["wb_symmetry"]] > 0.99,
+   wb[0, ix["wb_symmetry"]])
+ck("one peak, nothing beside it",
+   wb[0, ix["wb_n_peaks"]] == 1 and wb[0, ix["wb_second_peak"]] == 0,
+   (wb[0, ix["wb_n_peaks"]], wb[0, ix["wb_second_peak"]]))
+ck("a late one peaks late", wb[2, ix["wb_peak_ms"]] == 6.0,
+   wb[2, ix["wb_peak_ms"]])
+ck("noise reads as jagged and high in frequency",
+   wb[1, ix["wb_jagged"]] > 2 * wb[0, ix["wb_jagged"]]
+   and wb[1, ix["wb_hf_frac"]] > wb[0, ix["wb_hf_frac"]],
+   (wb[:2, ix["wb_jagged"]].tolist(), wb[:2, ix["wb_hf_frac"]].tolist()))
+ck("fast up and slow down reads as such",
+   wb[3, ix["wb_rise_ms"]] < wb[3, ix["wb_decay_ms"]]
+   and wb[3, ix["wb_symmetry"]] < wb[0, ix["wb_symmetry"]],
+   wb[3, [ix["wb_rise_ms"], ix["wb_decay_ms"], ix["wb_symmetry"]]].tolist())
+ck("a CSD peaking 4 ms after the trace is 4 ms late",
+   wb[4, ix["wb_csd_lag_ms"]] == 4.0 and wb[0, ix["wb_csd_lag_ms"]] == 0.0,
+   (wb[4, ix["wb_csd_lag_ms"]], wb[0, ix["wb_csd_lag_ms"]]))
+ck("the depth profile's one sign change is counted",
+   wb[0, ix["wb_profile_flips"]] == 1, wb[0, ix["wb_profile_flips"]])
 
 print("\n%d ok, %d failed" % (len(OK), len(BAD)))
 sys.exit(1 if BAD else 0)

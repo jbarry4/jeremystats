@@ -1491,6 +1491,17 @@ BARRY.doppler = (function () {
         box.appendChild(el('p', { class: 'inc-blocked',
           text: (b.label || b.gid) + ' — ' + b.why }));
       }
+      /* The ones only missing from the cluster can be sent, and this
+         is the same upload Sessions runs. Re-plans afterwards, so a
+         recording that has just gone up stops being listed as one that
+         cannot. */
+      if (BARRY.vacc && BARRY.vacc.uploadMissing) {
+        const offer = BARRY.vacc.uploadMissing(batchPlan.blocked, () => {
+          batchPlan = null;
+          paint();
+        });
+        if (offer) box.appendChild(offer);
+      }
     }
     if (batch) {
       const rows = el('div', { class: 'inc-batch' });

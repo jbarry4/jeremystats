@@ -361,6 +361,34 @@ svg.dmap rect[data-region] { cursor: default; }
 .pairmat text { font-family: inherit; }
 #causes { margin-top: 0; }
 .evwrap .card h3 { margin-top: 12px; }
+/* PAC within a region: the conventional route; across regions: exploratory. */
+.pacgrids.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 700px) { .pacgrids.three { grid-template-columns: minmax(0, 1fr); } }
+.pacselfctl { gap: 8px; margin: 4px 0 6px; }
+.pacselfctl .lab { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.pacselfctl select, .evctl select, .evctl input { font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line-2);
+  border-radius: 6px; background: var(--surface); color: var(--ink); max-width: 100%; }
+.pacex { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 520px) { .pacex { grid-template-columns: minmax(0, 1fr); } }
+.pacex .lcard { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; }
+.pacex .lcard h4 { margin: 0 0 4px; }
+.pacregions .pacrow-r:hover rect { opacity: .9; }
+.xplore { background: var(--up-soft); border-left: 3px solid var(--up); padding: 6px 10px; border-radius: 4px; font-size: 12.5px; color: var(--ink-2); }
+.xplore strong { color: var(--up); }
+/* Events first. */
+.evctl { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 8px 14px; margin: 8px 0; }
+.evset { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.evset .small { color: var(--ink-3); }
+.evbtns { grid-column: 1 / -1; gap: 12px; }
+.evsettings > summary { cursor: pointer; font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+.evstatus { margin: 8px 0; }
+.evsec { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 4px; }
+.evgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 6px 10px; margin: 8px 0; }
+.evrates td, .evtable td { overflow-wrap: anywhere; }
+/* Across the four sessions. */
+.trajwrap { overflow-x: auto; }
+.trajmat th b.sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.trajmat td.num { font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -371,6 +399,7 @@ svg.dmap rect[data-region] { cursor: default; }
 <script src="js/monolith_figs.js"></script>
 <script src="js/monolith_help.js"></script>
 <script src="js/monolith.js"></script>
+<script src="js/monolith_events.js"></script>
 <script src="js/monolith_tour.js"></script>
 <script src="js/tour.js"></script>
 </body>

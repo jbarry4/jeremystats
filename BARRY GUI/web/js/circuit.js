@@ -2416,6 +2416,17 @@ BARRY.circuit = (function () {
         ? blocked.map((b) => labelOf(b.gid) + ' \u2014 ' + b.why).join('; ')
         : 'none' }),
     ]));
+    /* The blocked ones the cluster simply has not got can be sent, and
+       this is the same upload Sessions runs -- see `uploadMissing`. The
+       plan is re-read afterwards, so a recording that has just gone up
+       stops being counted as blocked. */
+    if (BARRY.vacc && BARRY.vacc.uploadMissing) {
+      const offer = BARRY.vacc.uploadMissing(blocked, () => {
+        bulk.plan = null;
+        askBatchPlan();
+      });
+      if (offer) box.appendChild(offer);
+    }
     box.appendChild(el('p', { class: 'hint arc-batch-say',
       text: 'One set of parameters for the whole batch: '
             + (st.params ? 'the ones set in One recording at a time.'

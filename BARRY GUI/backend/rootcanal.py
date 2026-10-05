@@ -208,6 +208,11 @@ FILTERS = {
 }
 FILTER_KINDS = ("none", "ds", "lfp", "custom")
 DEFAULT_FILTER = "lfp"
+
+# HOW MANY CLUSTERS. 1 to 6, asked for by the user on 2026-10-02. Two is what
+# the tool was built on and stays the default; one is no split at all, which
+# is the honest null to compare a split against.
+K_MIN, K_MAX, K_DEFAULT = 1, 6, 2
 WIN_MS = 25.0                    # +- where the contact and the peak are picked
 BAND = (500.0, 1000.0)           # the HF band (v5's), now adjustable
 
@@ -331,7 +336,7 @@ class Params:
                  "hf_win_ms", "hf_base_off_ms", "hf_base_win_ms", "pad_s")
     FIT_KEYS = ("filt", "mains_out", "lo_hz", "hi_hz", "order", "win_ms",
                 "band_lo", "band_hi", "cross_ms", "flank_ms", "seed", "n_init",
-                "flips", "centres")
+                "flips", "centres", "k", "cluster_calls", "margin")
 
     def __init__(self, **kw):
         g = kw.get
@@ -377,6 +382,48 @@ class Params:
         self.flank_ms = [float(fl[0]), float(fl[1])]
         self.seed = int(_num(g("seed"), SEED, "the seed"))
         self.n_init = max(10, int(_num(g("n_init"), N_INIT, "n_init")))
+        # HOW MANY CLUSTERS, 1 to 6 (asked for 2026-10-02). Two is what
+        # this tool was built on and stays the default.
+        kk = _num(g("k"), K_DEFAULT, "the number of clusters")
+        if kk != int(kk) or not K_MIN <= int(kk) <= K_MAX:
+            raise RootCanalError(
+                "The number of clusters has to be a whole number from %d to "
+                "%d, not %s." % (K_MIN, K_MAX, _g(kk)))
+        self.k = int(kk)
+        # Calls given by hand, by cluster rank: {"<rank>": "ds" | "ied"}.
+        cc = g("cluster_calls") or {}
+        if not isinstance(cc, dict):
+            raise RootCanalError(
+                "Cluster relabels have to be {cluster: \"ds\" or \"ied\"}.")
+        self.cluster_calls = {}
+        for key, v in cc.items():
+            try:
+                r = int(key)
+            except (TypeError, ValueError):
+                raise RootCanalError("A cluster is named by its number, not "
+                                     "%r." % (key,))
+            v = str(v or "").strip().lower()
+            if v not in ("ds", "ied"):
+                raise RootCanalError("A cluster can be called DS or IED, not "
+                                     "%r." % (v,))
+            self.cluster_calls[str(r)] = v
+        # A saved margin to apply, by reference. The app resolves it to its
+        # payload; Params only carries what was asked for, so the request
+        # can be rebuilt from params alone.
+        mg = g("margin")
+        if mg in (None, "", {}):
+            self.margin = None
+        else:
+            if not isinstance(mg, dict) or not mg.get("artifact_id"):
+                raise RootCanalError(
+                    "A margin is named by its artifact id (and optionally a "
+                    "version and a mode).")
+            mode = str(mg.get("mode") or "fixed").lower()
+            if mode not in ("fixed", "refine"):
+                raise RootCanalError("A margin is applied fixed or refined, "
+                                     "not %r." % (mode,))
+            self.margin = {"artifact_id": str(mg["artifact_id"]),
+                           "version": mg.get("version"), "mode": mode}
         try:
             self.flips = sorted({int(i) for i in (g("flips") or [])})
         except (TypeError, ValueError):
@@ -390,11 +437,12 @@ class Params:
                 arr = np.asarray(cen, dtype=float)
             except (TypeError, ValueError):
                 arr = np.zeros(0)
-            if arr.shape != (2, 3) or not np.isfinite(arr).all():
+            if arr.shape != (self.k, 3) or not np.isfinite(arr).all():
                 raise RootCanalError(
-                    "The cluster centres have to be two points of three "
-                    "numbers each, in z units -- or nothing, for k-means' "
-                    "own.")
+                    "The cluster centres have to be %d point%s of three "
+                    "numbers each, in z units -- one per cluster -- or "
+                    "nothing, for k-means' own."
+                    % (self.k, "" if self.k == 1 else "s"))
             self.centres = [[float(v) for v in row] for row in arr]
 
         if self.filt != "none" and (self.order < 1 or self.order > 8):
@@ -1118,7 +1166,7 @@ def hf_db(got, p):
     return D, best, brow
 
 
-def fit(got, p):
+def fit(got, p, margin=None):
     """The three numbers, the clustering, the naming, the overrides.
 
     Returns exactly what `/api/rootcanal/fit` sends, bar `ok`. Every event of
@@ -1144,55 +1192,19 @@ def fit(got, p):
     # -- no mean, no median, no nearest neighbour -- because an imputed
     # value would decide the class and look like a measurement. An event
     # with one axis or none has nothing to be near and stays unclassified.
-    use = n_axes == 3
-    part = n_axes == 2
-    placed = use | part
-    n_used = int(use.sum())
-    if n_used < 3:
-        raise RootCanalError(
-            "Only %d of %d events could be measured on all three axes, and "
-            "two clusters need more than that. Widen the filter or the band, "
-            "or check the read." % (n_used, n))
-
-    mu = X[use].mean(axis=0)
-    sd = X[use].std(axis=0)
-    sd[~np.isfinite(sd) | (sd == 0)] = 1.0
-    Z = np.where(have, (X - mu) / sd, np.nan)
-
-    manual = p.centres is not None
-    if manual:
-        C = np.asarray(p.centres, dtype=float)
-    else:
-        km = KMeans(n_clusters=2, random_state=p.seed, n_init=p.n_init)
-        km.fit(Z[use])
-        C = np.asarray(km.cluster_centers_, dtype=float)
-    # Every event to its nearest centre in z-space. For k-means' own centres
-    # that is k-means' own answer; for dragged ones it is what "the dragged
-    # centre sticks" means.
-    # A partial event's distance is over the axes it has, and only those:
-    # the missing one contributes nothing to either centre, so it cannot
-    # tip the choice. The same arithmetic runs for dragged centres, so a
-    # drag re-assigns partial events exactly as it does complete ones.
-    lab = np.full(n, -1, dtype=int)
-    diff = np.where(have[placed][:, None, :],
-                    Z[placed][:, None, :] - C[None, :, :], 0.0)
-    lab[placed] = np.argmin((diff ** 2).sum(axis=2), axis=1)
-    raw_c = C * sd + mu
-
-    if not manual:
-        # k-means numbers its clusters arbitrarily. Put DS first, so an
-        # unchanged answer comes back in an unchanged order and a centre the
-        # panel hands back as [DS, IED] means what it meant.
-        if raw_c[0, 2] > raw_c[1, 2]:
-            C = C[::-1].copy()
-            raw_c = raw_c[::-1].copy()
-            lab[placed] = 1 - lab[placed]
-    # THE NAMING RULE: the higher-HF centre is IED. Applied to dragged
-    # centres too -- dragging changes where the centres are, not what the
-    # rule is -- and their order is kept as given, so the panel's handles
-    # do not swap under the mouse.
-    ied_c = int(np.argmax(raw_c[:, 2])) if raw_c[0, 2] != raw_c[1, 2] else 1
-    cls_of = {ied_c: "ied", 1 - ied_c: "ds"}
+    # The clustering itself is `cluster_core`, shared with Pooled: the
+    # z-scoring, k-means for any k, the HF ranking, the naming rule,
+    # dragged centres and saved margins. A margin, when there is one, has
+    # already been checked against this fit's measurement by the caller.
+    core = cluster_core(X, k=p.k, seed=p.seed, n_init=p.n_init,
+                        centres=(None if margin else p.centres),
+                        cluster_calls=p.cluster_calls, margin=margin,
+                        margin_mode=(p.margin or {}).get("mode", "fixed"))
+    use, part, placed = core["use"], core["part"], core["placed"]
+    n_used, mu, sd, Z = core["n_used"], core["mu"], core["sd"], core["Z"]
+    C, raw_c, lab = core["C"], core["raw_c"], core["lab"]
+    manual = core["manual"]
+    cls_of = {r: core["calls"][r] for r in range(core["k"])}
 
     flips = set(p.flips)
     events = []
@@ -1242,12 +1254,14 @@ def fit(got, p):
         })
 
     centres = []
-    for k in range(2):
+    for k in range(core["k"]):
         centres.append({"z": [float(v) for v in C[k]],
                         "raw": [float(v) for v in raw_c[k]],
                         "cls": cls_of[k],
                         "n": int((lab == k).sum())})
-    ds_c = 1 - ied_c
+    general = k_sentence(core, p.band_label())
+    ied_c = int(np.argmax(raw_c[:, 2])) if core["k"] >= 2 else 0
+    ds_c = 1 - ied_c if core["k"] == 2 else 0
     rule = (
         "The cluster whose centre has more %s is called IED: %s dB against "
         "%s dB for the other, which is called DS (%d DS, %d IED%s%s%s%s%s)."
@@ -1262,6 +1276,18 @@ def fit(got, p):
            ("; centres placed by hand" if manual else ""),
            ("; %d flipped by hand" % len(flipped_used))
            if flipped_used else ""))
+    if general:
+        rule = ("%s (%d DS, %d IED%s%s%s%s%s)." % (
+            general, counts["ds"], counts["ied"],
+            (", %d not measured" % counts["unmeasured"])
+            if counts["unmeasured"] else "",
+            ("; " + partial_sentence(counts["partial"], why_part, p.cross_ms))
+            if counts["partial"] else "",
+            ("; " + wide_sentence(counts["wide"], p.cross_ms))
+            if counts["wide"] else "",
+            ("; centres placed by hand" if manual else ""),
+            ("; %d flipped by hand" % len(flipped_used))
+            if flipped_used else ""))
     unused = sorted(flips - set(flipped_used))
     return {
         "n": n, "n_used": n_used,
@@ -1273,6 +1299,9 @@ def fit(got, p):
                   "unit": "dB re baseline"}],
         "events": events,
         "centres": centres,
+        "k": core["k"],
+        "clusters": clusters_out(core),
+        "k_from_margin": bool(margin) and core["k"] != p.k,
         "rule": rule,
         "counts": counts,
         "manual_centres": manual,
@@ -1284,6 +1313,203 @@ def fit(got, p):
         "missed": list(got.get("missed") or []),
         "params": p.as_dict(),
     }
+
+
+def margin_mismatch(margin, p):
+    """How a saved margin's measurement differs from this fit's, in words.
+
+    Empty when they agree. A margin is centres in µV, ms and dB; on a
+    different filter, band or window those are different measurements, and
+    a boundary drawn in one is not a boundary in the other.
+    """
+    m = (margin or {}).get("measure") or {}
+    out = []
+    mine = Params(**{k: getattr(p, k) for k in
+                     ("filt", "mains_out", "lo_hz", "hi_hz", "order")})
+    theirs_f = m.get("filter_label")
+    if theirs_f and theirs_f != mine.filter_label():
+        out.append("the margin was measured on %s and this on %s"
+                   % (theirs_f, mine.filter_label()))
+    for key, words in (("band_lo", None), ("win_ms", "amplitude window"),
+                       ("cross_ms", "half-width search")):
+        if key == "band_lo":
+            a = [m.get("band_lo"), m.get("band_hi")]
+            b = [p.band_lo, p.band_hi]
+            if a[0] is not None and [float(a[0]), float(a[1])] != b:
+                out.append("the margin's HF band was %s–%s Hz and this is "
+                           "%s–%s Hz" % (_g(a[0]), _g(a[1]), _g(b[0]),
+                                         _g(b[1])))
+            continue
+        a, b = m.get(key), getattr(p, key)
+        if a is not None and float(a) != float(b):
+            out.append("its %s was ±%s ms and this is ±%s ms"
+                       % (words, _g(a), _g(b)))
+    return out
+
+
+def measure_of(p):
+    """What a margin records about how its numbers were measured."""
+    return {"filt": p.filt, "mains_out": bool(p.mains_out),
+            "lo_hz": float(p.lo_hz), "hi_hz": float(p.hi_hz),
+            "order": int(p.order), "filter_label": p.filter_label(),
+            "win_ms": float(p.win_ms), "cross_ms": float(p.cross_ms),
+            "band_lo": float(p.band_lo), "band_hi": float(p.band_hi)}
+
+
+def cluster_core(X, k=K_DEFAULT, seed=SEED, n_init=N_INIT, centres=None,
+                 cluster_calls=None, margin=None, margin_mode="fixed",
+                 what="events"):
+    """One clustering, for Single and for Pooled alike.
+
+    `X` is [n x 3] raw amp, hw, hf, NaN where unmeasured. Returns the scale,
+    the z values, the centres ranked, every event's cluster and the call of
+    every cluster. Kept in one place so the two views cannot drift apart.
+
+    RANKS. k-means numbers its clusters arbitrarily, so they are put in
+    order of their centre's raw HF power, lowest first: rank 0 is the
+    quietest cluster, rank k-1 the loudest. At k = 2 that is the old
+    "DS first". Dragged centres keep the order they were sent in (so a
+    handle does not swap under the mouse), and so do a margin's.
+
+    CALLS. At k >= 2 the highest-HF cluster is IED and the rest are DS -- the
+    rule, generalised. At k = 1 everything is DS: with one cluster there is
+    nothing to call an IED against. A margin brings its own calls. Calls
+    given by hand (`cluster_calls`, by rank) win over both.
+
+    MARGINS. A margin is read on ITS OWN scale (decided by the user): the
+    centres were placed on the source's z, so the target is z-scored with
+    the source's mean and SD, and the boundary is the same µV, ms and dB
+    wherever it is used. Fixed: nearest margin centre, nothing moves.
+    Refine: k-means on this data in that scale, started at the margin's
+    centres, n_init = 1 -- each cluster keeps the call of the centre it
+    started from.
+
+    Partial events (two axes) are assigned on the axes they have and shape
+    nothing; events with fewer are left out. See `fit`.
+    """
+    X = np.asarray(X, dtype=float).reshape(-1, 3)
+    n = X.shape[0]
+    have = np.isfinite(X)
+    n_axes = have.sum(axis=1)
+    use, part = n_axes == 3, n_axes == 2
+    placed = use | part
+    n_used = int(use.sum())
+
+    if margin:
+        k = int(margin["k"])
+        mu = np.asarray(margin["scale"]["mean"], dtype=float)
+        sd = np.asarray(margin["scale"]["sd"], dtype=float)
+    else:
+        need = max(3, k)
+        if n_used < need:
+            raise RootCanalError(
+                "Only %d of %d %s were measured on all three axes, and %d "
+                "cluster%s need more than that." % (
+                    n_used, n, what, k, "" if k == 1 else "s"))
+        mu = X[use].mean(axis=0)
+        sd = X[use].std(axis=0)
+    sd = np.where(~np.isfinite(sd) | (sd == 0), 1.0, sd)
+    Z = np.where(have, (X - mu) / sd, np.nan)
+
+    keep_order = False
+    if margin:
+        Cm = (np.asarray([c["centre_raw"] for c in margin["clusters"]],
+                         dtype=float) - mu) / sd
+        if margin_mode == "refine":
+            if n_used < k:
+                raise RootCanalError(
+                    "Refining a %d-cluster margin needs at least %d events "
+                    "measured on all three axes; there are %d."
+                    % (k, k, n_used))
+            km = KMeans(n_clusters=k, init=Cm, n_init=1).fit(Z[use])
+            C = np.asarray(km.cluster_centers_, dtype=float)
+        else:
+            C = Cm
+        keep_order = True
+    elif centres is not None:
+        C = np.asarray(centres, dtype=float)
+        keep_order = True
+    elif k == 1:
+        C = Z[use].mean(axis=0, keepdims=True)
+    else:
+        km = KMeans(n_clusters=k, random_state=seed, n_init=n_init)
+        km.fit(Z[use])
+        C = np.asarray(km.cluster_centers_, dtype=float)
+    raw_c = C * sd + mu
+    if not keep_order:
+        o = np.argsort(raw_c[:, 2], kind="stable")
+        C, raw_c = C[o].copy(), raw_c[o].copy()
+
+    # Every event to its nearest centre, over the axes it has.
+    lab = np.full(n, -1, dtype=int)
+    if placed.any():
+        diff = np.where(have[placed][:, None, :],
+                        Z[placed][:, None, :] - C[None, :, :], 0.0)
+        lab[placed] = np.argmin((diff ** 2).sum(axis=2), axis=1)
+
+    if margin:
+        calls = [str(c["call"]) for c in margin["clusters"]]
+        by = ["margin"] * k
+    else:
+        calls, by = ["ds"] * k, ["rule"] * k
+        if k >= 2:
+            hfc = raw_c[:, 2]
+            top = (int(np.argmax(hfc)) if np.unique(hfc).size > 1 else k - 1)
+            calls[top] = "ied"
+    for key, v in (cluster_calls or {}).items():
+        r = int(key)
+        if 0 <= r < k and v in ("ds", "ied") and v != calls[r]:
+            calls[r], by[r] = v, "hand"
+    return {"n": n, "have": have, "n_axes": n_axes, "use": use,
+            "part": part, "placed": placed, "n_used": n_used,
+            "mu": mu, "sd": sd, "Z": Z, "C": C, "raw_c": raw_c, "lab": lab,
+            "k": k, "calls": calls, "call_by": by,
+            "manual": centres is not None and not margin}
+
+
+def clusters_out(core):
+    """The `clusters` list a fit hands back: one row per rank."""
+    lab, C, raw_c = core["lab"], core["C"], core["raw_c"]
+    return [{"rank": r, "call": core["calls"][r], "call_by": core["call_by"][r],
+             "n": int((lab == r).sum()),
+             "centre_raw": [float(v) for v in raw_c[r]],
+             "centre_z": [float(v) for v in C[r]]}
+            for r in range(core["k"])]
+
+
+def k_sentence(core, band_label):
+    """The naming rule, for any k, in one sentence -- or None at k = 2 by
+    the rule alone, where the original sentence is kept word for word."""
+    k, calls, by, raw_c = core["k"], core["calls"], core["call_by"], core["raw_c"]
+    if k == 2 and by == ["rule", "rule"]:
+        return None
+    if k == 1:
+        return ("k = 1: one cluster, so no split -- every event is called "
+                "DS%s" % (" (relabelled IED by hand)"
+                          if calls[0] == "ied" else ""))
+    ied = [r for r in range(k) if calls[r] == "ied"]
+    ds = [r for r in range(k) if calls[r] == "ds"]
+    db = lambda rs: ", ".join(_db_s(raw_c[r, 2]) + " dB" for r in rs)
+    head = ("k = %d%s: " % (k, ", from a saved margin"
+                            if "margin" in by else ""))
+    body = []
+    if ied:
+        body.append("the cluster%s at %s %s called IED"
+                    % ("" if len(ied) == 1 else "s", db(ied),
+                       "is" if len(ied) == 1 else "are"))
+    if ds:
+        body.append("the cluster%s at %s %s DS"
+                    % ("" if len(ds) == 1 else "s", db(ds),
+                       "is" if len(ds) == 1 else "are"))
+    hand = [r for r in range(k) if by[r] == "hand"]
+    tail = ""
+    if hand:
+        tail = " (cluster%s %s relabelled by hand)" % (
+            "" if len(hand) == 1 else "s",
+            ", ".join(str(r + 1) for r in hand))
+    elif "margin" not in by:
+        tail = " (the highest-HF cluster is IED by the rule)"
+    return head + "; ".join(body) + tail + " on " + band_label
 
 
 _WHY = {"hw_ms": "half-width unresolved even at %s ms",

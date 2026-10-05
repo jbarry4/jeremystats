@@ -262,11 +262,32 @@ window.MONO_HELP = (function () {
       look: 'A run of neighbouring frequencies is a band; one lone frequency is more likely chance.',
       traps: 'In transition view, bands left of the dashed line use −3/+3 s windows and those right of it −1/+2 s.',
     },
+    trajectory: {
+      title: 'Across the four sessions',
+      plain: 'The selected line’s value in every Precon session — 1, 2, 3 and 4 — measured exactly as the Monolith measures Precon1 and Precon4. Left: every presentation in order, a panel a session, each rat its own colour and the mean over rats in black. Below: each rat’s session value (the mean over its presentations, less its flower-pot rest in minus FP), and the mean ± SE over rats.',
+      look: 'Whether a change from Precon1 to Precon4 builds session by session, appears all at once, or comes and goes; and whether it is in every rat or a few. Within a session: whether it drifts from the first presentation to the last.',
+      traps: 'Nothing here is tested, on purpose (the lab’s choice): the Monolith’s p is for Precon4 − Precon1 alone, and Precon2 and Precon3 never enter it. Four sessions of eight rats invite stories; read the shape, not single numbers. Presentations are lined up by their order in the session, not by which cue pair they were.',
+    },
+    events: {
+      title: 'Events first: hippocampal P300-like events',
+      plain: 'Large positive deflections in the dorsal hippocampus, found wherever they fall in the cue session rather than in fixed windows. The wire is band-passed (0.5–15 Hz by default) and put on a robust z scale over the session (median, and 1.4826 × the median absolute deviation, away from the rail); an event is a positive peak at or above the threshold (z 4), 150–500 ms wide at half its height, at least 500 ms after the last. Above the ceiling (z 15), or within 250 ms of the rail, it is an artifact and dropped. Each event is then placed against the presentations, and every other region’s wire is averaged around the events and around twice as many random times in the same session.',
+      look: 'A rise in the histogram right after a cue, in most rats, that is bigger on Precon4: the events came to follow that cue. A region whose event-locked average beats random times in most rats, while others do not, moved with the hippocampus specifically.',
+      traps: 'Something every wire shares — the reference, movement, chewing, a cable knock — makes events that show up in every region at once; the page warns when that is the pattern, and the example traces show it. A 1 Hz low edge takes about 40% off a 300 ms deflection and halves its width (measured), which is why the default is 0.5 Hz. Nothing here is tested across rats: the counts are descriptive.',
+      cite: ['Polich (2007). Updating P300: an integrative theory of P3a and P3b. Clin Neurophysiol 118:2128–2148.', 'Halgren et al. (1980). Endogenous potentials generated in the human hippocampal formation and amygdala by infrequent events. Science 210:803–805.'],
+    },
+    'pac.self': {
+      title: 'Phase–amplitude coupling within a region',
+      plain: 'The conventional measure: does a slow rhythm’s phase (2–12 Hz) set how loud a faster one (15–50 Hz) is, both read from the same region’s wire? Tort’s modulation index (MI): how far the amplitude across 18 phase bins is from flat. Each session’s comodulogram is the mean over rats of each rat’s mean over its presentations; the change is pooled over rats as everything else on the page.',
+      look: 'A patch of neighbouring cells that is already there on Precon1 and grows on Precon4, in most rats. Compare the region with the others at the same cell (the rows below the comodulograms), and open a typical presentation of each session to see the phase-binned amplitude itself.',
+      traps: 'Sharp, non-sinusoidal waves and evoked responses produce PAC with no real coupling: look at the presentation’s traces. MI grows with noise in short windows, so the 6 s transitions sit higher than the 10 s states; compare like with like. Empty cells cannot carry their sidebands and are not measured.',
+      cite: ['Tort et al. (2010). Measuring phase-amplitude coupling between neuronal oscillations of different frequencies. J Neurophysiol 104:1195–1210.', 'Aru et al. (2015). Untangling cross-frequency coupling in neuroscience. Curr Opin Neurobiol 31:51–61.'],
+      plot: 'pac',
+    },
     pac: {
-      title: 'Phase–amplitude coupling',
-      plain: 'Does a slow rhythm’s phase (2–12 Hz) in one region set how loud a faster one (15–50 Hz) is, in the same region or another? Tort’s modulation index: how far the amplitude across 18 phase bins is from flat. Shown is its change, Precon1 → Precon4.',
-      look: 'A cell that rises across rats: that slow rhythm came to organise that fast one.',
-      traps: 'Sharp, non-sinusoidal waves and evoked responses produce PAC with no real coupling. Empty cells cannot carry their sidebands and are not measured.',
+      title: 'Phase–amplitude coupling across regions (exploratory)',
+      plain: 'Does a slow rhythm’s phase (2–12 Hz) in one region set how loud a faster one (15–50 Hz) is in another? Tort’s modulation index: how far the amplitude across 18 phase bins is from flat. Shown is its change, Precon1 → Precon4, each way. Exploratory: how to read it is still being validated.',
+      look: 'A cell that rises across rats: that slow rhythm came to organise that fast one. Check the within-region comodulograms first: cross-region PAC means more when each region’s own coupling is understood.',
+      traps: 'Two regions on a shared reference, or picking up the same source, show cross-region PAC with no real interaction. Sharp, non-sinusoidal waves and evoked responses produce PAC with no real coupling. Empty cells cannot carry their sidebands and are not measured.',
       cite: ['Tort et al. (2010). Measuring phase-amplitude coupling between neuronal oscillations of different frequencies. J Neurophysiol 104:1195–1210.', 'Aru et al. (2015). Untangling cross-frequency coupling in neuroscience. Curr Opin Neurobiol 31:51–61.'],
       plot: 'pac',
     },
@@ -395,7 +416,7 @@ window.MONO_HELP = (function () {
   function valueOf(key, ex) {
     if (!ex) return null;
     if (key === 'power') return ex.power ? ex.power[0] : null;
-    if (key === 'pac' || key === 'pac.circuit') return ex.pac && ex.pac.aa ? ex.pac.aa.mi : null;
+    if (key === 'pac' || /^pac\./.test(key)) return ex.pac && ex.pac.aa ? ex.pac.aa.mi : null;
     if (key === 'arrows') return ex.values ? ex.values.gc_net : null;
     return ex.values ? ex.values[key] : null;
   }
@@ -403,7 +424,7 @@ window.MONO_HELP = (function () {
   /* Strong vs none, for a measure: traces, the measure's picture, its number. */
   function measureDemo(key, g, big) {
     const G = F();
-    const mkey = key === 'arrows' ? 'gc_net' : key === 'pac.circuit' ? 'pac' : key;
+    const mkey = key === 'arrows' ? 'gc_net' : /^pac\./.test(key) ? 'pac' : key;
     const scen = g && g.measures && g.measures[mkey];
     if (!scen) return null;
     const S = g.scenarios[scen];

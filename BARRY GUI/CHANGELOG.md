@@ -15,6 +15,412 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.03.1 - Avery Garbage Dystrophy+, a tolerance for lost spikes, and a sweep screen that starts at once
+
+### Added
+
+- **You choose how many real spikes may be called Garbage.** The Avery
+  Sweep dialog offers 5%, 10%, 15%, 20%, 25% or 30%, with 20% selected at
+  first. Allowing more lost spikes cleans out more garbage automatically
+  and leaves fewer candidates flagged. Next to the choice, the dialog shows
+  what it did on mice the model never saw:
+  - how much garbage was cleaned out
+  - how much garbage was left for a person to look at
+  - how much garbage was let into DS
+  - how many candidates were flagged
+
+  The DS bar does not move: 99% of garbage stays out of DS at every
+  setting. The tolerance is noted on the banked Avery version.
+- **Avery Garbage Dystrophy+**, a third model in the dialog and the one it
+  starts on. It is built so that a person has as little garbage as
+  possible to sift through. It has the same inputs as Avery+, scored by
+  five sets of boosted trees. Each set is balanced on its own draw of the
+  garbage and sees half the inputs at each split, and their scores are
+  averaged. AI Beta can train this blend as **Blend of boosted trees**
+  and offers **Make this Avery Garbage Dystrophy+** on any run trained
+  with Avery+'s bars.
+- **Waveform measures**, a new input in AI Beta that is off by default.
+  It adds 25 numbers worked out from the waveform the model already sees:
+  - when it peaks
+  - its width at half height
+  - rise and decay times and slopes
+  - symmetry, skew and kurtosis
+  - side peaks and zero crossings
+  - how jagged it is and where its power sits in frequency
+  - how quiet either side of it is
+  - the CSD's lag, correlation and width against the trace
+  - sign changes down the depth profile
+
+  They are derived from the cached features, so trying them costs a
+  retrain and no new read.
+
+### Fixed
+
+- **The sweep screen starts in about 5 s instead of about 45 s.** Before
+  the full read starts, the candidates it will scan are read on their own:
+  only the even channels it draws, ±0.25 s, four at a time. On KCNT1 m78
+  s1 with the machine busy, twelve candidates took 9 s where they took
+  35 s. Until the first one arrives, a scan line sweeps the empty scope.
+- **The scanner no longer stops.** It used to run out of candidates while
+  the set was still being read, which looked like a freeze. It now goes
+  round them again until the calls are in. Polls of the job no longer
+  overlap either. Two overlapping polls could each see the job finish and
+  start two finales on one screen.
+- **The verdicts are animated again.** When the calls are in, each scanned
+  candidate's lanes turn the colour of its call, the stamp lands and the
+  scope flashes. The feed is paced to finish with the scans, and the
+  summary appears once both have finished. Skip still jumps straight to it.
+- **Label colours now update in the support panels after a sweep.**
+  Accepting a sweep re-reads the set, and the other windows were only told
+  that the revision had moved, which is not a reason to re-read. So the
+  aid window kept every old colour. The re-read now sends every mark and
+  stamps every later pointer, and a window that sees a stamp it does not
+  hold reads the set again. That stamp matters because the live link keeps
+  only the latest value, so the step straight after the re-read used to
+  replace the marks before the aid window polled. This window's own panes
+  also repaint.
+
+### Measured
+
+Same 45 recordings, 12,406 candidates and 1,424 garbage. All numbers are
+scored only on mice each model never saw, with the DS bar fixed at 99% of
+garbage kept out (1.1% let into DS):
+
+| Real spikes allowed to be called Garbage | Avery+: garbage cleaned | Avery+: flagged | **Garbage Dystrophy+: garbage cleaned** | **Garbage Dystrophy+: flagged** |
+|---|---|---|---|---|
+| 5% | 55.1% | 36.9% | 55.2% | 36.2% |
+| 10% | 70.8% | 30.7% | 71.6% | 29.9% |
+| 15% | 82.0% | 25.0% | 82.5% | 24.2% |
+| 20% | 88.8% | 19.8% | **89.6%** | **18.9%** |
+| 25% | 94.2% | 14.7% | 93.8% | 14.0% |
+| 30% | 96.3% | 10.1% | **96.8%** | **9.3%** |
+
+The tolerance is the big lever. Avery+ shipped at 5%, which flagged 37% of
+candidates. At 20% it flags 19% and leaves a person 9% of the garbage.
+
+The blend is a smaller gain than that table suggests. One set of boosted
+trees on a second seed flagged 22.1% at 20%, not 19.8%. The share flagged
+is set by the few most spike-like pieces of garbage, so it moves about 2
+points between seeds. Averaging five draws steadies it.
+
+Run `ai20261003-192215-2d64`, AUC 0.923, 0.921 for Avery+.
+
+These did not help, each measured the same way:
+- **The waveform measures:** AUC 0.918 alone, and 20.1% flagged against
+  18.9% in the blend.
+- **Them relative to the recording's median:** AUC 0.920.
+- **Garbage weighted three times over:** 24.4% flagged.
+- **Larger, slower trees with the waveform measures:** 20.8% flagged.
+- **Adding a random forest to the blend:** within a point either way.
+
+### Checked
+
+- `tools/check_aibeta.py`: 61 ok. New checks:
+  - the tolerance table: more lost spikes clean more garbage and flag
+    less, at the cost stated, with the DS bar fixed
+  - the blend averages five draws and saves and loads like any model
+  - the waveform measures read a known width, lag, symmetry and noise
+- `_dev/avery.html`: 44 ok. New checks:
+  - all three models are offered, Garbage Dystrophy+ first
+  - the tolerance and its numbers, with 20% selected at first
+  - `ds_loss` is posted
+  - the scanner goes round its early samples while it reads
+  - the verdict lands
+  - the summary waits for the reel and comes on its own, stating the
+    tolerance
+- New `_dev/averyxwin.html`: 8 ok. Window A accepts a faked sweep and
+  window B, the aid window, has to show the new labels, including after a
+  step. It failed before the fix. It writes nothing a person would see.
+- `_dev/aibeta.html`: 33 ok.
+- A real sweep through a live server on PTEN_DKO m56 s8 with Garbage
+  Dystrophy+ at 20%: first candidate on screen at 5.4 s, done in 66 s.
+
+---
+
+## 2026.10.02.13 - Avery+: Braces' alignment, ±15 ms at the peak, and Garbage called Garbage
+
+### Added
+
+- **Avery+**, a second model for the Avery Sweep. When both models are
+  ready, the confirm dialog offers Avery or Avery+, with Avery+ first.
+  - **It aligns every candidate the way Braces does.** That means the
+    mains-free 5–100 Hz CSD averaged over the 16 rows where this
+    recording's candidates are strongest, peaks at least 12 ms apart
+    within 100 ms, largest first, one peak per stamp and never crossing.
+    Braces' own constants are read from Braces.
+  - **How each candidate went through that rule is an input:** whether it
+    found a peak, how far it moved, whether it hit the window edge,
+    whether the move was unusual for the recording, and whether the
+    nearest peak went to another stamp.
+  - **It then re-measures everything that fits in the ±15 ms around the
+    aligned peak:** shape and sharpness, unit firing, polarity, sink and
+    source, laminar delay and likeness.
+  - **Its Garbage bar is set by the real spikes it may cost (5%),** not by
+    how pure its calls are, so most garbage is called Garbage instead of
+    Flag. The DS bar stays where 99% of garbage is under it.
+- **The scanner draws every even channel**, 32 lanes stacked over ±50 ms.
+  The channel the event is biggest on is drawn in the accent colour.
+- **The feed runs through every call.** When scoring finishes, every
+  candidate's call scrolls by in time order while a few more are scanned,
+  then the summary appears. Skip jumps straight to it.
+- **Held-out scores are kept with each run**, so a different set of bars
+  can be tried without training again. AI Beta offers **Make this
+  Avery+** on a run trained with Avery+'s bars.
+
+### Measured
+
+Same 45 recordings (12,406 candidates, 1,424 garbage), same bars, and
+scored only on mice each model never saw:
+
+| | Garbage called Garbage | Real DS called Garbage | Garbage let into DS | Flagged |
+|---|---|---|---|---|
+| Avery's inputs, random forest | 49.7% | 5.0% | 1.05% | 38.8% |
+| Avery+ inputs, random forest | 50.1% | 5.0% | 1.05% | 37.3% |
+| **Avery+ inputs, gradient-boosted trees** | **55.1%** | 5.0% | 1.05% | **37.0%** |
+
+The last row is Avery+ (run ai20261002-205804-9c0c, AUC 0.921 against
+0.912). Moving the DS bar to 99.5% halves the garbage let into DS (0.6%),
+at 41% of candidates flagged instead of 37%.
+
+On two sets it never trained on:
+- **PTEN_DKO m55 s1:** 13 Garbage and 6 Flag. All 13 Garbage calls are
+  what a person called them.
+- **KCNT1 m78 s1:** 84 Garbage, 365 Flag, 2 Flag for Deep Review and no
+  DS. Avery called all of it Flag. Too few KCNT1 recordings were
+  trained on for either model to accept any of its spikes.
+
+### Changed
+
+- **DS goes up to DS2.** DS3–DS5 are gone from the vocabulary, and from
+  the vocabulary every older set copied in unless a candidate holds one
+  (none does). That removes the three empty chips from every Checkup
+  card. X-ray's Classes slider is gone too: there are two kinds of
+  dentate spike.
+
+### Checked
+
+- `tools/check_aibeta.py`: 34 ok.
+- `_dev/avery.html`: 33 ok. New checks: both models offered and their
+  numbers swapped, the sweep posted with the model chosen, and the feed
+  running every call in order. `_dev/aibeta.html`: 33 ok.
+
+## 2026.10.02.12 - Root Canal: k from 1 to 6, named margins, a pooled band, complete events only
+
+### Added
+
+- **k = 1 to 6 clusters**, in Single and Pooled. Clusters are ranked by
+  their centre's HF power, lowest first; the highest is IED by the rule and
+  the rest DS, and at k = 1 everything is DS — no split, the null a split
+  is compared against. Any cluster can be relabelled DS or IED with one
+  press, and the call says whether it came from the rule, a hand or a
+  margin. At k = 2 everything is exactly as it was, sentence included. A
+  "by cluster" colour mode in both views.
+
+- **Named margins**, as a Jarvis artifact (`rootcanal_margin`): a set of k
+  centres in µV, ms and dB, their calls, and the scale they were cut on.
+  Cut from a Single recording, the whole pool, or one group of a pool — a
+  mouse, a mouse type or a recording, re-clustered ON ITS OWN. A label is
+  required; an identical re-save confirms rather than versions.
+
+  Applied to any other Single or Pooled analysis, **read on the source's
+  scale** so the boundary is the same µV, ms and dB everywhere, either
+  **Fixed** (nearest saved centre, nothing moves — one rule across sets)
+  or **Refine** (k-means starts there, each cluster keeping its call). A
+  margin measured on another filter, band, window or search is refused,
+  naming each difference: those would be different numbers under the
+  same axis labels. A pool or banked result that used a margin cites it,
+  so it cannot be deleted from under them.
+
+- **Pooled: its own HF band.** Every member is measured over it from its
+  read — no recording read again. A banked member fitted over another band
+  is re-measured and marked re-banded (its single call is then at the
+  pool's band); one whose read is not here is refused by name.
+
+- **Pooled: complete events only.** Events missing an axis are left out of
+  scaling, clustering, the GMM and the switch tables, and the number left
+  out is said, by recording.
+
+### Measured
+
+- On the real pool (18 PTEN recordings): k = 3 splits it +10.0 / +11.7 /
+  +20.3 dB (1240 / 674 / 847). A margin cut from PTEN m13 alone (755 events)
+  and applied FIXED to the other 16 recordings calls 292 IEDs; their own
+  k-means calls 714, and refined from m13's centres it lands at 762. One
+  mouse's boundary does not carry to the others — the same picture as the
+  pool's: one continuous spread whose cut moves with the sample.
+
+### Changed
+
+- Single and Pooled now share one clustering core (`rootcanal.cluster_core`),
+  so the two views cannot drift apart. The pooled split axis runs from the
+  DS-called events' mean to the IED-called ones'; at k = 2 by k-means that
+  is the old line through the two centres.
+
+### Checked
+
+- `tools/check_rootcanal.py` 248 ok: k 1-6 on known blobs, the ranking, the
+  rule, relabels, refusals, a margin fixed on its source giving its own
+  answer back, a raw boundary crossing where it should on another spread,
+  refine moving and keeping calls, mismatches named, margin routes and
+  versions, a cited margin refusing deletion, the pooled band and
+  complete-only. A shadowed `k` in `fit_pool` (the member loop reused the
+  name) was caught before it shipped.
+- `rootcanal.html` 226 and `rootcanalpool.html` 135, driving every new
+  control, with every save intercepted; with k and the pooled band dropped
+  from the requests, 8 fail in each. `dspca.html` 304.
+
+## 2026.10.02.11 - The Monolith: what was kept first, a trail, PAC within a region, events first, four sessions
+
+The lab meeting's list for the Monolith page, in the order the page is now
+read. **Restart Jarvis** for the new routes.
+
+### Added
+
+- **Four tabs, in order: 1 · What was kept → 2 · The Monolith → 3 · When we
+  averaged → 4 · Events first.** A fresh page opens on what was kept.
+  - **What was kept** says what a presentation is, and splits the losses by
+    cause: clipping (the signal at the rail), probe placement (histology),
+    a bad wire, not measured.
+  - **Which comparisons remain** is new: a region-pair matrix of how many
+    rats have both regions on both sessions. Under five rats a pair is
+    never tested, and it is grey. On the real build, 21 pairs have all 8
+    rats and the Right/Left POR pairs have 3–4.
+  - Excluded wires stay inspectable from any presentation, marked as not
+    used.
+- **The trail over the result.** It reads The Monolith › the pair › each rat
+  › rN › the session › the presentation · signals. Each step says what its
+  numbers are: a pooled change, a rat's change, a session's values, or one
+  presentation. It names the layer each time ("cue windows as measured" or
+  "less its flower-pot rest"). Any step goes back.
+- **Every line drawn, with its p**, in a table under the circuit. The legend
+  now says that **line thickness is the size of the change, not its p**.
+- **Ranking within each window.** Points of interest can be ranked overall,
+  or as the best three of each of the seven windows, so a busy onset cannot
+  take the whole list. The window control now names its two groups, **4
+  states (10 s each)** and **3 transitions**, with no switch hiding three of
+  them. Baseline and After are now **Pre-baseline** and **Post-baseline**.
+- **PAC within a region: the conventional route**, in its own card. Pick a
+  region to see:
+  - its own comodulogram for Precon1 and for Precon4 (each the mean over
+    rats of each rat's mean over its presentations), and the pooled change;
+  - every region at the chosen cell;
+  - a typical presentation of each session (the one nearest the median),
+    which opens its signals.
+
+  Cross-region PAC now has a card of its own, labelled **exploratory —
+  interpretation under validation**. Route: `/api/arc/monolith/pacself`.
+- **Events first** (`backend/monoevents.py`, `js/monolith_events.js`):
+  free-running hippocampal P300-like events. Each cue session's Right DHC
+  wire is read from the originals on this computer (read only).
+  - **Detection:** band-passed 0.5–15 Hz, then robust z over the session.
+    An event is a positive peak of z ≥ 4 that is 150–500 ms wide at half
+    height, at least 500 ms after the last. A peak above z 15, or one
+    within 250 ms of the rail, is an artifact. All of these can be set on
+    the page.
+  - **Timing:** a histogram from 10 s before cue 1 to 30 s after it, and
+    rates per window and between presentations.
+  - **Coordination:** each region's event-locked average, and its 4–12 Hz
+    phase against the hippocampus. Both are compared with twice as many
+    random times in the same session.
+  - It is descriptive: each rat is compared with its own random times, and
+    across rats there are only means and counts.
+  - About 85 s a rat-session; nothing runs until **Find the events** is
+    pressed.
+  - Tried on r3 Precon1: 78 events, 77 of them between presentations, and
+    every region moved with them. That is the pattern a shared reference
+    or movement makes, so the page now warns about it.
+- **Across the four sessions.** Precon2 and Precon3 are measured exactly as
+  the two days are, as an addition. The selected line is shown:
+  - presentation by presentation, a panel per session, each rat its own
+    colour;
+  - as a matrix of rats by sessions, with the mean ± SE.
+
+  **Nothing is tested.** Precon2 and Precon3 never enter the change: the
+  Monolith's files are byte for byte what they were without them
+  (`tools/check_monolith.py`). In Drift → Monolith, the steps are **Add
+  Precon2 and Precon3** (works out what goes, about 4 min), then Upload,
+  Check, **Run Precon2 and Precon3**, Fetch. All 16 rat-sessions are banked.
+  One SPC folder is about 23 GB, and the upload plan states the total
+  before anything is sent.
+
+### Changed
+
+- **The detection band starts at 0.5 Hz, not 1 Hz.** It was measured on a
+  planted 380 ms deflection: a 1 Hz low edge cut its median width from
+  252 to 162 ms and its z from 9.8 to 6.0, so most real P300-like events
+  would fail the 150 ms rule. The 1 Hz edge can still be set on the page.
+- A delta or PAC addition keeps to the sessions the Monolith already has.
+  Whether a rat is ready is still decided by Precon1 and Precon4 alone.
+
+### Checks
+
+- `tools/check_events.py` (22, new) runs on a made-up recording written
+  as real .ncs files:
+  - every planted event is found, and the clipped one is not;
+  - each event is placed in its window;
+  - Right ACC moves with the events and Right OFC, the control, does not;
+  - the routes refuse what they should.
+- `tools/check_monolith.py` (175):
+  - within-region PAC is checked against a hand computation;
+  - the trajectory: who is ready, the addition plan, the build, and the
+    change unchanged;
+  - the new routes.
+- Harnesses: `_dev/monolith.html` (299), `_dev/driftmono.html` (60).
+
+---
+
+## 2026.10.02.10 - A VACC tool offers to send what the cluster has not got
+
+### Added
+
+- **Every VACC tool now offers the upload.** Incisor, Doppler and Circuit
+  name the recordings the cluster has no copy of and offer to send them,
+  through `BARRY.vacc.uploadMissing`, which calls **the same** `upload`
+  pathway Sessions calls: the plan first, the confirming button that says
+  how much it sends, a file already there at the same size skipped, the
+  `.part` rename. A tool writing to the lab's shared space its own way
+  would be a second set of rules about the lab's data.
+
+  Written into the constitution, §6d.
+
+### Fixed
+
+- **Incisor and Doppler dropped them silently.** A recording the cluster
+  could not read was skipped with `continue` and never mentioned, so a VACC
+  batch quietly did not mention most of the catalogue: 97 to run against
+  1,286 left out, none of which appeared. A list that omits what it cannot
+  run reads as though those recordings do not exist. Circuit did name them,
+  and told somebody to "upload it to VACC first" with no way to do it.
+
+- **One recording was listed as both sendable and unreadable.** 104 gids in
+  this registry are held by more than one record -- the same recording
+  written twice, usually once with its paths and once with none -- so a
+  planner walking records emitted the recording twice with opposite
+  answers, and whichever was read last won. The plan now answers per
+  RECORDING, and the answer that wins is the one with something to send: a
+  record with no paths is the emptier description of the same recording,
+  not evidence that the recording is unreachable. 1,380 entries became
+  1,286, and the contradictions went to zero.
+
+  The duplicate gids themselves are a registry fault and are left alone;
+  they are the same ones that made a cloud push fail with "ON CONFLICT DO
+  UPDATE command cannot affect row a second time".
+
+### Changed
+
+- **Naming them must not mean sending the catalogue down the wire.**
+  Listing all 1,286 was about 100 KB of the same sentence and 1,286 nodes
+  built into a panel nobody opens. Forty are explained, the totals are
+  exact, and the gids travel as a bare list -- so the button still offers
+  every one of the 583 it can send while the payload is 37 KB.
+
+- **`can_upload` is decided on the server**, and is not the same question as
+  "is it missing from the cluster": a recording this computer cannot open
+  either has nothing to send, and a button that cannot work is worse than
+  no button. Those still appear, with the reason. A conflict -- two cluster
+  folders claiming one recording -- is also not sendable, because a third
+  copy makes the ambiguity worse.
+
 ## 2026.10.02.9 - Avery sweeps a set from Checkup
 
 ### Added

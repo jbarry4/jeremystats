@@ -233,6 +233,10 @@ function makePac(seed) {
   }
   const c6 = CELLS.findIndex((c) => c.fp === 6 && c.fa === 40);
   a[at(0, 1, c6, 0 * N.R + 1)] = 0.004; a[at(1, 1, c6, 0 * N.R + 1)] = 1e-4; a[at(3, 1, c6, 0 * N.R + 1)] = 8;
+  const c8 = CELLS.findIndex((c) => c.fp === 8 && c.fa === 30), dd = 2 * N.R + 2;
+  a[at(0, 1, c8, dd)] = 0.003; a[at(1, 1, c8, dd)] = 2e-4; a[at(3, 1, c8, dd)] = 8;
+  // Right POR is never there: its own PAC is never tested.
+  for (let w = 0; w < 4; w++) for (let c = 0; c < N.C; c++) for (let q = 0; q < 6; q++) a[at(q, w, c, GREY * N.R + GREY)] = NaN;
   return a;
 }
 function plantBroadband(a) {
@@ -270,13 +274,17 @@ const SUMMARY = {
   why: { 0: null, 1: 'fewer than 5 rats have it on both days', 2: 'no spread', 3: 'identical', 4: 'same change', 5: 'no rat' },
   windows: WINDOWS, bands: BANDS, methods: METHODS, regions: REG, pairs: PAIRS, grey: [REG[GREY]],
   pac_cells: CELLS,
+  trajectory: { days: ['Precon2', 'Precon3'], rats: { Precon2: [3, 4, 6, 7, 8, 9, 10, 11], Precon3: [3, 4, 6, 7, 8, 9, 10, 11] },
+                order: ['Precon1', 'Precon2', 'Precon3', 'Precon4'], in_manifest: ['Precon2', 'Precon3'] },
   lengths: { state: '10 s', slow: '−3 s / +3 s (bands ≤ 12 Hz, theta)', fast: '−1 s / +2 s (bands ≥ 13 Hz, beta, low gamma)' },
   files: { 'edges_raw.f32': { shape: SHAPES.edges }, 'edges_minus_fp.f32': { shape: SHAPES.edges },
            'power_raw.f32': { shape: SHAPES.power }, 'power_minus_fp.f32': { shape: SHAPES.power },
            'pac_raw.f32': { shape: SHAPES.pac }, 'pac_minus_fp.f32': { shape: SHAPES.pac } },
   top: { raw: topList('raw'), minus_fp: topList('minus_fp').slice(0, 30) },
   pac_top: { raw: [{ layer: 'raw', w: 'cue1', wi: 1, cell: CELLS.findIndex((c) => c.fp === 6 && c.fa === 40), fp: 6, fa: 40,
-                     op: 1, phase: REG[0], amp: REG[1], est: 0.004, p: 1e-4, k: 8, same: 8 }], minus_fp: [] },
+                     op: 1, phase: REG[0], amp: REG[1], est: 0.004, p: 1e-4, k: 8, same: 8 },
+                   { layer: 'raw', w: 'cue1', wi: 1, cell: CELLS.findIndex((c) => c.fp === 8 && c.fa === 30), fp: 8, fa: 30,
+                     op: 2 * 12 + 2, phase: REG[2], amp: REG[2], est: 0.003, p: 2e-4, k: 8, same: 8 }], minus_fp: [] },
   counts: { raw: { entries: 375144, tested: 340000, p05: 18000, p01: 3500, p001: 400, chance_p05: 17000,
                    agree: { 8: { tested: 300000, all_same: 2400, chance_all_same: 2344 } } },
             minus_fp: { entries: 375144, tested: 330000, p05: 17000, p01: 3300, p001: 350, chance_p05: 16500, agree: {} } },
@@ -351,9 +359,20 @@ function detail(layer, at) {
       days[day] = s;
     }
     const delta = days.Precon4.x - days.Precon1.x;
-    return { rat, days, delta, v: 0.0008, ci: [delta - 0.055, delta + 0.055], left: days.Precon1.x, right: days.Precon4.x, weight: 1 / 7 };
+    // The sessions between: 9 presentations each, a little above Precon1.
+    const traj = {};
+    for (const [day, lift] of [['Precon2', 0.01], ['Precon3', 0.03]]) {
+      if (!(SUMMARY.trajectory || { days: [] }).days.includes(day)) continue;
+      const units = Array.from({ length: 9 }, (_x, u) => ({ id: 'p' + String(u + 1).padStart(2, '0'), label: 'Click → Low Tone',
+        cue: 'Click → Low Tone', v: 0.42 + lift + 0.001 * i + (u - 4) * 0.002 }));
+      const t = { cue: 0.42 + lift + 0.001 * i, cue_se2: 0.0004, n: 9, of: 9, units };
+      t.x = t.cue; t.se2 = t.cue_se2;
+      if (layer === 'minus_fp') { t.rest = 0.38; t.rest_se2 = 0.0003; t.n_rest = 6; t.x = t.cue - t.rest; }
+      traj[day] = t;
+    }
+    return { rat, days, traj, delta, v: 0.0008, ci: [delta - 0.055, delta + 0.055], left: days.Precon1.x, right: days.Precon4.x, weight: 1 / 7 };
   });
-  return { ok: true, what: 'edges', layer, at, rats, agree: true,
+  return { ok: true, what: 'edges', layer, at, rats, agree: true, trajectory_days: (SUMMARY.trajectory || { days: [] }).days,
            pooled: { est: 0.05, se: 0.01, ci: [0.03, 0.07], p: 0.002, df: 6, k: 7, tau2: 0 }, arrays: { est: 0.05, p: 0.002 } };
 }
 
@@ -362,6 +381,27 @@ function detail(layer, at) {
    sweep.explain -- so every measure's picture has real numbers to draw.
    p04 is "not measured"; LEAF_GONE says the recording has left the VACC. */
 let leafAsked = [];
+let pacAsked = [];
+/* /pacself, made up: every region's own MI in each session -- Right DHC's
+   8 x 30 Hz cell higher on Precon4 -- and Right POR nowhere. */
+function pacSelfOf(q) {
+  const c8 = CELLS.findIndex((c) => c.fp === 8 && c.fa === 30);
+  const mean = (day) => REG.map((_n, r) => CELLS.map((cell, c) => (r === GREY || !cell.amp_band ? null
+    : 0.001 + 0.0002 * Math.sin(c * 0.7 + r) + (day === 'Precon4' && r === 2 && c === c8 ? 0.003 : 0))));
+  const sess = (day) => ({ mean: mean(day), se: REG.map((_n, r) => CELLS.map(() => (r === GREY ? null : 0.0001))),
+                           n: REG.map((_n, r) => CELLS.map(() => (r === GREY ? 0 : 8))) });
+  const out = { ok: true, layer: q.get('layer'), window: Number(q.get('window')), split: null, regions: REG, days: ['Precon1', 'Precon4'],
+                sessions: { Precon1: sess('Precon1'), Precon4: sess('Precon4') } };
+  const c = q.get('cell');
+  if (c == null) return out;
+  const ids = Array.from({ length: 12 }, (_x, u) => 'p' + String(u + 1).padStart(2, '0'));
+  out.cell = Number(c);
+  out.rats = SUMMARY.rats.map((rat) => ({ rat, Precon1: REG.map(() => 0.001), Precon4: REG.map(() => 0.001) }));
+  out.examples = REG.map((_n, r) => (r === GREY ? { Precon1: null, Precon4: null } : {
+    Precon1: { rat: 3, unit: 'p02', v: 0.0011, median: 0.0011, n: 96 }, Precon4: { rat: 3, unit: 'p05', v: 0.0013, median: 0.0013, n: 96 } }));
+  out.units = { 3: { Precon1: ids, Precon4: ids } };
+  return out;
+}
 let LEAF_GONE = false;
 let GUIDE = null;
 function leafOf(q) {
@@ -444,18 +484,83 @@ function damageFixture() {
 }
 const DAMAGE = damageFixture();
 
+/* /events, made up: every rat-session done (z 4); at z 5, three still to
+   do -- and there, every region moves with the events (the shared-artifact
+   pattern). Right ACC beats random times in 6 of 8 rats, Right POR is never
+   there; on Precon4 the events crowd into the first second of cue 1. */
+const EVDEF = { region: 'Right DHC', low: 0.5, high: 15, z: 4, zmax: 15, min_ms: 150, max_ms: 500, refractory_ms: 500 };
+let evAsked = [], evPosted = [], evRunning = 0, evRan = false;
+function evParams(q) {
+  const p = Object.assign({}, EVDEF);
+  for (const k of Object.keys(EVDEF)) if (q.get(k) != null) p[k] = k === 'region' ? q.get(k) : Number(q.get(k));
+  return p;
+}
+function evReport(p) {
+  const global = p.z === 5;
+  const todo = global && !evRan ? 3 : 0;
+  const erp = (amp) => Array.from({ length: 201 }, (_x, k) => +(amp * Math.exp(-0.5 * ((k - 104) / 12) ** 2)).toFixed(3));
+  const flat = () => Array.from({ length: 201 }, (_x, k) => +(2 * Math.sin(k / 7)).toFixed(3));
+  const days = [];
+  let n = 0;
+  for (const rat of SUMMARY.rats) for (const day of ['Precon1', 'Precon4']) {
+    n++;
+    const done = n > todo;
+    days.push(done ? { rat, day, done: true, wire: 31, n_events: 12, usable_s: 4800, n_used: 12,
+      timing: { rate_per_min: { pre: 0.5, cue1: day === 'Precon4' ? 6 : 2, cue2: 1, post: 0.5, iti: 1 } },
+      events: Array.from({ length: 12 }, (_x, i) => ({ t: 300 + 50 * i + 0.4, z: 5 + i / 10, width_ms: 220, where: 'cue1', rel: 0.4 })) }
+      : { rat, day, done: false });
+  }
+  const psth = (peak) => Array.from({ length: 40 }, (_x, i) => (i === 10 ? peak : 1));
+  const regions = (day) => {
+    const out = {};
+    REG.forEach((name, i) => {
+      if (i === GREY) { out[name] = { rats: 0 }; return; }
+      const busy = global || name === 'Right ACC' || name === p.region;
+      out[name] = { rats: 8, erp: busy ? erp(name === p.region ? 60 : 25) : flat(), erp_se: null, random: flat(),
+                    z_size: busy ? 6.5 : 0.3, size_rats: busy ? (name === 'Right ACC' && !global ? 6 : 8) : 0,
+                    z_plv: busy ? 2.1 : 0.1, plv_rats: busy ? 5 : 0, plv_of: 8 };
+    });
+    return out;
+  };
+  const pooled = {};
+  for (const day of ['Precon1', 'Precon4']) {
+    pooled[day] = { rats: 8, events: 96, psth: { from: -10, to: 30, bin: 1, mean: psth(day === 'Precon4' ? 6 : 2), se: Array(40).fill(0.4) },
+      rate_per_min: { pre: { mean: 0.5, se: 0.1 }, cue1: { mean: day === 'Precon4' ? 6 : 2, se: 0.5 }, cue2: { mean: 1, se: 0.2 },
+                      post: { mean: 0.5, se: 0.1 }, iti: { mean: 1, se: 0.1 } },
+      regions: regions(day) };
+  }
+  return { ok: true, params: p, digest: 'abc', defaults: EVDEF, regions: REG, days, pooled, todo,
+           window_say: { pre: 'Pre-baseline', cue1: 'Cue 1', cue2: 'Cue 2', post: 'Post-baseline', iti: 'Between presentations' },
+           out_fs: 100, snip_s: 1, estimate_s: todo * 90 };
+}
+function evExample(q) {
+  const rows = REG.map((name, i) => (i === GREY ? { region: name, why: 'histology rules it out' }
+    : { region: name, wire: 2 * i + 1, raw: Array.from({ length: 401 }, (_x, k) => +(30 * Math.sin(k / 9 + i)).toFixed(2)),
+        band: Array.from({ length: 401 }, (_x, k) => +(20 * Math.sin(k / 9 + i)).toFixed(2)) }));
+  return { ok: true, rat: Number(q.get('rat')), day: q.get('day'), i: Number(q.get('i')), event: {}, half: 2, out_fs: 100, rows };
+}
+
 window.MONO_FIXTURE = {
   async json(path) {
     if (path === '/data/summary') return JSON.parse(JSON.stringify(SUMMARY));
     if (path === '/damage') return JSON.parse(JSON.stringify(DAMAGE));
     const m = /^\/entry\?what=(\w+)&layer=(\w+)&at=([\d,]+)(&split=\w+)?$/.exec(path);
     if (m) { entryAsked.push(path); return detail(m[2], m[3].split(',').map(Number)); }
+    if (path === '/status' && evRunning) {
+      evRunning--;
+      if (!evRunning) evRan = true;
+      return { ok: true, work: { what: 'events', status: evRunning ? 'running' : 'done', progress: { phase: 'events', i: 0, of: 3, item: 'r3 Precon1 · reading Right DHC (CSC31)' } } };
+    }
     if (path === '/status') return { ok: true, work: { what: 'split', status: splitDone ? 'done' : 'running', progress: { item: 'Click pair · edges', i: 0, of: 6 } } };
+    if (path === '/events' || path.indexOf('/events?') === 0) { evAsked.push(path); return evReport(evParams(new URLSearchParams(path.slice(8)))); }
+    if (path.indexOf('/events/example?') === 0) { evAsked.push(path); return evExample(new URLSearchParams(path.slice(16))); }
     if (path.indexOf('/leaf?') === 0) return leafOf(new URLSearchParams(path.slice(6)));
+    if (path.indexOf('/pacself?') === 0) { pacAsked.push(path); return pacSelfOf(new URLSearchParams(path.slice(9))); }
     throw new Error('no fixture for ' + path);
   },
   async post(path, body) {
     if (path === '/split') { splitAsked.push(body); splitDone = true; return { ok: true }; }
+    if (path === '/events') { evPosted.push(body); evRunning = 2; return { ok: true, work: { what: 'events', status: 'running', progress: {} } }; }
     throw new Error('no fixture for POST ' + path);
   },
   async array(name, shape) {
@@ -477,8 +582,10 @@ window.MONO_FIXTURE = {
   // section runs as a returning visitor; what this browser remembered about
   // tours is put back at the end, whatever it was.
   const TOUR_KEY = 'barry.monolith.tour.seen', DONE_KEY = 'barry.tour.done';
-  let keptTour = null, keptDone = null;
+  let keptTour = null, keptDone = null, keptEv = null;
+  const EV_KEY = 'barry.monolith.events';
   try {
+    keptEv = localStorage.getItem(EV_KEY); localStorage.removeItem(EV_KEY);
     keptTour = localStorage.getItem(TOUR_KEY); keptDone = localStorage.getItem(DONE_KEY);
     localStorage.setItem(TOUR_KEY, 'harness');
   } catch (e) { /* none */ }
@@ -487,6 +594,7 @@ window.MONO_FIXTURE = {
       if (kept == null) localStorage.removeItem('barry.monolith.view'); else localStorage.setItem('barry.monolith.view', kept);
       if (keptTour == null) localStorage.removeItem(TOUR_KEY); else localStorage.setItem(TOUR_KEY, keptTour);
       if (keptDone == null) localStorage.removeItem(DONE_KEY); else localStorage.setItem(DONE_KEY, keptDone);
+      if (keptEv == null) localStorage.removeItem(EV_KEY); else localStorage.setItem(EV_KEY, keptEv);
     } catch (e) { /* none */ }
   };
   GUIDE = await fetch('/monolith_guide.json', { cache: 'no-cache' }).then((r) => r.json()).catch(() => null);
@@ -598,7 +706,7 @@ window.MONO_FIXTURE = {
   const marks = () => Array.from(D().querySelectorAll('.qmark'));
   check('a ? on every measure', D().querySelectorAll('#controls .mchip .qmark').length === 14, D().querySelectorAll('#controls .mchip .qmark').length);
   const onPage = new Set(marks().map((b) => b.dataset.help));
-  const want = ['verdict', 'layer', 'windows', 'window', 'frequency', 'bands', 'measure', 'sig', 'arrows', 'circuit', 'points', 'spectrum', 'pac'];
+  const want = ['verdict', 'layer', 'windows', 'window', 'frequency', 'bands', 'measure', 'sig', 'arrows', 'circuit', 'points', 'spectrum', 'pac', 'pac.self', 'rank', 'trail'];
   check('and on the view controls, the circuit, the points, the spectrum, PAC', want.every((k) => onPage.has(k)), want.filter((k) => !onPage.has(k)).join(','));
   check('every ? has words written for it', marks().every((b) => H.T[b.dataset.help] && H.T[b.dataset.help].plain), marks().filter((b) => !H.T[b.dataset.help]).map((b) => b.dataset.help).join(','));
   const pop = () => D().querySelector('.qpop');
@@ -820,6 +928,29 @@ window.MONO_FIXTURE = {
   M.set({ level: 1 });
   await sleep(20);
 
+  head('across the four sessions');
+  const TJn = () => D().getElementById('trajcard');
+  await until(() => M.traj.detail && TJn().querySelector('svg.trajfig'), 120);
+  const tg = Array.from(TJn().querySelectorAll('svg.trajfig g[data-day]'));
+  check('every session, in order, a panel each', tg.map((g) => g.dataset.day).join() === 'Precon1,Precon2,Precon3,Precon4', tg.map((g) => g.dataset.day).join());
+  check('presentation by presentation, each rat a line (7 with values) and the mean over rats',
+        tg.every((g) => g.querySelectorAll('path[data-rat]').length === 7 && g.querySelector('path.trajmean')));
+  const trows = Array.from(TJn().querySelectorAll('#trajmat tbody tr'));
+  const p2 = M.traj.detail.rats.filter((r) => r.traj && r.traj.Precon2).map((r) => r.traj.Precon2.x);
+  const p2m = p2.reduce((a, b) => a + b, 0) / p2.length;
+  check('a matrix, rats by sessions, and the mean over rats', trows.length === 9 && trows[0].querySelectorAll('td').length === 4
+        && txt(trows[8].children[2]).indexOf(W().MONO_FIGS.sig(p2m)) === 0 && /\(7\)$/.test(txt(trows[8].children[2])), txt(trows[8]));
+  check('and nothing is tested', /nothing here is tested/.test(txt(TJn())) && !/p [<=.]/.test(txt(TJn().querySelector('#trajmat'))));
+  const tjw = figWords(TJn());
+  check('no word in its picture cut off or overlapping', tjw.length === 0, tjw.slice(0, 4).join(' | '));
+  const keepTraj = M.data.S.trajectory;
+  delete M.data.S.trajectory;
+  M.renderTraj();
+  check('a Monolith without them: the two days, and how to add the others', TJn().querySelectorAll('svg.trajfig g[data-day]').length === 2
+        && /Precon2 and Precon3 are not in this Monolith yet/.test(txt(TJn())));
+  M.data.S.trajectory = keepTraj;
+  M.renderTraj();
+
   head('every line drawn, with its p');
   check('the legend says thickness is the size of the change, not p', /Line thickness = how big the change is, not its p/.test(txt(D().getElementById('legend'))));
   const lrows = () => Array.from(D().querySelectorAll('#lines table.linetable tbody tr'));
@@ -913,10 +1044,9 @@ window.MONO_FIXTURE = {
   check('its hover: the median change, how many bands pass and which, its strongest', /median change over 8–12 Hz/.test(rtip)
         && /passes p < \.05 at 1 of 5 bands \(10 Hz\)/.test(rtip) && /strongest at 10 Hz/.test(rtip), rtip);
   re.dispatchEvent(new MouseEvent('mouseleave'));
-  entryAsked = [];
   re.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  await until(() => M.ghost.lifted && entryAsked.length, 120);
-  check('clicking it opens the ghost at its strongest band (10 Hz)', /at=1,9,0,0$/.test(entryAsked[0] || ''), entryAsked.join(' '));
+  await until(() => M.ghost.lifted && M.ghost.detail, 120);
+  check('clicking it opens the ghost at its strongest band (10 Hz)', (M.ghost.detail.at || []).join() === '1,9,0,0', JSON.stringify(M.ghost.detail && M.ghost.detail.at));
   M.closeGhost(true);
   check('the spectrum shades the range', !!D().querySelector('#specsvg rect[data-range="8-12"]'));
   const k1b = D().getElementById('freq'), k2b = D().getElementById('freqhi');
@@ -992,6 +1122,7 @@ window.MONO_FIXTURE = {
   head('a point of interest snaps the view');
   M.set({ kind: 'transition', win: 'offset', band: 'f40', method: 'pli', level: 3 });
   await sleep(20);
+  entryAsked = [];
   items()[1].click();
   await sleep(30);
   const s2 = M.state;
@@ -1002,11 +1133,10 @@ window.MONO_FIXTURE = {
 
   head('the ghost');
   const edge = D().querySelector('#circsvg path.edge[data-pair="' + PLANT2.p + '"]');
-  entryAsked = [];
   edge.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   const lifted = await until(() => M.ghost.lifted && M.ghost.detail && D().querySelector('#ghostsvg .garc'));
   check('clicking an edge lifts it out', !!lifted);
-  check('one request for the whole drill-down', entryAsked.length === 1 && /at=2,19,6,12$/.test(entryAsked[0]), entryAsked.join(' '));
+  check('one request for the whole drill-down, shared with the trajectory', entryAsked.length === 1 && /at=2,19,6,12$/.test(entryAsked[0]), entryAsked.join(' '));
   const gnodes = Array.from(D().querySelectorAll('#ghostsvg circle.gnode'));
   check('its two regions sit level, one each side', gnodes.length === 2 && gnodes[0].getAttribute('cy') === gnodes[1].getAttribute('cy')
         && Number(gnodes[0].getAttribute('cx')) < Number(gnodes[1].getAttribute('cx')), gnodes.map((n) => n.getAttribute('cx') + ',' + n.getAttribute('cy')).join(' '));
@@ -1218,8 +1348,10 @@ window.MONO_FIXTURE = {
   M.go(SUMMARY.top.raw[0]);
   await sleep(30);
   const grids = D().querySelectorAll('#paccard .pacgrid svg');
-  check('four grids for the selected pair: each way and each with itself', grids.length === 4, grids.length);
-  check('cells that cannot carry their sidebands are left empty', D().querySelectorAll('#paccard .pacgrid rect[fill="none"]').length === 4 * CELLS.filter((c) => !c.amp_band).length);
+  check('across regions: two grids for the selected pair, each way', grids.length === 2, grids.length);
+  check('and said to be exploratory, interpretation under validation', /^Exploratory — interpretation under validation\./.test(txt(D().getElementById('pacxwarn')))
+        && /across regions/.test(txt(D().querySelector('#paccard h2'))));
+  check('cells that cannot carry their sidebands are left empty', D().querySelectorAll('#paccard .pacgrid rect[fill="none"]').length === 2 * CELLS.filter((c) => !c.amp_band).length);
   const cell = D().querySelector('#paccard .pacgrid rect[data-cell="5"]');
   cell.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await sleep(20);
@@ -1234,6 +1366,64 @@ window.MONO_FIXTURE = {
   const pfit = pl && ph && pnode ? arrowFit(pl, ph, pnode) : null;
   check('the PAC circuit’s planted arrow (R ACC phase → R OFC amplitude) fits the same way',
         !!pfit && pfit.headW >= pfit.lineW + 6 && pfit.gap < 0.6 && pfit.tipOut > 1 && pfit.tipOut < 6, JSON.stringify(pfit));
+
+  head('PAC within a region: the conventional route');
+  const PSn = () => D().getElementById('pacself');
+  const c8 = CELLS.findIndex((c) => c.fp === 8 && c.fa === 30);
+  check('its own card, before the cross-region one, not called exploratory', !!PSn() && PSn().nextElementSibling === D().getElementById('paccard')
+        && /^Phase–amplitude coupling within a region · Raw/.test(txt(PSn().querySelector('h2'))) && !/xploratory/.test(txt(PSn()))
+        && !!PSn().querySelector('.qmark[data-help="pac.self"]'));
+  await until(() => M.pacSelf.data && PSn().querySelectorAll('#pacselfgrids svg.comod').length === 3, 120);
+  const kinds = Array.from(PSn().querySelectorAll('#pacselfgrids svg.comod')).map((x) => x.dataset.kind).join(',');
+  check('three comodulograms: Precon1, Precon4, and the change', kinds === 'Precon1,Precon4,change', kinds);
+  check('for the selected pair’s first region (Right ACC)', D().getElementById('pacself-region').value === '0');
+  check('one request, for this layer, window and cell', /^\/pacself\?layer=raw&window=1&cell=\d+$/.test(pacAsked[pacAsked.length - 1] || ''), pacAsked.join(' '));
+  const selReg = D().getElementById('pacself-region');
+  selReg.value = '2'; selReg.dispatchEvent(new Event('change'));
+  await sleep(30);
+  const chg = () => PSn().querySelector('svg.comod[data-kind="change"]');
+  const ringed = Array.from(chg().querySelectorAll('rect[stroke-width="1.5"]')).map((x) => Number(x.dataset.cell));
+  const atP = (a, q, w, c, op) => a[((q * 4 + w) * N.C + c) * (N.R * N.R) + op];
+  const wantRinged = CELLS.map((_c, c) => c).filter((c) => c !== M.state.pacCell && atP(ARR.pac_raw, 1, 1, c, 2 * N.R + 2) < 0.05);
+  check('Right DHC: the change ringed exactly where its own p passes (' + wantRinged.length + ')', ringed.sort().join() === wantRinged.sort().join() && ringed.indexOf(c8) >= 0,
+        ringed.join(',') + ' vs ' + wantRinged.join(','));
+  const own = Array.from(PSn().querySelectorAll('#pacselftop > li'));
+  check('the strongest within-region change listed: Right DHC with itself', own.length === 1 && /Right DHC with itself/.test(txt(own[0])) && /8 × 30 Hz/.test(txt(own[0])), own.map(txt).join(' | '));
+  check('and only within: the cross-region change is in the other card', !/Right OFC/.test(txt(D().getElementById('pacselftop')))
+        && /Strongest cross-region PAC changes/.test(txt(D().getElementById('paccard'))));
+  own[0].click();
+  await until(() => M.pacSelf.data && M.pacSelf.key && M.pacSelf.key.indexOf('|' + c8) > 0, 80);
+  check('clicking it moves to its region, window and cell', M.state.pacRegion === 2 && M.state.pacCell === c8 && M.state.pacWin === 'cue1');
+  const p4cell = PSn().querySelector('svg.comod[data-kind="Precon4"] rect[data-cell="' + c8 + '"]');
+  p4cell.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 300 }));
+  await sleep(10);
+  check('a session’s cell says its mean MI and over how many rats', /8 Hz phase × 30 Hz amplitude, Right DHC/.test(txt(D().getElementById('tip')))
+        && /mean MI 0\.00\d+ over 8 rats/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
+  p4cell.dispatchEvent(new MouseEvent('mouseleave'));
+  const rrows = Array.from(PSn().querySelectorAll('svg.pacregions g.pacrow-r'));
+  check('every region at this cell, one row each (12)', rrows.length === 12, rrows.length);
+  check('Right DHC’s row: its pooled change, p and rats', /\+0\.0030, p 2\.0e-4, 8\/8/.test(txt(rrows[2])), txt(rrows[2]));
+  check('Right POR: not measured', /not measured/.test(txt(rrows[GREY])), txt(rrows[GREY]));
+  const psw = figWords(PSn());
+  check('no word in its pictures cut off or overlapping', psw.length === 0, psw.slice(0, 4).join(' | '));
+  rrows[4].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await sleep(20);
+  check('a row picks its region', M.state.pacRegion === 4 && D().getElementById('pacself-region').value === '4');
+  D().getElementById('pacself-region').value = '2'; D().getElementById('pacself-region').dispatchEvent(new Event('change'));
+  await sleep(20);
+  const exCards = Array.from(PSn().querySelectorAll('#pacex .lcard'));
+  check('a typical presentation of each session, to open', exCards.length === 2 && /r3 · p02: MI 0\.0011 at this cell, the presentation nearest the median of 96/.test(txt(exCards[0]))
+        && !!exCards[1].querySelector('button'), exCards.map(txt).join(' | '));
+  leafAsked = [];
+  exCards[1].querySelector('button').click();
+  await until(() => M.leaf.open && M.leaf.data, 120);
+  const pairOf2 = PAIRS.findIndex((x) => x[0] === 2 || x[1] === 2);
+  check('opens its signals: Precon4 p05, at this window and cell, by a pair with Right DHC in it', /^layer=raw&at=1,\d+,\d+,(\d+)&rat=3&day=Precon4&unit=p05&cell=/.test(leafAsked[0] || '')
+        && leafAsked[0].endsWith('&cell=' + c8) && PAIRS[Number(/at=1,\d+,\d+,(\d+)/.exec(leafAsked[0])[1])].indexOf(2) >= 0, leafAsked.join(' '));
+  check('and steps through that rat’s presentations', /5 of 12/.test(txt(D().querySelector('#leaf .leafctl'))), txt(D().querySelector('#leaf .leafctl')));
+  M.closeLeaf();
+  await sleep(10);
+  check('closing it leaves the page as it was', !D().getElementById('leaf') && M.state.pacRegion === 2);
 
   head('nothing cut short, nothing sideways');
   const all = txt(D().body);
@@ -1287,6 +1477,67 @@ window.MONO_FIXTURE = {
   D().getElementById('tab-main').click();
   await sleep(20);
   check('and the first tab comes back', !D().getElementById('mainpane').hidden && D().getElementById('avgpane').hidden);
+
+  head('4 · events first');
+  D().getElementById('tab-ev').click();
+  const EVn = () => D().getElementById('events');
+  await until(() => EVn() && EVn().querySelector('#evtiming svg.evpsth'), 160);
+  check('the fourth tab: events first, its own pane', !D().getElementById('evpane').hidden && D().getElementById('mainpane').hidden
+        && /^Events first: hippocampal P300-like events/.test(txt(EVn().querySelector('h2'))) && !!EVn().querySelector('.qmark[data-help="events"]'));
+  check('asked once, with no settings: the defaults', evAsked[0] === '/events', evAsked.join(' '));
+  check('its settings said, the defaults', /Settings: Right DHC, 0\.5–15 Hz, z ≥ 4, 150–500 ms wide/.test(txt(EVn().querySelector('.evsettings > summary'))),
+        txt(EVn().querySelector('.evsettings > summary')));
+  check('every rat-session done: no button to press', /16 of 16 rat-sessions done/.test(txt(D().getElementById('evstatus'))) && !D().getElementById('ev-run'));
+  const ps = EVn().querySelector('svg.evpsth');
+  check('when they happen: the windows behind, a line per session', ps.querySelectorAll('rect[data-win]').length === 4
+        && ps.querySelectorAll('path[data-day]').length === 2);
+  const rr = Array.from(EVn().querySelectorAll('table.evrates tbody tr'));
+  check('and a rate per window and between, per session', rr.length === 5 && /^Cue 12\.00 ± 0\.506\.00 ± 0\.50$/.test(txt(rr[1])), rr.map(txt).join(' | '));
+  const regRow = (n) => EVn().querySelector('#evregions tr[data-region="' + n + '"]');
+  check('which regions moved with them: Right ACC in 6 of 8 rats', /6 of 8/.test(txt(regRow('Right ACC'))) && /0 of 8/.test(txt(regRow('Right OFC'))), txt(regRow('Right ACC')));
+  check('a region no rat has is said so', /no rat has a usable wire here/.test(txt(regRow('Right POR'))));
+  check('each region’s event-locked average against random times (12)', EVn().querySelectorAll('#evgrid svg.everp').length === 12
+        && !!EVn().querySelector('#evgrid svg[data-region="Right ACC"] path.erp') && !!EVn().querySelector('#evgrid svg[data-region="Right ACC"] path.rand'));
+  check('CONTROL: no warning when only some regions move with them', !D().getElementById('evglobal'));
+  const ratRows = EVn().querySelectorAll('#evrats tbody tr[data-rat]');
+  check('rat by rat: 16 rows', ratRows.length === 16, ratRows.length);
+  evAsked = [];
+  ratRows[0].querySelector('button').click();
+  await until(() => EVn().querySelector('#evexample svg.mfig'), 120);
+  check('an event opens every region around it', /^\/events\/example\?rat=3&day=Precon1&i=0&region=Right%20DHC&low=0\.5&/.test(evAsked[0] || '')
+        && EVn().querySelectorAll('#evexample svg.mfig').length === 1, evAsked.join(' '));
+  check('said which, and what is not drawn', /r3 · Precon1 · event 1 of 12 · 300\.4 s, z 5\.0, 220 ms wide · Cue 1 \(0\.40 s from cue 1\)/.test(txt(D().getElementById('evexsay')))
+        && /Not drawn: Right POR \(histology rules it out\)/.test(txt(D().getElementById('evexample'))), txt(D().getElementById('evexsay')));
+  Array.from(EVn().querySelectorAll('#evexample button.lbtn')).find((b) => b.textContent === '→').click();
+  await until(() => /event 2 of 12/.test(txt(D().getElementById('evexsay'))) && EVn().querySelector('#evexample svg.mfig'), 120);
+  check('→ steps to the next', /&i=1&/.test(evAsked[evAsked.length - 1] || ''));
+  const ew = figWords(EVn());
+  check('no word in its pictures cut off or overlapping', ew.length === 0, ew.slice(0, 4).join(' | '));
+  // Other settings: three still to do, found by pressing.
+  const evIn = (k, v) => { const x = D().getElementById('ev-' + k); x.value = String(v); };
+  if (!EVn().querySelector('.evsettings').open) EVn().querySelector('.evsettings > summary').click();
+  evIn('z', 5);
+  evAsked = [];
+  D().getElementById('ev-apply').click();
+  await until(() => D().getElementById('ev-run'), 120);
+  check('new settings are asked for', /^\/events\?region=Right%20DHC&low=0\.5&high=15&z=5&/.test(evAsked[0] || ''), evAsked.join(' '));
+  check('and what is not done for them is offered, with its time', /13 of 16 rat-sessions done/.test(txt(D().getElementById('evstatus')))
+        && /Find the events in the other 3 \(about 5 min\)/.test(txt(D().getElementById('ev-run'))), txt(D().getElementById('evstatus')));
+  check('a pattern in every region is warned about', /show up in almost every region \(10 of 10 others/.test(txt(D().getElementById('evglobal'))),
+        D().getElementById('evglobal') && txt(D().getElementById('evglobal')));
+  D().getElementById('ev-run').click();
+  await until(() => evRan && /16 of 16/.test(txt(D().getElementById('evstatus'))), 200);
+  check('pressed: it runs with these settings, is followed, and the report is read again', evPosted.length === 1 && evPosted[0].confirm === true
+        && evPosted[0].z === 5 && /16 of 16 rat-sessions done/.test(txt(D().getElementById('evstatus'))), JSON.stringify(evPosted));
+  D().getElementById('ev-defaults').click();
+  await until(() => /z ≥ 4/.test(txt(EVn().querySelector('.evsettings > summary'))), 120);
+  check('Back to the defaults', /z ≥ 4/.test(txt(EVn().querySelector('.evsettings > summary'))));
+  f.style.width = '390px';
+  await sleep(120);
+  check('at 390 px nothing scrolls sideways', D().scrollingElement.scrollWidth <= D().scrollingElement.clientWidth + 1, D().scrollingElement.scrollWidth);
+  f.style.width = '';
+  D().getElementById('tab-main').click();
+  await sleep(30);
 
   head('the tour');
   M.closeLeaf(); M.closeGhost(true);
@@ -1439,7 +1690,7 @@ window.MONO_FIXTURE = {
   const keys = Object.keys(GT);
   check('every ? has an entry', keys.every((k) => D().getElementById(k) && D().getElementById(k).classList.contains('entry')), keys.filter((k) => !D().getElementById(k)).join(','));
   check('and a line in the contents', D().querySelectorAll('#toc a').length === keys.length, D().querySelectorAll('#toc a').length + ' of ' + keys.length);
-  const drawnKeys = keys.filter((k) => GT[k].demo || (GT[k].plot && GUIDE.measures[k === 'arrows' ? 'gc_net' : k === 'pac.circuit' ? 'pac' : k]));
+  const drawnKeys = keys.filter((k) => GT[k].demo || (GT[k].plot && GUIDE.measures[k === 'arrows' ? 'gc_net' : /^pac\./.test(k) ? 'pac' : k]));
   await until(() => D().querySelectorAll('.entry .qdemo').length === drawnKeys.length, 120);
   check('each measure and statistic drawn (' + drawnKeys.length + ')', D().querySelectorAll('.entry .qdemo').length === drawnKeys.length,
         drawnKeys.filter((k) => !D().getElementById(k).querySelector('.qdemo')).join(','));

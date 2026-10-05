@@ -177,7 +177,13 @@ window.MONO_TOUR = (function () {
     const head = [
       {
         id: 'welcome', title: 'The Monolith, in two minutes',
-        before: async function () { closeAll(); window.scrollTo(0, 0); },
+        // Wherever the page opened (a first visit opens on what was kept).
+        before: async function () {
+          if (M().leaf.open) M().closeLeaf();
+          if (M().ghost.pair != null) M().closeGhost(true);
+          if (window.MONO_HELP) window.MONO_HELP.close();
+          window.scrollTo(0, 0);
+        },
         body: 'Every way of measuring how two regions move together, at every frequency from 1 to 55 Hz, '
           + 'compared between Precon1 and Precon4 in each rat and then pooled over the rats. This tour follows '
           + 'one real result from the overview down to the recording it came from.',

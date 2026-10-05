@@ -584,6 +584,108 @@ const ENTRY = '46fd29a77cc7';
      filtBefore);
 
   /* ================================================================== */
+  head('k CLUSTERS, RELABELS AND MARGINS');
+
+  const kBefore = JSON.stringify(st().fit.counts);
+  const kBtn = (v) => Array.from(D().querySelectorAll('.rc-k .rc-kseg button'))
+    .find((b) => b.textContent.trim() === String(v));
+  eq('a choice of 1 to 6 clusters',
+     D().querySelectorAll('.rc-k .rc-kseg button').length, 6);
+  ok('two by default', !!kBtn(2) && kBtn(2).classList.contains('active')
+     && st().fit.k === 2);
+  kBtn(3).click();
+  await sleep(100);
+  ok('a new k waits for Recompute', ev(RC + '._pending()') === true);
+  ev(RC + '._recompute()');
+  await until(() => st().fit && st().fit.k === 3 && !st().fitting, 30000, 'k = 3');
+  eq('k = 3 reaches the fit', ev(RC + '._lastBody()').k, 3);
+  eq('three clusters come back', (st().fit.clusters || []).length, 3);
+  ok('ranked by HF power, lowest first',
+     st().fit.clusters.every((c, i, a2) => i === 0
+                             || a2[i - 1].centre_raw[2] <= c.centre_raw[2]));
+  ok('the highest is IED by the rule, the rest DS',
+     st().fit.clusters.map((c) => c.call).join() === 'ds,ds,ied'
+     && st().fit.clusters.every((c) => c.call_by === 'rule'));
+  eq('one chip per cluster', D().querySelectorAll('.rc-why .rc-clu').length, 3);
+  ok('and the rule says k = 3', /k = 3/.test(st().fit.rule), st().fit.rule);
+  D().querySelector('.rc-why .rc-clu').click();
+  await until(() => !st().fitting && st().fit.clusters
+                    && st().fit.clusters[0].call_by === 'hand', 30000, 'relabel');
+  ok('pressing a cluster calls it the other thing, by hand',
+     st().fit.clusters[0].call === 'ied' && st().fit.clusters[0].call_by === 'hand');
+  eq('and the request carries it', ev(RC + '._lastBody()').cluster_calls,
+     { 0: 'ied' });
+  const kReset = Array.from(D().querySelectorAll('.rc-why button'))
+    .find((b) => b.textContent.trim() === 'Calls back to the rule');
+  ok('a hand call can be undone in one press', !!kReset);
+  if (kReset) kReset.click();
+  await until(() => !st().fitting && st().fit.clusters
+                    && st().fit.clusters.every((c) => c.call_by === 'rule'),
+              30000, 'the rule again');
+  ok('and is', st().fit.clusters.every((c) => c.call_by === 'rule'));
+  ok('the dots can be coloured by cluster',
+     !!D().querySelector('.rc-colour-by'));
+  kBtn(1).click();
+  ev(RC + '._recompute()');
+  await until(() => st().fit && st().fit.k === 1 && !st().fitting, 30000, 'k = 1');
+  ok('k = 1 is no split: nothing called IED, and it says why',
+     st().fit.counts.ied === 0 && /no split/.test(st().fit.rule), st().fit.rule);
+
+  /* A margin that is not here is refused -- by the server, for real --
+     and said in the margin's own card, with the set fitted without it. */
+  ev(RC + '._setMargin({ artifact_id: "harness-none", mode: "fixed" })');
+  await until(() => ev(RC + '._marginErr()') && st().fit && st().fit.ok
+                    && !st().fitting, 30000, 'the refusal');
+  ok('an unknown margin is refused with a sentence',
+     /no saved Root Canal margin/.test(ev(RC + '._marginErr()') || ''),
+     ev(RC + '._marginErr()'));
+  await until(() => D().querySelector('.rc-margins .rc-margin-err')
+                    && !st().fitting, 20000, 'the card to say it');
+  ok('said in the margins card, which opens to say it',
+     !!D().querySelector('.rc-margins[open] .rc-margin-err'));
+  ok('and the set is still fitted, without it',
+     st().fit.ok && st().q.margin === null && !st().fit.margin_used);
+  // Cleared, as somebody would before going on, so the card folds again.
+  ev(RC + '._setMargin(null)');
+  await until(() => !ev(RC + '._marginErr()') && !st().fitting
+                    && !D().querySelector('.rc-margins[open]'), 20000,
+              'the card to fold');
+  ok('and once cleared the card folds back to one line',
+     !D().querySelector('.rc-margins[open]'));
+
+  /* Save margins: the request, through the naming dialog, intercepted so
+     nothing reaches the artifact store. */
+  ev('(function(){ var W = window; W.__rkSent = []; W.__rkFetch = W.fetch;'
+     + ' W.fetch = function(u, o) { if (String(u).indexOf("/api/rootcanal/'
+     + 'margin/save") >= 0) { W.__rkSent.push(JSON.parse((o && o.body) || "{}"));'
+     + ' return Promise.resolve(new Response(JSON.stringify({ ok: true,'
+     + ' artifact_id: "harness-m", version: 1, nickname: "harness margin",'
+     + ' confirmed: false }), { status: 200, headers: { "Content-Type":'
+     + ' "application/json" } })); } return W.__rkFetch.apply(this, arguments); };'
+     + ' W.__rkBd = BARRY.ui.bankDialog; BARRY.ui.bankDialog = async function(o){'
+     + ' await o.onBank({ name: "harness margin", note: "" }); return true; }; })()');
+  const kSave = Array.from(D().querySelectorAll('.rc-margins button'))
+    .find((b) => /Save these margins/.test(b.textContent));
+  ok('Single can save its margins', !!kSave);
+  if (kSave) kSave.click();
+  await until(() => JSON.parse(ev('JSON.stringify(window.__rkSent)')).length,
+              10000, 'the margin save');
+  const kSent = JSON.parse(ev('JSON.stringify(window.__rkSent)'))[0] || {};
+  ok('it asks the server to cut it from this recording, at these settings',
+     kSent.nickname === 'harness margin' && kSent.extract
+     && kSent.extract.source === 'single' && kSent.extract.k === 1
+     && kSent.extract.entry_id === ENTRY, JSON.stringify(kSent).slice(0, 160));
+  ev('(function(){ var W = window; if (W.__rkFetch) { W.fetch = W.__rkFetch;'
+     + ' delete W.__rkFetch; } if (W.__rkBd) { BARRY.ui.bankDialog = W.__rkBd;'
+     + ' delete W.__rkBd; } })()');
+
+  kBtn(2).click();
+  ev(RC + '._recompute()');
+  await until(() => st().fit && st().fit.k === 2 && !st().fitting, 30000, 'k = 2');
+  eq('back at k = 2 the answer is the one it was',
+     JSON.stringify(st().fit.counts), kBefore);
+
+  /* ================================================================== */
   head('EVERY DOT IS WHERE IT IS DRAWN, AT THE SIZE IT IS SHOWN');
 
   await until(() => geom().space, 8000, 'the space');

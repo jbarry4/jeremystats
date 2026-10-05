@@ -825,7 +825,34 @@ reach the shared space.
   at the same size is skipped, so re-uploading is cheap and resumes. A file
   arrives as `.part` and is renamed only when whole, so a cut connection
   never leaves something that looks complete. One ssh per file, streamed in
-  chunks, never held in memory. Progress is in the VACC panel.
+  chunks, never held in memory. Progress is in the cluster pad in
+  Sessions and in the VACC panel — one renderer, `uploadsBox`.
+- **Uploading is also offered where the work is.** A tool that runs on the
+  cluster has to say what it cannot run, and a recording the cluster simply
+  has no copy of is not a refusal — it is a missing step. So every VACC tool
+  names those recordings and offers to send them, through
+  `BARRY.vacc.uploadMissing(blocked, after)`, which calls **the same**
+  `upload` pathway Sessions calls: the plan first, the confirming button, the
+  skip-what-is-there, the `.part` rename. A tool that wrote to the shared
+  space its own way would be a second set of rules about the lab's data.
+
+  Three things that rule decides, and each of them was wrong somewhere
+  before it existed:
+
+  - **Name them, never drop them.** Incisor and Doppler omitted every
+    recording the cluster had not got, so a VACC batch quietly did not
+    mention most of the catalogue, and the list read as though those
+    recordings did not exist.
+  - **Only offer what can be sent.** `can_upload` is decided on the server
+    (`_vacc_missing`) and is *not* the same as "the cluster has not got it":
+    a recording this computer cannot open either has nothing to send, and a
+    button that cannot work is worse than no button. Those still appear,
+    with the reason.
+  - **Re-plan afterwards.** The offer is given the tool's own re-plan as
+    `after`, so a recording that has just gone up stops being counted as
+    blocked. Called when the upload is *started*, not finished: the rows
+    then move as the job moves.
+
 - **An upload is found by identity.** `Jarvis Data` is one of the places the
   inventory walks (`vacc.places`), so an uploaded recording is known to be on
   VACC the way any other is: by looking.

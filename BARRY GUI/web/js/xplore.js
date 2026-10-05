@@ -8023,6 +8023,22 @@ BARRY.views.xplore = (function () {
   async function publishCuration(sess, pointer) {
     if (!sess) return;
     if (curSending) {
+      /* Only the latest pointer matters -- but not at the price of the
+         marks. A pointer that carried every mark (an Avery sweep has just
+         relabelled the set) and was waiting here would be replaced by the
+         plain move that followed it, and the other windows would never
+         see the new colours. Keep them on the one that goes, as they are
+         now. */
+      const was = curPending && curPending.pointer;
+      if (was && was.events && pointer && !pointer.off && !pointer.events
+          && curPending.sess === sess) {
+        const now = sess.curationMarks;
+        const fresh = now && now.kind === pointer.kind && now.events;
+        pointer = Object.assign({}, pointer, {
+          events: fresh ? now.events : was.events,
+          labels: fresh ? (now.labels || was.labels) : was.labels,
+        });
+      }
       curPending = { sess, pointer };
       return;
     }
@@ -8054,8 +8070,17 @@ BARRY.views.xplore = (function () {
       return false;
     }
     const have = sess.curationMarks;
+    /* A set re-read after a change made somewhere else -- an Avery sweep
+       relabelling hundreds of candidates -- carries a new `marks` stamp on
+       every pointer after it. What we hold is then out of date however
+       alike the two look, so it is read again below rather than followed.
+       The pointer that carried the new marks themselves may never be seen
+       here: the live slot keeps only the latest value, and the next step
+       replaces it before this window polls. */
+    const staleMarks = !!have && pointer.marks != null && !pointer.events
+                    && pointer.marks !== have.marks;
     const sameSet = have && have.kind === pointer.kind
-                 && (have.events || []).length === pointer.n;
+                 && (have.events || []).length === pointer.n && !staleMarks;
     /* MARKS BEAT EVERYTHING. A pointer that brought its own is complete
        and current, whatever we are holding -- so it is adopted before any
        of the shortcuts below get a chance to decide nothing has changed.
@@ -8070,6 +8095,7 @@ BARRY.views.xplore = (function () {
     if (sameSet && pointer.events) {
       have.events = pointer.events;
       have.labels = pointer.labels || have.labels;
+      if (pointer.marks != null) have.marks = pointer.marks;
       have.index = pointer.index;
       have.at = pointer.at;
       have.rev = pointer.rev || 0;
@@ -8189,6 +8215,7 @@ BARRY.views.xplore = (function () {
         curveAt: pointer.curveAt,
         home_t: pointer.home_t,
         gid: pointer.gid,
+        marks: pointer.marks,
       };
       return true;
     }
@@ -8217,6 +8244,7 @@ BARRY.views.xplore = (function () {
         events: (set.events || []).map(
           (e) => ({ start: e.start, label: e.label || null })),
         gid: pointer.gid,
+        marks: pointer.marks,
       };
       return true;
     } catch (e) {

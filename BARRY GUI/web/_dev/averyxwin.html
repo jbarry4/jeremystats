@@ -1,0 +1,201 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — the aid window after an Avery sweep</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; }
+  .frames { display: flex; gap: 6px; padding: 0 12px 12px; }
+  .frames iframe { width: 49%; height: 44vh; border: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<div class="frames">
+  <iframe id="a" src="/"></iframe>
+  <iframe id="b" src="/"></iframe>
+</div>
+<script>
+/* "After AI sweep the label colors don't update on the support panel."
+   (the user, 2026-10-03)
+
+   An accepted sweep relabels hundreds of candidates at once, somewhere
+   other than this window's keyboard. Checkup re-reads the set -- and then
+   told the other windows only that the revision had moved, which they
+   rightly treat as "nothing to fetch". So the aid window kept every old
+   colour. Now the re-read sends every mark with it.
+
+   Window A curates; window B is the aid window on the same recording. The
+   sweep is FAKED in A: its re-read of the set is answered with ten labels
+   changed, and nothing is ever written to the server -- no label, no bank
+   version. The question is whether B ends up with the new labels, and
+   whether A's own panes have them too. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return i; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return -1;
+}
+
+(async () => {
+  const fa = document.getElementById('a'), fb = document.getElementById('b');
+  let A = null, posts = [];
+  try {
+    await Promise.all([fa, fb].map((f) =>
+      new Promise((r) => f.addEventListener('load', r, { once: true }))));
+    A = fa.contentWindow;
+    const B = fb.contentWindow;
+    const errs = [];
+    for (const W of [A, B]) {
+      W.addEventListener('error', (e) => errs.push(e.message));
+      W.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)));
+    }
+    await untilN(() => A.eval('BARRY') && B.eval('BARRY'));
+
+    const sets = (await (await fetch('/api/curation')).json()).sets || [];
+    const reg = await (await fetch('/api/registry')).json();
+    const here = {};
+    for (const p of (reg.tree || [])) for (const m of p.mice) for (const s of m.sessions) {
+      if ((s.here || []).length) here[s.gid] = s.here[0];
+    }
+    const target = sets.find((s) => s.kind === 'ds' && here[s.gid]
+      && ((s.progress || {}).total || 0) >= 20 && !/demo|harness/i.test(s.gid));
+    if (!target) { say('bad', 'no reachable DS set of 20 or more'); return; }
+    say('note', '  ' + target.session_label + ', ' + target.progress.total
+        + ' candidates');
+
+    /* Looking must not change anything a person would see. Entering a set
+       puts it on the Checkup workbench, under this machine's user, and
+       opening a recording writes its view state -- so those are answered
+       here and never reach the server. (Found the hard way: the first run
+       left a closed KCNT1 set open on the bench.) */
+    const STUB = /^\/api\/curation\/[^/]+\/[^/]+\/open$|^\/api\/session\/state|^\/api\/activity|^\/api\/presence\//;
+    for (const W of [A, B]) {
+      const real = W.fetch.bind(W);
+      W.fetch = (url, opts) => {
+        const method = ((opts && opts.method) || 'GET').toUpperCase();
+        if (method !== 'GET' && STUB.test(String(url))) {
+          return Promise.resolve(new W.Response('{"ok": true}', { status: 200,
+            headers: { 'Content-Type': 'application/json' } }));
+        }
+        return real(url, opts);
+      };
+    }
+
+    B.eval("setView('xplore')");
+    await sleep(250);
+    await B.eval('BARRY.views.xplore.open(' + JSON.stringify(here[target.gid]) + ')');
+    await untilN(() => B.eval('BARRY.views.xplore.state.order.length') > 0);
+    B.eval("BARRY.views.xplore.setPanes([{panel:'csd'}], {col:1,row:1})");
+
+    const labelsIn = (W) => JSON.parse(W.eval(
+      'JSON.stringify((function(){var S=BARRY.views.xplore.state;'
+      + 'var s=S.sessions[S.active]; var m = s && s.curationMarks;'
+      + 'return m ? m.events.map(function(e){return e.label || null;}) : null;'
+      + '})())'));
+
+    /* And no label or bank version may reach the server. (Opening a
+       recording and the live link post as well; those are reads and the
+       link between windows.) */
+    const realA = A.fetch.bind(A);
+    A.fetch = (url, opts) => {
+      const method = ((opts && opts.method) || 'GET').toUpperCase();
+      const u = String(url);
+      if (method !== 'GET' && /label|bank|accept|avery|version/.test(u)) {
+        posts.push(method + ' ' + u);
+      }
+      return realA(url, opts);
+    };
+
+    head('Window A curates, the aid window follows');
+    A.eval("setView('toolkit')");
+    await sleep(250);
+    await A.eval('BARRY.curate.enter(' + JSON.stringify(target.gid) + ', "ds")');
+    await untilN(() => A.eval('!!BARRY.curate.active'));
+    check('A is curating', !!A.eval('BARRY.curate.active'));
+    const arrived = await untilN(() => (labelsIn(B) || []).length
+                                 === target.progress.total, 300);
+    check('the aid window has every mark', arrived >= 0,
+          JSON.stringify((labelsIn(B) || []).length));
+    const was = labelsIn(B) || [];
+
+    head('A sweep is accepted (faked): ten labels change at once');
+    const flip = (l) => (l === 'garbage' ? 'spike' : 'garbage');
+    const want = was.slice();
+    for (let i = 0; i < 10 && i < want.length; i++) want[i] = flip(want[i]);
+    const setUrl = '/api/curation/' + encodeURIComponent(target.gid) + '/ds';
+    /* What the server holds once a sweep is accepted, as both windows
+       would read it. */
+    const swept = (W, inner) => async (url, opts) => {
+      const res = await inner(url, opts);
+      if (String(url) !== setUrl || (opts && opts.method && opts.method !== 'GET')) {
+        return res;
+      }
+      const body = await res.json();
+      const evs = (body.set.events || []).slice()
+        .sort((a, b) => a.start - b.start);
+      const byId = {};
+      evs.slice(0, 10).forEach((e) => { byId[e.id] = flip(e.label || null); });
+      body.set.events = body.set.events.map((e) => (e.id in byId
+        ? Object.assign({}, e, { label: byId[e.id] }) : e));
+      return new W.Response(JSON.stringify(body), { status: 200,
+        headers: { 'Content-Type': 'application/json' } });
+    };
+    const inner = A.fetch, innerB = B.fetch.bind(B);
+    A.fetch = swept(A, inner);
+    B.fetch = swept(B, innerB);
+    await A.eval('BARRY.curate.refresh()');
+    const sameA = await untilN(() =>
+      JSON.stringify(labelsIn(A)) === JSON.stringify(want), 100);
+    check('A’s own panes have the new labels', sameA >= 0,
+          JSON.stringify((labelsIn(A) || []).slice(0, 10)));
+    /* A plain move straight after, as the re-read's jump to the first
+       flag makes: it must not carry the old marks over the new ones. */
+    A.eval('BARRY.curate.step(1)');
+    const sameB = await untilN(() =>
+      JSON.stringify(labelsIn(B)) === JSON.stringify(want), 300);
+    check('the aid window has the new labels too', sameB >= 0,
+          'wanted ' + JSON.stringify(want.slice(0, 10)) + ', has '
+          + JSON.stringify((labelsIn(B) || []).slice(0, 10)));
+    check('and every other label is as it was',
+          (labelsIn(B) || []).slice(10).every((l, k) => l === was[10 + k]));
+    head('Steps after it do not undo it');
+    A.eval('BARRY.curate.step(1)');
+    await sleep(1500);
+    check('the aid window still has the new labels',
+          JSON.stringify(labelsIn(B)) === JSON.stringify(want));
+    A.fetch = inner;
+    B.fetch = innerB;
+
+    head('Leaving curation clears them');
+    A.eval('BARRY.curate.exit()');
+    const cleared = await untilN(() => labelsIn(B) === null, 250);
+    check('the aid window stopped drawing them', cleared >= 0);
+    check('nothing was written to the server', posts.length === 0,
+          posts.join(', '));
+    if (errs.length) { head('Errors thrown'); errs.forEach((m) => say('bad', m)); }
+  } catch (e) {
+    say('bad', 'the harness itself threw: ' + (e && e.stack || e));
+  } finally {
+    try { if (A && A.BARRY && A.BARRY.curate.active) A.BARRY.curate.exit(); } catch (e) {}
+    head(bad ? bad + ' failed' : 'The aid window after an Avery sweep: all checks passed');
+    document.title = bad ? 'FAIL ' + bad : 'ok';
+    fa.src = 'about:blank';
+    fb.src = 'about:blank';
+  }
+})();
+</script>

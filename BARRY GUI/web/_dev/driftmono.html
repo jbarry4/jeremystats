@@ -287,7 +287,7 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
     btn(/^View Monolith Artifact$/).click();
     check('View opens the Monolith page', opened[0] === '/monolith.html', opened.join());
     check('Results knows a monolith artifact', ev('BARRY.artifacts.viewers().indexOf("monolith") >= 0'));
-    check('a Monolith with everything offers nothing to add', !btn(/^Add /));
+    check('a Monolith with everything offers nothing to add (but the trajectory)', !btn(/^Add (the delta|phase)/) && !!btn(/^Add Precon2 and Precon3$/));
 
     head('adding to it: delta, and PAC at the transitions');
     const builtS = { rid: run.rid, at: iso(1), artifact_id: 'zzmono', version: 1, missing_tasks: [],
@@ -310,6 +310,33 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
                                        missing: { pac_trans: true }, additions_say: says }));
     const off2 = btn(/^Add phase–amplitude coupling at the transitions$/);
     check('  without a check of the VACC it is off, and says why', off2 && off2.disabled && /Check the VACC first/.test(step('view').textContent));
+
+    head('the trajectory: Precon2 and Precon3');
+    const trajSt = (t) => Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS, trajectory: t });
+    const tdef = { days: ['Precon2', 'Precon3'], in_manifest: [], ready: [], checked_now: true, built: [] };
+    await show(trajSt(tdef));
+    const tb = btn(/^Add Precon2 and Precon3$/);
+    check('not in what goes yet: offered, and not the next step', !!tb && !tb.disabled
+          && primaries().length === 1 && /^View Monolith Artifact$/.test(primaries()[0].textContent.trim()));
+    stub.calls.length = 0;
+    tb.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/manifest/extend'), 60);
+    check('  pressed, it adds them, confirmed', stub.calls.find((c) => c.path === '/api/arc/monolith/manifest/extend').body.confirm === true);
+    await show(trajSt(Object.assign({}, tdef, { in_manifest: ['Precon2', 'Precon3'], checked_now: false })));
+    const tr0 = btn(/^Run Precon2 and Precon3$/);
+    check('in what goes, not yet checked: Run is off, and says upload then check', tr0 && tr0.disabled
+          && /Upload \(step 1\) sends only what is not on the cluster yet; then Check the VACC/.test(step('view').textContent));
+    await show(trajSt(Object.assign({}, tdef, { in_manifest: ['Precon2', 'Precon3'], ready: [[3, 'Precon2'], [3, 'Precon3']] })));
+    const tr1 = btn(/^Run Precon2 and Precon3$/);
+    check('whole on the cluster: Run is on, and says how many', tr1 && !tr1.disabled && /2 rat-sessions are whole on the cluster/.test(step('view').textContent));
+    stub.calls.length = 0;
+    tr1.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/run'), 60);
+    const trCall = stub.calls.find((c) => c.path === '/api/arc/monolith/run');
+    check('  pressed, it runs only them, confirmed', trCall.body.confirm === true
+          && JSON.stringify(trCall.body.extra) === JSON.stringify({ days: ['Precon2', 'Precon3'] }), JSON.stringify(trCall.body));
+    await show(trajSt(Object.assign({}, tdef, { in_manifest: ['Precon2', 'Precon3'], built: ['Precon2', 'Precon3'] })));
+    check('built: said so, nothing to press', /Precon2 and Precon3 are in this Monolith/.test(step('view').textContent) && !btn(/Precon2 and Precon3$/));
 
     head('what goes wrong says so');
     await show(Object.assign(base(), { interrupted: { what: 'upload', id: 'x', started: iso(3600), status: 'running' } }));

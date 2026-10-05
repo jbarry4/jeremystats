@@ -169,6 +169,12 @@ BARRY.driftMono = (function () {
      PAC at the transitions); fetching it rebuilds the Monolith from both. */
   const addRun = (extra) => act('/api/arc/monolith/run', { confirm: true, extra }, 'run.add',
     'Submitted the addition. Check the VACC to see it move; fetching it rebuilds the Monolith with it.');
+  /* The trajectory: Precon2 and Precon3 into what goes, then (after the
+     upload and a check) a run of only them. */
+  const extendIt = () => act('/api/arc/monolith/manifest/extend', { confirm: true }, 'extend',
+    'Adding Precon2 and Precon3 to what goes. Upload next: it sends only what is not on the cluster yet.');
+  const runTraj = () => act('/api/arc/monolith/run', { confirm: true, extra: { days: ['Precon2', 'Precon3'] } }, 'run.traj',
+    'Submitted Precon2 and Precon3. Check the VACC to see them move; fetching rebuilds the Monolith with them.');
   const fetchIt = () => act('/api/arc/monolith/fetch', { confirm: true }, 'fetch',
     'Fetching the answers and building the Monolith.');
   const stopWork = () => act('/api/arc/monolith/stop', {}, 'stop');
@@ -672,6 +678,7 @@ BARRY.driftMono = (function () {
         ]));
       }
     }
+    if (B) card.appendChild(trajBlock(S));
     card.appendChild(el('div', { class: 'head-actions dpc-actions' }, [
       el('span', { class: 'hint', text: B ? 'Opens in a new tab. The artifact is in Results too.' : '' }),
       el('div', { class: 'spacer' }),
@@ -680,6 +687,46 @@ BARRY.driftMono = (function () {
         text: 'View Monolith Artifact', onclick: view }),
     ]));
     return card;
+  }
+
+  /* The trajectory: Precon2 and Precon3, measured as the two days are, for
+     the page's "Across the four sessions" -- never in the change, never
+     tested. Each step is the user's to press: add them to what goes,
+     upload (step 1), check the VACC (step 2), run them, fetch (step 4). */
+  function trajBlock(S) {
+    const T = S.trajectory || {};
+    const box = el('div', { class: 'dmo-add dmo-traj', 'data-go': 'traj' });
+    const built = T.built || [];
+    if (built.length === 2) {
+      box.appendChild(el('p', { text: 'Precon2 and Precon3 are in this Monolith: the page shows every line across the four sessions.' }));
+      return box;
+    }
+    const inMan = (T.in_manifest || []).length > 0;
+    const ready = T.ready || [];
+    const going = S.run && S.built && S.run.rid !== S.built.rid;
+    box.appendChild(el('p', { text: 'The trajectory: Precon2 and Precon3, measured exactly as Precon1 and Precon4 are, to follow '
+      + 'each line across the four sessions. They never enter the change and are not tested.' }));
+    const C = S.check;
+    let say, button;
+    if (!inMan) {
+      say = 'First, add them to what goes: worked out here from the bank, as the two days were (reads only; a minute or two).';
+      button = el('button', { class: 'btn ghost', 'data-go': 'traj-add', disabled: off(!!S.work && S.work.status === 'running'),
+        text: 'Add Precon2 and Precon3', onclick: extendIt });
+    } else if (going) {
+      say = 'A run is on the cluster. Check the VACC to follow it, then fetch.';
+    } else if (!C || !T.checked_now || !ready.length) {
+      say = 'They are in what goes. Upload (step 1) sends only what is not on the cluster yet; then Check the VACC (step 2).'
+        + (C && T.checked_now ? ' None is whole on the cluster yet.' : '');
+      button = el('button', { class: 'btn ghost', 'data-go': 'traj-run', disabled: 'disabled', text: 'Run Precon2 and Precon3' });
+    } else {
+      say = ready.length + ' rat-session' + (ready.length === 1 ? ' is' : 's are') + ' whole on the cluster. A run of only them '
+        + 'uses the lab’s cluster allocation (about as long as the first run took for two days).';
+      button = el('button', { class: 'btn ghost', 'data-go': 'traj-run', disabled: off((S.code_changed || []).length > 0),
+        text: 'Run Precon2 and Precon3', onclick: runTraj });
+    }
+    box.appendChild(el('div', { class: 'head-actions dpc-actions' }, [
+      el('span', { class: 'hint', text: say }), el('div', { class: 'spacer' }), button]));
+    return box;
   }
 
   /* ---- Results: the monolith kind ---- */

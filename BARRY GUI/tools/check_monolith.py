@@ -182,11 +182,12 @@ def stats_match_driftpool():
 REGIONS = sweep.regions()
 
 
-def fake_manifest(n_rats=6, units=4, rest=3, fast_banked=True, root=None):
+def fake_manifest(n_rats=6, units=4, rest=3, fast_banked=True, root=None,
+                  days_of=None):
     days = []
     for r in range(n_rats):
         rat = MO.RATS[r]
-        for _n, day in MO.DAYS:
+        for _n, day in (days_of or MO.DAYS):
             folders = []
             for role in MO.FOLDER_ROLES:
                 local = os.path.join(root or "C:/nowhere", "r%d" % rat, day,
@@ -775,6 +776,75 @@ def addition_merge(man, work):
           and MO.missing_additions(summ) == {})
 
 
+def trajectory_check(work):
+    """Precon2 and Precon3 for the trajectory: in the manifest beside the
+    two days, run as an addition, built with the Monolith -- and the change
+    is exactly what it was without them."""
+    print("\nThe trajectory: Precon2 and Precon3 as an addition")
+    order = {d: i for i, d in enumerate(MO.ALL_DAY_ORDER)}
+    man4 = fake_manifest(days_of=sorted(MO.DAYS + MO.TRAJ_DAYS, key=lambda x: x[0]))
+    every = {(d["rat"], d["day"], f["role"]) for d, f in MO.folders_of(man4)}
+    # r4's Precon3 is not on the cluster yet.
+    gap = {k for k in every if not (k[0] == 4 and k[1] == "Precon3")}
+    chk = MO.check_data(man4, listing_for(man4, whole=gap))
+    check("ready is decided by the two days the change is taken between",
+          chk["ready_rats"] == sorted(MO.RATS[:6]), chk["ready_rats"])
+    check("each session between is ready on its own (r4 Precon3 is not)",
+          len(chk["traj_ready"]) == 11 and [4, "Precon3"] not in chk["traj_ready"], chk["traj_ready"])
+    core = MO.core_view(man4)
+    base = MO.plan_tasks(core, MO.check_data(core, listing_for(core, whole=every)))
+    add = MO.plan_tasks(man4, chk, extra={"days": list(MO.TRAJ_NAMES)})
+    per_day = len(base) // 12
+    check("the addition: every task of Precon2 and Precon3, keyed apart (%d)" % len(add),
+          len(add) == per_day * 11 and all(t["key"].endswith("_x") for t in add)
+          and {t["day"] for t in add} == set(MO.TRAJ_NAMES)
+          and not any(t["rat"] == 4 and t["day"] == "Precon3" for t in add), len(add))
+    bands = MO.plan_tasks(man4, chk, extra={"bands": ["delta"], "on_days": list(MO.DAY_NAMES)})
+    check("a band added later keeps to the days the Monolith has",
+          bands and {t["day"] for t in bands} == set(MO.DAY_NAMES))
+
+    def run_of(rid, ts):
+        return {"rid": rid, "dest": "scratch", "arrays": [{"id": "1", "indices": None}],
+                "tasks": [{"i": i, "key": t["key"], "rat": t["rat"], "day": t["day"],
+                           "kind": t["kind"], "chunk": t["chunk"], "n_units": t["n_units"],
+                           "est_s": t["est_s"]} for i, t in enumerate(ts)]}
+    b = run_of("7a0000000001", base)
+    b_raw = os.path.join(MO.run_dir_local(b["rid"]), "raw")
+    fake_outputs(core, b, b_raw)
+    only = os.path.join(work, "traj_core")
+    s0 = MO.build(core, b, b_raw, only)
+    t = run_of("7a0000000002", add)
+    t["parts"] = [{"rid": b["rid"], "tasks": b["tasks"]}]
+    t_raw = os.path.join(MO.run_dir_local(t["rid"]), "raw")
+    fake_outputs(man4, t, t_raw, seed=11)
+    data = os.path.join(MO.run_dir_local(t["rid"]), "data")
+    s1 = MO.build(man4, t, t_raw, data)
+    check("the build knows its sessions between, and in which rats",
+          s1["trajectory"]["days"] == list(MO.TRAJ_NAMES)
+          and s1["trajectory"]["rats"]["Precon3"] == [r for r in MO.RATS[:6] if r != 4]
+          and s1["trajectory"]["order"] == list(MO.ALL_DAY_ORDER), s1["trajectory"])
+    same = all(open(os.path.join(only, f), "rb").read() == open(os.path.join(data, f), "rb").read()
+               for f in s0["files"])
+    check("the change is byte for byte what it was without them (%d files)" % len(s0["files"]), same)
+    check("and its counts", s0["counts"] == s1["counts"])
+    p0 = s1["top"]["raw"][0]
+    at = (p0["wi"], p0["bi"], p0["mi"], p0["pair"])
+    e = MO.entry_detail(data, man4, s1, "edges", "raw", at)
+    r0 = e["rats"][0]
+    X = np.load(os.path.join(data, "days", "r%d_Precon2_edges.npy" % r0["rat"]))
+    want = float(np.nanmean(X[(slice(None),) + at].astype(np.float64)))
+    check("one entry's trajectory: each rat's Precon2 is its presentations' mean",
+          e["trajectory_days"] == list(MO.TRAJ_NAMES) and abs(r0["traj"]["Precon2"]["x"] - want) < 1e-12
+          and len(r0["traj"]["Precon2"]["units"]) == len(man4["days"][1]["units"]),
+          (r0["traj"].get("Precon2"), want))
+    em = MO.entry_detail(data, man4, s1, "edges", "minus_fp", at)
+    t2 = em["rats"][0]["traj"]["Precon2"]
+    check("minus FP: less that session's rest", abs(t2["x"] - (t2["cue"] - t2["rest"])) < 1e-12, t2)
+    check("and the change itself is untouched by them", e["pooled"]["est"] is not None and abs(
+          e["pooled"]["est"] - MO.entry_detail(only, core, s0, "edges", "raw", at)["pooled"]["est"]) < 1e-12)
+    del order
+
+
 def damage_report(man, summ, data):
     print("\nWhat was lost")
     import copy
@@ -849,6 +919,59 @@ def damage_report(man, summ, data):
     finally:
         for path, arr in keep.items():
             np.save(path, arr)
+
+
+def pac_self_check(man, summ, data):
+    """Within-region PAC, session by session: the route's means against a
+    hand computation from the day arrays, raw and minus FP."""
+    print("\nPAC within a region")
+    names = summ["regions"]
+    R = len(names)
+    C = len(summ["pac_cells"])
+    c = next(i for i, x in enumerate(summ["pac_cells"]) if x["amp_band"])
+    w = 1
+    for layer in ("raw", "minus_fp"):
+        got = MO.pac_self(data, man, summ, layer, w, cell=c)
+        worst = 0.0
+        for r in range(R):
+            for day in MO.DAY_NAMES:
+                per = []
+                for d in man["days"]:
+                    if d["day"] != day:
+                        continue
+                    X = np.load(os.path.join(data, "days", "r%d_%s_pac.npy" % (d["rat"], day)))
+                    v = X[:, w, c, r * R + r].astype(float)
+                    m = np.nanmean(v) if np.isfinite(v).any() else np.nan
+                    if layer == "minus_fp":
+                        Xr = np.load(os.path.join(data, "days", "r%d_%s_pac_rest.npy" % (d["rat"], day)))
+                        vr = Xr[:, 0, c, r * R + r].astype(float)
+                        m = m - (np.nanmean(vr) if np.isfinite(vr).any() else np.nan)
+                    per.append(m)
+                per = np.array(per)
+                want = np.nanmean(per) if np.isfinite(per).any() else np.nan
+                have = got["sessions"][day]["mean"][r][c]
+                if np.isfinite(want) != (have is not None):
+                    worst = np.inf
+                elif have is not None:
+                    worst = max(worst, abs(have - want))
+        check("%s: each session's mean MI, every region, is the mean over rats of each rat's mean (%.1e)" % (layer, worst),
+              worst < 1e-12, worst)
+    got = MO.pac_self(data, man, summ, "raw", w, cell=c)
+    ex = got["examples"][0]["Precon4"]
+    d = next(x for x in man["days"] if x["rat"] == ex["rat"] and x["day"] == "Precon4")
+    X = np.load(os.path.join(data, "days", "r%d_Precon4_pac.npy" % ex["rat"]))
+    ui = [u["id"] for u in d["units"]].index(ex["unit"])
+    allv = []
+    for dd in man["days"]:
+        if dd["day"] == "Precon4":
+            Y = np.load(os.path.join(data, "days", "r%d_Precon4_pac.npy" % dd["rat"]))
+            allv += [float(v) for v in Y[:, w, c, 0] if np.isfinite(v)]
+    med = float(np.median(allv))
+    check("its typical presentation is the one nearest the median, with its own value",
+          abs(float(X[ui, w, c, 0]) - ex["v"]) < 1e-12 and abs(ex["median"] - med) < 1e-12
+          and all(abs(v - med) >= abs(ex["v"] - med) - 1e-15 for v in allv), ex)
+    check("and that rat's presentations, to step through",
+          got["units"][str(ex["rat"])]["Precon4"] == [u["id"] for u in d["units"]])
 
 
 def null_control(work):
@@ -1056,7 +1179,7 @@ def routes(work, man, run_tasks, raw_src):
             time.sleep(0.25)
         check("fetched, built and filed", w["status"] == "done"
               and st["built"] and st["built"]["artifact_id"] == "zzmono",
-              w)
+              (w["status"], w.get("error"), st.get("built")))
         s = c.get("/api/arc/monolith/data/summary").get_json()
         check("the page's summary is served", s.get("schema") == MO.SCHEMA
               and s["top"]["raw"])
@@ -1073,6 +1196,15 @@ def routes(work, man, run_tasks, raw_src):
               e["ok"] and e["agree"] and len(e["rats"]) == 6)
         r = c.get("/api/arc/monolith/entry?what=edges&layer=raw&at=99,0,0,0")
         check("an entry outside it is refused", r.status_code == 400)
+        ps = c.get("/api/arc/monolith/pacself?layer=minus_fp&window=1&cell=3").get_json()
+        check("within-region PAC is served, sessions and examples",
+              ps.get("ok") and len(ps["sessions"]["Precon1"]["mean"]) == len(s["regions"])
+              and len(ps["examples"]) == len(s["regions"]), ps.get("error"))
+        check("and a window, cell, layer or split it lacks is refused",
+              c.get("/api/arc/monolith/pacself?layer=raw&window=99").status_code == 400
+              and c.get("/api/arc/monolith/pacself?layer=raw&window=1&cell=9999").status_code == 400
+              and c.get("/api/arc/monolith/pacself?layer=nope").status_code == 400
+              and c.get("/api/arc/monolith/pacself?layer=raw&split=nonsense").status_code == 404)
         check("the fetch split it by cue pair too", bool((s.get("splits") or {}).get("files")))
         b2 = c.get("/api/arc/monolith/data/edges_raw__snd_click")
         check("a split's arrays are served", b2.status_code == 200 and len(b2.data) == 4 * int(
@@ -1094,6 +1226,14 @@ def routes(work, man, run_tasks, raw_src):
             time.sleep(0.25)
         check("splitting again, on its own, from the tab's button", r.get("ok") and w["status"] == "done", w)
         leaf_route(c, fake, man, s, p0)
+        r = c.post("/api/arc/monolith/manifest/extend", json={})
+        check("Precon2 and Precon3 are added to what goes only when confirmed", r.status_code == 400)
+        bad = [c.post("/api/arc/monolith/run", json={"confirm": True, "extra": x}).status_code
+               for x in ({"days": ["Precon5"]}, {"days": ["Precon2"], "bands": ["delta"]}, {"days": ["Precon1"]})]
+        check("a run of the sessions between names only them, on its own", bad == [400, 400, 400], bad)
+        r = c.get("/api/arc/monolith/status").get_json()
+        check("the status says where the trajectory is", r["trajectory"]["days"] == list(MO.TRAJ_NAMES)
+              and r["trajectory"]["in_manifest"] == [] and r["trajectory"]["built"] == [], r.get("trajectory"))
         r = c.post("/api/arc/monolith/cancel", json={"confirm": True})
         check("cancel reaches the cluster by id and name",
               r.get_json()["ok"] and any("scancel" in (x[0] or "")
@@ -1286,7 +1426,9 @@ def main():
         submit_and_poll(man, tasks)
         run, summ, raw = build_end_to_end(man, tasks, work)
         damage_report(man, summ, os.path.join(work, "data"))
+        pac_self_check(man, summ, os.path.join(work, "data"))
         addition_merge(man, work)
+        trajectory_check(work)
         split_check(man, summ, os.path.join(work, "data"))
         null_control(work)
         man2 = fake_manifest(root=os.path.join(work, "local"))

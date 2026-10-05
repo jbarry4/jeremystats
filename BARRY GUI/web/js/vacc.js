@@ -1130,6 +1130,60 @@ BARRY.vacc = (function () {
     }
   }
 
+  /* The offer a VACC tool makes about what the cluster has not got.
+
+     Built here rather than in each tool, for the reason §6c gives: three
+     copies of this wording would drift on the first change, and the thing
+     it is offering -- the plan, the confirmation, the transfer -- is one
+     pathway with one set of rules about what is skipped and what is
+     resumed. A tool that rolled its own would be a second way to write to
+     the lab's shared space.
+
+     `blocked` is whatever the tool's plan returned. Only the entries that
+     say `can_upload` are offered: a recording this computer cannot open
+     either has nothing to send, and a button that cannot work is worse
+     than no button. Those still show their reason, so the list is honest
+     about why it is shorter than the catalogue.
+
+     `after` is called once the upload has been STARTED, not finished --
+     the tool re-plans then, and the rows move as the job moves. */
+  function uploadMissing(blocked, after, gids) {
+    /* `gids` is the complete list when the plan has one -- the explained
+       entries are capped at forty, and offering to upload only the forty
+       somebody can read would be a button that does less than it says. */
+    const list = (blocked || []).filter((b) => b && b.can_upload && b.gid);
+    if (!gids && !list.length) return null;
+    if (gids && !gids.length) return null;
+    /* One recording can be blocked once per cue type -- Circuit plans per
+       pair -- so the gids are deduplicated before anything is counted or
+       sent. Uploading the same folder twice in one job is work the far
+       side would skip anyway, and a count that says four when it means two
+       is the kind of thing that stops a number being trusted. */
+    const want = gids ? gids.slice() : [...new Set(list.map((b) => b.gid))];
+    const n = want.length;
+    return el('div', { class: 'vacc-missing' }, [
+      el('p', { class: 'hint', style: 'max-width:74ch',
+        text: n + ' of these ' + (n === 1 ? 'is' : 'are') + ' not on the '
+            + 'cluster yet. Uploading sends ' + (n === 1 ? 'it' : 'them')
+            + ' to Jarvis Data; a file already there at the same size is '
+            + 'skipped, and the copy here is only read.' }),
+      el('button', {
+        class: 'btn ghost sm',
+        text: 'Upload ' + n + ' to VACC\u2026',
+        title: 'The same upload as Sessions: the plan first, then the '
+             + 'button that says how much it sends.',
+        onclick: async () => {
+          const id = await upload(want);
+          /* Re-plan whether or not a job started. Somebody who read the
+             plan and said no has changed nothing, and the list they are
+             looking at is still right -- but somebody who said yes needs
+             the tool to stop calling these blocked. */
+          if (after) after(id);
+        },
+      }),
+    ]);
+  }
+
   function uploadsBox() {
     if (!uploads.size) return null;
     const rows = [];
@@ -1186,7 +1240,7 @@ BARRY.vacc = (function () {
   }
 
   return { init, status, showVacc, loadKnows, of, canRead, words, mark,
-           uploadsBox, onUploads,
+           uploadsBox, onUploads, uploadMissing,
            get nUploads() { return uploads.size; },
 
            upload, _uploads: uploads,

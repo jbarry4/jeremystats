@@ -39,8 +39,12 @@ const wave = (k, sign) => Array.from({ length: 51 }, (_, i) =>
   +(Math.exp(-((i - 25) ** 2) / (8 + k)) * sign
     + 0.05 * Math.sin(i / 3)).toFixed(3));
 const LABS = ['spike', 'review', 'flag', 'garbage'];
+const CHANS = (k) => Array.from({ length: 32 }, (_, c) =>
+  wave(k, 1).map((v, i) => +(v * 300 * Math.exp(-((c - 20) ** 2) / 40)
+                         - 40 * Math.exp(-((c - 9) ** 2) / 20) * Math.sin(i / 4)).toFixed(1)));
 const SAMPLES = Array.from({ length: 12 }, (_, k) => ({
   i: k * 3, id: 'e' + k, t: 10 + k * 11.1, wave: wave(k, 1),
+  channels: CHANS(k), channel_numbers: Array.from({ length: 32 }, (_, c) => 2 * c + 2),
   csd: wave(k + 3, -1).map((v) => Math.abs(v)), profile: [],
   readouts: { amp_uv: 300 + k * 10, half_width_ms: 14.2, rise_ms: 12,
               csd_peak: 2.1, common_mode: 0.31, mua: 0.2, likeness: 0.6 },
@@ -64,6 +68,12 @@ const RESULT = {
               flag: { n: 50, n_ds: 30, n_garbage: 20 } },
 };
 
+const TOLS = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30].map((L, k) => ({
+  ds_loss: L, garbage_cleaned: [0.551, 0.708, 0.82, 0.888, 0.942, 0.963][k],
+  garbage_left: [0.439, 0.282, 0.169, 0.102, 0.048, 0.026][k],
+  garbage_into_ds: 0.011, ds_called_garbage: L,
+  flagged: [0.37, 0.307, 0.25, 0.198, 0.148, 0.101][k] }));
+
 (async () => {
   const Q = new URLSearchParams(location.search);
   const f = document.getElementById('app');
@@ -76,9 +86,13 @@ const RESULT = {
     { status: 200, headers: { 'Content-Type': 'application/json' } }));
   W().fetch = (url, opts) => {
     const u = String(url);
-    if (u === '/api/avery') return reply({ ok: true, ready: true, run_id: 'ai20261002-190224-c618',
-      model: 'forest', families: new Array(14).fill('x'), n_recordings: 45,
-      garbage_caught: 0.9853, ds_flagged: 0.4285, running: null });
+    if (u === '/api/avery') {
+      const b = { ready: true, model: 'forest', n_recordings: 45, garbage_caught: 0.9853, ds_flagged: 0.4285 };
+      return reply(Object.assign({ ok: true, running: null }, b, { run_id: 'ai20261002-190224-c618', models: {
+        avery: Object.assign({}, b, { name: 'Avery', run_id: 'ai20261002-190224-c618', families: new Array(14).fill('x'), garbage_into_ds: 0.011, garbage_called_garbage: 0.013, ds_called_garbage: 0.0002, flagged_share: 0.45 }),
+        avery_plus: Object.assign({}, b, { name: 'Avery+', run_id: 'aiPLUS', families: new Array(16).fill('x'), garbage_into_ds: 0.012, garbage_called_garbage: 0.61, ds_called_garbage: 0.05, flagged_share: 0.2, tolerances: TOLS, default_tolerance: 0.2 }),
+        avery_gd: Object.assign({}, b, { name: 'Avery Garbage Dystrophy+', model: 'hgb', run_id: 'aiGD', families: new Array(17).fill('x'), garbage_into_ds: 0.011, garbage_called_garbage: 0.6, ds_called_garbage: 0.05, flagged_share: 0.2, tolerances: TOLS, default_tolerance: 0.2 }) } }));
+    }
     if (u === '/api/avery/sweep') return reply({ ok: true, job: { id: 'job1', status: 'running', stages: [], preview_rev: 0 } });
     if (u.startsWith('/api/cfc/job/job1')) {
       polls += 1;
@@ -97,6 +111,18 @@ const RESULT = {
   const go = await untilN(() => Array.from(f.contentDocument.querySelectorAll('#bigModal button')).find((b) => b.textContent.trim() === 'Start the sweep'));
   if (Q.get('at') === 'confirm') { document.title = 'posed'; return; }
   go.click();
+  if (Q.get('at') === 'stamp') {
+    await untilN(() => { const x = f.contentDocument.getElementById('averyStamp');
+                         return x && x.classList.contains('hit'); }, 900);
+    await sleep(250);
+    document.title = 'posed';
+    return;
+  }
+  if (Q.get('at') === 'feed') {
+    await untilN(() => f.contentDocument.querySelectorAll('#averyLog.stream .avery-logline').length >= 25, 900);
+    document.title = 'posed';
+    return;
+  }
   if (Q.get('at') !== 'scan') {
     const skip = await untilN(() => Array.from(f.contentDocument.querySelectorAll('#averyOv button')).find((b) => /Skip/.test(b.textContent)), 900);
     if (skip) { await sleep(2500); skip.click(); }

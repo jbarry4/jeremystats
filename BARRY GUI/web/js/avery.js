@@ -1,10 +1,13 @@
 /* ==========================================================================
    Avery -- AI Beta's model, sweeping a set from Checkup.
 
-   Checkup's bar offers "Avery sweep…". It asks first, then shows a
-   scanning screen while the set is read: now and then it takes one real
-   candidate, sweeps across its waveform and reads it out, and once the
-   scores are in it plays a short reel of real verdicts before the summary.
+   Checkup's bar offers "Avery sweep…". It asks first -- which model
+   (Avery, Avery+, Avery Garbage Dystrophy+, whichever are ready) and how
+   many real spikes may go with the garbage -- then shows a scanning screen
+   while the set is read: now and then it takes one real candidate and
+   sweeps across every even channel of it, and once the scores are in the
+   feed runs through every call in time order while a few more are scanned,
+   then the summary.
    The summary lists every candidate as DS, Flag for Deep Review, Flag or
    Garbage. Nothing is written until somebody accepts it; accepting puts
    Avery's calls on the candidates nobody has decided and banks every call
@@ -39,6 +42,13 @@ BARRY.avery = (function () {
   let scanT = null;
   let result = null;
   let filter = null;     // which call the summary list shows
+  let model = null;      // 'avery', 'avery_plus' or 'avery_gd'
+  let streamT = null;
+  let tol = null;        // share of real spikes that may be called Garbage
+  let pool = [];         // the candidates scanned, round and round, while reading
+  let phase = 'reading'; // 'reading', then 'reel' once the calls are in
+  let reelDone = false, streamDone = false;
+  let idleT = null;
 
   const reduced = () => {
     try {
@@ -67,10 +77,14 @@ BARRY.avery = (function () {
       toast('Could not ask whether Avery is ready: ' + e.message, 'err', 8000);
       return;
     }
-    if (!st.ready) {
+    const models = st.models || { avery: st };
+    const ready = ['avery_gd', 'avery_plus', 'avery']
+      .filter((k) => (models[k] || {}).ready);
+    if (!ready.length) {
       toast(st.why || 'Avery is not ready.', 'warn', 9000);
       return;
     }
+    if (!model || !ready.includes(model)) model = ready[0];
     if (st.running) {
       toast('Avery is already sweeping a set. One at a time.', 'warn', 6000);
       return;
@@ -78,9 +92,35 @@ BARRY.avery = (function () {
     confirmDialog();
   }
 
-  function confirmDialog() {
+  function confirmDialog(replace) {
     const mins = Math.max(1, Math.round((ctx.n || 0) * SEC_PER_CANDIDATE / 60));
-    const fam = (st.families || []).length;
+    const models = st.models || { avery: st };
+    const m = models[model] || st;
+    const fam = (m.families || []).length;
+    const tols = m.tolerances || [];
+    if (tols.length && !tols.some((x) => Math.abs(x.ds_loss - tol) < 1e-9)) {
+      tol = m.default_tolerance || tols[Math.floor(tols.length / 2)].ds_loss;
+    }
+    const row = tols.find((x) => Math.abs(x.ds_loss - tol) < 1e-9);
+    const choices = [['avery', 'Avery', 'Flags what it is unsure of; calls '
+                      + 'Garbage only when it is nearly certain.'],
+                     ['avery_plus', 'Avery+', 'Aligns every candidate the way '
+                      + 'Braces does and looks again at the 30 ms around the '
+                      + 'peak; calls more of the garbage Garbage.'],
+                     ['avery_gd', 'Avery Garbage Dystrophy+', 'Built to leave '
+                      + 'you the least garbage to sift through: catches as '
+                      + 'much of it as it can at the share of real spikes '
+                      + 'you allow.']]
+      .filter(([k]) => (models[k] || {}).ready);
+    const plain = (k) => k === 'avery_gd'
+      ? 'Built to leave a person the least garbage to sift through. Choose '
+        + 'how many real spikes may go with the garbage; the more, the less '
+        + 'is left in Flag.'
+      : k === 'avery_plus'
+      ? 'Trades a few real spikes for calling most garbage Garbage, so less '
+        + 'of it is left in Flag for a person to sift through.'
+      : 'Garbage is called only where nine in ten held-out calls were '
+        + 'right; the rest of the garbage lands in Flag.';
     showModal(el('div', { class: 'modal avery-confirm' }, [
       el('div', { class: 'mh' }, [
         el('h3', { text: 'Avery Sweep' }),
@@ -95,16 +135,46 @@ BARRY.avery = (function () {
           'Avery reads every candidate in this set — its shape, the shank '
           + 'around it, unit firing and the second either side — and calls '
           + 'each one DS, Flag for Deep Review, Flag or Garbage.' }),
+        choices.length > 1 ? BARRY.ui.field({
+          label: 'Model',
+          control: BARRY.ui.seg(choices, model, (v) => {
+            model = v; confirmDialog(true);
+          }, { extra: 'avery-models' }),
+          hint: plain(model),
+        }) : null,
+        /* How much garbage a person is left to sift through, against how
+           many real spikes may go with the garbage. Every row is what that
+           bar did on mice the model never saw. */
+        tols.length ? BARRY.ui.field({
+          label: 'Real spikes that may be called Garbage',
+          control: BARRY.ui.seg(tols.map((x) => [x.ds_loss,
+            pct(x.ds_loss, 0), 'Garbage cleaned automatically '
+            + pct(x.garbage_cleaned) + ', candidates flagged '
+            + pct(x.flagged)]), tol, (v) => { tol = v; confirmDialog(true); },
+            { extra: 'avery-tols' }),
+          hint: row ? 'On mice it never saw: ' + pct(row.garbage_cleaned)
+            + ' of the garbage cleaned out automatically, '
+            + pct(row.garbage_left) + ' left for a person to look at, '
+            + pct(row.garbage_into_ds) + ' let into DS; '
+            + pct(row.flagged) + ' of all candidates flagged.' : null,
+        }) : null,
         el('dl', { class: 'br-dl avery-dl' }, [
           dl('Candidates', num(ctx.n) + (ctx.decided
             ? ' — ' + num(ctx.decided) + ' already decided by a person, '
               + 'and Avery never changes those' : '')),
-          dl('Model', 'Run ' + st.run_id + ' · random forest · '
+          dl(m.name || 'Model', 'Run ' + m.run_id + ' · '
+             + ({ hgb: 'gradient-boosted trees', forest: 'random forest',
+                  blend: 'a blend of five sets of boosted trees',
+                  logistic: 'logistic regression' }[m.model] || m.model)
+             + ' · '
              + fam + ' kinds of input · trained on '
-             + num(st.n_recordings) + ' recordings'),
-          dl('Shown on mice it never saw', 'caught '
-             + pct(st.garbage_caught) + ' of the garbage while flagging '
-             + pct(st.ds_flagged) + ' of real spikes for a person'),
+             + num(m.n_recordings) + ' recordings'),
+          row ? null : dl('On mice it never saw', 'kept '
+             + pct(1 - (m.garbage_into_ds || 0), 1) + ' of the garbage out '
+             + 'of DS; called ' + pct(m.garbage_called_garbage)
+             + ' of it Garbage and ' + pct(m.ds_called_garbage)
+             + ' of real spikes Garbage; flagged '
+             + pct(m.flagged_share) + ' of candidates for a person'),
           dl('Time', 'about ' + mins + ' minute' + (mins === 1 ? '' : 's')
              + ' the first time; a set swept before is quicker'),
         ]),
@@ -118,7 +188,7 @@ BARRY.avery = (function () {
         BARRY.ui.button({ kind: 'primary', text: 'Start the sweep',
                           onclick: () => { closeModal(); start(); } }),
       ]),
-    ]));
+    ].filter(Boolean)), replace ? { replace: true } : undefined);
   }
 
   function dl(term, def) {
@@ -129,7 +199,10 @@ BARRY.avery = (function () {
   async function start() {
     let got;
     try {
-      got = await apiPost('/api/avery/sweep', { gid: ctx.gid, kind: ctx.kind });
+      const m = (st.models || {})[model] || {};
+      got = await apiPost('/api/avery/sweep', {
+        gid: ctx.gid, kind: ctx.kind, model: model,
+        ds_loss: (m.tolerances || []).length ? tol : null });
     } catch (e) {
       toast(e.message, 'err', 9000);
       return;
@@ -137,16 +210,31 @@ BARRY.avery = (function () {
     job = got.job;
     result = null;
     queue = [];
+    pool = [];
+    phase = 'reading';
+    reelDone = false;
+    streamDone = false;
     peekRev = -1;
     showOverlay();
     if (pollT) clearInterval(pollT);
     pollT = setInterval(tick, 800);
   }
 
+  /* One at a time. While the server is busy reading, a poll can take
+     longer than the 800 ms between them; overlapping polls each saw the
+     job finish and each started the finale, and two reels fighting over
+     one scope read as a freeze. */
+  let ticking = false;
   async function tick() {
-    if (!job) return;
+    if (!job || ticking) return;
+    ticking = true;
+    try { await tickOnce(); } finally { ticking = false; }
+  }
+
+  async function tickOnce() {
     let got;
     try { got = await api('/api/cfc/job/' + job.id); } catch (e) { return; }
+    if (!job) return;
     job = got.job;
     paintStage();
     if (job.preview_rev !== undefined && job.preview_rev !== peekRev) {
@@ -154,7 +242,8 @@ BARRY.avery = (function () {
       try {
         const pk = await api('/api/avery/sweep/' + job.id + '/peek');
         const s = (pk.peek && pk.peek.samples) || [];
-        if (s.length) {
+        if (s.length && phase === 'reading') {
+          pool = s.slice();
           queue = s.slice();
           if (!scanning) scanNext();
         }
@@ -198,7 +287,9 @@ BARRY.avery = (function () {
     ov.innerHTML = '';
     ov.appendChild(el('div', { class: 'avery-panel' }, [
       el('div', { class: 'avery-top' }, [
-        el('span', { class: 'avery-mark', text: 'AVERY' }),
+        el('span', { class: 'avery-mark',
+                     text: model === 'avery_gd' ? 'AVERY GARBAGE DYSTROPHY+'
+                       : model === 'avery_plus' ? 'AVERY+' : 'AVERY' }),
         el('span', { class: 'avery-sep', text: '//' }),
         el('span', { class: 'avery-what', text: 'SWEEP' }),
         el('span', { class: 'avery-set', text: ctx.name || '' }),
@@ -224,7 +315,11 @@ BARRY.avery = (function () {
   }
 
   function closeOverlay() {
+    if (idleT) clearTimeout(idleT);
+    idleT = null;
     if (scanT) clearTimeout(scanT);
+    if (streamT) clearTimeout(streamT);
+    streamT = null;
     scanT = null;
     scanning = false;
     const ov = document.getElementById('averyOv');
@@ -292,17 +387,63 @@ BARRY.avery = (function () {
     if (!c) return;
     const g = c.getContext('2d');
     grid(g, c.width, c.height);
+    /* Until the first candidate is in, the line sweeps an empty grid: a
+       still screen for the few seconds the recording takes to open read
+       as a hang. */
+    if (idleT) clearTimeout(idleT);
+    let f = 0;
+    const tickIdle = () => {
+      const cc = document.getElementById('averyScope');
+      if (!cc || scanning || phase !== 'reading') { idleT = null; return; }
+      f = (f + 0.02) % 1;
+      const gg = cc.getContext('2d');
+      grid(gg, cc.width, cc.height);
+      sweepLine(gg, cc.width, cc.height, f);
+      idleT = setTimeout(tickIdle, 40);
+    };
+    if (!reduced()) idleT = setTimeout(tickIdle, 40);
   }
 
   /* One candidate, swept left to right: its 5-100 Hz trace on the channel
      where it is largest (accent), the shank's CSD under it (muted), and a
      scan line revealing both. `frac` is how far the line has got. */
-  function drawSample(s, frac) {
+  function drawSample(s, frac, tint) {
     const c = document.getElementById('averyScope');
     if (!c) return;
     const g = c.getContext('2d');
     const w = c.width, h = c.height;
     grid(g, w, h);
+    const chans = s.channels || [];
+    if (chans.length) {
+      /* Every even channel, top of the probe at the top, one lane each,
+         all on one scale so a large channel looks large. The channel the
+         event is biggest on is drawn in the accent. */
+      let big = 0, bigRow = 0;
+      chans.forEach((row, k) => {
+        for (const v of row) {
+          if (Math.abs(v) > big) { big = Math.abs(v); bigRow = k; }
+        }
+      });
+      big = big || 1;
+      const lane = h / (chans.length + 1);
+      const upto = Math.max(1, Math.floor(chans[0].length * frac));
+      const muted = BARRY.token('--text-3');
+      const hot = BARRY.token('--accent');
+      chans.forEach((row, k) => {
+        const y0 = lane * (k + 1);
+        g.strokeStyle = tint || (k === bigRow ? hot : muted);
+        g.lineWidth = k === bigRow ? Math.max(1.5, w / 500) : Math.max(1, w / 900);
+        g.beginPath();
+        for (let q = 0; q < upto; q++) {
+          const x = (q / (row.length - 1)) * w;
+          const y = y0 - (row[q] / big) * lane * 2.2;
+          if (q) g.lineTo(x, y); else g.moveTo(x, y);
+        }
+        g.stroke();
+      });
+      sweepLine(g, w, h, frac);
+      return;
+    }
     const lines = [
       [s.csd || [], BARRY.token('--text-3'), 0.62],
       [s.wave || [], BARRY.token('--accent'), 0.42],
@@ -323,20 +464,25 @@ BARRY.avery = (function () {
       }
       g.stroke();
     }
-    if (frac < 1) {
-      const x = frac * w;
-      g.fillStyle = BARRY.token('--accent-soft');
-      g.fillRect(Math.max(0, x - w * 0.04), 0, w * 0.04, h);
-      g.strokeStyle = BARRY.token('--accent');
-      g.lineWidth = Math.max(1, w / 600);
-      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
-    }
+    sweepLine(g, w, h, frac);
+  }
+
+  function sweepLine(g, w, h, frac) {
+    if (frac >= 1) return;
+    const x = frac * w;
+    g.fillStyle = BARRY.token('--accent-soft');
+    g.fillRect(Math.max(0, x - w * 0.04), 0, w * 0.04, h);
+    g.strokeStyle = BARRY.token('--accent');
+    g.lineWidth = Math.max(1, w / 600);
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
   }
 
   function readouts(s) {
     const r = s.readouts || {};
     const bits = [
       ['t', s.t != null ? s.t.toFixed(3) + ' s' : null],
+      ['peak', r.peak_uv != null ? Math.round(r.peak_uv) + ' µV' : null],
+      ['biggest on', r.best_ch != null ? 'CSC ' + r.best_ch : null],
       ['amp', r.amp_uv != null ? Math.round(r.amp_uv) + ' µV' : null],
       ['half-width', r.half_width_ms != null ? r.half_width_ms.toFixed(1) + ' ms' : null],
       ['rise', r.rise_ms != null ? r.rise_ms.toFixed(0) + ' ms' : null],
@@ -352,6 +498,11 @@ BARRY.avery = (function () {
      driven: a background tab and a headless run both stop reporting the
      end of an animation, and a screen waiting on that never moves on. */
   function scanNext(onEmpty) {
+    /* While the set is still being read, round and round the same
+       candidates -- an empty scope for a minute reads as a hang. */
+    if (!queue.length && phase === 'reading' && pool.length) {
+      queue = pool.slice();
+    }
     if (!queue.length) {
       scanning = false;
       if (onEmpty) onEmpty();
@@ -364,7 +515,7 @@ BARRY.avery = (function () {
     if (stamp) { stamp.textContent = ''; stamp.className = 'avery-stamp'; }
     if (read) read.innerHTML = '';
     const bits = readouts(s);
-    const steps = reduced() ? 1 : 26;
+    const steps = reduced() ? 1 : 22;
     let k = 0;
     const frame = () => {
       k += 1;
@@ -381,10 +532,21 @@ BARRY.avery = (function () {
       if (frac < 1) { scanT = setTimeout(frame, 30); return; }
       if (stamp) {
         if (s.label) {
+          /* The call: the lanes take its colour and the stamp lands. */
+          drawSample(s, 1, colorOf(s.label));
           stamp.textContent = WORD[s.label] + (s.p != null
             ? '  ' + s.p.toFixed(2) : '');
-          stamp.className = 'avery-stamp on';
+          stamp.className = 'avery-stamp';
+          void stamp.offsetWidth;
+          stamp.className = 'avery-stamp on hit';
           stamp.style.setProperty('--call', colorOf(s.label));
+          const scope = document.querySelector('#averyOv .avery-scope');
+          if (scope) {
+            scope.style.setProperty('--call', colorOf(s.label));
+            scope.classList.remove('flash');
+            void scope.offsetWidth;
+            scope.classList.add('flash');
+          }
         } else {
           stamp.textContent = 'measured';
           stamp.className = 'avery-stamp on dim';
@@ -392,14 +554,17 @@ BARRY.avery = (function () {
         }
       }
       logLine(s);
-      scanT = setTimeout(() => scanNext(onEmpty), s.label ? 700 : 1100);
+      scanT = setTimeout(() => scanNext(onEmpty), s.label ? 650 : 900);
     };
     frame();
   }
 
   function logLine(s) {
     const log = document.getElementById('averyLog');
-    if (!log) return;
+    /* Not while the feed is streaming every call: the feed is the list
+       then, and a scan writing into it (and trimming it to six lines)
+       scrambled its order. */
+    if (!log || log.classList.contains('stream')) return;
     log.prepend(el('div', { class: 'avery-logline' }, [
       el('span', { text: (s.t != null ? s.t.toFixed(3) : '?') + ' s' }),
       el('span', { text: s.label ? WORD[s.label] : 'scanned' ,
@@ -409,25 +574,73 @@ BARRY.avery = (function () {
     while (log.children.length > 6) log.lastChild.remove();
   }
 
-  /* The real verdicts on the sampled candidates, in time order, then the
-     summary. A Skip, because it is a flourish and not the result. */
+  /* Every call, in time order, down the feed -- a few seconds however
+     big the set -- while the scope scans the sampled candidates with their
+     real verdicts. Then the summary. A Skip, because this is a flourish and
+     the summary is the result. */
   function verdictReel() {
     paintStage();
     const t = document.getElementById('averyStageText');
-    if (t) t.textContent = 'Classified. Showing a few of the calls…';
+    if (t) t.textContent = 'Classified. Every call, in order…';
     const stopBtn = document.getElementById('averyStop');
     if (stopBtn) {
       stopBtn.textContent = 'Skip to the summary';
-      stopBtn.onclick = () => { queue = []; if (scanT) clearTimeout(scanT); summary(); };
+      stopBtn.onclick = () => summary();
     }
     if (scanT) clearTimeout(scanT);
+    phase = 'reel';
+    reelDone = false;
+    streamDone = false;
     queue = ((result && result.samples) || []).slice();
-    scanNext(summary);
+    const reelMs = Math.max(4000, queue.length * 1350);
+    scanNext(() => { reelDone = true; maybeSummary(); });
+    const log = document.getElementById('averyLog');
+    if (log) { log.innerHTML = ''; log.classList.add('stream'); }
+    const rows = ((result && result.rows) || []).slice()
+      .sort((a, b) => a.start - b.start);
+    /* Paced to finish with the reel, so the calls and the scans end
+       together rather than one waiting on the other. */
+    const total = reduced() ? 1500 : Math.min(20000, reelMs);
+    const tickMs = 40;
+    const per = Math.max(1, Math.ceil(rows.length / (total / tickMs)));
+    let at = 0;
+    const step = () => {
+      for (let k = 0; k < per && at < rows.length; k++, at++) feedLine(rows[at]);
+      if (t) t.textContent = 'Classified. Every call, in order — '
+        + num(at) + ' of ' + num(rows.length);
+      if (at < rows.length) { streamT = setTimeout(step, tickMs); return; }
+      streamDone = true;
+      maybeSummary();
+    };
+    step();
+  }
+
+  function maybeSummary() {
+    if (reelDone && streamDone && phase === 'reel') {
+      phase = 'summary';
+      streamT = setTimeout(summary, 900);
+    }
+  }
+
+  function feedLine(r) {
+    const log = document.getElementById('averyLog');
+    if (!log) return;
+    log.appendChild(el('div', { class: 'avery-logline' }, [
+      el('span', { text: r.start.toFixed(3) + ' s' }),
+      el('span', { text: WORD[r.label] || r.label,
+                   style: 'color:' + colorOf(r.label) }),
+      el('span', { text: r.p != null ? 'p(DS) ' + r.p.toFixed(2) : 'unreadable' }),
+    ]));
+    log.scrollTop = log.scrollHeight;
   }
 
   /* ---------- the summary ---------- */
   function summary() {
+    phase = 'summary';
     if (scanT) clearTimeout(scanT);
+    if (streamT) clearTimeout(streamT);
+    streamT = null;
+    queue = [];
     scanT = null;
     scanning = false;
     const ov = document.getElementById('averyOv');
@@ -437,7 +650,10 @@ BARRY.avery = (function () {
     const scope = ov.querySelector('.avery-scope');
     if (scope) scope.classList.add('done');
     const t = document.getElementById('averyStageText');
-    if (t) t.textContent = 'Done. Avery called ' + num(r.n) + ' candidates.';
+    if (t) t.textContent = 'Done. ' + (r.model_name || 'Avery') + ' called '
+      + num(r.n) + ' candidates'
+      + (r.ds_loss ? ', with up to ' + pct(r.ds_loss, 0) + ' of real spikes '
+         + 'allowed to be called Garbage.' : '.');
     const bar = document.getElementById('averyBar');
     if (bar) bar.style.width = '100%';
     const eta = document.getElementById('averyEta');

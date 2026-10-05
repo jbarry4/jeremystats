@@ -517,12 +517,33 @@ BARRY.incisor = (function () {
     }
     box.appendChild(list);
 
-    if (blocked.length) {
+    const nBlocked = vaccList.blocked_total != null
+      ? vaccList.blocked_total : blocked.length;
+    if (nBlocked) {
+      /* The sample, not the catalogue. The server explains forty and
+         counts the rest: a thousand sentences saying the same thing is
+         not more informative than one and a number, and it is a thousand
+         nodes built into a panel nobody opens. */
       box.appendChild(el('details', { class: 'inc-blocked' }, [
-        el('summary', { text: blocked.length + ' left out' }),
+        el('summary', { text: nBlocked + ' left out' }),
         el('div', {}, blocked.map((b) => el('div', { class: 'hint quiet',
-          text: b.label + ' — ' + b.why }))),
+          text: b.label + ' — ' + b.why }))
+          .concat(nBlocked > blocked.length
+            ? [el('div', { class: 'hint quiet',
+                text: 'and ' + (nBlocked - blocked.length) + ' more.' })]
+            : [])),
       ]));
+      /* The ones that are only missing from the cluster can be sent, and
+         this is the same upload Sessions runs -- see `uploadMissing`. The
+         plan is re-read afterwards, so a recording that has just gone up
+         stops being listed as left out. */
+      if (BARRY.vacc && BARRY.vacc.uploadMissing) {
+        const offer = BARRY.vacc.uploadMissing(blocked, () => {
+          vaccList = null;
+          paint();
+        }, vaccList.upload_gids);
+        if (offer) box.appendChild(offer);
+      }
     }
 
     box.appendChild(el('div', { class: 'tk-actions' }, [

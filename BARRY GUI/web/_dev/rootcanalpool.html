@@ -108,6 +108,7 @@ const NL = String.fromCharCode(10);
      + '  if (s.indexOf("/api/rootcanal/pool/fit") >= 0) W.__rcpFits++;'
      + '  var hit = null;'
      + '  if (s.indexOf("/api/rootcanal/pool/save") >= 0) hit = "save";'
+     + '  else if (s.indexOf("/api/rootcanal/margin/save") >= 0) hit = "msave";'
      + '  else if (s.indexOf("/api/rootcanal/pool/harness-") >= 0) hit = "open";'
      + '  if (hit) { W.__rcpSent.push([hit, JSON.parse((o && o.body) || "{}")]);'
      + '   var r = W.__rcpReply[hit] || { status: 500, body: { ok: false,'
@@ -508,6 +509,105 @@ const NL = String.fromCharCode(10);
   eq('every dot is drawn from the payload', geom().space.pts.length, pay.events.length);
   eq('the save button carries on from the version opened',
      saveBtn() && saveBtn().textContent, 'Save as v2 of ‘harness pool’');
+
+  /* ================================================================== */
+  head('k, THE POOL’S OWN BAND, COMPLETE EVENTS ONLY, AND MARGINS');
+
+  const kRun = () => D().querySelector('.rc-pool-run');
+  async function kPool(what) {
+    const before = ev('window.__rcpFits');
+    const b = kRun();
+    if (b) b.click();
+    await until(() => ev('window.__rcpFits') > before && !P().fitting
+                      && P().fit, 120000, what);
+    await sleep(150);
+  }
+  ok('the pool has its own settings beside its Pool button',
+     !!D().querySelector('.rc-members .rc-pool-settings'));
+  eq('a choice of 1 to 6 clusters',
+     D().querySelectorAll('.rc-pool-settings .rc-kseg button').length, 6);
+  const kp3 = Array.from(D().querySelectorAll('.rc-pool-settings .rc-kseg button'))
+    .find((b) => b.textContent.trim() === '3');
+  kp3.click();
+  ok('k waits for Pool', P().k === 3 && P().dirty === true);
+  await kPool('k = 3');
+  eq('k = 3 reaches the pool', P().lastBody.k, 3);
+  eq('three clusters come back', (P().fit.clusters || []).length, 3);
+  eq('one chip per cluster', D().querySelectorAll('.rc-pool-clusters .rc-clu').length, 3);
+  ok('ranked by HF power, lowest first',
+     P().fit.clusters.every((c, i, a2) => i === 0
+                            || a2[i - 1].centre_raw[2] <= c.centre_raw[2]));
+  D().querySelector('.rc-pool-clusters .rc-clu').click();
+  await until(() => !P().fitting && P().fit.clusters
+                    && P().fit.clusters[0].call_by === 'hand', 60000, 'relabel');
+  ok('pressing a cluster calls it the other thing, by hand',
+     P().fit.clusters[0].call === 'ied' && P().fit.clusters[0].call_by === 'hand');
+  eq('and the request carries it', P().lastBody.cluster_calls, { 0: 'ied' });
+  ok('the colour can be by cluster',
+     Array.from(D().querySelectorAll('.rc-colour option'))
+       .some((o) => o.value === 'cluster'));
+
+  const kb = () => D().querySelectorAll('.rc-pool-settings .rc-pool-band');
+  kb()[0].value = '600';
+  kb()[0].dispatchEvent(new W.Event('change', { bubbles: true }));
+  kb()[1].value = '900';
+  kb()[1].dispatchEvent(new W.Event('change', { bubbles: true }));
+  D().querySelector('.rc-pool-settings .rc-complete input').click();
+  await kPool('band and complete-only');
+  eq('the pool’s own band reaches the server', P().lastBody.band, [600, 900]);
+  eq('and every member was measured on it', P().fit.params.band, [600, 900]);
+  ok('the server records that the pool set it', P().fit.params.band_pool === true);
+  ok('complete events only reaches it',
+     P().lastBody.complete_only === true && P().fit.params.complete_only === true);
+  ok('and what it left out is counted',
+     typeof P().fit.counts.excluded === 'number'
+     && (P().fit.counts.excluded === 0
+         || !!D().querySelector('.rc-count-excluded')), P().fit.counts.excluded);
+  ok('with nothing missing an axis left in the pool',
+     P().fit.events.every((e) => !e.partial));
+
+  ok('a margins card', !!D().querySelector('.rc-pool-clusters .rc-margins'));
+  const kBtns = () => Array.from(D().querySelectorAll('.rc-pool-clusters .rc-margins button'));
+  ok('it can save the whole pool’s margins',
+     kBtns().some((b) => /Save the pool’s margins/.test(b.textContent)));
+  const kGroup = kBtns().find((b) => /Save this group’s margins/.test(b.textContent));
+  ok('and, with a mouse in focus, that group’s alone', !!kGroup);
+  ev('window.__rcpReply.msave = { status: 200, body: { ok: true, artifact_id:'
+     + ' "harness-m", version: 1, nickname: "harness group margin",'
+     + ' confirmed: false } }');
+  ev('(function(){ window.__rkBd = BARRY.ui.bankDialog; BARRY.ui.bankDialog ='
+     + ' async function(o){ await o.onBank({ name: "harness group margin",'
+     + ' note: "" }); return true; }; })()');
+  if (kGroup) kGroup.click();
+  await until(() => sent().some((x) => x[0] === 'msave'), 10000, 'the group save');
+  const kms = (sent().filter((x) => x[0] === 'msave').pop() || [null, {}])[1];
+  ok('the group margin is cut from the group, at the pool’s settings',
+     kms.extract && kms.extract.source === 'pool_group'
+     && kms.extract.focus && kms.extract.k === 3
+     && JSON.stringify(kms.extract.band) === '[600,900]'
+     && kms.nickname === 'harness group margin',
+     JSON.stringify(kms).slice(0, 200));
+  ev('(function(){ if (window.__rkBd) { BARRY.ui.bankDialog = window.__rkBd;'
+     + ' delete window.__rkBd; } })()');
+
+  P().margin = { artifact_id: 'harness-none', mode: 'fixed' };
+  await kPool('the refused margin');
+  await until(() => P().marginErr && !P().fitting && P().fit && P().fit.ok,
+              60000, 'refit without it');
+  ok('a margin that is not here is refused, in the margins card',
+     /no saved Root Canal margin/.test(P().marginErr || '')
+     && !!D().querySelector('.rc-pool-clusters .rc-margins[open] .rc-margin-err'),
+     P().marginErr);
+  ok('and the pool is fitted without it', P().margin === null && P().fit.ok);
+
+  // Put it all back for what follows.
+  P().k = 2; P().cluster_calls = {}; P().band_lo = ''; P().band_hi = '';
+  P().complete_only = false; P().marginErr = null; P().dirty = true;
+  ev(RC + '._repaint()');
+  await kPool('back to the defaults');
+  ok('back to two clusters, each member’s own band, everything kept',
+     P().fit.k === 2 && P().lastBody.band === null
+     && P().lastBody.complete_only === false);
 
   /* ================================================================== */
   head('NOTHING IS CUT OFF');

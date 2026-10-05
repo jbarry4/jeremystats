@@ -533,8 +533,17 @@ BARRY.aibeta = (function () {
     const s = run.settings || {};
     const card = el('div', { class: 'card ai-result' });
 
-    const isAvery = !!(st && st.avery && st.avery.ready
-                       && st.avery.run_id === run.id);
+    /* Which model this run is, if any. A run trained with Avery+'s bars
+       (a Garbage bar set by the real spikes it may cost) is offered as
+       Avery+ or as Avery Garbage Dystrophy+; any other run with four
+       bars, as Avery. */
+    const SLOT_NAME = { avery: 'Avery', avery_plus: 'Avery+',
+                        avery_gd: 'Avery Garbage Dystrophy+' };
+    const slotOf = (k) => st && st[k] && st[k].ready && st[k].run_id === run.id;
+    const isNow = ['avery', 'avery_plus', 'avery_gd'].filter(slotOf);
+    const plusBars = !!(((res.policy || {}).targets || {}).garbage_ds_loss);
+    const offer = (plusBars ? ['avery_gd', 'avery_plus'] : ['avery'])
+      .filter((k) => !isNow.includes(k));
     card.appendChild(el('div', { class: 'ai-row ai-result-head' }, [
       el('strong', { text: 'How it did' }),
       el('span', { class: 'hint', text:
@@ -544,14 +553,14 @@ BARRY.aibeta = (function () {
       el('div', { class: 'spacer' }),
       /* Avery is the run Checkup's "Avery sweep" sorts sets with. Only a
          run trained with Avery's four bars can be it. */
-      isAvery ? BARRY.ui.chip('This is Avery', { kind: 'good',
-        title: 'Checkup’s Avery sweep sorts sets with this run.' })
-      : (res.policy ? BARRY.ui.button({ size: 'sm', text: 'Make this Avery',
-          title: 'Sort sets with this run from Checkup’s Avery sweep, '
-               + 'using its bars: DS above the one that caught 99% of '
-               + 'garbage, Flag for Deep Review just under it, Garbage '
-               + 'below the score where nine in ten were garbage.',
-          onclick: () => makeAvery(run.id) }) : null),
+      ...isNow.map((k) => BARRY.ui.chip('This is ' + SLOT_NAME[k], {
+        kind: 'good',
+        title: 'Checkup’s Avery sweep sorts sets with this run.' })),
+      ...(res.policy ? offer.map((k) => BARRY.ui.button({ size: 'sm',
+          text: 'Make this ' + SLOT_NAME[k],
+          title: 'Sort sets with this run from Checkup’s Avery sweep as '
+               + SLOT_NAME[k] + ', using its bars.',
+          onclick: () => makeAvery(run.id, k) })) : []),
     ].filter(Boolean)));
 
     card.appendChild(el('p', { class: 'ai-lede', text:
@@ -804,14 +813,15 @@ BARRY.aibeta = (function () {
     return card;
   }
 
-  async function makeAvery(id) {
+  async function makeAvery(id, slot) {
     try {
-      await apiPost('/api/aibeta/avery', { run_id: id });
+      await apiPost('/api/aibeta/avery', { run_id: id, slot: slot || 'avery' });
     } catch (e) {
       toast(e.message, 'err', 9000);
       return;
     }
-    toast('Avery now sorts sets with this run.', 'ok', 5000);
+    toast(({ avery_plus: 'Avery+', avery_gd: 'Avery Garbage Dystrophy+' }[slot]
+           || 'Avery') + ' now sorts sets with this run.', 'ok', 5000);
     st = null;
     load();
   }
@@ -848,7 +858,11 @@ BARRY.aibeta = (function () {
         }, [
           el('td', { text: when(r.at) }),
           el('td', { text: modelName((r.settings || {}).model)
-            + (st && st.avery && st.avery.run_id === r.id ? ' · Avery' : '') }),
+            + (st && st.avery && st.avery.run_id === r.id ? ' · Avery' : '')
+            + (st && st.avery_plus && st.avery_plus.run_id === r.id
+               ? ' · Avery+' : '')
+            + (st && st.avery_gd && st.avery_gd.run_id === r.id
+               ? ' · Garbage Dystrophy+' : '') }),
           el('td', { class: 'ai-wrap', text: ((r.settings || {}).families
                                               || []).map(famName).join(', ') }),
           el('td', { text: num(r.n_events) }),

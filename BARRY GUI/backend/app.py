@@ -3422,12 +3422,23 @@ def api_incisor_batch_plan():
         todo, blocked, done = [], [], []
         for rec in (REG.all() or []):
             gid = rec.get("gid")
-            if not gid or gid not in staged:
+            if not gid:
+                continue
+            label = rec.get("label") or rec.get("key") or gid
+            if gid not in staged:
+                # Named, not dropped. Most of the catalogue is not on the
+                # cluster, and a list that silently omits it reads as
+                # though those recordings do not exist.
+                blocked.append(_vacc_missing(rec, label))
                 continue
             row = staged[gid] or {}
-            label = rec.get("label") or rec.get("key") or gid
             if row.get("conflict"):
+                # `can_upload` false, and not because there is nothing to
+                # send -- there is. Sending a second copy to a cluster that
+                # already has two it cannot tell apart makes the ambiguity
+                # worse, and the thing to fix is which folder is which.
                 blocked.append({"gid": gid, "label": label,
+                                "can_upload": False,
                                 "why": "two folders on the cluster both "
                                        "claim to be this recording"})
                 continue
@@ -3441,9 +3452,10 @@ def api_incisor_batch_plan():
                                  str(r.get("session") or "")))
     except Exception as exc:                             # noqa: BLE001
         return fail("incisor/batch-plan", exc, 400)
-    return jsonify({"ok": True, "todo": todo, "blocked": blocked,
-                    "done": done, "n": len(todo),
-                    "partition": cfg.get("partition")})
+    out = {"ok": True, "todo": todo, "done": done, "n": len(todo),
+           "partition": cfg.get("partition")}
+    out.update(_vacc_blocked_payload(blocked))
+    return jsonify(out)
 
 
 @app.route("/api/incisor/reviews")
@@ -4475,6 +4487,7 @@ def _doppler_members(wanted):
             continue
         label = rec.get("label") or gid
         if not row:
+            blocked.append(_vacc_missing(rec, label))
             continue
         if row.get("conflict"):
             blocked.append({"gid": gid, "label": label,
@@ -7152,7 +7165,9 @@ def _rootcanal_params(body, rec, stamps, sess=None, stored=None):
         band_lo=body.get("band_lo"), band_hi=body.get("band_hi"),
         cross_ms=body.get("cross_ms"), flank_ms=body.get("flank_ms"),
         seed=body.get("seed"), n_init=body.get("n_init"),
-        flips=body.get("flips"), centres=body.get("centres"))
+        flips=body.get("flips"), centres=body.get("centres"),
+        k=body.get("k"), cluster_calls=body.get("cluster_calls"),
+        margin=body.get("margin"))
 
 
 def _rootcanal_npz(gid, rh):
@@ -7571,7 +7586,9 @@ def api_rootcanal_fit():
     body = request.get_json(force=True) or {}
     try:
         rec, p, got, rh, _stamps = _rootcanal_setup(body)
-        res = rootcanal.fit(got, p)
+        margin, used = _rootcanal_margin_for(p)
+        res = rootcanal.fit(got, p, margin=margin)
+        res["margin_used"] = used
     except Exception as exc:                             # noqa: BLE001
         return fail("rootcanal/fit", exc, 400,
                     {"entry_id": body.get("entry_id"),
@@ -7684,7 +7701,9 @@ def api_rootcanal_commit():
     src_v = body.get("from_version")
     try:
         rec, p, got, rh, _stamps = _rootcanal_setup(body)
-        res = rootcanal.fit(got, p)
+        margin, used = _rootcanal_margin_for(p)
+        res = rootcanal.fit(got, p, margin=margin)
+        res["margin_used"] = used
         events = _rootcanal_events(rec, src_v)
     except Exception as exc:                             # noqa: BLE001
         return fail("rootcanal/commit", exc, 400,
@@ -7915,6 +7934,10 @@ def api_rootcanal_commit():
                       e["partial"], e["wide"]]
                      for e in res["events"]],
             "partial_t": flags["partial_t"], "wide_t": flags["wide_t"],
+            # How many clusters, what each was called and by whom, and the
+            # saved margin the boundary came from, when one did.
+            "k": res.get("k"), "clusters": res.get("clusters"),
+            "margin_used": res.get("margin_used"),
             "cross_ms": flags["cross_ms"],
             "figures": filed,
         })
@@ -7929,6 +7952,20 @@ def api_rootcanal_commit():
                    "ds_version": ds_version, "ied_entry": ied_entry,
                    "removed": removed, "kept": kept, "read": rh},
     }])
+    # A banked result that used a margin cites that margin version, so it
+    # cannot be deleted from under the result. The citing "artifact" is the
+    # bank entry and its version; `cite` writes on the margin, which is
+    # where a delete has to look.
+    mu = res.get("margin_used")
+    if mu:
+        try:
+            ARTIFACTS.cite(mu["artifact_id"], mu["version"],
+                           "eventbank:%s" % rec["id"], ds_version)
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("rootcanal/commit-cite",
+                               "Banked, but the margin it used was not "
+                               "cited: %s" % exc, None,
+                               {"margin": mu.get("artifact_id")})
     out = {"ok": True, "ds_entry": rec["id"], "ds_version": ds_version,
            "ied_entry": ied_entry, "ied_version": ied_version,
            "removed": removed, "kept": kept,
@@ -8233,14 +8270,31 @@ def _rootcanal_pool_candidates():
     return out
 
 
-def _rootcanal_pool_members(want):
+def _rootcanal_pool_members(want, band=None):
     """The members a pool request names, as rows `fit_pool` can use.
 
     Banked ones are read out of their result record and touch nothing else.
     Unbanked ones are fitted from their cached read at the settings they
     were added with (Single's defaults where none are given), and pinned by
     the digest of what that produced.
+
+    `band` is the POOL'S HF band, when the pool sets one. Every member is
+    then measured over it: the read keeps both windows' spectra, so a new
+    band is a trapezoid over numbers on disk and costs no re-read. A banked
+    member fitted over another band is refitted from its read with its own
+    settings and the pool's band, and marked `rebanded` -- its single call
+    is then the call at THIS band, not the one that was banked, and the
+    panel says so. One whose read is not on this machine cannot be, and the
+    pool says which rather than mixing two measurements under one axis.
     """
+    if band is not None:
+        try:
+            band = [float(band[0]), float(band[1])]
+        except (TypeError, ValueError, IndexError):
+            raise rootcanalpool.PoolError(
+                "The pool's HF band has to be two numbers, low and high.")
+        # Validated the way Single's is, against the same anti-alias corner.
+        rootcanal.Params(band_lo=band[0], band_hi=band[1])
     if not want:
         raise rootcanalpool.PoolError(
             "A pool needs at least one member. Add a recording.")
@@ -8255,25 +8309,45 @@ def _rootcanal_pool_members(want):
                 "machine any more, so it cannot be pooled. Take it out, or "
                 "read that set again in Single." % (key or "A member"))
         gid, rh = c["gid"], c.get("read")
+        rebanded = None
         if c["banked"]:
             rec = ROOTCANAL.get(gid, c["params_hash"]) or {}
             rows = rootcanalpool.rows_from_record(rec)
             fitp = _rootcanal_fit_part(rec.get("params"))
             p = rootcanal.Params(**fitp)
+            if band is not None and [p.band_lo, p.band_hi] != band:
+                if not (rh and ROOTCANAL.has_cached(gid, rh, ".npz")):
+                    raise rootcanalpool.PoolError(
+                        "%s was banked over %s–%s Hz and its read is not on "
+                        "this machine, so it cannot be measured over the "
+                        "pool's %s–%s Hz. Take it out, set the pool's band "
+                        "back, or read that set here."
+                        % (c.get("session_label") or key,
+                           rootcanal._g(p.band_lo), rootcanal._g(p.band_hi),
+                           rootcanal._g(band[0]), rootcanal._g(band[1])))
+                rebanded = [p.band_lo, p.band_hi]
+                p = rootcanal.Params(**dict(fitp, band_lo=band[0],
+                                            band_hi=band[1]))
+                rows = rootcanalpool.rows_from_fit(
+                    rootcanal.fit(_rootcanal_load(gid, rh), p))
             pin = {"ds_version": c.get("version"),
                    "params_hash": c["params_hash"], "read": rh,
                    "params": p.fit_params(),
                    "rows_digest": rootcanalpool.rows_digest(rows)}
+            if rebanded:
+                pin["rebanded_from"] = rebanded
         else:
-            p = rootcanal.Params(entry_id=c["entry_id"],
-                                 **_rootcanal_fit_part(w.get("params")))
+            fitp = _rootcanal_fit_part(w.get("params"))
+            if band is not None:
+                fitp = dict(fitp, band_lo=band[0], band_hi=band[1])
+            p = rootcanal.Params(entry_id=c["entry_id"], **fitp)
             got = _rootcanal_load(gid, rh)
             rows = rootcanalpool.rows_from_fit(rootcanal.fit(got, p))
             pin = {"read": rh, "params": p.fit_params(),
                    "rows_digest": rootcanalpool.rows_digest(rows)}
         here = bool(rh and ROOTCANAL.has_cached(gid, rh, ".npz"))
         out.append(dict(
-            c, rows=rows, pin=pin, here=here,
+            c, rows=rows, pin=pin, here=here, rebanded=rebanded,
             band=[p.band_lo, p.band_hi],
             filter=p.filter_label(),
             # The click panel's request, ready but for `i`: POST it to
@@ -8287,9 +8361,46 @@ def _rootcanal_pool_members(want):
 
 
 def _rootcanal_pool_fit(body):
-    members = _rootcanal_pool_members(body.get("members") or [])
+    members = _rootcanal_pool_members(body.get("members") or [],
+                                      band=body.get("band"))
+    # k and relabels are validated the way Single's are.
+    kp = rootcanal.Params(k=body.get("k"),
+                          cluster_calls=body.get("cluster_calls"),
+                          margin=body.get("margin"))
+    margin, used = None, None
+    if kp.margin:
+        margin, used = _rootcanal_margin_load(kp.margin)
+        # Every member against the margin: a pool measured under mixed
+        # settings cannot be cut by one boundary.
+        for m in members:
+            mp = rootcanal.Params(**_rootcanal_fit_part(
+                (m.get("pin") or {}).get("params")))
+            diff = rootcanal.margin_mismatch(margin, mp)
+            if diff:
+                raise rootcanalpool.PoolError(
+                    "The margin ‘%s’ cannot cut this pool: for %s, %s. A "
+                    "margin is centres in µV, ms and dB, and those are only "
+                    "the same numbers under the same measurement."
+                    % (used["nickname"], m.get("session_label") or m["key"],
+                       "; ".join(diff)))
     res = rootcanalpool.fit_pool(members, body.get("mouse_types") or {},
-                                 body.get("focus"))
+                                 body.get("focus"),
+                                 complete_only=bool(body.get("complete_only")),
+                                 k=kp.k, cluster_calls=kp.cluster_calls,
+                                 margin=margin,
+                                 margin_mode=(kp.margin or {}).get("mode",
+                                                                  "fixed"))
+    res["margin_used"] = used
+    res["k_from_margin"] = bool(margin) and int(margin["k"]) != kp.k
+    # Whether the pool set its own band, as against each member keeping
+    # its own -- so a saved pool reopens with the band field as it was.
+    res["params"] = dict(res.get("params") or {},
+                         band_pool=body.get("band") is not None)
+    # Which members were re-measured over the pool's band, for the panel.
+    by_key = {m["key"]: m for m in members}
+    for m in res.get("members") or []:
+        rb = (by_key.get(m["key"]) or {}).get("rebanded")
+        m["rebanded_from"] = rb
     return members, res
 
 
@@ -8374,6 +8485,16 @@ def api_rootcanal_pool_save():
     except Exception as exc:                             # noqa: BLE001
         return fail("rootcanal/pool-save", exc, 400,
                     {"artifact_id": body.get("artifact_id")})
+    mu = res.get("margin_used")
+    if mu and out.get("id"):
+        try:
+            ARTIFACTS.cite(mu["artifact_id"], mu["version"], out["id"],
+                           out.get("version"))
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("rootcanal/pool-cite",
+                               "The pool was saved but could not cite the "
+                               "margin it used: %s" % exc, None,
+                               {"margin": mu.get("artifact_id")})
     STORE.record_activity([{
         "action": "rootcanal.pool.save",
         "detail": {"artifact": out.get("id"), "version": out.get("version"),
@@ -8382,6 +8503,259 @@ def api_rootcanal_pool_save():
     return jsonify({"ok": True, "artifact_id": out.get("id"),
                     "version": out.get("version"), "confirmed": confirmed,
                     "name": out.get("name"), "nickname": out.get("nickname")})
+
+
+def _rootcanal_margin_load(ref):
+    """A saved margin's payload, and what to say was used.
+
+    `ref` is {artifact_id, version|None, mode}. Refuses, in a sentence, a
+    margin that is not here or not a margin.
+    """
+    aid = (ref or {}).get("artifact_id")
+    rec = ARTIFACTS.summary(aid) if aid else None
+    if not rec or rec.get("kind") != "rootcanal_margin":
+        raise rootcanal.RootCanalError(
+            "There is no saved Root Canal margin %s on this machine." % aid)
+    payload = ARTIFACTS.payload(aid, ref.get("version"))
+    if payload is None:
+        raise rootcanal.RootCanalError(
+            "That version of the margin ‘%s’ was saved on another machine "
+            "and its contents have not reached this one yet."
+            % (rec.get("nickname") or rec.get("name")))
+    _r, row = ARTIFACTS.payload_version(aid, ref.get("version"))
+    used = {"artifact_id": aid, "version": row.get("v"),
+            "version_id": row.get("id"), "digest": row.get("digest"),
+            "nickname": rec.get("nickname") or rec.get("name"),
+            "name": rec.get("name"), "mode": ref.get("mode") or "fixed",
+            "k": payload.get("k")}
+    return payload, used
+
+
+def _rootcanal_margin_for(p):
+    """The margin a Single fit asks for, checked against its measurement,
+    or (None, None)."""
+    if not p.margin:
+        return None, None
+    margin, used = _rootcanal_margin_load(p.margin)
+    diff = rootcanal.margin_mismatch(margin, p)
+    if diff:
+        raise rootcanal.RootCanalError(
+            "The margin ‘%s’ cannot be used here: %s. A margin is centres in "
+            "µV, ms and dB, and those are only the same numbers under the "
+            "same measurement -- change these settings to match, or save a "
+            "margin from settings that do." % (used["nickname"],
+                                               "; ".join(diff)))
+    return margin, used
+
+
+def _rootcanal_margin_payload(res, measure, source):
+    """What a saved margin holds, out of a fit's answer."""
+    return {
+        "k": int(res["k"]),
+        "clusters": [{"rank": c["rank"], "call": c["call"],
+                      "centre_raw": c["centre_raw"], "n": c["n"]}
+                     for c in res["clusters"]],
+        "calls_by_hand": [c["rank"] for c in res["clusters"]
+                          if c["call_by"] == "hand"],
+        "scale": {"mean": list(res["scale"]["mean"]),
+                  "sd": list(res["scale"]["sd"])},
+        "measure": measure,
+        "source": source,
+        "rule": res.get("rule"),
+    }
+
+
+def _rootcanal_margin_extract(body):
+    """Cut a margin from a Single fit, a pool, or one group of a pool.
+
+    REFITTED HERE from the request, never taken from the browser, for the
+    reason a saved pool is: a margin has to be exactly what its source
+    produces.
+
+    A GROUP is a mouse, a mouse type or a recording of the pool, and it is
+    clustered ON ITS OWN -- its members alone, z-scored on their own pooled
+    raw mean and SD -- because that group's boundary is the question.
+    """
+    src = str(body.get("source") or "").lower()
+    if src == "single":
+        rec, p, got, rh, _st = _rootcanal_setup(body)
+        margin, used = _rootcanal_margin_for(p)
+        res = rootcanal.fit(got, p, margin=margin)
+        source = {"kind": "single", "entry_id": rec["id"], "read": rh,
+                  "session_label": rec.get("session_label"),
+                  "gid": rec.get("gid"), "n_events": res["n_placed"],
+                  "from_margin": used}
+        return _rootcanal_margin_payload(res, rootcanal.measure_of(p),
+                                         source), [rec.get("gid")]
+    if src not in ("pool", "pool_group"):
+        raise rootcanal.RootCanalError(
+            "A margin is cut from \"single\", \"pool\" or \"pool_group\".")
+    members = _rootcanal_pool_members(body.get("members") or [],
+                                      band=body.get("band"))
+    focus = body.get("focus") or {}
+    label = None
+    if src == "pool_group":
+        mt = {str(k): str(v) for k, v in (body.get("mouse_types") or {}).items()}
+        if focus.get("mouse_key"):
+            label = "mouse %s" % focus["mouse_key"]
+            members = [m for m in members
+                       if m["mouse_key"] == focus["mouse_key"]]
+        elif focus.get("mouse_type"):
+            label = "mouse type %s" % focus["mouse_type"]
+            members = [m for m in members
+                       if (mt.get(m["mouse_key"]) or m.get("mouse_type"))
+                       == focus["mouse_type"]]
+        elif focus.get("gid"):
+            label = "recording %s" % focus["gid"]
+            members = [m for m in members if m.get("gid") == focus["gid"]]
+        else:
+            raise rootcanal.RootCanalError(
+                "A group margin needs a focus: a mouse, a mouse type or a "
+                "recording.")
+        if not members:
+            raise rootcanal.RootCanalError(
+                "Nothing in the pool belongs to %s." % label)
+    # One measurement for the whole source, or there is no one margin.
+    measures = []
+    for m in members:
+        mp = rootcanal.Params(**_rootcanal_fit_part(
+            (m.get("pin") or {}).get("params")))
+        measures.append(rootcanal.measure_of(mp))
+    first = measures[0]
+    for mm in measures[1:]:
+        if mm != first:
+            diff = [k for k in first if first[k] != mm.get(k)]
+            raise rootcanal.RootCanalError(
+                "These members were not all measured the same way (%s "
+                "differ), so they have no single margin. Pool members fitted "
+                "on one setting." % ", ".join(diff))
+    sub = dict(body, members=[{"key": m["key"]} for m in members])
+    kp = rootcanal.Params(k=body.get("k"),
+                          cluster_calls=body.get("cluster_calls"))
+    res = rootcanalpool.fit_pool(
+        members, body.get("mouse_types") or {}, None,
+        complete_only=bool(body.get("complete_only")), k=kp.k,
+        cluster_calls=kp.cluster_calls)
+    source = {"kind": src, "focus": (focus or None), "group": label,
+              "pool_artifact": body.get("pool_artifact"),
+              "members": [dict(m["pin"], key=m["key"],
+                               entry_id=m["entry_id"],
+                               banked=bool(m["banked"])) for m in members],
+              "n_events": res["n_placed"]}
+    del sub
+    return (_rootcanal_margin_payload(res, first, source),
+            sorted({m.get("gid") for m in members if m.get("gid")}))
+
+
+def _rootcanal_margin_name(payload):
+    src = payload.get("source") or {}
+    where = (src.get("session_label") if src.get("kind") == "single"
+             else src.get("group") if src.get("kind") == "pool_group"
+             else "a pool of %d" % len(src.get("members") or []))
+    return "Root Canal margin · k=%d · %s" % (payload["k"], where or "?")
+
+
+@app.route("/api/rootcanal/margin/extract", methods=["POST"])
+def api_rootcanal_margin_extract():
+    """What a margin cut from this source would hold, without saving it."""
+    body = request.get_json(force=True) or {}
+    try:
+        payload, _gids = _rootcanal_margin_extract(body)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/margin-extract", exc, 400,
+                    {"source": body.get("source")})
+    return jsonify({"ok": True, "preview": payload,
+                    "name": _rootcanal_margin_name(payload)})
+
+
+@app.route("/api/rootcanal/margin/save", methods=["POST"])
+def api_rootcanal_margin_save():
+    """File a margin as a Jarvis artifact, or as the next version of one.
+
+    The label is required, for the reason a pool's is: it is the name the
+    margin will be chosen by everywhere else. An identical re-save is a
+    confirmation on the version that holds it, not a new version.
+    """
+    body = request.get_json(force=True) or {}
+    nick = str(body.get("nickname") or "").strip()
+    if not nick:
+        return jsonify({
+            "ok": False,
+            "error": "A margin needs a label before it can be saved -- the "
+                     "name it will be chosen by in every other analysis. "
+                     "Give it one."}), 400
+    try:
+        payload, gids = _rootcanal_margin_extract(body.get("extract") or {})
+        note = str(body.get("note") or "").strip() or None
+        params = {"source": (payload.get("source") or {}).get("kind"),
+                  "k": payload["k"], "measure": payload["measure"]}
+        aid = body.get("artifact_id")
+        if aid:
+            have = ARTIFACTS.get(aid)
+            if not have or have.get("kind") != "rootcanal_margin":
+                raise rootcanal.RootCanalError(
+                    "There is no saved Root Canal margin %s to add a version "
+                    "to. Save it as a new margin instead." % aid)
+            before = have.get("version")
+            out = ARTIFACTS.add_version(aid, payload, params=params,
+                                        note=note)
+            if nick != out.get("nickname"):
+                out = ARTIFACTS.set_nickname(aid, nick)
+            confirmed = out.get("version") == before
+        else:
+            name = _rootcanal_margin_name(payload)
+            subject = {"margin_key": uuid.uuid4().hex, "name": name,
+                       "k": payload["k"], "gids": gids,
+                       "source": (payload.get("source") or {}).get("kind")}
+            out = ARTIFACTS.create("rootcanal_margin", subject, payload,
+                                   params=params, name=name, nickname=nick,
+                                   note=note)
+            confirmed = False
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/margin-save", exc, 400,
+                    {"artifact_id": body.get("artifact_id")})
+    STORE.record_activity([{
+        "action": "rootcanal.margin.save",
+        "detail": {"artifact": out.get("id"), "version": out.get("version"),
+                   "confirmed": confirmed, "k": payload["k"]},
+    }])
+    return jsonify({"ok": True, "artifact_id": out.get("id"),
+                    "version": out.get("version"), "confirmed": confirmed,
+                    "name": out.get("name"), "nickname": out.get("nickname")})
+
+
+@app.route("/api/rootcanal/margins")
+def api_rootcanal_margins():
+    """Every saved margin, newest first, with what it is in words."""
+    try:
+        rows = ARTIFACTS.list(kind="rootcanal_margin")
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/margins", exc, 400)
+    out = []
+    for r in rows:
+        cur = r.get("current") or {}
+        ns = cur.get("n_summary") or {}
+        out.append(dict(r, artifact_id=r.get("id"), k=ns.get("k"),
+                        calls={"ds": ns.get("ds"), "ied": ns.get("ied")},
+                        measure=ns.get("filter"), source=ns.get("source"),
+                        events=ns.get("events"), updated=cur.get("at")))
+    out.sort(key=lambda r: str(r.get("updated") or ""), reverse=True)
+    return jsonify({"ok": True, "margins": out})
+
+
+@app.route("/api/rootcanal/margin/<artifact_id>")
+def api_rootcanal_margin_one(artifact_id):
+    """One saved margin's payload."""
+    version = request.args.get("version") or None
+    try:
+        payload, used = _rootcanal_margin_load(
+            {"artifact_id": artifact_id, "version": version})
+        rec = ARTIFACTS.summary(artifact_id)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/margin", exc, 400,
+                    {"artifact_id": artifact_id})
+    return jsonify({"ok": True, "artifact": rec, "version": used["version"],
+                    "payload": payload})
 
 
 @app.route("/api/rootcanal/pools")
@@ -11376,8 +11750,11 @@ def api_aibeta_state():
         "runs": [aibetamod.brief(r) for r in AIBETA.all()],
         "running": job.snapshot() if job else None,
         "have_sklearn": aibetamod.HAVE_SKLEARN,
-        # Which run Avery sweeps sets with, if any.
-        "avery": averymod.status(AIBETA),
+        # Which runs Avery, Avery+ and Avery Garbage Dystrophy+ sweep sets
+        # with, if any.
+        "avery": averymod.status(AIBETA, "avery"),
+        "avery_plus": averymod.status(AIBETA, "avery_plus"),
+        "avery_gd": averymod.status(AIBETA, "avery_gd"),
     })
 
 
@@ -11469,13 +11846,15 @@ def api_aibeta_run(run_id):
 def api_aibeta_make_avery():
     """Make one AI Beta run the model Avery sweeps sets with."""
     body = request.get_json(force=True, silent=True) or {}
+    slot = body.get("slot") or "avery"
     try:
-        AIBETA.set_avery(body.get("run_id"), STORE.provenance())
+        AIBETA.set_avery(body.get("run_id"), STORE.provenance(), slot=slot)
     except aibetamod.AiBetaError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     STORE.record_activity([{"action": "aibeta.avery",
-                            "detail": {"run": body.get("run_id")}}])
-    return jsonify({"ok": True, "avery": averymod.status(AIBETA)})
+                            "detail": {"run": body.get("run_id"),
+                                       "slot": slot}}])
+    return jsonify({"ok": True, "avery": averymod.status(AIBETA, slot)})
 
 
 # ==========================================================================
@@ -11502,12 +11881,15 @@ def _avery_open(gid):
 
 @app.route("/api/avery")
 def api_avery_status():
-    """Whether Avery can sweep here, and what it was shown to do."""
-    st = averymod.status(AIBETA)
+    """Whether Avery and Avery+ can sweep here, and what each was shown to
+    do. The top level is Avery, as it was before there were two."""
+    st = averymod.status(AIBETA, "avery")
     jid = _AVERY_JOB.get("id")
     job = cfcmod.get(jid) if jid else None
     st["running"] = (job.snapshot() if job and job.snapshot()["status"]
                      == "running" else None)
+    st["models"] = {slot: averymod.status(AIBETA, slot)
+                    for slot in aibetamod.SLOTS}
     return jsonify(dict(st, ok=True))
 
 
@@ -11516,10 +11898,22 @@ def api_avery_sweep():
     """Start a sweep of one set. A job; poll /api/cfc/job/<id>."""
     body = request.get_json(force=True, silent=True) or {}
     gid, kind = body.get("gid"), body.get("kind") or "ds"
+    slot = body.get("model") or "avery"
+    try:
+        ds_loss = (float(body["ds_loss"]) if body.get("ds_loss") is not None
+                   else None)
+    except (TypeError, ValueError):
+        ds_loss = None
+    if ds_loss is not None and not 0.0 < ds_loss < 0.5:
+        return jsonify({"ok": False, "error": "The share of real spikes "
+                                              "that may be called Garbage "
+                                              "has to be under half."}), 400
+    if slot not in aibetamod.SLOTS:
+        return jsonify({"ok": False, "error": "No model %r." % slot}), 400
     if kind != "ds":
         return jsonify({"ok": False, "error": "Avery sorts dentate spike "
                                               "sets only."}), 400
-    st = averymod.status(AIBETA)
+    st = averymod.status(AIBETA, slot)
     if not st["ready"]:
         return jsonify({"ok": False, "error": st["why"]}), 400
     jid = _AVERY_JOB.get("id")
@@ -11533,7 +11927,7 @@ def api_avery_sweep():
 
     def work(job):
         out = averymod.sweep(AIBETA, CURATE, BANK, _avery_open, gid, kind,
-                             job)
+                             job, slot=slot, ds_loss=ds_loss)
         out["id"] = job.id
         averymod.remember(job.id, out)
         STORE.record_activity([{
@@ -11582,10 +11976,13 @@ def api_avery_accept(sid):
     for ev in events:
         by_label[ev["label_id"]] = by_label.get(ev["label_id"], 0) + 1
     c = sw["counts"]
-    note = ("Avery sweep, run %s: %d DS, %d Flag for Deep Review, %d Flag, "
+    note = ("%s sweep, run %s%s: %d DS, %d Flag for Deep Review, %d Flag, "
             "%d Garbage. Calls by a model, banked for the record and for "
             "training on edge cases later -- not a person's pass."
-            % (sw["run_id"], c.get("spike", 0), c.get("review", 0),
+            % (sw.get("model_name") or "Avery", sw["run_id"],
+               (", up to %d%% of real spikes allowed to be called Garbage"
+                % round(100 * sw["ds_loss"])) if sw.get("ds_loss") else "",
+               c.get("spike", 0), c.get("review", 0),
                c.get("flag", 0), c.get("garbage", 0)))
     prior = BANK.curated_entries(gid, kind)
     whole = [p for p in prior if p.get("curation_label") == "*"]
@@ -11625,7 +12022,9 @@ def api_avery_accept(sid):
     AIBETA.sweeps.write(sid, {
         "id": sid, "gid": gid, "kind": kind,
         "session_label": sw.get("session_label"), "run_id": sw["run_id"],
+        "model": sw.get("slot") or "avery",
         "policy": sw["policy"], "counts": sw["counts"],
+        "ds_loss": sw.get("ds_loss"),
         "basis": sw.get("basis"), "at": sw.get("at"),
         "accepted_by": prov.get("user"), "accepted_at": aibetamod._now(),
         "bank": {"entry": entry["id"], "version": entry.get("version")},
@@ -17454,8 +17853,18 @@ def api_arc_precon_file(which):
 #        [&split=<group>]                          ... over one cue-pair split
 #   POST /api/arc/monolith/split                   split by cue pair, here
 #   GET  /api/arc/monolith/damage                  what was lost
+#   GET  /api/arc/monolith/pacself?layer&window    within-region PAC,
+#        [&cell][&split=<group>]                    session by session
+#   GET  /api/arc/monolith/events?<settings>       hippocampal events: what
+#                                                  is done, and the report
+#   POST /api/arc/monolith/events {settings, confirm}  find them (E:, here)
+#   GET  /api/arc/monolith/events/example?rat&day&i&<settings>  one event,
+#                                                  every region around it
+#   POST /api/arc/monolith/manifest/extend {confirm}  Precon2 and Precon3
+#                                                  into what goes
 # ==========================================================================
 from . import monolith as monolithmod                        # noqa: E402
+from . import monoevents as monoeventsmod                    # noqa: E402
 
 monolithmod.configure(LOGS_DIR)
 # The far side, for tools/check_monolith.py: a folder on this machine
@@ -17607,11 +18016,15 @@ def api_arc_monolith_run():
         if extra is not None:
             known = monolithmod.sweep.SWEEP_NAMED
             if not isinstance(extra, dict) or \
-                    set(extra) - {"bands", "pac_trans"} or \
-                    any(b not in known for b in extra.get("bands") or []):
+                    set(extra) - {"bands", "pac_trans", "days"} or \
+                    any(b not in known for b in extra.get("bands") or []) \
+                    or any(d not in monolithmod.TRAJ_NAMES
+                           for d in extra.get("days") or []) or \
+                    (extra.get("days") and set(extra) != {"days"}):
                 return jsonify({"ok": False, "error": "An addition is "
                                 "`{bands: [...], pac_trans: true}`, of "
-                                "the sweep's own named bands."}), 400
+                                "the sweep's own named bands, or `{days: "
+                                "[Precon2, Precon3]}` on its own."}), 400
         run = monolithmod.run_now(man, cfg, APP_DIR, ssh=MONO_SSH,
                                   extra=extra)
     except monolithmod.MonolithError as exc:
@@ -17830,6 +18243,137 @@ def api_arc_monolith_entry():
             roles=monolithmod.split_role_map(summ) if split else None)
     except Exception as exc:                                 # noqa: BLE001
         return fail("arc/monolith/entry", exc, 500)
+    return jsonify(dict({"ok": True}, **got))
+
+
+@app.route("/api/arc/monolith/pacself")
+def api_arc_monolith_pacself():
+    """Within-region PAC, the conventional comodulogram: each region's own
+    phase and amplitude, the mean of each session over rats; at one cell,
+    every rat and a typical presentation of each session."""
+    layer = request.args.get("layer") or "raw"
+    if layer not in monolithmod.LAYERS:
+        return jsonify({"ok": False, "error": "layer is raw or minus_fp."}), 400
+    d = monolithmod.data_dir()
+    summ = monolithmod.summary_now()
+    man = monolithmod.manifest()
+    if not d or not summ or not man:
+        return jsonify({"ok": False, "error": "The Monolith has not been "
+                        "built yet."}), 404
+    shape = summ["files"]["pac_%s.f32" % layer]["shape"][1:]
+    try:
+        w = int(request.args.get("window") or 1)
+        cell = request.args.get("cell")
+        cell = None if cell in (None, "") else int(cell)
+    except ValueError:
+        return jsonify({"ok": False, "error": "window and cell are whole "
+                        "numbers."}), 400
+    if not 0 <= w < shape[0] or (cell is not None and
+                                 not 0 <= cell < shape[1]):
+        return jsonify({"ok": False, "error": "That window or cell is "
+                        "outside the Monolith's PAC (%s)." % (shape,)}), 400
+    split = request.args.get("split") or None
+    if split in ("all", ""):
+        split = None
+    if split and (split not in monolithmod.SPLIT_IDS
+                  or not (summ.get("splits") or {}).get("files")):
+        return jsonify({"ok": False, "error": "This Monolith has no split "
+                        "called %s." % split}), 404
+    try:
+        got = monolithmod.pac_self(
+            d, man, summ, layer, w, cell=cell, group=split,
+            roles=monolithmod.split_role_map(summ) if split else None)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/pacself", exc, 500)
+    return jsonify(dict({"ok": True}, **got))
+
+
+@app.route("/api/arc/monolith/manifest/extend", methods=["POST"])
+def api_arc_monolith_manifest_extend():
+    """Add Precon2 and Precon3 to what goes, for the trajectory: each
+    worked out as Precon1 and Precon4 were. Reads only; the upload then
+    sends them, and a small run measures them."""
+    body = request.get_json(force=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        cfg = _mono_cfg()
+        if not monolithmod.manifest():
+            raise monolithmod.MonolithError("Ask for the upload plan first: "
+                                            "there is no manifest to add "
+                                            "to.", 409)
+        host = _circuit_host()
+        w = monolithmod.start_work(
+            "extend", lambda w: monolithmod.extend_work(w, host, cfg))
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/manifest/extend", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.extend", "detail": {}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+def _events_params(src):
+    return monoeventsmod.params_of({k: src.get(k) for k in monoeventsmod.DEFAULTS})
+
+
+@app.route("/api/arc/monolith/events")
+def api_arc_monolith_events():
+    """The event-first route: hippocampal P300-like events found free-
+    running in each cue session, when they fall against the cues, and which
+    regions moved with them -- for these settings, as far as they are done."""
+    man = monolithmod.manifest()
+    if not man:
+        return jsonify({"ok": False, "error": "The Monolith has no manifest "
+                        "yet."}), 404
+    try:
+        p = _events_params(request.args)
+        got = monoeventsmod.report(p, man)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/events", exc, 500)
+    return jsonify(dict({"ok": True}, **got))
+
+
+@app.route("/api/arc/monolith/events", methods=["POST"])
+def api_arc_monolith_events_run():
+    """Find the events for these settings, in every rat-day not done yet:
+    reads each cue session's wires from the local originals (read only)."""
+    body = request.get_json(force=True) or {}
+    if not body.get("confirm"):
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        p = _events_params(body)
+        w = monolithmod.start_work("events", lambda w: monoeventsmod.work(w, p))
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/events", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.events",
+                            "detail": {"digest": monoeventsmod.digest(p)}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/events/example")
+def api_arc_monolith_events_example():
+    """One event: every region's trace around it, from the originals."""
+    man = monolithmod.manifest()
+    if not man:
+        return jsonify({"ok": False, "error": "The Monolith has no manifest "
+                        "yet."}), 404
+    try:
+        p = _events_params(request.args)
+        got = monoeventsmod.example(p, man, int(request.args.get("rat")),
+                                    request.args.get("day") or "",
+                                    int(request.args.get("i") or 0))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "rat and i are whole "
+                        "numbers."}), 400
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/events/example", exc, 500)
     return jsonify(dict({"ok": True}, **got))
 
 
@@ -19311,6 +19855,76 @@ def _cluster_match(path, by_key, by_loose):
                 "that recording is %s" % (cand.get("gid"), mine_proj,
                                           their_proj))
     return cand, "loose", None
+
+
+#: How many blocked recordings are explained one by one. The rest are a
+#: number: 1,380 sentences saying the same thing is not more informative
+#: than one sentence and a count, and it is 100 KB of payload.
+VACC_BLOCKED_SHOWN = 40
+
+
+def _vacc_blocked_payload(blocked):
+    """What a tool's plan sends about what it cannot run.
+
+    Three pieces, because they answer three questions: a readable sample,
+    the true totals, and every gid the upload button needs. The button
+    wants identifiers, not prose -- 676 gids is 9 KB, the same number of
+    explanations is 100 KB of the same sentence.
+    """
+    # One entry per RECORDING. 104 gids in this registry are held by more
+    # than one record -- the same recording written twice, usually once
+    # with its paths and once with none -- so walking records emitted the
+    # same recording twice: once saying there is a copy here to send and
+    # once saying this computer cannot open it. Whichever was read last
+    # won, and the list contradicted itself.
+    #
+    # The answer that wins is the one with something to send: a record with
+    # no paths is the emptier description of the same recording, not
+    # evidence that the recording is unreachable.
+    best = {}
+    for b in blocked:
+        gid = b.get("gid")
+        if not gid:
+            continue
+        was = best.get(gid)
+        if was is None or (b.get("can_upload") and not was.get("can_upload")):
+            best[gid] = b
+    one = list(best.values())
+    one += [b for b in blocked if not b.get("gid")]
+    can = [b for b in one if b.get("can_upload")]
+    return {
+        "blocked": one[:VACC_BLOCKED_SHOWN],
+        "blocked_total": len(one),
+        "upload_gids": sorted(b["gid"] for b in can),
+    }
+
+
+def _vacc_missing(rec, label=None):
+    """Blocked because the cluster has no copy -- and whether that is fixable.
+
+    One place, because three tools ask it and a fourth will. Incisor and
+    Doppler used to drop these recordings silently, so a VACC batch simply
+    did not mention most of the catalogue; Circuit named them and told
+    somebody to "upload it to VACC first" without offering a way.
+
+    `can_upload` is the fact a button needs, and it is NOT the same as "the
+    cluster has not got it": a recording this computer cannot open either
+    has nothing to send, and a button that cannot work is worse than none.
+    So the local copy is checked, and the reason says which case it is.
+    """
+    gid = rec.get("gid")
+    label = label or rec.get("label") or rec.get("key") or gid
+    local = None
+    for path in (rec.get("paths") or []):
+        if os.path.isdir(path):
+            local = path
+            break
+    if local:
+        return {"gid": gid, "label": label, "can_upload": True,
+                "why": "the cluster has no copy of this recording yet"}
+    return {"gid": gid, "label": label, "can_upload": False,
+            "why": "the cluster has no copy, and this computer cannot open "
+                   "it either, so there is nothing to send"}
 
 
 def _vacc_staged(force=False, wait=True):
