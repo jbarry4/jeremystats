@@ -1,0 +1,117 @@
+{
+  "_at": {
+    "bad_channels": "2026-09-25T14:22:06.261621+00:00",
+    "created": "2026-09-02T23:51:19.965075+00:00",
+    "duration_s": "2026-09-03T00:08:56.678378+00:00",
+    "first_seen_by": "2026-09-03T00:08:56.678378+00:00",
+    "fs": "2026-09-03T00:08:56.678378+00:00",
+    "gid": "2026-09-02T23:51:19.965075+00:00",
+    "group": "2026-09-03T00:08:56.678378+00:00",
+    "has_video": "2026-09-03T00:08:56.678378+00:00",
+    "key": "2026-09-03T00:08:56.678378+00:00",
+    "label": "2026-09-03T00:08:56.678378+00:00",
+    "loose_key": "2026-09-03T00:08:56.678378+00:00",
+    "mouse": "2026-09-03T00:08:56.678378+00:00",
+    "n_channels": "2026-09-03T00:08:56.678378+00:00",
+    "project": "2026-09-03T00:08:56.678378+00:00",
+    "project_source": "2026-09-03T00:08:56.678378+00:00",
+    "retired": "2026-09-03T13:40:53.705695+00:00",
+    "schema": "2026-09-03T00:08:56.678378+00:00",
+    "session": "2026-09-03T00:08:56.678378+00:00",
+    "start": "2026-09-03T00:08:56.678378+00:00",
+    "updated": "2026-09-25T14:22:06.261621+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01B_072126\\2026-07-21_11-00-19": [
+        "set",
+        "2026-09-03T00:08:56.678378+00:00"
+      ],
+      "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01_072126\\2026-07-21_10-13-37": [
+        "set",
+        "2026-09-03T00:08:56.678378+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01B_072126\\2026-07-21_11-00-19": [
+        "set",
+        "2026-09-03T00:08:56.678378+00:00"
+      ],
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01_072126\\2026-07-21_10-13-37": [
+        "set",
+        "2026-09-03T00:08:56.678378+00:00"
+      ]
+    },
+    "seen": {
+      "BarryLab": [
+        "set",
+        "2026-09-03T00:08:56.678378+00:00"
+      ],
+      "DESKTOP-4H65AI7": [
+        "set",
+        "2026-09-03T00:08:56.678378+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T14:22:06.261621+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "bad_channels": [
+    59
+  ],
+  "created": {
+    "at": "2026-09-02T18:50:52-04:00",
+    "machine": "DESKTOP-4H65AI7",
+    "os": "Windows",
+    "user": "theexaminedexistence@gmail.com"
+  },
+  "duration_s": 1801.6256,
+  "first_seen_by": "scan",
+  "fs": 30000.0,
+  "gid": "s743281f71488",
+  "group": "KCNT1",
+  "has_video": true,
+  "key": "m536_s001_2026-07-21_10-13-37",
+  "label": "KCNT1 m536 s1 2026-07-21",
+  "loose_key": "m536_s001",
+  "mouse": 536,
+  "n_channels": 64,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01_072126\\2026-07-21_10-13-37",
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01B_072126\\2026-07-21_11-00-19",
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01_072126\\2026-07-21_10-13-37",
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01B_072126\\2026-07-21_11-00-19"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "BarryLab": {
+      "at": "2026-09-02T19:40:03-04:00",
+      "by": "barry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01B_072126\\2026-07-21_11-00-19",
+      "root": "Y:/Jeremy3/KCNT1/Summer'26",
+      "scan": "scan_ff32bceba3"
+    },
+    "DESKTOP-4H65AI7": {
+      "at": "2026-09-02T18:50:52-04:00",
+      "by": "theexaminedexistence@gmail.com",
+      "path": "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s01B_072126\\2026-07-21_11-00-19",
+      "root": "//netfiles03.uvm.edu/bigdata_jbarry/Jeremy3/KCNT1",
+      "scan": "scan_94ff1eb81c"
+    }
+  },
+  "session": 1,
+  "start": "2026-07-21T10:13:37",
+  "updated": {
+    "app_version": "2026.09.23.8",
+    "at": "2026-09-25T10:22:06-04:00",
+    "commit": "cd809b2",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}
