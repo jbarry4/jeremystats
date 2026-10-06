@@ -889,9 +889,11 @@ BARRY.circuit = (function () {
   function probeSummary() {
     const probe = (st.plan && st.plan.probe) || [];
     const grey = greyList();
-    if (!probe.length && !grey.length) return 'no histology for this rat';
+    const h = st.plan && st.plan.histology;
+    const v = h ? 'Histology v' + h.version + ' \u00b7 ' : '';
+    if (!probe.length && !grey.length) return v + 'no histology for this rat';
     const n = probe.length || 12;
-    const bits = [(n - grey.length) + ' of ' + n + ' will be computed'];
+    const bits = [v + (n - grey.length) + ' of ' + n + ' will be computed'];
     if (grey.length) {
       bits.push(grey.length + ' grey: ' + grey.map((g) => g.region).join(', '));
     }

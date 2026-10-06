@@ -3,12 +3,31 @@
 
 A connectivity matrix is a claim about regions, and every row of it is only
 as good as the sentence "channels 5 to 8 were in left perirhinal cortex".
-For eight of the nine rats that sentence is wrong somewhere: three of J4's
-twelve probes are in subiculum, both of J9's hippocampal probes are in
-parietal association cortex, and J3 has four probes that simply missed.
+For every one of the eight rats that sentence is wrong somewhere: three of
+J4's twelve probes are in subiculum, J9's left hippocampal probe is in
+parietal association cortex, and J3 has five probes that simply missed.
 Correlating those and labelling the result "Left PER x Right POR" is not a
 weaker result, it is a differently-labelled one, and nothing downstream can
 tell.
+
+Versions
+--------
+The workbook has been scored twice, and both scorings are kept here:
+
+  v1  2026-09-25  the first scoring (`HISTO_RAW_V1`): eight "maybe"s, and
+                  several probes placed elsewhere that a second look put
+                  back where they were aimed.
+  v2  2026-10-05  the rescoring (`HISTO_RAW`), the one in force. No
+                  "maybe" is left; J6's right hippocampus, J9's right
+                  hippocampus, J10's orbitofrontal and hippocampal probes
+                  and four perirhinal probes are now "y". The POR probes
+                  are still nowhere in POR, and the left ones are in
+                  subiculum in four rats -- which the Monolith uses as a
+                  region of its own, "Left POR-SUB" (monolith.py).
+
+`HISTO_VERSION` is what every surface says it used; a saved channel
+sanity report (`sanityreport.py`) records it, so a result made under v1 can
+always be told from one made under v2.
 
 So the histology is a first-class input here rather than a note in a
 notebook. `Joes multi site histo results.xlsx` scores all twelve probes in
@@ -68,7 +87,54 @@ SHEET_COLUMNS = ("L-OFC", "R-OFC", "L-ACC", "R-ACC", "L-dHC", "R-dHC",
 # and inventing a row for it here would turn "nobody looked" into "nothing
 # found". J1 and J2 are the two rats the VACC pipeline ran on and are not
 # in this cohort at all.
+#: Which scoring of the workbook is in force, and when it was made.
+HISTO_VERSION = 2
+HISTO_DATE = "2026-10-05"
+
+
+def version_say():
+    """The one line every surface shows about which histology it used."""
+    return ("Histology v%d (%s, rescored %s)"
+            % (HISTO_VERSION, SHEET_FILE, HISTO_DATE))
+
+
+# v2, the rescoring of 2026-10-05: the workbook as it is now, verbatim.
 HISTO_RAW = {
+    3: {"L-OFC": "y", "R-OFC": "y", "L-ACC": "y", "R-ACC": "y",
+        "L-dHC": "y", "R-dHC": "y", "L-RSC": "n", "R-RSC": "n",
+        "L-Prh": "n", "R-Prh": "y", "L-Por": "n", "R-Por": "n"},
+    4: {"L-OFC": "y", "R-OFC": "y", "L-ACC": "y", "R-ACC": "y",
+        "L-dHC": "y", "R-dHC": "y", "L-RSC": "y", "R-RSC": "y",
+        "L-Prh": "subiculum", "R-Prh": "subiculum",
+        "L-Por": "subiculum", "R-Por": "fmj"},
+    6: {"L-OFC": "y", "R-OFC": "y", "L-ACC": "y", "R-ACC": "y",
+        "L-dHC": "y", "R-dHC": "y", "L-RSC": "y", "R-RSC": "y",
+        "L-Prh": "y", "R-Prh": "y",
+        "L-Por": "subiculum", "R-Por": "subiculum"},
+    7: {"L-OFC": "y", "R-OFC": "y", "L-ACC": "y", "R-ACC": "y",
+        "L-dHC": "y", "R-dHC": "y", "L-RSC": "y", "R-RSC": "y",
+        "L-Prh": "y", "R-Prh": "y", "L-Por": "subiculum", "R-Por": "n"},
+    8: {"L-OFC": "y", "R-OFC": "y", "L-ACC": "y", "R-ACC": "y",
+        "L-dHC": "y", "R-dHC": "y", "L-RSC": "y", "R-RSC": "n",
+        "L-Prh": "ventral dhc ca1", "R-Prh": "ventral dhc ca1",
+        "L-Por": "n", "R-Por": "n"},
+    9: {"L-OFC": "y", "R-OFC": "y", "L-ACC": "y", "R-ACC": "y",
+        "L-dHC": "Parietal association ctx", "R-dHC": "y",
+        "L-RSC": "y", "R-RSC": "y",
+        "L-Prh": "n", "R-Prh": "y", "L-Por": "n", "R-Por": "n"},
+    10: {"L-OFC": "y", "R-OFC": "y", "L-ACC": "y", "R-ACC": "y",
+         "L-dHC": "y", "R-dHC": "y", "L-RSC": "y", "R-RSC": "y",
+         "L-Prh": "lateral entorhinal", "R-Prh": "y",
+         "L-Por": "subiculum", "R-Por": "subiculum"},
+    11: {"L-OFC": "y", "R-OFC": "y", "L-ACC": "y", "R-ACC": "y",
+         "L-dHC": "y", "R-dHC": "y", "L-RSC": "y", "R-RSC": "y",
+         "L-Prh": "y", "R-Prh": "ventral dhc ca1",
+         "L-Por": "n", "R-Por": "n"},
+}
+
+# v1, the first scoring (2026-09-25), kept for the record: what everything
+# made before 2026-10-05 was made with. Nothing reads it to decide anything.
+HISTO_RAW_V1 = {
     3: {"L-OFC": "y", "R-OFC": "y", "L-ACC": "y", "R-ACC": "y",
         "L-dHC": "y", "R-dHC": "y", "L-RSC": "n", "R-RSC": "n",
         "L-Prh": "n", "R-Prh": "lateral entorhinal",

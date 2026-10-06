@@ -2121,6 +2121,13 @@ window.MONO = (function () {
         el('button', { type: 'button', class: 'linkish', text: 'See what was kept, rat by rat',
                        onclick: () => showTab('cov') })]));
     }
+    if (S.histology) {
+      v.appendChild(el('p', { class: 'small', id: 'histoverdict' }, [el('strong', { text: 'Histology v' + S.histology.version + ': ' }),
+        'only probes scored “y”, plus Left POR-SUB (the left POR probes, which are in subiculum); Right POR-SUB is left out.']));
+    } else {
+      v.appendChild(el('p', { class: 'warn', id: 'histoverdict', text: 'Built under histology v1, before the rescoring of '
+        + '2026-10-05. Drift → Monolith → Rebuild under histology v2 remakes it.' }));
+    }
     v.appendChild(el('p', { class: 'small muted', text: 'Every p here is uncorrected, by design: the Monolith is for '
       + 'finding leads, and with this many tests a good share of the p < .05 entries are chance. On made-up data '
       + 'with no change at all and days the size of these, 5.5% of entries came out p < .05 (tools/check_monolith.py). '
@@ -3048,6 +3055,19 @@ window.MONO = (function () {
     if (!d) {
       host.appendChild(el('p', { class: DMG.err ? 'warn' : 'loading', text: DMG.err ? 'The damage report could not be read: ' + DMG.err : 'Counting what was lost…' }));
       return;
+    }
+    // Which histology, first: everything below follows from it.
+    if (d.histology) {
+      const H = d.histology, sb = d.sanity || {};
+      const stale = H.built !== H.rule;
+      host.appendChild(el('div', { class: 'histosay' + (stale ? ' stale' : ''), id: 'histosay' }, [
+        el('strong', { text: 'Histology v' + (sb.version || '') + ': ' }), H.say,
+        sb.run ? el('span', { class: 'muted', text: ' Channel sanity v' + sb.version + ' was run over every banked recording on '
+          + String(sb.run.at || '').slice(0, 10) + ' (' + sb.run.totals.recordings + ' recordings).' }) : null,
+        stale ? el('div', { class: 'warn', id: 'histostale', text: 'The pooled results on this page were built under '
+          + (H.built ? 'an older rule (' + H.built + ')' : 'histology v1') + '. In Jarvis: Drift → Monolith → Rebuild under '
+          + 'histology v' + (sb.version || 2) + ' remakes them from the answers already fetched; until then this report '
+          + 'and the circuit disagree.' }) : null]));
     }
     const W0 = d.whole;
     const days = d.days;

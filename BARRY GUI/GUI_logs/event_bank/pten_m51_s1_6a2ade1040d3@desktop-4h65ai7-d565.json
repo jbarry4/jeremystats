@@ -25,7 +25,7 @@
     "type": "2026-09-12T21:23:12.636226+00:00",
     "type_name": "2026-09-12T21:23:12.636226+00:00",
     "units": "2026-09-12T21:23:12.636226+00:00",
-    "version": "2026-09-22T19:21:55.378338+00:00"
+    "version": "2026-10-06T14:26:12.684345+00:00"
   },
   "_keys": {
     "history": {
@@ -44,8 +44,8 @@
     },
     "versions": {
       "br-f9dd839676": [
-        "set",
-        "2026-09-22T19:21:09.607418+00:00"
+        "gone",
+        "2026-10-06T14:26:12.684345+00:00"
       ],
       "v0-66c8b771": [
         "set",
@@ -66,11 +66,19 @@
       "{\"at\": \"2026-09-22T15:21:09-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"Dentate Spike\": 5}, \"machine\": \"BarryLab\", \"n\": 5, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1100 ms, reading v2. 5 stamp(s) moved by 13.1 to 31.3 ms; 62 left where they were. No labels changed.\", \"snap\": [[754.085062, \"spike\"], [935.756197, \"spike\"], [967.08115, \"spike\"], [970.125278, \"spike\"], [990.238068, \"spike\"]], \"v\": 3}": [
         "set",
         "2026-09-22T19:21:58.260916+00:00"
+      ],
+      "{\"at\": \"2026-10-06T10:22:25-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"spike\": 5}, \"machine\": \"BarryLab\", \"n\": 5, \"note\": \"Root Canal: 0 hidden IED(s) taken out of 5 dentate spikes read from vbr-f9dd839676; 5 kept as DS. k = 1: one cluster, so no split -- every event is called DS (5 DS, 0 IED). measured on DS filter, 5\\u2013100 Hz, 60 Hz mains out, amplitude window \\u00b125 ms, half-width search \\u00b1100 ms, 500\\u20131000 Hz power.  Numbers and figures: results bank rootcanal/sd94396e874c7__38b13f400b4c.\", \"snap\": [[754.085062, \"spike\"], [935.756197, \"spike\"], [967.08115, \"spike\"], [970.125278, \"spike\"], [990.238068, \"spike\"]], \"v\": 4}": [
+        "set",
+        "2026-10-06T14:26:17.421191+00:00"
+      ],
+      "{\"at\": \"2026-10-06T10:22:25-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"spike\": 5}, \"machine\": \"BarryLab\", \"n\": 5, \"note\": \"Root Canal: 0 hidden IED(s) taken out of 5 dentate spikes read from vbr-f9dd839676; 5 kept as DS. k = 1: one cluster, so no split -- every event is called DS (5 DS, 0 IED). measured on DS filter, 5\\u2013100 Hz, 60 Hz mains out, amplitude window \\u00b125 ms, half-width search \\u00b1100 ms, 500\\u20131000 Hz power.  Numbers and figures: results bank rootcanal/sd94396e874c7__38b13f400b4c.\", \"snap_elsewhere\": true, \"v\": 4}": [
+        "gone",
+        "2026-10-06T14:26:17.421191+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T18:34:31.838003+00:00",
+    "at": "2026-10-06T14:26:17.421191+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -245,7 +253,7 @@
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 3,
+  "version": 4,
   "versions": [
     {
       "at": "2026-09-02T19:00:02-04:00",
@@ -1111,97 +1119,14 @@
       "v": 2
     },
     {
-      "aligned": {
-        "band": [
-          5.0,
-          100.0
-        ],
-        "cand_dist_ms": 12.0,
-        "cand_height_sd": 0.0,
-        "channels": [
-          28,
-          29,
-          30,
-          31,
-          32,
-          33,
-          34,
-          35,
-          36,
-          37,
-          38,
-          39,
-          40,
-          41,
-          42,
-          43,
-          44,
-          45
-        ],
-        "csd_smooth": true,
-        "dist_ms": 100.0,
-        "estimator": "mad",
-        "flagged": {},
-        "invert": true,
-        "left_out": [
-          59
-        ],
-        "lfp_fs": 1000.0,
-        "line_hz": 60.0,
-        "measure": "csd",
-        "n_channels": 16,
-        "n_moved": 5,
-        "n_unmoved": 62,
-        "order": 3,
-        "order_held": true,
-        "profile": {
-          "29": -0.014793,
-          "30": -0.05837,
-          "31": 0.094324,
-          "32": 0.350792,
-          "33": 0.384776,
-          "34": 0.291464,
-          "35": 0.339843,
-          "36": 0.433744,
-          "37": 0.394226,
-          "38": 0.046403,
-          "39": -0.190081,
-          "40": -0.149999,
-          "41": -0.228087,
-          "42": -0.204885,
-          "43": -0.112914,
-          "44": -0.069586
-        },
-        "resorted": 0,
-        "screened": {
-          "59": "dead (0.5 uV against a median of 58)"
-        },
-        "shift_max_ms": 31.278,
-        "shift_median_ms": 28.197,
-        "shift_min_ms": 13.068,
-        "smooth_ms": 0.0,
-        "source_version": 2,
-        "source_version_id": "ccec6580c698",
-        "spacing_um": 30.0,
-        "tool": "jarvis.braces/1",
-        "window_ms": 100.0
-      },
       "at": "2026-09-22T15:21:09-04:00",
       "by": "Rain Younger",
       "by_label": {
         "Dentate Spike": 5
       },
-      "changed": 0,
-      "from_id": null,
-      "from_v": null,
-      "gained": 0,
-      "id": "br-f9dd839676",
-      "lost": 0,
       "machine": "BarryLab",
-      "moves": {},
       "n": 5,
       "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms, reading v2. 5 stamp(s) moved by 13.1 to 31.3 ms; 62 left where they were. No labels changed.",
-      "shifted": 5,
       "snap": [
         [
           754.085062,
@@ -1227,14 +1152,14 @@
       "v": 3
     },
     {
-      "at": "2026-09-22T15:21:09-04:00",
+      "at": "2026-10-06T10:22:25-04:00",
       "by": "Rain Younger",
       "by_label": {
-        "Dentate Spike": 5
+        "spike": 5
       },
       "machine": "BarryLab",
       "n": 5,
-      "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms, reading v2. 5 stamp(s) moved by 13.1 to 31.3 ms; 62 left where they were. No labels changed.",
+      "note": "Root Canal: 0 hidden IED(s) taken out of 5 dentate spikes read from vbr-f9dd839676; 5 kept as DS. k = 1: one cluster, so no split -- every event is called DS (5 DS, 0 IED). measured on DS filter, 5\u2013100 Hz, 60 Hz mains out, amplitude window \u00b125 ms, half-width search \u00b1100 ms, 500\u20131000 Hz power.  Numbers and figures: results bank rootcanal/sd94396e874c7__38b13f400b4c.",
       "snap": [
         [
           754.085062,
@@ -1257,7 +1182,7 @@
           "spike"
         ]
       ],
-      "v": 3
+      "v": 4
     }
   ]
 }

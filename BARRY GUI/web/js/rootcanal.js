@@ -91,7 +91,7 @@ BARRY.rootcanal = (function () {
   const FILTER_ORDER = ['none', 'ds', 'lfp', 'custom'];
   const presetOf = (f) => (f && f !== 'custom' && FILTERS[f]) || null;
 
-  const DEF = { filt: 'lfp', mains_out: true, k: 2,
+  const DEF = { filt: 'lfp', mains_out: true, k: 2, complete_only: false,
                 lo_hz: 1, hi_hz: 100, win_ms: 25, band_lo: 500, band_hi: 1000,
                 /* How far either side of the peak the half-amplitude
                    crossings are hunted. 50 ms is v1's own search; wider finds
@@ -125,6 +125,7 @@ BARRY.rootcanal = (function () {
     gid: null,
     read: null,           // the read hash, once there is one
     filt: DEF.filt, mains_out: DEF.mains_out, k: DEF.k,
+    complete_only: DEF.complete_only,
     lo_hz: DEF.lo_hz, hi_hz: DEF.hi_hz, win_ms: DEF.win_ms,
     band_lo: DEF.band_lo, band_hi: DEF.band_hi, cross_ms: DEF.cross_ms,
     /* Calls given by hand to whole clusters, by rank: {"2": "ied"}. Like a
@@ -132,6 +133,11 @@ BARRY.rootcanal = (function () {
     cluster_calls: {},
     /* A saved margin to apply: { artifact_id, version, mode }. */
     margin: null,
+    /* Clusters drawn by hand with the lasso: [{ events: [i...], call }]. */
+    drawn: [],
+    /* Events with no half-width, searched again with the widest search the
+       read allows -- on request, one or all. A fit param. */
+    retry: [],
     /* The two overrides, both FIT params so a result can be rebuilt from
        params alone: the event indices flipped by hand, and the centres in
        z-space (null means "k-means placed them"). */
@@ -147,11 +153,15 @@ BARRY.rootcanal = (function () {
      only reach `q` when Recompute is pressed. */
   const pend = {
     filt: DEF.filt, mains_out: DEF.mains_out, k: DEF.k,
+    complete_only: DEF.complete_only,
     lo_hz: DEF.lo_hz, hi_hz: DEF.hi_hz, win_ms: DEF.win_ms,
     band_lo: DEF.band_lo, band_hi: DEF.band_hi, cross_ms: DEF.cross_ms,
   };
-  const PKEYS = ['filt', 'mains_out', 'k', 'lo_hz', 'hi_hz', 'win_ms',
-                 'band_lo', 'band_hi', 'cross_ms'];
+  /* ONE SET OF SETTINGS FOR BOTH VIEWS. Single and Pooled measure and
+     cluster with these same values, shown in the same controls bar, so a
+     pool is always the recordings' own question asked of them together. */
+  const PKEYS = ['filt', 'mains_out', 'k', 'complete_only', 'lo_hz', 'hi_hz',
+                 'win_ms', 'band_lo', 'band_hi', 'cross_ms'];
   /* How many clusters k-means looks for: 1 to 6, two by default. */
   const K_MAX = 6;
   /* Saved margins, for the picker in both views; and the last refusal of
@@ -161,9 +171,19 @@ BARRY.rootcanal = (function () {
   let marginErr = null;
   /* Single's dots coloured by DS / IED call, or by cluster. */
   let singleColour = 'call';
+  /* AVERAGES AND THE LASSO. `avg` is Single's average on show ({ label,
+     n, data, err, busy }); Pooled keeps its own in `pool.avg`. `lasso` is
+     the path being drawn on the 3D view, `lassoSel` the dots drawn round
+     (scene ids), and `lassoMode` makes a plain drag draw rather than turn. */
+  let avg = null;
+  let avgGen = 0;
+  let lasso = null;
+  let lassoMode = false;
+  let lassoSel = [];
   /* Two of them are not numbers: the filter's name and the mains box. */
   const asParam = (k, v) => (k === 'filt' ? String(v)
-    : k === 'mains_out' ? (v === true || v === 'true') : Number(v));
+    : (k === 'mains_out' || k === 'complete_only') ? (v === true || v === 'true')
+    : Number(v));
 
   /* The filter a set of params names, in words -- off the preset where it is
      one, so what is named is what the server applies. */
@@ -222,10 +242,15 @@ BARRY.rootcanal = (function () {
     types: {},          // mouse_key -> type: the overrides, never the defaults
     focus: null,        // { mouse_key } | { mouse_type } | { member } | null
     colour: 'pool',
-    /* The pool's own clustering: k, calls by hand, a margin, its own HF
-       band (null: each member's own) and complete events only. */
-    k: 2, cluster_calls: {}, margin: null, marginErr: null,
-    band_lo: '', band_hi: '', complete_only: false,
+    /* The pool's own calls by hand and margin. Its settings -- measurement,
+       k, complete events -- are Single's own (`q`): one set for both views. */
+    cluster_calls: {}, margin: null, marginErr: null,
+    /* Pooled's own average on show, dots drawn round, and drawn clusters
+       as [member key, event number] pairs. */
+    avg: null, lassoSel: [], drawn: [],
+    /* The opened pool's members as it saved them: the rows for the ones
+       this machine does not offer. */
+    savedMembers: [],
     fit: null, fitting: false, gen: 0, lastBody: null, dirty: false,
     evs: null, evsFor: null,
     picked: null, evData: null, evFor: null, evGen: 0, evBusy: false,
@@ -337,6 +362,10 @@ BARRY.rootcanal = (function () {
     q.read = null;
     q.flips = [];
     q.centres = null;
+    q.drawn = [];
+    q.retry = [];
+    avg = null;
+    lassoSel = [];
     fit = null;
     picked = null;
     evData = null;
@@ -423,8 +452,11 @@ BARRY.rootcanal = (function () {
       win_ms: +q.win_ms,
       band_lo: +q.band_lo, band_hi: +q.band_hi, cross_ms: +q.cross_ms,
       k: +q.k,
+      complete_only: !!q.complete_only,
       cluster_calls: Object.assign({}, q.cluster_calls),
       margin: q.margin ? Object.assign({}, q.margin) : null,
+      drawn: q.drawn.map((g) => ({ events: g.events.slice(), call: g.call })),
+      retry: q.retry.slice(),
       flips: q.flips.slice(),
       centres: q.centres ? q.centres.map((c) => c.slice()) : null,
     }, extra || {});
@@ -555,7 +587,37 @@ BARRY.rootcanal = (function () {
     return c === x ? raw : String(c);
   }
 
+  /* A CLICK IS APPLIED AT ONCE. A button or a box -- a filter, k, the mains
+     or complete events -- refits the moment it is pressed, in whichever view
+     is open: the fit behind it is a tenth of a second, and a choice that sat
+     waiting for Recompute read as the picture not updating. Typed numbers
+     still wait, so a half-typed band does not refit. */
+  function applyNow(key, v) {
+    pend[key] = v;
+    const was = q[key];
+    q[key] = asParam(key, v);
+    if (key === 'k' && Number(was) !== Number(q.k)) {
+      q.centres = null; q.cluster_calls = {}; pool.cluster_calls = {};
+    }
+    swapTop();
+    if (viewMode === 'pooled') {
+      if (pool.sel.length) runPool(); else render();
+    } else {
+      refit();
+    }
+  }
+
   function recompute() {
+    if (viewMode === 'pooled') {
+      if (!pending() || pool.fitting) return false;
+      const bad0 = problems(pend);
+      if (bad0.length) { toast('Not yet: ' + bad0[0] + '.', 'warn', 7000); return false; }
+      if (Number(pend.k) !== Number(q.k)) pool.cluster_calls = {};
+      for (const k of PKEYS) q[k] = asParam(k, pend[k]);
+      swapTop();
+      if (pool.sel.length) runPool(); else render();
+      return true;
+    }
     if (!pending() || fitting) return false;
     const bad = problems(pend);
     if (bad.length) { toast('Not yet: ' + bad[0] + '.', 'warn', 7000); return false; }
@@ -591,6 +653,26 @@ BARRY.rootcanal = (function () {
     q.flips = Array.from(have).sort((a, b) => a - b);
     BARRY.activity.log('rootcanal.flip', { gid: q.gid, i, to:
       e.cls === 'ied' ? 'ds' : 'ied' });
+    refit();
+  }
+
+  /* SEARCHED AGAIN, WIDER. An event with an amplitude but no half-width
+     never came back to half height inside the search: the usual reason
+     "only events on all 3 axes" leaves one out. On request it is measured
+     once more out to the widest search the read allows (the server says
+     how far), and only it. */
+  function retryMs() {
+    return Number((fit && fit.retry_cross_ms) || 200);
+  }
+  function canRetry(e) {
+    return !!e && e.amp_uV != null && e.hw_ms == null && e.retried == null
+      && !(q.retry || []).includes(e.i);
+  }
+  function retryWider(ids) {
+    const add = ids.filter((i) => !q.retry.includes(i));
+    if (!add.length) return;
+    q.retry = q.retry.concat(add).sort((a, b) => a - b);
+    BARRY.activity.log('rootcanal.retry', { gid: q.gid, n: add.length });
     refit();
   }
 
@@ -1086,6 +1168,7 @@ BARRY.rootcanal = (function () {
       busyLine(),
       controlsBar(),
       whyBar(),
+      lassoBar(),
       pickBar(),
       legend(),
       el('div', { class: 'rc-main' }, [
@@ -1141,9 +1224,24 @@ BARRY.rootcanal = (function () {
     return hz(pp.band_lo) + '–' + hz(pp.band_hi) + ' Hz power · dB re baseline';
   }
 
+  /* k comes from a margin when one is applied in the view that is open. */
+  function kFromMargin() {
+    if (viewMode === 'pooled') return pool.margin ? marginNick(pool.margin) : null;
+    return q.margin ? marginNick() : null;
+  }
+
+  /* The pool's own statement of what it was measured and clustered with,
+     in the same keys Single's chip reads. */
+  function poolShownParams() {
+    const f = pool.fit && pool.fit.ok ? pool.fit : null;
+    const m = (f && f.params && f.params.measure) || null;
+    if (!m) return Object.assign({}, q);
+    return Object.assign({}, m, { k: f.k, complete_only: f.params.complete_only });
+  }
+
   function modeChip() {
-    const p = shownParams();
-    const stale = pending() || fitting;
+    const p = viewMode === 'pooled' ? poolShownParams() : shownParams();
+    const stale = pending() || (viewMode === 'pooled' ? pool.fitting : fitting);
     return el('span', {
       class: 'rc-chip' + (stale ? ' rc-chip-stale' : ''),
       title: stale
@@ -1154,7 +1252,9 @@ BARRY.rootcanal = (function () {
             + hz(p.win_ms) + ' ms  ·  half-width ±'
             + hz(p.cross_ms != null ? p.cross_ms : q.cross_ms) + ' ms  ·  '
             + hz(p.band_lo) + '–' + hz(p.band_hi)
-            + ' Hz band' + (stale ? '  (recompute)' : ''),
+            + ' Hz band  ·  k = ' + (p.k || 2)
+            + (p.complete_only ? '  ·  3 axes only' : '')
+            + (stale ? '  (recompute)' : ''),
     });
   }
 
@@ -1197,7 +1297,7 @@ BARRY.rootcanal = (function () {
         el('span', { class: 'rc-num-l', text: 'filter' }),
         BARRY.ui.seg(FILTER_ORDER.map((k) => [k, FILTERS[k].label,
                                               FILTERS[k].title]),
-          pend.filt, (v) => { pend.filt = v; swapTop(); tickPending(); },
+          pend.filt, (v) => applyNow('filt', v),
           { extra: 'rc-filt' }),
         pend.filt === 'custom' ? num('lo_hz', '', { unit: '–', min: 0,
           max: LP_MAX, title: 'The low corner of the zero-phase filter '
@@ -1213,8 +1313,7 @@ BARRY.rootcanal = (function () {
                + 'contact.' }, [
           el('input', { type: 'checkbox',
             checked: asParam('mains_out', pend.mains_out) ? 'checked' : null,
-            onchange: (e) => { pend.mains_out = e.target.checked;
-                               tickPending(); } }),
+            onchange: (e) => applyNow('mains_out', e.target.checked) }),
           el('span', { class: 'rc-num-l', text: '60 Hz out' }),
         ]) : el('span', { class: 'hint rc-filt-is',
                           text: filterWords(pend).replace(/^\S+ /, '') }),
@@ -1222,8 +1321,17 @@ BARRY.rootcanal = (function () {
       ].filter(Boolean)),
       el('div', { class: 'rc-group rc-k' }, [
         el('span', { class: 'rc-group-l', text: 'Clusters' }),
-        kControl(pend.k, (v) => { pend.k = v; swapTop(); tickPending(); },
-                 q.margin ? marginNick() : null),
+        kControl(pend.k, (v) => applyNow('k', v), kFromMargin()),
+        el('label', { class: 'rc-num rc-complete',
+          title: 'Leave out every event missing an axis -- a half-width that '
+               + 'never came back to half amplitude, an HF window too near an '
+               + 'edge -- instead of placing it on the two it has. Counted as '
+               + 'left out; in Pooled not drawn.' }, [
+          el('input', { type: 'checkbox',
+            checked: asParam('complete_only', pend.complete_only) ? 'checked' : null,
+            onchange: (e) => applyNow('complete_only', e.target.checked) }),
+          el('span', { class: 'rc-num-l', text: 'only events on all 3 axes' }),
+        ]),
       ]),
       el('div', { class: 'rc-group' }, [
         el('span', { class: 'rc-group-l', text: 'Window and search' }),
@@ -1254,11 +1362,11 @@ BARRY.rootcanal = (function () {
                         + 'Recompute.')
         : '' }),
       BARRY.ui.actions([
-        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'reset centres',
+        viewMode === 'pooled' ? null : BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'reset centres',
           disabled: !q.centres || fitting,
           title: 'Put both centres back where k-means placed them.',
           onclick: resetCentres }),
-        BARRY.ui.button({ kind: 'ghost', size: 'sm',
+        viewMode === 'pooled' ? null : BARRY.ui.button({ kind: 'ghost', size: 'sm',
           text: 'clear flips' + (q.flips.length ? ' (' + q.flips.length + ')'
                                                  : ''),
           disabled: !q.flips.length || fitting,
@@ -1268,9 +1376,11 @@ BARRY.rootcanal = (function () {
               title: 'Go back to the settings the picture was computed with.',
               onclick: revertPending }) : null,
         BARRY.ui.button({ kind: 'ghost', size: 'sm',
-          text: fitting ? 'Recomputing…' : 'Recompute ↵',
+          text: (viewMode === 'pooled' ? pool.fitting : fitting)
+            ? 'Recomputing…' : 'Recompute ↵',
           extra: 'rc-recompute',
-          disabled: !p || bad.length || fitting,
+          disabled: !p || bad.length
+                    || (viewMode === 'pooled' ? pool.fitting : fitting),
           title: 'Refit with the settings typed here. Or press Enter in any '
                + 'of them. The read is not touched.',
           onclick: recompute }),
@@ -1294,8 +1404,11 @@ BARRY.rootcanal = (function () {
                            : '';
     }
     const go = box.querySelector('.rc-recompute');
-    if (go) go.disabled = !p || !!bad.length || fitting;
-    for (const c of box.querySelectorAll('.rc-chip')) c.replaceWith(modeChip());
+    if (go) go.disabled = !p || !!bad.length
+                          || (viewMode === 'pooled' ? pool.fitting : fitting);
+    for (const c of box.querySelectorAll('.rc-chip:not(.rc-pool-chip)')) {
+      c.replaceWith(modeChip());
+    }
   }
 
   /* After Recompute, or a revert: the controls row and the chips. */
@@ -1334,6 +1447,17 @@ BARRY.rootcanal = (function () {
             kind: 'warn', extra: 'rc-count-partial',
             title: 'Placed by the nearest centre on the two axes they have. '
                  + 'Drawn as squares.' }) : null,
+          (() => {
+            const n = (fit.events || []).filter(canRetry).length;
+            return n ? BARRY.ui.button({ kind: 'mini', extra: 'rc-retry-all',
+              text: 'Search the ' + n + ' with no half-width again, to ±'
+                    + hz(retryMs()) + ' ms',
+              title: 'Each of them is measured once more out to the widest '
+                   + 'search the stored waveform allows. Everything else '
+                   + 'keeps its numbers. Found ones are marked.',
+              onclick: () => retryWider((fit.events || []).filter(canRetry)
+                                        .map((e) => e.i)) }) : null;
+          })(),
           c.wide ? BARRY.ui.chip(c.wide + ' by the widened search', {
             kind: 'warn', extra: 'rc-count-wide',
             title: 'Their half-width was found only with the search reaching '
@@ -1347,9 +1471,21 @@ BARRY.rootcanal = (function () {
             { extra: 'rc-colour-by' }),
         ].filter(Boolean)),
         clusterChips(fit.clusters,
-          (rank, call) => { q.cluster_calls[String(rank)] = call; refit(); },
+          (rank, call) => {
+            // A drawn cluster's call is its drawing's; the rest are relabels.
+            const dj = rank - (fit.k || 0);
+            if (dj >= 0 && q.drawn[dj]) q.drawn[dj].call = call;
+            else q.cluster_calls[String(rank)] = call;
+            refit();
+          },
           () => { q.cluster_calls = {}; refit(); },
-          (fit.clusters || []).some((c) => c.call_by === 'hand')),
+          (fit.clusters || []).some((c) => c.call_by === 'hand'),
+          { onAvg: (c) => showAverage('cluster #' + (c.rank + 1) + ' '
+                                       + c.call.toUpperCase(),
+                                       (fit.events || []).filter(
+                                         (e) => e.cluster === c.rank)),
+            onRemove: (c) => { q.drawn.splice(c.rank - (fit.k || 0), 1);
+                               refit(); } }),
         marginCard(singleMarginCtx()),
       ]),
       BARRY.ui.actions([
@@ -1384,27 +1520,43 @@ BARRY.rootcanal = (function () {
   /* One chip per cluster, lowest HF first: its colour, n, its centre in
      raw units and its call -- and pressing it calls that cluster the other
      thing. The rule's call, a margin's and a hand's are said apart. */
-  function clusterChips(clusters, onToggle, onReset, anyHand) {
+  function clusterChips(clusters, onToggle, onReset, anyHand, more) {
     if (!clusters || !clusters.length) return null;
-    const row = clusters.map((c) => el('button', {
+    const ex = more || {};
+    const row = [];
+    clusters.forEach((c) => row.push(el('span', { class: 'rc-clu-g' }, [el('button', {
       type: 'button',
       class: 'rc-clu' + (c.call === 'ied' ? ' ied' : ' ds')
-             + (c.call_by === 'hand' ? ' hand' : ''),
+             + (c.call_by === 'hand' ? ' hand' : '')
+             + (c.call_by === 'drawn' ? ' drawn' : ''),
       title: 'Cluster ' + (c.rank + 1) + ' of ' + clusters.length + ': '
            + (c.n || 0) + ' events, centre ' + hz(c.centre_raw[0]) + ' µV, '
            + hz(c.centre_raw[1]) + ' ms, ' + hz(c.centre_raw[2]) + ' dB. '
            + 'Called ' + c.call.toUpperCase() + ' '
            + (c.call_by === 'hand' ? 'by hand' : c.call_by === 'margin'
-              ? 'by the margin' : 'by the rule') + '. Press to call it '
+              ? 'by the margin' : c.call_by === 'drawn'
+              ? 'as drawn round by hand' : 'by the rule') + '. Press to call it '
            + (c.call === 'ied' ? 'DS' : 'IED') + '.',
       onclick: () => onToggle(c.rank, c.call === 'ied' ? 'ds' : 'ied'),
     }, [
-      el('i', { class: 'rc-swatch', style: 'background:' + cluColour(c.rank) }),
+      el('i', { class: 'rc-swatch', style: 'background:' + cluFill(c.rank, c.call) }),
       el('span', { text: '#' + (c.rank + 1) + ' ' + c.call.toUpperCase()
                          + ' · ' + (c.n || 0)
                          + (c.call_by === 'hand' ? ' · by hand'
-                            : c.call_by === 'margin' ? ' · margin' : '') }),
-    ]));
+                            : c.call_by === 'margin' ? ' · margin'
+                            : c.call_by === 'drawn' ? ' · drawn' : '') }),
+    ]),
+      /* Its average: the four pictures of a dot, over every event in it. */
+      ex.onAvg ? el('button', { type: 'button', class: 'rc-clu-x rc-clu-avg',
+        text: 'avg', title: 'The average of cluster ' + (c.rank + 1)
+          + ' -- its max-amp trace, spectrum, every contact and CSD, over '
+          + 'its ' + (c.n || 0) + ' events -- in the event panel.',
+        onclick: () => ex.onAvg(c) }) : null,
+      (c.call_by === 'drawn' && ex.onRemove) ? el('button', { type: 'button',
+        class: 'rc-clu-x rc-clu-rm', text: '×',
+        title: 'Undraw this cluster: its events go back to k-means.',
+        onclick: () => ex.onRemove(c) }) : null,
+    ].filter(Boolean))));
     if (anyHand) {
       row.push(BARRY.ui.button({ kind: 'mini', text: 'Calls back to the rule',
         title: 'Undo every cluster called by hand.', onclick: onReset }));
@@ -1412,8 +1564,100 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'chip-row rc-clusters' }, row);
   }
 
+  function curAvg() { return viewMode === 'pooled' ? pool.avg : avg; }
+
+  /* THE AVERAGE OF A SET OF DOTS, in the event panel: the max-amp trace
+     (each event's own contact, aligned on the stamp, with its spread), the
+     spectrum against baseline, every contact and the CSD. A cluster's, or
+     the dots drawn round with the lasso. */
+  async function showAverage(label, evs) {
+    const pooled = viewMode === 'pooled';
+    const st = { label, n: evs.length, data: null, err: null, busy: true };
+    if (pooled) pool.avg = st; else avg = st;
+    const gen = ++avgGen;
+    render();
+    let url, body;
+    if (pooled) {
+      const mem = (pool.fit && pool.fit.members) || [];
+      url = '/api/rootcanal/pool/group';
+      body = Object.assign(poolBody(), { label, events: evs.map(
+        (e) => [(mem[e.m] || {}).key, e.src_i != null ? e.src_i : e.i]) });
+    } else {
+      url = '/api/rootcanal/group';
+      body = Object.assign(fitBody(), { label, events: evs.map((e) => e.i) });
+    }
+    try {
+      st.data = await apiPost(url, body);
+    } catch (e) {
+      st.err = e.message;
+    }
+    if (gen !== avgGen) return;
+    st.busy = false;
+    render();
+  }
+
+  function closeAverage() {
+    if (viewMode === 'pooled') pool.avg = null; else avg = null;
+    avgGen++;
+    render();
+  }
+
+  function avgPane(A) {
+    const d = A.data && A.data.ok !== false ? A.data : null;
+    const cell = (id, title, sub) => el('div', { class: 'rc-ev-cell' }, [
+      el('div', { class: 'rc-ev-t' }, [
+        el('strong', { text: title }),
+        sub ? el('span', { class: 'hint', text: sub }) : null,
+      ].filter(Boolean)),
+      el('canvas', { class: 'rc-canvas rc-ev', id }),
+    ]);
+    const tr = d ? d.trace || {} : {};
+    const about = d
+      ? ('n = ' + d.n + (d.n_reads > 1 ? ' from ' + d.n_reads + ' recordings' : '')
+         + (tr.flipped ? ' · ' + tr.flipped + ' flipped to the common polarity' : '')
+         + (d.n_away ? ' · ' + d.n_away + ' left out: their read is not on this machine' : ''))
+      : (A.err ? 'Not averaged: ' + A.err : 'Averaging ' + A.n + ' events…');
+    return el('div', { class: 'rc-pane rc-event rc-avg' }, [
+      el('div', { class: 'rc-avg-head' }, [
+        el('strong', { text: 'Average of ' + A.label }),
+        el('span', { class: 'hint' + (A.err ? ' rc-warn' : ''), text: about }),
+        el('span', { class: 'spacer' }),
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Back to the picked dot',
+          extra: 'rc-avg-close', onclick: closeAverage }),
+      ]),
+      el('div', { class: 'rc-ev-grid' }, [
+        cell('rcTrace', 'Max-amp contact', 'each event’s own, aligned on the '
+             + 'stamp · mean ± SD'),
+        cell('rcSpec', 'Spectrum', 'each event’s HF contact, against its '
+             + 'baseline · mean'),
+        cell('rcStack', 'Every contact', d && d.n_reads > 1
+          ? 'mean · ' + (d.probe_from || 'one recording') + ' (' + d.probe_from_n
+            + ' events): a probe means something inside one recording'
+          : 'mean'),
+        cell('rcCsd', 'CSD', ((d && d.csd && d.csd.filter)
+                              || '5–100 Hz, 60 Hz mains taken out')
+                             + ' · of the mean'),
+      ]),
+    ]);
+  }
+
+  /* A cluster's colour, and past the palette's four the marker shape that
+     tells #5 from #1 -- the same rule the pool's categories use. */
   function cluColour(rank) {
     return tok('--c' + ((Number(rank || 0) % CAT_N) + 1));
+  }
+  function cluShape(rank) {
+    return CAT_SHAPES[Math.floor(Number(rank || 0) / CAT_N) % CAT_SHAPES.length];
+  }
+  /* Whether the open view colours by cluster or by call. */
+  function byCluster() {
+    return viewMode === 'pooled' ? pool.colour === 'cluster'
+                                 : singleColour === 'cluster';
+  }
+  /* What a cluster is DRAWN in, right now: its chip, its centre and its
+     dots all say the same colour. */
+  function cluFill(rank, call) {
+    return byCluster() ? cluColour(rank) : colOf(call);
   }
 
   async function loadMargins() {
@@ -1617,9 +1861,25 @@ BARRY.rootcanal = (function () {
                                            : fmt(e.hw_ms, 1) + ' ms')
         + '  ·  ' + (e.hf_db == null || !isFinite(e.hf_db) ? 'no HF'
                      : fmt(e.hf_db, 1) + ' dB') }),
-      e.flipped ? BARRY.ui.chip('set by hand', { kind: 'warn' }) : null,
+      /* THE CALL IS SHOWN, NOT SET. An event's identity comes from its
+         cluster -- the rule, a name, a margin -- and never from a button
+         on the event itself (asked for 2026-10-06). An older result whose
+         events were flipped by hand still says so. */
+      e.cls == null
+        ? BARRY.ui.chip('not measured, so no class', { extra: 'rc-ev-call' })
+        : BARRY.ui.chip(e.cls.toUpperCase() + (e.cluster != null
+            ? ' · cluster #' + (e.cluster + 1) : ''), {
+            kind: e.cls === 'ied' ? 'warn' : null, extra: 'rc-ev-call',
+            title: 'Its cluster’s call. An event’s identity follows its '
+                 + 'cluster; it is not set one event at a time.' }),
+      e.flipped ? BARRY.ui.chip('flipped by hand in an older result',
+                                { kind: 'warn' }) : null,
       e.partial ? BARRY.ui.chip('2 of 3 axes', { kind: 'warn' }) : null,
-      e.wide ? BARRY.ui.chip('widened search', { kind: 'warn' }) : null,
+      e.wide ? BARRY.ui.chip(e.retried ? 'found by searching again'
+                                       : 'widened search', { kind: 'warn' })
+             : null,
+      e.retried === false ? BARRY.ui.chip('searched again: none found',
+                                          { kind: 'warn' }) : null,
       el('span', { class: 'spacer' }),
       BARRY.ui.actions([
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: '◀ prev',
@@ -1628,13 +1888,14 @@ BARRY.rootcanal = (function () {
         BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'next ▶',
                           title: 'The next event. Or →.',
                           onclick: () => step(+1) }),
-        e.cls == null
-          ? el('span', { class: 'hint', text: 'not measured, so no class' })
-          : BARRY.ui.seg([
-              ['ds', 'DS', 'A dentate spike: kept in the set.'],
-              ['ied', 'IED', 'An interictal discharge: taken out of the set '
-                           + 'and banked as a candidate IED.'],
-            ], e.cls, (cls) => setClass(e.i, cls), { extra: 'rc-toggle' }),
+        canRetry(e) ? BARRY.ui.button({ kind: 'ghost', size: 'sm',
+          text: 'Search again, to ±' + hz(retryMs()) + ' ms',
+          extra: 'rc-retry-one',
+          title: 'Its half-width was not found within ±' + hz(shownParams()
+            .cross_ms) + ' ms. Searches this event again, out to the widest '
+            + 'the stored waveform allows; everything else keeps its '
+            + 'numbers.',
+          onclick: () => retryWider([e.i]) }) : null,
         BARRY.ui.button({ kind: 'ghost', size: 'sm',
           text: 'Open in Xplorefinder',
           title: 'The recording itself at this event, in a window of its '
@@ -1648,9 +1909,20 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'rc-pane rc-space-pane' }, [
       el('div', { class: 'rc-pane-head' }, [
         el('strong', { text: 'The space' }),
-        viewMode === 'pooled' ? poolChip() : modeChip(),
+        /* The same settings chip in both views, and in Pooled what it
+           pools beside it. */
+        modeChip(),
+        viewMode === 'pooled' ? poolChip() : null,
         el('span', { class: 'hint', text:
-          'z-scored · drag to turn · wheel to zoom · double-click to reset' }),
+          'z-scored · drag to turn · Shift-drag to lasso · wheel to zoom · '
+          + 'double-click to reset' }),
+        el('span', { class: 'spacer' }),
+        BARRY.ui.button({ kind: 'ghost', size: 'sm',
+          text: lassoMode ? 'Lasso: on' : 'Lasso',
+          extra: 'rc-lasso-toggle' + (lassoMode ? ' on' : ''),
+          title: 'When on, a drag on the 3D view draws round dots instead of '
+               + 'turning it. Shift-drag does the same either way.',
+          onclick: () => { lassoMode = !lassoMode; render(); } }),
       ]),
       el('canvas', { class: 'rc-canvas rc-space', id: 'rcSpace' }),
     ]);
@@ -1666,7 +1938,10 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'rc-pane rc-flats-pane' }, [
       el('div', { class: 'rc-pane-head' }, [
         el('strong', { text: 'Flat views' }),
-        viewMode === 'pooled' ? poolChip() : modeChip(),
+        /* The same settings chip in both views, and in Pooled what it
+           pools beside it. */
+        modeChip(),
+        viewMode === 'pooled' ? poolChip() : null,
         el('span', { class: 'hint', text: viewMode === 'pooled'
           ? 'pooled raw units · click a dot to open it'
           : 'raw units · drag a centre to move it' }),
@@ -1679,6 +1954,8 @@ BARRY.rootcanal = (function () {
   /* The event itself: four pictures of one event, from the read's own
      arrays. Nothing here is a thumbnail of something drawn elsewhere. */
   function eventPane() {
+    const A = curAvg();
+    if (A) return avgPane(A);
     const e = pickedEvent();
     if (!e) {
       return el('div', { class: 'rc-pane rc-event' }, [
@@ -2318,7 +2595,13 @@ BARRY.rootcanal = (function () {
   }
 
   function axisLabel(a, p) {
-    if (a === 0) return 'max amplitude · µV';
+    /* The amplitude is measured on the filtered trace, so it says which
+       filter -- the same number under another filter is another number. */
+    if (a === 0) {
+      const src = viewMode === 'pooled' ? poolShownParams()
+        : (p && p.filt ? p : shownParams());
+      return 'max amplitude on ' + filterWords(src, true) + ' · µV';
+    }
     if (a === 1) return 'half-width · ms';
     return hfLabel(p);
   }
@@ -2374,7 +2657,9 @@ BARRY.rootcanal = (function () {
       picked,
       fill: (e) => (singleColour === 'cluster' && e.cluster != null
                     ? cluColour(e.cluster) : colOf(e.cls)),
-      shape: () => null,
+      shape: (e) => (singleColour === 'cluster' && e.cluster != null
+                     ? cluShape(e.cluster) : null),
+      centreFill: (c) => cluFill(c.k, c.cls),
       alpha: () => 1,
       ringed: (e) => !!e.flipped,
       draggable: true,
@@ -2600,6 +2885,8 @@ BARRY.rootcanal = (function () {
     const dhi = items.length ? items[items.length - 1].d : 1;
     const shade = (d) => (dhi > dlo ? (d - dlo) / (dhi - dlo) : 1);
 
+    const taken = [];
+    const cLabels = {};
     for (const it of items) {
       if (it.kind === 'e') {
         const e = it.e;
@@ -2608,8 +2895,11 @@ BARRY.rootcanal = (function () {
         drawMark(g, k, it.P.x, it.P.y, r, e, it.mk,
                  (0.45 + 0.55 * near) * it.al, S);
       } else {
-        drawCentre(g, k, it.c, it.P.x, it.P.y);
+        cLabels[it.c.k] = drawCentre(g, k, it.c, it.P.x, it.P.y, S, taken);
       }
+    }
+    for (const cp of cpts) {
+      if (cLabels[cp.k]) { cp.label = cLabels[cp.k]; cp.fill = cLabels[cp.k].fill; }
     }
 
     // The picked one, on top of everything, in all four views.
@@ -2642,15 +2932,59 @@ BARRY.rootcanal = (function () {
       labels.push({ a: ax.a, text, x, y, w, lines: f.lines });
     }
 
-    GEOM.space = { w: s.w, h: s.h, cx, cy, scale, R, L,
+    /* The lasso being drawn, and the dots already drawn round. */
+    const selIds = new Set(lassoIds());
+    if (selIds.size) {
+      g.save();
+      g.strokeStyle = k.accent;
+      g.lineWidth = 1.4;
+      for (const pt of pts) {
+        if (!selIds.has(pt.i)) continue;
+        g.beginPath(); g.arc(pt.x, pt.y, 5.5, 0, 6.2832); g.stroke();
+      }
+      g.restore();
+    }
+    if (lasso && lasso.length > 1) {
+      g.save();
+      g.strokeStyle = k.accent;
+      g.lineWidth = 1.5;
+      g.setLineDash([4, 3]);
+      g.beginPath();
+      g.moveTo(lasso[0][0], lasso[0][1]);
+      for (const [lx, ly] of lasso.slice(1)) g.lineTo(lx, ly);
+      g.stroke();
+      g.restore();
+    }
+    GEOM.space = { w: s.w, h: s.h, cx, cy, scale, R, L, selected: selIds.size,
                    view: Object.assign({}, view), pts, centres: cpts,
                    axes: axes.map((ax, j) => Object.assign({}, ax,
                                                            { label: labels[j] })),
                    picked: pickedAt };
   }
 
-  function drawCentre(g, k, c, x, y) {
-    const col = colOf(c.cls);
+  /* Where a centre's label goes: to its right, else left, above or below,
+     whichever does not land on a label already drawn on this canvas. At
+     k = 6 four "DS centre" labels used to pile on one another. */
+  function placeLabel(g, text, x, y, taken) {
+    const w = g.measureText(text).width, h = 11;
+    const tries = [[x + 10, y + 3], [x - 10 - w, y + 3], [x - w / 2, y - 11],
+                   [x - w / 2, y + 18]];
+    const hit = (a, b) => !(a.x + a.w < b.x || b.x + b.w < a.x
+                            || a.y < b.y - b.h || b.y < a.y - a.h);
+    for (const [lx, ly] of tries) {
+      const r = { x: lx, y: ly, w, h };
+      if (!(taken || []).some((t) => hit(r, t))) {
+        if (taken) taken.push(r);
+        return r;
+      }
+    }
+    const r = { x: tries[0][0], y: tries[0][1], w, h };
+    if (taken) taken.push(r);
+    return r;
+  }
+
+  function drawCentre(g, k, c, x, y, S, taken) {
+    const col = S && S.centreFill ? S.centreFill(c) : colOf(c.cls);
     g.save();
     g.beginPath();
     g.moveTo(x, y - 8); g.lineTo(x + 8, y); g.lineTo(x, y + 8); g.lineTo(x - 8, y);
@@ -2666,8 +3000,12 @@ BARRY.rootcanal = (function () {
     g.setLineDash([]);
     g.fillStyle = k.text;
     g.font = FONT(9.5, true);
-    g.fillText((c.cls === 'ied' ? 'IED' : 'DS') + ' centre', x + 10, y + 3);
+    // Numbered as the chips are: "#3 IED" is the third cluster by HF power.
+    const text = '#' + ((c.k || 0) + 1) + ' ' + (c.cls === 'ied' ? 'IED' : 'DS');
+    const at = placeLabel(g, text, x, y, taken);
+    g.fillText(text, at.x, at.y);
     g.restore();
+    return { text, x: at.x, y: at.y, w: at.w, fill: col };
   }
 
   function ring(g, k, x, y) {
@@ -2802,15 +3140,26 @@ BARRY.rootcanal = (function () {
                  edge: !hx || !hy, alpha: al, fill: S.fill(e),
                  ringed: S.ringed(e) });
     }
+    // The dots drawn round in the 3D view, ringed here too.
+    const selF = new Set(lassoIds());
+    if (selF.size) {
+      g.strokeStyle = ink().accent;
+      g.lineWidth = 1.3;
+      for (const pt of pts) {
+        if (!selF.has(pt.i)) continue;
+        g.beginPath(); g.arc(pt.x, pt.y, 5, 0, 6.2832); g.stroke();
+      }
+    }
     g.restore();
     const cpts = [];
+    const takenF = [];
     for (const c of cs) {
       const vx = (c.raw || [])[xa], vy = (c.raw || [])[ya];
       if (vx == null || vy == null || !isFinite(vx) || !isFinite(vy)) continue;
       const x = Math.max(x0, Math.min(x1, X(vx)));
       const y = Math.max(y0, Math.min(y1, Y(vy)));
-      drawCentre(g, k, c, x, y);
-      cpts.push({ k: c.k, x, y, cls: c.cls });
+      const lab = drawCentre(g, k, c, x, y, S, takenF);
+      cpts.push({ k: c.k, x, y, cls: c.cls, label: lab, fill: lab.fill });
     }
     let pickedAt = null;
     if (S.picked != null) {
@@ -2875,6 +3224,20 @@ BARRY.rootcanal = (function () {
   const EPAD = { l: 42, r: 8, t: 10, b: 30 };
 
   function drawEvent() {
+    const A = curAvg();
+    if (A) {
+      const d = A.data && A.data.ok !== false && !A.busy ? A.data : null;
+      const dd = d || (A.err ? { ok: false, error: A.err } : null);
+      // A stand-in for "the picked event": the average's own contact, and
+      // nothing missing -- it is one mean trace, measured as one.
+      const pe = { contact: d ? d.trace.contact : null, missing: [],
+                   partial: false, wide: false, m: -1 };
+      drawTrace(d ? d.trace : null, pe, dd);
+      drawSpec(d ? d.spectrum : null, dd);
+      drawStack(d ? d.stack : null, pe, dd);
+      drawCsd(d ? d.csd : null, d ? d.stack : null, pe, dd);
+      return;
+    }
     const e = pickedEvent();
     if (!e) return;
     const d = viewMode === 'pooled' ? pool.evData : evData;
@@ -2939,7 +3302,13 @@ BARRY.rootcanal = (function () {
     const k = ink();
     if (!t) { waitText(s, k, d); return; }
     const g = s.g;
-    const ys = finite(t.y).concat(finite([t.baseline, t.peak_uV, t.half_uV]));
+    const sdv = t.sd || null;
+    const ys = finite(t.y).concat(finite([t.baseline, t.peak_uV, t.half_uV]))
+      .concat(sdv ? finite(t.y.map((v, j) => (v == null || sdv[j] == null ? null
+                                               : v + sdv[j])))
+                     .concat(finite(t.y.map((v, j) => (v == null || sdv[j] == null
+                                                       ? null : v - sdv[j]))))
+                  : []);
     let lo = Math.min.apply(null, ys), hi = Math.max.apply(null, ys);
     const pad = (hi - lo) * 0.08 || 1;
     lo -= pad; hi += pad;
@@ -2959,6 +3328,26 @@ BARRY.rootcanal = (function () {
       g.stroke();
     }
     g.setLineDash([]);
+    /* The spread round an average, ±1 SD: how alike the events were. */
+    if (sdv) {
+      g.fillStyle = k.accent;
+      g.globalAlpha = 0.16;
+      g.beginPath();
+      let started = false;
+      t.t_ms.forEach((ms, j) => {
+        const v = t.y[j], d2 = sdv[j];
+        if (v == null || d2 == null || !isFinite(v) || !isFinite(d2)) return;
+        if (started) g.lineTo(X(ms), Y(v + d2)); else { g.moveTo(X(ms), Y(v + d2)); started = true; }
+      });
+      for (let j = t.t_ms.length - 1; j >= 0; j--) {
+        const v = t.y[j], d2 = sdv[j];
+        if (v == null || d2 == null || !isFinite(v) || !isFinite(d2)) continue;
+        g.lineTo(X(t.t_ms[j]), Y(v - d2));
+      }
+      g.closePath();
+      g.fill();
+      g.globalAlpha = 1;
+    }
     g.strokeStyle = k.text;
     g.lineWidth = 1.2;
     g.beginPath();
@@ -3316,6 +3705,15 @@ BARRY.rootcanal = (function () {
     if (!S) return;
     const cv = e.target;
     const at = local(e, cv);
+    /* THE LASSO: Shift and drag on the 3D view -- or a plain drag while
+       the Lasso button is on -- draws round dots instead of turning. */
+    if (id === 'rcSpace' && (e.shiftKey || lassoMode)) {
+      press = { id, lasso: true, moved: false };
+      lasso = [[at.x, at.y]];
+      try { cv.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+      e.preventDefault();
+      return;
+    }
     press = { id, x: at.x, y: at.y, yaw: view.yaw, pitch: view.pitch,
               moved: false, centre: null };
     // A centre is taken hold of only where the view says it can be moved:
@@ -3333,6 +3731,15 @@ BARRY.rootcanal = (function () {
     const cv = document.getElementById(press.id);
     if (!cv) { press = null; return; }
     const at = local(e, cv);
+    if (press.lasso) {
+      const last = lasso[lasso.length - 1];
+      if ((at.x - last[0]) ** 2 + (at.y - last[1]) ** 2 >= 9) {
+        lasso.push([at.x, at.y]);
+        press.moved = true;
+        drawSpace();
+      }
+      return;
+    }
     const dx = at.x - press.x, dy = at.y - press.y;
     if (!press.moved && dx * dx + dy * dy < 9) return;
     press.moved = true;
@@ -3369,12 +3776,16 @@ BARRY.rootcanal = (function () {
     press = null;
     const cv = document.getElementById(p.id);
     if (!cv) return;
+    if (p.lasso) { finishLasso(); return; }
     if (p.id === 'rcSpace') {
       if (!p.moved) {
         const at = local(e, cv);
         const i = pickSpace(at.x, at.y);
         const S = scene();
-        if (i != null && S) S.onPick(i);
+        if (i != null && S) {
+          if (curAvg()) { if (viewMode === 'pooled') pool.avg = null; else avg = null; }
+          S.onPick(i);
+        }
       }
       return;
     }
@@ -3395,6 +3806,86 @@ BARRY.rootcanal = (function () {
       const S = scene();
       if (i != null && S) S.onPick(i);
     }
+  }
+
+  /* Whether a point is inside a drawn path (even-odd ray casting). */
+  function inPath(x, y, path) {
+    let inside = false;
+    for (let a = 0, b = path.length - 1; a < path.length; b = a++) {
+      const [xa, ya] = path[a], [xb, yb] = path[b];
+      if (((ya > y) !== (yb > y))
+          && (x < (xb - xa) * (y - ya) / ((yb - ya) || 1e-9) + xa)) inside = !inside;
+    }
+    return inside;
+  }
+
+  /* The dots inside the path, as the 3D view drew them. Only the dots that
+     are on show: in Pooled, a focus that dims the rest keeps them out. */
+  function finishLasso() {
+    const path = lasso || [];
+    lasso = null;
+    if (path.length < 3) { drawSpace(); return; }
+    const pts = ((GEOM.space || {}).pts || []).filter(
+      (pt) => (pt.alpha == null || pt.alpha > 0.5) && inPath(pt.x, pt.y, path));
+    setLassoSel(pts.map((pt) => pt.i));
+  }
+
+  function lassoIds() { return viewMode === 'pooled' ? pool.lassoSel : lassoSel; }
+  function setLassoSel(ids) {
+    if (viewMode === 'pooled') pool.lassoSel = ids; else lassoSel = ids;
+    render();
+  }
+
+  /* What can be done with dots drawn round: look at their average, or make
+     them a cluster of their own and call it DS or IED. */
+  function lassoBar() {
+    const ids = lassoIds();
+    const evs = ((scene() || {}).events || []).filter(
+      (e) => ids.indexOf(e.i) >= 0);
+    // Nothing drawn round, no bar: the 3D view's heading says how, and a
+    // line here pushed the event's own controls below the fold.
+    if (!evs.length) return null;
+    return el('div', { class: 'card rc-lasso-bar' }, [
+      el('strong', { text: evs.length + ' dot' + (evs.length === 1 ? '' : 's')
+                           + ' drawn round' }),
+      el('span', { class: 'spacer' }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Average them',
+        extra: 'rc-lasso-avg',
+        onclick: () => showAverage('the ' + evs.length + ' drawn round', evs) }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Make a DS cluster',
+        extra: 'rc-lasso-ds', onclick: () => addDrawn(evs, 'ds') }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Make an IED cluster',
+        extra: 'rc-lasso-ied', onclick: () => addDrawn(evs, 'ied') }),
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Clear',
+        extra: 'rc-lasso-clear', onclick: () => setLassoSel([]) }),
+    ]);
+  }
+
+  /* A drawn cluster: its events are held out of k-means and called as
+     drawn. A dot can be in one drawn cluster only -- the newer drawing
+     takes it -- and the request carries them, so the result rebuilds. */
+  function addDrawn(evs, call) {
+    if (viewMode === 'pooled') {
+      const mem = (pool.fit && pool.fit.members) || [];
+      const ids = evs.map((e) => [(mem[e.m] || {}).key, e.src_i]);
+      const keyOf = (x) => x[0] + '|' + x[1];
+      const mine = new Set(ids.map(keyOf));
+      pool.drawn = pool.drawn.map((g) => ({ call: g.call,
+        events: g.events.filter((x) => !mine.has(keyOf(x))) }))
+        .filter((g) => g.events.length);
+      pool.drawn.push({ events: ids, call });
+      pool.lassoSel = [];
+      runPool();
+      return;
+    }
+    const ids = evs.map((e) => e.i);
+    const mine = new Set(ids);
+    q.drawn = q.drawn.map((g) => ({ call: g.call,
+      events: g.events.filter((i) => !mine.has(i)) }))
+      .filter((g) => g.events.length);
+    q.drawn.push({ events: ids, call });
+    lassoSel = [];
+    refit();
   }
 
   function onWheel(e) {
@@ -3776,59 +4267,35 @@ BARRY.rootcanal = (function () {
   }
 
   function poolBody() {
-    const lo = String(pool.band_lo).trim(), hi = String(pool.band_hi).trim();
     return {
       members: pool.sel.map((m) => (m.params ? { key: m.key, params: m.params }
                                              : { key: m.key })),
       mouse_types: Object.assign({}, pool.types),
       focus: serverFocus(),
-      k: pool.k,
+      /* The SAME settings as Single: every member measured with them and
+         the pool clustered with them. Banked members measured another way
+         are re-measured from their reads, and marked. */
+      measure: {
+        filt: q.filt,
+        mains_out: presetOf(q.filt) ? presetOf(q.filt).mains_out : !!q.mains_out,
+        lo_hz: presetOf(q.filt) ? presetOf(q.filt).lo_hz : +q.lo_hz,
+        hi_hz: presetOf(q.filt) ? presetOf(q.filt).hi_hz : +q.hi_hz,
+        win_ms: +q.win_ms, cross_ms: +q.cross_ms,
+        band_lo: +q.band_lo, band_hi: +q.band_hi,
+      },
+      k: +q.k,
+      complete_only: !!q.complete_only,
       cluster_calls: Object.assign({}, pool.cluster_calls),
       margin: pool.margin ? Object.assign({}, pool.margin) : null,
-      /* The pool's own HF band, when both edges are given; otherwise every
-         member keeps the band it was fitted with. */
-      band: (lo !== '' && hi !== '') ? [Number(lo), Number(hi)] : null,
-      complete_only: !!pool.complete_only,
+      drawn: pool.drawn.map((g) => ({ events: g.events.map((x) => x.slice()),
+                                      call: g.call })),
+      /* The saved version this pool was opened from. A member whose read is
+         on another machine is pooled from it, as it was saved -- so a pool
+         saved where its members were read works anywhere for everything
+         that does not measure them again. */
+      saved: pool.open && pool.open.source
+        ? Object.assign({}, pool.open.source) : null,
     };
-  }
-
-  /* The pool's own settings, beside its Pool button: how many clusters,
-     its HF band, and whether events missing an axis are kept. Each marks
-     the picture as changed; Pool applies them. */
-  function poolSettings() {
-    const mark = () => { pool.dirty = true; render(); };
-    const bandIn = (key, ph) => el('input', {
-      type: 'number', class: 'rc-in rc-pool-band', min: '0',
-      max: String(BAND_MAX), step: 'any', placeholder: ph,
-      value: String(pool[key]),
-      title: 'The pool’s own HF band. Every member is measured over it '
-           + '(from its read -- no recording is read again); a banked member '
-           + 'fitted over another band is re-measured and marked. Leave both '
-           + 'empty to keep each member’s own band. Stops at ' + BAND_MAX
-           + ' Hz, the anti-alias corner.',
-      onchange: (e) => {
-        const v = clampTo(e.target.value, 0, BAND_MAX);
-        e.target.value = v; pool[key] = v; mark();
-      },
-    });
-    return el('div', { class: 'rc-pool-settings' }, [
-      el('span', { class: 'rc-group-l', text: 'Clusters' }),
-      kControl(pool.k, (v) => { pool.k = v; pool.cluster_calls = {}; mark(); },
-               pool.margin ? marginNick(pool.margin) : null),
-      el('span', { class: 'rc-group-l', text: 'HF band' }),
-      bandIn('band_lo', 'own'), el('span', { class: 'rc-num-u', text: '–' }),
-      bandIn('band_hi', 'own'), el('span', { class: 'rc-num-u', text: 'Hz' }),
-      el('label', { class: 'rc-num rc-complete',
-        title: 'Leave out every event missing an axis -- a half-width that '
-             + 'never came back to half amplitude, an HF window too near an '
-             + 'edge -- instead of placing it on the two it has. Not scaled, '
-             + 'clustered, tested or drawn; the count is said.' }, [
-        el('input', { type: 'checkbox',
-          checked: pool.complete_only ? 'checked' : null,
-          onchange: (e) => { pool.complete_only = e.target.checked; mark(); } }),
-        el('span', { class: 'rc-num-l', text: 'only events measured on all 3 axes' }),
-      ]),
-    ]);
   }
 
   function poolMarginCtx() {
@@ -3871,6 +4338,10 @@ BARRY.rootcanal = (function () {
     const mine = ++pool.gen;
     const body = poolBody();
     pool.lastBody = body;
+    /* A pooled dot's id is its place in the pool, which a refit can move
+       (complete events only, a member in or out): dots drawn round are let
+       go rather than left pointing at different ones. */
+    pool.lassoSel = [];
     pool.fitting = true;
     tickBusy();
     let got;
@@ -4024,6 +4495,7 @@ BARRY.rootcanal = (function () {
 
   function poolShape(e) {
     const mode = pool.colour;
+    if (mode === 'cluster') return e.cluster != null ? cluShape(e.cluster) : null;
     if (mode === 'recording' || mode === 'mouse' || mode === 'type') {
       return catStyle(catKey(e, mode), mode).shape;
     }
@@ -4094,6 +4566,7 @@ BARRY.rootcanal = (function () {
       picked: pool.picked,
       fill: poolFill,
       shape: poolShape,
+      centreFill: (c) => cluFill(c.k, c.cls),
       alpha: (e) => (inFocus(e) ? 1 : 0.12),
       /* Ringed where pooling changed its mind, in every colour mode. */
       ringed: (e) => !!e.switched,
@@ -4156,15 +4629,18 @@ BARRY.rootcanal = (function () {
     return !(c && c.here === false);
   }
 
-  const AWAY = 'This member’s read is not on this machine: it was banked '
-             + 'from a read made elsewhere, so its pooled numbers are here and '
-             + 'its trace is not. Open it in Single on the machine that read it.';
+  function awayText(m) {
+    return 'This member’s read is not on this machine'
+      + (m && m.read_on ? ': it was read on ' + m.read_on : '')
+      + ', so its pooled numbers are here and its trace is not. Open it in '
+      + 'Single on the machine that read it.';
+  }
 
   function poolEventNote() {
     const e = poolPicked();
     if (!e) return null;
     const m = poolMember(e);
-    if (m && !memberHere(m)) return AWAY;
+    if (m && !memberHere(m)) return awayText(m);
     if (pool.evFor === pool.picked && pool.evData && pool.evData.ok === false) {
       return pool.evData.error;
     }
@@ -4177,7 +4653,7 @@ BARRY.rootcanal = (function () {
     if (!e) return;
     const m = poolMember(e);
     if (!memberHere(m)) {
-      pool.evData = { ok: false, error: AWAY };
+      pool.evData = { ok: false, error: awayText(m) };
       pool.evFor = j;
       swap('.rc-event', eventPane());
       drawEvent();
@@ -4242,6 +4718,8 @@ BARRY.rootcanal = (function () {
     }
     box.appendChild(shelfCard());
     if (pool.open || pool.fit || pool.sel.length) box.appendChild(openPoolCard());
+    /* The same controls bar as Single: one set of settings for both views. */
+    box.appendChild(controlsBar());
     box.appendChild(membersCard());
     /* Always in the tree, so the first pool -- half a minute cold -- has a
        line to say so in. Before, it only existed inside the workbench, and
@@ -4358,7 +4836,10 @@ BARRY.rootcanal = (function () {
       + ' ms, ' + hz(sp.band_lo) + '–' + hz(sp.band_hi) + ' Hz. Only sets '
       + 'that have been through Braces are offered.' }));
     const cs = pool.cands || [];
-    if (!cs.length && !pool.candsErr) {
+    // Members of the opened pool that this machine does not offer: read on
+    // another machine, pooled from the save.
+    const fromSave = (pool.savedMembers || []).filter((m) => !candOf(m.key));
+    if (!cs.length && !fromSave.length && !pool.candsErr) {
       kids.push(el('div', { class: 'empty-state rc-pool-empty' }, [
         el('p', { text: 'Nothing can be pooled yet. Bank a set in Single, or '
                       + 'read one there: a read cached on this machine can '
@@ -4366,7 +4847,7 @@ BARRY.rootcanal = (function () {
       ]));
     }
     const sel = new Set(pool.sel.map((m) => m.key));
-    if (cs.length) {
+    if (cs.length || fromSave.length) {
       kids.push(el('table', { class: 'tbl rc-pool-cands' }, [
         el('thead', {}, [el('tr', {}, ['', 'recording', 'mouse', 'type',
                                        'kind', 'events']
@@ -4401,17 +4882,61 @@ BARRY.rootcanal = (function () {
                unbanked read is fitted when it is pooled, not to draw a list. */
             el('td', { text: String(c.n != null ? c.n : '') }),
           ]);
-        })),
+        }).concat(fromSave.map((m) => {
+          const fm = poolMemberByKey(m.key) || m;
+          const where = fm.read_on || 'another machine';
+          return el('tr', { class: (sel.has(m.key) ? 'on ' : '') + 'rc-from-save',
+                            'data-key': m.key }, [
+            el('td', {}, [el('input', {
+              type: 'checkbox', class: 'rc-pool-pick',
+              checked: sel.has(m.key) ? 'checked' : null,
+              onchange: (ev2) => toggleMember(m.key, ev2.target.checked),
+            })]),
+            el('td', { text: m.session_label || m.entry_id }),
+            el('td', { text: m.mouse_key || '' }),
+            el('td', { text: typeFor(m.mouse_key, m.mouse_type_default
+                                                  || m.mouse_type) }),
+            el('td', {}, [
+              m.banked
+                ? BARRY.ui.chip('banked', { flag: true })
+                : BARRY.ui.chip('not banked', { flag: true, kind: 'warn' }),
+              BARRY.ui.chip('read on ' + where, { flag: true,
+                extra: 'rc-read-on',
+                title: 'Its read is on ' + where + ', not here. Its numbers '
+                     + 'come from the saved pool, exactly as they were saved, '
+                     + 'so it pools as saved. Measuring it another way needs '
+                     + 'its read.' }),
+            ]),
+            el('td', { text: String(m.n != null ? m.n : '') }),
+          ]);
+        }))),
       ]));
     }
-    // Members of an opened pool that this machine does not offer.
+    /* Members of an opened pool that this machine does not offer. They
+       pool from the saved version, number for number, so everything that
+       works on numbers works; what would measure them again cannot. */
     const missing = pool.sel.filter((m) => !candOf(m.key));
     if (missing.length) {
-      kids.push(el('p', { class: 'hint rc-warn', text:
-        missing.length + ' member' + (missing.length === 1 ? '' : 's')
-        + ' of this pool ' + (missing.length === 1 ? 'is' : 'are') + ' not among '
-        + 'what this machine can pool. They stay in the pool as saved; pooling '
-        + 'again here would need them.' }));
+      const one_ = missing.length === 1;
+      const src = pool.open && pool.open.source;
+      const wh = Array.from(new Set(missing.map((m) =>
+        (poolMemberByKey(m.key) || {}).read_on).filter(Boolean)));
+      kids.push(el('p', { class: 'hint rc-from-save-note', text:
+        missing.length + ' member' + (one_ ? '' : 's') + ' of this pool '
+        + (one_ ? 'was' : 'were') + ' read on '
+        + (wh.length ? wh.join(' and ') : 'another machine') + ', so '
+        + (one_ ? 'its read is' : 'their reads are') + ' not here. '
+        + (src
+          ? (one_ ? 'It pools' : 'They pool') + ' from v' + src.version
+            + (pool.open.nickname ? ' of ‘' + pool.open.nickname + '’' : '')
+            + ', number for number as saved: k, calls, focus, margins and '
+            + 'drawn clusters all work. Measuring ' + (one_ ? 'it' : 'them')
+            + ' another way (filter, window, half-width search, HF band) '
+            + 'needs ' + (one_ ? 'its read' : 'their reads') + ', and '
+            + (one_ ? 'its traces open' : 'their traces open') + ' only where '
+            + (one_ ? 'it was' : 'they were') + ' read.'
+          : 'Pooling again here would need ' + (one_ ? 'it' : 'them')
+            + '.') }));
     }
 
     /* Mouse type, per mouse in the pool: the registry's filing unless
@@ -4419,7 +4944,11 @@ BARRY.rootcanal = (function () {
        suggestions. The override is the pool's, not the registry's. */
     const mice = new Map();
     for (const m of pool.sel) {
-      const c = candOf(m.key);
+      // A member pooled from the save is still a mouse whose type can be
+      // set: what the save knew of it stands in for a candidate.
+      const sm = (pool.savedMembers || []).find((x) => x.key === m.key);
+      const c = candOf(m.key) || (sm && { mouse_key: sm.mouse_key,
+        mouse_type: sm.mouse_type_default || sm.mouse_type });
       if (c && c.mouse_key && !mice.has(c.mouse_key)) mice.set(c.mouse_key, c);
     }
     if (mice.size) {
@@ -4451,7 +4980,6 @@ BARRY.rootcanal = (function () {
       kids.push(el('p', { class: 'hint rc-warn rc-pool-refused',
                           text: 'Not pooled: ' + pool.fitErr }));
     }
-    kids.push(poolSettings());
     kids.push(BARRY.ui.actions([
       el('span', { class: 'hint', text: pool.sel.length + ' recording'
         + (pool.sel.length === 1 ? '' : 's') + ' ticked, ' + nMice + ' mice'
@@ -4474,7 +5002,7 @@ BARRY.rootcanal = (function () {
     const f = pool.fit && pool.fit.ok ? pool.fit : null;
     const n = f ? (f.members || []).length : 0;
     return el('span', {
-      class: 'rc-chip' + (pool.dirty ? ' rc-chip-stale' : ''),
+      class: 'rc-chip rc-pool-chip' + (pool.dirty ? ' rc-chip-stale' : ''),
       title: pool.dirty ? 'The members or the types have changed since this '
                         + 'picture. Pool again to see them.'
                         : 'What this picture pools, and on what scale.',
@@ -4497,6 +5025,7 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'rc-work rc-pool-work' }, [
       poolTop(),
       poolClusterBar(),
+      lassoBar(),
       poolPickBar(),
       poolLegend(),
       el('div', { class: 'rc-main' }, [spacePane(), flatsPane(), eventPane()]),
@@ -4530,9 +5059,20 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'card rc-pool-clusters' }, [
       el('div', { class: 'chip-row' }, notes),
       clusterChips(f && f.clusters,
-        (rank, call) => { pool.cluster_calls[String(rank)] = call; runPool(); },
+        (rank, call) => {
+          const dj = rank - ((f && f.k) || 0);
+          if (dj >= 0 && pool.drawn[dj]) pool.drawn[dj].call = call;
+          else pool.cluster_calls[String(rank)] = call;
+          runPool();
+        },
         () => { pool.cluster_calls = {}; runPool(); },
-        ((f && f.clusters) || []).some((x) => x.call_by === 'hand')),
+        ((f && f.clusters) || []).some((x) => x.call_by === 'hand'),
+        { onAvg: (c) => showAverage('pooled cluster #' + (c.rank + 1) + ' '
+                                     + c.call.toUpperCase(),
+                                     poolEvents().filter(
+                                       (e) => e.cluster === c.rank)),
+          onRemove: (c) => { pool.drawn.splice(c.rank - ((f && f.k) || 0), 1);
+                             runPool(); } }),
       marginCard(poolMarginCtx()),
     ].filter(Boolean));
   }
@@ -4638,7 +5178,7 @@ BARRY.rootcanal = (function () {
           title: memberHere(m)
             ? 'That recording at this event, in a window of its own that '
               + 'follows as you step.'
-            : AWAY,
+            : awayText(m),
           onclick: openInXplore }),
       ], { extra: 'rc-acts' }),
     ].filter(Boolean));
@@ -5002,14 +5542,19 @@ BARRY.rootcanal = (function () {
       onBank: async ({ name, note }) => {
         const nick = String(name || '').trim();
         if (!nick) throw new Error('A pool needs a label to be saved under.');
-        rep = await apiPost('/api/rootcanal/pool/save', {
-          artifact_id: pool.open ? pool.open.artifact_id : null,
-          nickname: nick,
-          members: poolBody().members,
-          mouse_types: Object.assign({}, pool.types),
-          focus: pool.focus,
-          note: note || '',
-        });
+        /* EVERYTHING THE PICTURE WAS MADE WITH. This sent the members,
+           the types and the focus alone, and the server refitted at its
+           defaults: a pool shown at k = 1 was saved at k = 2, and its
+           relabels, margin, drawn clusters and measurement were lost. */
+        rep = await apiPost('/api/rootcanal/pool/save', Object.assign(
+          poolBody(), {
+            artifact_id: pool.open ? pool.open.artifact_id : null,
+            nickname: nick,
+            // The whole focus, a recording's included: it is the saved
+            // pool's to reopen with, not only the server's second test.
+            focus: pool.focus,
+            note: note || '',
+          }));
       },
     }).then((ok) => {
       if (!ok || !rep) return null;
@@ -5023,7 +5568,9 @@ BARRY.rootcanal = (function () {
       artifact_id: rep.artifact_id, version: rep.version,
       nickname: rep.nickname, name: rep.name,
       by: (pool.open && pool.open.by) || null, updated: null,
+      source: { artifact_id: rep.artifact_id, version: rep.version },
     };
+    pool.savedMembers = ((pool.fit && pool.fit.members) || []).slice();
     toast(rep.confirmed
       ? 'Nothing has changed since v' + rep.version + ' of ‘' + rep.nickname
         + '’, so that version is confirmed rather than a new one made.'
@@ -5062,24 +5609,40 @@ BARRY.rootcanal = (function () {
     pool.types = Object.assign({}, pay.mouse_types || {});
     pool.focus = pay.focus || null;
     const pp = pay.params || {};
-    pool.k = pp.k || 2;
     pool.cluster_calls = Object.assign({}, pp.cluster_calls || {});
-    pool.complete_only = !!pp.complete_only;
+    pool.drawn = (pp.drawn || []).map((g) => ({ call: g.call,
+      events: (g.events || []).map((x) => x.slice()) }));
+    pool.avg = null; pool.lassoSel = [];
+    /* The settings are shared, so a saved pool brings its own back into
+       them -- the controls then say what the reopened picture was made
+       with, in both views. */
+    const ms = pp.measure || {};
+    const back = { k: pp.k || 2, complete_only: !!pp.complete_only };
+    for (const key of ['filt', 'mains_out', 'lo_hz', 'hi_hz', 'win_ms',
+                       'cross_ms', 'band_lo', 'band_hi']) {
+      if (ms[key] != null) back[key] = ms[key];
+    }
+    for (const key of Object.keys(back)) {
+      q[key] = asParam(key, back[key]);
+      pend[key] = q[key];
+    }
     const mu = pay.margin_used;
     pool.margin = mu ? { artifact_id: mu.artifact_id, version: mu.version,
                          mode: mu.mode || 'fixed' } : null;
     /* The band reopens as the pool's own only when it set one: a pool that
        kept each member's band saved that band in params all the same. */
-    // `band_pool` is the server's record that the pool set its own band.
-    pool.band_lo = pp.band_pool && pp.band ? String(pp.band[0]) : '';
-    pool.band_hi = pp.band_pool && pp.band ? String(pp.band[1]) : '';
+
     pool.open = {
       artifact_id: art.artifact_id || art.id || id,
       version: art.version != null ? art.version : pay.version,
       nickname: art.nickname || '', name: art.name || '',
       by: art.by || (art.added || {}).by || null,
       updated: art.updated || null,
+      // The version actually opened, which holds these members' numbers.
+      source: { artifact_id: art.artifact_id || art.id || id,
+                version: got.version != null ? got.version : version },
     };
+    pool.savedMembers = (pay.members || []).slice();
     BARRY.activity.log('rootcanal.pool_open', { artifact: pool.open.artifact_id,
                                                 version: pool.open.version });
     render();
@@ -5090,6 +5653,11 @@ BARRY.rootcanal = (function () {
     pool.sel = []; pool.types = {}; pool.focus = null;
     pool.fit = null; pool.evs = null; pool.saved = false; pool.dirty = false;
     pool.open = null; pool.picked = null; pool.evData = null; pool.evFor = null;
+    // And what was drawn and called on it: the next pool's clusters are
+    // its own.
+    pool.savedMembers = []; pool.drawn = []; pool.cluster_calls = {};
+    pool.margin = null; pool.marginErr = null; pool.avg = null;
+    pool.lassoSel = []; pool.fitErr = null;
     render();
   }
 
@@ -5212,6 +5780,12 @@ BARRY.rootcanal = (function () {
     _setMargin: (ref) => { q.margin = ref; marginErr = null; refit(); },
     _marginErr: () => marginErr,
     _relabel: (rank, call) => { q.cluster_calls[String(rank)] = call; refit(); },
+    _avg: () => curAvg(),
+    _showAverage: showAverage,
+    _lasso: (path) => { lasso = path.map((p2) => p2.slice()); finishLasso();
+                        return lassoIds().slice(); },
+    _lassoSel: () => lassoIds().slice(),
+    _drawn: () => (viewMode === 'pooled' ? pool.drawn : q.drawn),
     _singleColour: (v) => { if (v) { singleColour = v; render(); }
                             return singleColour; },
     _viewMode: () => viewMode,

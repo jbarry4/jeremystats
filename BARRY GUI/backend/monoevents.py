@@ -121,7 +121,10 @@ def params_of(raw=None):
 
 
 def digest(p):
+    """The settings and the histology they were found under: a change of
+    either is a different set of results."""
     keep = {k: (round(v, 6) if isinstance(v, float) else v) for k, v in sorted(p.items())}
+    keep["histology"] = MO.HISTO_RULE
     return hashlib.sha1(json.dumps(keep, sort_keys=True).encode()).hexdigest()[:12]
 
 
@@ -423,7 +426,9 @@ def run_day(day, p, check=None, say=None):
             wire = c
             break
     if wire is None:
-        out["why"] = "no wire of %s reads cleanly in this session" % p["region"]
+        out["why"] = ((day.get("blocked") or {}).get(p["region"])
+                      or "no wire of %s reads cleanly in this session"
+                      % p["region"])
         return out
     say("finding events")
     events, med, mad = detect(x, ok, p, t0=span[0])
@@ -573,7 +578,17 @@ def report(p, man):
                                         for w, v in rate.items()},
                        "regions": regs}
     todo = sum(1 for x in days if not x["done"])
+    # In the Monolith's names (Left POR-SUB).
+    for x in days:
+        if x.get("regions"):
+            x["regions"] = {MO.label(n): r for n, r in x["regions"].items()}
+        if x.get("order"):
+            x["order"] = [MO.label(n) for n in x["order"]]
+    for v in pooled.values():
+        v["regions"] = {MO.label(n): r for n, r in v["regions"].items()}
+    names = [MO.label(n) for n in names]
     return {"params": p, "digest": digest(p), "defaults": DEFAULTS, "regions": names,
+            "histology": MO.HISTO_SAY,
             "days": days, "pooled": pooled, "todo": todo, "window_say": WINDOW_SAY,
             "out_fs": OUT_FS, "snip_s": SNIP_S,
             "estimate_s": int(todo * 45)}

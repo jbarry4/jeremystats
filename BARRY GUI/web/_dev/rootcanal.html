@@ -298,12 +298,15 @@ const ENTRY = '46fd29a77cc7';
   const has = (id, re) => (txt[id] || []).some((t) => re.test(t)
                                                     || t.indexOf(re) >= 0);
   const hasS = (id, s) => (txt[id] || []).some((t) => t.indexOf(s) >= 0);
-  ok('the space names amplitude', hasS('rcSpace', 'max amplitude · µV'),
-     JSON.stringify(txt.rcSpace || []).slice(0, 200));
+  /* Amplitude is measured on the filtered trace, so its axis says which
+     filter: the default here is LFP. */
+  const ampSaid = 'max amplitude on LFP 1–100 Hz · µV';
+  ok('the space names amplitude, and the filter it was measured on',
+     hasS('rcSpace', ampSaid), JSON.stringify(txt.rcSpace || []).slice(0, 200));
   ok('and half-width', hasS('rcSpace', 'half-width · ms'));
   ok('and power, with its band and its reference', hasS('rcSpace', hfSaid));
-  for (const [id, a, b] of [['rcFlatAH', 'max amplitude · µV', 'half-width · ms'],
-                            ['rcFlatAP', 'max amplitude · µV', hfSaid],
+  for (const [id, a, b] of [['rcFlatAH', ampSaid, 'half-width · ms'],
+                            ['rcFlatAP', ampSaid, hfSaid],
                             ['rcFlatHP', 'half-width · ms', hfSaid]]) {
     ok(id + ' labels both of its axes', hasS(id, a) && hasS(id, b),
        JSON.stringify(txt[id] || []).slice(0, 200));
@@ -561,8 +564,10 @@ const ENTRY = '46fd29a77cc7';
   const mainsBox = D().querySelector('.rc-mains input');
   if (mainsBox && mainsBox.checked) mainsBox.click();
   ev(RC + '._recompute()');
+  // The mains box applied at once, on the old corners; Recompute then sends
+  // the typed ones -- wait for those.
   await until(() => st().fit && st().fit.params.filt === 'custom'
-                    && !st().fitting, 30000, 'custom');
+                    && st().fit.params.lo_hz === 3 && !st().fitting, 30000, 'custom');
   const cp = st().fit.params;
   ok('custom reaches the server with its own corners and the box as set',
      cp.lo_hz === 3 && cp.hi_hz === 150 && cp.mains_out === false,
@@ -594,10 +599,11 @@ const ENTRY = '46fd29a77cc7';
   ok('two by default', !!kBtn(2) && kBtn(2).classList.contains('active')
      && st().fit.k === 2);
   kBtn(3).click();
-  await sleep(100);
-  ok('a new k waits for Recompute', ev(RC + '._pending()') === true);
-  ev(RC + '._recompute()');
+  /* A click is applied at once: k is a button, its fit is a tenth of a
+     second, and waiting for Recompute read as the picture not updating. */
   await until(() => st().fit && st().fit.k === 3 && !st().fitting, 30000, 'k = 3');
+  ok('k is applied the moment it is pressed, without Recompute',
+     st().fit.k === 3 && ev(RC + '._pending()') === false);
   eq('k = 3 reaches the fit', ev(RC + '._lastBody()').k, 3);
   eq('three clusters come back', (st().fit.clusters || []).length, 3);
   ok('ranked by HF power, lowest first',
@@ -625,8 +631,71 @@ const ENTRY = '46fd29a77cc7';
   ok('and is', st().fit.clusters.every((c) => c.call_by === 'rule'));
   ok('the dots can be coloured by cluster',
      !!D().querySelector('.rc-colour-by'));
+  /* COLOURS THAT MATCH, at k = 3. A chip, its centre and its dots say
+     one colour, in either colour mode; centres are numbered as the chips
+     are; no centre label lands on another. */
+  const kTok = (t) => ev('BARRY.token(' + JSON.stringify(t) + ')');
+  /* Colours compared through a canvas, which writes any colour the same
+     way -- a token's hex and a swatch's rgb() come out alike. */
+  const kNorm = (c) => { const g2 = D().createElement('canvas').getContext('2d');
+                         g2.fillStyle = '#000'; g2.fillStyle = c; return g2.fillStyle; };
+  const kColourOk = () => {
+    const gm = geom();
+    const chips = Array.from(D().querySelectorAll('.rc-why .rc-clu'));
+    return st().fit.clusters.every((c, r) => {
+      const sw = chips[r] && chips[r].querySelector('.rc-swatch');
+      const cen = ((gm.space || {}).centres || []).find((x) => x.k === r);
+      return !!(sw && cen && kNorm(sw.style.backgroundColor) === kNorm(cen.fill));
+    });
+  };
+  ok('each chip’s swatch is its centre’s colour, by call', kColourOk());
+  ok('and by call that is the call’s colour',
+     ((geom().space || {}).centres || []).every((c) =>
+       c.fill === (c.cls === 'ied' ? kTok('--err') : kTok('--ok'))),
+     JSON.stringify(((geom().space || {}).centres || []).map((c) => c.fill)));
+  ev(RC + '._singleColour("cluster")');
+  await sleep(150);
+  ok('by cluster, chip, centre and dots share each cluster’s colour',
+     kColourOk() && ((geom().space || {}).centres || []).every((c) =>
+       c.fill === kTok('--c' + ((c.k % 4) + 1))));
+  ev(RC + '._singleColour("call")');
+  ok('centres are numbered as the chips are',
+     ((geom().space || {}).centres || []).map((c) => c.label && c.label.text)
+       .join() === '#1 DS,#2 DS,#3 IED',
+     JSON.stringify(((geom().space || {}).centres || []).map((c) => c.label)));
+  kBtn(6).click();
+  await until(() => st().fit && st().fit.k === 6 && !st().fitting, 30000, 'k = 6');
+  await sleep(150);
+  const kOverlap = (labs) => labs.some((a, i) => labs.some((b, j) => j > i
+    && !(a.x + a.w < b.x || b.x + b.w < a.x || a.y < b.y - 11 || b.y < a.y - 11)));
+  const gm6 = geom();
+  ok('at k = 6 no centre label lands on another, in any view',
+     !kOverlap(((gm6.space || {}).centres || []).map((c) => c.label).filter(Boolean))
+     && Object.values(gm6.flats || {}).every((f) =>
+       !kOverlap((f.centres || []).map((c) => c.label).filter(Boolean))),
+     JSON.stringify(Object.values(gm6.flats || {}).map((f) =>
+       (f.centres || []).map((c) => c.label && [c.label.text,
+         Math.round(c.label.x), Math.round(c.label.y)]))).slice(0, 300));
+
+  /* Complete events only, in Single too -- the same switch Pooled has. */
+  const kComplete = D().querySelector('.rc-controls .rc-complete input');
+  ok('Single has the complete-events switch Pooled has', !!kComplete);
+  kBtn(2).click();
+  await until(() => st().fit && st().fit.k === 2 && !st().fitting, 30000, 'k = 2');
+  const kPartial = st().fit.counts.partial;
+  if (kComplete) {
+    D().querySelector('.rc-controls .rc-complete input').click();
+    await until(() => st().fit && st().fit.params.complete_only === true
+                      && !st().fitting, 30000, 'complete only');
+    ok('applied at once: events on two axes are left out, and counted so',
+       st().fit.counts.excluded === kPartial && st().fit.counts.partial === 0
+       && kPartial > 0, JSON.stringify(st().fit.counts));
+    D().querySelector('.rc-controls .rc-complete input').click();
+    await until(() => st().fit && st().fit.params.complete_only === false
+                      && !st().fitting, 30000, 'back');
+  }
+
   kBtn(1).click();
-  ev(RC + '._recompute()');
   await until(() => st().fit && st().fit.k === 1 && !st().fitting, 30000, 'k = 1');
   ok('k = 1 is no split: nothing called IED, and it says why',
      st().fit.counts.ied === 0 && /no split/.test(st().fit.rule), st().fit.rule);
@@ -680,10 +749,155 @@ const ENTRY = '46fd29a77cc7';
      + ' delete W.__rkBd; } })()');
 
   kBtn(2).click();
-  ev(RC + '._recompute()');
   await until(() => st().fit && st().fit.k === 2 && !st().fitting, 30000, 'k = 2');
   eq('back at k = 2 the answer is the one it was',
      JSON.stringify(st().fit.counts), kBefore);
+
+  /* ================================================================== */
+  head('A MISSING HALF-WIDTH, SEARCHED AGAIN WIDER ON REQUEST');
+
+  await until(() => st().fit && st().fit.k === 2 && !st().fitting, 30000, 'k = 2');
+  const rMiss = st().fit.events.filter((e) => e.amp_uV != null && e.hw_ms == null);
+  ok('this set has events with an amplitude and no half-width',
+     rMiss.length > 0, rMiss.length);
+  const rAll = D().querySelector('.rc-why .rc-retry-all');
+  ok('the card offers to search them all again, and says how many and how far',
+     !!rAll && new RegExp('Search the ' + rMiss.length + ' with no half-width '
+                          + 'again, to ±200 ms').test(rAll.textContent),
+     rAll && rAll.textContent);
+  ev(RC + '._pick(' + rMiss[0].i + ')');
+  await until(() => D().querySelector('.rc-pickbar .rc-retry-one'), 8000,
+              'the one-event button');
+  ok('a picked event with no half-width offers it for itself',
+     /Search again, to ±200 ms/.test(
+       (D().querySelector('.rc-pickbar .rc-retry-one') || {}).textContent || ''));
+  const rOther = st().fit.events.filter((e) => e.hw_ms != null)
+    .map((e) => [e.i, e.hw_ms]);
+  rAll.click();
+  await until(() => !st().fitting && st().fit.events
+    .some((e) => e.retried != null), 30000, 'the retry');
+  eq('the request names exactly those events', ev(RC + '._lastBody()').retry,
+     rMiss.map((e) => e.i));
+  const rNow = st().fit.events.filter((e) => rMiss.some((m) => m.i === e.i));
+  ok('each is marked searched again, found or not',
+     rNow.every((e) => e.retried === true || e.retried === false));
+  ok('a found one has its half-width, and is marked as widened',
+     rNow.filter((e) => e.retried).every((e) => e.hw_ms != null && e.wide),
+     JSON.stringify(rNow.map((e) => [e.i, e.retried, e.hw_ms])));
+  ok('every other event keeps its half-width exactly', rOther.every(
+    ([i, hw]) => st().fit.events.find((e) => e.i === i).hw_ms === hw));
+  ok('the rule says how many were searched again, and how far',
+     /searched again to ±200 ms found a half-width/.test(st().fit.rule),
+     st().fit.rule);
+  ok('and the button is gone, nothing left to search',
+     !D().querySelector('.rc-why .rc-retry-all'));
+  ev(RC + '._pick(' + rMiss[0].i + ')');
+  await until(() => D().querySelector('.rc-pickbar'), 5000, 'the bar');
+  ok('the event’s bar says it was found by searching again',
+     !rNow[0].retried || /found by searching again/.test(
+       D().querySelector('.rc-pickbar').textContent));
+
+  /* ================================================================== */
+  head('AVERAGES, THE LASSO AND CLUSTERS DRAWN BY HAND');
+
+  await until(() => st().fit && st().fit.k === 2 && !st().fitting, 30000, 'k = 2');
+  eq('every cluster chip has its average',
+     D().querySelectorAll('.rc-why .rc-clu-avg').length, st().fit.clusters.length);
+  const gIed = st().fit.clusters.find((c) => c.call === 'ied');
+  D().querySelectorAll('.rc-why .rc-clu-avg')[gIed.rank].click();
+  await until(() => ev(RC + '._avg()') && !ev(RC + '._avg()').busy, 30000, 'the average');
+  const gA = ev(RC + '._avg()');
+  ok('the average arrives', gA && gA.data && gA.data.ok !== false,
+     gA && (gA.err || ''));
+  eq('over every event in the cluster', gA.data.n, gIed.n);
+  ok('its trace carries its spread, point for point',
+     gA.data.trace.sd.length === gA.data.trace.y.length && gA.data.trace.n > 0);
+  ok('and its stack and CSD are there', gA.data.stack.rows.length > 0
+     && gA.data.csd.rows.length > 0);
+  await until(() => D().querySelector('.rc-avg'), 5000, 'the average pane');
+  ok('the event panel says what it is averaging, and how many',
+     /Average of cluster #/.test((D().querySelector('.rc-avg-head') || {}).textContent || '')
+     && new RegExp('n = ' + gIed.n).test((D().querySelector('.rc-avg-head') || {}).textContent || ''),
+     (D().querySelector('.rc-avg-head') || {}).textContent);
+  for (const id of ['rcTrace', 'rcSpec', 'rcStack', 'rcCsd']) {
+    const cv = D().getElementById(id);
+    ok('the average’s ' + id + ' is drawn at a real size',
+       !!cv && cv.clientWidth >= 150 && cv.clientHeight >= 150);
+  }
+  D().querySelector('.rc-avg-close').click();
+  await until(() => !ev(RC + '._avg()'), 5000, 'closed');
+  ok('and it closes back to the picked dot', !ev(RC + '._avg()')
+     && !D().querySelector('.rc-avg'));
+
+  /* A REAL LASSO: Shift and drag on the 3D view, with pointer events. */
+  const gCv = D().getElementById('rcSpace');
+  const gR = gCv.getBoundingClientRect();
+  const gPts = geom().space.pts;
+  const gXs = gPts.map((q2) => q2.x).sort((a2, b2) => a2 - b2);
+  const gMid = gXs[Math.floor(gXs.length / 2)];
+  const gPath = [[1, 1], [gMid, 1], [gMid, gR.height - 1], [1, gR.height - 1]];
+  const gWant = gPts.filter((q2) => (q2.alpha == null || q2.alpha > 0.5)
+                             && q2.x < gMid && q2.y > 1 && q2.y < gR.height - 1)
+    .map((q2) => q2.i).sort((a2, b2) => a2 - b2);
+  // Content-box pixels, as the geometry is: past the canvas's own border.
+  const gL = gR.left + gCv.clientLeft, gT = gR.top + gCv.clientTop;
+  const fire = (type, x, y) => gCv.dispatchEvent(new W.PointerEvent(type, {
+    clientX: gL + x, clientY: gT + y, button: 0, buttons: 1,
+    shiftKey: true, bubbles: true, pointerId: 1 }));
+  const gYaw = ev(RC + '._view()').yaw, gPitch = ev(RC + '._view()').pitch;
+  fire('pointerdown', gPath[0][0], gPath[0][1]);
+  /* Along each side in steps, the way a hand moves, back to the start. */
+  const gRing = gPath.concat([gPath[0]]);
+  for (let s2 = 1; s2 < gRing.length; s2++) {
+    const [x0, y0] = gRing[s2 - 1], [x1, y1] = gRing[s2];
+    for (let t2 = 1; t2 <= 8; t2++) {
+      fire('pointermove', x0 + (x1 - x0) * t2 / 8, y0 + (y1 - y0) * t2 / 8);
+    }
+  }
+  fire('pointerup', gPath[0][0], gPath[0][1]);
+  await sleep(150);
+  const gSel = ev(RC + '._lassoSel()').slice().sort((a2, b2) => a2 - b2);
+  ok('Shift-drag draws round dots instead of turning the view',
+     gSel.length > 0 && ev(RC + '._view()').yaw === gYaw
+     && ev(RC + '._view()').pitch === gPitch,
+     JSON.stringify([gSel.length, ev(RC + '._view()').yaw, gYaw]));
+  eq('and the dots it took are the ones inside the drawn path', gSel, gWant);
+  /* The exact set, through the same path handed in directly. */
+  const gExact = ev(RC + '._lasso(' + JSON.stringify(gPath) + ')').slice()
+    .sort((a2, b2) => a2 - b2);
+  eq('the lasso takes exactly the dots inside the path', gExact, gWant);
+  await until(() => D().querySelector('.rc-lasso-bar'), 5000, 'the bar');
+  ok('a bar says how many were drawn round',
+     new RegExp(gWant.length + ' dots? drawn round').test(
+       (D().querySelector('.rc-lasso-bar') || {}).textContent || ''));
+  ok('and they are ringed in the 3D view', geom().space.selected === gWant.length);
+  D().querySelector('.rc-lasso-avg').click();
+  await until(() => ev(RC + '._avg()') && !ev(RC + '._avg()').busy, 30000, 'their average');
+  eq('“Average them” averages exactly those', ev(RC + '._avg()').data.n, gWant.length);
+  D().querySelector('.rc-avg-close').click();
+  await until(() => !ev(RC + '._avg()'), 5000, 'closed');
+  D().querySelector('.rc-lasso-ied').click();
+  await until(() => !st().fitting && (st().fit.clusters || [])
+                    .some((c) => c.call_by === 'drawn'), 30000, 'the drawn cluster');
+  const gD = st().fit.clusters.find((c) => c.call_by === 'drawn');
+  ok('“Make an IED cluster” makes one, after k-means’ own, called IED',
+     gD && gD.rank === st().fit.k && gD.call === 'ied' && gD.n === gWant.length,
+     JSON.stringify(gD));
+  eq('the request carries it', (ev(RC + '._lastBody()').drawn[0] || {}).events
+       .slice().sort((a2, b2) => a2 - b2), gWant);
+  ok('its events are in it', st().fit.events.filter((e) => gWant.indexOf(e.i) >= 0)
+     .every((e) => e.cluster === gD.rank && e.cls === 'ied'));
+  ok('the rule says it was drawn', /drawn by hand/.test(st().fit.rule), st().fit.rule);
+  ok('its chip is marked drawn', !!D().querySelector('.rc-why .rc-clu.drawn'));
+  D().querySelector('.rc-why .rc-clu.drawn').click();
+  await until(() => !st().fitting && (st().fit.clusters.find((c) => c.call_by === 'drawn')
+                                       || {}).call === 'ds', 30000, 'relabel drawn');
+  ok('pressing its chip calls the drawn cluster DS', ev(RC + '._drawn()')[0].call === 'ds');
+  D().querySelector('.rc-why .rc-clu-rm').click();
+  await until(() => !st().fitting && !(st().fit.clusters || [])
+                    .some((c) => c.call_by === 'drawn'), 30000, 'undrawn');
+  ok('and × undraws it: its events go back to k-means',
+     ev(RC + '._drawn()').length === 0 && st().fit.clusters.length === 2);
 
   /* ================================================================== */
   head('EVERY DOT IS WHERE IT IS DRAWN, AT THE SIZE IT IS SHOWN');
@@ -881,17 +1095,25 @@ const ENTRY = '46fd29a77cc7';
   eq('← steps back', st().picked, evs[at0]);
 
   /* ================================================================== */
-  head('A FLIP, AND BACK');
+  head('THE CALL IS SHOWN, NOT SET; AN OLDER RESULT’S FLIPS STILL REBUILD');
 
   const fl = st().fit.events.find((e) => e.i === target);
   const was = fl.cls;
   const cnt0 = Object.assign({}, st().fit.counts);
-  /* The toggle on screen, not the export: the seg button for the class it
-     is not. */
-  const tog = Array.from(D().querySelectorAll('.rc-toggle button'))
-    .find((b) => b.textContent.trim() === (was === 'ied' ? 'DS' : 'IED'));
-  ok('the DS/IED toggle is on the picked event’s bar', !!tog);
-  if (tog) tog.click();
+  /* Asked for 2026-10-06: no identity switch on a single event. The bar
+     says the event's call and offers no way to change it. */
+  ok('there is no DS/IED toggle on the picked event’s bar',
+     !D().querySelector('.rc-pickbar .rc-toggle')
+     && !Array.from(D().querySelectorAll('.rc-pickbar button'))
+       .some((b) => /^(DS|IED)$/.test(b.textContent.trim())));
+  const callChip = D().querySelector('.rc-pickbar .rc-ev-call');
+  ok('its call is shown instead, with its cluster',
+     !!callChip && callChip.textContent.indexOf(was.toUpperCase()) === 0
+     && /cluster #\d/.test(callChip.textContent),
+     callChip && callChip.textContent);
+  /* A result banked before the toggle went can carry flips: they are fit
+     params, and they still rebuild. */
+  ev(RC + '._flip(' + target + ')');
   await until(() => { const e = st().fit.events.find((x) => x.i === target);
                       return e && e.flipped && !st().fitting; }, 20000, 'the flip');
   const fl2 = st().fit.events.find((e) => e.i === target);
@@ -904,6 +1126,9 @@ const ENTRY = '46fd29a77cc7';
   eq('the flip is a fit param: a list of indices', st().q.flips, [target]);
   ok('it is ringed as set by hand', /set by hand/.test(
      (D().querySelector('.rc-why') || {}).textContent || ''));
+  ok('and its bar says it was flipped in an older result',
+     /flipped by hand in an older result/.test(
+       (D().querySelector('.rc-pickbar') || {}).textContent || ''));
   const clr = Array.from(D().querySelectorAll('.rc-controls button'))
     .find((b) => /clear flips/.test(b.textContent));
   ok('clear flips is offered', !!clr && !clr.disabled);
@@ -1017,7 +1242,7 @@ const ENTRY = '46fd29a77cc7';
   const vh = W.innerHeight;
   const top0 = res.getBoundingClientRect().top;
   for (const [what, sel] of [['Recompute', '.rc-recompute'], ['Bank', '.rc-bank'],
-                             ['the DS/IED toggle', '.rc-toggle'],
+                             ['the event’s call', '.rc-ev-call'],
                              ['Open in Xplorefinder', '.rc-pickbar .head-actions']]) {
     const r = box(sel);
     const b = r ? r.bottom - top0 : null;
@@ -1025,7 +1250,7 @@ const ENTRY = '46fd29a77cc7';
        !!r && b <= vh + 1, r ? b.toFixed(0) + ' px down, screen ' + vh : 'missing');
   }
   const pic = box('#rcSpace');
-  const lastCtl = Math.max.apply(null, ['.rc-recompute', '.rc-bank', '.rc-toggle']
+  const lastCtl = Math.max.apply(null, ['.rc-recompute', '.rc-bank', '.rc-ev-call']
     .map((s2) => (box(s2) || { bottom: 0 }).bottom));
   ok('and every one of them is above the pictures',
      !!pic && lastCtl <= pic.top + 1);

@@ -2751,16 +2751,33 @@ BARRY.arc = (function () {
     missed: 'missed', unscored: 'not scored',
   };
 
+  /* Which histology is in force, and whether channel sanity has been run
+     over everything under it (backend/sanityreport.py): v2 since
+     2026-10-05, said on every probe-sanity surface so a result can be
+     told from one made under v1. */
+  function histoBadge(h) {
+    if (!h) return null;
+    const run = h.run;
+    const when = (t) => String(t || '').slice(0, 16).replace('T', ' ');
+    return el('div', { class: 'histo-badge' + (run ? ' ran' : ' notrun'), 'data-version': String(h.version) }, [
+      el('strong', { text: 'Histology v' + h.version }),
+      el('span', { text: ' \u00b7 rescored ' + h.date + ' \u00b7 ' + (run
+        ? 'channel sanity v' + h.version + ' run ' + when(run.at) + ' on ' + run.totals.recordings + ' recordings'
+        : 'channel sanity has not been run over everything under v' + h.version + ' yet') }),
+    ]);
+  }
+
   function probeSummary() {
     const s = cOver.probe_summary;
-    if (!s) return 'no histology for this rat';
+    const v = cOver.histology ? 'Histology v' + cOver.histology.version + ' \u00b7 ' : '';
+    if (!s) return v + 'no histology for this rat';
     const by = s.by_verdict || {};
     const n = (k) => (by[k] || []).length;
     if (n('unscored') === s.n) {
-      return 'this rat has no row in ' + cOver.histology_file
+      return v + 'this rat has no row in ' + cOver.histology_file
              + ', so nothing will be computed until it is scored';
     }
-    const bits = [s.usable + ' of ' + s.n + ' will be computed'];
+    const bits = [v + s.usable + ' of ' + s.n + ' will be computed'];
     if (n('relocated')) bits.push(n('relocated') + ' not where aimed');
     if (n('uncertain')) bits.push(n('uncertain') + ' scored maybe');
     if (n('missed')) bits.push(n('missed') + ' missed');
@@ -2794,7 +2811,7 @@ BARRY.arc = (function () {
                               text: 'no slide names this region' })]),
       ]);
     });
-    const kids = [el('div', { class: 'arc-pr-list' }, rows)];
+    const kids = [histoBadge(cOver.histology), el('div', { class: 'arc-pr-list' }, rows)].filter(Boolean);
     if (slides == null && cOver.slides_why) {
       kids.push(el('p', { class: 'hint', text: cOver.slides_why }));
     }

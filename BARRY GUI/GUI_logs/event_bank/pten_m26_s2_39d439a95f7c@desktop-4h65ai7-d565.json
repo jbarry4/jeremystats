@@ -25,7 +25,7 @@
     "type": "2026-09-12T19:54:51.864826+00:00",
     "type_name": "2026-09-12T19:54:51.864826+00:00",
     "units": "2026-09-12T19:54:51.864826+00:00",
-    "version": "2026-09-22T18:43:11.818011+00:00"
+    "version": "2026-10-06T14:26:12.112184+00:00"
   },
   "_keys": {
     "history": {
@@ -44,8 +44,8 @@
     },
     "versions": {
       "br-7252d63736": [
-        "set",
-        "2026-09-22T18:41:50.786454+00:00"
+        "gone",
+        "2026-10-06T14:26:12.112184+00:00"
       ],
       "v0-87009aa1": [
         "set",
@@ -66,11 +66,19 @@
       "{\"at\": \"2026-09-22T14:41:50-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"Dentate Spike\": 28}, \"machine\": \"BarryLab\", \"n\": 28, \"note\": \"Aligned to the mean magnitude over 16 channels, \\u00b1100 ms, reading v2. 28 stamp(s) moved by -87.0 to 37.8 ms; 16 left where they were. No labels changed.\", \"snap\": [[117.491481, \"spike\"], [236.555543, \"spike\"], [280.9888, \"spike\"], [361.879188, \"spike\"], [365.009123, \"spike\"], [574.313985, \"spike\"], [640.136747, \"spike\"], [1271.313185, \"spike\"], [1334.319601, \"spike\"], [1475.304685, \"spike\"], [1501.703957, \"spike\"], [1560.807949, \"spike\"], [1620.406987, \"spike\"], [1643.120783, \"spike\"], [1755.971774, \"spike\"], [1887.184125, \"spike\"], [1967.706847, \"spike\"], [1982.402973, \"spike\"], [2095.503919, \"spike\"], [2095.679787, \"spike\"], [2207.726537, \"spike\"], [2230.234763, \"spike\"], [2400.277977, \"spike\"], [2519.617334, \"spike\"], [2521.997721, \"spike\"], [2536.046651, \"spike\"], [2589.920788, \"spike\"], [2603.802408, \"spike\"]], \"v\": 3}": [
         "set",
         "2026-09-22T18:43:14.460275+00:00"
+      ],
+      "{\"at\": \"2026-10-06T10:21:58-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"spike\": 28}, \"machine\": \"BarryLab\", \"n\": 28, \"note\": \"Root Canal: 0 hidden IED(s) taken out of 28 dentate spikes read from vbr-7252d63736; 28 kept as DS. k = 1: one cluster, so no split -- every event is called DS (28 DS, 0 IED). measured on DS filter, 5\\u2013100 Hz, 60 Hz mains out, amplitude window \\u00b125 ms, half-width search \\u00b1100 ms, 500\\u20131000 Hz power.  Numbers and figures: results bank rootcanal/s016e132432c8__54540110da1b.\", \"snap\": [[117.491481, \"spike\"], [236.555543, \"spike\"], [280.9888, \"spike\"], [361.879188, \"spike\"], [365.009123, \"spike\"], [574.313985, \"spike\"], [640.136747, \"spike\"], [1271.313185, \"spike\"], [1334.319601, \"spike\"], [1475.304685, \"spike\"], [1501.703957, \"spike\"], [1560.807949, \"spike\"], [1620.406987, \"spike\"], [1643.120783, \"spike\"], [1755.971774, \"spike\"], [1887.184125, \"spike\"], [1967.706847, \"spike\"], [1982.402973, \"spike\"], [2095.503919, \"spike\"], [2095.679787, \"spike\"], [2207.726537, \"spike\"], [2230.234763, \"spike\"], [2400.277977, \"spike\"], [2519.617334, \"spike\"], [2521.997721, \"spike\"], [2536.046651, \"spike\"], [2589.920788, \"spike\"], [2603.802408, \"spike\"]], \"v\": 4}": [
+        "set",
+        "2026-10-06T14:26:16.905656+00:00"
+      ],
+      "{\"at\": \"2026-10-06T10:21:58-04:00\", \"by\": \"Rain Younger\", \"by_label\": {\"spike\": 28}, \"machine\": \"BarryLab\", \"n\": 28, \"note\": \"Root Canal: 0 hidden IED(s) taken out of 28 dentate spikes read from vbr-7252d63736; 28 kept as DS. k = 1: one cluster, so no split -- every event is called DS (28 DS, 0 IED). measured on DS filter, 5\\u2013100 Hz, 60 Hz mains out, amplitude window \\u00b125 ms, half-width search \\u00b1100 ms, 500\\u20131000 Hz power.  Numbers and figures: results bank rootcanal/s016e132432c8__54540110da1b.\", \"snap_elsewhere\": true, \"v\": 4}": [
+        "gone",
+        "2026-10-06T14:26:16.905656+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T18:34:30.254576+00:00",
+    "at": "2026-10-06T14:26:16.905656+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -388,7 +396,7 @@
   "type": "ds",
   "type_name": "ds",
   "units": "seconds relative to the start of the recording",
-  "version": 3,
+  "version": 4,
   "versions": [
     {
       "at": "2026-09-02T19:00:02-04:00",
@@ -978,103 +986,14 @@
       "v": 2
     },
     {
-      "aligned": {
-        "band": [
-          5.0,
-          100.0
-        ],
-        "cand_dist_ms": 12.0,
-        "cand_height_sd": 0.0,
-        "channels": [
-          35,
-          36,
-          37,
-          38,
-          39,
-          40,
-          41,
-          42,
-          43,
-          44,
-          45,
-          46,
-          47,
-          48,
-          49,
-          50,
-          51,
-          52
-        ],
-        "csd_smooth": true,
-        "dist_ms": 100.0,
-        "estimator": "mad",
-        "flagged": {
-          "edge": 1
-        },
-        "invert": true,
-        "left_out": [
-          8,
-          41,
-          59
-        ],
-        "lfp_fs": 1000.0,
-        "line_hz": 60.0,
-        "measure": "csd",
-        "n_channels": 16,
-        "n_moved": 28,
-        "n_unmoved": 16,
-        "order": 3,
-        "order_held": true,
-        "profile": {
-          "36": 0.31112,
-          "37": 0.425651,
-          "38": 0.386558,
-          "39": 0.278583,
-          "40": 0.13189,
-          "41": -0.026221,
-          "42": -0.118216,
-          "43": -0.126669,
-          "44": -0.161735,
-          "45": -0.128422,
-          "46": 0.036457,
-          "47": 0.16375,
-          "48": 0.223895,
-          "49": 0.345654,
-          "50": 0.408515,
-          "51": 0.199006
-        },
-        "resorted": 0,
-        "screened": {
-          "41": "not ticked",
-          "59": "dead (0.5 uV against a median of 68)",
-          "8": "not ticked"
-        },
-        "shift_max_ms": 37.787,
-        "shift_median_ms": 26.985,
-        "shift_min_ms": -87.013,
-        "smooth_ms": 0.0,
-        "source_version": 2,
-        "source_version_id": "592bcb021142",
-        "spacing_um": 30.0,
-        "tool": "jarvis.braces/1",
-        "window_ms": 100.0
-      },
       "at": "2026-09-22T14:41:50-04:00",
       "by": "Rain Younger",
       "by_label": {
         "Dentate Spike": 28
       },
-      "changed": 0,
-      "from_id": null,
-      "from_v": null,
-      "gained": 0,
-      "id": "br-7252d63736",
-      "lost": 0,
       "machine": "BarryLab",
-      "moves": {},
       "n": 28,
       "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms, reading v2. 28 stamp(s) moved by -87.0 to 37.8 ms; 16 left where they were. No labels changed.",
-      "shifted": 28,
       "snap": [
         [
           117.491481,
@@ -1192,14 +1111,14 @@
       "v": 3
     },
     {
-      "at": "2026-09-22T14:41:50-04:00",
+      "at": "2026-10-06T10:21:58-04:00",
       "by": "Rain Younger",
       "by_label": {
-        "Dentate Spike": 28
+        "spike": 28
       },
       "machine": "BarryLab",
       "n": 28,
-      "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms, reading v2. 28 stamp(s) moved by -87.0 to 37.8 ms; 16 left where they were. No labels changed.",
+      "note": "Root Canal: 0 hidden IED(s) taken out of 28 dentate spikes read from vbr-7252d63736; 28 kept as DS. k = 1: one cluster, so no split -- every event is called DS (28 DS, 0 IED). measured on DS filter, 5\u2013100 Hz, 60 Hz mains out, amplitude window \u00b125 ms, half-width search \u00b1100 ms, 500\u20131000 Hz power.  Numbers and figures: results bank rootcanal/s016e132432c8__54540110da1b.",
       "snap": [
         [
           117.491481,
@@ -1314,7 +1233,7 @@
           "spike"
         ]
       ],
-      "v": 3
+      "v": 4
     }
   ]
 }

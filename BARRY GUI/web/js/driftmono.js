@@ -175,6 +175,8 @@ BARRY.driftMono = (function () {
     'Adding Precon2 and Precon3 to what goes. Upload next: it sends only what is not on the cluster yet.');
   const runTraj = () => act('/api/arc/monolith/run', { confirm: true, extra: { days: ['Precon2', 'Precon3'] } }, 'run.traj',
     'Submitted Precon2 and Precon3. Check the VACC to see them move; fetching rebuilds the Monolith with them.');
+  const rebuildIt = () => act('/api/arc/monolith/rebuild', { confirm: true }, 'rebuild',
+    'Rebuilding the Monolith under the histology in force, from the answers already fetched.');
   const fetchIt = () => act('/api/arc/monolith/fetch', { confirm: true }, 'fetch',
     'Fetching the answers and building the Monolith.');
   const stopWork = () => act('/api/arc/monolith/stop', {}, 'stop');
@@ -677,6 +679,19 @@ BARRY.driftMono = (function () {
           ]),
         ]));
       }
+    }
+    // Built under an older histology than the one in force: remade here.
+    const H = S.histology || {};
+    if (B && H.now && H.built !== H.now) {
+      card.appendChild(el('div', { class: 'dmo-add dmo-histo', 'data-go': 'rebuild' }, [
+        el('p', { class: 'dpc-warn', text: 'This Monolith was built under ' + (H.built ? 'an older histology rule' : 'histology v1')
+          + '. ' + (H.say || '') + ' Rebuilding remakes it from the answers already fetched: nothing is run or uploaded, '
+          + 'and a new version of the artifact is filed.' }),
+        el('div', { class: 'head-actions dpc-actions' }, [
+          el('span', { class: 'hint', text: 'A couple of minutes, here.' }),
+          el('div', { class: 'spacer' }),
+          el('button', { class: 'btn ghost', 'data-go': 'rebuild', disabled: off(!!S.work && S.work.status === 'running'),
+            text: 'Rebuild under histology v2', onclick: rebuildIt })])]));
     }
     if (B) card.appendChild(trajBlock(S));
     card.appendChild(el('div', { class: 'head-actions dpc-actions' }, [
