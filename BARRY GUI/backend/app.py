@@ -7167,7 +7167,9 @@ def _rootcanal_params(body, rec, stamps, sess=None, stored=None):
         seed=body.get("seed"), n_init=body.get("n_init"),
         flips=body.get("flips"), centres=body.get("centres"),
         k=body.get("k"), cluster_calls=body.get("cluster_calls"),
-        margin=body.get("margin"))
+        margin=body.get("margin"),
+        complete_only=bool(body.get("complete_only")),
+        drawn=body.get("drawn"), retry=body.get("retry"))
 
 
 def _rootcanal_npz(gid, rh):
@@ -8270,7 +8272,257 @@ def _rootcanal_pool_candidates():
     return out
 
 
-def _rootcanal_pool_members(want, band=None):
+# A MEMBER'S NUMBERS, KEPT. Its amplitude, half-width and HF power depend
+# only on how it is measured -- filter, window, search, band -- and not on
+# the pool's k, its calls or a margin. Computing them is a fit of the read
+# (seconds, and the read itself is tens of megabytes off the disk), and the
+# read cache holds only a few, so a pool of eighteen pushed its own members
+# out and refitted every one on every press: 30-40 s for a k change, a
+# relabel or the same pool again. Kept here per (recording, read,
+# measurement), in memory and beside the read on disk.
+_RC_ROWS = {}
+_RC_ROWS_MAX = 512
+RC_MEASURE_KEYS = ("filt", "mains_out", "lo_hz", "hi_hz", "order", "win_ms",
+                   "cross_ms", "band_lo", "band_hi")
+
+
+def _rootcanal_member_rows(gid, rh, p):
+    """One member's per-event numbers at `p`'s measurement, computed once.
+
+    Keyed on the measurement alone; the call that comes with them is the
+    recording on its own at k = 2 by the rule, and `rootcanalpool.
+    single_calls` recomputes it for another k without touching the read.
+    """
+    import hashlib
+    meas = {k: getattr(p, k) for k in RC_MEASURE_KEYS}
+    blob = json.dumps(meas, sort_keys=True, default=str)
+    ph = hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
+    key = (gid, rh, ph)
+    hit = _RC_ROWS.get(key)
+    if hit is not None:
+        return hit
+    # "rows2": the rows now carry each event's contact and polarity, which
+    # the first files did not; a new name rather than a half-filled old one.
+    path = ROOTCANAL.cached_path(gid, rh, ".rows2-%s.json" % ph)
+    rows = None
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                rows = json.load(fh)
+        except Exception:                                # noqa: BLE001
+            rows = None
+    if rows is None:
+        mp = rootcanal.Params(**meas)
+        rows = rootcanalpool.rows_from_fit(
+            rootcanal.fit(_rootcanal_load(gid, rh), mp))
+        try:
+            tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(rows, fh)
+            os.replace(tmp, path)
+        except Exception:                                # noqa: BLE001
+            pass                    # a cache that cannot be written is a miss
+    if len(_RC_ROWS) >= _RC_ROWS_MAX:
+        _RC_ROWS.pop(next(iter(_RC_ROWS)))
+    _RC_ROWS[key] = rows
+    return rows
+
+
+def _rootcanal_measure_words(a, b):
+    """How measurement `b` differs from `a`, in words, for the panel."""
+    out = []
+    ma, mb = rootcanal.measure_of(a), rootcanal.measure_of(b)
+    if ma["filter_label"] != mb["filter_label"]:
+        out.append("%s, not %s" % (mb["filter_label"], ma["filter_label"]))
+    if [ma["band_lo"], ma["band_hi"]] != [mb["band_lo"], mb["band_hi"]]:
+        out.append("%s–%s Hz band, not %s–%s Hz" % (
+            rootcanal._g(mb["band_lo"]), rootcanal._g(mb["band_hi"]),
+            rootcanal._g(ma["band_lo"]), rootcanal._g(ma["band_hi"])))
+    for k, w in (("win_ms", "window"), ("cross_ms", "half-width search")):
+        if ma[k] != mb[k]:
+            out.append("%s ±%s ms, not ±%s ms" % (
+                w, rootcanal._g(mb[k]), rootcanal._g(ma[k])))
+    return out
+
+
+# A SAVED POOL CARRIES ITS MEMBERS' NUMBERS. Every event's amplitude,
+# half-width, HF power and single call are in the payload, and each member's
+# pin names those exact rows by digest. A read, though, is cache: it lives in
+# GUI_logs/.cache on the machine that made it and goes nowhere else. So a
+# pool saved where its members were read, reopened anywhere else, could draw
+# but not do anything -- k, a relabel, a focus, a margin, all refit, and the
+# refit went looking for reads that were never here. Measured 2026-10-06:
+# every one of the 19 saved pools was saved on Strawbarry and has members
+# read only there; all 351 saved members rebuild from their payload to the
+# exact digest their pin holds.
+_RC_SAVED = {}
+_RC_SAVED_MAX = 8
+RC_SAME_MEASURE = ("mains_out", "lo_hz", "hi_hz", "order", "win_ms",
+                   "cross_ms", "band_lo", "band_hi")
+
+
+def _rootcanal_read_on(gid, rh):
+    """The machine a read was made on, by its read record, or None."""
+    if not (gid and rh):
+        return None
+    try:
+        rec = ROOTCANAL.get(gid, rh) or {}
+    except Exception:                                    # noqa: BLE001
+        return None
+    return (rec.get("created") or {}).get("machine")
+
+
+def _rootcanal_saved_members(saved):
+    """{member key: what the saved pool holds for it}, for the version a
+    pool request says it was opened from; {} when it names none, or names
+    one that is not here (deleted, or its payload not synced yet) -- then
+    every member is found here or not at all, as before.
+
+    Each entry is the saved member, its rows rebuilt from the payload's
+    events, whether they reproduce the digest the member's pin was saved
+    with (`exact`), and how many of its events the save does not hold
+    (`short`: left out as incomplete when it was saved).
+    """
+    if not saved or not (saved or {}).get("artifact_id"):
+        return {}
+    aid = str(saved["artifact_id"])
+    rec = ARTIFACTS.get(aid)
+    if not rec or rec.get("kind") != "rootcanal_pool":
+        return {}
+    try:
+        _r, row = ARTIFACTS.payload_version(aid, saved.get("version"))
+    except Exception:                                    # noqa: BLE001
+        return {}
+    ck = (aid, row.get("v"), row.get("digest"))
+    hit = _RC_SAVED.get(ck)
+    if hit is not None:
+        return hit
+    pay = ARTIFACTS.payload(aid, row.get("v"))
+    if pay is None:
+        # The record came through and its payload has not yet: nothing to
+        # rebuild from, and the members are found here or not at all.
+        return {}
+    by_m = {}
+    for e in pay.get("events") or []:
+        by_m.setdefault(int(e["m"]), []).append(e)
+    out = {}
+    for j, m in enumerate(pay.get("members") or []):
+        rows = [{"i": int(e["i"]), "t": float(e["t"]),
+                 "amp_uV": e.get("amp_uV"), "hw_ms": e.get("hw_ms"),
+                 "hf_db": e.get("hf_db"), "cls": e.get("cls_single"),
+                 "flipped": False, "wide": bool(e.get("wide")),
+                 # Each event's contact and polarity are the read's; an
+                 # average needs the read anyway.
+                 "row": None, "pol": None}
+                for e in sorted(by_m.get(j, []), key=lambda e: int(e["i"]))]
+        pin = m.get("pin") or {}
+        out[m["key"]] = {
+            "member": m, "rows": rows,
+            "exact": rootcanalpool.rows_digest(rows) == pin.get("rows_digest"),
+            "short": max(0, int(m.get("n") or 0) - len(rows)),
+            "artifact_id": aid, "version": row.get("v"),
+            "nickname": rec.get("nickname") or rec.get("name"),
+            "read_on": _rootcanal_read_on(m.get("gid"), pin.get("read")),
+        }
+    if len(_RC_SAVED) >= _RC_SAVED_MAX:
+        _RC_SAVED.pop(next(iter(_RC_SAVED)))
+    _RC_SAVED[ck] = out
+    return out
+
+
+def _rootcanal_same_measure(a, b):
+    """Whether two Params measure the same way: the numbers, not the
+    preset's name -- a custom 1-100 Hz is the LFP filter."""
+    ma, mb = rootcanal.measure_of(a), rootcanal.measure_of(b)
+    return all(ma[k] == mb[k] for k in RC_SAME_MEASURE)
+
+
+def _rootcanal_key_words(key):
+    """(what a member key is called, the machine its read was made on)."""
+    parts = str(key or "").split(":")
+    if len(parts) == 3 and parts[0] == "u":
+        ent = BANK.get(parts[1]) or {}
+        return (ent.get("session_label") or ent.get("name") or key,
+                _rootcanal_read_on(ent.get("gid"), parts[2]))
+    if len(parts) == 3 and parts[0] == "b":
+        try:
+            rec = ROOTCANAL.get(parts[1], parts[2]) or {}
+        except Exception:                                # noqa: BLE001
+            rec = {}
+        return (rec.get("session_label") or key,
+                _rootcanal_read_on(parts[1], rec.get("read")))
+    return (key or "A member", None)
+
+
+def _rootcanal_from_saved(w, s, over, k_pool, c=None, reg=None):
+    """One member as the saved pool holds it, for when its read is not
+    here: its numbers as saved, at the k asked for.
+
+    Returns (member, None), or (None, words) when the pool asks for a
+    measurement other than the one it was saved with -- numbers cannot be
+    measured another way without the read they came from.
+    """
+    sm = s["member"]
+    spin = sm.get("pin") or {}
+    saved_fit = _rootcanal_fit_part(spin.get("params"))
+    p0 = rootcanal.Params(**saved_fit)
+    fitp = dict(_rootcanal_fit_part((w or {}).get("params")) or saved_fit,
+                **over)
+    if k_pool:
+        fitp["k"] = k_pool
+    p = rootcanal.Params(entry_id=sm.get("entry_id"), **fitp)
+    if not _rootcanal_same_measure(p0, p):
+        return None, (_rootcanal_measure_words(p0, p)
+                      or ["%s, not %s" % (p.filter_label(), p0.filter_label())])
+    if not s["exact"] and not s["short"]:
+        raise rootcanalpool.PoolError(
+            "The saved pool's numbers for %s do not match the digest its pin "
+            "was saved with, so they are not what was pooled. Take it out, or "
+            "open it where it was read." % (sm.get("session_label")
+                                            or sm["key"]))
+    rows = s["rows"]
+    recalled = False
+    if p.k != p0.k:
+        rows = rootcanalpool.single_calls(rows, p.k)
+        recalled = bool(sm.get("banked"))
+    pin = dict(spin, params=p.fit_params(),
+               rows_digest=rootcanalpool.rows_digest(rows),
+               from_saved={"artifact_id": s["artifact_id"],
+                           "version": s["version"]})
+    gid = sm.get("gid") or (c or {}).get("gid")
+    rh = spin.get("read")
+    ent = BANK.get(sm.get("entry_id")) or {}
+    proj, mk, mt = _rootcanal_who(gid, ent.get("project") or sm.get("project"),
+                                  ent.get("mouse"),
+                                  reg if reg is not None
+                                  else _rootcanal_reg_index())
+    here = bool(rh and ROOTCANAL.has_cached(gid, rh, ".npz"))
+    return dict(
+        c or {},
+        key=sm["key"], entry_id=sm.get("entry_id"),
+        session_label=((c or {}).get("session_label")
+                       or sm.get("session_label")),
+        gid=gid, project=proj or sm.get("project"),
+        mouse_key=mk or sm.get("mouse_key"),
+        mouse_type=mt or sm.get("mouse_type_default") or sm.get("mouse_type"),
+        banked=bool(sm.get("banked")), read=rh,
+        # What the save said about it: re-measured or re-banded from what
+        # was banked, there, from its read.
+        rows=rows, pin=pin, here=here,
+        rebanded=sm.get("rebanded_from"),
+        remeasured=list(sm.get("remeasured") or []),
+        recalled=recalled or bool(sm.get("recalled")),
+        band=[p.band_lo, p.band_hi],
+        filter=p.filter_label(),
+        from_saved={"artifact_id": s["artifact_id"], "version": s["version"],
+                    "nickname": s["nickname"]},
+        read_on=s["read_on"], short=s["short"],
+        event_body=(dict(p.fit_params(), entry_id=sm.get("entry_id"), read=rh)
+                    if here else None)), None
+
+
+def _rootcanal_pool_members(want, band=None, measure=None, k=None,
+                            saved=None):
     """The members a pool request names, as rows `fit_pool` can use.
 
     Banked ones are read out of their result record and touch nothing else.
@@ -8286,6 +8538,11 @@ def _rootcanal_pool_members(want, band=None):
     is then the call at THIS band, not the one that was banked, and the
     panel says so. One whose read is not on this machine cannot be, and the
     pool says which rather than mixing two measurements under one axis.
+
+    `saved` is the saved pool version the request was opened from
+    ({artifact_id, version}). A member whose read is not on this machine is
+    taken from it, as it was saved, so a pool saved where its members were
+    read works anywhere for everything that does not measure again.
     """
     if band is not None:
         try:
@@ -8295,59 +8552,120 @@ def _rootcanal_pool_members(want, band=None):
                 "The pool's HF band has to be two numbers, low and high.")
         # Validated the way Single's is, against the same anti-alias corner.
         rootcanal.Params(band_lo=band[0], band_hi=band[1])
+    # THE POOL'S OWN MEASUREMENT, the same settings Single has: one filter,
+    # window, search and band for every member, so the three axes are one
+    # measurement across the pool. Validated as Single's are.
+    over = {}
+    if measure:
+        over = {key: measure[key] for key in RC_MEASURE_KEYS
+                if measure.get(key) is not None}
+        rootcanal.Params(**over)
+    if band is not None:
+        over["band_lo"], over["band_hi"] = band
+    k_pool = int(k) if k else None
     if not want:
         raise rootcanalpool.PoolError(
             "A pool needs at least one member. Add a recording.")
     cands = {c["key"]: c for c in _rootcanal_pool_candidates()}
+    kept = _rootcanal_saved_members(saved)
+    # One registry read for every member taken from the save, not one each.
+    reg = _rootcanal_reg_index() if kept else None
     out = []
+    # Members that would have to be measured again, and whose reads are on
+    # another machine: all of them in one refusal, not the first alone.
+    stuck = []
     for w in want:
         key = (w or {}).get("key")
         c = cands.get(key)
+        s = kept.get(key)
+        if not c and s:
+            got, words = _rootcanal_from_saved(w, s, over, k_pool, reg=reg)
+            if got:
+                out.append(got)
+            else:
+                stuck.append((s["member"].get("session_label") or key,
+                              s["read_on"], words))
+            continue
         if not c:
+            label, where = _rootcanal_key_words(key)
             raise rootcanalpool.PoolError(
-                "%s is not a Root Canal result or a cached read on this "
-                "machine any more, so it cannot be pooled. Take it out, or "
-                "read that set again in Single." % (key or "A member"))
+                "%s %sis not a Root Canal result or a cached read on this "
+                "machine, so it cannot be pooled here.%s Take it out, read "
+                "that set on this machine in Single, or pool it on the "
+                "machine that read it."
+                % (label, ("(read on %s) " % where) if where else "",
+                   " A saved pool brings its members' numbers with it when "
+                   "it is opened from the shelf; this one was not."
+                   if not saved else
+                   " The saved pool this was opened from does not hold it "
+                   "either." if kept else
+                   " The saved pool this was opened from is not on this "
+                   "machine yet, so its numbers cannot stand in for it."))
         gid, rh = c["gid"], c.get("read")
         rebanded = None
+        remeasured = []
+        recalled = False
         if c["banked"]:
             rec = ROOTCANAL.get(gid, c["params_hash"]) or {}
             rows = rootcanalpool.rows_from_record(rec)
             fitp = _rootcanal_fit_part(rec.get("params"))
-            p = rootcanal.Params(**fitp)
-            if band is not None and [p.band_lo, p.band_hi] != band:
+            p0 = rootcanal.Params(**fitp)
+            p = rootcanal.Params(**dict(fitp, **over)) if over else p0
+            remeasured = _rootcanal_measure_words(p0, p)
+            if remeasured and not (rh and ROOTCANAL.has_cached(gid, rh,
+                                                                 ".npz")):
+                # Banked one way, read elsewhere: the saved pool may hold it
+                # measured the way that is asked for.
+                if s:
+                    got, words = _rootcanal_from_saved(w, s, over, k_pool, c,
+                                                       reg=reg)
+                    if got:
+                        out.append(got)
+                    else:
+                        stuck.append((c.get("session_label") or key,
+                                      s["read_on"], words))
+                    continue
+            if remeasured:
                 if not (rh and ROOTCANAL.has_cached(gid, rh, ".npz")):
                     raise rootcanalpool.PoolError(
-                        "%s was banked over %s–%s Hz and its read is not on "
-                        "this machine, so it cannot be measured over the "
-                        "pool's %s–%s Hz. Take it out, set the pool's band "
+                        "%s was banked measured differently (%s) and its read "
+                        "is not on this machine, so it cannot be measured the "
+                        "pool's way. Take it out, set the pool's measurement "
                         "back, or read that set here."
                         % (c.get("session_label") or key,
-                           rootcanal._g(p.band_lo), rootcanal._g(p.band_hi),
-                           rootcanal._g(band[0]), rootcanal._g(band[1])))
-                rebanded = [p.band_lo, p.band_hi]
-                p = rootcanal.Params(**dict(fitp, band_lo=band[0],
-                                            band_hi=band[1]))
-                rows = rootcanalpool.rows_from_fit(
-                    rootcanal.fit(_rootcanal_load(gid, rh), p))
+                           "; ".join(remeasured)))
+                if [p0.band_lo, p0.band_hi] != [p.band_lo, p.band_hi]:
+                    rebanded = [p0.band_lo, p0.band_hi]
+                rows = _rootcanal_member_rows(gid, rh, p)
+            # Its banked call stands only where it was made the pool's way:
+            # same measurement and same k. Otherwise the call is the
+            # recording's own at the pool's settings, and says so.
+            if remeasured or (k_pool and k_pool != p0.k):
+                rows = rootcanalpool.single_calls(rows, k_pool or p0.k)
+                recalled = True
             pin = {"ds_version": c.get("version"),
                    "params_hash": c["params_hash"], "read": rh,
                    "params": p.fit_params(),
                    "rows_digest": rootcanalpool.rows_digest(rows)}
             if rebanded:
                 pin["rebanded_from"] = rebanded
+            if remeasured:
+                pin["remeasured"] = remeasured
         else:
             fitp = _rootcanal_fit_part(w.get("params"))
-            if band is not None:
-                fitp = dict(fitp, band_lo=band[0], band_hi=band[1])
+            fitp = dict(fitp, **over)
+            if k_pool:
+                fitp["k"] = k_pool
             p = rootcanal.Params(entry_id=c["entry_id"], **fitp)
-            got = _rootcanal_load(gid, rh)
-            rows = rootcanalpool.rows_from_fit(rootcanal.fit(got, p))
+            rows = _rootcanal_member_rows(gid, rh, p)
+            if p.k != rootcanal.K_DEFAULT:
+                rows = rootcanalpool.single_calls(rows, p.k)
             pin = {"read": rh, "params": p.fit_params(),
                    "rows_digest": rootcanalpool.rows_digest(rows)}
         here = bool(rh and ROOTCANAL.has_cached(gid, rh, ".npz"))
         out.append(dict(
             c, rows=rows, pin=pin, here=here, rebanded=rebanded,
+            remeasured=remeasured, recalled=recalled,
             band=[p.band_lo, p.band_hi],
             filter=p.filter_label(),
             # The click panel's request, ready but for `i`: POST it to
@@ -8357,12 +8675,37 @@ def _rootcanal_pool_members(want, band=None):
             # this machine (a banked member read elsewhere).
             event_body=(dict(p.fit_params(), entry_id=c["entry_id"], read=rh)
                         if here else None)))
+    if stuck:
+        where = sorted({w_ for _l, w_, _x in stuck if w_})
+        # Grouped by what was asked: one change, said once, with every
+        # member it strands.
+        asks = {}
+        for lab, _w, words in stuck:
+            asks.setdefault("; ".join(words), []).append(lab)
+        one_ = len(stuck) == 1
+        raise rootcanalpool.PoolError(
+            "%d member%s of this pool %s read on %s, so %s here only as the "
+            "saved pool holds %s, and %s cannot be measured another way "
+            "without %s read. Asked for %s. Set the measurement back "
+            "(filter, window, half-width search, HF band), take %s out, or "
+            "read %s on this machine in Single."
+            % (len(stuck), "" if one_ else "s", "was" if one_ else "were",
+               " and ".join(where) if where else "another machine",
+               "it is" if one_ else "they are", "it" if one_ else "them",
+               "it" if one_ else "they", "its" if one_ else "their",
+               "; and ".join("%s, for %s" % (ask, ", ".join(labs))
+                             for ask, labs in asks.items()),
+               "it" if one_ else "them",
+               "that set" if one_ else "those sets"))
     return out
 
 
 def _rootcanal_pool_fit(body):
     members = _rootcanal_pool_members(body.get("members") or [],
-                                      band=body.get("band"))
+                                      band=body.get("band"),
+                                      measure=body.get("measure"),
+                                      k=body.get("k"),
+                                      saved=body.get("saved"))
     # k and relabels are validated the way Single's are.
     kp = rootcanal.Params(k=body.get("k"),
                           cluster_calls=body.get("cluster_calls"),
@@ -8389,18 +8732,35 @@ def _rootcanal_pool_fit(body):
                                  k=kp.k, cluster_calls=kp.cluster_calls,
                                  margin=margin,
                                  margin_mode=(kp.margin or {}).get("mode",
-                                                                  "fixed"))
+                                                                  "fixed"),
+                                 drawn=body.get("drawn"))
     res["margin_used"] = used
     res["k_from_margin"] = bool(margin) and int(margin["k"]) != kp.k
     # Whether the pool set its own band, as against each member keeping
     # its own -- so a saved pool reopens with the band field as it was.
     res["params"] = dict(res.get("params") or {},
-                         band_pool=body.get("band") is not None)
+                         band_pool=body.get("band") is not None,
+                         # Clusters drawn by hand, so a saved pool reopens
+                         # with them.
+                         drawn=body.get("drawn") or [])
     # Which members were re-measured over the pool's band, for the panel.
     by_key = {m["key"]: m for m in members}
     for m in res.get("members") or []:
-        rb = (by_key.get(m["key"]) or {}).get("rebanded")
-        m["rebanded_from"] = rb
+        src = by_key.get(m["key"]) or {}
+        m["rebanded_from"] = src.get("rebanded")
+        m["remeasured"] = src.get("remeasured") or []
+        m["recalled"] = bool(src.get("recalled"))
+        # Taken from the saved pool, its read being on another machine.
+        m["from_saved"] = src.get("from_saved")
+        m["read_on"] = src.get("read_on")
+        m["short"] = int(src.get("short") or 0)
+    # The pool's measurement, the same keys as Single's, so the panel's
+    # chip says what this picture was measured on in Single's words.
+    if members:
+        p0 = rootcanal.Params(**_rootcanal_fit_part(
+            (members[0].get("pin") or {}).get("params")))
+        res["params"] = dict(res.get("params") or {},
+                             measure=rootcanal.measure_of(p0))
     return members, res
 
 
@@ -8552,9 +8912,14 @@ def _rootcanal_margin_payload(res, measure, source):
     """What a saved margin holds, out of a fit's answer."""
     return {
         "k": int(res["k"]),
+        # k-means' own clusters only. A cluster drawn by hand is a lasso
+        # round some dots, not a centre with a boundary, and applying its
+        # mean as a nearest-centre rule elsewhere would be a different
+        # thing under the same name.
         "clusters": [{"rank": c["rank"], "call": c["call"],
                       "centre_raw": c["centre_raw"], "n": c["n"]}
-                     for c in res["clusters"]],
+                     for c in res["clusters"]
+                     if c.get("call_by") != "drawn"],
         "calls_by_hand": [c["rank"] for c in res["clusters"]
                           if c["call_by"] == "hand"],
         "scale": {"mean": list(res["scale"]["mean"]),
@@ -8591,7 +8956,10 @@ def _rootcanal_margin_extract(body):
         raise rootcanal.RootCanalError(
             "A margin is cut from \"single\", \"pool\" or \"pool_group\".")
     members = _rootcanal_pool_members(body.get("members") or [],
-                                      band=body.get("band"))
+                                      band=body.get("band"),
+                                      measure=body.get("measure"),
+                                      k=body.get("k"),
+                                      saved=body.get("saved"))
     focus = body.get("focus") or {}
     label = None
     if src == "pool_group":
@@ -8653,6 +9021,83 @@ def _rootcanal_margin_name(payload):
              else src.get("group") if src.get("kind") == "pool_group"
              else "a pool of %d" % len(src.get("members") or []))
     return "Root Canal margin · k=%d · %s" % (payload["k"], where or "?")
+
+
+@app.route("/api/rootcanal/group", methods=["POST"])
+def api_rootcanal_group():
+    """The click panel's four pictures, averaged over a set of events of
+    one read -- a cluster, or dots drawn round. Body: a fit body plus
+    `events` (event numbers) and an optional `label`."""
+    body = request.get_json(force=True) or {}
+    try:
+        rec, p, got, rh, _st = _rootcanal_setup(body)
+        evs = [int(i) for i in (body.get("events") or [])]
+        view = rootcanal.group_view([rootcanal.group_parts(got, p, evs)], p,
+                                    label=body.get("label"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/group", exc, 400,
+                    {"entry_id": body.get("entry_id")})
+    view.pop("got", None)
+    return jsonify(dict(view, ok=True))
+
+
+@app.route("/api/rootcanal/pool/group", methods=["POST"])
+def api_rootcanal_pool_group():
+    """The same, across a pool: `events` are [member key, event number].
+
+    The trace and the spectrum pool every event of every member whose read
+    is here; the stack and the CSD are the recording that gave the most,
+    because a probe-wide picture means something only inside one recording.
+    Members whose read is not on this machine are counted, not guessed at.
+    """
+    body = request.get_json(force=True) or {}
+    try:
+        members = _rootcanal_pool_members(body.get("members") or [],
+                                          band=body.get("band"),
+                                          measure=body.get("measure"),
+                                          k=body.get("k"),
+                                          saved=body.get("saved"))
+        by_key = {m["key"]: m for m in members}
+        want = {}
+        for key, i in body.get("events") or []:
+            want.setdefault(str(key), []).append(int(i))
+        parts, away, names, where = [], 0, {}, set()
+        for key, idxs in want.items():
+            m = by_key.get(key)
+            if not m:
+                continue
+            rh = (m.get("pin") or {}).get("read")
+            if not (rh and m.get("here")):
+                away += len(idxs)
+                where.add(m.get("read_on")
+                          or _rootcanal_read_on(m.get("gid"), rh))
+                continue
+            mp = rootcanal.Params(**_rootcanal_fit_part(
+                (m.get("pin") or {}).get("params")))
+            got = _rootcanal_load(m["gid"], rh)
+            # Each event's contact and polarity from the member's kept
+            # numbers, so the read is not measured again for them.
+            rp = {int(r["i"]): (r.get("row"), r.get("pol"))
+                  for r in (_rootcanal_member_rows(m["gid"], rh, mp) or [])}
+            pt = rootcanal.group_parts(got, mp, idxs, rowpol=rp)
+            parts.append(pt)
+            names[id(pt)] = m.get("session_label") or key
+        if not parts:
+            wh = sorted(w for w in where if w)
+            raise rootcanal.RootCanalError(
+                "None of these events' reads are on this machine%s, so there "
+                "is nothing here to average. Average them on the machine "
+                "that read them." % (
+                    " (they were read on %s)" % " and ".join(wh) if wh else ""))
+        p0 = rootcanal.Params(**_rootcanal_fit_part(
+            (members[0].get("pin") or {}).get("params")))
+        view = rootcanal.group_view(parts, p0, label=body.get("label"))
+        main = max(parts, key=lambda q: q["n"])
+        view["probe_from"] = names.get(id(main))
+        view["n_away"] = away
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-group", exc, 400)
+    return jsonify(dict(view, ok=True))
 
 
 @app.route("/api/rootcanal/margin/extract", methods=["POST"])
@@ -8793,6 +9238,13 @@ def api_rootcanal_pool_one(artifact_id):
                 "That version of the pool was saved on another machine and "
                 "its contents have not reached this one yet.")
         _r, row = ARTIFACTS.payload_version(artifact_id, version)
+        pp = payload.get("params") or {}
+        mem = payload.get("members") or []
+        if not pp.get("measure") and mem:
+            pin0 = (mem[0].get("pin") or {}).get("params")
+            payload = dict(payload, params=dict(
+                pp, measure=rootcanal.measure_of(rootcanal.Params(
+                    **_rootcanal_fit_part(pin0))), measure_from_pins=True))
     except Exception as exc:                             # noqa: BLE001
         return fail("rootcanal/pool", exc, 400, {"artifact_id": artifact_id})
     return jsonify({"ok": True, "artifact": rec, "version": row.get("v"),
@@ -13829,6 +14281,52 @@ def _coupling_probe(sm):
     return rat, _histo.probe_sanity(rat, regions)
 
 
+def _sanity_badge():
+    """Which histology is in force, and the channel sanity run under it."""
+    from . import sanityreport as _sr
+    try:
+        return _sr.badge(STORE)
+    except Exception:                                        # noqa: BLE001
+        from . import histo as _h
+        return {"version": _h.HISTO_VERSION, "date": _h.HISTO_DATE,
+                "say": _h.version_say(), "run": None, "older_run": None}
+
+
+@app.route("/api/arc/sanity")
+def api_arc_sanity():
+    """The histology in force, and the newest saved channel sanity run --
+    with every recording's counts when ?full=1."""
+    out = {"ok": True, "badge": _sanity_badge()}
+    if request.args.get("full") in ("1", "true", "yes"):
+        last = (_sanity_badge() or {}).get("run")
+        rec = next((r for r in STORE.all_runs() if last and
+                    r.get("id") == last.get("id")), None)
+        out["report"] = rec
+    return jsonify(out)
+
+
+@app.route("/api/arc/sanity/run", methods=["POST"])
+def api_arc_sanity_run():
+    """Run channel sanity over every banked DEWEY recording under the
+    histology in force, and save it as a run record. Reads the bank, the
+    registry and the histology only; seconds."""
+    from . import sanityreport as _sr
+    body = request.get_json(force=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        rec = _sr.run(_circuit_host(), STORE,
+                      monolith_blocked=monolithmod.histology_blocked)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/sanity/run", exc, 500)
+    STORE.record_activity([{"action": "arc.sanity.run",
+                            "detail": {"id": rec.get("id"),
+                                       "histology": rec["histology"]["version"],
+                                       "recordings": rec["totals"]["recordings"]}}])
+    return jsonify({"ok": True, "id": rec.get("id"), "totals": rec["totals"],
+                    "badge": _sanity_badge()})
+
+
 def _coupling_blocked(probe):
     """{region display name: sentence} for every probe histology rules out."""
     return {r["intended"]: r["why"] for r in (probe or [])
@@ -13965,6 +14463,7 @@ def api_arc_coupling_overview(gid):
         "probe": probe,
         "probe_summary": _histo.summary(probe) if probe else None,
         "histology_file": _histo.SHEET_FILE,
+        "histology": _sanity_badge(),
         "slides": slides, "slides_why": slides_why,
         "bad_channels": bad,
         "windows": win_names,
@@ -14414,7 +14913,7 @@ def api_arc_circuit_plan(gid):
         return _circuit_refused(exc)
     except Exception as exc:                                 # noqa: BLE001
         return fail("arc/circuit/plan", exc, 400, {"gid": gid})
-    return jsonify(dict({"ok": True}, **got))
+    return jsonify(dict({"ok": True}, histology=_sanity_badge(), **got))
 
 
 @app.route("/api/arc/circuit/<gid>/run", methods=["POST"])
@@ -17873,6 +18372,8 @@ def api_arc_precon_file(which):
 #                                                  every region around it
 #   POST /api/arc/monolith/manifest/extend {confirm}  Precon2 and Precon3
 #                                                  into what goes
+#   POST /api/arc/monolith/rebuild {confirm}       remake the built Monolith
+#                                                  here, under the histology
 # ==========================================================================
 from . import monolith as monolithmod                        # noqa: E402
 from . import monoevents as monoeventsmod                    # noqa: E402
@@ -18211,7 +18712,7 @@ def api_arc_monolith_damage():
     if not got:
         return jsonify({"ok": False, "error": "The Monolith has not been "
                         "built yet."}), 404
-    return jsonify(got)
+    return jsonify(dict(got, sanity=_sanity_badge()))
 
 
 @app.route("/api/arc/monolith/entry")
@@ -18297,6 +18798,28 @@ def api_arc_monolith_pacself():
     except Exception as exc:                                 # noqa: BLE001
         return fail("arc/monolith/pacself", exc, 500)
     return jsonify(dict({"ok": True}, **got))
+
+
+@app.route("/api/arc/monolith/rebuild", methods=["POST"])
+def api_arc_monolith_rebuild():
+    """Remake the built Monolith from the answers already fetched, under
+    the histology in force (v2: only probes scored "y", Left POR-SUB, no
+    Right POR-SUB). Nothing is fetched or run; a new artifact version is
+    filed."""
+    body = request.get_json(force=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        by = (STORE.provenance() or {}).get("user")
+        w = monolithmod.start_work("rebuild", lambda w: monolithmod.rebuild_work(
+            w, artifacts=ARTIFACTS, by=by, roles_reader=MONO_ROLES))
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/rebuild", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.rebuild",
+                            "detail": {"histology": monolithmod.HISTO_RULE}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
 
 
 @app.route("/api/arc/monolith/manifest/extend", methods=["POST"])

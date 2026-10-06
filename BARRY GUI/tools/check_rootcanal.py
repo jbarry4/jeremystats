@@ -571,6 +571,78 @@ def _synthetic(A, rc, cfcmod, stamp_t, kinds):
        [e["cls"] for e in rebuilt["events"]]
        == [e["cls"] for e in rc_["events"]])
 
+    head("AVERAGES: ONE EVENT IS ITSELF, AND FILTERING ONCE IS EXACT")
+    i0, i1 = ied[0]["i"], ied[1]["i"]
+    g1 = rc.group_view([rc.group_parts(got, p, [i0])], p, label="one")
+    e1 = rc.event_view(got, p, i0)
+    base1 = e1["trace"]["baseline"]
+    ck("the average of one event is that event's own trace, less its "
+       "baseline",
+       g1["trace"]["contact"] == e1["trace"]["contact"]
+       and np.allclose(np.array(g1["trace"]["y"], float),
+                       np.array(e1["trace"]["y"], float) - base1, atol=1e-6),
+       (g1["trace"]["contact"], e1["trace"]["contact"]))
+    ck("and its spread is zero", np.allclose(g1["trace"]["sd"], 0, atol=1e-6))
+    ck("its stack is that event's stack",
+       np.allclose(np.array(g1["stack"]["rows"], float),
+                   np.array(e1["stack"]["rows"], float), atol=1e-6))
+    ck("and its CSD that event's CSD",
+       np.allclose(np.array(g1["csd"]["rows"], float),
+                   np.array(e1["csd"]["rows"], float), atol=1e-6))
+    # Linearity, which is why the stack and the CSD are filtered once: the
+    # average of two filtered snippets against the filtered average.
+    fs_ = float(got["snip_fs"])
+    two = [rc._filter(got["snip"][i], p, fs_) for i in (i0, i1)]
+    once = rc._filter((np.asarray(got["snip"][i0], float)
+                       + np.asarray(got["snip"][i1], float)) / 2.0, p, fs_)
+    ck("filtering the average is filtering each and averaging, to float "
+       "precision", np.allclose((two[0] + two[1]) / 2.0, once, atol=1e-6))
+    pds = rc.Params(entry_id="fake", stamps_hash=p.stamps_hash, filt="ds")
+    twod = [rc._filter(got["snip"][i], pds, fs_) for i in (i0, i1)]
+    onced = rc._filter((np.asarray(got["snip"][i0], float)
+                        + np.asarray(got["snip"][i1], float)) / 2.0, pds, fs_)
+    ck("and with the mains fitted out too (a projection, so still linear)",
+       np.allclose((twod[0] + twod[1]) / 2.0, onced, atol=1e-6))
+    gi = rc.group_view([rc.group_parts(got, p, [e["i"] for e in ied])], p,
+                       label="IED")
+    ck("a cluster's average counts every event in it, and carries its spread",
+       gi["n"] == len(ied) and len(gi["trace"]["sd"]) == len(gi["trace"]["y"])
+       and gi["trace"]["n"] == len(ied))
+    try:
+        rc.group_parts(got, p, [])
+        ck("an empty set is refused", False)
+    except rc.RootCanalError:
+        ck("an empty set is refused", True)
+
+    head("CLUSTERS DRAWN BY HAND")
+    held = [e["i"] for e in ied[:3]]
+    dr = rc.fit(got, rc.Params(entry_id="fake", stamps_hash=p.stamps_hash,
+                               drawn=[{"events": held, "call": "ds"}]))
+    ck("a drawn cluster comes after k-means' own, with its call, marked drawn",
+       len(dr["clusters"]) == 3 and dr["clusters"][2]["call"] == "ds"
+       and dr["clusters"][2]["call_by"] == "drawn"
+       and dr["clusters"][2]["n"] == 3, [c["call_by"] for c in dr["clusters"]])
+    ck("its events are in it, called as drawn",
+       all(dr["events"][i]["cluster"] == 2 and dr["events"][i]["cls"] == "ds"
+           for i in held))
+    X = np.array([[e["amp_uV"] or np.nan, e["hw_ms"] or np.nan,
+                   e["hf_db"] or np.nan] for e in ev], float)
+    rest = rc.cluster_core(np.delete(X, held, axis=0), k=2)
+    ck("they are held out of k-means: its centres are where they would be "
+       "without them",
+       np.allclose(np.array([c["centre_raw"] for c in dr["clusters"][:2]]),
+                   rest["raw_c"], atol=1e-6))
+    ck("the rule says so", "drawn by hand" in dr["rule"], dr["rule"])
+    ck("and a fit with a drawn cluster rebuilds from its params",
+       [e["cls"] for e in rc.fit(got, rc.Params(**dr["params"]))["events"]]
+       == [e["cls"] for e in dr["events"]])
+    try:
+        rc.Params(drawn=[{"events": [1, 2], "call": "ds"},
+                         {"events": [2, 3], "call": "ied"}])
+        ck("an event in two drawn clusters is refused", False)
+    except rc.RootCanalError:
+        ck("an event in two drawn clusters is refused", True)
+
     head("THE CLICK PANEL, AND A READ FILED AND READ BACK")
     v = rc.event_view(got, p, ied[0]["i"])
     tr = v["trace"]
@@ -1643,9 +1715,116 @@ def _pool_routes(A, tmp, fake):
     ck("so the margin cannot be deleted from under it",
        dl.status_code >= 400, dl.status_code)
 
+    _saved_elsewhere(A, c, unbanked)
+
     bank_after = {r["id"]: len(r.get("versions") or [])
                   for r in A.BANK.all()}
     ck("nothing in Pooled wrote to the Event Bank", bank_before == bank_after)
+
+
+def _saved_elsewhere(A, c, unbanked):
+    """As on 2026-10-06: every saved pool had been saved on Strawbarry, and
+    opened on another machine its members read there could not be refitted
+    -- k, a relabel, a focus, all refused. Here a member's read is taken
+    away after the save, as on a machine that never read it."""
+    from backend import rootcanal as rc
+    head("A SAVED POOL, OPENED WHERE ITS MEMBERS' READS ARE NOT")
+    unb = [{"key": u["key"]} for u in unbanked]
+    away = unbanked[0]
+    meas = {k: v for k, v in rc.measure_of(rc.Params()).items()
+            if k != "filter_label"}
+    sb = {"members": unb, "k": 3, "cluster_calls": {"0": "ied"},
+          "measure": meas}
+    sa = c.post("/api/rootcanal/pool/save",
+                json=dict(sb, nickname="saved elsewhere")).get_json()
+    spay = A.ARTIFACTS.payload(sa["artifact_id"], 1) if sa.get("ok") else {}
+    ck("a pool saves at the k and with the calls it was shown with",
+       sa.get("ok") and spay.get("k") == 3
+       and spay["params"]["cluster_calls"] == {"0": "ied"}, sa)
+    src = {"artifact_id": sa["artifact_id"], "version": 1}
+    loc2 = c.post("/api/rootcanal/pool/fit",
+                  json=dict(sb, k=2, cluster_calls={})).get_json()
+    npz = A.ROOTCANAL.cached_path(away["gid"], away["read"], ".npz")
+    hid = npz + ".away"
+    os.replace(npz, hid)
+    try:
+        r = c.post("/api/rootcanal/pool/fit", json=sb)
+        e = (r.get_json() or {}).get("error") or ""
+        ck("without the save, a member read elsewhere is refused by name, "
+           "and the refusal says a saved pool would have brought it",
+           r.status_code == 400 and away["session_label"] in e
+           and "A saved pool brings" in e, e)
+        g = c.post("/api/rootcanal/pool/fit",
+                   json=dict(sb, saved=src)).get_json()
+        fm = [m for m in (g.get("members") or []) if m["key"] == away["key"]]
+        ck("opened from the save, it pools, marked as the save's, with no "
+           "read here to open", g.get("ok") and fm
+           and (fm[0].get("from_saved") or {}).get("version") == 1
+           and fm[0]["here"] is False and fm[0]["event_body"] is None,
+           g.get("error"))
+        evk = lambda res: [(x["m"], x["i"], x["cls_pool"], x["cls_single"])
+                           for x in res["events"]]
+        ck("and the answer is the saved answer, event for event",
+           g.get("ok") and evk(g) == evk(spay)
+           and abs(g["gmm"]["delta"] - spay["gmm"]["delta"]) < 1e-9)
+        spin = [m for m in spay["members"] if m["key"] == away["key"]][0]
+        ck("its numbers are the ones its pin names",
+           fm and fm[0]["pin"]["rows_digest"] == spin["pin"]["rows_digest"])
+        g2 = c.post("/api/rootcanal/pool/fit",
+                    json=dict(sb, saved=src, k=2, cluster_calls={})).get_json()
+        ck("another k works on its numbers, its own call recomputed at that "
+           "k -- the same as where its read is",
+           g2.get("ok") and loc2.get("ok") and evk(g2) == evk(loc2),
+           g2.get("error"))
+        g3 = c.post("/api/rootcanal/pool/fit", json=dict(
+            sb, saved=src, focus={"mouse_key": fm[0]["mouse_key"]})).get_json()
+        ck("a focus on its mouse works", g3.get("ok") and g3.get("gmm_focus"),
+           g3.get("error"))
+        mine = [[away["key"], x["i"]] for x in g["events"]
+                if g["members"][x["m"]]["key"] == away["key"]][:3]
+        g4 = c.post("/api/rootcanal/pool/fit", json=dict(
+            sb, saved=src, drawn=[{"events": mine, "call": "ds"}])).get_json()
+        ck("and a cluster drawn round its dots",
+           g4.get("ok") and any(cl["call_by"] == "drawn" and cl["n"] == 3
+                                for cl in g4["clusters"]), g4.get("error"))
+        r = c.post("/api/rootcanal/pool/fit", json=dict(
+            sb, saved=src, measure=dict(meas, filt="ds")))
+        e = (r.get_json() or {}).get("error") or ""
+        ck("measuring it another way is refused, naming it and the change",
+           r.status_code == 400 and away["session_label"] in e
+           and "Asked for DS filter" in e, e)
+        ga = c.post("/api/rootcanal/pool/group", json=dict(
+            sb, saved=src, events=mine)).get_json()
+        ck("its average says its read is not here",
+           not ga.get("ok") and "reads are on this machine" in (ga.get("error")
+                                                                or ""),
+           ga)
+        sv2 = c.post("/api/rootcanal/pool/save", json=dict(
+            sb, saved=src, k=2, cluster_calls={}, nickname="saved elsewhere",
+            artifact_id=sa["artifact_id"])).get_json()
+        ins = ((A.ARTIFACTS.get(sa["artifact_id"]) or {}).get("versions")
+               or [{}])[-1].get("inputs") or []
+        pin = [x for x in ins if x.get("key") == away["key"]]
+        ck("saved again here, its pin says its numbers came from v1",
+           sv2.get("ok") and sv2["version"] == 2 and pin
+           and pin[0].get("from_saved") == src, sv2)
+    finally:
+        os.replace(hid, npz)
+    # A pool saved before the measurement was recorded: it reopens with
+    # the one its members were pinned with.
+    old = dict(spay, params={k: v for k, v in spay["params"].items()
+                             if k != "measure"})
+    subj = dict((A.ARTIFACTS.get(sa["artifact_id"]) or {}).get("subject")
+                or {}, pool_key="old-" + sa["artifact_id"])
+    oa = A.ARTIFACTS.create("rootcanal_pool", subj, old,
+                            params=old["params"], nickname="old pool")
+    og = c.get("/api/rootcanal/pool/%s" % oa["id"]).get_json()
+    want = rc.measure_of(rc.Params(**A._rootcanal_fit_part(
+        spay["members"][0]["pin"]["params"])))
+    ck("a pool saved without its measurement reopens with its members'",
+       og.get("ok") and og["payload"]["params"].get("measure") == want
+       and og["payload"]["params"].get("measure_from_pins") is True,
+       (og.get("payload") or {}).get("params"))
 
 
 def _real_pool(A):

@@ -15,6 +15,334 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.06.2 - Root Canal: a saved pool works on any machine, and Save saves what is shown
+
+**Restart Jarvis**, on every machine that opens pools.
+
+### Fixed
+
+- **A saved pool opened on another machine refused everything.** Pressing
+  k, a relabel, a focus or a margin said "u:… is not a Root Canal result
+  or a cached read on this machine any more".
+  - **The cause:** a Root Canal read is cache. It lives in `GUI_logs/.cache`
+    on the machine that made it, and goes nowhere else. Every press in
+    Pooled refits on the server, and the refit looked for each member's
+    read on this machine.
+  - **The extent:** all 18 saved pools were saved on Strawbarry, and each
+    has members read only there (2 to 26 of them).
+  - **The fix:** a member whose read is not here is now taken from the
+    saved version the pool was opened from. The saved payload already holds
+    every event's amplitude, half-width, HF power and single call. It is
+    checked against the digest the member's pin was saved with: all 351
+    saved members across every version match exactly.
+  - **What works:** k, calls, focus, complete events only, margins, drawn
+    clusters and Save all work on those numbers.
+  - **What still needs the read:** measuring the member another way
+    (filter, window, half-width search, HF band). This is refused, naming
+    every member it would strand and the change asked for, all at once.
+  - **What the panel shows:** those members get a row in "Recordings in
+    the pool" marked "read on Strawbarry", so they can be taken out and
+    put back. A dot from one says where its read is.
+  - **Measured here:** all 18 pools refit in 0.3-3.3 s. Each gives back
+    exactly what was saved, every event's pooled and single call.
+- **Save did not save what was shown.** The dialog sent the members,
+  mouse types and focus alone. The server refits from the request, so a
+  pool was filed with the server's defaults: k = 2, no relabels, no
+  margin, no drawn clusters, all events, each member's own measurement.
+  - "PTEN Baseline All CTL" v2 ("Testing single cluster", 10-06) is k = 2
+    with v1's counts, 645 DS and 632 IED.
+  - Save now sends the same request as the picture.
+- **A pool saved before its measurement was recorded reopens with it.**
+  That is every pool from 10-02: their members were pinned at the LFP
+  filter, 1-100 Hz, 60 Hz mains left in. The shared settings bar now
+  says so. Before, it kept whatever was set, and the first press asked
+  every member to be measured again.
+  - Re-measured today from those pins, the members that are here give
+    identical numbers.
+- Closing a pool now also drops its drawn clusters, relabels, margin and
+  average, so the next pool starts clean.
+
+### Checked
+
+- `tools/check_rootcanal.py` 274.
+  - A pool is saved, then a member's read is taken away, as on another
+    machine.
+  - Without the save, the member is refused by name.
+  - Opened from the save, the pool gives the saved answer event for event,
+    with the pinned digest. Another k gives the same calls as where its
+    read is. Focus and a drawn cluster work.
+  - A new filter is refused, naming the member. Its average says its read
+    is not here.
+  - Saved again, its pin records where its numbers came from.
+  - A pool without its measurement reopens with its members'.
+- `rootcanalpool.html` 161, 14 of them new.
+  - Save carries k, the measurement, calls, margin, complete events and
+    drawn clusters.
+  - A saved pool with a member read elsewhere shows its row, chip, note
+    and mouse type. Untick and re-tick work, and its dot names the
+    machine.
+  - A refit and a save both name the saved version.
+- `rootcanal.html` 257 and `dspca.html` 304.
+- Bite-tested. Each of these turned the checks red:
+  - leaving the saved version out of the request;
+  - a save that sends members only;
+  - no rows for members read elsewhere;
+  - a server that ignores the save;
+  - letting a member read elsewhere be measured another way.
+
+## 2026.10.06.1 - Root Canal: a cluster's average, and clusters drawn by hand
+
+New routes. **Restart Jarvis.**
+
+### Added
+
+- **A cluster's average, in every panel.** Each cluster chip has an "avg"
+  button, in Single and in Pooled. It puts the average of that cluster
+  into the event panel, where a picked dot's four pictures go. "Back to
+  the picked dot" closes it.
+  - **Max-amp trace:** each event on its own max-amp contact, aligned on
+    its stamp, flipped to the cluster's common polarity, with its spread
+    (± SD) as a band. The panel says how many were flipped.
+  - **Spectrum:** against baseline.
+  - **Every contact and the CSD:** the average of the raw snippets,
+    filtered once. That gives the same answer as filtering each one and
+    averaging, to float precision, because both filters are linear. The
+    CSD uses the DS filter, as a dot's does.
+  - **In Pooled:** the trace and spectrum are over every recording. The
+    stack and CSD come from one recording, the one with the most events,
+    and the panel names it. A probe's contacts only line up inside one
+    recording.
+- **The lasso.** Shift-drag on the 3D view, or turn on "Lasso" in its
+  heading and drag, to draw round dots instead of turning the view. The
+  dots drawn round are ringed. A bar offers:
+  - **Average them:** the same average, over exactly those dots.
+  - **Make a DS cluster** or **Make an IED cluster:** those events are
+    held out of k-means (they move no centre and no scale) and become a
+    cluster of their own, after k-means' clusters.
+    - Its chip is marked "drawn". Pressing the chip changes its call, and
+      × undraws it.
+    - The rule says how many events were drawn by hand.
+    - A dot drawn into a second cluster leaves the first.
+  - In Pooled, only the dots on show can be drawn round: a focus that dims
+    the rest keeps those out.
+- Drawn clusters are part of the result. They are carried in the request,
+  saved with a pool, rebuilt from the results bank, and banked as called.
+  A margin cut from a fit leaves them out, since a hand drawing has no
+  centre to carry.
+
+### Measured
+
+- On the wall clock, not in the harness's virtual time:
+  - A cluster's average in Single: 0.7-0.8 s.
+  - The 18-recording pool's IED average: 7.1 s. Each event's contact and
+    polarity are kept with the pool's cached numbers, so nothing is
+    re-measured.
+- On PTEN 46fd29a77cc7 at k = 2:
+  - The IED cluster averages 2001 µV, 13.9 ms and +24.9 dB.
+  - The DS cluster averages 1405 µV, 15.6 ms and +13.5 dB, with 25 events
+    flipped.
+
+### Checked
+
+- `tools/check_rootcanal.py` 262.
+  - The average of one event is that event.
+  - Filtering the average equals averaging the filtered events, with and
+    without the mains taken out.
+  - Drawn events are held out of k-means: its centres are where they
+    would be without them.
+  - A drawn fit rebuilds from its params.
+  - An event in two drawn clusters is refused.
+- `rootcanal.html` 257: a real Shift-drag with pointer events selects
+  exactly the dots inside the path and does not turn the view. Also
+  checked: the average's count, panel and close; and a drawn cluster's
+  request, rule, relabel and undraw.
+- `rootcanalpool.html` 147: the pooled average and where its probe
+  picture came from; a pooled drawn cluster sent as (recording, event)
+  pairs; and undraw.
+- `dspca.html` 304.
+- Bite-tested. Each of these turned the checks red:
+  - dropping the drawn clusters from Single's request;
+  - making the lasso take every dot;
+  - letting drawn events shape k-means;
+  - averaging one event instead of the whole cluster.
+
+## 2026.10.05.4 - Histology v2, channel sanity v2, and the Monolith on it
+
+`Joes multi site histo results.xlsx` was rescored. **Restart Jarvis.**
+
+### Changed
+
+- **Histology v2** (`backend/histo.py`) is the workbook as it is now, cell
+  for cell. `tools/check_histo.py` agrees with it on all 96 cells. v1 is
+  kept beside it as `HISTO_RAW_V1`, for the record.
+  - No "maybe" is left.
+  - These cells are now "y": J3, J6 and J10 right PER, J6 and J9 right DHC,
+    J7 left PER, J8 both DHC, J10 both OFC and both DHC, and J11 left DHC.
+  - J10's left PER is now lateral entorhinal.
+  - No probe aimed at POR is in POR.
+- **The Monolith uses only probes scored "y".** A "maybe" or a probe found
+  somewhere else is left out of it. Coupling still keeps those under their
+  true names.
+- **One new region, Left POR-SUB.** The left POR probes are consistently
+  in subiculum, so in the four rats where histology says so (J4, J6, J7,
+  J10) that channel group is used under the POR channel mapping, as Left
+  POR-SUB. **Right POR-SUB is excluded.**
+- **The Monolith needs four rats to test a region pair, not five** (the
+  lab's choice). With five, every Left POR-SUB pair would have been drawn
+  and never tested.
+  - 44 of the 66 region pairs can be compared.
+  - Left PER has only three rats under v2, so its pairs are still never
+    tested.
+- **The manifest takes the histology in force whenever it is read.** What
+  goes to the cluster and the cue pairs the page reports all follow it.
+  - A build masks whatever the histology leaves out of each rat, in every
+    array, whatever the node measured.
+  - This needs no new VACC run: every region v2 keeps was measured in the
+    existing run.
+- **What was kept was counting sessions that had not been run.** Once
+  Precon2 and Precon3 were added to what goes, every one of their
+  presentations read as lost: 490 presentations, 254 of them "lost". The
+  report now counts only the sessions the build has. On the real data that
+  is 242 presentations: 133 kept, 103 partly, 6 lost.
+
+### Added
+
+- **Channel sanity v2, run over every banked DEWEY recording and saved**
+  (`backend/sanityreport.py`). It is one run record in `GUI_logs/runs/`.
+  - It covers 53 recordings and 810 cue pairs. For each probe it gives the
+    v2 verdict, its raw cell, and whether Coupling and the Monolith use it.
+  - For each region and window it gives the cue pairs with a usable wire,
+    and why the rest have none.
+  - Run 2026-10-05: 37,063 of 52,560 region-windows have a wire.
+  - `POST /api/arc/sanity/run` runs it again, and `GET /api/arc/sanity`
+    reads it.
+- **Every probe-sanity surface says v2.**
+  - Coupling's and Circuit's summaries begin "Histology v2".
+  - Coupling's probe list opens with "Histology v2 · rescored 2026-10-05 ·
+    channel sanity v2 run …".
+  - The Monolith's What was kept and its counts say which histology they
+    were built under, and warn when it was v1.
+- **Rebuild under histology v2**, in Drift → Monolith. It remakes the built
+  Monolith from the answers already fetched (nothing is run or uploaded,
+  about a minute) and files a new artifact version.
+  - On the real data: 254,408 entries tested (was 260,190), and 15,017 at
+    p < .05 in raw (was 17,744).
+
+### Checks
+
+- `tools/check_monolith.py` (186) covers:
+  - every rat's v2 blocking against the workbook;
+  - Left POR-SUB being J4, J6, J7 and J10;
+  - the build's masking;
+  - the names;
+  - the rebuild route.
+- Harnesses: `_dev/monolith.html` (302), `_dev/driftmono.html` (63).
+
+---
+
+## 2026.10.05.3 - AI Beta: even channels only
+
+### Added
+
+- **AI Beta can train on even channels only.** A new **Channels** choice
+  (All | Even only) sits in the setup. Even only keeps CSC 2, 4 … 64, the
+  channels Toothy's LL input and the Avery sweep screen use. On a linear
+  array these are every other contact, so they are read 100 µm apart
+  instead of 50. The second read's windows that count contacts are halved,
+  so they cover the same depth:
+  - "near" and "far" for unit firing and polarity
+  - the laminar-delay span
+  - Braces' 16-row band
+
+  It is refused on probes laid out in columns (the H10-D and the dual
+  array). Even-only reads are cached apart from full ones, and a full read
+  keeps the cache key it always had.
+- **A sweep reads the channels its model was trained on.** A run made with
+  even channels only sweeps a set with even channels only.
+
+### Measured
+
+All three models were retrained on even channels only. Each used the same
+45 recordings (12,406 candidates, 1,424 garbage), inputs, model and bars as
+the run its slot holds. Scores come only from mice each model never saw:
+
+| | AUC, all → even | Flagged at 20% lost, all → even | Flagged at 30% lost, all → even | Garbage cleaned at 20%, all → even |
+|---|---|---|---|---|
+| Avery | 0.912 → 0.916 | 21.2% → 18.6% | 11.5% → 8.8% | 87.3% → 87.2% |
+| Avery+ | 0.921 → 0.924 | 19.8% → 20.1% | 10.1% → 10.4% | 88.8% → 88.8% |
+| Avery Garbage Dystrophy+ | 0.923 → 0.925 | 18.9% → 17.4% | 9.3% → 7.7% | 89.6% → 89.2% |
+
+**Nothing is lost by dropping the odd channels, and two of the three
+models flag a little less.** The gains are at the edge of what seed
+noise moves. Garbage let into DS is 1.1% throughout, because the DS bar
+is fixed. The reads were faster: the physiology read took about 27 min
+on even channels, against about 74 min on all of them.
+
+Sandbox runs, no slot changed:
+- Avery: `ai20261005-120406-1005`
+- Avery+: `ai20261005-120706-5048`
+- Avery Garbage Dystrophy+: `ai20261005-121912-268f`
+
+### Checked
+
+- `tools/check_aibeta.py`: 70 ok. New checks:
+  - the even subset and its bad channels
+  - twice the pitch
+  - refusal on a probe laid out in columns
+  - old cache keys unchanged, and even reads filed apart
+  - the second read's windows at every contact and at every other contact
+- `_dev/aibeta.html`: 37 ok. New checks: the Channels choice starts on
+  All, a run asked for with Even only carries `channels: even`, and All
+  comes back.
+
+---
+
+## 2026.10.05.2 - Root Canal: one set of settings, pools in a second, colours that match
+
+### Changed
+
+- **Single and Pooled take the same settings.** Pooled now shows Single's
+  own controls bar — filter, window, half-width search, HF band, k, and
+  complete events only — and pools with exactly those: every member is
+  measured with them, and a banked member measured another way is
+  re-measured from its read and marked. The settings chip in Pooled names
+  the pool's own measurement (it showed Single's). Reopening a saved pool
+  puts its settings back into the shared bar. Single gains "only events on
+  all 3 axes", Pooled's switch.
+- **A click applies at once.** A filter, k, the mains box or complete
+  events refits the moment it is pressed, in either view; typed numbers
+  still wait for Recompute. Choosing k and waiting for Recompute is what
+  read as the picture not updating.
+
+### Fixed
+
+- **A pool took 30-40 s for every press** — a k change, a relabel, the same
+  pool again — because every member was refitted from its read each time,
+  and the read cache holds only a few of eighteen. A member's numbers
+  depend only on how it is measured, so they are now computed once per
+  measurement and kept, in memory and beside the read on disk. Measured on
+  the wall clock (not under the runner's virtual time): one press of k on
+  the 18-recording pool 1.0-2.1 s; the same pool after a restart 2.5 s,
+  was 34 s; a new measurement still pays once. Single, 0.02-0.37 s a press.
+- **Colours that did not match.** Cluster chips used the categorical
+  palette while the dots and centres were coloured by call, so a chip's
+  colour was on nothing. A chip, its centre and its dots now always share
+  one colour — by call, or by cluster in "by cluster" mode, where past four
+  clusters the shape changes as the colours repeat.
+- **Centres are numbered as the chips are** ("#3 IED"), and a label that
+  would land on another moves aside: at k = 6 four "DS centre" labels sat
+  on one another.
+- Single's request did not carry "complete events only" to the server.
+
+### Checked
+
+- `rootcanal.html` 233, `rootcanalpool.html` 137, `dspca.html` 304. New:
+  clicks applied without Recompute, Pooled asked with exactly Single's
+  settings, its chip naming its own band, swatch = centre = cluster colour
+  in both modes, numbered centres, no overlapping labels at k = 6. With
+  clicks only staged, swatches back on the palette and Pooled not sending
+  the settings, 12 and 9 fail. `check_rootcanal.py` 248.
+
 ## 2026.10.05.1 - Artifact payloads stop taking the database down
 
 From 30 September the shared database kept going down (Cloudflare

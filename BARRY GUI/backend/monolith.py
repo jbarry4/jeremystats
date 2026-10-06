@@ -14,7 +14,7 @@ button for whichever step comes next:
                  each of its tasks is.
   3. Run         one slurm array, a task per rat-day x kind x band chunk,
                  at most 100 at once. Only rat-days whose recordings are
-                 whole on the cluster go; it needs at least five rats.
+                 whole on the cluster go; it needs at least four rats.
   4. Fetch       only when pressed: the tasks' arrays come home in one
                  stream, and are pooled over rats here (`build`).
   5. View        the page (web/monolith.html), filed as a `monolith`
@@ -27,7 +27,7 @@ window x band x method x region pair, plus each region's power and every
 PAC cell. A rat-day is every cue pair of both pairings, blind to type; a
 rat's change is Precon4 minus Precon1 of those means, its variance the two
 squared standard errors; the changes are pooled DerSimonian-Laird and
-tested Hartung-Knapp on k - 1 df; an entry with fewer than five rats is
+tested Hartung-Knapp on k - 1 df; an entry with fewer than four rats is
 shown and not tested; a rat with a single usable pair on a day leaves the
 entry untested (there is no spread to put an error on), as it does there.
 Minus FP is (cue - rest) per day, rest being the day's FP1+FP2 epochs. The
@@ -57,7 +57,8 @@ import time
 
 import numpy as np
 
-from . import circuit, circuitrun, coupling, drift, nlx, sweep, vacc, vaccupload
+from . import (circuit, circuitrun, coupling, drift, histo, nlx, probes,
+               sweep, vacc, vaccupload)
 
 SCHEMA = "arc.monolith/1"
 ANALYSIS = "precon1-4-sweep"
@@ -79,7 +80,88 @@ def core_view(man):
     """The manifest as the change sees it: Precon1 and Precon4 only."""
     return dict(man, days=[d for d in man.get("days") or []
                            if d["day"] in DAY_NAMES])
-MIN_RATS = 5
+#: Four, not five, since 2026-10-05 (the user's choice): under histology
+#: v2 with only "y" kept, Left POR-SUB has four rats, and at five its pairs
+#: would be drawn and never tested. Every test with four rats is weaker,
+#: and the page says how many rats each entry rests on.
+MIN_RATS = 4
+
+#: Which probes the Monolith uses (the user, 2026-10-05): only those
+#: histology v2 scored "y" -- where they were aimed, with confidence. A
+#: "maybe" and a probe found somewhere else are left out here (Coupling,
+#: elsewhere in Jarvis, keeps them under their true names).
+#:
+#: One exception makes a region of its own. No probe aimed at POR is in
+#: POR, and the LEFT ones are consistently in subiculum, so that channel
+#: group -- the POR channel mapping -- is used as "Left POR-SUB" in every
+#: rat whose left POR cell says subiculum. "Right POR-SUB" is excluded.
+REGION_LABEL = {"Left POR": "Left POR-SUB", "Right POR": "Right POR-SUB"}
+POR_SUB = ("Left POR",)
+POR_SUB_EXCLUDED = ("Right POR",)
+HISTO_RULE = "v%d: y only, Left POR-SUB, no Right POR-SUB" % \
+    histo.HISTO_VERSION
+HISTO_SAY = ("%s. Only probes scored “y” are used; “maybe”s and probes "
+             "found somewhere else are left out. The left POR probes, which "
+             "are in subiculum, are Left POR-SUB; Right POR-SUB is left out."
+             % histo.version_say())
+
+
+def label(name):
+    """The Monolith's name for a channel group."""
+    return REGION_LABEL.get(name, name)
+
+
+def histology_blocked(rat):
+    """{channel group: sentence} for every group the Monolith leaves out
+    of this rat, under the rule above."""
+    rat = int(rat)
+    if rat not in _HISTO_BLOCKED:
+        _HISTO_BLOCKED[rat] = _histology_blocked(rat)
+    return dict(_HISTO_BLOCKED[rat])
+
+
+_HISTO_BLOCKED = {}
+
+
+def _histology_blocked(rat):
+    regions = probes.regions_for("dewey32",
+                                 [{"number": n} for n in range(1, 33)])
+    out = {}
+    for r in histo.probe_sanity(rat, regions):
+        name = r["intended"]
+        raw = " ".join(str(r.get("raw") or "").split())
+        said = "“%s”" % raw if raw else "nothing (the rat is not scored)"
+        if name in POR_SUB_EXCLUDED:
+            out[name] = ("%s is left out of the Monolith (the lab, "
+                         "2026-10-05); histology v%d scored this probe %s."
+                         % (label(name), histo.HISTO_VERSION, said))
+        elif name in POR_SUB:
+            if raw.lower() != "subiculum":
+                out[name] = ("Histology v%d scored this POR probe %s, not "
+                             "subiculum, so it is not %s in this rat."
+                             % (histo.HISTO_VERSION, said, label(name)))
+        elif r["verdict"] != histo.INTENDED:
+            out[name] = ("Histology v%d scored this probe %s, not “y”; the "
+                         "Monolith uses only probes scored “y”."
+                         % (histo.HISTO_VERSION, said))
+    return out
+
+
+def histology_now(man):
+    """Bring a manifest's histology up to the rule in force. True when
+    anything changed (its digest is then new)."""
+    changed = man.get("histology") != HISTO_RULE
+    for d in man.get("days") or []:
+        want = histology_blocked(d["rat"])
+        if d.get("blocked") != want:
+            d["blocked"] = want
+            d["grey"] = sorted(want)
+            changed = True
+    if changed:
+        man["histology"] = HISTO_RULE
+        man["digest"] = _digest(man)
+    return changed
+
 LAYERS = ("raw", "minus_fp")
 LAYER_SAY = {
     "raw": "Each rat's own change, Precon4 − Precon1, of the cue-window value.",
@@ -113,9 +195,73 @@ ADDITIONS_SAY = {"delta": "the delta band (2–4 Hz)",
                  "pac_trans": "phase–amplitude coupling at the transitions"}
 
 WINDOWS = list(sweep.STATE) + list(sweep.TRANSITION)
-WINDOW_SAY = {"pre": "Baseline", "cue1": "Cue 1", "cue2": "Cue 2",
-              "post": "After", "onset": "Onset", "switch": "Switch",
+WINDOW_SAY = {"pre": "Pre-baseline", "cue1": "Cue 1", "cue2": "Cue 2",
+              "post": "Post-baseline", "onset": "Onset", "switch": "Switch",
               "offset": "Offset"}
+
+#: The agreed comparison (the lab, 2026-10-06): within each presentation,
+#: Cue 2 minus Cue 1 -- the second cue against the first, B - A in AB and
+#: D - C in CD -- then Precon4 against Precon1, pooled as everything else.
+#: It is carried as one more window, after the real ones, in every pooled
+#: array (the day arrays are not changed: it is worked out from them). It
+#: is RAW ONLY: the rest a day's minus FP takes away is the same for both
+#: cue windows, so it cancels exactly, and the minus-FP layer holds the raw
+#: numbers there.
+CONTRAST = "c21"
+CONTRAST_SAY = "Cue 2 − Cue 1"
+WINDOW_SAY[CONTRAST] = CONTRAST_SAY
+
+
+def window_ids(pac=False):
+    """Every window of a pooled array, in its order: the measured ones,
+    then the contrast."""
+    return list(PAC_WINDOWS if pac else WINDOWS) + [CONTRAST]
+
+
+def window_kind(w):
+    return ("contrast" if w == CONTRAST else "state" if w in sweep.STATE
+            else "pair" if w == "pair" else "transition")
+
+
+def with_contrast(X, pac=False):
+    """A day's array (presentations first, then windows) with one more
+    window: each presentation's Cue 2 minus its Cue 1."""
+    names = PAC_WINDOWS if pac else WINDOWS
+    i1, i2 = names.index("cue1"), names.index("cue2")
+    X = np.asarray(X)
+    return np.concatenate([X, (X[:, i2] - X[:, i1])[:, None]], axis=1)
+
+
+def at_values(X, at, pac=False):
+    """Each presentation's value at `at` (window first) in a day's array:
+    the contrast worked out from its Cue 2 and Cue 1."""
+    names = PAC_WINDOWS if pac else WINDOWS
+    at = tuple(int(x) for x in at)
+    if at[0] == len(names):
+        i1, i2 = names.index("cue1"), names.index("cue2")
+        return (np.asarray(X[(slice(None), i2) + at[1:]], dtype=np.float64)
+                - np.asarray(X[(slice(None), i1) + at[1:]],
+                             dtype=np.float64))
+    return np.asarray(X[(slice(None),) + at], dtype=np.float64)
+
+
+def _slice(got, sl):
+    """A pooled result cut along its window axis."""
+    return {k: (v[sl] if isinstance(v, np.ndarray) and v.ndim else v)
+            for k, v in got.items()}
+
+
+def _tops(got, layer, names, pairs, pac=False):
+    """Points and counts of the measured windows, and of the contrast,
+    apart: the contrast is a different question and never mixes into the
+    page's counts or its overall list."""
+    ci = len(PAC_WINDOWS if pac else WINDOWS)
+    main, con = _slice(got, slice(0, ci)), _slice(got, slice(ci, ci + 1))
+    if pac:
+        return (pac_points(main, layer, names), None,
+                pac_points(con, layer, names, w0=ci), None)
+    return (points(main, layer, names, pairs), counts(main),
+            points(con, layer, names, pairs, w0=ci), counts(con))
 METHODS = list(sweep.ALL_METHODS)
 METHOD_SAY = {
     "coherence": ("Coherence", "Magnitude-squared coherence, mean over the "
@@ -163,7 +309,8 @@ P_POINT = 0.05
 #: edit to some other tool. tools/check_monolith.py imports the modules
 #: afresh and fails if this list has fallen behind them.
 CODE = ("cfc.py", "circuit.py", "circuitrun.py", "coupling.py", "csc.py",
-        "demo.py", "drift.py", "lazyimp.py", "monolith.py", "nlx.py",
+        "demo.py", "drift.py", "histo.py", "lazyimp.py", "monolith.py",
+        "nlx.py",
         "probes.py", "spark.py", "sweep.py", "sysinfo.py", "vacc.py",
         "vaccio.py", "vaccrun.py", "vaccupload.py")
 
@@ -365,6 +512,7 @@ def build_manifest(host, cfg, progress=None):
         "days": out_days, "notes": notes, "inputs": inputs, "gids": gids,
         "regions": sweep.regions(),
         "roots": roots, "files_rule": FILES_RULE,
+        "histology": HISTO_RULE,
     }
     man["digest"] = _digest(man)
     return man
@@ -419,8 +567,7 @@ def _day_record(host, cfg, roots, rat, day, gid, notes):
                      (rat, day))
         return None
     bad = sorted(int(c) for c in (sm.get("bad_channels") or []))
-    _rat, probe = host.probe(sm)
-    blocked = host.blocked(probe) or {}
+    blocked = histology_blocked(rat)
     tm, tb, ta = host.measured_transition(entry)
     fast_banked = bool(tm) and abs(float(tb) - sweep.FAST_LEN[0]) < 1e-9 \
         and abs(float(ta) - sweep.FAST_LEN[1]) < 1e-9
@@ -505,6 +652,10 @@ def manifest():
     if not man or man.get("schema") != SCHEMA or \
             man.get("files_rule") != FILES_RULE:
         return None
+    # The histology in force, whenever it was made: what goes to the
+    # cluster, what is pooled and what the page says all follow it.
+    if histology_now(man):
+        save_manifest(man)
     return man
 
 
@@ -1243,6 +1394,25 @@ def assemble(man, run, raw_dir, out_dir, progress=None):
         gn = sweep.ALL_METHODS.index("gc_net")
         E[:, :, :, gn] = E[:, :, :, ga] - E[:, :, :, gb]
         Er[:, :, :, gn] = Er[:, :, :, ga] - Er[:, :, :, gb]
+        # The histology in force: a channel group it leaves out of this rat
+        # is out of every array, whatever the node measured (a run made
+        # under an older scoring measured more, and nothing else differs:
+        # each region is read on its own wire).
+        gone = [ri for ri, n in enumerate(sweep.regions())
+                if n in (d.get("blocked") or {})]
+        if gone:
+            pis = [pi for pi, (a, b) in enumerate(
+                sweep.pairs_of(list(range(R)))) if a in gone or b in gone]
+            ops = [ph * R + am for ph in range(R) for am in range(R)
+                   if ph in gone or am in gone]
+            for A in (E, Er):
+                A[..., pis] = np.nan
+            for A in (Pw, Pwr):
+                A[..., gone] = np.nan
+            for A in (PAC, PACr):
+                A[..., ops] = np.nan
+            for A in (Wst, Wsl, Wfa, Wr):
+                A[..., gone] = -1
         base = os.path.join(out_dir, "days", "r%d_%s" % (rat, day))
         for name, arr in (("edges", E), ("power", Pw), ("pac", PAC),
                           ("wires_state", Wst), ("wires_slow", Wsl),
@@ -1281,7 +1451,7 @@ def pooled(out_dir, man, what, keep=None):
             if not idx:
                 continue
             X = np.asarray(X[idx])
-        cue[key] = day_stats(X)
+        cue[key] = day_stats(with_contrast(X, pac=(what == "pac")))
         Xr = _load_day(out_dir, d["rat"], d["day"], rest_name)
         if Xr is not None and Xr.shape[0]:
             m, s2, n = day_stats(Xr)
@@ -1295,47 +1465,44 @@ def pooled(out_dir, man, what, keep=None):
         got = pool(Y, V)
         got["rats"] = rats
         out[layer] = got
+    # The contrast is raw only: rest cancels from Cue 2 - Cue 1 exactly.
+    if "raw" in out and "minus_fp" in out:
+        for k, v in out["raw"].items():
+            if isinstance(v, np.ndarray) and v.ndim and \
+                    isinstance(out["minus_fp"].get(k), np.ndarray):
+                out["minus_fp"][k][-1] = v[-1]
     return out
 
 
-#: The Monolith split by cue pair. Every rat hears two pairings, and in
-#: every rat one of them has Click in it and the other Noise, one has the
-#: High tone and the other the Low tone -- so each of these halves has all
-#: eight rats, and can be pooled exactly as the whole is. (Split by the
-#: exact pairing instead, "Click -> Low Tone", and each has two rats: the
-#: cohort is counterbalanced, and two rats cannot be pooled.) The third
-#: split is by what conditioning later did, read from each rat's own Con
-#: TTLs (cueroles.py). User, 2026-10-02.
+#: The Monolith split by cue pair: each rat's AB and its CD, by the seats
+#: on the lab's identity sheet (ratidentity.py, the lab, 2026-10-06). Every
+#: rat has both, so each half has all eight rats and is pooled exactly as
+#: the whole is. Which physical sounds those are is counterbalanced, so a
+#: half averages the sounds out. (The earlier Click/Noise, High/Low and
+#: food/other halves are gone: the first two cut across AB/CD, because
+#: every pair crosses modality, and the third read the Con sessions, which
+#: this analysis does not go into.)
 SPLITS = (
-    ("snd_click", "Click pair", "sound"),
-    ("snd_noise", "Noise pair", "sound"),
-    ("tone_high", "High-tone pair", "tone"),
-    ("tone_low", "Low-tone pair", "tone"),
-    ("role_food", "The pair that later gets food", "role"),
-    ("role_other", "The other pair", "role"),
+    ("ab", "AB pair (A → B)", "pair"),
+    ("cd", "CD pair (C → D)", "pair"),
 )
 SPLIT_IDS = tuple(g for g, _l, _f in SPLITS)
 SPLIT_FAMILY_SAY = {
-    "sound": "by the pair's noise-like cue: the one with Click in it, and "
-             "the one with Noise",
-    "tone": "by the pair's tone: the one with the High tone, and the one "
-            "with the Low tone",
-    "role": "by what conditioning later did: the pair whose second cue "
-            "was followed by food, and the other",
+    "pair": "by each rat's own seats, from the lab's identity sheet: AB is "
+            "the pair heard A → B, CD the pair heard C → D; which sounds "
+            "those are is counterbalanced across rats",
 }
 
 
 def split_member(group, cue_type, role=None):
-    """Whether a cue pair of this type (and role) belongs to a split."""
-    ct = str(cue_type or "")
-    return {"snd_click": "Click" in ct, "snd_noise": "Noise" in ct,
-            "tone_high": "HighTone" in ct, "tone_low": "LowTone" in ct,
-            "role_food": role == "food",
-            "role_other": role == "no_food"}.get(group, False)
+    """Whether a presentation belongs to a split: `role` is its pair in
+    its rat, "AB" or "CD" (roles_of)."""
+    return {"ab": role == "AB", "cd": role == "CD"}.get(group, False)
 
 
 def split_keep(group, roles):
-    """keep(day, unit) for pooled(): `roles` is {rat: {cue_type: role}}."""
+    """keep(day, unit) for pooled(): `roles` is {rat: {cue_type: "AB" |
+    "CD"}}."""
     def keep(d, u):
         r = (roles.get(int(d["rat"])) or {}).get(u.get("cue_type"))
         return split_member(group, u.get("cue_type"), r)
@@ -1355,6 +1522,7 @@ def split_build(man, summary, out_dir, roles, role_notes=None,
     shapes = {w: tuple(summary["files"]["%s_raw.f32" % w]["shape"][1:])
               for w in ("edges", "power", "pac")}
     files, top, cnt, groups = {}, {}, {}, []
+    ctop, ccnt = {}, {}
     core = core_view(man)["days"]
     for n_, (g, label, fam) in enumerate(SPLITS):
         keep = split_keep(g, roles)
@@ -1377,12 +1545,16 @@ def split_build(man, summary, out_dir, roles, role_notes=None,
                                 "shape": [len(QUANTITIES)] + list(
                                     shapes[what])}
                 if what == "edges":
-                    top.setdefault(g, {})[layer] = points(gl, layer, names,
-                                                          pairs)
-                    cnt.setdefault(g, {})[layer] = counts(gl)
+                    t_, c_, ct_, cc_ = _tops(gl, layer, names, pairs)
+                    top.setdefault(g, {})[layer] = t_
+                    cnt.setdefault(g, {})[layer] = c_
+                    if layer == "raw":
+                        ctop.setdefault(g, {})[layer] = ct_
+                        ccnt.setdefault(g, {})[layer] = cc_
     summary["splits"] = {
         "at": now_iso(), "groups": groups, "files": files, "top": top,
         "counts": cnt, "family_say": SPLIT_FAMILY_SAY,
+        "contrast": {"top": ctop, "counts": ccnt},
         "roles": {str(k): v for k, v in (role_notes or {}).items()},
         "role_map": {str(k): dict(v) for k, v in (roles or {}).items()},
     }
@@ -1397,25 +1569,24 @@ def split_role_map(summary):
 
 
 def roles_of(man, records=None):
-    """{rat: {cue_type: "food" | "no_food"}} and what each was read from,
-    from the rats' own conditioning (cueroles.py). A rat whose roles cannot
-    be read is left out of the role split, and said."""
-    from . import cueroles
+    """{rat: {cue_type: "AB" | "CD"}} from the lab's identity sheet
+    (ratidentity.py), and what each rat's seats are. A rat whose recorded
+    pairings are not its two pairs on the sheet is left out of the split,
+    and said. `records` is unused; it is kept for callers of the older
+    reader."""
+    from . import ratidentity as RI
     roles, notes = {}, {}
-    if records is None:
-        records = cueroles.load_records()
     for rat in sorted({int(d["rat"]) for d in man["days"]}):
-        pairings = sorted({u.get("cue_type") for d in man["days"]
-                           if int(d["rat"]) == rat for u in d["units"]
-                           if u.get("cue_type")})
+        cts = {u.get("cue_type") for d in man["days"] if int(d["rat"]) == rat
+               for u in d["units"] if u.get("cue_type")}
         try:
-            t = cueroles.role_table(rat, records, pairings=pairings)
-            roles[rat] = dict(t["roles"])
-            notes[rat] = {"food_pair": t["food_pair"],
-                          "food_cue": t["food_cue"],
-                          "sessions": len(t["source"]["sessions"])}
-        except Exception as exc:                         # noqa: BLE001
+            got = RI.check(rat, cts)
+        except RI.IdentityError as exc:
             notes[rat] = {"error": str(exc)}
+            continue
+        roles[rat] = {got["AB"]: "AB", got["CD"]: "CD"}
+        notes[rat] = {"seats": RI.identity(rat), "AB": got["AB"],
+                      "CD": got["CD"], "sheet": RI.SHEET_FILE}
     return roles, notes
 
 
@@ -1521,7 +1692,7 @@ def _sha(path):
 
 
 def points(got, layer, names, pairs, n=TOP_N, per_pair=PER_PAIR,
-           p_cut=P_POINT):
+           p_cut=P_POINT, w0=0):
     """The points of interest of one layer of edges.
 
     Every tested entry with p < p_cut, ranked by how many rats changed the
@@ -1540,7 +1711,7 @@ def points(got, layer, names, pairs, n=TOP_N, per_pair=PER_PAIR,
     chosen, by_pair = [], {}
     for flat in order:
         w, b, m, pi = np.unravel_index(int(flat), shape)
-        rec = _point(got, (w, b, m, pi), layer, names, pairs)
+        rec = _point(got, (w, b, m, pi), layer, names, pairs, w0=w0)
         slot = by_pair.setdefault(int(pi), [])
         twin = None
         for c in slot:
@@ -1576,12 +1747,13 @@ def _near(a, b):
     return abs(ba["hz"] - bb["hz"]) <= SAME_HZ
 
 
-def _point(got, at, layer, names, pairs):
+def _point(got, at, layer, names, pairs, w0=0):
     w, b, m, pi = (int(x) for x in at)
     a, bb = pairs[pi]
     est = float(got["est"][w, b, m, pi])
-    return {"layer": layer, "w": WINDOWS[w], "wi": w,
-            "kind": "state" if w < 4 else "transition",
+    wid = window_ids()[w + w0]
+    return {"layer": layer, "w": wid, "wi": w + w0,
+            "kind": window_kind(wid),
             "band": sweep.BAND_IDS[b], "bi": b,
             "hz": sweep.BAND_BY_ID[sweep.BAND_IDS[b]]["hz"],
             "m": METHODS[m], "mi": m, "pair": pi,
@@ -1603,7 +1775,7 @@ def _f(x):
     return x if math.isfinite(x) else None
 
 
-def pac_points(got, layer, names, n=20):
+def pac_points(got, layer, names, n=20, w0=0):
     p = got["p"]
     ok = np.isfinite(p) & (p < P_POINT)
     idx = np.nonzero(ok.ravel())[0]
@@ -1615,7 +1787,8 @@ def pac_points(got, layer, names, n=20):
     for flat in order[:n]:
         w, c, op = (int(x) for x in np.unravel_index(int(flat), p.shape))
         fp, fa, _pb, ab = sweep.PAC_CELLS[c]
-        out.append({"layer": layer, "w": WINDOWS[w], "wi": w, "cell": c,
+        out.append({"layer": layer, "w": window_ids(pac=True)[w + w0],
+                    "wi": w + w0, "cell": c,
                     "fp": fp, "fa": fa, "op": op,
                     "phase": names[op // R], "amp": names[op % R],
                     "est": _f(got["est"][w, c, op]), "p": _f(got["p"][w, c, op]),
@@ -1656,12 +1829,15 @@ def build(man, run, raw_dir, out_dir, progress=None):
                    progress=lambda i, n, w: say("assemble", i, n, w))
     names = sweep.regions()
     pairs = sweep.pairs_of(list(range(len(names))))
-    shapes = {"edges": (len(WINDOWS), len(sweep.BAND_IDS), len(METHODS),
+    # One more window than measured: the contrast, Cue 2 - Cue 1.
+    shapes = {"edges": (len(WINDOWS) + 1, len(sweep.BAND_IDS), len(METHODS),
                         len(pairs)),
-              "power": (len(WINDOWS), len(sweep.BAND_IDS), len(names)),
-              "pac": (len(PAC_WINDOWS), len(sweep.PAC_CELLS),
+              "power": (len(WINDOWS) + 1, len(sweep.BAND_IDS), len(names)),
+              "pac": (len(PAC_WINDOWS) + 1, len(sweep.PAC_CELLS),
                       len(names) ** 2)}
     files, top, pac_top, cnt, rats_by = {}, {}, {}, {}, {}
+    ctop, ccnt, cpac = {}, {}, {}
+    shown = [label(n) for n in names]
     for what in ("edges", "power", "pac"):
         say("pool", 0, 1, what)
         got = pooled(out_dir, man, what)
@@ -1673,10 +1849,15 @@ def build(man, run, raw_dir, out_dir, progress=None):
                             "shape": [len(QUANTITIES)] + list(shapes[what])}
             rats_by.setdefault(layer, g["rats"])
             if what == "edges":
-                top[layer] = points(g, layer, names, pairs)
-                cnt[layer] = counts(g)
+                top[layer], cnt[layer], ct, cc = _tops(g, layer, shown,
+                                                       pairs)
+                if layer == "raw":
+                    ctop[layer], ccnt[layer] = ct, cc
             elif what == "pac":
-                pac_top[layer] = pac_points(g, layer, names)
+                pac_top[layer], _c, cp, _cc = _tops(g, layer, shown, pairs,
+                                                    pac=True)
+                if layer == "raw":
+                    cpac[layer] = cp
     summary = {
         "schema": SCHEMA, "analysis": ANALYSIS, "name": NAME,
         "built_at": now_iso(), "rid": run["rid"],
@@ -1686,8 +1867,14 @@ def build(man, run, raw_dir, out_dir, progress=None):
         "min_rats": MIN_RATS, "quantities": list(QUANTITIES),
         "why": {str(k): v for k, v in WHY.items()},
         "windows": [{"id": w, "label": WINDOW_SAY[w],
-                     "kind": "state" if w in sweep.STATE else "transition"}
-                    for w in WINDOWS],
+                     "kind": window_kind(w)} for w in window_ids()],
+        "contrast": {"id": CONTRAST, "label": CONTRAST_SAY,
+                     "say": "Within each presentation, Cue 2 minus Cue 1 -- "
+                            "B - A in AB, D - C in CD -- then Precon4 "
+                            "against Precon1. Raw only: the rest minus FP "
+                            "takes away is the same for both cue windows, "
+                            "so it cancels exactly.",
+                     "top": ctop, "counts": ccnt, "pac_top": cpac},
         "lengths": {"state": "10 s", "slow": "−3 s / +3 s (bands ≤ 12 Hz, "
                     "theta)", "fast": "−1 s / +2 s (bands ≥ 13 Hz, beta, "
                     "low gamma)"},
@@ -1696,7 +1883,14 @@ def build(man, run, raw_dir, out_dir, progress=None):
                      "say": METHOD_SAY[m][1],
                      "directed": m in ("gc_ab", "gc_ba", "gc_net")}
                     for m in METHODS],
-        "regions": names, "pairs": [list(p) for p in pairs],
+        "regions": shown, "region_keys": names,
+        "pairs": [list(p) for p in pairs],
+        "histology": {"version": histo.HISTO_VERSION,
+                      "date": histo.HISTO_DATE, "rule": HISTO_RULE,
+                      "say": HISTO_SAY,
+                      "rats": {str(d["rat"]): sorted(label(x) for x in
+                                                     d.get("blocked") or {})
+                               for d in core_view(man)["days"]}},
         "grey": sorted({g for d in man["days"] for g in d.get("grey") or []}),
         "pac_cells": [{"fp": c[0], "fa": c[1], "phase_band": list(c[2]),
                        "amp_band": list(c[3]) if c[3] else None}
@@ -1712,7 +1906,7 @@ def build(man, run, raw_dir, out_dir, progress=None):
         "refusals": asm["refusals"][:200],
         "manifest": {"digest": man.get("digest"), "at": man.get("at"),
                      "notes": man.get("notes") or []},
-        "pac_windows": PAC_WINDOWS,
+        "pac_windows": window_ids(pac=True),
         "additions": additions_of(sweep.BAND_IDS, PAC_WINDOWS),
         "trajectory": trajectory_of(man, out_dir),
         "run": {"rid": run["rid"], "dest": run.get("dest"),
@@ -1764,6 +1958,9 @@ def entry_detail(out_dir, man, summary, what, layer, at, group=None,
                            "pac": ("pac", "pac_rest")}[what]
     at = tuple(int(x) for x in at)
     rest_at = (0,) + at[1:]
+    # The contrast (Cue 2 - Cue 1): raw only, its wires those of Cue 2.
+    contrast = at[0] == len(PAC_WINDOWS if what == "pac" else WINDOWS)
+    wire_at = ((WINDOWS.index("cue2"),) + at[1:]) if contrast else at
     rows, per_rat = [], []
     for rat in summary["rats"]:
         per_day, gone = {}, None
@@ -1773,7 +1970,7 @@ def entry_detail(out_dir, man, summary, what, layer, at, group=None,
             if X is None or not X.shape[0]:
                 gone = "%s: not computed" % day
                 break
-            vals = np.asarray(X[(slice(None),) + at], dtype=np.float64)
+            vals = at_values(X, at, pac=(what == "pac"))
             units = [{"id": u["id"], "label": u["label"], "cue":
                       u["cue_label"], "v": _f(v)} for u, v in
                      zip(d["units"], vals)]
@@ -1783,10 +1980,10 @@ def entry_detail(out_dir, man, summary, what, layer, at, group=None,
                 kk = split_keep(group, roles or {})
                 pick = [i for i, u in enumerate(d["units"]) if kk(d, u)]
             if what == "edges":
-                wkey = wires_key(at[0], at[1])
+                wkey = wires_key(wire_at[0], at[1])
                 Wt = _load_day(out_dir, rat, day, wkey, mmap="r")
                 a, b = summary["pairs"][at[3]]
-                wi = at[0] if at[0] < 4 else at[0] - 4
+                wi = wire_at[0] if wire_at[0] < 4 else wire_at[0] - 4
                 if Wt is not None:
                     for i, u in enumerate(units):
                         u["wires"] = [int(Wt[i, wi, a]), int(Wt[i, wi, b])]
@@ -1802,7 +1999,7 @@ def entry_detail(out_dir, man, summary, what, layer, at, group=None,
             m, s2, n = day_stats(vals[pick][:, None])
             slot = {"cue": _f(m[0]), "cue_se2": _f(s2[0]), "n": int(n[0]),
                     "of": len(units), "units": units}
-            if layer == "minus_fp":
+            if layer == "minus_fp" and not contrast:
                 Xr = _load_day(out_dir, rat, day, rest_name, mmap="r")
                 if Xr is None or not Xr.shape[0]:
                     gone = "%s: no rest epochs" % day
@@ -1894,7 +2091,7 @@ def entry_detail(out_dir, man, summary, what, layer, at, group=None,
                 if d else None
             if X is None or not X.shape[0]:
                 continue
-            vals = np.asarray(X[(slice(None),) + at], dtype=np.float64)
+            vals = at_values(X, at, pac=(what == "pac"))
             pick = list(range(len(d["units"])))
             if group:
                 kk = split_keep(group, roles or {})
@@ -1908,7 +2105,7 @@ def entry_detail(out_dir, man, summary, what, layer, at, group=None,
                          "cue": d["units"][i]["cue_label"], "v": _f(vals[i])}
                         for i in pick]}
             x, se2 = slot["cue"], slot["cue_se2"]
-            if layer == "minus_fp":
+            if layer == "minus_fp" and not contrast:
                 Xr = _load_day(out_dir, rec["rat"], day, rest_name, mmap="r")
                 if Xr is None or not Xr.shape[0]:
                     x = se2 = None
@@ -1925,6 +2122,7 @@ def entry_detail(out_dir, man, summary, what, layer, at, group=None,
             slot["x"], slot["se2"] = x, se2
             rec["traj"][day] = slot
     return {"what": what, "layer": layer, "at": list(at), "split": group,
+            "contrast": contrast,
             "trajectory_days": tdays,
             "rats": per_rat, "pooled": {
                 "est": mp.get("mean"), "se": t.get("se") if p is not None
@@ -1957,16 +2155,18 @@ def pac_self(out_dir, man, summary, layer, w, cell=None, group=None,
             d = days.get((int(rat), day))
             X = _load_day(out_dir, int(rat), day, "pac", mmap="r") if d \
                 else None
-            if X is None or not X.shape[0] or w >= X.shape[1]:
+            contrast = w == len(PAC_WINDOWS)
+            if X is None or not X.shape[0] or (w >= X.shape[1]
+                                               and not contrast):
                 continue
             pick = [i for i, u in enumerate(d["units"])
                     if keep is None or keep(d, u)]
             if not pick:
                 continue
-            V = np.asarray(X[:, w], dtype=np.float64)[pick][:, :, diag]
+            V = at_values(X, (w,), pac=True)[pick][:, :, diag]
             m, _s2, n = day_stats(V)
             m = np.where(n > 0, m, np.nan)
-            if layer == "minus_fp":
+            if layer == "minus_fp" and not contrast:
                 Xr = _load_day(out_dir, int(rat), day, "pac_rest", mmap="r")
                 if Xr is None or not Xr.shape[0]:
                     continue
@@ -2094,15 +2294,18 @@ def unit_why(summary, rat, day, uid, row, name_a, name_b, wires):
 DAMAGE_REASONS = ("histology", "bad", "clipped", "unread")
 #: Why one wire was left out of one window, as the cue-pair view says it.
 EXCLUDED_SAY = {
-    "histology": "histology says this probe is not in %(region)s, so no "
-                 "region label fits this wire; shown as recorded",
+    "histology": "histology does not place this probe in %(region)s "
+                 "(the Monolith keeps only probes scored “y”), so it is not "
+                 "used; shown as recorded",
     "bad": "marked bad for the whole recording",
     "clipped": "left out of %(window)s: the clipping check found it at the "
                "rail there",
     "unread": "not read in %(window)s, for no reason on record",
 }
 DAMAGE_SAY = {
-    "histology": "histology says the probe is not in this region",
+    "histology": "histology v%d did not score the probe “y” for this region "
+                 "(it is elsewhere, or missed), or it is Right POR-SUB, "
+                 "which the Monolith leaves out" % histo.HISTO_VERSION,
     "bad": "every wire it has is marked bad for the recording",
     "clipped": "every wire it has was clipped (or excluded in the bank) "
                "in that window",
@@ -2110,6 +2313,25 @@ DAMAGE_SAY = {
               "refused on the cluster, or nothing could be read)",
 }
 _DAMAGE_CACHE = {}
+
+
+def _relabel_damage(got):
+    """The damage report in the Monolith's names (Left POR-SUB)."""
+    got = dict(got)
+    got["regions"] = [label(n) for n in got.get("regions") or []]
+    for d in got.get("days") or []:
+        for r in d.get("regions") or []:
+            r["name"] = label(r["name"])
+        d["histology"] = [label(x) for x in d.get("histology") or []]
+    for k in ("state", "trans", "rest_regions"):
+        for r in (got.get("whole") or {}).get(k) or []:
+            r["name"] = label(r["name"])
+    for e in (got.get("entries") or {}).values():
+        for r in e.get("by_region") or []:
+            r["name"] = label(r["name"])
+    for p in got.get("pairs") or []:
+        p["a"], p["b"] = label(p["a"]), label(p["b"])
+    return got
 
 
 def _drop_for(drop, wname):
@@ -2146,7 +2368,14 @@ def damage(man, summary, out_dir):
     exclusions. Cue pairs are counted kept (every region histology allows,
     in every state window), partly kept, or lost (fewer than two regions in
     every window, so no edge at all)."""
-    names = summary["regions"]
+    names = summary.get("region_keys") or summary["regions"]
+    # The sessions this build has: Precon1 and Precon4, and Precon2 and
+    # Precon3 once they have been run and fetched. A session in what goes
+    # but not run yet is not lost -- it is not here yet -- and counting it
+    # made every one of its presentations read as lost.
+    tdays = set((summary.get("trajectory") or {}).get("days") or [])
+    man = dict(man, days=[d for d in man["days"]
+                          if d["day"] in DAY_NAMES or d["day"] in tdays])
     chans = coupling.dewey_map()
     refused = {}
     for r in summary.get("refusals") or []:
@@ -2265,8 +2494,11 @@ def damage(man, summary, out_dir):
         if not info or not os.path.isfile(path):
             continue
         A = np.memmap(path, dtype="<f4", mode="r", shape=tuple(info["shape"]))
-        why = np.asarray(A[QUANTITIES.index("why")])
-        p = np.asarray(A[QUANTITIES.index("p")])
+        # The measured windows only: the contrast (the last, in a build
+        # that has it) is worked out from two of them, not measured.
+        nw = len(WINDOWS) if info["shape"][1] > len(WINDOWS) else None
+        why = np.asarray(A[QUANTITIES.index("why")][:nw])
+        p = np.asarray(A[QUANTITIES.index("p")][:nw])
         tested = np.isfinite(p)
         codes = {}
         for c in np.unique(why[~tested & np.isfinite(why)]).astype(int):
@@ -2297,15 +2529,20 @@ def damage_now():
     summ = summary_now()
     # The manifest as it is on disk: this describes a run already made, so
     # a manifest from before a change of file rule (which only decides what
-    # an upload sends) still says which cue pairs and wires it had.
+    # an upload sends) still says which cue pairs and wires it had. Its
+    # histology is the one in force, as the build's arrays are.
     man = _read_json(_path("manifest.json"))
     if not d or not summ or not man or man.get("schema") != SCHEMA:
         return None
-    key = (d, os.path.getmtime(os.path.join(d, "summary.json")))
+    histology_now(man)
+    key = (d, os.path.getmtime(os.path.join(d, "summary.json")), HISTO_RULE)
     got = _DAMAGE_CACHE.get(key)
     if got is None:
         _DAMAGE_CACHE.clear()
-        got = damage(man, summ, d)
+        got = _relabel_damage(damage(man, summ, d))
+        got["histology"] = {"say": HISTO_SAY, "rule": HISTO_RULE,
+                            "built": (summ.get("histology") or {}).get(
+                                "rule")}
         _DAMAGE_CACHE[key] = got
     # The aliasing check is its own file and may arrive later.
     got = dict(got, aliasing=_read_json(_path("aliasing.json")))
@@ -2418,6 +2655,10 @@ def leaf(cfg, man, summary, out_dir, run, layer, at, rat, day, unit_id,
     every measure's own picture of it (sweep.explain), with the stored
     number beside the one recomputed here."""
     wi, bi, mi, pi = (int(x) for x in at)
+    # The contrast (Cue 2 - Cue 1) is shown on its Cue 2 window.
+    contrast = wi == len(WINDOWS)
+    if contrast:
+        wi = WINDOWS.index("cue2")
     days_ = {(d["rat"], d["day"]): d for d in man["days"]}
     d = days_.get((int(rat), day))
     if not d:
@@ -2440,7 +2681,8 @@ def leaf(cfg, man, summary, out_dir, run, layer, at, rat, day, unit_id,
         wj, wkey = wi - 4, wires_key(wi, bi)
     wname, w0, w1 = sweep._windows_for(kind, unit)[wj]
     ra, rb = summary["pairs"][pi]
-    names = summary["regions"]
+    keys = summary.get("region_keys") or summary["regions"]
+    names = [label(k) for k in keys]
     Wt = _load_day(out_dir, int(rat), day, wkey, mmap="r")
     ca = int(Wt[ui, wj, ra]) if Wt is not None else -1
     cb = int(Wt[ui, wj, rb]) if Wt is not None else -1
@@ -2473,7 +2715,9 @@ def leaf(cfg, man, summary, out_dir, run, layer, at, rat, day, unit_id,
            "regions": [names[ra], names[rb]], "wires": [ca, cb],
            "band": band, "method": METHODS[mi], "layer": layer,
            "stored": stored, "remote": remote,
-           "units": [u["id"] for u in units]}
+           "units": [u["id"] for u in units],
+           # The contrast is Cue 2 - Cue 1; this is its Cue 2 window.
+           "contrast": contrast}
     if not remote:
         out.update(ok=False, gone=True, why="This Monolith's run did not "
                    "say where on the cluster the recording is.")
@@ -2499,12 +2743,12 @@ def leaf(cfg, man, summary, out_dir, run, layer, at, rat, day, unit_id,
     drop_w = None if drop_w is None else set(int(c) for c in drop_w)
     excluded = []
     for side, rix, used in (("A", ra, ca), ("B", rb, cb)):
-        name = names[rix]
-        for ch in cmap.get(name) or []:
+        key, name = keys[rix], names[rix]
+        for ch in cmap.get(key) or []:
             ch = int(ch)
             if ch == used:
                 continue
-            if name in (d.get("blocked") or {}):
+            if key in (d.get("blocked") or {}):
                 why = "histology"
             elif ch in bad:
                 why = "bad"
@@ -2617,7 +2861,8 @@ _WORK = {"now": None}
 _WORK_SAY = {"upload": "uploading", "fetch": "fetching and building the "
              "Monolith", "split": "splitting the Monolith by cue pair",
              "events": "finding hippocampal events",
-             "extend": "adding Precon2 and Precon3 to what goes"}
+             "extend": "adding Precon2 and Precon3 to what goes",
+             "rebuild": "rebuilding the Monolith under the histology"}
 
 
 def work_now():
@@ -2978,6 +3223,35 @@ def fetch_and_build(worker, man, cfg, artifacts, by=None, fetcher=None,
                            stop=worker.stopping)
     worker.check()
     save_state(fetch={"rid": run["rid"], "at": now_iso(), "files": n})
+    return _build_and_file(worker, man, run, raw, data, artifacts, by,
+                           roles_reader)
+
+
+def rebuild_work(worker, artifacts=None, by=None, roles_reader=None):
+    """The built Monolith made again from the answers already here, under
+    the histology in force: nothing is fetched or run. About two minutes."""
+    st = get_state()
+    run = st.get("run")
+    built = st.get("built") or {}
+    if not run or built.get("rid") != run.get("rid"):
+        raise MonolithError("Fetch the run first: a rebuild remakes the "
+                            "Monolith that has been fetched.", 409)
+    man = manifest()
+    if not man:
+        raise MonolithError("There is no manifest.", 409)
+    base = run_dir_local(run["rid"])
+    raw = os.path.join(base, "raw")
+    for rdir in [raw] + [os.path.join(run_dir_local(p_["rid"]), "raw")
+                         for p_ in run.get("parts") or []]:
+        if not os.path.isdir(rdir):
+            raise MonolithError("The answers fetched before are not here "
+                                "any more (%s); fetch again." % rdir, 409)
+    return _build_and_file(worker, man, run, raw, os.path.join(base, "data"),
+                           artifacts, by, roles_reader)
+
+
+def _build_and_file(worker, man, run, raw, data, artifacts, by,
+                    roles_reader):
     worker.note(phase="building", step=None)
     if os.path.isdir(data):
         shutil.rmtree(data, ignore_errors=True)
@@ -3040,4 +3314,9 @@ def status(cfg, vstatus=None):
         "trajectory": trajectory_status(st, man, summary_now()
                                         if st.get("built") else None),
         "additions_say": ADDITIONS_SAY,
+        # A Monolith built under an older histology than the one in force
+        # is remade here, from the answers already fetched.
+        "histology": {"now": HISTO_RULE, "say": HISTO_SAY,
+                      "built": ((summary_now() or {}).get("histology") or {})
+                      .get("rule") if st.get("built") else None},
     }

@@ -30,7 +30,7 @@ window.MONO_HELP = (function () {
   const T = {
     verdict: {
       title: 'The counts at the top',
-      plain: 'How many entries were tested (every window × frequency × measure × region pair that at least five rats had on both days), how many came out p < .05, and how many would by chance alone.',
+      plain: 'How many entries were tested (every window × frequency × measure × region pair that at least four rats had on both days), how many came out p < .05, and how many would by chance alone.',
       look: 'Compare p < .05 with the chance count. If they are close, most of what passes is noise; what matters is what stands out consistently.',
       traps: 'Every p here is uncorrected: with hundreds of thousands of tests, thousands pass by chance. The Monolith is for finding leads, not for proving them.',
       cite: ['Benjamini & Hochberg (1995). Controlling the false discovery rate. J R Stat Soc B 57:289–300.'],
@@ -45,7 +45,7 @@ window.MONO_HELP = (function () {
         'The first averaging, within the day. Cue: the mean over the day’s cue pairs, with its standard error (their spread ÷ √n). Rest: the mean over the day’s rest epochs, with its standard error. Rest has only the one ten-second window, so the same rest mean stands against every cue window — Baseline, Cue 1, Cue 2, After, and the three transitions.',
         'The subtraction: the day’s value is the cue mean − the rest mean. Its uncertainty adds rather than cancels: SE² = SE²(cue) + SE²(rest). Taking one noisy number from another makes the result noisier, never cleaner.',
         'The rat’s change: (cue − rest) on Precon4 minus (cue − rest) on Precon1, its variance the two days’ SE² added together. Raw is the same with the rest terms left out: cue on Precon4 minus cue on Precon1.',
-        'The second averaging, over rats: every rat’s change pooled DerSimonian–Laird — each weighted by 1 ÷ (its own variance + τ², the spread between rats beyond their own noise) — and tested Hartung–Knapp on k − 1 degrees of freedom. It needs at least five rats with both days.',
+        'The second averaging, over rats: every rat’s change pooled DerSimonian–Laird — each weighted by 1 ÷ (its own variance + τ², the spread between rats beyond their own noise) — and tested Hartung–Knapp on k − 1 degrees of freedom. It needs at least four rats with both days.',
       ],
       example: 'Say r3’s Cue 1 coherence at 10 Hz averaged 0.42 over its Precon1 cue pairs and 0.38 over its Precon1 rest epochs; on Precon4, 0.49 and 0.43. Raw change: 0.49 − 0.42 = +0.07. Minus FP: (0.49 − 0.43) − (0.42 − 0.38) = 0.06 − 0.04 = +0.02. Five hundredths of the seven were in rest as well: the rat’s whole day moved, and only two hundredths belong to the cue window.',
       look: 'An edge in raw that survives minus FP changed with the cues, relative to rest. One that vanishes changed in rest by about as much — the day changed (an electrode settling, the rat calmer, the recording quieter), not the response to the cues. One that appears only in minus FP is a cue change raw could not see, because rest moved the other way.',

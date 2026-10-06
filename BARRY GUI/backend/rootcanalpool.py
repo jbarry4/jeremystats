@@ -170,10 +170,35 @@ def rows_from_record(rec):
 
 def rows_from_fit(res):
     """An unbanked member's rows, from `rootcanal.fit` at its settings."""
+    # The contact and polarity travel with the numbers: an average over a
+    # pool needs each event's own max contact, and asking for them again
+    # would mean measuring every member's read again.
     return [{"i": e["i"], "t": e["t"], "amp_uV": e["amp_uV"],
              "hw_ms": e["hw_ms"], "hf_db": e["hf_db"], "cls": e["cls"],
-             "flipped": bool(e.get("flipped")), "wide": bool(e.get("wide"))}
+             "flipped": bool(e.get("flipped")), "wide": bool(e.get("wide")),
+             "row": e.get("contact_row"), "pol": e.get("polarity")}
             for e in res["events"]]
+
+
+def single_calls(rows, k=rootcanal.K_DEFAULT):
+    """Rows with each event's SINGLE call recomputed: the recording clustered
+    on its own, at `k`, by the rule -- no hand calls, no margin. What a
+    member's own call means when the pool asks it at settings other than
+    the ones it was banked with."""
+    X = np.array([[_nan(r["amp_uV"]), _nan(r["hw_ms"]), _nan(r["hf_db"])]
+                  for r in rows], dtype=float).reshape(-1, 3)
+    if not len(rows):
+        return []
+    try:
+        core = rootcanal.cluster_core(X, k=k, what="events of this member")
+    except rootcanal.RootCanalError:
+        return [dict(r, cls=None, flipped=False) for r in rows]
+    out = []
+    for j, r in enumerate(rows):
+        lab = int(core["lab"][j])
+        out.append(dict(r, cls=(core["calls"][lab] if lab >= 0 else None),
+                        flipped=False))
+    return out
 
 
 def rows_digest(rows):
@@ -353,7 +378,7 @@ def switch_tables(events, members):
 def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
              n_init=N_INIT, gmm_n_init=GMM_N_INIT, complete_only=False,
              k=rootcanal.K_DEFAULT, cluster_calls=None, margin=None,
-             margin_mode="fixed"):
+             margin_mode="fixed", drawn=None):
     """Pool the members' rows and answer the three questions.
 
     `members` is a list of dicts as `app.py` builds them: key, entry_id,
@@ -445,17 +470,28 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
     # Pooled raw, z-scored once (see the module docstring) -- or, with a
     # margin, on the margin's own scale. The clustering is Single's own
     # `cluster_core`, so the two views cannot drift apart.
+    # Drawn clusters arrive as (member key, event number) pairs, and are
+    # turned here into positions in the pooled list.
+    pos = {(mem_out[e["m"]]["key"], int(e["i"])): j for j, e in enumerate(ev)}
+    drawn_ix = []
+    for grp in (drawn or []):
+        ix = [pos[(str(a), int(b))] for a, b in (grp.get("events") or [])
+              if (str(a), int(b)) in pos]
+        if ix:
+            drawn_ix.append((ix, str(grp.get("call") or "ied")))
     try:
         core = rootcanal.cluster_core(
             X, k=k_want, seed=seed, n_init=n_init, cluster_calls=cluster_calls,
-            margin=margin, margin_mode=margin_mode, what="pooled events")
+            margin=margin, margin_mode=margin_mode, what="pooled events",
+            drawn=drawn_ix)
     except rootcanal.RootCanalError as exc:
         raise PoolError(str(exc))
     have, n_axes = core["have"], core["n_axes"]
     use, part, placed = core["use"], core["part"], core["placed"]
     n_used, mu, sd, Z = core["n_used"], core["mu"], core["sd"], core["Z"]
     C, raw_c, lab = core["C"], core["raw_c"], core["lab"]
-    cls_of = {r: core["calls"][r] for r in range(core["k"])}
+    cls_of = {r: core["calls"][r]
+              for r in range(core["k"] + core["n_drawn"])}
 
     # THE SPLIT AXIS: from the mean of the DS-called events to the mean of
     # the IED-called ones (complete events, z), 0 at their midpoint, DS
@@ -500,10 +536,11 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
         split_vals.append(float(np.dot(Z[j] - mid, u))
                           if (use[j] and split_ok) else None)
 
-    centres = [{"z": [float(v) for v in C[r]],
-                "raw": [float(v) for v in raw_c[r]],
-                "cls": cls_of[r], "n": int((lab == r).sum())}
-               for r in range(core["k"])]
+    centres = [{"z": [rootcanal._f(v) for v in C[r]],
+                "raw": [rootcanal._f(v) for v in raw_c[r]],
+                "cls": cls_of[r], "n": int((lab == r).sum()),
+                "drawn": r >= core["k"]}
+               for r in range(core["k"] + core["n_drawn"])]
     gids = {m.get("gid") for m in members}
     mice = {m["mouse_key"] for m in members}
     band_label = "%s–%s Hz power" % (rootcanal._g(band[0]),
@@ -526,6 +563,10 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
              % (len(gids), "" if len(gids) == 1 else "s", len(mice),
                 "mouse" if len(mice) == 1 else "mice",
                 "the margin's own scale" if margin else "pooled raw units"))
+    if core["n_drawn"]:
+        extra.append("; %d event%s in %d cluster%s drawn by hand" % (
+            int(core["held"].sum()), "" if int(core["held"].sum()) == 1 else "s",
+            core["n_drawn"], "" if core["n_drawn"] == 1 else "s"))
     if general:
         rule = ("%s%s (%d DS, %d IED%s)."
                 % (where, general, counts["ds"], counts["ied"],

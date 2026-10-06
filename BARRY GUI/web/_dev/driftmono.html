@@ -311,6 +311,22 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
     const off2 = btn(/^Add phase–amplitude coupling at the transitions$/);
     check('  without a check of the VACC it is off, and says why', off2 && off2.disabled && /Check the VACC first/.test(step('view').textContent));
 
+    head('histology v2: a build made under v1 is remade here');
+    const H2 = { now: 'v2: y only, Left POR-SUB, no Right POR-SUB', say: 'Histology v2 (rescored 2026-10-05).' };
+    await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       histology: Object.assign({ built: null }, H2) }));
+    const rb = btn(/^Rebuild under histology v2$/);
+    check('built under v1: said, and a rebuild offered (not the primary)', !!rb && !rb.disabled
+          && /This Monolith was built under histology v1/.test(step('view').textContent)
+          && primaries().length === 1 && /^View Monolith Artifact$/.test(primaries()[0].textContent.trim()));
+    stub.calls.length = 0;
+    rb.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/rebuild'), 60);
+    check('  pressed, it rebuilds, confirmed', stub.calls.find((c) => c.path === '/api/arc/monolith/rebuild').body.confirm === true);
+    await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       histology: Object.assign({ built: H2.now }, H2) }));
+    check('CONTROL: built under v2, nothing to rebuild', !btn(/^Rebuild under histology/));
+
     head('the trajectory: Precon2 and Precon3');
     const trajSt = (t) => Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS, trajectory: t });
     const tdef = { days: ['Precon2', 'Precon3'], in_manifest: [], ready: [], checked_now: true, built: [] };

@@ -261,12 +261,13 @@ def data_and_tasks():
     check("all whole: six rats ready, can run",
           chk["ready_rats"] == list(MO.RATS[:6]) and chk["can_run"],
           chk["ready_rats"])
-    gone = {(MO.RATS[0], "Precon4", "SPC"), (MO.RATS[1], "Precon1", "SPC")}
+    gone = {(MO.RATS[0], "Precon4", "SPC"), (MO.RATS[1], "Precon1", "SPC"),
+            (MO.RATS[2], "Precon4", "SPC")}
     chk2 = MO.check_data(man, listing_for(man, whole=every - gone,
                                           partial=gone))
     check("a rat missing one day's SPC does not run",
-          chk2["ready_rats"] == list(MO.RATS[2:6]), chk2["ready_rats"])
-    check("four rats ready is not enough", not chk2["can_run"])
+          chk2["ready_rats"] == list(MO.RATS[3:6]), chk2["ready_rats"])
+    check("three rats ready is not enough (four are needed)", not chk2["can_run"])
     fp = {(MO.RATS[2], "Precon1", "FP2")}
     chk3 = MO.check_data(man, listing_for(man, whole=every - fp))
     d3 = [x for x in chk3["days"] if x["rat"] == MO.RATS[2]
@@ -560,12 +561,12 @@ def build_end_to_end(man, tasks, work):
     summ = MO.build(man, run, raw, data)
     check("built (%.0f s)" % (time.time() - t0), bool(summ))
     shape = summ["files"]["edges_raw.f32"]["shape"]
-    check("the edges file: quantities x windows x bands x methods x pairs",
-          shape == [len(MO.QUANTITIES), 7, len(sweep.BAND_IDS),
+    check("the edges file: quantities x windows (seven, and the contrast) x bands x methods x pairs",
+          shape == [len(MO.QUANTITIES), 8, len(sweep.BAND_IDS),
                     len(MO.METHODS), 66], shape)
     pshape = summ["files"]["pac_raw.f32"]["shape"]
-    check("PAC over seven windows: the four states and the three transitions",
-          pshape[1] == 7 and summ.get("pac_windows") == MO.PAC_WINDOWS
+    check("PAC over seven windows (the four states and the three transitions) and the contrast",
+          pshape[1] == 8 and summ.get("pac_windows") == MO.PAC_WINDOWS + [MO.CONTRAST]
           and summ["additions"] == {"delta": True, "pac_trans": True}, pshape)
     size = os.path.getsize(os.path.join(data, "edges_raw.f32"))
     check("and holds exactly that many float32",
@@ -657,15 +658,14 @@ def build_end_to_end(man, tasks, work):
 
 
 def fake_roles(man):
-    """Every rat's Click pair is the one that later gets food."""
+    """Every made-up rat's Click pair is its AB, the other its CD."""
     roles, notes = {}, {}
     for d in man["days"]:
         for u in d["units"]:
             roles.setdefault(int(d["rat"]), {})[u["cue_type"]] = (
-                "food" if "Click" in u["cue_type"] else "no_food")
+                "AB" if "Click" in u["cue_type"] else "CD")
     for rat in roles:
-        notes[rat] = {"food_pair": "Click_LowTone", "food_cue": "Low Tone",
-                      "sessions": 1}
+        notes[rat] = {"AB": "Click_LowTone", "CD": "Noise_HighTone"}
     return roles, notes
 
 
@@ -691,16 +691,16 @@ def split_check(man, summ, data):
           set(got["files"]) == want and all(
               got["files"][f]["shape"] == summ["files"][f.split("__")[0] + ".f32"]["shape"]
               for f in want) and all(os.path.isfile(os.path.join(data, f)) for f in want))
-    gc = next(g for g in got["groups"] if g["id"] == "snd_click")
-    gh = next(g for g in got["groups"] if g["id"] == "tone_high")
+    gc = next(g for g in got["groups"] if g["id"] == "ab")
+    gh = next(g for g in got["groups"] if g["id"] == "cd")
     n_all = sum(len(d["units"]) for d in m2["days"])
-    check("the Click half has every rat and the even cue pairs; the High-tone half the odd",
+    check("AB has every rat and the even presentations; CD the odd",
           len(gc["rats"]) == 6 and gc["n_units"] == sum((len(d["units"]) + 1) // 2 for d in m2["days"])
           and gh["n_units"] == n_all - gc["n_units"], (gc, gh))
     p0 = summ["top"]["raw"][0]
     at = (p0["wi"], p0["bi"], p0["mi"], p0["pair"])
     ok_all = True
-    for g in ("snd_click", "tone_high", "role_food"):
+    for g in ("ab", "cd"):
         det = MO.entry_detail(data, m2, s2, "edges", "raw", at, group=g, roles=roles)
         n_u = len(det["rats"][0]["days"]["Precon1"]["units"])
         ok_all = ok_all and det["agree"] and n_u == 2
@@ -709,12 +709,12 @@ def split_check(man, summ, data):
     def arr(name):
         sh = got["files"][name]["shape"]
         return np.fromfile(os.path.join(data, name), dtype="<f4").reshape(sh)
-    a_food, a_click = arr("edges_raw__role_food.f32"), arr("edges_raw__snd_click.f32")
-    check("the pair that later gets food is, here, the Click pair: the same arrays",
-          np.array_equal(a_food, a_click, equal_nan=True))
-    a_low = arr("edges_raw__tone_low.f32")
-    check("the Low-tone half (here also the Click half) the same again",
-          np.array_equal(a_low, a_click, equal_nan=True))
+    a_click, a_cd = arr("edges_raw__ab.f32"), arr("edges_raw__cd.f32")
+    check("CONTROL: the two halves are not the same", not np.array_equal(a_click, a_cd, equal_nan=True))
+    real_roles, _n = MO.roles_of({"days": [{"rat": 3, "units": [
+        {"cue_type": "Click_LowTone"}, {"cue_type": "Noise_HighTone"}]}]})
+    check("the real roles come from the identity sheet: J3's AB is Click → Low tone",
+          real_roles == {3: {"Click_LowTone": "AB", "Noise_HighTone": "CD"}}, real_roles)
     whole = np.fromfile(os.path.join(data, "edges_raw.f32"), dtype="<f4").reshape(
         summ["files"]["edges_raw.f32"]["shape"])
     check("CONTROL: a half is not the whole", not np.array_equal(a_click, whole, equal_nan=True))
@@ -722,7 +722,7 @@ def split_check(man, summ, data):
     check("the planted change (in every cue pair) is in the half too (%.3f)" % est, abs(est - 1.0) < 0.15)
     check("each half has its points of interest and counts",
           all(got["top"][g]["raw"] and got["counts"][g]["raw"]["tested"] > 0
-              for g in MO.SPLIT_IDS if g != "role_other" or True))
+              for g in MO.SPLIT_IDS))
     return m2, roles
 
 
@@ -766,7 +766,7 @@ def addition_merge(man, work):
     check("the summary names both runs and has both additions",
           summ["run"]["parts"] == [base["rid"]] and summ["additions"]
           == {"delta": True, "pac_trans": True}
-          and summ["files"]["pac_raw.f32"]["shape"][1] == 7)
+          and summ["files"]["pac_raw.f32"]["shape"][1] == 8)
     old_summ = dict(summ, bands=[b for b in summ["bands"] if b["id"] != "delta"],
                     files=dict(summ["files"], **{"pac_raw.f32": dict(
                         summ["files"]["pac_raw.f32"], shape=[6, 4] +
@@ -774,6 +774,118 @@ def addition_merge(man, work):
     check("a Monolith without them is said to lack both",
           MO.missing_additions(old_summ) == {"bands": ["delta"], "pac_trans": True}
           and MO.missing_additions(summ) == {})
+
+
+def contrast_check(man, summ, data):
+    """The agreed comparison: within each presentation Cue 2 minus Cue 1,
+    then Precon4 against Precon1 -- one more window of every pooled array,
+    raw only."""
+    print("\nThe contrast: Cue 2 - Cue 1")
+    ci = len(MO.WINDOWS)
+    shape = summ["files"]["edges_raw.f32"]["shape"]
+    A = np.fromfile(os.path.join(data, "edges_raw.f32"), dtype="<f4").reshape(shape)
+    B = np.fromfile(os.path.join(data, "edges_minus_fp.f32"), dtype="<f4").reshape(shape)
+    check("it is the last window of the pooled arrays, named on the summary",
+          summ["windows"][ci]["id"] == MO.CONTRAST and summ["windows"][ci]["kind"] == "contrast")
+    check("raw only: the minus-FP layer holds exactly the raw numbers there",
+          np.array_equal(A[:, ci], B[:, ci], equal_nan=True)
+          and not np.array_equal(A[:, 1], B[:, 1], equal_nan=True))
+    # One entry, recomputed by hand from the day arrays.
+    p0 = summ["top"]["raw"][0]
+    at = (ci, p0["bi"], p0["mi"], p0["pair"])
+    e = MO.entry_detail(data, man, summ, "edges", "raw", at)
+    r0 = next(r for r in e["rats"] if r.get("delta") is not None)
+    hand = []
+    for day in MO.DAY_NAMES:
+        X = np.load(os.path.join(data, "days", "r%d_%s_edges.npy" % (r0["rat"], day))).astype(np.float64)
+        v = X[:, 2, p0["bi"], p0["mi"], p0["pair"]] - X[:, 1, p0["bi"], p0["mi"], p0["pair"]]
+        hand.append(np.nanmean(v))
+    check("one rat's change is mean(Cue 2 - Cue 1) on Precon4 minus the same on Precon1",
+          abs(r0["delta"] - (hand[1] - hand[0])) < 1e-9, (r0["delta"], hand))
+    check("and the pooled entry agrees with the arrays (drift's own pooling)", e["agree"] and e["contrast"])
+    em = MO.entry_detail(data, man, summ, "edges", "minus_fp", at)
+    check("minus FP at the contrast takes no rest away", abs(em["rats"][0]["delta"] - e["rats"][0]["delta"]) < 1e-12
+          if em["rats"][0].get("delta") is not None else False)
+    c = summ.get("contrast") or {}
+    check("its own points and counts, apart from the page's",
+          c.get("id") == MO.CONTRAST and "raw" in c.get("counts", {})
+          and all(t["w"] == MO.CONTRAST for t in c["top"]["raw"])
+          and all(t["w"] != MO.CONTRAST for t in summ["top"]["raw"])
+          and summ["counts"]["raw"]["entries"] == int(np.prod(shape[2:])) * ci)
+
+
+def histology_check(work):
+    """Histology v2 as the Monolith reads it (the user, 2026-10-05): only
+    probes scored "y"; the left POR probes that are in subiculum as Left
+    POR-SUB; Right POR-SUB never. Applied to every manifest, and to every
+    array a build writes, whatever the node measured."""
+    print("\nHistology v2 in the Monolith")
+    from backend import histo
+    col = {"Left OFC": "L-OFC", "Right OFC": "R-OFC", "Left ACC": "L-ACC",
+           "Right ACC": "R-ACC", "Left DHC": "L-dHC", "Right DHC": "R-dHC",
+           "Left RSC": "L-RSC", "Right RSC": "R-RSC", "Left PER": "L-Prh",
+           "Right PER": "R-Prh", "Left POR": "L-Por", "Right POR": "R-Por"}
+    wrong = []
+    for rat in MO.RATS:
+        cells = histo.HISTO_RAW[rat]
+        want = set()
+        for name, c in col.items():
+            v = cells[c].strip().lower()
+            ok = (v == "subiculum") if name == "Left POR" else \
+                (False if name == "Right POR" else v == "y")
+            if not ok:
+                want.add(name)
+        if set(MO.histology_blocked(rat)) != want:
+            wrong.append((rat, sorted(set(MO.histology_blocked(rat)) ^ want)))
+    check("each rat leaves out exactly what is not \u201cy\u201d, keeps Left POR-SUB "
+          "where it is subiculum, and never has Right POR-SUB", not wrong, wrong)
+    por = [r for r in MO.RATS if "Left POR" not in MO.histology_blocked(r)]
+    check("Left POR-SUB is J4, J6, J7 and J10", por == [4, 6, 7, 10], por)
+    check("four rats are enough to be tested", MO.MIN_RATS == 4)
+    man = fake_manifest(n_rats=6)
+    d0 = man["digest"]
+    check("a manifest made before is brought up to it, with a new digest",
+          MO.histology_now(man) and man["digest"] != d0
+          and man["days"][0]["blocked"] == MO.histology_blocked(man["days"][0]["rat"])
+          and man["histology"] == MO.HISTO_RULE)
+    check("and only once", not MO.histology_now(man))
+    # A build masks what the histology leaves out, whatever the node measured.
+    every = {(d["rat"], d["day"], f["role"]) for d, f in MO.folders_of(man)}
+    chk = MO.check_data(man, listing_for(man, whole=every))
+    tasks = MO.plan_tasks(man, chk)
+    run = {"rid": "b15700000001", "dest": "scratch", "arrays": [{"id": "1", "indices": None}],
+           "tasks": [{"i": i, "key": t["key"], "rat": t["rat"], "day": t["day"], "kind": t["kind"],
+                      "chunk": t["chunk"], "n_units": t["n_units"], "est_s": t["est_s"]}
+                     for i, t in enumerate(tasks)]}
+    raw = os.path.join(MO.run_dir_local(run["rid"]), "raw")
+    fake_outputs(man, run, raw)
+    data = os.path.join(work, "histo_v2")
+    summ = MO.build(man, run, raw, data)
+    names = summ["region_keys"]
+    R = len(names)
+    pairs = [tuple(p) for p in summ["pairs"]]
+    d3 = next(d for d in man["days"] if d["rat"] == 3 and d["day"] == "Precon1")
+    gone = [names.index(n) for n in d3["blocked"]]
+    E = np.load(os.path.join(data, "days", "r3_Precon1_edges.npy"))
+    P = np.load(os.path.join(data, "days", "r3_Precon1_power.npy"))
+    W = np.load(os.path.join(data, "days", "r3_Precon1_wires_state.npy"))
+    A = np.load(os.path.join(data, "days", "r3_Precon1_pac.npy"))
+    out_p = [i for i, (a, b) in enumerate(pairs) if a in gone or b in gone]
+    in_p = [i for i in range(len(pairs)) if i not in out_p]
+    ops = [ph * R + am for ph in range(R) for am in range(R) if ph in gone or am in gone]
+    check("r3: every pair, power, PAC cell and wire of what it leaves out is empty (%d regions)" % len(gone),
+          np.isnan(E[..., out_p]).all() and np.isnan(P[..., gone]).all()
+          and np.isnan(A[..., ops]).all() and (W[..., gone] == -1).all())
+    check("and the rest is as the node measured it", np.isfinite(E[:, :4, :, 0][..., in_p]).any())
+    li = names.index("Left POR")
+    check("the summary names the groups as the Monolith does, and says which histology",
+          summ["regions"][li] == "Left POR-SUB" and summ["regions"][names.index("Right POR")] == "Right POR-SUB"
+          and summ["histology"]["rule"] == MO.HISTO_RULE and summ["histology"]["version"] == histo.HISTO_VERSION)
+    dm = MO._relabel_damage(MO.damage(man, summ, data))
+    check("the damage report: histology is the reason, in the Monolith's names",
+          "Left POR-SUB" in dm["regions"] and "Left POR" not in dm["regions"]
+          and all(r["state"]["histology"] == r["state"]["of"] for x in dm["days"] if x["rat"] == 3
+                  for r in x["regions"] if r["name"] in ("Right POR-SUB", "Left PER")))
 
 
 def trajectory_check(work):
@@ -848,7 +960,7 @@ def trajectory_check(work):
 def damage_report(man, summ, data):
     print("\nWhat was lost")
     import copy
-    names = summ["regions"]
+    names = summ.get("region_keys") or summ["regions"]
     ri = {n: i for i, n in enumerate(names)}
     chans = MO.coupling.dewey_map()
     D0 = MO.damage(man, summ, data)
@@ -1180,6 +1292,20 @@ def routes(work, man, run_tasks, raw_src):
         check("fetched, built and filed", w["status"] == "done"
               and st["built"] and st["built"]["artifact_id"] == "zzmono",
               (w["status"], w.get("error"), st.get("built")))
+        check("a rebuild is refused without confirm",
+              c.post("/api/arc/monolith/rebuild", json={}).status_code == 400)
+        r = c.post("/api/arc/monolith/rebuild", json={"confirm": True}).get_json()
+        t0 = time.time()
+        while time.time() - t0 < 240:
+            st = c.get("/api/arc/monolith/status").get_json()
+            w = st["work"]
+            if w and w["what"] == "rebuild" and w["status"] != "running":
+                break
+            time.sleep(0.25)
+        check("rebuilt here from the answers already fetched, and filed, under the histology in force",
+              r.get("ok") and w["status"] == "done" and st["built"].get("artifact_id")
+              and st["histology"]["built"] == st["histology"]["now"] == MO.HISTO_RULE,
+              (w.get("status"), w.get("error"), st["built"].get("version"), st.get("histology")))
         s = c.get("/api/arc/monolith/data/summary").get_json()
         check("the page's summary is served", s.get("schema") == MO.SCHEMA
               and s["top"]["raw"])
@@ -1206,17 +1332,17 @@ def routes(work, man, run_tasks, raw_src):
               and c.get("/api/arc/monolith/pacself?layer=nope").status_code == 400
               and c.get("/api/arc/monolith/pacself?layer=raw&split=nonsense").status_code == 404)
         check("the fetch split it by cue pair too", bool((s.get("splits") or {}).get("files")))
-        b2 = c.get("/api/arc/monolith/data/edges_raw__snd_click")
+        b2 = c.get("/api/arc/monolith/data/edges_raw__ab")
         check("a split's arrays are served", b2.status_code == 200 and len(b2.data) == 4 * int(
-            np.prod(s["splits"]["files"]["edges_raw__snd_click.f32"]["shape"])))
+            np.prod(s["splits"]["files"]["edges_raw__ab.f32"]["shape"])))
         b2.close()
         b.close()
         check("a split that does not exist is refused",
               c.get("/api/arc/monolith/data/edges_raw__nonsense").status_code == 404)
-        e2 = c.get("/api/arc/monolith/entry?what=edges&layer=raw&at=%d,%d,%d,%d&split=snd_click"
+        e2 = c.get("/api/arc/monolith/entry?what=edges&layer=raw&at=%d,%d,%d,%d&split=ab"
                    % (p0["wi"], p0["bi"], p0["mi"], p0["pair"])).get_json()
         check("one entry of one split, agreeing with its arrays", e2.get("ok") and e2.get("agree")
-              and e2.get("split") == "snd_click", e2.get("error"))
+              and e2.get("split") == "ab", e2.get("error"))
         r = c.post("/api/arc/monolith/split", json={}).get_json()
         t0 = time.time()
         while time.time() - t0 < 300:
@@ -1426,9 +1552,11 @@ def main():
         submit_and_poll(man, tasks)
         run, summ, raw = build_end_to_end(man, tasks, work)
         damage_report(man, summ, os.path.join(work, "data"))
+        contrast_check(man, summ, os.path.join(work, "data"))
         pac_self_check(man, summ, os.path.join(work, "data"))
         addition_merge(man, work)
         trajectory_check(work)
+        histology_check(work)
         split_check(man, summ, os.path.join(work, "data"))
         null_control(work)
         man2 = fake_manifest(root=os.path.join(work, "local"))

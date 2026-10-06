@@ -389,6 +389,11 @@ svg.dmap rect[data-region] { cursor: default; }
 .trajwrap { overflow-x: auto; }
 .trajmat th b.sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
 .trajmat td.num { font-variant-numeric: tabular-nums; }
+/* Which histology. */
+.histosay { border-left: 3px solid var(--ok); background: var(--surface-2); padding: 6px 10px; border-radius: 4px;
+  font-size: 13px; margin: 0 0 10px; overflow-wrap: anywhere; }
+.histosay.stale { border-left-color: var(--up); }
+.histosay .warn { margin-top: 4px; }
 </style>
 </head>
 <body>

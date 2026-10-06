@@ -109,6 +109,8 @@ const NL = String.fromCharCode(10);
      + '  var hit = null;'
      + '  if (s.indexOf("/api/rootcanal/pool/save") >= 0) hit = "save";'
      + '  else if (s.indexOf("/api/rootcanal/margin/save") >= 0) hit = "msave";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/fit") >= 0 && W.__rcpReply.fit)'
+     + '   hit = "fit";'
      + '  else if (s.indexOf("/api/rootcanal/pool/harness-") >= 0) hit = "open";'
      + '  if (hit) { W.__rcpSent.push([hit, JSON.parse((o && o.body) || "{}")]);'
      + '   var r = W.__rcpReply[hit] || { status: 500, body: { ok: false,'
@@ -141,8 +143,9 @@ const NL = String.fromCharCode(10);
   eq('pressing Pooled opens the pooled view', ev(RC + '._viewMode()'), 'pooled');
   eq('and the choice is remembered for this viewer',
      ev('localStorage.getItem("barry.rootcanal.view")'), 'pooled');
-  ok('the Single workbench is not drawn under it',
-     !D().querySelector('.rc-choose') && !D().querySelector('.rc-controls'));
+  ok('Single’s set chooser is not drawn under it', !D().querySelector('.rc-choose'));
+  ok('but the settings bar is: one set of settings for both views',
+     !!D().querySelector('#tkResult .rc-controls'));
 
   /* ================================================================== */
   head('WHAT CAN JOIN A POOL');
@@ -367,7 +370,8 @@ const NL = String.fromCharCode(10);
      /evidence, not proof/.test((D().querySelector('.rc-gmm') || {}).textContent || ''));
   let txt = drawn();
   ok('a histogram per axis, labelled',
-     hasS(txt, 'rcHistA', 'max amplitude · µV') && hasS(txt, 'rcHistH', 'half-width · ms')
+     hasS(txt, 'rcHistA', 'max amplitude on ')
+     && hasS(txt, 'rcHistA', ' · µV') && hasS(txt, 'rcHistH', 'half-width · ms')
      && hasS(txt, 'rcHistF', 'Hz power · dB re baseline'),
      JSON.stringify([txt.rcHistA, txt.rcHistF]).slice(0, 200));
   ok('each with its count axis named',
@@ -477,6 +481,17 @@ const NL = String.fromCharCode(10);
   eq('the overrides', sv.mouse_types, { [m2]: 'harness type' });
   ok('and the focus', 'focus' in sv);
   ok('as a new pool', sv.artifact_id === null);
+  /* What the picture was made with, all of it: the server refits from the
+     request, and a save that sent members alone was filed at its defaults
+     (a pool shown at k = 1 saved at k = 2). */
+  const svq = ev(RC + '._state()').q;
+  eq('with the k the picture was made at', sv.k, Number(svq.k));
+  ok('the measurement, the calls, the margin, complete events only and the '
+     + 'drawn clusters', sv.measure && sv.measure.filt === svq.filt
+     && sv.measure.band_lo === Number(svq.band_lo)
+     && 'cluster_calls' in sv && 'margin' in sv && 'complete_only' in sv
+     && Array.isArray(sv.drawn), JSON.stringify(sv).slice(0, 200));
+  eq('and no saved pool to take numbers from, being new', sv.saved, null);
   await until(() => saveBtn() && /v2/.test(saveBtn().textContent), 5000, 'the new label');
   eq('after saving, the button says the next version',
      saveBtn() && saveBtn().textContent, 'Save as v2 of ‘harness pool’');
@@ -511,60 +526,74 @@ const NL = String.fromCharCode(10);
      saveBtn() && saveBtn().textContent, 'Save as v2 of ‘harness pool’');
 
   /* ================================================================== */
-  head('k, THE POOL’S OWN BAND, COMPLETE EVENTS ONLY, AND MARGINS');
+  head('THE SAME SETTINGS AS SINGLE, k, COMPLETE EVENTS ONLY, AND MARGINS');
 
+  const sq = () => ev(RC + '._state()').q;
   const kRun = () => D().querySelector('.rc-pool-run');
-  async function kPool(what) {
-    const before = ev('window.__rcpFits');
-    const b = kRun();
-    if (b) b.click();
-    await until(() => ev('window.__rcpFits') > before && !P().fitting
-                      && P().fit, 120000, what);
+  async function kWaitPool(what, cond) {
+    await until(() => !P().fitting && P().fit && P().fit.ok && cond(), 120000, what);
     await sleep(150);
   }
-  ok('the pool has its own settings beside its Pool button',
-     !!D().querySelector('.rc-members .rc-pool-settings'));
-  eq('a choice of 1 to 6 clusters',
-     D().querySelectorAll('.rc-pool-settings .rc-kseg button').length, 6);
-  const kp3 = Array.from(D().querySelectorAll('.rc-pool-settings .rc-kseg button'))
+  ok('Pooled shows the same controls bar as Single',
+     !!D().querySelector('#tkResult .rc-controls .rc-filt')
+     && !!D().querySelector('#tkResult .rc-controls .rc-kseg'));
+  ok('and the pool’s old separate row is gone',
+     !D().querySelector('.rc-pool-settings'));
+  const lb0 = P().lastBody || {};
+  ok('the pool is asked with exactly Single’s settings',
+     lb0.measure && lb0.measure.filt === sq().filt
+     && lb0.measure.win_ms === Number(sq().win_ms)
+     && lb0.measure.cross_ms === Number(sq().cross_ms)
+     && lb0.measure.band_lo === Number(sq().band_lo)
+     && lb0.measure.band_hi === Number(sq().band_hi)
+     && lb0.k === Number(sq().k), JSON.stringify(lb0.measure));
+  const kChip = () => (D().querySelector('.rc-space .rc-chip:not(.rc-pool-chip),'
+    + ' .rc-pane .rc-chip:not(.rc-pool-chip)') || {}).textContent || '';
+  ok('its settings chip names the pool’s own measurement',
+     new RegExp(P().fit.params.measure.band_lo + '–' + P().fit.params.measure.band_hi
+                + ' Hz band').test(kChip()), kChip());
+
+  const kp3 = Array.from(D().querySelectorAll('#tkResult .rc-controls .rc-kseg button'))
     .find((b) => b.textContent.trim() === '3');
   kp3.click();
-  ok('k waits for Pool', P().k === 3 && P().dirty === true);
-  await kPool('k = 3');
-  eq('k = 3 reaches the pool', P().lastBody.k, 3);
-  eq('three clusters come back', (P().fit.clusters || []).length, 3);
+  await kWaitPool('k = 3, at once', () => P().fit.k === 3);
+  ok('k is applied the moment it is pressed, and pools again',
+     P().lastBody.k === 3 && P().fit.k === 3);
+  ok('and Single’s k is the same k', Number(sq().k) === 3);
   eq('one chip per cluster', D().querySelectorAll('.rc-pool-clusters .rc-clu').length, 3);
   ok('ranked by HF power, lowest first',
-     P().fit.clusters.every((c, i, a2) => i === 0
-                            || a2[i - 1].centre_raw[2] <= c.centre_raw[2]));
+     P().fit.clusters.every((c, i2, a2) => i2 === 0
+                            || a2[i2 - 1].centre_raw[2] <= c.centre_raw[2]));
   D().querySelector('.rc-pool-clusters .rc-clu').click();
-  await until(() => !P().fitting && P().fit.clusters
-                    && P().fit.clusters[0].call_by === 'hand', 60000, 'relabel');
+  await kWaitPool('relabel', () => P().fit.clusters[0].call_by === 'hand');
   ok('pressing a cluster calls it the other thing, by hand',
      P().fit.clusters[0].call === 'ied' && P().fit.clusters[0].call_by === 'hand');
   eq('and the request carries it', P().lastBody.cluster_calls, { 0: 'ied' });
   ok('the colour can be by cluster',
      Array.from(D().querySelectorAll('.rc-colour option'))
        .some((o) => o.value === 'cluster'));
+  ok('pool centres are numbered as its chips are',
+     ((geom().space || {}).centres || []).map((c) => c.label && c.label.text)
+       .join() === '#1 IED,#2 DS,#3 IED',
+     JSON.stringify(((geom().space || {}).centres || []).map((c) => c.label && c.label.text)));
 
-  const kb = () => D().querySelectorAll('.rc-pool-settings .rc-pool-band');
-  kb()[0].value = '600';
-  kb()[0].dispatchEvent(new W.Event('change', { bubbles: true }));
-  kb()[1].value = '900';
-  kb()[1].dispatchEvent(new W.Event('change', { bubbles: true }));
-  D().querySelector('.rc-pool-settings .rc-complete input').click();
-  await kPool('band and complete-only');
-  eq('the pool’s own band reaches the server', P().lastBody.band, [600, 900]);
-  eq('and every member was measured on it', P().fit.params.band, [600, 900]);
-  ok('the server records that the pool set it', P().fit.params.band_pool === true);
-  ok('complete events only reaches it',
-     P().lastBody.complete_only === true && P().fit.params.complete_only === true);
-  ok('and what it left out is counted',
+  /* A typed setting waits for Recompute, then pools with it. */
+  ev(RC + '._setParam("band_lo", 600)');
+  ev(RC + '._setParam("band_hi", 900)');
+  ok('a typed band waits for Recompute', ev(RC + '._pending()') === true);
+  D().querySelector('#tkResult .rc-controls .rc-recompute').click();
+  await kWaitPool('band 600-900', () => (P().lastBody.measure || {}).band_lo === 600);
+  eq('then every member is measured on it', P().fit.params.band, [600, 900]);
+  ok('and the chip says so', /600–900 Hz band/.test(kChip()), kChip());
+  D().querySelector('#tkResult .rc-controls .rc-complete input').click();
+  await kWaitPool('complete only', () => P().lastBody.complete_only === true);
+  ok('complete events only is applied at once, and reaches the pool',
+     P().fit.params.complete_only === true
+     && P().fit.events.every((e) => !e.partial));
+  ok('what it left out is counted',
      typeof P().fit.counts.excluded === 'number'
      && (P().fit.counts.excluded === 0
          || !!D().querySelector('.rc-count-excluded')), P().fit.counts.excluded);
-  ok('with nothing missing an axis left in the pool',
-     P().fit.events.every((e) => !e.partial));
 
   ok('a margins card', !!D().querySelector('.rc-pool-clusters .rc-margins'));
   const kBtns = () => Array.from(D().querySelectorAll('.rc-pool-clusters .rc-margins button'));
@@ -581,33 +610,171 @@ const NL = String.fromCharCode(10);
   if (kGroup) kGroup.click();
   await until(() => sent().some((x) => x[0] === 'msave'), 10000, 'the group save');
   const kms = (sent().filter((x) => x[0] === 'msave').pop() || [null, {}])[1];
-  ok('the group margin is cut from the group, at the pool’s settings',
+  ok('the group margin is cut from the group, at the shared settings',
      kms.extract && kms.extract.source === 'pool_group'
      && kms.extract.focus && kms.extract.k === 3
-     && JSON.stringify(kms.extract.band) === '[600,900]'
+     && kms.extract.measure && kms.extract.measure.band_lo === 600
      && kms.nickname === 'harness group margin',
      JSON.stringify(kms).slice(0, 200));
   ev('(function(){ if (window.__rkBd) { BARRY.ui.bankDialog = window.__rkBd;'
      + ' delete window.__rkBd; } })()');
 
   P().margin = { artifact_id: 'harness-none', mode: 'fixed' };
-  await kPool('the refused margin');
+  kRun().click();
   await until(() => P().marginErr && !P().fitting && P().fit && P().fit.ok,
-              60000, 'refit without it');
+              120000, 'refit without it');
+  await sleep(200);
   ok('a margin that is not here is refused, in the margins card',
      /no saved Root Canal margin/.test(P().marginErr || '')
      && !!D().querySelector('.rc-pool-clusters .rc-margins[open] .rc-margin-err'),
      P().marginErr);
   ok('and the pool is fitted without it', P().margin === null && P().fit.ok);
 
-  // Put it all back for what follows.
-  P().k = 2; P().cluster_calls = {}; P().band_lo = ''; P().band_hi = '';
-  P().complete_only = false; P().marginErr = null; P().dirty = true;
-  ev(RC + '._repaint()');
-  await kPool('back to the defaults');
-  ok('back to two clusters, each member’s own band, everything kept',
-     P().fit.k === 2 && P().lastBody.band === null
+  // Put the shared settings back for what follows, through the controls.
+  P().cluster_calls = {}; P().marginErr = null;
+  D().querySelector('#tkResult .rc-controls .rc-complete input').click();
+  await kWaitPool('all events', () => P().lastBody.complete_only === false);
+  ev(RC + '._setParam("band_lo", 500)');
+  ev(RC + '._setParam("band_hi", 1000)');
+  D().querySelector('#tkResult .rc-controls .rc-recompute').click();
+  await kWaitPool('500-1000', () => (P().lastBody.measure || {}).band_lo === 500);
+  Array.from(D().querySelectorAll('#tkResult .rc-controls .rc-kseg button'))
+    .find((b) => b.textContent.trim() === '2').click();
+  await kWaitPool('k = 2', () => P().fit.k === 2);
+  ok('back to two clusters, 500–1000 Hz, every event kept',
+     P().fit.k === 2 && P().lastBody.measure.band_lo === 500
      && P().lastBody.complete_only === false);
+
+  /* ================================================================== */
+  head('POOLED AVERAGES, THE LASSO AND DRAWN CLUSTERS');
+
+  const pA = () => ev(RC + '._avg()');
+  const pAvgBtns = D().querySelectorAll('.rc-pool-clusters .rc-clu-avg');
+  eq('every pooled cluster chip has its average', pAvgBtns.length,
+     P().fit.clusters.length);
+  pAvgBtns[P().fit.clusters.length - 1].click();
+  await until(() => pA() && !pA().busy, 60000, 'the pooled average');
+  ok('the pooled average arrives', pA() && pA().data && pA().data.ok !== false,
+     pA() && pA().err);
+  const pTop = P().fit.clusters[P().fit.clusters.length - 1];
+  eq('over every event of that cluster', pA().data.n, pTop.n);
+  ok('across the recordings it came from, and says which gave the probe '
+     + 'picture', pA().data.n_reads >= 1 && !!pA().data.probe_from,
+     JSON.stringify([pA().data.n_reads, pA().data.probe_from]));
+  ok('the pane says the stack is one recording’s',
+     /a probe means something inside one recording/.test(
+       (D().querySelector('.rc-avg') || {}).textContent || ''));
+  D().querySelector('.rc-avg-close').click();
+  await until(() => !pA(), 5000, 'closed');
+
+  const pPts = geom().space.pts.filter((q2) => q2.alpha == null || q2.alpha > 0.5);
+  const pXs = pPts.map((q2) => q2.x).sort((a2, b2) => a2 - b2);
+  const pMid = pXs[Math.floor(pXs.length / 4)];
+  const pH = D().getElementById('rcSpace').getBoundingClientRect().height;
+  const pPath = [[1, 1], [pMid, 1], [pMid, pH - 1], [1, pH - 1]];
+  const pSel = ev(RC + '._lasso(' + JSON.stringify(pPath) + ')');
+  ok('the lasso draws round pooled dots', pSel.length > 0, pSel.length);
+  await until(() => D().querySelector('.rc-lasso-bar'), 5000, 'the bar');
+  D().querySelector('.rc-lasso-ied').click();
+  await until(() => !P().fitting && P().fit && P().fit.ok
+                    && (P().fit.clusters || []).some((c) => c.call_by === 'drawn'),
+              120000, 'the pooled drawn cluster');
+  const pD = P().fit.clusters.find((c) => c.call_by === 'drawn');
+  ok('it becomes a pooled cluster of its own, called IED',
+     pD && pD.call === 'ied' && pD.n === pSel.length, JSON.stringify(pD));
+  ok('carried as [recording, event] pairs',
+     (P().lastBody.drawn[0] || {}).events.every((x) => Array.isArray(x)
+       && typeof x[0] === 'string' && typeof x[1] === 'number'));
+  ok('and a selection made before the refit is let go', ev(RC + '._lassoSel()').length === 0);
+  D().querySelector('.rc-pool-clusters .rc-clu-rm').click();
+  await until(() => !P().fitting && !(P().fit.clusters || [])
+                    .some((c) => c.call_by === 'drawn'), 120000, 'undrawn');
+  ok('and × undraws it', P().drawn.length === 0);
+
+  /* ================================================================== */
+  head('A SAVED POOL WHOSE MEMBERS WERE READ ON ANOTHER MACHINE');
+
+  /* As every saved pool was on 2026-10-06: saved where its members were
+     read, opened where some of them were not. One member here is not
+     among what this machine offers; its numbers come with the save. */
+  const awayKey = 'u:harnessaway:000000000000';
+  const aw = JSON.parse(JSON.stringify(P().fit));
+  delete aw.ok;
+  const mAway = aw.members.length;
+  aw.members.push(Object.assign({}, aw.members[0], {
+    key: awayKey, entry_id: 'harnessaway',
+    session_label: 'Harness set read elsewhere', gid: 'sharnessaway',
+    mouse_key: 'HARNESS|m99', mouse_type: 'harness away type',
+    mouse_type_default: 'harness away type', banked: false, n: 3,
+    here: false, event_body: null, read_on: 'Elsewhere',
+    from_saved: { artifact_id: 'harness-away', version: 1,
+                  nickname: 'harness away' },
+    pin: { params: (aw.members[0].pin || {}).params || {},
+           read: '000000000000', rows_digest: 'harness' } }));
+  // Its dots are the last three, so every array stays aligned with them.
+  for (const e of aw.events.slice(-3)) {
+    e.m = mAway; e.mouse_key = 'HARNESS|m99'; e.mouse_type = 'harness away type';
+  }
+  ev('window.__rcpReply.open = ' + JSON.stringify({ status: 200, body: {
+    ok: true, version: 1,
+    artifact: { artifact_id: 'harness-away', version: 1,
+                nickname: 'harness away', name: 'Root Canal pool' },
+    payload: aw } }));
+  ev(RC + '._poolClose()');
+  await ev(RC + '._poolOpen("harness-away")');
+  await until(() => D().querySelector('.rc-from-save'), 5000, 'its row');
+  const awRow = () => D().querySelector('.rc-from-save[data-key="' + awayKey + '"]');
+  ok('a member this machine does not offer still has its row, ticked',
+     !!awRow() && awRow().querySelector('.rc-pool-pick').checked);
+  ok('marked with where it was read', /read on Elsewhere/.test(
+    (awRow() || {}).textContent || ''));
+  const awNote = (D().querySelector('.rc-from-save-note') || {}).textContent || '';
+  ok('and the card says its numbers come from the save, and what would need '
+     + 'its read', /1 member of this pool was read on Elsewhere/.test(awNote)
+     && /pools from v1 of ‘harness away’/.test(awNote)
+     && /needs its read/.test(awNote), awNote);
+  ok('its mouse can be given a type here',
+     !!D().querySelector('.rc-type-in[data-mouse="HARNESS|m99"]'));
+  eq('the pool keeps the version it was opened from', P().open.source,
+     { artifact_id: 'harness-away', version: 1 });
+  const awI = P().fit.events.findIndex((e) => e.m === mAway);
+  ev(RC + '._poolPick(' + awI + ')');
+  await until(() => /Elsewhere/.test((D().querySelector('.rc-ev-away') || {})
+    .textContent || ''), 5000, 'the sentence');
+  ok('its dot says where its read is', /it was read on Elsewhere/.test(
+    (D().querySelector('.rc-ev-away') || {}).textContent || ''));
+  awRow().querySelector('.rc-pool-pick').click();
+  await until(() => !P().sel.some((m) => m.key === awayKey), 5000, 'taken out');
+  ok('unticking takes it out, and its row stays, to put it back',
+     !!awRow() && !awRow().querySelector('.rc-pool-pick').checked);
+  awRow().querySelector('.rc-pool-pick').click();
+  await until(() => P().sel.some((m) => m.key === awayKey), 5000, 'put back');
+  ok('ticking it puts it back', P().sel.some((m) => m.key === awayKey));
+  // A refit, answered from here: what it would ask the server.
+  ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 200,
+    body: Object.assign({ ok: true }, aw) }));
+  const nFit = sent().filter(([k]) => k === 'fit').length;
+  D().querySelector('.rc-pool-run').click();
+  await until(() => sent().filter(([k]) => k === 'fit').length > nFit, 8000,
+              'the refit');
+  const awFit = sent().filter(([k]) => k === 'fit').pop()[1];
+  eq('a refit names the saved version, so the server can take that member '
+     + 'from it', awFit.saved, { artifact_id: 'harness-away', version: 1 });
+  ok('with that member in it', awFit.members.some((m) => m.key === awayKey));
+  ev('delete window.__rcpReply.fit');
+  await until(() => !P().fitting, 8000, 'settled');
+  ev(RC + '._poolSave()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-name'),
+              5000, 'the dialog');
+  const nSave = sent().filter(([k]) => k === 'save').length;
+  const awOk = Array.from(D().querySelectorAll('#bigModal .mf button')).pop();
+  if (awOk) awOk.click();
+  await until(() => sent().filter(([k]) => k === 'save').length > nSave, 8000,
+              'the save');
+  const awSave = sent().filter(([k]) => k === 'save').pop()[1];
+  eq('and so does a save, as the next version of it',
+     [awSave.saved, awSave.artifact_id],
+     [{ artifact_id: 'harness-away', version: 1 }, 'harness-away']);
 
   /* ================================================================== */
   head('NOTHING IS CUT OFF');

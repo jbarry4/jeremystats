@@ -274,6 +274,8 @@ const SUMMARY = {
   why: { 0: null, 1: 'fewer than 5 rats have it on both days', 2: 'no spread', 3: 'identical', 4: 'same change', 5: 'no rat' },
   windows: WINDOWS, bands: BANDS, methods: METHODS, regions: REG, pairs: PAIRS, grey: [REG[GREY]],
   pac_cells: CELLS,
+  histology: { version: 2, date: '2026-10-05', rule: 'v2: y only, Left POR-SUB, no Right POR-SUB',
+               say: 'Histology v2 (Joes multi site histo results.xlsx, rescored 2026-10-05). Only probes scored “y” are used.' },
   trajectory: { days: ['Precon2', 'Precon3'], rats: { Precon2: [3, 4, 6, 7, 8, 9, 10, 11], Precon3: [3, 4, 6, 7, 8, 9, 10, 11] },
                 order: ['Precon1', 'Precon2', 'Precon3', 'Precon4'], in_manifest: ['Precon2', 'Precon3'] },
   lengths: { state: '10 s', slow: '−3 s / +3 s (bands ≤ 12 Hz, theta)', fast: '−1 s / +2 s (bands ≥ 13 Hz, beta, low gamma)' },
@@ -480,7 +482,11 @@ function damageFixture() {
                          clipped: 'every wire it has was clipped', unread: 'it was not measured there' },
            days, whole, entries: { raw: entries, minus_fp: entries }, why_say: SUMMARY.why,
            pairs, min_rats: 5, core_days: ['Precon1', 'Precon4'],
-           aliasing: { say: 'worst leakage into 1–55 Hz −142 dB; no recording’s hardware filter above half its rate.', at: '2026-10-02T12:00:00' } };
+           aliasing: { say: 'worst leakage into 1–55 Hz −142 dB; no recording’s hardware filter above half its rate.', at: '2026-10-02T12:00:00' },
+           histology: { say: 'Histology v2 (Joes multi site histo results.xlsx, rescored 2026-10-05). Only probes scored “y” are used.',
+                        rule: 'v2: y only, Left POR-SUB, no Right POR-SUB', built: 'v2: y only, Left POR-SUB, no Right POR-SUB' },
+           sanity: { version: 2, date: '2026-10-05', run: { id: 'b0016ad03ed4', at: '2026-10-05T16:13:43-04:00', version: 2,
+                                                         totals: { recordings: 53 } } } };
 }
 const DAMAGE = damageFixture();
 
@@ -653,6 +659,11 @@ window.MONO_FIXTURE = {
         && /aborted acquisition/.test(txt(dmg().querySelector('tr[data-rat="7"]'))));
   check('the entries it cost, and the region with nothing', /Entries: 340,000 of 375,144 tested/.test(dt) && /Nothing at all with Right POR/.test(dt));
   check('and the aliasing check', /Aliasing: worst leakage into 1–55 Hz −142 dB/.test(dt));
+  check('which histology, first: v2, and the channel sanity run under it', /^Histology v2: Histology v2 \(Joes multi site histo results\.xlsx, rescored 2026-10-05\)/.test(txt(D().getElementById('histosay')))
+        && /Channel sanity v2 was run over every banked recording on 2026-10-05 \(53 recordings\)/.test(txt(D().getElementById('histosay')))
+        && !D().getElementById('histostale'), txt(D().getElementById('histosay')));
+  check('the counts say which histology the pooled numbers were made under', /^Histology v2: only probes scored “y”, plus Left POR-SUB/.test(txt(D().getElementById('histoverdict'))),
+        txt(D().getElementById('histoverdict')));
   check('the counts say what was lost and link here', /Lost on the way: 16 of 192 cue pairs entirely, 32 partly/.test(txt(D().getElementById('verdict')))
         && !!D().querySelector('#verdict button.linkish'));
   const pm = D().getElementById('pairmat');
@@ -676,6 +687,15 @@ window.MONO_FIXTURE = {
   const dw = figWords(dmg());
   check('no word in its pictures is cut off or on another', dw.length === 0, dw.slice(0, 4).join(' | '));
 
+  const keepH = M.data.S.histology;
+  M.damage.histology.built = null;
+  delete M.data.S.histology;
+  M.renderDamage(); M.renderAll();
+  check('CONTROL: a build made under v1 says so, on the report and on the counts', /built under histology v1/.test(txt(D().getElementById('histostale')))
+        && /Built under histology v1/.test(txt(D().getElementById('histoverdict'))), txt(D().getElementById('histostale')));
+  M.damage.histology.built = M.damage.histology.rule;
+  M.data.S.histology = keepH;
+  M.renderDamage(); M.renderAll();
   const goOn = D().querySelector('#covpane .covnext button');
   check('and a way on to the Monolith', !!goOn && /Go on to the Monolith/.test(txt(goOn)));
   goOn.click();

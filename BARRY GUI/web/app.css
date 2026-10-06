@@ -11886,6 +11886,19 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .rc-pool-band { width: 6em; }
 .rc-complete { display: inline-flex; align-items: center; gap: var(--sp-4); }
 .rc-pool-clusters { display: flex; flex-direction: column; gap: var(--sp-6); }
+/* A cluster chip with its average and, for a drawn one, its undraw. */
+.rc-clu-g { display: inline-flex; align-items: center; gap: 2px; }
+.rc-clu-x { font: inherit; font-size: var(--fs-11, 11px); padding: 1px 6px;
+            border: 1px solid var(--line); border-radius: var(--radius-sm);
+            background: transparent; color: var(--text-2); cursor: pointer; }
+.rc-clu-x:hover { color: var(--text); border-color: var(--accent-line); }
+.rc-clu.drawn { border-style: dotted; }
+/* The lasso's bar, and the average in the event panel. */
+.rc-lasso-bar { display: flex; flex-wrap: wrap; align-items: center;
+                gap: var(--sp-8); padding: var(--sp-6) var(--sp-10); flex: none; }
+.rc-lasso-toggle.on { color: var(--accent); border-color: var(--accent-line); }
+.rc-avg-head { display: flex; flex-wrap: wrap; align-items: baseline;
+               gap: var(--sp-8); margin-bottom: var(--sp-6); }
 .rc-filt-is { white-space: nowrap; }
 .rc-mains { display: inline-flex; align-items: center; gap: var(--sp-4); }
 .rc-bulk td, .rc-bulk th { padding-right: var(--sp-16); }
@@ -12434,3 +12447,9 @@ table.ai-tbl tr.ai-on td { background: var(--accent-soft); color: var(--text); }
   .avery-stamp { transition: none; transform: none; }
   .avery-stamp.hit, .avery-scope.flash { animation: none; }
 }
+
+/* Which histology is in force (v2 since 2026-10-05), on every probe-sanity
+   surface. */
+.histo-badge { margin: 0 0 8px; padding: 5px 9px; border-radius: 6px; font-size: 12.5px;
+  border-left: 3px solid var(--accent); background: var(--bg-2); overflow-wrap: anywhere; }
+.histo-badge.notrun { border-left-color: var(--warn); }

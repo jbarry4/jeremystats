@@ -336,7 +336,8 @@ class Params:
                  "hf_win_ms", "hf_base_off_ms", "hf_base_win_ms", "pad_s")
     FIT_KEYS = ("filt", "mains_out", "lo_hz", "hi_hz", "order", "win_ms",
                 "band_lo", "band_hi", "cross_ms", "flank_ms", "seed", "n_init",
-                "flips", "centres", "k", "cluster_calls", "margin")
+                "flips", "centres", "k", "cluster_calls", "margin",
+                "complete_only", "drawn", "retry")
 
     def __init__(self, **kw):
         g = kw.get
@@ -384,6 +385,35 @@ class Params:
         self.n_init = max(10, int(_num(g("n_init"), N_INIT, "n_init")))
         # HOW MANY CLUSTERS, 1 to 6 (asked for 2026-10-02). Two is what
         # this tool was built on and stays the default.
+        # Events missing an axis left out of the clustering altogether,
+        # rather than placed on the two they have -- Pooled's switch, here
+        # too, so the two views take the same settings.
+        self.complete_only = bool(g("complete_only", False))
+        # CLUSTERS DRAWN BY HAND: [{"events": [i, ...], "call": "ds"|"ied"}].
+        # Their events are held out of k-means and form clusters of their
+        # own, after its k, with the call given. Kept as fit params so a
+        # result with a drawn cluster rebuilds from params alone.
+        self.drawn = []
+        seen = set()
+        for grp in (g("drawn") or []):
+            try:
+                evs = sorted({int(i) for i in (grp or {}).get("events") or []})
+            except (TypeError, ValueError):
+                raise RootCanalError("A drawn cluster is a list of event "
+                                     "numbers and a call.")
+            call = str((grp or {}).get("call") or "").lower()
+            if call not in ("ds", "ied"):
+                raise RootCanalError("A drawn cluster is called DS or IED, "
+                                     "not %r." % (call,))
+            if not evs:
+                continue
+            if seen & set(evs):
+                raise RootCanalError(
+                    "An event is in two drawn clusters (%s); draw it into "
+                    "one." % ", ".join(str(i + 1)
+                                       for i in sorted(seen & set(evs))[:5]))
+            seen |= set(evs)
+            self.drawn.append({"events": evs, "call": call})
         kk = _num(g("k"), K_DEFAULT, "the number of clusters")
         if kk != int(kk) or not K_MIN <= int(kk) <= K_MAX:
             raise RootCanalError(
@@ -429,6 +459,17 @@ class Params:
         except (TypeError, ValueError):
             raise RootCanalError(
                 "The hand-flipped events have to be a list of event numbers.")
+        # EVENTS WHOSE HALF-WIDTH WAS NOT FOUND, SEARCHED AGAIN ON REQUEST.
+        # Each one is measured once more with the widest search the stored
+        # snippet allows (`retry_cross_ms`) -- only those events, so the
+        # rest keep the search everyone else was measured with. A fit
+        # param, so a result with retries rebuilds from params alone.
+        try:
+            self.retry = sorted({int(i) for i in (g("retry") or [])})
+        except (TypeError, ValueError):
+            raise RootCanalError(
+                "The events to search again have to be a list of event "
+                "numbers.")
         cen = g("centres")
         if cen in (None, "", []):
             self.centres = None
@@ -920,6 +961,14 @@ def _check_cross(got, p):
                           CROSS_EDGE_MS, room))
 
 
+def retry_cross_ms(got):
+    """The widest half-width search this read's snippets can carry: the
+    setting's own ceiling, or less where the snippet is shorter (see
+    `_check_cross`)."""
+    room = float(got.get("snip_ms") or SNIP_MS) - CROSS_EDGE_MS
+    return float(min(CROSS_MS_RANGE[1], room))
+
+
 def _best_polarity(y, anchor, fs, p):
     """Both polarities, and the one that carries the event (v4)."""
     got = {pol: measure_peak(y, anchor, fs, pol, p.win_ms, p.cross_ms,
@@ -1058,7 +1107,7 @@ def _pick(yf, bad_rows, c, h):
     return dev
 
 
-def measure(got, p):
+def _measure(got, p):
     """Amplitude, half-width and contact for every event. Memoised.
 
     Keyed on the settings that change it (filter and window), so moving the
@@ -1117,6 +1166,47 @@ def measure(got, p):
     for k in old[:-3]:
         memo.pop(k, None)
     memo[key] = out
+    return out
+
+
+def measure(got, p):
+    """`_measure`, plus the events asked to be searched again wider.
+
+    The retries are applied to a copy, never to the remembered answer: the
+    same filter with no retries must still give the plain numbers.
+    """
+    base = _measure(got, p)
+    if not p.retry:
+        return dict(base, retried={})
+    fs = float(got["snip_fs"])
+    snip = got["snip"]
+    n_ev = snip.shape[0]
+    c = (snip.shape[2] - 1) // 2
+    wide_ms = retry_cross_ms(got)
+    out = {k: (v.copy() if isinstance(v, np.ndarray) else list(v))
+           for k, v in base.items()}
+    retried = {}
+    for i in p.retry:
+        if not 0 <= i < n_ev:
+            continue
+        w = int(out["row"][i])
+        # Only a half-width that was NOT found: an event that has one keeps
+        # it, and one with no deflection at all has nothing to search from.
+        if w < 0 or np.isfinite(out["hw"][i]) or not np.isfinite(out["amp"][i]):
+            continue
+        yf = _filter(snip[i:i + 1], p, fs)[0]
+        m2 = measure_peak(yf[w], c, fs, out["pol"][i], p.win_ms, wide_ms,
+                          p.flank_ms)
+        found = bool(m2 and m2.get("status") == "ok"
+                     and np.isfinite(m2.get("hw_ms", np.nan)))
+        retried[i] = found
+        if found:
+            out["hw"][i] = m2["hw_ms"]
+            out["detail"][i] = m2
+            # Found only past v1's search, so it is marked the way every
+            # widened half-width is.
+            out["wide"][i] = True
+    out["retried"] = retried
     return out
 
 
@@ -1199,16 +1289,22 @@ def fit(got, p, margin=None):
     core = cluster_core(X, k=p.k, seed=p.seed, n_init=p.n_init,
                         centres=(None if margin else p.centres),
                         cluster_calls=p.cluster_calls, margin=margin,
-                        margin_mode=(p.margin or {}).get("mode", "fixed"))
+                        margin_mode=(p.margin or {}).get("mode", "fixed"),
+                        complete_only=p.complete_only,
+                        drawn=[(g_["events"], g_["call"]) for g_ in p.drawn])
     use, part, placed = core["use"], core["part"], core["placed"]
     n_used, mu, sd, Z = core["n_used"], core["mu"], core["sd"], core["Z"]
     C, raw_c, lab = core["C"], core["raw_c"], core["lab"]
     manual = core["manual"]
-    cls_of = {r: core["calls"][r] for r in range(core["k"])}
+    # Every cluster's call, k-means' and the drawn ones after it.
+    cls_of = {r: core["calls"][r]
+              for r in range(core["k"] + core["n_drawn"])}
 
     flips = set(p.flips)
     events = []
-    counts = {"ds": 0, "ied": 0, "unmeasured": 0, "partial": 0, "wide": 0}
+    counts = {"ds": 0, "ied": 0, "unmeasured": 0, "partial": 0, "wide": 0,
+              "excluded": 0}
+    excl = core["excluded"]
     flipped_used = []
     why_part = {}
     for i in range(n):
@@ -1230,8 +1326,11 @@ def fit(got, p, margin=None):
             counts[cls] += 1
         else:
             cl, cls, fl = None, None, False
-            counts["unmeasured"] += 1
+            # Left out by "complete events only" is not "not measured": it
+            # was measured on two axes and set aside on purpose.
+            counts["excluded" if excl[i] else "unmeasured"] += 1
         events.append({
+            "excluded": bool(excl[i]),
             "i": i, "t": float(t[i]),
             "amp_uV": _f(m["amp"][i]), "hw_ms": _f(m["hw"][i]),
             "hf_db": _f(hf[i]),
@@ -1251,15 +1350,25 @@ def fit(got, p, margin=None):
             # amplitude, and they need not agree.
             "hf_contact": (nums[int(hf_row[i])] if hf_row[i] >= 0 else None),
             "unresolved": bool((m["detail"][i] or {}).get("unresolved")),
+            # Searched again wider on request: True found, False not.
+            "retried": m["retried"].get(i),
         })
 
+    cls_of = {r: core["calls"][r]
+              for r in range(core["k"] + core["n_drawn"])}
     centres = []
-    for k in range(core["k"]):
-        centres.append({"z": [float(v) for v in C[k]],
-                        "raw": [float(v) for v in raw_c[k]],
+    for k in range(core["k"] + core["n_drawn"]):
+        centres.append({"z": [_f(v) for v in C[k]],
+                        "raw": [_f(v) for v in raw_c[k]],
                         "cls": cls_of[k],
+                        # A drawn cluster's centre is the mean of what was
+                        # drawn round; it is shown, never dragged.
+                        "drawn": k >= core["k"],
                         "n": int((lab == k).sum())})
     general = k_sentence(core, p.band_label())
+    # Widened by the setting, as against found by a retry: the retry has
+    # its own sentence, with its own reach.
+    n_wide_s = counts["wide"] - sum(1 for v in m["retried"].values() if v)
     ied_c = int(np.argmax(raw_c[:, 2])) if core["k"] >= 2 else 0
     ds_c = 1 - ied_c if core["k"] == 2 else 0
     rule = (
@@ -1271,8 +1380,8 @@ def fit(got, p, margin=None):
            if counts["unmeasured"] else "",
            ("; " + partial_sentence(counts["partial"], why_part, p.cross_ms))
            if counts["partial"] else "",
-           ("; " + wide_sentence(counts["wide"], p.cross_ms))
-           if counts["wide"] else "",
+           ("; " + wide_sentence(n_wide_s, p.cross_ms))
+           if n_wide_s else "",
            ("; centres placed by hand" if manual else ""),
            ("; %d flipped by hand" % len(flipped_used))
            if flipped_used else ""))
@@ -1283,11 +1392,25 @@ def fit(got, p, margin=None):
             if counts["unmeasured"] else "",
             ("; " + partial_sentence(counts["partial"], why_part, p.cross_ms))
             if counts["partial"] else "",
-            ("; " + wide_sentence(counts["wide"], p.cross_ms))
-            if counts["wide"] else "",
+            ("; " + wide_sentence(n_wide_s, p.cross_ms))
+            if n_wide_s else "",
             ("; centres placed by hand" if manual else ""),
             ("; %d flipped by hand" % len(flipped_used))
             if flipped_used else ""))
+    if core["n_drawn"]:
+        nd = int(core["held"].sum())
+        note = ("; %d event%s in %d cluster%s drawn by hand"
+                % (nd, "" if nd == 1 else "s", core["n_drawn"],
+                   "" if core["n_drawn"] == 1 else "s"))
+        rule = (rule[:-2] + note + ")." if rule.endswith(").")
+                else rule.rstrip(".") + note + ".")
+    rt = m["retried"]
+    if rt:
+        nf = sum(1 for v in rt.values() if v)
+        note = ("; %d of %d searched again to ±%s ms found a half-width"
+                % (nf, len(rt), _g(retry_cross_ms(got))))
+        rule = (rule[:-2] + note + ")." if rule.endswith(").")
+                else rule.rstrip(".") + note + ".")
     unused = sorted(flips - set(flipped_used))
     return {
         "n": n, "n_used": n_used,
@@ -1308,6 +1431,8 @@ def fit(got, p, margin=None):
         # A flip on an event that is not measured has nothing to flip, so it
         # is reported rather than silently kept or silently dropped.
         "flips_ignored": unused,
+        # The widest search a retry uses on this read, for the button.
+        "retry_cross_ms": retry_cross_ms(got),
         "scale": {"mean": [float(v) for v in mu], "sd": [float(v) for v in sd]},
         "bad": {str(k): v for k, v in (got.get("bad") or {}).items()},
         "missed": list(got.get("missed") or []),
@@ -1358,7 +1483,7 @@ def measure_of(p):
 
 def cluster_core(X, k=K_DEFAULT, seed=SEED, n_init=N_INIT, centres=None,
                  cluster_calls=None, margin=None, margin_mode="fixed",
-                 what="events"):
+                 what="events", complete_only=False, drawn=None):
     """One clustering, for Single and for Pooled alike.
 
     `X` is [n x 3] raw amp, hw, hf, NaN where unmeasured. Returns the scale,
@@ -1392,6 +1517,20 @@ def cluster_core(X, k=K_DEFAULT, seed=SEED, n_init=N_INIT, centres=None,
     have = np.isfinite(X)
     n_axes = have.sum(axis=1)
     use, part = n_axes == 3, n_axes == 2
+    # Complete events only: an event on two axes is left out rather than
+    # placed on them, and counted as left out.
+    excluded = part.copy() if complete_only else np.zeros(n, dtype=bool)
+    if complete_only:
+        part = np.zeros(n, dtype=bool)
+    # DRAWN BY HAND: those events are held out of k-means -- they shape no
+    # centre and no scale -- and become clusters of their own afterwards.
+    drawn = [(np.asarray(ix, dtype=int), str(call))
+             for ix, call in (drawn or []) if len(ix)]
+    held = np.zeros(n, dtype=bool)
+    for ix, _call in drawn:
+        held[ix[(ix >= 0) & (ix < n)]] = True
+    use = use & ~held
+    part = part & ~held
     placed = use | part
     n_used = int(use.sum())
 
@@ -1460,8 +1599,30 @@ def cluster_core(X, k=K_DEFAULT, seed=SEED, n_init=N_INIT, centres=None,
         r = int(key)
         if 0 <= r < k and v in ("ds", "ied") and v != calls[r]:
             calls[r], by[r] = v, "hand"
+    # The drawn clusters, ranked after k-means' own, each centred on the
+    # mean of its complete events (its two-axis ones where that is all it
+    # has), with the call it was drawn with.
+    if drawn:
+        Cd, Rd = [], []
+        for j, (ix, call) in enumerate(drawn):
+            ix = ix[(ix >= 0) & (ix < n)]
+            lab[ix] = k + j
+            pick = ix[np.isfinite(X[ix]).all(axis=1)]
+            src = pick if len(pick) else ix
+            with np.errstate(invalid="ignore"):
+                zc = np.nanmean(Z[src], axis=0) if len(src) else np.full(3, np.nan)
+                rc_ = np.nanmean(X[src], axis=0) if len(src) else np.full(3, np.nan)
+            Cd.append(zc)
+            Rd.append(rc_)
+            calls.append(call)
+            by.append("drawn")
+        C = np.vstack([C, np.asarray(Cd, dtype=float)])
+        raw_c = np.vstack([raw_c, np.asarray(Rd, dtype=float)])
+        placed = placed | held
     return {"n": n, "have": have, "n_axes": n_axes, "use": use,
+            "n_drawn": len(drawn), "held": held,
             "part": part, "placed": placed, "n_used": n_used,
+            "excluded": excluded,
             "mu": mu, "sd": sd, "Z": Z, "C": C, "raw_c": raw_c, "lab": lab,
             "k": k, "calls": calls, "call_by": by,
             "manual": centres is not None and not margin}
@@ -1472,9 +1633,10 @@ def clusters_out(core):
     lab, C, raw_c = core["lab"], core["C"], core["raw_c"]
     return [{"rank": r, "call": core["calls"][r], "call_by": core["call_by"][r],
              "n": int((lab == r).sum()),
-             "centre_raw": [float(v) for v in raw_c[r]],
-             "centre_z": [float(v) for v in C[r]]}
-            for r in range(core["k"])]
+             "drawn": core["call_by"][r] == "drawn",
+             "centre_raw": [_f(v) for v in raw_c[r]],
+             "centre_z": [_f(v) for v in C[r]]}
+            for r in range(core["k"] + core.get("n_drawn", 0))]
 
 
 def k_sentence(core, band_label):
@@ -1565,6 +1727,212 @@ def _display_idx(n_t, fs):
     return idx[::max(1, step)], c
 
 
+def group_parts(got, p, idxs, rowpol=None):
+    """Sums over a set of events of one read, for an average.
+
+    WHAT IS AVERAGED, and how:
+      trace     each event's own max-amp contact, the contact its amplitude
+                was read off, with that event's local baseline taken off and
+                aligned on the stamp. An event whose peak goes the other way
+                from most is FLIPPED to the common polarity rather than left
+                to cancel the rest -- and how many were is counted and said.
+      spectrum  each event's spectrum on the contact its HF number came
+                from, against its own baseline: linear power, averaged.
+      stack     every contact, averaged as it is.
+      CSD       of the average dentate-band trace (the CSD is linear, so
+                this is the average CSD), down the column most of the
+                events' max contacts are in.
+
+    FILTERED ONCE, NOT PER EVENT, where that is the same answer. Both
+    filters are linear -- the band-passes, and the mains fit, which is a
+    least-squares projection -- so the average of filtered snippets IS the
+    filtered average snippet. Filtering every contact of every event cost
+    ~90 ms an event and a pooled average of 992 events took 55 s. The
+    trace is the one thing that needs each event on its own (its own
+    contact, baseline and polarity), and that is one contact: ~3 ms.
+    """
+    snip = got["snip"]
+    n_ev, n_ch, n_t = snip.shape
+    want = sorted({int(i) for i in idxs if 0 <= int(i) < n_ev})
+    if not want:
+        raise RootCanalError("There are no events of this read to average.")
+    _check_cross(got, p)
+    fs = float(got["snip_fs"])
+    # Each event's max contact and polarity: handed in where the caller
+    # already has them (a pool keeps them), measured here otherwise.
+    if rowpol is not None and all(i in rowpol and rowpol[i][0] is not None
+                                  for i in want):
+        m = {"row": {i: int(rowpol[i][0]) for i in want},
+             "pol": {i: rowpol[i][1] for i in want}}
+    else:
+        m = measure(got, p)
+    _D, _best, brow = hf_db(got, p)
+    c = (n_t - 1) // 2
+    pols = [m["pol"][i] for i in want if m["row"][i] >= 0]
+    ref = "max" if pols.count("max") >= pols.count("min") else "min"
+    tr_sum = np.zeros(n_t)
+    tr_sq = np.zeros(n_t)
+    n_tr = flipped = 0
+    raw_sum = np.zeros((n_ch, n_t))
+    raw_n = np.zeros(n_ch)
+    pe_sum = pb_sum = None
+    n_sp = 0
+    rows_hit = {}
+    fe, fb = np.asarray(got["f_ev"]), np.asarray(got["f_base"])
+    for i in want:
+        x = np.asarray(snip[i], dtype=np.float64)
+        ok = np.isfinite(x).all(axis=1)
+        if not ok.any():
+            continue
+        raw_sum[ok] += x[ok]
+        raw_n[ok] += 1
+        w = int(m["row"][i])
+        if w >= 0 and ok[w]:
+            yw = _filter(x[w:w + 1], p, fs)[0]
+            base = _local_baseline(yw, c, fs, p.flank_ms)
+            sign = 1.0 if m["pol"][i] == ref else -1.0
+            flipped += sign < 0
+            y = sign * (yw - (base if np.isfinite(base) else 0.0))
+            tr_sum += y
+            tr_sq += y * y
+            n_tr += 1
+            rows_hit[w] = rows_hit.get(w, 0) + 1
+        r = int(brow[i]) if brow[i] >= 0 else w
+        if r >= 0:
+            pe = np.asarray(got["psd_ev"][i, r], dtype=np.float64)
+            pb = np.interp(fe, fb, np.asarray(got["psd_base"][i, r],
+                                              dtype=np.float64))
+            if np.isfinite(pe).all() and np.isfinite(pb).all():
+                pe_sum = pe if pe_sum is None else pe_sum + pe
+                pb_sum = pb if pb_sum is None else pb_sum + pb
+                n_sp += 1
+    return {"n": len(want), "n_trace": n_tr, "flipped": int(flipped),
+            "ref": ref, "tr_sum": tr_sum, "tr_sq": tr_sq,
+            "raw_sum": raw_sum, "raw_n": raw_n,
+            "pe_sum": pe_sum, "pb_sum": pb_sum, "n_sp": n_sp, "f": fe,
+            "rows_hit": rows_hit, "fs": fs, "n_t": n_t, "got": got}
+
+
+def group_view(parts, p, label=None):
+    """The four panels of the click panel, for an average.
+
+    `parts` is one or more `group_parts`, from one read or several. The
+    trace and the spectrum pool every event; the stack and the CSD are a
+    probe-wide picture, which only means something inside one recording,
+    so they come from the read that gave the most events and say which.
+    """
+    parts = [q for q in parts if q and q["n"]]
+    if not parts:
+        raise RootCanalError("There is nothing to average.")
+    main = max(parts, key=lambda q: q["n"])
+    got, fs, n_t = main["got"], main["fs"], main["n_t"]
+    nums = [int(v) for v in got["nums"]]
+    c = (n_t - 1) // 2
+    idx, _c = _display_idx(n_t, fs)
+    t_ms = (idx - c) / fs * 1e3
+
+    n_tr = sum(q["n_trace"] for q in parts)
+    if not n_tr:
+        raise RootCanalError("None of these events had a max-amp contact to "
+                             "average.")
+    mean = sum(q["tr_sum"] for q in parts) / n_tr
+    sq = sum(q["tr_sq"] for q in parts) / n_tr
+    sd = np.sqrt(np.clip(sq - mean * mean, 0.0, None))
+    pol, mres = _best_polarity(mean, c, fs, p)
+    mres = mres or {}
+    flipped = sum(q["flipped"] for q in parts)
+    w_main = max(main["rows_hit"], key=main["rows_hit"].get) \
+        if main["rows_hit"] else 0
+    trace = {
+        "t_ms": [float(v) for v in t_ms],
+        "y": [_f(v) for v in mean[idx]],
+        "sd": [_f(v) for v in sd[idx]],
+        "baseline": _f(mres.get("baseline_uV", np.nan)),
+        "peak_ms": _f(mres.get("peak_ms", np.nan)),
+        "peak_uV": _f(mres.get("signed_peak_uV", np.nan)),
+        "left_ms": _f(mres.get("left_ms", np.nan)),
+        "right_ms": _f(mres.get("right_ms", np.nan)),
+        "half_uV": _f(mres.get("half_level_uV", np.nan)),
+        "amp_uV": _f(mres.get("amp_uV", np.nan)),
+        "hw_ms": _f(mres.get("hw_ms", np.nan)),
+        "unresolved": bool(mres.get("unresolved")),
+        "contact": nums[w_main], "contact_row": w_main, "polarity": pol,
+        "n": n_tr, "flipped": flipped,
+        "each_own_contact": True,
+    }
+
+    n_sp = sum(q["n_sp"] for q in parts)
+    pe = sum(q["pe_sum"] for q in parts if q["pe_sum"] is not None)
+    pb = sum(q["pb_sum"] for q in parts if q["pb_sum"] is not None)
+    spectrum = None
+    if n_sp:
+        spectrum = {"f": [float(v) for v in main["f"]],
+                    "event": [_f(v) for v in pe / n_sp],
+                    "baseline": [_f(v) for v in pb / n_sp],
+                    "band": [float(p.band_lo), float(p.band_hi)],
+                    "contact": None, "n": n_sp}
+        with np.errstate(divide="ignore", invalid="ignore"):
+            spectrum["db"] = _db_s_num(_band_power(main["f"], pe / n_sp,
+                                                   p.band_lo, p.band_hi),
+                                       _band_power(main["f"], pb / n_sp,
+                                                   p.band_lo, p.band_hi))
+
+    bad = _bad_rows(got)
+    have = main["raw_n"] > 0
+    raw_mean = np.where(have[:, None],
+                        main["raw_sum"] / np.maximum(main["raw_n"], 1)[:, None],
+                        np.nan)
+    st = np.full_like(raw_mean, np.nan)
+    if have.any():
+        st[have] = _filter(raw_mean[have], p, fs)
+    wave = st[:, idx]
+    good = ~bad & have
+    g = 4.0
+    scale = (float(np.percentile(np.abs(wave[good]), 99.5))
+             if good.any() else 1.0) or 1.0
+    stack = {"t_ms": [float(v) for v in t_ms],
+             "rows": [[_f(v) for v in (-wave[k] * g / scale)]
+                      for k in range(len(nums))],
+             "nums": nums, "bad": [bool(b) for b in bad], "gain": g,
+             "uv_per_contact": float(scale / g), "contact": nums[w_main],
+             "n": main["n"]}
+    st = [[_f(v) for v in r_] for r_ in stack["rows"]]
+    stack["rows"] = st
+
+    runs = got.get("runs") or [{"rows": list(range(len(nums))),
+                                "numbers": nums}]
+    run = next((ru for ru in runs if w_main in ru["rows"]), runs[0])
+    rows = list(run["rows"])
+    chans = [{"number": nums[k]} for k in rows]
+    lfp = _ds_filter(np.nan_to_num(raw_mean[rows]), fs)[:, idx]
+    lfp = braces.repair(lfp, chans, {nums[k]: "bad" for k in rows if bad[k]})
+    dp = dspca.Params(probe=got.get("probe"))
+    csd = dspca.toothy_csd(lfp, float(got.get("spacing_um") or 50.0), dp)[1]
+    lim = float(np.percentile(np.abs(csd), 99)) or 1.0
+    out_csd = {"t_ms": [float(v) for v in t_ms],
+               "rows": [[float(v) for v in r_] for r_ in csd],
+               "nums": [nums[k] for k in rows], "clim": [-lim, lim],
+               "unit": "A/m³", "contact": nums[w_main],
+               "filter": "%g–%g Hz, %g Hz mains taken out (the dentate-"
+                         "spike band)" % (CSD_BAND[0], CSD_BAND[1],
+                                          CSD_LINE_HZ),
+               "band": [float(CSD_BAND[0]), float(CSD_BAND[1])],
+               "notch_hz": float(CSD_LINE_HZ), "n": main["n"]}
+    return {"group": True, "label": label, "n": sum(q["n"] for q in parts),
+            "n_reads": len(parts), "probe_from_n": main["n"],
+            "trace": trace, "spectrum": spectrum, "stack": stack,
+            "csd": out_csd, "filter": [float(p.lo_hz), float(p.hi_hz)],
+            "filt": p.filt, "mains_out": bool(p.mains_out),
+            "filter_label": p.filter_label()}
+
+
+def _db_s_num(a, b):
+    try:
+        return float(10.0 * np.log10(a / b)) if a > 0 and b > 0 else None
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
 def event_view(got, p, i):
     """Everything the click panel draws for event `i`, as arrays.
 
@@ -1593,6 +1961,12 @@ def event_view(got, p, i):
     w = int(np.argmax(dev))
     pol, mres = _best_polarity(yf[w], c, fs, p)
     mres = mres or {}
+    if (i in p.retry and mres.get("status") == "ok"
+            and not np.isfinite(mres.get("hw_ms", np.nan))):
+        m2 = measure_peak(yf[w], c, fs, pol, p.win_ms, retry_cross_ms(got),
+                          p.flank_ms)
+        if m2 and m2.get("status") == "ok" and np.isfinite(m2["hw_ms"]):
+            mres = m2
     idx, _c = _display_idx(n_t, fs)
     t_ms = (idx - c) / fs * 1e3
 
