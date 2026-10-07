@@ -12524,3 +12524,52 @@ table.ai-tbl tr.ai-on td { background: var(--accent-soft); color: var(--text); }
 .rc-deep-tab td.rc-call-ied { color: var(--err); }
 .rc-deep-note { width: 100%; }
 .rc-deep-recipe { margin-top: 0; }
+
+/* --------------------------------------------------------------------------
+   The Sync panel: the shared database, then git (core.js showSync)
+   --------------------------------------------------------------------------
+   One card per way a record leaves this computer. No max-height: the old
+   single box scrolled, clipped its Sync now button at the edge and let the
+   next heading sit on its foot. */
+.sync-section {
+  display: flex; flex-direction: column; gap: var(--sp-8);
+  padding: 12px 14px; background: var(--bg-2);
+  border: 1px solid var(--line-soft); border-radius: var(--radius);
+}
+.sync-section > p, .sync-section > pre { margin: 0; }
+.sync-section pre {
+  font-family: var(--mono); font-size: var(--fs-105); line-height: 1.6;
+  color: var(--text-2); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.sync-section .cloud-line { flex-wrap: wrap; row-gap: var(--sp-6); }
+.sync-section .cloud-note { display: flex; flex-direction: column; gap: var(--sp-6); }
+.sync-section .cloud-note > p { margin: 0; }
+.sync-section .sync-warn { margin: 0; }
+.warn-text { color: var(--warn); }
+.cloud-err-box { display: flex; flex-direction: column; gap: 4px; }
+.cloud-err-box > p { margin: 0; }
+.cloud-err-raw summary, .sync-files summary, .sync-local summary {
+  cursor: pointer; color: var(--text-3); font-size: var(--fs-105);
+}
+.cloud-err-raw pre, .sync-files pre { margin: 6px 0 0; max-height: 240px; overflow: auto; }
+.sync-unshared {
+  display: flex; flex-direction: column; gap: var(--sp-6);
+  border-top: 1px solid var(--line-soft); padding-top: var(--sp-10);
+}
+.sync-unshared > p { margin: 0; }
+.sync-unshared h4 {
+  margin: 0; font-size: var(--fs-115); font-weight: 600; color: var(--text);
+}
+.sync-unshared-tbl { width: 100%; border-collapse: collapse; font-size: var(--fs-115); }
+.sync-unshared-tbl th {
+  text-align: left; font-weight: 600; color: var(--text-3);
+  padding: 4px 12px 4px 0; border-bottom: 1px solid var(--line-soft);
+}
+.sync-unshared-tbl td { padding: 4px 12px 4px 0; vertical-align: top; color: var(--text-2); }
+.sync-unshared-tbl td:nth-child(2) { color: var(--text); overflow-wrap: anywhere; }
+.sync-unshared-tbl td:first-child, .sync-unshared-tbl td:last-child { white-space: nowrap; }
+.sync-local p, .sync-local ul {
+  margin: 6px 0 0; font-size: var(--fs-115); line-height: 1.6; color: var(--text-2);
+}
+.sync-local ul { padding-left: 18px; }
+.sync-local li { overflow-wrap: anywhere; }

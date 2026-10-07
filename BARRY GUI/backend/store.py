@@ -32,6 +32,7 @@ import json
 import os
 import platform
 import time
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -675,15 +676,18 @@ class Store:
         if not self.auto_stage:
             return
         try:
-            subprocess.run(["git", "add", "--", path], cwd=self.root,
+            subprocess.run([git_exe(), "add", "--", path], cwd=self.root,
                            capture_output=True, timeout=15)
         except Exception:
             pass          # staging is a convenience, never a hard failure
 
     def git_status(self):
         """Summarize what is uncommitted under GUI_logs."""
+        exe = git_exe()
+        if exe is None:
+            return {"ok": False, "missing": True, "error": GIT_MISSING}
         try:
-            res = subprocess.run(["git", "status", "--porcelain", "--", "."],
+            res = subprocess.run([exe, "status", "--porcelain", "--", "."],
                                  cwd=self.root, capture_output=True,
                                  text=True, timeout=20)
         except Exception as exc:
@@ -702,6 +706,52 @@ class Store:
 # ----------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------
+GIT_MISSING = ("Jarvis cannot find git on this computer, so it cannot say "
+               "what is uncommitted in GUI_logs. Records still reach the "
+               "other computers through the shared database. To commit them "
+               "as well, install Git for Windows, or use GitHub Desktop.")
+
+_GIT_EXE = []
+
+
+def git_exe():
+    """The git to run, or None when this computer has none Jarvis can find.
+
+    Not just "git": a computer that only has GitHub Desktop has a git, but
+    not on PATH, and asking for "git" there answered "[WinError 2] The
+    system cannot find the file specified" -- which the Sync panel showed as
+    it was. So: PATH first, then where Git for Windows and GitHub Desktop
+    put theirs. Looked up once; a git installed while Jarvis runs is found
+    at the next start.
+    """
+    if _GIT_EXE:
+        return _GIT_EXE[0]
+    found = shutil.which("git")
+    if not found and os.name == "nt":
+        cands = []
+        for env in ("ProgramFiles", "ProgramW6432", "ProgramFiles(x86)",
+                    "LOCALAPPDATA"):
+            base = os.environ.get(env)
+            if not base:
+                continue
+            cands.append(os.path.join(base, "Git", "cmd", "git.exe"))
+            cands.append(os.path.join(base, "Programs", "Git", "cmd",
+                                      "git.exe"))
+        desk = os.path.join(os.environ.get("LOCALAPPDATA") or "",
+                            "GitHubDesktop")
+        try:
+            apps = sorted((d for d in os.listdir(desk)
+                           if d.startswith("app-")), reverse=True)
+        except OSError:
+            apps = []
+        for d in apps:
+            cands.append(os.path.join(desk, d, "resources", "app", "git",
+                                      "cmd", "git.exe"))
+        found = next((c for c in cands if os.path.isfile(c)), None)
+    _GIT_EXE.append(found)
+    return found
+
+
 def new_gid():
     """A short, permanent name for a recording.
 
@@ -755,7 +805,8 @@ def _code_version():
     except Exception:                                # noqa: BLE001
         ver = None
     try:
-        res = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+        res = subprocess.run([git_exe() or "git", "rev-parse", "--short",
+                              "HEAD"],
                              cwd=os.path.dirname(os.path.dirname(
                                  os.path.abspath(__file__))),
                              capture_output=True, text=True, timeout=5)
@@ -775,7 +826,7 @@ def _git_user():
         return _GIT_USER_CACHE["v"]
     val = None
     try:
-        res = subprocess.run(["git", "config", "user.email"],
+        res = subprocess.run([git_exe() or "git", "config", "user.email"],
                              capture_output=True, text=True, timeout=10)
         if res.returncode == 0:
             val = (res.stdout or "").strip() or None

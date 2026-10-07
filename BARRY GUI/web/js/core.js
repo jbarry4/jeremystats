@@ -1258,9 +1258,7 @@ function cloudNote() {
              : '') }));
     const budget = cloudBudget(c);
     if (budget) box.appendChild(budget);
-    if (last.error) {
-      box.appendChild(el('pre', { class: 'cloud-err', text: last.error }));
-    }
+    if (last.error) box.appendChild(cloudErrorNote(last));
     box.appendChild(el('p', { class: 'hint',
       text: 'Jarvis writes here first and syncs in the background, so none of '
           + 'this is in the way if the network is down.' }));
@@ -1273,6 +1271,32 @@ function cloudNote() {
   return box;
 }
 
+
+/* The last sync's failure, as a sentence and then, folded, as it came.
+
+   The raw text is PostgREST's or Cloudflare's: a 522 is three lines of JSON
+   that all mean "the database did not answer", and it was printed whole in
+   red as though something here had broken. */
+function cloudErrorNote(last) {
+  const err = String(last.error || '');
+  const code = (err.match(/\bHTTP (\d{3})\b/) || err.match(/\b(5\d\d)\b/)
+                || [])[1];
+  const away = /^5(0[234]|2[0-4])$/.test(code || '')
+    || /timed out|Timeout|cannot reach|not answering/i.test(err);
+  const when = last.at ? new Date(last.at).toLocaleTimeString() : '';
+  const say = away
+    ? 'The shared database did not answer' + (code ? ' (' + code + ')' : '')
+      + (when ? ' at ' + when : '') + '. Jarvis waits and asks again by '
+      + 'itself; everything made here is kept and goes up when it answers.'
+    : 'The last sync failed' + (when ? ' at ' + when : '') + '.';
+  return el('div', { class: 'cloud-err-box' }, [
+    el('p', { class: away ? 'hint warn-text' : 'cloud-err', text: say }),
+    el('details', { class: 'cloud-err-raw' }, [
+      el('summary', { text: 'What it said' }),
+      el('pre', { text: err }),
+    ]),
+  ]);
+}
 
 function conflictNote(c) {
   if (!c) return null;
@@ -1292,9 +1316,12 @@ function conflictNote(c) {
     });
   }
   return el('div', { class: 'sync-warn' }, [
-    el('p', { text: c.shared.length + ' file(s) here are shared between '
-                  + 'machines, so two people editing the same thing would '
-                  + 'collide on a pull:' }),
+    el('p', { text: (c.n_shared || c.shared.length) + ' file(s) here are '
+                  + 'shared between machines, so two people editing the same '
+                  + 'thing would collide on a pull'
+                  + ((c.n_shared || 0) > c.shared.length
+                     ? ' (the first ' + c.shared.length + ' are listed)' : '')
+                  + ':' }),
     el('pre', { text: c.shared.join('\n') }),
     el('p', { class: 'hint',
       text: 'Route whatever writes them through a shards.Book, or add them '
@@ -1308,54 +1335,158 @@ function conflictNote(c) {
 /* NOT SHARED YET (2026-10-06): everything made on this machine that has not
    reached the shared database -- bank entries, curation sets, layer sheets,
    artifacts (Root Canal singles, pools, margins...), Braces sets and AI
-   Beta runs -- each by its name, with why. Filled after the panel opens,
-   from the same push cursor the marks use, so asking costs nothing at the
-   database. */
+   Beta runs -- each by its name. Filled after the panel opens, from the
+   same push cursor the marks use, so asking costs nothing at the database.
+
+   Two lists, because they are two different things. What is WAITING will
+   go up by itself and is worth seeing by name. What is kept here ON
+   PURPOSE -- demo records, a sheet whose recording the registry no longer
+   has -- never will, and listing it as "not shared yet" made a clean
+   machine read as ten things behind (2026-10-07: five identical demo bank
+   rows, two demo sets, three sheets). That half is folded, grouped, and
+   says why. */
+const UNSHARED_KIND = {
+  bank: ['Event Bank entry', 'Event Bank entries'],
+  curation: ['Checkup set', 'Checkup sets'],
+  layers: ['layer sheet', 'layer sheets'],
+  artifacts: ['artifact', 'artifacts'],
+  braces: ['Braces set', 'Braces sets'],
+  aibeta: ['AI Beta run', 'AI Beta runs'],
+};
+
+function unsharedNoun(kind, n) {
+  const w = UNSHARED_KIND[kind] || [kind, kind];
+  return n + ' ' + (n === 1 ? w[0] : w[1]);
+}
+
 function unsharedSection() {
   const box = el('div', { class: 'sync-unshared' }, [
-    el('div', { class: 'section-label', text: 'Not shared yet' }),
-    el('p', { class: 'hint', text: 'Looking…' }),
+    el('p', { class: 'hint', text: 'Looking for anything not shared yet\u2026' }),
   ]);
-  const KIND = { bank: 'Event Bank', curation: 'Checkup set', layers: 'Layers',
-                 artifacts: 'Artifact', braces: 'Braces set',
-                 aibeta: 'AI Beta run' };
-  const STATE = { waiting: 'sending', unknown: 'not checked',
-                  local: 'this computer' };
-  const WHY = { demo: 'a demo or harness record, never shared',
-                'no recording': 'its recording is not in the shared registry',
-                'no table': 'the shared database has no table for these yet '
-                            + '(supabase/21_shard_files.sql)' };
   api('/api/cloud/unshared').then((got) => {
-    const p = box.querySelector('p');
-    if (!p) return;
+    box.innerHTML = '';
     if (!got.on) {
-      p.textContent = 'This computer is not connected to the shared '
-                    + 'database, so nothing made here leaves it except by git.';
+      box.appendChild(el('p', { class: 'hint',
+        text: 'This computer is not connected to the shared database, so '
+            + 'nothing made here leaves it except by git.' }));
       return;
     }
     const rows = got.rows || [];
-    if (!rows.length) {
-      p.textContent = 'Everything made here is in the shared database.';
-      return;
+    const pending = rows.filter((r) => r.state !== 'local');
+    const kept = rows.filter((r) => r.state === 'local');
+    if (!pending.length) {
+      box.appendChild(el('p', { class: 'hint sync-ok',
+        text: 'Everything made here is in the shared database.' }));
+    } else {
+      const sd = BARRY.syncState && BARRY.syncState.data;
+      const failing = sd && sd.last && sd.last.ok === false;
+      box.appendChild(el('h4', { text: 'Not shared yet' }));
+      box.appendChild(el('p', { class: 'hint',
+        text: pending.length + ' thing' + (pending.length === 1 ? '' : 's')
+          + ' made here ' + (pending.length === 1 ? 'has' : 'have')
+          + ' not reached the shared database. '
+          + (failing ? 'The last sync did not get through, so '
+                       + (pending.length === 1 ? 'it waits' : 'they wait')
+                       + ' for the database to answer.'
+                     : (pending.length === 1 ? 'It goes' : 'They go')
+                       + ' up by itself within a minute.') }));
+      const STATE = { waiting: 'sending', unknown: 'not checked yet' };
+      box.appendChild(el('table', { class: 'sync-unshared-tbl' }, [
+        el('thead', {}, [el('tr', {}, ['What', 'Name', 'State']
+          .map((t) => el('th', { text: t })))]),
+        el('tbody', {}, pending.map((r) => el('tr', {}, [
+          el('td', { text: (UNSHARED_KIND[r.kind] || [r.kind])[0] }),
+          el('td', { text: r.name || r.id, title: r.id }),
+          el('td', { text: STATE[r.state] || r.state }),
+        ]))),
+      ]));
     }
-    p.textContent = rows.length + ' thing' + (rows.length === 1 ? '' : 's')
-      + ' made here ' + (rows.length === 1 ? 'has' : 'have') + ' not reached '
-      + 'the shared database. “Sending” goes up by itself within a minute.';
-    box.appendChild(el('table', { class: 'tbl sync-unshared-tbl' }, [
-      el('thead', {}, [el('tr', {}, ['what', 'name', 'state', 'why']
-        .map((t) => el('th', { text: t })))]),
-      el('tbody', {}, rows.map((r) => el('tr', {}, [
-        el('td', { text: KIND[r.kind] || r.kind }),
-        el('td', { text: r.name || r.id }),
-        el('td', { text: STATE[r.state] || r.state }),
-        el('td', { class: 'hint', text: WHY[r.why] || r.why || '' }),
-      ]))),
-    ]));
+    if (kept.length) box.appendChild(keptHere(kept));
   }).catch((e) => {
-    const p = box.querySelector('p');
-    if (p) p.textContent = 'Could not ask: ' + e.message;
+    box.innerHTML = '';
+    box.appendChild(el('p', { class: 'hint',
+      text: 'Could not ask what is not shared yet: ' + e.message }));
   });
   return box;
+}
+
+/* What never leaves this computer, folded and grouped by why. */
+function keptHere(rows) {
+  const groups = {};
+  for (const r of rows) (groups[r.why || 'other'] = groups[r.why || 'other']
+                         || []).push(r);
+  const counted = (list) => {
+    const n = {};
+    for (const r of list) n[r.kind] = (n[r.kind] || 0) + 1;
+    return Object.keys(n).map((k) => unsharedNoun(k, n[k])).join(', ');
+  };
+  const parts = [];
+  if (groups.demo) {
+    parts.push(el('p', {}, [
+      el('strong', { text: 'Demo and harness records' }),
+      el('span', { text: ', which are never shared, on purpose: '
+                         + counted(groups.demo) + '.' }),
+    ]));
+  }
+  if (groups['no recording']) {
+    parts.push(el('p', {}, [
+      el('strong', { text: 'Recordings the registry does not have' }),
+      el('span', { text: ' \u2014 the shared database files everything '
+                         + 'under its recording, so these have nowhere to '
+                         + 'go:' }),
+    ]));
+    parts.push(el('ul', {}, groups['no recording'].map((r) => {
+      const what = (UNSHARED_KIND[r.kind] || [r.kind])[0];
+      const n = r.n_labels != null ? r.n_labels + ' label'
+                                     + (r.n_labels === 1 ? '' : 's')
+              : r.n_events != null ? r.n_events + ' event'
+                                     + (r.n_events === 1 ? '' : 's') : null;
+      return el('li', { title: r.id }, [
+        el('span', { text: what + ' \u00b7 ' + (r.name || r.id)
+                           + (n ? ' (' + n + ')' : '') }),
+        el('span', { class: 'hint',
+          text: r.now_gid
+            ? ' \u2014 the recording is in the registry under a newer id ('
+              + r.now_gid + '); this is filed under its old one, ' + r.id
+              + '.'
+            : ' \u2014 no recording with this id (' + r.id + ') or this '
+              + 'name is registered.' }),
+      ]);
+    })));
+  }
+  for (const why of Object.keys(groups)) {
+    if (why === 'demo' || why === 'no recording') continue;
+    const WHY = { 'no table': 'the shared database has no table for these '
+                              + 'yet (supabase/21_shard_files.sql)' };
+    parts.push(el('p', {}, [
+      el('strong', { text: counted(groups[why]) }),
+      el('span', { text: ' \u2014 ' + (WHY[why] || why) + '.' }),
+    ]));
+  }
+  return el('details', { class: 'sync-local' }, [
+    el('summary', { text: rows.length + ' kept on this computer on purpose' }),
+  ].concat(parts));
+}
+
+/* GUI_logs' git state on the panel's top row. "[WinError 2] The system
+   cannot find the file specified" was what a computer with no git on PATH
+   showed here; the server now looks where Git for Windows and GitHub
+   Desktop put theirs, and says so in words when there is none. */
+function gitChip(git) {
+  if (git.ok) {
+    return el('span', { class: 'stat-chip ' + (git.dirty ? 'warn' : 'good'),
+                        text: git.dirty ? git.dirty + ' uncommitted' : 'clean' });
+  }
+  const err = String(git.error || '');
+  const missing = git.missing || /WinError 2|cannot find the file|No such file/i
+    .test(err);
+  return el('span', {
+    class: 'stat-chip' + (missing ? '' : ' warn'),
+    text: missing ? 'git not found' : 'git: not a repository',
+    title: missing ? (git.missing ? err : 'Jarvis cannot find git on this '
+                      + 'computer. Records still reach the other computers '
+                      + 'through the shared database.') : err,
+  });
 }
 
 function showSync() {
@@ -1377,25 +1508,35 @@ function showSync() {
         el('span', { class: 'stat-chip', text: (counts.runs || 0) + ' runs' }),
         el('span', { class: 'stat-chip', text: (counts.sessions || 0) + ' sessions' }),
         el('span', { class: 'stat-chip', text: (counts.errors || 0) + ' errors' }),
-        git.ok
-          ? el('span', { class: 'stat-chip ' + (git.dirty ? 'warn' : 'good'),
-                         text: git.dirty ? git.dirty + ' uncommitted' : 'clean' })
-          : el('span', { class: 'stat-chip warn', text: git.error || 'not a git repo' }),
+        gitChip(git),
       ]),
-      el('div', { class: 'section-label', text: 'How syncing works' }),
-      el('p', { style: 'font-size:12.5px;line-height:1.7;color:var(--text-2)' , text:
-        'Jarvis writes every run, bad-channel mark, preset and error into GUI_logs as '
-        + 'plain JSON — one file per run and per session, so git merges them without '
-        + 'conflict. It never commits or pushes on its own.' }),
-      el('div', { class: 'source-box' }, [
+      /* Two ways a record leaves this computer, one section each. They
+         were one scrolling box -- the database's status, the git
+         commands and a conflict warning together, with the button
+         clipped at its edge and the next heading drawn over its foot. */
+      el('div', { class: 'section-label', text: 'The shared database' }),
+      el('div', { class: 'sync-section' }, [
         cloudNote(),
-        conflictNote(d.conflicts),
-        el('pre', { text: 'git add "BARRY GUI/GUI_logs"\ngit commit -m "session logs"\ngit push\n\n'
-                          + '# to pick up everyone else\'s work:\ngit pull' }),
+        unsharedSection(),
       ]),
-      files.length ? el('div', { class: 'section-label', text: 'Uncommitted files' }) : null,
-      files.length ? el('div', { class: 'source-box' }, [el('pre', { text: files.join('\n') })]) : null,
-      unsharedSection(),
+      el('div', { class: 'section-label', text: 'Git' }),
+      el('div', { class: 'sync-section sync-git' }, [
+        el('p', { class: 'hint',
+          text: 'GUI_logs is also a folder in the repository: every run, '
+              + 'bad-channel mark, preset and error is a JSON file, one per '
+              + 'machine, so git merges them without conflict. Jarvis never '
+              + 'commits or pushes on its own.' }),
+        conflictNote(d.conflicts),
+        git.ok
+          ? el('pre', { text: 'git add "BARRY GUI/GUI_logs"\ngit commit -m "session logs"\ngit push\n\n'
+                              + '# to pick up everyone else\'s work:\ngit pull' })
+          : null,
+        files.length ? el('details', { class: 'sync-files' }, [
+          el('summary', { text: files.length + ' uncommitted file'
+                                + (files.length === 1 ? '' : 's') }),
+          el('pre', { text: files.join('\n') }),
+        ]) : null,
+      ].filter(Boolean)),
     ]),
     el('div', { class: 'mf' }, [
       el('button', { class: 'btn ghost sm', text: 'Open folder',

@@ -1000,6 +1000,10 @@
         "set",
         "2026-09-11T15:20:20.605140+00:00"
       ],
+      "layers:s61700eac90ec": [
+        "set",
+        "2026-10-07T22:34:38.484221+00:00"
+      ],
       "person:Harness Probe Person": [
         "set",
         "2026-09-29T18:04:01.736652+00:00"
@@ -3171,7 +3175,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-06T20:41:37.966090+00:00",
+    "at": "2026-10-07T22:34:38.484221+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -5416,6 +5420,15 @@
       "note": null,
       "synced": true,
       "synced_at": "2026-09-11T11:20:20-0400"
+    },
+    "layers:s61700eac90ec": {
+      "at": "2026-10-07T18:33:47-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "s61700eac90ec",
+      "kind": "layers",
+      "note": "empty sheet under an old id of KCNT1 m22 s4 2026-06-18; its sheet is s34d1f0b371d4",
+      "synced": true,
+      "synced_at": "2026-10-07T18:34:38-0400"
     },
     "person:Harness Probe Person": {
       "at": "2026-09-29T14:04:01-0400",

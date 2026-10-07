@@ -1,0 +1,191 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>syncpanel: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:560px;top:0;right:0;bottom:0;width:calc(100vw - 560px);
+height:100vh;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The Sync panel, as reported on 2026-10-07 from a lab computer:
+
+     - "[WinError 2] The system cannot find the file specified" as a chip,
+       which was git missing from PATH;
+     - seven feedback overlays listed as files that would conflict;
+     - "10 things made here have not reached the shared database", every one
+       of them a demo record or a sheet with no recording, which never will;
+     - one scrolling box holding the database status, the git commands and
+       the warning, its Sync now clipped and the next heading on its foot;
+     - a 522 printed whole, in red.
+
+   Every answer the panel reads is given here, so each state is shown on
+   purpose. Nothing is sent and nothing is written. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(80);
+  }
+  return null;
+}
+
+const ERR522 = 'POST /rest/v1/machines -> HTTP 522 {"type":"https://developers.'
+  + 'cloudflare.com/support/troubleshooting/http-status-codes/cloudflare-5xx-'
+  + 'errors/error-522/","title":"Error 522: Connection timed out","status":522}';
+const KEPT = [
+  ...[1, 2, 3, 4, 5].map((i) => ({ kind: 'bank', id: 'b' + i, state: 'local',
+    why: 'demo', name: 'DEMO m1 s1 (dentate spikes) (demo set)' })),
+  { kind: 'curation', id: 'demo-ds-tutorial__ds', state: 'local', why: 'demo',
+    name: 'DEMO m1 s1 (dentate spikes) · ds' },
+  { kind: 'curation', id: 'demo-long-session__ds', state: 'local', why: 'demo',
+    name: 'DEMO m2 s3 (a longer one) · ds' },
+  { kind: 'layers', id: 'demo-long-session', state: 'local', why: 'demo',
+    name: 'DEMO m2 s3 (a longer one)' },
+  { kind: 'layers', id: 's61700eac90ec', state: 'local', why: 'no recording',
+    name: 'KCNT1 m22 s4 2026-06-18', n_labels: 0, now_gid: 's34d1f0b371d4' },
+  { kind: 'layers', id: 'saa02cc6935a5', state: 'local', why: 'no recording',
+    name: '2022-08-02', n_labels: 3 },
+];
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  const D = () => frame.contentDocument;
+  let realApi = null;
+  try {
+    await until(() => W().BARRY && typeof W().showSync === 'function'
+                      && W().api, 30000);
+    const B = W().eval('BARRY');
+    realApi = W().api;
+    let unshared = { ok: true, on: true, rows: KEPT };
+    let status = {
+      configured: true, auto: true, project: 'svyymanowlfoyblinnny',
+      pull_interval_s: 60, pace: 'somebody is working here',
+      last: { at: '2026-10-07T18:22:28-04:00', ok: false, pushed: 0,
+              error: ERR522 },
+    };
+    W().api = async (path, opts) => {
+      if (path === '/api/cloud/unshared') return JSON.parse(JSON.stringify(unshared));
+      if (path === '/api/cloud/status') return JSON.parse(JSON.stringify(status));
+      if (path === '/api/sync/pending-migrations') return { run: [] };
+      return realApi(path, opts);
+    };
+    const open = async (git) => {
+      B.sync = { root: 'C:\\x\\GUI_logs', git,
+                 index: { counts: { runs: 275, sessions: 1489, errors: 2723 } },
+                 conflicts: { ok: true, files: 8000, shared: [], n_shared: 0,
+                              machines: ['a', 'b'], mine: 'a' } };
+      W().closeModal && W().closeModal();
+      W().showSync();
+      return until(() => {
+        const m = D().getElementById('bigModalBox') || D().querySelector('.modal');
+        return m && m.querySelector('.sync-unshared table, .sync-unshared .sync-ok')
+          && m.querySelector('.cloud-line') && m;
+      }, 15000);
+    };
+    const txt = (n) => (n ? n.textContent : '').replace(/\s+/g, ' ').trim();
+
+    say('=== a computer with no git on PATH, and the database away ===');
+    let md = await open({ ok: false,
+                          error: '[WinError 2] The system cannot find the file specified' });
+    check('the panel opens', !!md);
+    const chips = Array.from(md.querySelectorAll('.chip-row .stat-chip')).map(txt);
+    check('git missing reads as words, not WinError', chips.includes('git not found')
+          && !chips.some((c) => /WinError/.test(c)), chips.join(' | '));
+    check('and the git commands are not offered with no git to run them',
+          !/git add "BARRY GUI/.test(txt(md)));
+    const labels = Array.from(md.querySelectorAll('.section-label')).map(txt);
+    check('two sections: the shared database, then git',
+          labels.indexOf('The shared database') >= 0 && labels.indexOf('Git')
+          > labels.indexOf('The shared database'), labels.join(' | '));
+    const e = md.querySelector('.cloud-err-box');
+    check('the 522 is said in words', e && /did not answer \(522\)/.test(txt(e))
+          && /goes up when it answers/.test(txt(e)), e && txt(e));
+    const raw = e && e.querySelector('details');
+    check('and the raw text is folded away, not printed in red',
+          raw && !raw.open && /Error 522/.test(raw.textContent));
+
+    say('');
+    say('=== nothing waiting, ten kept here on purpose ===');
+    const box = md.querySelector('.sync-unshared');
+    check('it says everything is shared', /Everything made here is in the shared database/
+          .test(txt(box)), txt(box).slice(0, 120));
+    check('no "not shared yet" table for things that never travel',
+          !box.querySelector('table'));
+    const kept = box.querySelector('details.sync-local');
+    check('the ten are folded, with how many', kept && !kept.open
+          && /^10 kept on this computer on purpose$/.test(txt(kept.querySelector('summary'))),
+          kept && txt(kept.querySelector('summary')));
+    check('demo records are grouped and counted, not listed five times',
+          kept && /5 Event Bank entries, 2 Checkup sets, 1 layer sheet/.test(txt(kept))
+          && txt(kept).split('DEMO m1 s1').length === 1, kept && txt(kept).slice(0, 200));
+    const lis = kept ? Array.from(kept.querySelectorAll('li')).map(txt) : [];
+    check('a sheet with no recording is named by its recording, not its id',
+          lis.some((l) => /KCNT1 m22 s4 2026-06-18 \(0 labels\)/.test(l)), lis.join(' || '));
+    check('and says when the recording is there under a newer id',
+          lis.some((l) => /newer id \(s34d1f0b371d4\)/.test(l)));
+    check('or that nothing by that id or name is registered',
+          lis.some((l) => /2022-08-02 \(3 labels\).*no recording with this id/.test(l)));
+
+    say('');
+    say('=== the layout ===');
+    const card = md.querySelector('.sync-section');
+    const btn = Array.from(card.querySelectorAll('button'))
+      .find((b) => /Sync now|Syncing/.test(b.textContent));
+    const cr = card.getBoundingClientRect(), br = btn && btn.getBoundingClientRect();
+    check('Sync now sits inside its card', br && br.right <= cr.right - 4
+          && br.left >= cr.left, br && JSON.stringify([br.left, br.right, cr.left, cr.right]));
+    check('the card does not scroll', card.scrollHeight <= card.clientHeight + 1,
+          card.scrollHeight + ' vs ' + card.clientHeight);
+    const gitHead = Array.from(md.querySelectorAll('.section-label'))
+      .find((n) => txt(n) === 'Git');
+    check('the next heading starts below the card, not on it',
+          gitHead && gitHead.getBoundingClientRect().top >= cr.bottom + 8,
+          gitHead && gitHead.getBoundingClientRect().top + ' vs ' + cr.bottom);
+
+    say('');
+    say('=== something waiting, with git ===');
+    unshared = { ok: true, on: true, rows: [
+      { kind: 'curation', id: 'g1__ds', state: 'waiting', name: 'PTEN m1 s2 · ds' },
+      { kind: 'bank', id: 'e1', state: 'waiting', name: 'PTEN m1 s2 DS v3' },
+    ].concat(KEPT.slice(0, 2)) };
+    status.last = { at: '2026-10-07T18:22:28-04:00', ok: true, pushed: 4 };
+    md = await open({ ok: true, dirty: 2, files: ['a.json', 'b.json'] });
+    const b2 = md.querySelector('.sync-unshared');
+    const rows = b2 ? Array.from(b2.querySelectorAll('tbody tr')).map(txt) : [];
+    check('only what is waiting is in the table', rows.length === 2
+          && rows.every((r) => /sending$/.test(r)), rows.join(' | '));
+    check('under its own heading, saying it goes up by itself',
+          b2 && /Not shared yet/.test(txt(b2.querySelector('h4')))
+          && /They go up by itself within a minute/.test(txt(b2)), b2 && txt(b2).slice(0, 160));
+    check('the two kept here are still folded below it',
+          b2 && /2 kept on this computer on purpose/.test(txt(b2.querySelector('details'))));
+    check('with git, the commands are offered', /git add "BARRY GUI\/GUI_logs"/.test(txt(md)));
+    const files = md.querySelector('details.sync-files');
+    check('and the uncommitted files are folded, with how many',
+          files && !files.open && txt(files.querySelector('summary')) === '2 uncommitted files');
+    check('no error box when the last sync went through', !md.querySelector('.cloud-err-box'));
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  } finally {
+    if (realApi) W().api = realApi;
+    try { W().closeModal(); } catch (e) {}
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'syncpanel: ' + fails + ' FAILED' : 'syncpanel: passed';
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

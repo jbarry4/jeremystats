@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.dirname(HERE)
 sys.path.insert(0, APP)
 
-from backend import feedback, shards  # noqa: E402
+from backend import conflicts, shards  # noqa: E402
 
 # Files created once and never touched again. A run record is written when the
 # run starts and completed by the same process moments later; no other machine
@@ -59,23 +59,9 @@ def tracked(root, path):
         return True                 # assume the worst
 
 
-def classify(rel, name):
-    if any(rel.startswith(p) for p in WRITE_ONCE):
-        return "write-once", "one run, one machine, written once"
-    if name in INERT:
-        return "inert", "documentation"
-    stem = name.rsplit(".", 1)[0]
-    if shards.SIGIL in stem:
-        machine = stem.rsplit(shards.SIGIL, 1)[1]
-        return "per-machine", "only " + machine + " writes this"
-    # A feedback overlay -- `<id>~<machine>.json` -- is per-machine too. It
-    # carries a different sigil so the shard layer cannot mistake it for
-    # another machine's copy of the report, but the machine name is in the
-    # name and only that machine ever writes it.
-    if feedback.OVERLAY_SIGIL in stem:
-        machine = stem.rsplit(feedback.OVERLAY_SIGIL, 1)[1]
-        return "per-machine", "only " + machine + " writes this overlay"
-    return "SHARED", "no machine tag: two people can both edit it"
+# The classification itself lives in backend/conflicts.py, so the Sync
+# panel and this script cannot disagree about a file again.
+classify = conflicts.classify
 
 
 def main():
@@ -119,9 +105,9 @@ def main():
                 else:
                     bad.append((rel, why))
             else:
-                stem = name.rsplit(".", 1)[0]
-                if shards.SIGIL in stem:
-                    others.add(stem.rsplit(shards.SIGIL, 1)[1])
+                m = conflicts.machine_of(name)
+                if m:
+                    others.add(m)
             kinds[kind] = kinds.get(kind, 0) + 1
 
     for kind in ("per-machine", "write-once", "untracked", "inert", "SHARED"):

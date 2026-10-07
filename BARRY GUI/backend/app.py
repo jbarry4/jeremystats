@@ -598,6 +598,12 @@ def api_discover_cancel(job_id):
 # ==========================================================================
 # CSC / Xplorefinder sessions
 # ==========================================================================
+def storemod_git():
+    """The git this computer has, found where it is (store.git_exe), or
+    None. Every git call in this file goes through it."""
+    return store.git_exe()
+
+
 def _scheme_path(path):
     """Is this an id rather than a place -- `demo:` or `vacc:`.
 
@@ -1109,36 +1115,13 @@ def conflict_audit():
     The answer should always be no, and saying so where people can see it is
     the point: a store added later that forgets to shard its files shows up
     here the first time it writes one, rather than the first time two people
-    pull. Same check as tools/conflict_check.py, run from inside.
+    pull. The same classification as tools/conflict_check.py -- one copy, in
+    conflicts.py. This one had its own, which did not know feedback overlays
+    (`<id>~<machine>.json`) and listed seven of them as conflicts.
     """
-    shared, machines, n = [], set(), 0
-    for folder, dirs, files in os.walk(LOGS_DIR):
-        dirs[:] = [d for d in dirs
-                   if d not in (".cache", "__pycache__")
-                   and not d.startswith(".")]
-        for name in files:
-            if name.startswith("."):
-                continue          # configuration, not a record
-            rel = os.path.relpath(os.path.join(folder, name),
-                                  LOGS_DIR).replace("\\", "/")
-            n += 1
-            # Written once and never edited, so they cannot conflict --
-            # artifact payloads among them, which are content-addressed.
-            if rel.startswith(shards.WRITE_ONCE) or name in (
-                    "README.md", ".gitignore"):
-                continue
-            stem = name.rsplit(".", 1)[0]
-            if shards.SIGIL in stem:
-                machines.add(stem.rsplit(shards.SIGIL, 1)[1])
-            elif len(shared) < 12:
-                shared.append(rel)
-    return {
-        "ok": not shared,
-        "files": n,
-        "shared": shared,
-        "machines": sorted(machines),
-        "mine": shards.machine_id(),
-    }
+    from . import conflicts as conflictsmod
+    return conflictsmod.audit(LOGS_DIR,
+                              git=storemod_git() or "git")
 
 
 # ==========================================================================
@@ -12392,7 +12375,8 @@ def github_url_for(path):
     else:
         base = None
         try:
-            res = subprocess.run(["git", "remote", "get-url", "origin"],
+            res = subprocess.run([storemod_git() or "git", "remote",
+                                  "get-url", "origin"],
                                  cwd=REPO_ROOT, capture_output=True,
                                  text=True, timeout=15)
             remote = (res.stdout or "").strip()
@@ -12409,7 +12393,8 @@ def github_url_for(path):
     branch = _GH_CACHE.get("branch")
     if branch is None:
         try:
-            res = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            res = subprocess.run([storemod_git() or "git", "rev-parse",
+                                  "--abbrev-ref", "HEAD"],
                                  cwd=REPO_ROOT, capture_output=True,
                                  text=True, timeout=15)
             branch = (res.stdout or "").strip() or "master"
@@ -22059,9 +22044,37 @@ def api_cloud_unshared():
     except Exception as exc:                             # noqa: BLE001
         return fail("cloud/unshared", exc, 400)
 
-    def label_of(gid):
+    def label_of(gid, rec=None):
+        # The record's own label when the registry has no row for the gid:
+        # that is exactly the case the "not in the registry" rows are in,
+        # and a bare gid (s61700eac90ec) told nobody which recording it was.
         r = reg.get(gid) or {}
-        return r.get("label") or r.get("key") or gid
+        return (r.get("label") or r.get("key")
+                or (rec or {}).get("session_label") or gid)
+
+    # Label -> gid, for "this recording is in the registry under another
+    # id". Only a label one recording has: sixty-one records are labelled
+    # just "2022-08-02", and naming one of them would be a guess.
+    by_label, seen = {}, {}
+    for g, r in reg.items():
+        lab = r.get("label")
+        if lab:
+            seen[lab] = seen.get(lab, 0) + 1
+            by_label[lab] = g
+    by_label = {k: v for k, v in by_label.items() if seen[k] == 1}
+
+    def record_of(kind, rid):
+        try:
+            if kind == "layers":
+                return LAYERS.get(rid) or {}
+            if kind == "curation":
+                gid, _s, ck = str(rid).partition("__")
+                return CURATE.get(gid, ck) or {}
+            if kind == "bank":
+                return BANK.get(rid) or {}
+        except Exception:                                # noqa: BLE001
+            pass
+        return {}
 
     def name(kind, rid):
         try:
@@ -22070,9 +22083,9 @@ def api_cloud_unshared():
                 return e.get("name") or e.get("session_label") or rid
             if kind == "curation":
                 gid, _s, ck = str(rid).partition("__")
-                return "%s · %s" % (label_of(gid), ck)
+                return "%s · %s" % (label_of(gid, record_of(kind, rid)), ck)
             if kind == "layers":
-                return label_of(rid)
+                return label_of(rid, record_of(kind, rid))
             if kind == "artifacts":
                 a = ARTIFACTS.get(rid) or {}
                 noun = (artifactsmod.KINDS.get(a.get("kind")) or {}).get(
@@ -22095,8 +22108,21 @@ def api_cloud_unshared():
         for rid, v in (d or {}).items():
             if v.get("state") == "synced":
                 continue
-            rows.append({"kind": kind, "id": rid, "state": v.get("state"),
-                         "why": v.get("why"), "name": name(kind, rid)})
+            row = {"kind": kind, "id": rid, "state": v.get("state"),
+                   "why": v.get("why"), "name": name(kind, rid)}
+            if v.get("why") == "no recording":
+                rec = record_of(kind, rid)
+                now = by_label.get(rec.get("session_label") or "")
+                gid = rid.partition("__")[0] if kind == "curation" else (
+                    rec.get("gid") or rid)
+                if now and now != gid:
+                    # Re-identified since: the same recording, a newer id.
+                    row["now_gid"] = now
+                if kind == "layers":
+                    row["n_labels"] = len(rec.get("labels") or {})
+                elif kind == "curation":
+                    row["n_events"] = len(rec.get("events") or [])
+            rows.append(row)
     order = {"waiting": 0, "unknown": 1, "local": 2}
     rows.sort(key=lambda r: (order.get(r["state"], 3), r["kind"],
                              str(r["name"])))
@@ -23597,7 +23623,8 @@ def api_cloud_key():
 def _git_ignores(path):
     """Would git pick this file up? Used before writing anything secret."""
     try:
-        res = subprocess.run(["git", "check-ignore", "-q", path],
+        res = subprocess.run([storemod_git() or "git", "check-ignore",
+                              "-q", path],
                              cwd=REPO_ROOT, capture_output=True, timeout=10)
         return res.returncode == 0
     except Exception:                              # noqa: BLE001

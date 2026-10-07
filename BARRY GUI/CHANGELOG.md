@@ -15,6 +15,47 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.07.6 - The Sync panel, cleaned up
+
+### Fixed
+
+- **"[WinError 2] The system cannot find the file specified"** on the Sync
+  panel meant this computer's git was not on PATH (GitHub Desktop keeps its
+  own). Jarvis now finds git where Git for Windows and GitHub Desktop
+  install it. When there is none it says *git not found*, and explains that
+  records still travel through the shared database. The same lookup is used
+  for the commit stamped on records and for checking a key file is
+  gitignored.
+- **Seven feedback files were listed as "shared between machines".** They
+  are per-machine overlays (`<id>~<machine>.json`), which cannot conflict.
+  The panel had its own copy of the conflict check, and that copy did not
+  know about overlays; `tools/conflict_check.py` already did. Both now use
+  one check (`backend/conflicts.py`). Files git ignores are no longer
+  counted.
+- **"10 things have not reached the shared database"** were all records
+  that never travel: five demo Event Bank entries, two demo sets and three
+  sheets.
+  - The list now holds only what is waiting to go up.
+  - On a machine with nothing waiting, it says everything is shared.
+  - Records that stay here on purpose are folded under *N kept on this
+    computer on purpose*, grouped and counted. A sheet whose recording the
+    registry does not have is named by its recording, not its id, and the
+    panel says when that recording is registered under a newer id.
+- **One empty layer sheet removed.** It was KCNT1 m22 s4, filed under an
+  id that recording no longer has. It had no labels; the recording's real
+  sheet is on four machines. A tombstone carries the removal to the shared
+  database.
+- **The layout.** The database status, the git commands and the warning
+  shared one scrolling box, with Sync now clipped at its edge and the next
+  heading drawn over its foot. They are now two cards: *The shared
+  database* and *Git*. The git commands appear only when there is a git to
+  run them, and the uncommitted files are folded.
+- **A failed sync is said in words.** A 522 now reads "the shared database
+  did not answer (522)", with what to expect. The raw text is folded below
+  instead of printed whole, in red.
+
+Harness: `_dev/syncpanel.html` (22).
+
 ## 2026.10.07.2 - AI Beta: the waveform as a picture at the aligned peak
 
 ### Added
