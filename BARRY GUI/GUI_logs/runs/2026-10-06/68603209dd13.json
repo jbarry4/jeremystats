@@ -1,0 +1,84 @@
+{
+  "format": "png",
+  "id": "68603209dd13",
+  "kind": "figure",
+  "label": "Root Canal space — PTEN m6 s4 2023-09-13",
+  "output": {
+    "github": null,
+    "path": "C:\\Users\\barry\\OneDrive\\Desktop\\jeremystats\\BARRY GUI\\Results\\PTEN m6 s4 2023-09-13\\rootcanal_PTEN m6 s4 2023-09-13_space_630f7c46.png",
+    "rel": "PTEN m6 s4 2023-09-13/rootcanal_PTEN m6 s4 2023-09-13_space_630f7c46.png"
+  },
+  "parameters": {
+    "band_hz": [
+      500.0,
+      1000.0
+    ],
+    "centres": "k-means",
+    "entry_id": "3fc6bf1e2588",
+    "filter": "DS filter, 5–100 Hz, 60 Hz mains out",
+    "filter_hz": [
+      5.0,
+      100.0
+    ],
+    "flips": 0,
+    "panel": "space",
+    "win_ms": 25.0
+  },
+  "provenance": {
+    "app_version": "2026.10.05.1",
+    "at": "2026-10-06T10:23:11-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "recipe": {
+    "entry_id": "3fc6bf1e2588",
+    "from_version": "br-a5983146bc",
+    "gid": "s9eb56573e0b4",
+    "params": {
+      "band_hi": 1000.0,
+      "band_lo": 500.0,
+      "centres": null,
+      "cluster_calls": {},
+      "cross_ms": 100.0,
+      "entry_id": "3fc6bf1e2588",
+      "filt": "ds",
+      "flank_ms": [
+        30.0,
+        60.0
+      ],
+      "flips": [],
+      "from_version": "br-a5983146bc",
+      "hf_base_off_ms": 150.0,
+      "hf_base_win_ms": 40.0,
+      "hf_win_ms": 25.0,
+      "hi_hz": 100.0,
+      "k": 1,
+      "lo_hz": 5.0,
+      "mains_out": true,
+      "margin": null,
+      "n_init": 10,
+      "order": 3,
+      "pad_s": 0.3,
+      "read_fs": 5000.0,
+      "seed": 0,
+      "snip_fs": 2000.0,
+      "snip_ms": 250.0,
+      "stamps_hash": "8937495d5270",
+      "win_ms": 25.0
+    },
+    "params_hash": "630f7c469740",
+    "tool": "rootcanal"
+  },
+  "schema": 1,
+  "script": "Root Canal (rootcanal)",
+  "session": {
+    "gid": "s9eb56573e0b4",
+    "key": "m006_s004_2023-09-13_17-24-49",
+    "label": "PTEN m6 s4 2023-09-13",
+    "path": null
+  },
+  "status": "done"
+}

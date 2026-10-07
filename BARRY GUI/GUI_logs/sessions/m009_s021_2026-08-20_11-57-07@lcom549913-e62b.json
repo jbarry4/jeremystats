@@ -1,0 +1,75 @@
+{
+  "_at": {
+    "created": "2026-09-24T19:26:27.430032+00:00",
+    "gid": "2026-09-24T19:46:18.574324+00:00",
+    "group": "2026-09-24T19:26:27.430032+00:00",
+    "key": "2026-09-24T19:26:27.430032+00:00",
+    "label": "2026-09-25T16:52:21.689187+00:00",
+    "loose_key": "2026-09-24T19:26:27.430032+00:00",
+    "mouse": "2026-09-24T19:26:27.430032+00:00",
+    "probe": "2026-09-25T16:52:21.689187+00:00",
+    "probe_source": "2026-09-25T16:52:21.689187+00:00",
+    "project": "2026-09-24T19:26:27.430032+00:00",
+    "project_source": "2026-09-24T19:26:27.430032+00:00",
+    "retired": "2026-09-24T19:26:27.430032+00:00",
+    "schema": "2026-09-24T19:26:27.430032+00:00",
+    "session": "2026-09-24T19:26:27.430032+00:00",
+    "start": "2026-09-24T19:26:27.430032+00:00",
+    "updated": "2026-09-25T16:52:21.689187+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "E:\\Joe Multisite 2026 data\\J9\\J9_Test1\\J9_Test1_FP1\\2026-08-20_11-57-07": [
+        "set",
+        "2026-09-24T19:27:10.369030+00:00"
+      ],
+      "E:\\Joe Multisite 2026 data\\J9\\J9_Test1\\J9_Test1_SPC\\2026-08-20_12-07-54": [
+        "set",
+        "2026-09-24T19:27:10.369030+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T16:52:21.689187+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.09.23.8",
+    "at": "2026-09-24T15:26:27-04:00",
+    "commit": "cd809b2",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  },
+  "gid": "s72a44265c8fb",
+  "group": null,
+  "key": "m009_s021_2026-08-20_11-57-07",
+  "label": "DEWEY r9 s21 Test1 SPC 2026-08-20",
+  "loose_key": "m009_s021",
+  "mouse": 9,
+  "paths": [
+    "E:\\Joe Multisite 2026 data\\J9\\J9_Test1\\J9_Test1_FP1\\2026-08-20_11-57-07",
+    "E:\\Joe Multisite 2026 data\\J9\\J9_Test1\\J9_Test1_SPC\\2026-08-20_12-07-54"
+  ],
+  "probe": "dewey32",
+  "probe_source": "manual",
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 21,
+  "start": "2026-08-20T15:57:07+00:00",
+  "updated": {
+    "app_version": "2026.09.23.8",
+    "at": "2026-09-25T12:52:21-04:00",
+    "commit": "cd809b2",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}

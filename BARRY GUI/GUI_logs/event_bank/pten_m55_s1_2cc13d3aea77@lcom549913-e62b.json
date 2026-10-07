@@ -1,0 +1,307 @@
+{
+  "_at": {
+    "added": "2026-09-28T19:19:38.075184+00:00",
+    "by_label": "2026-09-28T19:19:38.075184+00:00",
+    "curation_label": "2026-09-28T19:19:38.075184+00:00",
+    "duration_s": "2026-09-28T19:19:38.075184+00:00",
+    "events": "2026-09-28T19:19:38.075184+00:00",
+    "gid": "2026-09-28T19:19:38.075184+00:00",
+    "id": "2026-09-28T19:19:38.075184+00:00",
+    "label_names": "2026-09-28T19:19:38.075184+00:00",
+    "mouse": "2026-09-28T19:19:38.075184+00:00",
+    "n": "2026-09-28T19:19:38.075184+00:00",
+    "name": "2026-09-28T19:19:38.075184+00:00",
+    "note": "2026-09-28T19:19:38.075184+00:00",
+    "project": "2026-09-28T19:19:38.075184+00:00",
+    "recording_start": "2026-09-28T19:19:38.075184+00:00",
+    "schema": "2026-09-28T19:19:38.075184+00:00",
+    "session": "2026-09-28T19:19:38.075184+00:00",
+    "session_key": "2026-09-28T19:19:38.075184+00:00",
+    "session_label": "2026-09-28T19:19:38.075184+00:00",
+    "session_loose_key": "2026-09-28T19:19:38.075184+00:00",
+    "session_path": "2026-09-28T19:19:38.075184+00:00",
+    "source": "2026-09-28T19:19:38.075184+00:00",
+    "specified": "2026-09-28T19:19:38.075184+00:00",
+    "type": "2026-09-28T19:19:38.075184+00:00",
+    "type_name": "2026-09-28T19:19:38.075184+00:00",
+    "units": "2026-09-28T19:19:38.075184+00:00",
+    "version": "2026-09-28T19:19:38.075184+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "fc1299bfb8cf": [
+        "set",
+        "2026-09-28T19:19:38.075184+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-28T19:19:38.075184+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-28T15:19:38-04:00",
+    "by": "Rain Younger",
+    "machine": "LCOM549913"
+  },
+  "by_label": {
+    "unspecified": 19
+  },
+  "curation_label": null,
+  "duration_s": 1953.21173333333,
+  "events": [
+    {
+      "amplitude": 757.5634,
+      "channel": 34,
+      "start": 620.38156
+    },
+    {
+      "amplitude": 737.6156,
+      "channel": 34,
+      "start": 704.37423
+    },
+    {
+      "amplitude": 592.5441,
+      "channel": 34,
+      "start": 859.144621
+    },
+    {
+      "amplitude": 630.9386,
+      "channel": 34,
+      "start": 1048.740875
+    },
+    {
+      "amplitude": 678.7783,
+      "channel": 34,
+      "start": 1093.938698
+    },
+    {
+      "amplitude": 706.0921,
+      "channel": 34,
+      "start": 1108.862639
+    },
+    {
+      "amplitude": 604.8303,
+      "channel": 34,
+      "start": 1175.689376
+    },
+    {
+      "amplitude": 676.7688,
+      "channel": 34,
+      "start": 1178.491365
+    },
+    {
+      "amplitude": 638.8468,
+      "channel": 34,
+      "start": 1289.825927
+    },
+    {
+      "amplitude": 701.088,
+      "channel": 34,
+      "start": 1352.377681
+    },
+    {
+      "amplitude": 645.6454,
+      "channel": 34,
+      "start": 1358.056659
+    },
+    {
+      "amplitude": 597.7952,
+      "channel": 34,
+      "start": 1358.200658
+    },
+    {
+      "amplitude": 655.6581,
+      "channel": 34,
+      "start": 1399.947494
+    },
+    {
+      "amplitude": 592.9081,
+      "channel": 34,
+      "start": 1500.383099
+    },
+    {
+      "amplitude": 746.3577,
+      "channel": 34,
+      "start": 1584.710768
+    },
+    {
+      "amplitude": 598.7077,
+      "channel": 34,
+      "start": 1605.175687
+    },
+    {
+      "amplitude": 632.3724,
+      "channel": 34,
+      "start": 1707.715284
+    },
+    {
+      "amplitude": 758.0051,
+      "channel": 34,
+      "start": 1839.970764
+    },
+    {
+      "amplitude": 649.4861,
+      "channel": 34,
+      "start": 1903.533514
+    }
+  ],
+  "gid": "sa9275263c832",
+  "id": "2cc13d3aea77",
+  "label_names": {},
+  "mouse": 55,
+  "n": 19,
+  "name": "PTEN_DKO m55 s1 2025-06-11  \u00b7  Incisor CSC34",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": null,
+  "schema": 1,
+  "session": 1,
+  "session_key": "m055_s001_2025-06-11_13-22-40",
+  "session_label": "PTEN_DKO m55 s1 2025-06-11",
+  "session_loose_key": null,
+  "session_path": "Y:\\ProcessedPtenData\\PTENDKOm55\\m55s1jun11\\2025-06-11_13-22-40",
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {
+      "abs_thr_uv": 300,
+      "bad_channels_excluded": [
+        59
+      ],
+      "band_hz": [
+        5,
+        100
+      ],
+      "channel": 34,
+      "channel_label": "CSC34",
+      "decimate": 30,
+      "detector": "Incisor",
+      "dist_ms": 100,
+      "estimator": "sd",
+      "even_only": false,
+      "filter_order": 3,
+      "height_sd": 4.5,
+      "invert": true,
+      "lfp_fs": 1000,
+      "n_channels_scanned": 63,
+      "notes": [
+        "Filtered per segment and pooled for the threshold, so the voltage step at each stitch is excluded; Toothy's np.std spans its concatenated trace and includes it.",
+        "Decimated with scipy.signal.decimate in stages; Toothy uses scipy.signal.resample, an FFT method. Measured against Toothy's own code on 300 s of CSC41: the same dentate spikes to within one sample, a 2% difference in the threshold (an FFT resample is a brick wall and decimate is not, so they leave different variance in band), and one event in 193.",
+        "Times are stamped through the record-level breakpoint map, not from a linear axis.",
+        "Channels marked bad on this session were not read at all, so they cannot win the hilus, theta or ripple pick. Toothy keeps them and nulls them out of the estimates afterwards (ephys.py noise_idx); the three answers are the same either way.",
+        "The hilus, theta and ripple channels are derived FROM the detection, not used to produce it. Every event time here is a sample index put through the record timestamps, so choosing a different channel shows a different set of events and moves none of them."
+      ],
+      "ported_from": "Toothy ephys.get_ds_peaks",
+      "probe": "h3",
+      "prom_uv": 0,
+      "wlen_ms": 125
+    },
+    "pipeline": "Incisor (dentate spike)",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "Dentate spike",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-09-28T15:19:38-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 19
+      },
+      "changed": 0,
+      "from_v": null,
+      "gained": 0,
+      "id": "fc1299bfb8cf",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {},
+      "n": 19,
+      "note": "Imported from Incisor (dentate spike). 19 candidates, none decided yet.",
+      "snap": [
+        [
+          620.38156,
+          null
+        ],
+        [
+          704.37423,
+          null
+        ],
+        [
+          859.144621,
+          null
+        ],
+        [
+          1048.740875,
+          null
+        ],
+        [
+          1093.938698,
+          null
+        ],
+        [
+          1108.862639,
+          null
+        ],
+        [
+          1175.689376,
+          null
+        ],
+        [
+          1178.491365,
+          null
+        ],
+        [
+          1289.825927,
+          null
+        ],
+        [
+          1352.377681,
+          null
+        ],
+        [
+          1358.056659,
+          null
+        ],
+        [
+          1358.200658,
+          null
+        ],
+        [
+          1399.947494,
+          null
+        ],
+        [
+          1500.383099,
+          null
+        ],
+        [
+          1584.710768,
+          null
+        ],
+        [
+          1605.175687,
+          null
+        ],
+        [
+          1707.715284,
+          null
+        ],
+        [
+          1839.970764,
+          null
+        ],
+        [
+          1903.533514,
+          null
+        ]
+      ],
+      "v": 0
+    }
+  ]
+}

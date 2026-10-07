@@ -1,0 +1,354 @@
+{
+  "_at": {
+    "added": "2026-09-25T20:42:26.892938+00:00",
+    "by_label": "2026-09-25T20:42:26.892938+00:00",
+    "curation_label": "2026-09-25T20:42:26.892938+00:00",
+    "duration_s": "2026-09-25T20:42:26.892938+00:00",
+    "events": "2026-09-25T20:42:26.892938+00:00",
+    "gid": "2026-09-25T20:42:26.892938+00:00",
+    "id": "2026-09-25T20:42:26.892938+00:00",
+    "label_names": "2026-09-25T20:42:26.892938+00:00",
+    "mouse": "2026-09-25T20:42:26.892938+00:00",
+    "n": "2026-09-25T20:42:26.892938+00:00",
+    "name": "2026-09-25T20:42:26.892938+00:00",
+    "note": "2026-09-25T20:42:26.892938+00:00",
+    "project": "2026-09-25T20:42:26.892938+00:00",
+    "recording_start": "2026-09-25T20:42:26.892938+00:00",
+    "schema": "2026-09-25T20:42:26.892938+00:00",
+    "session": "2026-09-25T20:42:26.892938+00:00",
+    "session_key": "2026-09-25T20:42:26.892938+00:00",
+    "session_label": "2026-09-25T20:42:26.892938+00:00",
+    "session_loose_key": "2026-09-25T20:42:26.892938+00:00",
+    "session_path": "2026-09-25T20:42:26.892938+00:00",
+    "source": "2026-09-25T20:42:26.892938+00:00",
+    "specified": "2026-09-25T20:42:26.892938+00:00",
+    "type": "2026-09-25T20:42:26.892938+00:00",
+    "type_name": "2026-09-25T20:42:26.892938+00:00",
+    "units": "2026-09-25T20:42:26.892938+00:00",
+    "version": "2026-09-25T20:42:26.892938+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "e4e3ca14b10d": [
+        "set",
+        "2026-09-25T20:42:26.892938+00:00"
+      ],
+      "v0-d43a8784": [
+        "set",
+        "2026-09-25T20:42:26.892938+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-25T20:42:26.892938+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-25T16:42:26-04:00",
+    "by": "Shahriar Tafti",
+    "machine": "LCOM549913"
+  },
+  "by_label": {
+    "High tone \u2192 Noise": 8,
+    "Low Tone \u2192 Click": 8
+  },
+  "curation_label": "The Arc: cue pairs",
+  "duration_s": 5497.632,
+  "events": [
+    {
+      "end": 329.833921,
+      "label": "High tone \u2192 Noise",
+      "start": 319.834515
+    },
+    {
+      "end": 679.352953,
+      "label": "Low Tone \u2192 Click",
+      "start": 669.352453
+    },
+    {
+      "end": 1023.21114,
+      "label": "Low Tone \u2192 Click",
+      "start": 1013.210859
+    },
+    {
+      "end": 1305.298765,
+      "label": "High tone \u2192 Noise",
+      "start": 1295.29914
+    },
+    {
+      "end": 1648.387828,
+      "label": "Low Tone \u2192 Click",
+      "start": 1638.387328
+    },
+    {
+      "end": 1981.695171,
+      "label": "High tone \u2192 Noise",
+      "start": 1971.695796
+    },
+    {
+      "end": 2300.333484,
+      "label": "High tone \u2192 Noise",
+      "start": 2290.334078
+    },
+    {
+      "end": 2619.742671,
+      "label": "Low Tone \u2192 Click",
+      "start": 2609.74239
+    },
+    {
+      "end": 2965.919796,
+      "label": "High tone \u2192 Noise",
+      "start": 2955.920546
+    },
+    {
+      "end": 3289.969109,
+      "label": "Low Tone \u2192 Click",
+      "start": 3279.968859
+    },
+    {
+      "end": 3559.707703,
+      "label": "Low Tone \u2192 Click",
+      "start": 3549.707421
+    },
+    {
+      "end": 3916.434765,
+      "label": "High tone \u2192 Noise",
+      "start": 3906.435515
+    },
+    {
+      "end": 4236.874109,
+      "label": "Low Tone \u2192 Click",
+      "start": 4226.873828
+    },
+    {
+      "end": 4533.381671,
+      "label": "High tone \u2192 Noise",
+      "start": 4523.382265
+    },
+    {
+      "end": 4855.619796,
+      "label": "High tone \u2192 Noise",
+      "start": 4845.620515
+    },
+    {
+      "end": 5178.379109,
+      "label": "Low Tone \u2192 Click",
+      "start": 5168.378671
+    }
+  ],
+  "gid": "s3fcdbcc678da",
+  "id": "9f2928e2aa4f",
+  "label_names": {},
+  "mouse": 11,
+  "n": 16,
+  "name": "DEWEY r11 s1 Precon1 SPC 2026-08-13 \u2014 cue pairs",
+  "note": "",
+  "project": "DEWEY",
+  "recording_start": "2026-08-13T20:06:58+00:00",
+  "schema": 1,
+  "session": 1,
+  "session_key": "r011_s001_2026-08-13_16-06-58",
+  "session_label": "DEWEY r11 s1 Precon1 SPC 2026-08-13",
+  "session_loose_key": null,
+  "session_path": "E:\\Joe Multisite 2026 data\\J11\\J11_Precon1\\J11_Precon1_SPC\\2026-08-13_16-06-58",
+  "source": {
+    "detector": "spark.pair_events",
+    "file": "E:\\Joe Multisite 2026 data\\J11\\J11_Precon1\\J11_Precon1_SPC\\2026-08-13_16-06-58\\Events.nev",
+    "parameters": {
+      "clip_fraction": 0.995,
+      "clip_measured": true,
+      "clip_min_run": 16,
+      "cues": [
+        "Click",
+        "Noise",
+        "High tone",
+        "Low Tone"
+      ],
+      "debounce_ms": 150.0,
+      "expected_gap_s": 10.0,
+      "gap_tolerance_s": 0.25,
+      "t_origin": "recording"
+    },
+    "pipeline": "The Arc \u00b7 Spark",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ttl",
+  "type_name": "Cue pair",
+  "units": "seconds relative to the start of the recording",
+  "version": 1,
+  "versions": [
+    {
+      "at": "2026-09-25T16:42:26-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "unspecified": 16
+      },
+      "changed": 0,
+      "gained": 0,
+      "id": "v0-d43a8784",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {},
+      "n": 16,
+      "note": "Imported from The Arc \u00b7 Spark. 16 candidates, none decided yet.",
+      "snap": [
+        [
+          319.834515,
+          null
+        ],
+        [
+          669.352453,
+          null
+        ],
+        [
+          1013.210859,
+          null
+        ],
+        [
+          1295.29914,
+          null
+        ],
+        [
+          1638.387328,
+          null
+        ],
+        [
+          1971.695796,
+          null
+        ],
+        [
+          2290.334078,
+          null
+        ],
+        [
+          2609.74239,
+          null
+        ],
+        [
+          2955.920546,
+          null
+        ],
+        [
+          3279.968859,
+          null
+        ],
+        [
+          3549.707421,
+          null
+        ],
+        [
+          3906.435515,
+          null
+        ],
+        [
+          4226.873828,
+          null
+        ],
+        [
+          4523.382265,
+          null
+        ],
+        [
+          4845.620515,
+          null
+        ],
+        [
+          5168.378671,
+          null
+        ]
+      ],
+      "synthesized": true,
+      "v": 0
+    },
+    {
+      "at": "2026-09-25T16:42:26-04:00",
+      "by": "Shahriar Tafti",
+      "by_label": {
+        "High tone \u2192 Noise": 8,
+        "Low Tone \u2192 Click": 8
+      },
+      "changed": 16,
+      "from_v": 0,
+      "gained": 0,
+      "id": "e4e3ca14b10d",
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {
+        "undecided \u2192 High tone \u2192 Noise": 8,
+        "undecided \u2192 Low Tone \u2192 Click": 8
+      },
+      "n": 16,
+      "note": "",
+      "snap": [
+        [
+          319.834515,
+          "High tone \u2192 Noise"
+        ],
+        [
+          669.352453,
+          "Low Tone \u2192 Click"
+        ],
+        [
+          1013.210859,
+          "Low Tone \u2192 Click"
+        ],
+        [
+          1295.29914,
+          "High tone \u2192 Noise"
+        ],
+        [
+          1638.387328,
+          "Low Tone \u2192 Click"
+        ],
+        [
+          1971.695796,
+          "High tone \u2192 Noise"
+        ],
+        [
+          2290.334078,
+          "High tone \u2192 Noise"
+        ],
+        [
+          2609.74239,
+          "Low Tone \u2192 Click"
+        ],
+        [
+          2955.920546,
+          "High tone \u2192 Noise"
+        ],
+        [
+          3279.968859,
+          "Low Tone \u2192 Click"
+        ],
+        [
+          3549.707421,
+          "Low Tone \u2192 Click"
+        ],
+        [
+          3906.435515,
+          "High tone \u2192 Noise"
+        ],
+        [
+          4226.873828,
+          "Low Tone \u2192 Click"
+        ],
+        [
+          4523.382265,
+          "High tone \u2192 Noise"
+        ],
+        [
+          4845.620515,
+          "High tone \u2192 Noise"
+        ],
+        [
+          5168.378671,
+          "Low Tone \u2192 Click"
+        ]
+      ],
+      "v": 1
+    }
+  ]
+}
