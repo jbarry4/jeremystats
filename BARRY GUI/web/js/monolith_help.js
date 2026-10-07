@@ -38,23 +38,24 @@ window.MONO_HELP = (function () {
     },
     layer: {
       title: 'Layer: raw or minus FP',
-      plain: 'Two ways of measuring each rat’s change from Precon1 to Precon4. Raw uses the cue pairs alone. Minus FP takes each day’s rest away first — the same measure on the same wires in that day’s no-cue recordings (FP1 and FP2) — so whatever changed for the whole day, and not for the cue windows, falls out. For one entry (one window, band, measure and region pair), minus FP is worked out like this:',
+      exampleFirst: true,
+      example: 'Rat r3, Cue 1, coherence at 10 Hz. On Precon1 its cue pairs averaged 0.42; its rest recording that day, with no cues, 0.38. On Precon4: 0.49 and 0.43. Raw is the change in the cue pairs: 0.49 − 0.42 = +0.07. But rest went up too, by 0.05, so most of that was the whole day moving, not the cues. Minus FP takes each day’s rest off first: (0.49 − 0.43) − (0.42 − 0.38) = 0.06 − 0.04 = +0.02. Only +0.02 belongs to the cues.',
+      worked: { day: ['Precon1', 'Precon4'], cue: [0.42, 0.49], rest: [0.38, 0.43] },
+      plain: 'Raw is how much the cue windows changed from Precon1 to Precon4. Minus FP is the same change after taking away whatever changed with no cues at all: the same measure, on the same wires, in that day’s rest recordings (FP1 and FP2). If the whole day moved — an electrode settling, a calmer rat — Minus FP removes it, and what is left changed with the cues.',
       steps: [
-        'Every cue pair of the day gives the entry one number, measured in its window (Cue 1, say: ten seconds). Both pairings count. A cue pair whose wires were clipped in that window gives none, and is left out rather than filled in.',
-        'Rest, the same day: the rat was also recorded with no cues, in FP1 and FP2. From those Jarvis cut ten-second epochs — as many as the day had cue pairs of one pairing (eight, say) — spread evenly across FP1 and FP2, at least ten seconds in from each end, and checked for clipping by the same detector as the cue windows. Each epoch gives the entry one number: same band, same measure, same two regions, same wires where they survive.',
-        'The first averaging, within the day. Cue: the mean over the day’s cue pairs, with its standard error (their spread ÷ √n). Rest: the mean over the day’s rest epochs, with its standard error. Rest has only the one ten-second window, so the same rest mean stands against every cue window — Baseline, Cue 1, Cue 2, After, and the three transitions.',
-        'The subtraction: the day’s value is the cue mean − the rest mean. Its uncertainty adds rather than cancels: SE² = SE²(cue) + SE²(rest). Taking one noisy number from another makes the result noisier, never cleaner.',
-        'The rat’s change: (cue − rest) on Precon4 minus (cue − rest) on Precon1, its variance the two days’ SE² added together. Raw is the same with the rest terms left out: cue on Precon4 minus cue on Precon1.',
-        'The second averaging, over rats: every rat’s change pooled DerSimonian–Laird — each weighted by 1 ÷ (its own variance + τ², the spread between rats beyond their own noise) — and tested Hartung–Knapp on k − 1 degrees of freedom. It needs at least four rats with both days.',
+        'Cue: every presentation gives one number for the window; the day’s cue value is their mean. A window with clipped wires is left out, not filled in.',
+        'Rest: the same measure on ten-second pieces of that day’s FP1 and FP2, as many pieces as the day had presentations of one pair; the day’s rest value is their mean.',
+        'Each day: cue − rest. Each rat: that on Precon4 minus that on Precon1.',
+        'Over rats: the rats’ changes are pooled and tested as everything else on the page (at least four rats).',
       ],
-      example: 'Say r3’s Cue 1 coherence at 10 Hz averaged 0.42 over its Precon1 cue pairs and 0.38 over its Precon1 rest epochs; on Precon4, 0.49 and 0.43. Raw change: 0.49 − 0.42 = +0.07. Minus FP: (0.49 − 0.43) − (0.42 − 0.38) = 0.06 − 0.04 = +0.02. Five hundredths of the seven were in rest as well: the rat’s whole day moved, and only two hundredths belong to the cue window.',
+      note: 'The price: rest has noise of its own, and taking it off adds that noise, so Minus FP is a little noisier than Raw.',
       look: 'An edge in raw that survives minus FP changed with the cues, relative to rest. One that vanishes changed in rest by about as much — the day changed (an electrode settling, the rat calmer, the recording quieter), not the response to the cues. One that appears only in minus FP is a cue change raw could not see, because rest moved the other way.',
       traps: 'Minus FP is noisier — both days carry rest’s error too — so a real but small cue change can fall below the line there. It assumes the day moves cue and rest by the same amount (additively); a change that scales everything is not removed exactly. Rest is a separate recording from the cue session, minutes apart, so it takes away what changed over the day, not what differs between rest and cues within one session. The transition windows are shorter than the ten-second rest epochs, and measures biased by window length (coherence, PLV) differ by that bias within a day — but the bias is the same on both days, so it cancels from the change.',
       demo: 'minus_fp',
     },
     windows: {
-      title: 'Seven windows: 4 states, 3 transitions',
-      plain: 'Every presentation is measured seven times. The 4 states are 10 s each: pre-baseline (before cue 1), cue 1, cue 2, post-baseline (after cue 2). The 3 transitions straddle the moments things change: cue 1 starting (onset), cue 1 giving way to cue 2 (switch), cue 2 ending (offset).',
+      title: 'The windows: 4 states, the whole pair, 3 transitions, and the contrast',
+      plain: 'Every presentation is measured in each window. The 4 states are 10 s each: pre-baseline (before cue 1), cue 1, cue 2, post-baseline (after cue 2). The whole pair is cue 1 onset to cue 2 offset, 20 s — usable on a wire only where both cues were clean. The 3 transitions straddle the moments things change: cue 1 starting (onset), cue 1 giving way to cue 2 (switch), cue 2 ending (offset). Cue 2 − Cue 1 is not a window but the agreed comparison: within each presentation, the second cue against the first.',
       look: 'A state change says how the brain sat during a part of the pair; a transition change says how it moved at the boundary.',
       traps: 'Transition windows are shorter (6 s for slow bands, 3 s for fast), so their numbers are noisier than state ones.',
     },
@@ -174,31 +175,38 @@ window.MONO_HELP = (function () {
     },
     gc_ab: {
       title: 'Granger A→B',
-      plain: 'How much the first region’s past improves the prediction of the second’s, at these frequencies (spectral Granger causality, in nats). Computed from the spectrum without fitting a model (Wilson’s factorisation).',
-      look: 'A rise: more of the second region’s activity in this band is predicted by the first.',
+      plain: 'A is the region named first on the line and B the second: on “R ACC – L OFC”, A is R ACC. Granger A→B asks whether knowing A’s recent past helps predict what B does next, beyond what B’s own past already predicts, at these frequencies. 0: A’s past adds nothing. It is spectral Granger causality in nats, worked out from the spectrum without fitting a model (Wilson’s factorisation).',
+      look: 'A rise from Precon1 to Precon4: A’s activity in this band came to carry more of what B does next. Read it beside B→A (the next measure): the two are measured separately.',
       traps: 'A third region driving both, or one region simply being cleaner (better signal-to-noise), can look like drive. It is never negative, so it is biased upward.',
       cite: ['Dhamala, Rangarajan & Ding (2008). Analyzing information flow in brain networks with nonparametric Granger causality. NeuroImage 41:354–362.', 'Geweke (1982). J Am Stat Assoc 77:304–313.'],
       plot: 'gc',
     },
     gc_ba: {
       title: 'Granger B→A',
-      plain: 'The same, the other way: how much the second region’s past predicts the first’s.',
-      look: 'Read it beside A→B: drive in one direction only is the clearest picture.',
+      plain: 'The same, the other way round: whether B’s past helps predict A. A→B and B→A can both be large at once: the two regions predict each other (a loop, or something feeding both).',
+      look: 'Read the two side by side. A→B up, B→A flat: A came to lead B. Both up: they exchange more, either way. One up and the other down: the lead moved from one to the other.',
       traps: 'As for A→B.',
       cite: ['Dhamala, Rangarajan & Ding (2008). NeuroImage 41:354–362.'],
       plot: 'gc',
     },
     gc_net: {
       title: 'Granger net',
-      plain: 'A→B minus B→A. Positive: the first region drives the second more than the reverse. On the circuit it is drawn as an arrow the way the net drive grew.',
-      look: 'Net direction is more robust than either direction alone: shared biases cancel.',
+      plain: 'A→B minus B→A: which of the two leads, and by how much. Positive: A predicts B more than B predicts A. The Monolith shows its change, Precon4 − Precon1. A positive change means the balance tipped towards A leading: A’s lead grew, or B’s lead shrank. On the circuit it is an arrow pointing the way the balance tipped.',
+      look: 'Net direction is more robust than either direction alone: biases both share cancel. To tell “A came to lead” from “B stopped leading”, open Granger A→B and B→A for the same pair.',
       traps: 'A difference in signal quality between the two regions can still tip it.',
       cite: ['Dhamala, Rangarajan & Ding (2008). NeuroImage 41:354–362.'],
       plot: 'gc',
     },
     power: {
       title: 'Node power',
-      plain: 'Each node is coloured by its region’s own change in power at this frequency (log10 of Welch power density, pooled over rats like everything else). Red: louder on Precon4. Blue: quieter. A ring: the change passes the slider.',
+      plain: 'Each node is coloured by its region’s own change in power at this frequency: how much stronger or weaker that region’s signal got in this band, from Precon1 to Precon4, on its own, whatever the other regions did. Red: louder on Precon4. Blue: quieter. The deeper the colour, the bigger the change, against the biggest in view. A ring: the change passes the slider.',
+      powsteps: [
+        'One presentation, one region: the region’s wire in the window (10 s for a state window, −3/+3 s or −1/+2 s around a boundary, 20 s for the whole pair), with the mains hum notched out.',
+        'Welch’s method: the window cut into 1-second pieces (1.5 or 2 s for the narrowest low bands), each overlapping the next by half and tapered at its ends; each piece’s frequencies found (a Fourier transform) and their squared sizes averaged over the pieces. That is the power at each frequency.',
+        'The band: that power averaged over the band’s frequencies (9 Hz, say: 7.65–10.35 Hz), then its log10, so that a change reads the same for a quiet region as for a loud one.',
+        'Each rat-day: the mean over its presentations (in Minus FP, less the same from its rest pieces). Each rat: Precon4 − Precon1. Then pooled over rats and tested, as every edge is.',
+        'Reading the number: it is a change in log10 power. +0.30 is twice the power (10^0.30 = 2), +0.10 about a quarter more, −0.30 half. The node’s hover gives the factor (×).',
+      ],
       look: 'Coupling that rises where both regions also got louder may be about loudness, not coordination.',
       traps: 'Power differences between regions change coherence-type measures without any change in coupling.',
       cite: ['Welch (1967). The use of fast Fourier transform for the estimation of power spectra. IEEE Trans Audio Electroacoust 15:70–73.'],
@@ -214,9 +222,9 @@ window.MONO_HELP = (function () {
     },
     arrows: {
       title: 'Granger arrows',
-      plain: 'Over any measure, draws the net Granger change (A→B minus B→A) as a dashed arrow wherever it passes the slider, pointing the way the net drive grew.',
-      look: 'An edge with an arrow: the two regions changed together, and one of them came to lead.',
-      traps: 'See Granger net: common input and unequal signal quality.',
+      plain: 'An arrow on an edge is Granger net’s change for that region pair, at this frequency and window, wherever it passes the slider. It points from the region whose lead grew towards the region it leads: an arrow R ACC → L OFC means R ACC→L OFC minus L OFC→R ACC rose from Precon1 to Precon4. Wider: a bigger change. Dashed: drawn over another measure (the toggle); solid: Granger net is the measure in view.',
+      look: 'An edge with an arrow over coherence: the two regions came to move together, and the balance of who leads tipped the arrow’s way. The arrow does not say which half moved: choose Granger A→B and then B→A in Measure to see whether the leader’s drive grew or the other’s faded.',
+      traps: 'Granger is prediction, not a wire between them: an input that reaches one region before the other, or one region’s cleaner signal, makes an arrow too. Its p is uncorrected, as everywhere on the page.',
       plot: 'gc',
     },
     circuit: {
@@ -267,6 +275,58 @@ window.MONO_HELP = (function () {
       plain: 'The selected line’s value in every Precon session — 1, 2, 3 and 4 — measured exactly as the Monolith measures Precon1 and Precon4. Left: every presentation in order, a panel a session, each rat its own colour and the mean over rats in black. Below: each rat’s session value (the mean over its presentations, less its flower-pot rest in minus FP), and the mean ± SE over rats.',
       look: 'Whether a change from Precon1 to Precon4 builds session by session, appears all at once, or comes and goes; and whether it is in every rat or a few. Within a session: whether it drifts from the first presentation to the last.',
       traps: 'Nothing here is tested, on purpose (the lab’s choice): the Monolith’s p is for Precon4 − Precon1 alone, and Precon2 and Precon3 never enter it. Four sessions of eight rats invite stories; read the shape, not single numbers. Presentations are lined up by their order in the session, not by which cue pair they were.',
+    },
+    progress: {
+      title: 'Monolith Progress',
+      plain: 'The button on the Monolith’s circuit. The Monolith compares Precon4 with Precon1; Progress shows every Precon session — 1, 2, 3 and 4 — measured exactly as those two are: for every edge at once as circuits, and for any line you choose as a panel with the sessions along the bottom. Each session can be read as its own value (the mean over rats of each rat’s session value) or as its change from Precon1 (each rat’s session less its own Precon1, then the mean over rats), or both.',
+      look: 'Whether a change builds session by session, arrives at once, or comes and goes; whether every rat carries it or a few; and whether lines you suspect belong together move together.',
+      traps: 'Nothing here is tested, on purpose (the lab’s choice): the only p is the Monolith’s own, Precon4 − Precon1, uncorrected. Four sessions of eight rats invite stories; read the shape, not single numbers. Precon2 and Precon3 come from one VACC run (Drift → Monolith), and until it has run they are marked “not run yet”.',
+    },
+    'progress.circuits': {
+      title: 'Every edge, session by session',
+      plain: 'One circuit a session, for the window, frequency, measure, layer and cue pairs chosen above the circuits. In “each session’s value”, a thicker, darker line is a higher value, on one scale for all four sessions, and a larger node has more power. In “change from Precon1”, red is higher than on Precon1 and blue lower, the width how much, again on one scale. “Both” shows the two readings together; “one at a time” shows one session and turns it into the next, and Play runs Precon1 to Precon4.',
+      look: 'Lines that thicken steadily from one session to the next. Switch between the two readings: a line that is strong in every session but changes little is a different finding from one that is weak but grows.',
+      traps: 'One scale for every session means a session with one very strong line can make the rest look thin. The value circuits show where coupling is high, which is mostly anatomy and wiring; the change circuits are the ones that bear on learning. “Only the lines whose Precon4 − Precon1 passes” uses the Monolith’s slider and its uncorrected p.',
+    },
+    'progress.series': {
+      title: 'Following a line across the sessions',
+      plain: 'Each panel is one line: an edge (two regions, a measure, a frequency, a window, a layer, the cue pairs) or one region’s power. Along the bottom, the four Precon sessions; up the side, the line’s own units, so panels with different measures are never forced onto one scale. Black: the mean over rats ± its standard error; thin coloured lines: each rat. Drag an edge or a node from a circuit into the box, click one, or build one with the form. Click a session’s point for that session’s rats, a rat for its presentations, and a presentation for its traces.',
+      look: 'Several tests stacked: whether coherence and envelope correlation of the same pair rise together, or whether the change shows in one window and not the next. The rats: whether the mean is carried by most of them or by one.',
+      traps: 'The mean ± SE is descriptive. A session where a rat is missing moves the mean for that reason alone: hover a point for how many rats it rests on. CSV and SVG take every panel away as numbers and as a picture.',
+    },
+    physical: {
+      title: 'Physical cue against balanced cue',
+      plain: 'The Monolith names cues by seat — A, B, C, D, from the lab’s identity sheet — and the sheet spreads the four sounds over the seats so that no sound sits in one seat for every rat. Section 6 asks whether the sounds themselves left a mark anyway. It can, because of how the sheet is laid out: every rat opens both its pairs with the same kind of sound (J3, J6, J7 and J8 with Click or Noise; J4, J9, J10 and J11 with a tone), and every ordered pair of sounds is heard by exactly two rats. So each rat’s own Precon4 − Precon1 change can be sorted by sound instead of by seat and tested the same way: tone-first rats against noise-first rats; within the noise-first rats, the pair Click opens against the pair Noise opens; within the tone-first rats, the high tone’s pair against the low tone’s; and Cue 2 − Cue 1, which is tone − noise for half the rats and noise − tone for the other half, turned round to read tone − noise for all eight.',
+      look: 'At the top, whether the comparisons by sound pass p < .05 any more often than chance and than a relabelling of the same rats. Below, whether each lead of the Monolith goes the same way in the tone-first and the noise-first rats, and is the same in both within half its own size.',
+      traps: 'An absence of evidence is not evidence of absence: with four rats a group, only a large effect of the sound could be seen. That is why the leads also carry an equivalence test, which can say “the same within ±½” only when the two groups’ intervals are narrow enough. Every p is uncorrected, as everywhere on the page. Tone-first against noise-first is also rat against rat: any way the two groups of four differ besides the sound (cage, surgery date) falls into it too.',
+    },
+    'physical.how': {
+      title: 'How sorting by sound works, in pictures',
+      plain: 'Every rat heard the same four sounds, but the identity sheet seats them differently for each rat. The first picture is that sheet: a row per rat, its AB pair and its CD pair, each sound coloured by kind. Read down the first sound of each pair (A and C): for four rats it is Click or Noise (blue), for the other four a tone (red). That splits the rats in two by sound, while the Monolith pools all eight by seat.',
+      steps: [
+        'If the sound itself drove a change, the two groups would disagree: the change would sit in one group and not the other (second picture, made up). The Monolith, pooling all eight by seat, would then report a change that is really about the sound.',
+        'If the sound did not matter, the two groups agree, and each looks like the Monolith’s pooled answer (third picture, made up).',
+        'The tab measures which of the two the real data look like, for every entry, and compares that with every other way of splitting the same rats.',
+      ],
+      draw: 'physical',
+    },
+    'physical.verdict': {
+      title: 'Across the whole Monolith, by seat and by sound',
+      plain: 'One row a comparison: how many entries were tested, how many passed p < .05, how many chance alone would give (5%), and that as a ratio. The rows by seat are the Monolith as it stands; the rows by sound are the same rats’ changes sorted by sound. The bars draw the ratio: the solid line is chance, and the dashed line is the rate made-up data with no change at all gave. Then the yardstick that fits these data: every other way of sorting the same rats — all 35 ways of splitting eight rats into two fours, all 128 ways of signing the eight rats’ Cue 2 − Cue 1, all 8 ways of signing four rats’ AB − CD — and where the sound’s own sorting ranks among them.',
+      look: 'Comparisons by sound that rank among the ordinary sortings (“at chance”), while the Monolith by seat passes more than chance. The histograms show the whole spread of the relabellings, with the sound’s sorting marked on it.',
+      traps: 'The entries are not independent — neighbouring frequencies, measures and windows move together — so a count can stray well away from 5% by luck, and the relabellings are the fair test, not the 5%. With only 8 ways of signing four rats, a rank among them says little on its own.',
+    },
+    'physical.leads': {
+      title: 'The leads, in each group of four',
+      plain: 'The Monolith’s 50 points of interest (or Cue 2 − Cue 1’s), each with its change pooled over the tone-first rats and over the noise-first rats, as the Monolith pools all eight. Same way in both: both groups changed the way all eight did. Difference: the tone-first change less the noise-first (Welch’s t, uncorrected). Equivalent within ±½: the 90% interval of that difference lies inside ± half the lead’s own change (two one-sided tests at α = .05) — the two groups are the same within that margin.',
+      look: 'Leads that go the same way in both groups and are equivalent within ±½: they are about the cue’s place in the pair, not about the sound. A lead carried by one group alone is worth a second look before it is read as learning.',
+      traps: '“Not equivalent” does not mean “different”: with four rats a group the interval is often too wide to say either, so beside each verdict is the narrowest margin the lead is equivalent within (the far end of its interval, as a multiple of its own change). The leads were chosen for most rats going the same way, so “same way in both” is close to certain when all eight agree; it rules out only a lead carried by one group. A lead that some rat lacks cannot be split four against four: it is described, not tested.',
+    },
+    'physical.circuit': {
+      title: 'Any comparison as a circuit',
+      plain: 'Pick one of the comparisons by sound (or AB against CD, by seat) and any window, frequency, measure and layer: every region pair, drawn where its difference passes the slider. Red: higher in the first named (the tone-first rats; the Click-first or High-first pair; tone in tone − noise), blue: lower.',
+      look: 'An empty or scattered circuit at p < .05, with about as many lines as chance gives (the count under it), is what “no effect of the sound” looks like.',
+      traps: 'Uncorrected: at p < .05 about one region pair in twenty passes by chance alone, in every circuit.',
     },
     events: {
       title: 'Events first: hippocampal P300-like events',
@@ -338,10 +398,22 @@ window.MONO_HELP = (function () {
       traps: 'The traces shown are one cue pair of one rat on one day: a picture of how the number is made, not of the result. The result is step 7.',
     },
     split: {
-      title: 'Cue pairs: both, or one half',
-      plain: 'Every rat hears two pairings on every Precon day, and in every rat one of them has the Click in it and the other the Noise, one has the High tone and the other the Low tone. So each half of the cue pairs -- the Click pair, the Noise pair, the High-tone pair, the Low-tone pair -- is there in all eight rats, and is pooled exactly as the whole is: each rat’s Precon4 − Precon1 over that half’s cue pairs only, then over rats. The third way to halve them is by what conditioning later did: the pair whose second cue was followed by food, read from each rat’s own Con TTLs, and the other.',
-      look: 'A change that is in both halves of a split is about the cue pairs in general; one that is in only one half is about that sound, that tone or that pair’s later meaning. During Precon a rat cannot yet tell the food pair from the other, so a real difference there would be a surprise worth checking.',
-      traps: 'A half has half the cue pairs, so its days are noisier and fewer entries pass. Why not split by the exact pairing, Click → Low tone? The cohort is counterbalanced: each exact pairing is heard by only two rats, and two rats cannot be pooled.',
+      title: 'Cue pairs: AB and CD, pooled or apart',
+      plain: 'Every rat hears two pairs on every Precon day: A → B and C → D. Which physical sounds sit in which seat is counterbalanced across rats (Click is A in J3 and J8, B in J9 and J11, C in J6 and J7, D in J4 and J10), and the seats come from the lab’s identity sheet, RAT Identity for multisite 2026 — nothing is read from the conditioning sessions. Pooled, AB and CD together; or each pair on its own, every rat’s Precon4 − Precon1 over that pair’s presentations only, then pooled over rats exactly as the whole is.',
+      look: 'A change in both AB and CD is about the cue pairs in general; one in only one of them is about that pair. During Precon a rat has no reason to treat its two pairs differently, so a real difference would be a surprise worth checking.',
+      traps: 'One pair has half the presentations, so its sessions are noisier and fewer entries pass. Because the seats average the sounds out, a result here is about seats, not sounds: the Physical cue sanity check under a lifted edge shows whether one sound carries it.',
+    },
+    contrast: {
+      title: 'Cue 2 − Cue 1: the second cue against the first',
+      plain: 'The agreed comparison, with a tab of its own. Its three circuits, left to right: Cue 2 − Cue 1 within Precon1, within Precon4 (both descriptive: the mean over rats of each rat’s mean over its presentations), and the change from one to the other, which is the one tested. Precon2 and Precon3 sit underneath, between them. Within each presentation, the measure in the Cue 2 window minus the same measure in its own Cue 1 window — B − A in AB, D − C in CD. Each session’s value is the mean of those differences over its presentations; each rat’s change is Precon4 − Precon1 of it; and the changes are pooled over rats as everywhere else (DerSimonian–Laird, Hartung–Knapp, at least four rats). Pooled is A + C as the first cue against B + D as the second; split, AB or CD alone.',
+      look: 'A rise means the second cue came to differ from the first more by Precon4 than on Precon1 — the pair being taken in as two different things, or the second cue being anticipated, in that measure.',
+      traps: 'Raw only: the rest that Minus FP takes away is the same for both cue windows, so it cancels exactly — Minus FP shows the same numbers here. It is a difference of two windows of the same presentation, so anything that changes both alike (an electrode settling) cancels too, which is the point. Its p, like every p here, is uncorrected.',
+    },
+    physcheck: {
+      title: 'Physical cue sanity check',
+      plain: 'The comparisons are made by seat (A, B, C, D), which the counterbalancing makes blind to the sounds. This turns it round, for the edge you lifted: each rat’s change in its AB and in its CD, labelled with the sound heard in this window (Cue 1: A or C; Cue 2: B or D), then the same changes grouped by seat and grouped by sound.',
+      look: 'If the spread between sounds is much larger than between the seats, the change follows a sound (say, the Click wherever it sat) rather than its place in the pair — read it as a sound effect, or a recording quirk, before reading it as learning.',
+      traps: 'Each sound sits in only two rats per seat, so a sound’s mean rests on about four values: it is a sanity check, not a test. In windows with no cue sound (pre- and post-baseline) only the seats can be compared.',
     },
     range: {
       title: 'A frequency range',
@@ -455,6 +527,70 @@ window.MONO_HELP = (function () {
     return box;
   }
 
+  /* Section 6 in pictures: the identity sheet, a rat a row, each sound
+     coloured by kind (from the Monolith's own summary, when there is one),
+     and two made-up outcomes on one scale -- the sound mattering, and not. */
+  function physDemo(big) {
+    const G = F();
+    const box = document.createElement('div');
+    box.className = 'qdemo';
+    const cap = (txt) => { const d = document.createElement('div'); d.className = 'qcase-h'; d.textContent = txt; return d; };
+    const col = (kids) => { const c = document.createElement('div'); c.className = 'qcase'; kids.forEach((k) => k && c.appendChild(k)); return c; };
+    const I = (window.MONO && window.MONO.data && window.MONO.data.S && window.MONO.data.S.identity) || null;
+    const seats = I && I.seats;
+    const noisy = (x) => x === 'Click' || x === 'Noise';
+    if (seats && Object.keys(seats).length) {
+      const rats = Object.keys(seats).map(Number).sort((a, b) => a - b);
+      const kind = (r) => (noisy(seats[r].A) && noisy(seats[r].C) ? 'noise' : !noisy(seats[r].A) && !noisy(seats[r].C) ? 'tone' : null);
+      const order = rats.filter((r) => kind(r) === 'noise').concat(rats.filter((r) => kind(r) === 'tone'), rats.filter((r) => !kind(r)));
+      const VW = 350, rh = 20, top = 26, gap = 8;
+      const VH = top + order.length * rh + gap + 6;
+      const s = G.sv('svg', { viewBox: '0 0 ' + VW + ' ' + VH, width: '100%', style: 'max-width:' + (big ? 460 : 420) + 'px', class: 'mfig physseatfig', role: 'img',
+                              'aria-label': 'The identity sheet: each rat’s sounds by seat' });
+      const blue = G.css('--down'), red = G.css('--up');
+      s.appendChild(G.sv('text', { x: 4, y: 14, 'font-size': 10, fill: G.css('--ink-3') }, 'Rat'));
+      s.appendChild(G.sv('text', { x: 93, y: 14, 'text-anchor': 'middle', 'font-size': 10, fill: G.css('--ink-3') }, 'AB: A → B'));
+      s.appendChild(G.sv('text', { x: 221, y: 14, 'text-anchor': 'middle', 'font-size': 10, fill: G.css('--ink-3') }, 'CD: C → D'));
+      let y = top;
+      order.forEach((r, i) => {
+        if (i && kind(r) !== kind(order[i - 1])) y += gap;
+        const k = kind(r);
+        s.appendChild(G.sv('text', { x: 4, y: y + 11, 'font-size': 10.5, fill: G.css('--ink-2') }, 'J' + r));
+        [['A', 38], ['B', 98], ['C', 166], ['D', 226]].forEach(([seat, x]) => {
+          const snd = seats[r][seat];
+          const c = noisy(snd) ? blue : red;
+          s.appendChild(G.sv('rect', { x, y: y + 1, width: 50, height: 14, rx: 3, fill: c, 'fill-opacity': seat === 'A' || seat === 'C' ? 0.28 : 0.12,
+                                       stroke: c, 'stroke-width': seat === 'A' || seat === 'C' ? 1.4 : 0.8, 'data-seat': seat }));
+          s.appendChild(G.sv('text', { x: x + 25, y: y + 11.5, 'text-anchor': 'middle', 'font-size': 9.5, fill: G.css('--ink') }, snd));
+        });
+        s.appendChild(G.sv('text', { x: 93, y: y + 11.5, 'text-anchor': 'middle', 'font-size': 9.5, fill: G.css('--ink-3') }, '→'));
+        s.appendChild(G.sv('text', { x: 221, y: y + 11.5, 'text-anchor': 'middle', 'font-size': 9.5, fill: G.css('--ink-3') }, '→'));
+        if (!i || k !== kind(order[i - 1])) {
+          s.appendChild(G.sv('text', { x: 286, y: y + 11, 'font-size': 10, 'font-weight': 600, fill: k === 'noise' ? blue : k === 'tone' ? red : G.css('--ink-3') },
+                             k === 'noise' ? 'noise-first' : k === 'tone' ? 'tone-first' : 'mixed'));
+        }
+        y += rh;
+      });
+      box.appendChild(col([cap('The identity sheet: blue Click or Noise, red a tone; the first sound of each pair outlined'), s]));
+    }
+    // Two made-up outcomes, on one scale: a dot a rat, its change.
+    const yr = [-0.04, 0.2];
+    const grp = (name, vals, color) => ({ name, values: vals, mean: vals.reduce((a, b) => a + b, 0) / vals.length,
+      se: Math.sqrt(vals.reduce((a, v, _i, all) => a + (v - all.reduce((p, q) => p + q, 0) / all.length) ** 2, 0) / (vals.length - 1) / vals.length), color });
+    const w = big ? 300 : 230;
+    box.appendChild(col([cap('If the sound mattered (made up): the change is in one group only'),
+      G.dots([grp('tone-first', [0.13, 0.16, 0.11, 0.15], G.css('--up')), grp('noise-first', [0.02, -0.01, 0.03, 0.0], G.css('--down'))],
+             { w, h: 150, yr, label: 'If the sound mattered: made-up changes by group' })]));
+    box.appendChild(col([cap('If it did not (made up): the two groups agree'),
+      G.dots([grp('tone-first', [0.07, 0.10, 0.06, 0.09], G.css('--up')), grp('noise-first', [0.08, 0.06, 0.10, 0.07], G.css('--down'))],
+             { w, h: 150, yr, label: 'If the sound did not matter: made-up changes by group' })]));
+    const p = document.createElement('p');
+    p.className = 'qsay';
+    p.textContent = 'A dot is one rat’s Precon4 − Precon1 change; the bar is the group’s mean ± SE, on one scale in both. '
+      + 'The two lower pictures are made up, to show what each outcome looks like; the tab’s cards hold the real numbers.';
+    box.appendChild(p);
+    return box;
+  }
   function statsDemo(name, g, big) {
     const G = F();
     const st = g && g.stats;
@@ -504,6 +640,7 @@ window.MONO_HELP = (function () {
       p.appendChild(document.createTextNode(text));
       root.appendChild(p);
     };
+    if (t.exampleFirst) add('qexample', 'For example:', t.example);
     add('qplain', '', t.plain);
     if ((t.steps || []).length) {
       const ol = document.createElement('ol');
@@ -515,7 +652,8 @@ window.MONO_HELP = (function () {
       }
       root.appendChild(ol);
     }
-    add('qexample', 'For example:', t.example);
+    if (!t.exampleFirst) add('qexample', 'For example:', t.example);
+    add('qplain', '', t.note);
     add('qlook', 'What to look for:', t.look);
     add('qtraps', 'What fools it:', t.traps);
     if (opts.here) add('qhere', 'This one:', opts.here);
@@ -524,7 +662,8 @@ window.MONO_HELP = (function () {
     root.appendChild(fig);
     guide().then((g) => {
       if (!g) return;
-      const d = t.demo ? statsDemo(t.demo, g, opts.big) : (t.plot ? measureDemo(key, g, opts.big) : null);
+      const d = t.draw === 'physical' ? physDemo(opts.big) : t.demo ? statsDemo(t.demo, g, opts.big)
+        : (t.plot ? measureDemo(key, g, opts.big) : null);
       if (d) fig.appendChild(d);
     });
     if ((t.cite || []).length) {

@@ -50,6 +50,7 @@ import json
 import math
 import os
 import random
+import re
 import shutil
 import sys
 import tempfile
@@ -287,9 +288,10 @@ def data_and_tasks():
         kinds[t["kind"]] = kinds.get(t["kind"], 0) + 1
     nd = 12
     check("per rat-day: 4 state chunks, slow, fast, PAC, PAC at the "
-          "transitions, rest, PAC rest",
+          "transitions, the whole pair (2 chunks) and its PAC, rest, PAC rest",
           kinds == {"state": 4 * nd, "trans_slow": nd, "trans_fast": nd,
-                    "pac": nd, "pac_trans": nd, "rest": nd, "pac_rest": nd},
+                    "pac": nd, "pac_trans": nd, "pair": 2 * nd, "pac_pair": nd,
+                    "rest": nd, "pac_rest": nd},
           kinds)
     one = [t for t in tasks if t["rat"] == MO.RATS[0]
            and t["day"] == "Precon1"]
@@ -331,6 +333,26 @@ def data_and_tasks():
     check("transitions not banked at -1/+2 s: not computed from a guess",
           all(u["drop"] is None and u.get("why") for u in
               fnb["spec"]["units"]))
+    # Banked since (Spark): an addition plans exactly those days' fast
+    # transitions, every fast band, and nothing else.
+    k0 = (man["days"][0]["rat"], man["days"][0]["day"])
+    days_on = sorted({d["day"] for d in man["days"]})
+    tf = MO.plan_tasks(man, chk, extra={"fast": [list(k0)], "on_days": days_on})
+    check("the fast transitions of a day banked since: one task, all fast bands, keyed apart, nothing else",
+          [(t["rat"], t["day"], t["kind"]) for t in tf] == [k0 + ("trans_fast",)]
+          and tf[0]["spec"]["bands"] == MO.sweep.bands_for("trans_fast") and tf[0]["key"].endswith("_x")
+          and all(u["drop"] is not None for u in tf[0]["spec"]["units"]), [(t["rat"], t["day"], t["kind"]) for t in tf])
+    tf0 = MO.plan_tasks(man_nb, MO.check_data(man_nb, listing_for(man_nb, whole=every)),
+                        extra={"fast": [list(k0)], "on_days": days_on})
+    check("and none for a day still not banked at -1/+2 s", not tf0, len(tf0))
+    asm = {"refusals": [{"task": fnb["key"], "unit": "p01",
+                         "why": "this recording's transition windows were not banked at -1/+2 s"},
+                        {"task": fnb["key"], "unit": "p02", "why": "no region has a signal in this window"}]}
+    fm = MO.fast_missing_of(asm, {"tasks": tnb})
+    check("the build lists the rat-days whose fast transitions were refused as not banked, and offers them",
+          fm == [[fnb["rat"], fnb["day"]]] and MO.missing_additions({"bands": [{"id": "delta"}], "files": {"pac_raw.f32": {"shape": [6, 9]}},
+                                                                     "additions": {"pair": True}, "fast_missing": fm}) == {"fast": fm},
+          fm)
     c = MO.cost(tasks)
     check("the cost: tasks, CPU, the most at once",
           c["n_tasks"] == len(tasks) and c["cpu_s"] > 0
@@ -561,13 +583,13 @@ def build_end_to_end(man, tasks, work):
     summ = MO.build(man, run, raw, data)
     check("built (%.0f s)" % (time.time() - t0), bool(summ))
     shape = summ["files"]["edges_raw.f32"]["shape"]
-    check("the edges file: quantities x windows (seven, and the contrast) x bands x methods x pairs",
-          shape == [len(MO.QUANTITIES), 8, len(sweep.BAND_IDS),
+    check("the edges file: quantities x windows (eight -- the whole pair last -- and the contrast) x bands x methods x pairs",
+          shape == [len(MO.QUANTITIES), 9, len(sweep.BAND_IDS),
                     len(MO.METHODS), 66], shape)
     pshape = summ["files"]["pac_raw.f32"]["shape"]
-    check("PAC over seven windows (the four states and the three transitions) and the contrast",
-          pshape[1] == 8 and summ.get("pac_windows") == MO.PAC_WINDOWS + [MO.CONTRAST]
-          and summ["additions"] == {"delta": True, "pac_trans": True}, pshape)
+    check("PAC over the four states, the three transitions, the whole pair, and the contrast",
+          pshape[1] == 9 and summ.get("pac_windows") == MO.PAC_WINDOWS + [MO.CONTRAST]
+          and summ["additions"] == {"delta": True, "pac_trans": True, "pair": True}, pshape)
     size = os.path.getsize(os.path.join(data, "edges_raw.f32"))
     check("and holds exactly that many float32",
           size == 4 * int(np.prod(shape)), size)
@@ -746,7 +768,7 @@ def addition_merge(man, work):
     base = run_of("b05e00000001", old)
     base_raw = os.path.join(MO.run_dir_local(base["rid"]), "raw")
     fake_outputs(man, base, base_raw, bands_of=lambda t: t["bands"])
-    add = MO.plan_tasks(man, chk, extra={"bands": ["delta"], "pac_trans": True})
+    add = MO.plan_tasks(man, chk, extra={"bands": ["delta"], "pac_trans": True, "pair_built": True})
     supp = run_of("add000000001", add)
     supp["parts"] = [{"rid": base["rid"], "tasks": base["tasks"]}]
     supp_raw = os.path.join(MO.run_dir_local(supp["rid"]), "raw")
@@ -762,11 +784,11 @@ def addition_merge(man, work):
           and np.isfinite(E[:, 4:, di]).all() and np.isfinite(E[:, :, 9]).all())
     check("PAC: the states from the run before, the transitions from the "
           "addition", np.isfinite(P[:, :4]).all() and np.isfinite(P[:, 4:]).all()
-          and P.shape[1] == 7)
+          and P.shape[1] == 8)
     check("the summary names both runs and has both additions",
           summ["run"]["parts"] == [base["rid"]] and summ["additions"]
-          == {"delta": True, "pac_trans": True}
-          and summ["files"]["pac_raw.f32"]["shape"][1] == 8)
+          == {"delta": True, "pac_trans": True, "pair": True}
+          and summ["files"]["pac_raw.f32"]["shape"][1] == 9)
     old_summ = dict(summ, bands=[b for b in summ["bands"] if b["id"] != "delta"],
                     files=dict(summ["files"], **{"pac_raw.f32": dict(
                         summ["files"]["pac_raw.f32"], shape=[6, 4] +
@@ -952,6 +974,46 @@ def trajectory_check(work):
     em = MO.entry_detail(data, man4, s1, "edges", "minus_fp", at)
     t2 = em["rats"][0]["traj"]["Precon2"]
     check("minus FP: less that session's rest", abs(t2["x"] - (t2["cue"] - t2["rest"])) < 1e-12, t2)
+    ep = MO.entry_detail(data, man4, s1, "edges", "minus_fp", (MO.WINDOWS.index("pair"),) + tuple(at[1:]))
+    tp = ep["rats"][0]["traj"].get("Precon2") or {}
+    check("the whole pair stands against its own 20 s rest there too: with none, no minus-FP value",
+          tp.get("cue") is not None and tp.get("x") is None and "rest" not in tp, tp)
+    # Monolith Progress: every session's own value, and its change from Precon1.
+    roles, _n = fake_roles(man4)
+    ss = MO.session_build(man4, s1, data, roles=roles)
+    check("Progress: all four sessions, in order, a file per window and group",
+          ss["order"] == list(MO.ALL_DAY_ORDER) and
+          "session_edges_raw_1.f32" in ss["files"] and "session_edges_minus_fp__ab_1.f32" in ss["files"]
+          and len([f for f in ss["files"] if f.startswith("session_edges_raw_") and "__" not in f]) == len(MO.WINDOWS) + 1,
+          sorted(ss["files"])[:4])
+    sh = ss["files"]["session_edges_raw_1.f32"]["shape"]
+    S = np.fromfile(os.path.join(data, "session_edges_raw_1.f32"), dtype="<f4").reshape(sh)
+    b_, m_, p_ = at[1], at[2], at[3]
+    hand = {}
+    for day in MO.ALL_DAY_ORDER:
+        vals = []
+        for d in man4["days"]:
+            if d["day"] != day:
+                continue
+            fn = os.path.join(data, "days", "r%d_%s_edges.npy" % (d["rat"], day))
+            if not os.path.isfile(fn):
+                continue                    # r4's Precon3 was never run
+            X = np.load(fn).astype(np.float64)
+            vals.append((d["rat"], np.nanmean(X[:, 1, b_, m_, p_])))
+        hand[day] = dict(vals)
+    want_p2 = np.mean(list(hand["Precon2"].values()))
+    chg = np.mean([hand["Precon4"][r] - hand["Precon1"][r] for r in hand["Precon4"]])
+    check("each session is the mean over rats of each rat's mean; the change from Precon1 its own mean",
+          abs(S[1, 0, b_, m_, p_] - want_p2) < 1e-5 and abs(S[3, 3, b_, m_, p_] - chg) < 1e-5
+          and not np.isnan(S[0, 3, b_, m_, p_]) and abs(S[0, 3, b_, m_, p_]) < 1e-6,
+          (S[1, 0, b_, m_, p_], want_p2, S[3, 3, b_, m_, p_], chg))
+    dm0 = MO.damage(man4, s0, only)
+    check("the damage report of a build without them names them as in what goes, not built",
+          dm0["pending_days"] == list(MO.TRAJ_NAMES) and dm0["built_days"] == list(MO.DAY_NAMES)
+          and {x["day"] for x in dm0["days"]} == set(MO.DAY_NAMES), (dm0["pending_days"], dm0["built_days"]))
+    dm1 = MO.damage(man4, s1, data)
+    check("and once built, all four, in order, none pending",
+          dm1["pending_days"] == [] and dm1["built_days"] == list(MO.ALL_DAY_ORDER), dm1["built_days"])
     check("and the change itself is untouched by them", e["pooled"]["est"] is not None and abs(
           e["pooled"]["est"] - MO.entry_detail(only, core, s0, "edges", "raw", at)["pooled"]["est"]) < 1e-12)
     del order
@@ -969,6 +1031,18 @@ def damage_report(man, summ, data):
           D0["whole"]["cue"] == {"total": U, "kept": U, "partial": 0, "lost": 0}
           and all(r["kept"] == r["of"] for r in D0["whole"]["state"]),
           D0["whole"]["cue"])
+    from backend import ratidentity as RI
+    want = {s: 0 for s in RI.SEATS}
+    for d in man["days"]:
+        for u in d["units"]:
+            sp = RI.seats_of(d["rat"], u["cue_type"])
+            if sp:
+                want[sp[0]] += 1
+                want[sp[1]] += 1
+    got_seats = {s: D0["whole"]["seats"][s]["total"] for s in RI.SEATS}
+    check("each cue counted in its own window, by its rat's seat (made-up Click → Low Tone: J3's A and B, J6's C and D)",
+          got_seats == want and want["A"] > 0 and want["C"] > 0
+          and all(D0["whole"]["seats"][s]["kept"] == want[s] for s in RI.SEATS), (got_seats, want))
     m2 = copy.deepcopy(man)
     d0, d1 = m2["days"][0], m2["days"][1]
     days_dir = os.path.join(data, "days")
@@ -1339,6 +1413,16 @@ def routes(work, man, run_tasks, raw_src):
         b.close()
         check("a split that does not exist is refused",
               c.get("/api/arc/monolith/data/edges_raw__nonsense").status_code == 404)
+        ses = s.get("sessions") or {}
+        b3 = c.get("/api/arc/monolith/data/session_edges_raw__ab_1")
+        check("Monolith Progress's session files are served, a window at a time",
+              bool(ses.get("files")) and b3.status_code == 200 and len(b3.data) == 4 * int(
+                  np.prod(ses["files"]["session_edges_raw__ab_1.f32"]["shape"])),
+              (b3.status_code, sorted(ses.get("files") or {})[:3]))
+        b3.close()
+        check("and a session file that is not one is refused",
+              c.get("/api/arc/monolith/data/session_edges_raw_x").status_code == 404
+              and c.get("/api/arc/monolith/data/session_edges_raw__nonsense_1").status_code == 404)
         e2 = c.get("/api/arc/monolith/entry?what=edges&layer=raw&at=%d,%d,%d,%d&split=ab"
                    % (p0["wi"], p0["bi"], p0["mi"], p0["pair"])).get_json()
         check("one entry of one split, agreeing with its arrays", e2.get("ok") and e2.get("agree")
@@ -1351,12 +1435,36 @@ def routes(work, man, run_tasks, raw_src):
                 break
             time.sleep(0.25)
         check("splitting again, on its own, from the tab's button", r.get("ok") and w["status"] == "done", w)
+        u0 = next(u for rr in e["rats"] for u in (rr.get("days") or {}).get("Precon1", {}).get("units", []))
+        check("every presentation carries its seats' name, seat first, the sounds after",
+              "seat_say" in u0 and (u0["seat_say"] is None or re.match(r"^(AB · A → B|CD · C → D) \(.+ → .+\)$", u0["seat_say"])),
+              u0.get("seat_say"))
+        check("Progress's session files on their own are refused without confirm",
+              c.post("/api/arc/monolith/sessions", json={}).status_code == 400)
+        sd = MO.data_dir()
+        for f in os.listdir(sd):
+            if f.startswith("session_"):
+                os.remove(os.path.join(sd, f))
+        s_before = json.load(open(os.path.join(sd, "summary.json"), encoding="utf-8"))
+        s_before.pop("sessions", None)
+        MO._write_json(os.path.join(sd, "summary.json"), s_before)
+        r = c.post("/api/arc/monolith/sessions", json={"confirm": True}).get_json()
+        t0 = time.time()
+        while time.time() - t0 < 300:
+            w = c.get("/api/arc/monolith/status").get_json()["work"]
+            if w and w["what"] == "sessions" and w["status"] != "running":
+                break
+            time.sleep(0.25)
+        s_after = c.get("/api/arc/monolith/data/summary").get_json()
+        check("a build without them gets Progress's session files from the button, here",
+              r.get("ok") and w["status"] == "done" and (s_after.get("sessions") or {}).get("files")
+              and all(os.path.isfile(os.path.join(sd, f)) for f in s_after["sessions"]["files"]), w)
         leaf_route(c, fake, man, s, p0)
         r = c.post("/api/arc/monolith/manifest/extend", json={})
         check("Precon2 and Precon3 are added to what goes only when confirmed", r.status_code == 400)
         bad = [c.post("/api/arc/monolith/run", json={"confirm": True, "extra": x}).status_code
-               for x in ({"days": ["Precon5"]}, {"days": ["Precon2"], "bands": ["delta"]}, {"days": ["Precon1"]})]
-        check("a run of the sessions between names only them, on its own", bad == [400, 400, 400], bad)
+               for x in ({"days": ["Precon5"]}, {"wobble": True}, {"days": ["Precon1"]})]
+        check("an addition names only what it may: the sessions between, bands, PAC, the whole pair", bad == [400, 400, 400], bad)
         r = c.get("/api/arc/monolith/status").get_json()
         check("the status says where the trajectory is", r["trajectory"]["days"] == list(MO.TRAJ_NAMES)
               and r["trajectory"]["in_manifest"] == [] and r["trajectory"]["built"] == [], r.get("trajectory"))
@@ -1375,6 +1483,31 @@ def routes(work, man, run_tasks, raw_src):
             MO._ROOT = real_root
 
 
+def addition_place(man):
+    print("\nWhere an addition runs")
+    keep = {k: getattr(MO, k) for k in ("submit", "plan_tasks", "save_state")}
+    seen = {}
+
+    def submit(cfg, tasks, dest, app_dir, ssh=None):
+        seen["dest"] = dest
+        return {"rid": "ad0000000002", "dest": dest, "tasks": tasks}
+    try:
+        MO.submit = submit
+        MO.plan_tasks = lambda m, chk, extra=None: [{"day": "Precon2", "kind": "state"}]
+        MO.save_state = lambda **k: None
+        st = {"run": {"rid": "ad0000000001", "dest": "temp", "tasks": [{"day": "Precon1", "kind": "state"}]},
+              "built": {"rid": "ad0000000001"}, "check": {"days": []}, "upload": {"dest": "scratch"}}
+        new = MO.run_addition(man, {}, ".", st, {"days": ["Precon2"]})
+        check("after an upload to Scratch, an addition goes to Scratch, not where the first run was (Temp)",
+              seen.get("dest") == "scratch" and new["dest"] == "scratch", seen)
+        st["upload"] = {}
+        MO.run_addition(man, {}, ".", st, {"days": ["Precon2"]})
+        check("with no upload on record, where the last run was", seen.get("dest") == "temp", seen)
+    finally:
+        for k, v in keep.items():
+            setattr(MO, k, v)
+
+
 def leaf_route(c, fake, man, s, p0):
     print("\nOne cue pair, down to its traces")
     d0 = man["days"][1]                       # the first rat's Precon4
@@ -1390,10 +1523,12 @@ def leaf_route(c, fake, man, s, p0):
     lf = c.get(url % "p01").get_json()
     spc = [f for f in d0["folders"] if f["role"] == "SPC"][0]
     run = MO.get_state()["run"]
+    # Where the last check found it whole; the run's own place otherwise.
+    where = MO.check_remote(MO.get_state().get("check"), rat, day, "SPC") or spc["remote"][run["dest"]]
     check("read from the cluster's copy of that day's SPC folder, once",
           lf.get("ok") and len(fake.reads) == n0 + 1
-          and fake.reads[-1]["folder"] == spc["remote"][run["dest"]]
-          and lf["remote"] == spc["remote"][run["dest"]], lf.get("error") or lf.get("why"))
+          and fake.reads[-1]["folder"] == where
+          and lf["remote"] == where, lf.get("error") or lf.get("why"))
     u0 = d0["units"][0]["pair"]
     check("the whole cue pair, 10 s either side, its windows marked, at 250 Hz",
           abs(lf["span"]["t0"] - (u0["opener_t"] - 10)) < 1e-9
@@ -1419,6 +1554,19 @@ def leaf_route(c, fake, man, s, p0):
     lf2 = c.get(url % "p01").get_json()
     check("asked again, the traces come from memory, not the cluster",
           len(fake.reads) == n0 + 1 and lf2["recomputed"] == lf["recomputed"])
+    st0 = MO.get_state()
+    chk2 = {"days": [{"rat": rat, "day": day, "folders": [
+        {"role": "SPC", "use": "scratch", "remote": "/elsewhere/r%d/%s/SPC" % (rat, day)}]}]}
+    check("where the check found a folder is where its traces are read",
+          MO.check_remote(chk2, rat, day, "SPC") == "/elsewhere/r%d/%s/SPC" % (rat, day)
+          and MO.check_remote(chk2, rat, day, "FP1") is None and MO.check_remote(None, rat, day, "SPC") is None)
+    MO.save_state(check=chk2)
+    lfx = c.get(url % "p02").get_json()
+    check("a recording the check found somewhere other than the run's place is read from there",
+          fake.reads[-1]["folder"] == "/elsewhere/r%d/%s/SPC" % (rat, day) and lfx.get("remote") == fake.reads[-1]["folder"],
+          (fake.reads[-1].get("folder"), lfx.get("error")))
+    MO.save_state(check=st0.get("check"))
+    n0 = len(fake.reads)
     # Make the stored number the engine's and it is said to match.
     out_dir = MO.data_dir()
     path = os.path.join(out_dir, "days", "r%d_%s_edges.npy" % (rat, day))
@@ -1477,7 +1625,7 @@ def leaf_route(c, fake, man, s, p0):
     Wt[1, wj, rb] = kept_w
     np.save(wp, Wt)
     # Temp purged: said, not read from anywhere else.
-    fake.gone.add(spc["remote"][run["dest"]])
+    fake.gone.add(where)
     lf5 = c.get(url % "p03").get_json()
     check("a recording no longer on the cluster is said to be gone",
           lf5["ok"] is False and lf5.get("gone") is True
@@ -1540,6 +1688,129 @@ def code_list():
           loaded and not missing, missing or got.stderr[-300:])
 
 
+
+def physical_check(work):
+    """Section 6 on eight made-up rats with three planted changes: one only
+    the tone-first rats have, one only each noise-first rat's Click-first
+    pair has, and one in Cue 2 − Cue 1 that every rat has. Each is found by
+    the comparison it belongs to and by no other; the nulls are complete."""
+    print("\nSection 6: the physical cues against the balanced ones")
+    import copy
+    man = fake_manifest(n_rats=8, units=8)
+    for d in man["days"]:
+        for i, u in enumerate(d["units"]):
+            u["cue_type"] = "Click_LowTone" if i % 2 == 0 else "Noise_HighTone"
+            u["cue_label"] = u["label"] = ("Click → Low Tone" if i % 2 == 0 else "Noise → High tone")
+    man["digest"] = MO._digest(man)
+    every = {(d["rat"], d["day"], f["role"]) for d, f in MO.folders_of(man)}
+    tasks = MO.plan_tasks(man, MO.check_data(man, listing_for(man, whole=every)))
+    run = {"rid": "9b0000000001", "dest": "scratch", "arrays": [{"id": "1", "indices": None}],
+           "tasks": [{"i": i, "key": t["key"], "rat": t["rat"], "day": t["day"], "kind": t["kind"],
+                      "chunk": t["chunk"], "n_units": t["n_units"], "est_s": t["est_s"]}
+                     for i, t in enumerate(tasks)]}
+    raw = os.path.join(work, "phys_raw")
+    data = os.path.join(work, "phys_data")
+    fake_outputs(man, run, raw, seed=21)
+    summ = MO.build(man, run, raw, data)
+    roles, _notes = fake_roles(man)
+    # Which unit is which pair (fake roles: Click_LowTone is every rat's AB).
+    W = len(MO.WINDOWS)
+    e1 = (MO.WINDOWS.index("cue2"), 7, 0, 3)       # the tone-first rats only
+    e2 = (MO.WINDOWS.index("cue1"), 5, 0, 2)       # each noise-first rat's Click-first pair
+    e3 = (9, 0, 4)                                 # Cue 2 in every rat: Cue 2 − Cue 1
+    sd = []
+    for d in man["days"]:
+        X = np.load(os.path.join(data, "days", "r%d_%s_edges.npy" % (d["rat"], d["day"])))
+        sd.append(np.nanstd(X[:, e2[0], e2[1], e2[2], e2[3]]))
+    delta = 8 * float(np.nanmean(sd)) + 1e-3
+    for d in man["days"]:
+        if d["day"] != "Precon4":
+            continue
+        rat = d["rat"]
+        path = os.path.join(data, "days", "r%d_%s_edges.npy" % (rat, d["day"]))
+        X = np.load(path)
+        kind = MO.opener_kind(rat)
+        click_first = "AB" if MO.ab_opens_first_sound(rat) > 0 else "CD"
+        for i, u in enumerate(d["units"]):
+            pair_ = roles[rat][u["cue_type"]]
+            if kind == "tone":
+                X[i, e1[0], e1[1], e1[2], e1[3]] += delta
+            if kind == "noise" and pair_ == click_first:
+                X[i, e2[0], e2[1], e2[2], e2[3]] += delta
+            X[i, MO.WINDOWS.index("cue2"), e3[0], e3[1], e3[2]] += delta
+        np.save(path, X)
+    t0 = time.time()
+    got = MO.physical_build(man, summ, data, roles)
+    check("built (%.0f s): the groups as the identity sheet makes them" % (time.time() - t0),
+          got["groups"] == {"tone": [4, 9, 10, 11], "noise": [3, 6, 7, 8]} and got["left_out"] == [], got["groups"])
+    sh = [len(MO.QUANTITIES), W + 1, len(sweep.BAND_IDS), len(MO.METHODS), 66]
+    A = {c: np.fromfile(os.path.join(data, "phys_edges_raw__%s.f32" % c), dtype="<f4").reshape(sh)
+         for c in MO.PHYS_IDS}
+    P, E_ = MO.QUANTITIES.index("p"), MO.QUANTITIES.index("est")
+    at = lambda c, q, e: float(A[c][(q,) + tuple(e)])            # noqa: E731
+    e3w = (W,) + e3
+    check("tone-first only: found by tone-first against noise-first, the size planted",
+          at("order", P, e1) < 0.01 and abs(at("order", E_, e1) - delta) < 0.25 * delta,
+          (at("order", P, e1), at("order", E_, e1), delta))
+    check("and not by the pair against pair, by seat or by sound (both pairs moved alike)",
+          at("seat_abcd", P, e1) > 0.05 and at("sound_noise", P, e1) > 0.05 and at("sound_tone", P, e1) > 0.05,
+          (at("seat_abcd", P, e1), at("sound_noise", P, e1), at("sound_tone", P, e1)))
+    check("Click-first pair only: found by Click-first against Noise-first, the size planted",
+          at("sound_noise", P, e2) < 0.01 and abs(at("sound_noise", E_, e2) - delta) < 0.25 * delta,
+          (at("sound_noise", P, e2), at("sound_noise", E_, e2), delta))
+    check("and not by AB against CD: Click is AB in two of those rats and CD in the other two",
+          at("seat_abcd", P, e2) > 0.05 and abs(at("seat_abcd", E_, e2)) < 0.5 * delta,
+          (at("seat_abcd", P, e2), at("seat_abcd", E_, e2)))
+    rats, Y, V = MO.rat_changes(data, man)["raw"]
+    bal = MO.pool(Y[:, W], V[:, W])
+    check("Cue 2 in every rat: Cue 2 − Cue 1 finds it, balanced",
+          bal["p"][e3] < 0.01, bal["p"][e3])
+    check("and tone − noise does not: it is the same change, signed by sound, and cancels",
+          at("tone_noise", P, e3w) > 0.05 and abs(at("tone_noise", E_, e3w)) < 0.5 * delta,
+          (at("tone_noise", P, e3w), at("tone_noise", E_, e3w)))
+    check("tone − noise exists only for the contrast's slot", np.isnan(A["tone_noise"][P, :W]).all())
+    # By hand: the order is the tone pool less the noise pool.
+    ti = [rats.index(r) for r in (4, 9, 10, 11)]
+    ni = [rats.index(r) for r in (3, 6, 7, 8)]
+    pt, pn = MO.pool(Y[ti], V[ti]), MO.pool(Y[ni], V[ni])
+    e9 = (MO.WINDOWS.index("pre"), 20, 6, 10)
+    check("the order is the tone-first pool less the noise-first pool, at any entry",
+          abs(at("order", E_, e9) - (pt["est"][e9] - pn["est"][e9])) < 1e-4, (at("order", E_, e9), pt["est"][e9] - pn["est"][e9]))
+    G = np.fromfile(os.path.join(data, "phys_groups_raw.f32"), dtype="<f4").reshape([6] + sh[1:])
+    check("each group's own pool is kept beside it", abs(G[(0,) + e9] - pt["est"][e9]) < 1e-4
+          and abs(G[(3,) + e9] - pn["est"][e9]) < 1e-4 and G[(2,) + e9] == pt["k"][e9])
+    po, pc = got["perm"]["order"]["raw"], got["perm"]["tone_noise"]["raw"]
+    check("the order against every other split of the rats into two fours (35), itself among them",
+          po["n"] == 35 and po["observed"] == got["counts"]["order"]["raw"]["p05"] and po["observed"] in po["counts"]
+          and 1 <= po["rank"] <= 35, (po["n"], po["observed"], po["rank"]))
+    check("tone − noise and the balanced contrast against every way of signing the rats (128)",
+          pc["n"] == 128 and pc["observed"] in pc["counts"] and pc["balanced"] in pc["counts"]
+          and pc["balanced"] == int((MO.pool(Y[:, W], V[:, W])["p"] < 0.05).sum()), (pc["n"], pc["observed"], pc["balanced"]))
+    rc = MO.rat_changes(data, man)
+    check("the contrast is raw in Minus FP too, as the Monolith pools it (rest has already cancelled)",
+          np.array_equal(rc["minus_fp"][1][:, W], rc["raw"][1][:, W], equal_nan=True)
+          and got["counts"]["tone_noise"]["minus_fp"] == got["counts"]["tone_noise"]["raw"],
+          (got["counts"]["tone_noise"]["minus_fp"], got["counts"]["tone_noise"]["raw"]))
+    ps = {c: got["perm"][c]["raw"] for c in ("sound_noise", "sound_tone")}
+    check("each pair against pair by sound against every way of signing its four rats (8), by seat and by sound among them",
+          all(x["n"] == 8 and x["observed"] == got["counts"][c]["raw"]["p05"] and x["observed"] in x["counts"]
+              and x["seat"] in x["counts"] and len(x["rats"]) == 4 for c, x in ps.items())
+          and sorted(ps["sound_noise"]["rats"]) == [3, 6, 7, 8] and sorted(ps["sound_tone"]["rats"]) == [4, 9, 10, 11],
+          {c: (x["n"], x["observed"], x["seat"], x["rats"]) for c, x in ps.items()})
+    check("the counts are chance's, said for each comparison (measured windows; the contrast's slot for tone − noise)",
+          all(set(got["counts"][c]) == set(MO.LAYERS) for c in MO.PHYS_IDS)
+          and got["counts"]["tone_noise"]["raw"]["tested"] <= len(sweep.BAND_IDS) * len(MO.METHODS) * 66)
+    L = got["leads"]["monolith"]["raw"]
+    l0 = L[0] if L else {}
+    check("every lead of the Monolith, split by group, with an equivalence test at half its size",
+          len(L) == min(50, len(summ["top"]["raw"])) and set(l0) >= {"tone", "noise", "diff", "both_ways", "equivalence"}
+          and (l0["equivalence"] is None or abs(l0["equivalence"]["margin"] - abs(l0["est"]) / 2) < 1e-9), list(l0)[:6])
+    check("and the contrast's leads", "contrast" in got["leads"] and "raw" in got["leads"]["contrast"])
+    s2 = json.load(open(os.path.join(data, "summary.json"), encoding="utf-8"))
+    check("the summary says it is there", s2.get("physical", {}).get("at") == got["at"]
+          and [c["id"] for c in s2["physical"]["comparisons"]] == list(MO.PHYS_IDS))
+
+
 def main():
     code_list()
     files_rule()
@@ -1557,7 +1828,9 @@ def main():
         addition_merge(man, work)
         trajectory_check(work)
         histology_check(work)
+        addition_place(man)
         split_check(man, summ, os.path.join(work, "data"))
+        physical_check(work)
         null_control(work)
         man2 = fake_manifest(root=os.path.join(work, "local"))
         every = {(d["rat"], d["day"], f["role"])

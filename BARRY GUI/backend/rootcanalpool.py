@@ -176,7 +176,8 @@ def rows_from_fit(res):
     return [{"i": e["i"], "t": e["t"], "amp_uV": e["amp_uV"],
              "hw_ms": e["hw_ms"], "hf_db": e["hf_db"], "cls": e["cls"],
              "flipped": bool(e.get("flipped")), "wide": bool(e.get("wide")),
-             "row": e.get("contact_row"), "pol": e.get("polarity")}
+             "row": e.get("contact_row"), "pol": e.get("polarity"),
+             "name": e.get("name")}
             for e in res["events"]]
 
 
@@ -378,7 +379,8 @@ def switch_tables(events, members):
 def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
              n_init=N_INIT, gmm_n_init=GMM_N_INIT, complete_only=False,
              k=rootcanal.K_DEFAULT, cluster_calls=None, margin=None,
-             margin_mode="fixed", drawn=None):
+             margin_mode="fixed", drawn=None, cluster_names=None,
+             all_ds=False):
     """Pool the members' rows and answer the three questions.
 
     `members` is a list of dicts as `app.py` builds them: key, entry_id,
@@ -441,9 +443,19 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
             X.append([_nan(r["amp_uV"]), _nan(r["hw_ms"]), _nan(r["hf_db"])])
             ev.append({"m": k, "i": int(r["i"]), "t": float(r["t"]),
                        "cls_single": r.get("cls"),
+                       # The name its own single gave it, if any.
+                       "name_single": r.get("name"),
                        "wide": bool(r.get("wide")),
                        "mouse_key": m["mouse_key"], "mouse_type": mtype})
     X = np.asarray(X, dtype=float).reshape(-1, 3)
+    # A double pool's event carries its v0 -- where it came from and what
+    # it was called there, by its single and by its pool -- beside it.
+    j_ = 0
+    for k, m in enumerate(members):
+        for r in m.get("rows") or []:
+            if r.get("v0") is not None:
+                ev[j_]["v0"] = r["v0"]
+            j_ += 1
 
     # COMPLETE EVENTS ONLY, when asked. An event missing an axis -- a
     # half-width that never came back to half amplitude, an HF window too
@@ -483,7 +495,7 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
         core = rootcanal.cluster_core(
             X, k=k_want, seed=seed, n_init=n_init, cluster_calls=cluster_calls,
             margin=margin, margin_mode=margin_mode, what="pooled events",
-            drawn=drawn_ix)
+            drawn=drawn_ix, cluster_names=cluster_names)
     except rootcanal.RootCanalError as exc:
         raise PoolError(str(exc))
     have, n_axes = core["have"], core["n_axes"]
@@ -522,6 +534,10 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
         e["missing"] = [AXES[a] for a in range(3) if not have[j, a]]
         e["cluster"] = int(lab[j]) if placed[j] else None
         e["cls_pool"] = cls_of[int(lab[j])] if placed[j] else None
+        e["name_pool"] = ((core.get("names") or [None])[int(lab[j])]
+                          if placed[j] and int(lab[j]) < len(core.get("names")
+                                                              or [])
+                          else None)
         e["switched"] = bool(e["cls_single"] and e["cls_pool"]
                              and e["cls_single"] != e["cls_pool"])
         if placed[j]:
@@ -630,6 +646,8 @@ def fit_pool(members, mouse_types=None, focus=None, seed=SEED,
                                        by_member_excluded.items())]},
         "params": dict(pool_params(seed, n_init, gmm_n_init, band),
                        complete_only=bool(complete_only), k=core["k"],
+                       cluster_names=dict(cluster_names or {}),
+                       all_ds=bool(all_ds),
                        cluster_calls=dict(cluster_calls or {}),
                        margin_mode=(margin_mode if margin else None)),
     }

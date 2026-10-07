@@ -54,6 +54,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import warnings
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -244,6 +245,8 @@ def main():
         _filter_choices()
         _k_and_margins_core()
         _pool_gmm_agreement()
+        _cluster_stats_core()
+        _border_core()
         _pool_synthetic(A)
         _pool_routes(A, tmp, fake)
     finally:
@@ -455,6 +458,99 @@ def _synthetic(A, rc, cfcmod, stamp_t, kinds):
     except rc.RootCanalError as exc:
         ck("a search the stored snippet cannot carry is refused",
            "100 ms at most" in str(exc), str(exc))
+
+    head("A MISSING HALF-WIDTH, SEARCHED AGAIN ON REQUEST")
+    wide_ms = rc.retry_cross_ms(got)
+    rr = rc.fit(got, rc.Params(entry_id="fake", stamps_hash=p.stamps_hash,
+                               retry=[pla["i"], lng["i"]]))
+    er = rr["events"]
+    ck("the widest search the snippet allows is %g ms" % wide_ms,
+       wide_ms == 200.0 and rr["retry_cross_ms"] == 200.0)
+    ck("both unresolved events searched again find a half-width, marked "
+       "retried and wide, on all 3 axes",
+       all(er[e["i"]]["retried"] is True and er[e["i"]]["hw_ms"] is not None
+           and er[e["i"]]["wide"] and er[e["i"]]["axes"] == 3
+           for e in (pla, lng)),
+       [(er[e["i"]]["retried"], er[e["i"]]["hw_ms"]) for e in (pla, lng)])
+    ck("the plateau's is the one the 80 ms search found",
+       er[pla["i"]]["hw_ms"] is not None
+       and abs(er[pla["i"]]["hw_ms"] - ew[pla["i"]]["hw_ms"]) < 1e-9)
+    ck("every other event keeps its numbers exactly, and is not marked",
+       all(a_["hw_ms"] == b_["hw_ms"] and a_["amp_uV"] == b_["amp_uV"]
+           and b_["retried"] is None
+           for a_, b_ in zip(ev, er) if a_["i"] not in (pla["i"], lng["i"])))
+    ck("counts: none partial, 2 wide",
+       rr["counts"]["partial"] == 0 and rr["counts"]["wide"] == 2,
+       rr["counts"])
+    ck("the rule says how many were searched again, and does not call them "
+       "widened by the setting",
+       "2 of 2 searched again to ±200 ms found a half-width" in rr["rule"]
+       and "widened to 50 ms" not in rr["rule"], rr["rule"])
+    one_ok = [e for e in ev if e["hw_ms"] is not None][0]
+    r1 = rc.fit(got, rc.Params(entry_id="fake", stamps_hash=p.stamps_hash,
+                               retry=[one_ok["i"]]))
+    ck("an event that has a half-width is not searched again",
+       r1["events"][one_ok["i"]]["retried"] is None
+       and r1["events"][one_ok["i"]]["hw_ms"] == one_ok["hw_ms"])
+    ck("a result with retries rebuilds from its params alone",
+       [e["hw_ms"] for e in rc.fit(got, rc.Params(**rr["params"]))["events"]]
+       == [e["hw_ms"] for e in er])
+    ck("and the plain fit is untouched by a retried one (no shared memo)",
+       [e["hw_ms"] for e in rc.fit(got, p)["events"]]
+       == [e["hw_ms"] for e in ev])
+    vr = rc.event_view(got, rc.Params(entry_id="fake",
+                                      stamps_hash=p.stamps_hash,
+                                      retry=[pla["i"]]), pla["i"])
+    ck("the click panel draws the crossings the retry found",
+       vr["trace"]["hw_ms"] is not None and er[pla["i"]]["hw_ms"] is not None
+       and abs(vr["trace"]["hw_ms"] - er[pla["i"]]["hw_ms"]) < 1e-9)
+
+    head("THE FAST HALF OF A FIT GIVES THE SAME NUMBERS")
+    rng_m = np.random.default_rng(3)
+    arr = rng_m.normal(size=(5, 8, 301))
+    arr[1, 2] = np.nan                       # a contact the read could not take
+    arr[3, 5, 40:60] = np.nan                # and one with a gap in it
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        want_med = np.nanmedian(arr, axis=-1)
+    ck("the per-contact median is nanmedian's, to the bit, NaN rows and "
+       "gaps included", np.array_equal(rc._row_median(arr), want_med,
+                                       equal_nan=True))
+    keep = (rc.FILTER_WORKERS, rc.FILTER_AHEAD)
+    try:
+        rc.FILTER_WORKERS, rc.FILTER_AHEAD = 1, 1
+        one_by_one = rc._measure(dict(got, _memo={}), p)
+    finally:
+        rc.FILTER_WORKERS, rc.FILTER_AHEAD = keep
+    on_threads = rc._measure(dict(got, _memo={}), p)
+    ck("filtering on threads measures exactly what filtering one chunk at a "
+       "time does", all(np.array_equal(one_by_one[k], on_threads[k],
+                                       equal_nan=True)
+                        for k in ("amp", "hw", "row", "wide"))
+       and one_by_one["pol"] == on_threads["pol"])
+
+    head("AMPLITUDE IS MEASURED ON THE FILTERED TRACE")
+    # Asked 2026-10-06: does the amplitude follow the filter? It must, and
+    # this fails the day it stops.
+    amps = {}
+    for f_ in ("none", "lfp", "ds"):
+        pf = rc.Params(entry_id="fake", stamps_hash=p.stamps_hash, filt=f_)
+        rf = rc.fit(got, pf)
+        amps[f_] = np.array([e["amp_uV"] if e["amp_uV"] is not None
+                             else np.nan for e in rf["events"]])
+        e0 = [e for e in rf["events"] if e["amp_uV"] is not None][0]
+        yf = rc._filter(got["snip"][e0["i"]], pf, float(got["snip_fs"]))
+        c0 = (yf.shape[1] - 1) // 2
+        m0 = rc.measure_peak(yf[e0["contact_row"]], c0,
+                             float(got["snip_fs"]), e0["polarity"],
+                             pf.win_ms, pf.cross_ms, pf.flank_ms)
+        ck("on %s, an event's amplitude is the peak of ITS filtered trace"
+           % pf.filter_label(), abs(m0["amp_uV"] - e0["amp_uV"]) < 1e-6,
+           (m0["amp_uV"], e0["amp_uV"]))
+    ck("and the three filters give three different amplitudes",
+       np.nanmax(np.abs(amps["none"] - amps["lfp"])) > 1.0
+       and np.nanmax(np.abs(amps["lfp"] - amps["ds"])) > 1.0,
+       [float(np.nanmedian(v)) for v in amps.values()])
 
     head("ONE AXIS LEFT: UNCLASSIFIED")
     flat = dict(got)
@@ -733,6 +829,10 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
         return {"rel": filename, "path": path}
 
     A.BANK, A.STORE, A.ROOTCANAL, A.save_output = bank, st, vault, fake_save
+    # And a throwaway artifact store: banking now keeps a version of the
+    # single as well, and that must land here, never in the real one.
+    from backend import artifacts as artifactsmod
+    A.ARTIFACTS = artifactsmod.Artifacts(logs, st)
     A._braces_session = lambda rec: (fake_session(), {})
     A._braces_channels = lambda sess: fake_channels()
     A._stored_for = lambda sess: {}
@@ -963,6 +1063,25 @@ def _routes(A, rc, cfcmod, eventbank, storemod, toolresults, tmp, stamp_t,
        cm3.get("ied_entry") == cm["ied_entry"]
        and len(bank.get(cm["ied_entry"])["versions"]) == n_ied_v + 1
        and bank.get(cm["ied_entry"])["n"] == n_ied - 1)
+
+    head("NAMES: EACH BANKED EVENT KEEPS ITS CLUSTER'S NAME")
+    rn = c.post("/api/rootcanal/commit", json=dict(
+        body, pngs={}, from_version=src["id"],
+        cluster_names={"0": {"name": "DS slow", "type": "ds"},
+                       "1": {"name": "IED big", "type": "ied"}}))
+    cmn = rn.get_json()
+    dsn = bank.get("rcchk000001")
+    named = [e for e in dsn["events"] if e.get("rc_name") == "DS slow"]
+    ck("committed with names, the DS set's events carry their cluster's "
+       "name in a field of their own", rn.status_code == 200
+       and cmn.get("ok") and named, cmn.get("error"))
+    ck("and their label still says dentate spike, which is what every "
+       "reader picks a DS set's events by",
+       named and all(e.get("label_id") == "spike" for e in named))
+    iedn = bank.get(cmn.get("ied_entry")) or {}
+    ck("the IEDs carry theirs",
+       iedn.get("events") and all(e.get("rc_name") == "IED big"
+                                  for e in iedn["events"]))
 
     head("CANDIDATES")
     r = c.get("/api/rootcanal/candidates")
@@ -1377,6 +1496,459 @@ def _pool_gmm_agreement():
        g["agree"] is None and "DS / IED" not in g["verdict"], g["verdict"])
 
 
+def _border_core():
+    """A DS / IED border in three numbers, with grace, on events whose
+    answer is known."""
+    from backend import rcborder as B
+    head("A BORDER IN THREE NUMBERS: THE RULE, THE FIT, THE GRACE")
+
+    def ev(a, w, h, c=None):
+        return {"amp_uV": a, "hw_ms": w, "hf_db": h, "cls_single": c}
+
+    # The rule, by hand: past all three, short of all three, anything else.
+    hand = [ev(2000, 10, 20), ev(500, 40, 2), ev(2000, 40, 20),
+            ev(2000, None, 20), ev(None, None, None)]
+    U = B._matrix(hand) * np.array([1.0, 1.0, -1.0])
+    t = np.array([1000.0, 10.0, -25.0])
+    got = list(B.classify(U, t, t))
+    ck("past all three is solid IED, short of all three solid DS, a mix "
+       "ambiguous, a missing axis ambiguous, no numbers unclassified",
+       got == ["ied", "ds", "amb", "amb", None], got)
+
+    rng = np.random.default_rng(4)
+    n_d, n_i = 900, 300
+    # Overlapping, as real DS and IED do: a strict border alone switches
+    # some, so the grace has work to do.
+    X = np.vstack([
+        np.c_[rng.normal(1100, 200, n_d), rng.normal(24, 6, n_d),
+              rng.normal(10, 3, n_d)],
+        np.c_[rng.normal(1450, 250, n_i), rng.normal(16, 5, n_i),
+              rng.normal(14, 3.5, n_i)]])
+    events = [ev(float(a), float(w), float(h), "ds" if j < n_d else "ied")
+              for j, (a, w, h) in enumerate(X)]
+    b = B.extract(events, custom=0.02)
+    ck("IEDs are larger, louder and NARROWER: the half-width is passed by "
+       "going under it, read from the data",
+       b["ied_above"] == {"amp_uV": True, "hf_db": True, "hw_ms": False},
+       b["ied_above"])
+    st = b["strict"]
+    ck("the strict border sits between the two groups on every axis",
+       1100 < st["amp_uV"] < 1450 and 10 < st["hf_db"] < 14
+       and 16 < st["hw_ms"] < 24, st)
+    ck("both solid classes are populated, and mostly by their own identity",
+       b["fit"]["ied_solid"] > 0.3 and b["fit"]["ds_solid"] > 0.3
+       and b["fit"]["ds_as_ied"] < 0.05 and b["fit"]["ied_as_ds"] < 0.05,
+       b["fit"])
+    ck("the strict border alone switches some events, so less grace needs a "
+       "band", b["strict_wrong"] > 0 and b["levels"][0]["s_sd"] > 0
+       and b["levels"][1]["s_sd"] > 0,
+       (b["strict_wrong"], [lv["s_sd"] for lv in b["levels"]]))
+    gs = [lv["grace"] for lv in b["levels"]]
+    ck("no grace, 1%, 5% and the custom one are each worked out",
+       gs == [0.0, 0.01, 0.02, 0.05], gs)
+    ck("at each grace the switch rate is within it",
+       all(lv["switch_rate"] <= lv["grace"] + 1e-12 for lv in b["levels"]),
+       [(lv["grace"], lv["switch_rate"]) for lv in b["levels"]])
+    lv0 = b["levels"][0]
+    ck("no grace means no switch at all: every solid event is its own "
+       "identity", lv0["wrong"] == 0 and lv0["counts"]["ied"] > 0, lv0)
+    amb = [lv["counts"]["amb"] for lv in b["levels"]]
+    ck("less grace, more ambiguous: the band only ever takes events out of "
+       "the solid classes", amb == sorted(amb, reverse=True), amb)
+    ck("every event is counted once at every grace",
+       all(sum(lv["counts"].values()) == len(events) for lv in b["levels"]))
+    e0 = lv0["edges"]
+    ck("the band's edges are either side of the strict border, IED's side "
+       "further out on every axis",
+       e0["amp_uV"]["ied_at"] >= st["amp_uV"] >= e0["amp_uV"]["ds_at"]
+       and e0["hf_db"]["ied_at"] >= st["hf_db"] >= e0["hf_db"]["ds_at"]
+       and e0["hw_ms"]["ied_at"] <= st["hw_ms"] <= e0["hw_ms"]["ds_at"], e0)
+    cls, info = B.apply(events, b, 0.0)
+    ck("applied from its saved numbers alone, it classifies as it was drawn",
+       info["counts"] == lv0["counts"] and info["wrong"] == lv0["wrong"],
+       (info, lv0["counts"]))
+    try:
+        B.apply(events, b, 0.3)
+        miss = None
+    except B.BorderError as exc:
+        miss = str(exc)
+    ck("a grace it was not saved with is refused, naming the ones it has",
+       bool(miss) and "none, 1%, 2%, 5%" in miss, miss)
+    try:
+        B.extract(events[:n_d] + events[n_d:n_d + 3])
+        few = None
+    except B.BorderError as exc:
+        few = str(exc)
+    ck("too few of one identity is refused in a sentence",
+       bool(few) and "has 3 complete events with an IED identity" in few,
+       few)
+    ck("its rule in words, at a grace",
+       B.rule_words(b, 0.05).startswith("Solid IED: max amplitude ≥ ")
+       and "half-width ≤" in B.rule_words(b, 0.05)
+       and "half-width >" in B.rule_words(b, 0.05), B.rule_words(b, 0.05))
+
+
+def _cluster_stats_core():
+    """Are two clusters genuinely different, or one cloud cut in two? The
+    four tests, on clouds whose answer is known."""
+    import threading
+    from backend import rcstats
+    from sklearn.cluster import KMeans
+    head("ARE THESE CLUSTERS DIFFERENT? THE TESTS, ON CLOUDS WITH KNOWN "
+         "ANSWERS")
+    d = rcstats.dip_statistic(np.arange(100, dtype=float))
+    ck("the dip of 100 evenly spaced points is 1/(2n) = 0.005, as R's "
+       "diptest gives", abs(d - 0.005) < 1e-12, d)
+    d = rcstats.dip_statistic(np.r_[np.zeros(50), np.ones(50)])
+    # Ties are jittered by 1e-10 of the range, so 0.25 to within that.
+    ck("the dip of two point masses is 0.25, its largest",
+       abs(d - 0.25) < 1e-8, d)
+    d = rcstats.dip_statistic(np.r_[np.zeros(10), 0.5 * np.ones(80),
+                                    np.ones(10)])
+    ck("one tall point mass between two small ones dips less than two "
+       "equal ones", 0 <= d < 0.25, d)
+    # The first port hung forever on points in a straight line (both hulls
+    # the same segment): it must return, and quickly.
+    out = {}
+    th = threading.Thread(target=lambda: out.update(
+        d=rcstats.dip_statistic(np.repeat([0.0, 1.0, 2.0], 30))), daemon=True)
+    th.start()
+    th.join(10)
+    ck("points in a straight line do not hang the dip (the first port did)",
+       not th.is_alive() and "d" in out, out)
+
+    def km2(Z):
+        km = KMeans(2, n_init=3, random_state=0).fit(Z)
+        return km.labels_, km.cluster_centers_
+
+    rng = np.random.default_rng(3)
+    one = rng.standard_normal((400, 3))
+    lab, cz = km2(one)
+    r1 = rcstats.run(one, lab, cz)
+    t1 = r1["tests"]
+    ck("ONE Gaussian cloud cut in two by k-means: the verdict is 'could be "
+       "forced'", r1["verdict"] == "could be forced", t1["sigclust"])
+    ck("and the dip finds one hump along the line between the centres",
+       t1["dip"]["genuine"] is False, t1["dip"])
+    ck("and the GMM prefers one Gaussian",
+       t1["gmm"]["genuine"] is False and t1["gmm"]["delta"] < 0,
+       t1["gmm"])
+    r1b = rcstats.run(one, lab, cz)
+    ck("seeded: asked again, the same numbers",
+       r1b["tests"]["sigclust"]["p"] == t1["sigclust"]["p"]
+       and r1b["tests"]["stability"]["ari_mean"]
+       == t1["stability"]["ari_mean"])
+    two = np.vstack([rng.normal([-2.5, 0, -2.5], 0.6, (200, 3)),
+                     rng.normal([2.5, 0, 2.5], 0.6, (200, 3))])
+    lab2, cz2 = km2(two)
+    r2 = rcstats.run(two, lab2, cz2)
+    ck("TWO separate blobs: the verdict is 'genuine'",
+       r2["verdict"] == "genuine", r2["tests"]["sigclust"])
+    ck("and every one of the four tests reads them as genuine",
+       all(r2["tests"][t].get("genuine") is True for t in rcstats.TESTS),
+       {t: r2["tests"][t].get("say") for t in rcstats.TESTS})
+    z = rng.lognormal(0.0, 0.6, size=(600, 3))
+    z = (z - z.mean(axis=0)) / z.std(axis=0)
+    lab3, cz3 = km2(z)
+    r3 = rcstats.run(z, lab3, cz3)
+    t3 = r3["tests"]
+    ck("ONE SKEWED cloud: SigClust says it could be forced",
+       r3["verdict"] == "could be forced", t3["sigclust"])
+    ck("though two Gaussians fit it better than one by BIC -- which is why "
+       "the GMM is read with its agreement, and is not the recommended one",
+       t3["gmm"]["delta"] is not None and t3["gmm"]["delta"] > 10
+       and r3["recommended"] != "gmm", t3["gmm"])
+    ck("only the tests asked for are run",
+       set(rcstats.run(two, lab2, cz2, tests=["dip"])["tests"]) == {"dip"})
+    try:
+        rcstats.run(one, np.zeros(len(one), dtype=int), cz)
+        refused = None
+    except rcstats.StatsError as exc:
+        refused = str(exc)
+    ck("one cluster is refused in a sentence", bool(refused), refused)
+    small = rcstats.run(one[:12], lab[:12], cz)
+    ck("too few events: each test says why it did not run, and there is "
+       "no verdict", small["verdict"] is None
+       and "Too few" in small["tests"]["sigclust"]["error"],
+       small["tests"])
+    ck("every test carries what it asks, its pro and its con, and the "
+       "recommended one is named", r1["recommended"] == "sigclust"
+       and all(a["asks"] and a["pro"] and a["con"]
+               for a in r1["about"].values())
+       and set(r1["about"]) == set(rcstats.TESTS))
+    big = np.vstack([one] * 6)
+    rb = rcstats.run(big, np.tile(lab, 6), cz, tests=["sigclust"],
+                     n_sim=20)
+    ck("a set past %d events is drawn down to it (seeded), and says so"
+       % rcstats.MAX_N, rb["subsampled"] and rb["n"] == 2400
+       and rb["n_used"] == rcstats.MAX_N, (rb["n"], rb["n_used"]))
+
+
+def _cluster_stats_routes(A, c, unbanked):
+    """The tests asked of a picture through the routes, and the answer kept
+    with that picture and its versions -- and only with that picture."""
+    head("ARE THESE CLUSTERS DIFFERENT? ASKED OF A PICTURE, KEPT WITH IT")
+    A._RC_STATS.clear()
+    ab = c.get("/api/rootcanal/stats/about").get_json()
+    ck("the four tests are described before any is run, with the "
+       "recommended one named", ab.get("ok") and ab["recommended"]
+       == "sigclust" and len(ab["tests"]) == 4
+       and all(ab["about"][t]["pro"] and ab["about"][t]["con"]
+               for t in ab["tests"]), ab)
+    u = unbanked[0]
+    body = {"entry_id": u["entry_id"], "read": u["read"], "k": 2}
+    f0 = c.post("/api/rootcanal/fit", json=body).get_json()
+    ck("a picture not yet tested carries no answer",
+       f0.get("ok") and f0.get("stats") is None, f0.get("stats"))
+    s1 = c.post("/api/rootcanal/stats",
+                json=dict(body, level="single", n_sim=50)).get_json()
+    # The check's recording has 20 events, 9 of them complete: too few for
+    # any test, which is itself the first thing to get right.
+    ck("asked at k = 2 in Single with 9 complete events, every test says "
+       "why it did not run, and there is no verdict",
+       s1.get("ok") and set(s1["tests"]) == set(ab["tests"])
+       and s1["verdict"] is None and s1["level"] == "single"
+       and all("Too few" in (r.get("error") or r.get("say") or "")
+               for r in s1["tests"].values()),
+       s1.get("error") or s1.get("tests"))
+    ck("on the picture's complete events in its two clusters",
+       s1.get("n") == sum(1 for e in f0["events"]
+                          if e.get("cluster") is not None
+                          and not e.get("partial")), s1.get("n"))
+    f1 = c.post("/api/rootcanal/fit", json=body).get_json()
+    ck("the same picture fitted again brings the answer back with it",
+       (f1.get("stats") or {}).get("verdict") == s1["verdict"]
+       and f1["stats"]["n"] == s1["n"], f1.get("stats"))
+    changed = dict(body, band_lo=150, band_hi=250)
+    f2 = c.post("/api/rootcanal/fit", json=changed).get_json()
+    ck("a changed picture does not", f2.get("ok") and f2.get("stats") is None,
+       f2.get("error") or f2.get("stats"))
+    r3 = c.post("/api/rootcanal/stats", json=dict(body, k=3, level="single"))
+    ck("at k = 3 it is refused, in a sentence saying why",
+       r3.status_code == 400 and "k = 2" in r3.get_json()["error"],
+       r3.get_json())
+    sv = c.post("/api/rootcanal/single/save",
+                json=dict(body, nickname="tested")).get_json()
+    pay = A.ARTIFACTS.payload(sv["artifact_id"], sv["version"])
+    ck("a version saved of the tested picture carries the answer, without "
+       "the pros and cons", (pay.get("stats") or {}).get("verdict")
+       == s1["verdict"] and "about" not in pay["stats"]
+       and set(pay["stats"]["tests"]) == set(ab["tests"]), pay.get("stats"))
+    sv2 = c.post("/api/rootcanal/single/save", json=dict(
+        changed, nickname="untested",
+        stats={"verdict": "genuine", "tests": {}})).get_json()
+    pay2 = A.ARTIFACTS.payload(sv2["artifact_id"], sv2["version"])
+    ck("an answer a browser sends is not saved: only the server's, for that "
+       "picture", sv2.get("ok") and "stats" not in pay2, pay2.get("stats"))
+
+    # ENOUGH EVENTS FOR AN ANSWER: saved singles of 300 events whose shape
+    # is known -- two blobs, and one cloud -- read on another machine, so
+    # their saved numbers are the picture.
+    import copy
+    from sklearn.cluster import KMeans
+    from backend import rootcanal as rc
+    rng = np.random.default_rng(21)
+
+    def fixture(tag, X):
+        f = copy.deepcopy(pay)
+        f.pop("stats", None)
+        n = len(X)
+        mu, sd = X.mean(axis=0), X.std(axis=0)
+        km = KMeans(2, n_init=3, random_state=0).fit((X - mu) / sd)
+        lab = km.labels_
+        ied = int(np.argmax(km.cluster_centers_[:, 2]))
+        f["cols"] = {
+            "i": list(range(n)), "t": [round(0.5 * j, 6) for j in range(n)],
+            "amp": [round(float(v), 4) for v in X[:, 0]],
+            "hw": [round(float(v), 4) for v in X[:, 1]],
+            "hf": [round(float(v), 4) for v in X[:, 2]],
+            "cluster": [int(v) for v in lab],
+            "cls": ["ied" if v == ied else "ds" for v in lab],
+            "axes": [3] * n, "flags": [0] * n, "retried": [None] * n,
+            "row": [0] * n, "contact": [0] * n, "hf_contact": [0] * n,
+            "pol": [None] * n}
+        f["n"] = n
+        f["k"] = 2
+        f["scale"] = {"mean": [float(v) for v in mu],
+                      "sd": [float(v) for v in sd]}
+        f["clusters"] = [{"rank": r, "call": "ied" if r == ied else "ds",
+                          "centre_z": [float(v) for v in
+                                       km.cluster_centers_[r]]}
+                         for r in range(2)]
+        f.update(gid="sSTATS" + tag, read="feed%08d" % len(tag),
+                 read_on="ANOTHER-MACHINE", session_label="STATS " + tag,
+                 entry_id="stats-" + tag.lower())
+        f["rows_digest"] = rc._single_digest(f)
+        row = A.ARTIFACTS.create(
+            "rootcanal_single", {"entry_id": f["entry_id"], "gid": f["gid"],
+                                 "session_label": f["session_label"]},
+            f, params=dict((A.ARTIFACTS.get(sv["artifact_id"])["versions"]
+                            [-1]).get("params") or {}, k=2),
+            version_nickname="fixture " + tag)
+        return row["id"]
+
+    two = np.vstack([rng.normal([400, 8, 2], [40, 1.0, 1.0], (150, 3)),
+                     rng.normal([900, 4, 12], [60, 0.8, 1.5], (150, 3))])
+    one = rng.normal([600, 6, 6], [80, 1.2, 2.0], (300, 3))
+    a_two, a_one = fixture("TWO", two), fixture("ONE", one)
+    st2 = c.post("/api/rootcanal/stats", json={
+        "level": "single", "single": {"artifact_id": a_two, "version": 1},
+        "n_sim": 100}).get_json()
+    ck("a saved single read elsewhere is asked of by its saved numbers: two "
+       "blobs read as genuine", st2.get("ok") and st2["n"] == 300
+       and st2["verdict"] == "genuine", st2.get("error") or st2.get("tests"))
+    st1 = c.post("/api/rootcanal/stats", json={
+        "level": "single", "single": {"artifact_id": a_one, "version": 1},
+        "n_sim": 100}).get_json()
+    ck("and one cloud as could-be-forced", st1.get("ok")
+       and st1["verdict"] == "could be forced",
+       st1.get("error") or st1.get("tests"))
+    op = c.get("/api/rootcanal/single/%s?version=1" % a_two).get_json()
+    ck("opened, a saved single's picture carries the answer it was saved "
+       "with (none, for this one)", op.get("ok")
+       and "stats" in op["fit"] and op["fit"]["stats"] is None)
+
+    pb = {"members": [{"key": "s:%s:1" % a_two}], "k": 2}
+    pf0 = c.post("/api/rootcanal/pool/fit", json=pb).get_json()
+    ps = c.post("/api/rootcanal/stats",
+                json=dict(pb, level="pool", n_sim=50)).get_json()
+    ck("asked of a pool, the four tests answer at the pool level: two "
+       "blobs, genuine", ps.get("ok") and ps["level"] == "pool"
+       and set(ps["tests"]) == set(ab["tests"])
+       and ps["verdict"] == "genuine", ps.get("error") or ps.get("tests"))
+    ck("its GMM line is the pool's own GMM answer, not a second fit",
+       ps["tests"]["gmm"].get("delta") is not None
+       and ps["tests"]["gmm"].get("delta")
+       == (pf0.get("gmm") or {}).get("delta"),
+       (ps["tests"]["gmm"], (pf0.get("gmm") or {}).get("delta")))
+    pf = c.post("/api/rootcanal/pool/fit", json=pb).get_json()
+    ck("the pool refitted carries it",
+       (pf.get("stats") or {}).get("verdict") == ps["verdict"]
+       and (pf.get("stats") or {}).get("n") == ps["n"], pf.get("stats"))
+    psv = c.post("/api/rootcanal/pool/save",
+                 json=dict(pb, nickname="tested pool")).get_json()
+    ppay = A.ARTIFACTS.payload(psv["artifact_id"], psv["version"])
+    prow = A.ARTIFACTS.get(psv["artifact_id"])
+    ck("and a saved version of it carries it, in its payload and its "
+       "summary", (ppay.get("stats") or {}).get("n") == ps["n"]
+       and ((prow["versions"][-1]).get("n_summary") or {})
+       .get("stats") == "genuine",
+       (ppay.get("stats") or {}).get("verdict"))
+    pf3 = c.post("/api/rootcanal/pool/fit", json=dict(pb, k=3)).get_json()
+    r3p = c.post("/api/rootcanal/stats", json=dict(pb, k=3, level="pool"))
+    ck("a pool at k = 3 carries no answer, and asking is refused",
+       pf3.get("ok") and pf3.get("stats") is None and r3p.status_code == 400,
+       r3p.get_json())
+
+    # The single level, through Single's own route, with an answer: the
+    # fixture saved as a single of its own and its version tested again.
+    ss = c.post("/api/rootcanal/stats", json={
+        "level": "single", "single": {"artifact_id": a_two, "version": 1},
+        "n_sim": 100}).get_json()
+    ck("asked again, the same answer, from what the server kept",
+       ss.get("stats_key") == st2.get("stats_key")
+       and ss["tests"]["sigclust"]["p"] == st2["tests"]["sigclust"]["p"])
+    A._RC_STATS.clear()
+
+    head("A BORDER: DRAWN FROM A POOL, SAVED, APPLIED")
+    r_ = c.post("/api/rootcanal/border/preview", json=dict(body, level="single"))
+    ck("a border is not drawn from a single recording, and it says why",
+       r_.status_code == 400 and "v0" in r_.get_json()["error"],
+       r_.get_json())
+    tb = {"members": [{"key": "s:%s:1" % a_two}], "k": 2, "level": "pool"}
+    bp = c.post("/api/rootcanal/border/preview",
+                json=dict(tb, custom=0.02)).get_json()
+    ck("drawn from a pool against each event's own single's call, with every "
+       "grace worked out", bp.get("ok") and bp["n_identity"] == 300
+       and [lv["grace"] for lv in bp["levels"]] == [0.0, 0.01, 0.02, 0.05]
+       and set(bp["rules"]) == {str(lv["grace"]) for lv in bp["levels"]},
+       bp.get("error") or bp.get("levels"))
+    ck("its measurement is the pool's, so it can be checked where it is "
+       "applied", (bp.get("measure") or {}).get("filter_label")
+       == (pay.get("measure") or {}).get("filter_label"), bp.get("measure"))
+    nb = c.post("/api/rootcanal/border/save", json=dict(tb, nickname=" "))
+    ck("a border without a nickname is refused",
+       nb.status_code == 400 and "nickname" in nb.get_json()["error"])
+    bs = c.post("/api/rootcanal/border/save", json=dict(
+        tb, nickname="two blobs", grace=0.01, custom=0.02)).get_json()
+    bpay = A.ARTIFACTS.payload(bs["artifact_id"], 1)
+    ck("saved, it keeps every grace, the one it applies at, and its "
+       "measurement", bs.get("ok") and bpay["grace_default"] == 0.01
+       and len(bpay["levels"]) == 4 and bpay["measure"]
+       and bpay["source"].get("unsaved") is True, bs.get("error"))
+    bl = c.get("/api/rootcanal/borders").get_json()
+    row = [x for x in bl["borders"] if x["artifact_id"] == bs["artifact_id"]]
+    ck("listed for the picker with its three numbers and its graces",
+       row and row[0]["strict"] == bpay["strict"]
+       and row[0]["grace_default"] == 0.01 and len(row[0]["levels"]) == 4,
+       row)
+    ref = {"artifact_id": bs["artifact_id"], "version": None, "grace": None}
+    pfb = c.post("/api/rootcanal/pool/fit", json=dict(tb, border=ref)
+                 ).get_json()
+    lv1 = [lv for lv in bpay["levels"] if lv["grace"] == 0.01][0]
+    bu = pfb.get("border_used") or {}
+    ck("applied to the pool it was drawn from, at the grace it was saved to "
+       "apply at, it classifies as the preview said",
+       pfb.get("ok") and bu.get("grace") == 0.01
+       and bu.get("counts") == lv1["counts"]
+       and bu.get("wrong") == lv1["wrong"], pfb.get("error") or bu)
+    ck("every event carries its class, and the k-means clusters stay",
+       all(e.get("border") in ("ds", "ied", "amb", None)
+           for e in pfb["events"])
+       and sum(1 for e in pfb["events"] if e.get("border") == "amb")
+       == lv1["counts"]["amb"]
+       and all("cls_pool" in e for e in pfb["events"]))
+    pf5 = c.post("/api/rootcanal/pool/fit", json=dict(tb, border=dict(
+        ref, grace=0.0))).get_json()
+    ck("at no grace, no event lands in the other identity's solid class",
+       (pf5.get("border_used") or {}).get("wrong") == 0
+       and (pf5.get("border_used") or {}).get("counts")
+       == bpay["levels"][0]["counts"], pf5.get("border_used"))
+    bad = c.post("/api/rootcanal/pool/fit", json=dict(tb, border=dict(
+        ref, grace=0.3)))
+    ck("a grace it was not saved with is refused",
+       bad.status_code == 400 and "no 30% band" in bad.get_json()["error"]
+       and bad.get_json()["error"].startswith("The border"),
+       bad.get_json())
+    sf = c.post("/api/rootcanal/fit", json=dict(body, border=ref)).get_json()
+    ck("applied in Single, to a recording measured the same way",
+       sf.get("ok") and (sf.get("border_used") or {}).get("artifact_id")
+       == bs["artifact_id"] and all(e.get("border") in ("ds", "ied", "amb",
+                                                         None)
+                                    for e in sf["events"]),
+       sf.get("error"))
+    mm = c.post("/api/rootcanal/fit", json=dict(body, filt="ds", border=ref))
+    ck("measured another way, it is refused, saying how, in a sentence that "
+       "starts with the border", mm.status_code == 400
+       and mm.get_json()["error"].startswith("The border ‘two blobs’ cannot "
+                                             "be applied here")
+       and "DS filter" in mm.get_json()["error"], mm.get_json())
+    psb = c.post("/api/rootcanal/pool/save", json=dict(
+        tb, border=ref, nickname="classified by a border")).get_json()
+    sp_ = A.ARTIFACTS.payload(psb["artifact_id"], psb["version"])
+    ck("a pool saved with a border keeps each event's class and which "
+       "border, and cites it", sp_["params"].get("border", {}).get(
+           "artifact_id") == bs["artifact_id"]
+       and any(e.get("border") for e in sp_["events"])
+       and A.ARTIFACTS.cited_by(bs["artifact_id"], 1), sp_["params"].get(
+           "border"))
+    dl = c.post("/api/artifacts/%s/delete" % bs["artifact_id"], json={})
+    ck("so the border cannot be deleted from under it",
+       dl.status_code >= 400, dl.status_code)
+    sv_pool = c.post("/api/rootcanal/pool/save", json=dict(
+        tb, nickname="blobs pool")).get_json()
+    bs2 = c.post("/api/rootcanal/border/save", json=dict(
+        tb, nickname="from a saved pool", source={
+            "artifact_id": sv_pool["artifact_id"],
+            "version": sv_pool["version"]})).get_json()
+    bp2 = A.ARTIFACTS.payload(bs2["artifact_id"], 1)
+    ck("drawn from a saved pool, it names it and cites it",
+       bp2["source"].get("artifact_id") == sv_pool["artifact_id"]
+       and bp2["source"].get("nickname") == "blobs pool"
+       and A.ARTIFACTS.cited_by(sv_pool["artifact_id"], sv_pool["version"]),
+       bp2.get("source"))
+
+
 def _pool_synthetic(A):
     from backend import rootcanalpool as pool
     rng = np.random.default_rng(11)
@@ -1531,7 +2103,11 @@ def _pool_routes(A, tmp, fake):
     cj = c.get("/api/rootcanal/pool/candidates").get_json()
     singles = cj.get("singles") or []
     banked = [s for s in singles if s["banked"]]
-    unbanked = [s for s in singles if not s["banked"]]
+    # Cached reads ("u:"), not saved singles ("s:"), which banking above has
+    # also made: these checks are about members whose read is here.
+    unbanked = [s for s in singles if not s["banked"]
+                and str(s["key"]).startswith("u:")]
+    saved_singles = [s for s in singles if str(s["key"]).startswith("s:")]
     ck("candidates list banked results and cached reads, each marked",
        cj["ok"] and banked and unbanked
        and all({"key", "entry_id", "session_label", "gid", "project",
@@ -1716,10 +2292,679 @@ def _pool_routes(A, tmp, fake):
        dl.status_code >= 400, dl.status_code)
 
     _saved_elsewhere(A, c, unbanked)
+    _single_versions(A, c, unbanked)
+    _names_and_reference(A, c, unbanked)
+    _one_measure_and_propagation(A, c, unbanked)
+    _pools_of_pools(A, c, unbanked)
+    _cluster_stats_routes(A, c, unbanked)
 
     bank_after = {r["id"]: len(r.get("versions") or [])
                   for r in A.BANK.all()}
     ck("nothing in Pooled wrote to the Event Bank", bank_before == bank_after)
+    _deep_dive(A, c, unbanked)
+
+
+def _deep_dive(A, c, unbanked):
+    """Steps 7-10's deep dive: the events that change identity, browsed,
+    summarised, exported and banked -- into the throwaway bank."""
+    import csv as csvmod
+    head("THE DEEP DIVE: EVENTS WHOSE IDENTITY DOES NOT SIT STILL")
+    u = unbanked[0]
+    # The pool calls its first cluster IED: every event its single called DS
+    # there has switched.
+    pb = {"members": [{"key": u["key"]}], "k": 2, "level": "pool",
+          "cluster_calls": {"0": "ied"}}
+    pf = c.post("/api/rootcanal/pool/fit", json=pb).get_json()
+    dv = c.post("/api/rootcanal/switches", json=pb).get_json()
+    sw = pf["switches"]
+    ck("every switched event is listed, as many as the switch table counts",
+       dv.get("ok") and dv["counts"]["switched"] == sw["switched"] > 0
+       and dv["counts"]["rows"] == sw["switched"],
+       dv.get("error") or (dv.get("counts"), sw.get("switched")))
+    ck("each row is its dot: the same time, the same calls, and why",
+       all(pf["events"][r["j"]]["t"] == r["t"]
+           and pf["events"][r["j"]]["cls_single"] == r["single"]
+           and pf["events"][r["j"]]["cls_pool"] == r["pool"]
+           and r["why"] == ["switched %s → %s" % (r["single"].upper(),
+                                                 r["pool"].upper())]
+           for r in dv["rows"]))
+    bref = [x for x in A.ARTIFACTS.list(kind="rootcanal_border")
+            if x.get("nickname") == "two blobs"]
+    bref = {"artifact_id": bref[0]["id"], "grace": 0.0} if bref else None
+    dvb = c.post("/api/rootcanal/switches", json=dict(pb, border=bref)
+                 ).get_json()
+    bu = dvb.get("border_used") or {}
+    n_union = sum(1 for e in pf["events"]
+                  if e.get("switched") or False) + 0
+    ck("with a border applied, the ones it leaves ambiguous join them",
+       dvb.get("ok") and bu and dvb["counts"]["ambiguous"]
+       == bu["counts"]["amb"] and dvb["counts"]["switched"] == sw["switched"]
+       and dvb["counts"]["rows"] >= max(n_union, bu["counts"]["amb"]),
+       dvb.get("error") or dvb.get("counts"))
+    sm = dvb["summary"]
+    ck("summarised by mouse, mouse type, group, subgroup and condition, each "
+       "adding up to the whole",
+       set(sm) == {"mouse_key", "mouse_type", "group", "subgroup",
+                   "condition"}
+       and all(sum(r["n"] for r in t["rows"]) == dvb["counts"]["n"]
+               and sum(r["switched"] for r in t["rows"])
+               == dvb["counts"]["switched"]
+               and sum(r["ambiguous"] for r in t["rows"])
+               == dvb["counts"]["ambiguous"] for t in sm.values()),
+       {k: t["rows"] for k, t in sm.items()})
+    rows_ = list(csvmod.reader(dvb["csv"].splitlines()))
+    ck("the CSV has a row per event, its calls and why, and no pool-of-pools "
+       "column for a pool", len(rows_) == dvb["counts"]["rows"] + 1
+       and rows_[0][:3] == ["session", "project", "mouse"]
+       and "why" in rows_[0] and "pool of pools call" not in rows_[0],
+       rows_[0])
+    before = {r["id"]: len(r.get("versions") or []) for r in A.BANK.all()}
+    bk = c.post("/api/rootcanal/switches/bank", json=dict(
+        pb, border=bref, by="check_rootcanal", note="a check")).get_json()
+    made = (bk.get("made") or [{}])[0]
+    ent = A.BANK.get(made.get("entry_id")) or {}
+    ck("banked: one entry for the recording, every event in it",
+       bk.get("ok") and len(bk["made"]) == 1
+       and len(ent.get("events") or []) == dvb["counts"]["rows"]
+       and ent.get("gid") == u["gid"], bk.get("error") or bk)
+    ck("of type “Ambiguous DS / IED”, never DS or IED, so nothing reading "
+       "the DS set or its IED candidates picks it up",
+       ent.get("type") == "other" and (ent.get("source") or {}).get(
+           "pipeline") == "Root Canal deep dive",
+       (ent.get("type"), ent.get("source")))
+    epar = (ent.get("source") or {}).get("parameters") or {}
+    pe = epar.get("events") or []
+    ck("why each one is there is kept with it: its calls, border class and "
+       "numbers", len(pe) == dvb["counts"]["rows"]
+       and all("why" in x and "single" in x and "border" in x
+               and "amp_uV" in x for x in pe)
+       and (epar.get("border") or {}).get("artifact_id")
+       == (bref or {}).get("artifact_id"), epar.get("border"))
+    after = {r["id"]: len(r.get("versions") or []) for r in A.BANK.all()}
+    ck("and nothing else in the bank changed",
+       {k: v for k, v in after.items() if k != made.get("entry_id")}
+       == before, set(after) ^ set(before))
+    bk2 = c.post("/api/rootcanal/switches/bank", json=dict(
+        pb, border=bref, by="check_rootcanal")).get_json()
+    ck("banked again from the same source, it is a new version of the same "
+       "entry", bk2.get("ok") and bk2["made"][0]["entry_id"]
+       == made.get("entry_id") and bk2["made"][0]["replaced"], bk2)
+    two = [x for x in A.ARTIFACTS.list(kind="rootcanal_single")
+           if (x.get("subject") or {}).get("entry_id") == "stats-two"]
+    if two:
+        far = {"members": [{"key": "s:%s:1" % two[0]["id"]}], "k": 2,
+               "level": "pool", "cluster_calls": {"0": "ied"}}
+        bk3 = c.post("/api/rootcanal/switches/bank", json=far).get_json()
+        ck("a recording whose Event Bank entry is not here is named and "
+           "left, not guessed at", bk3.get("ok") and not bk3["made"]
+           and bk3["left"] and "not on this machine" in bk3["left"][0]["why"],
+           bk3)
+    nb = c.post("/api/rootcanal/switches/bank", json={
+        "members": [{"key": u["key"]}], "k": 2, "level": "pool"})
+    ck("nothing switched and no border: nothing to bank, said so",
+       nb.status_code == 400 and "nothing to bank" in nb.get_json()["error"],
+       nb.get_json())
+
+
+def _single_versions(A, c, unbanked):
+    """A Single kept as versions of an artifact: numbers that travel."""
+    import gzip
+    from backend import artifacts as artifactsmod, rootcanal as rc
+    head("A SINGLE, KEPT AS VERSIONS (THE NUMBERS TRAVEL, THE READ DOES NOT)")
+    banked_singles = [r for r in A.ARTIFACTS.list(kind="rootcanal_single")]
+    ck("banking kept a version of the single, named for the version it "
+       "banked", any(any(str(v.get("nickname") or "").startswith("banked as v")
+                         for v in r.get("versions") or [])
+                     for r in banked_singles),
+       [[v.get("nickname") for v in r.get("versions") or []]
+        for r in banked_singles])
+    u = unbanked[0]
+    body = {"entry_id": u["entry_id"], "read": u["read"]}
+    r0 = c.post("/api/rootcanal/single/save", json=dict(body, nickname=" "))
+    ck("a version without a nickname is refused, with a sentence",
+       r0.status_code == 400 and "nickname" in r0.get_json()["error"])
+    sug = c.post("/api/rootcanal/single/suggest", json=body).get_json()
+    ck("a nickname is suggested from what makes the version itself",
+       sug.get("ok") and sug["nickname"].startswith("k2 · LFP filter"),
+       sug)
+    r1 = c.post("/api/rootcanal/single/save",
+                json=dict(body, nickname="two")).get_json()
+    v_first = r1.get("version")
+    r2 = c.post("/api/rootcanal/single/save",
+                json=dict(body, nickname="again")).get_json()
+    ck("the same answer saved again confirms its version, makes none",
+       r2.get("ok") and r2["confirmed"] and r2["version"] == v_first, r2)
+    r3 = c.post("/api/rootcanal/single/save",
+                json=dict(body, k=3, nickname="three")).get_json()
+    ck("a changed answer is the next version, under its own nickname",
+       r3.get("ok") and r3["version"] == v_first + 1 and not r3["confirmed"]
+       and [x["nickname"] for x in r3["single"]["versions"]][-2:]
+       == ["two", "three"], r3.get("single"))
+    aid = r3["artifact_id"]
+    vrow = r3["single"]["versions"][-1]
+    ck("each version says what it was made with and what it holds, for its "
+       "hover", vrow["k"] == 3 and vrow["measure"]["filter_label"]
+       and vrow["n_summary"].get("events") and vrow["by"] is not None
+       and vrow["at"])
+    rn = c.post("/api/rootcanal/single/%s/rename" % aid,
+                json={"version": v_first, "nickname": "two clusters"}).get_json()
+    ck("a version can be renamed",
+       [x["nickname"] for x in rn["single"]["versions"]
+        if x["v"] == v_first] == ["two clusters"])
+    op = c.get("/api/rootcanal/single/%s?version=%d" % (aid, v_first + 1)
+               ).get_json()
+    _rec, lp, lgot, _rh, _st = A._rootcanal_setup(dict(body, k=3), pinned=True)
+    live = rc.fit(lgot, lp)
+    same = all(a_["i"] == b_["i"] and a_["cls"] == b_["cls"]
+               and a_["cluster"] == b_["cluster"]
+               and ((a_["amp_uV"] is None) == (b_["amp_uV"] is None))
+               and (a_["amp_uV"] is None
+                    or abs(a_["amp_uV"] - b_["amp_uV"]) < 1e-4)
+               for a_, b_ in zip(live["events"], op["fit"]["events"]))
+    ck("a version opens from its numbers alone, the same picture as the fit",
+       op.get("ok") and op["fit"]["k"] == 3 and same
+       and len(op["fit"]["events"]) == len(live["events"]))
+    gz = len(gzip.compress(json.dumps(op["payload"]).encode("utf-8")))
+    ck("and is small: %d bytes gzipped for %d events" % (gz, op["fit"]["n"]),
+       gz < 60 * op["fit"]["n"] + 4000)
+    lst = c.get("/api/rootcanal/singles?entry_id=%s" % u["entry_id"]
+                ).get_json()
+    ck("the set's versions are listed", lst.get("ok")
+       and len(lst["singles"]) == 1
+       and len(lst["singles"][0]["versions"]) >= 2)
+
+    head("POOLING SAVED SINGLES")
+    keys = []
+    for x in unbanked[:2]:
+        rr = c.post("/api/rootcanal/single/save", json={
+            "entry_id": x["entry_id"], "read": x["read"], "k": 3,
+            "nickname": "k3"}).get_json()
+        keys.append("s:%s:%d" % (rr["artifact_id"], rr["version"]))
+    fs = c.post("/api/rootcanal/pool/fit", json={
+        "members": [{"key": k_} for k_ in keys], "k": 3}).get_json()
+    fu = c.post("/api/rootcanal/pool/fit", json={
+        "members": [{"key": x["key"], "params": {"k": 3}}
+                    for x in unbanked[:2]], "k": 3}).get_json()
+    evk = lambda res: [(e["m"], e["i"], e["cls_single"], e["cls_pool"])
+                       for e in res["events"]]
+    ck("a pool of saved singles is the pool of their reads, event for event",
+       fs.get("ok") and fu.get("ok") and evk(fs) == evk(fu),
+       fs.get("error") or fu.get("error"))
+    ck("each member is pinned by its single and version",
+       all((m["pin"].get("single") or {}).get("artifact_id")
+           for m in fs["members"]))
+    cands = c.get("/api/rootcanal/pool/candidates").get_json()["singles"]
+    sc = [x for x in cands if x.get("kind") == "single"]
+    ck("saved singles are offered to pool, at their latest version, with "
+       "every version listed", sc and all(
+           x["version"] == max(v["v"] for v in x["versions"]) for x in sc))
+    x0 = unbanked[0]
+    npz = A.ROOTCANAL.cached_path(x0["gid"], x0["read"], ".npz")
+    os.replace(npz, npz + ".away")
+    try:
+        fa = c.post("/api/rootcanal/pool/fit", json={
+            "members": [{"key": k_} for k_ in keys], "k": 3}).get_json()
+        ck("with a member's read taken away it still pools, from its "
+           "numbers, and the same", fa.get("ok") and evk(fa) == evk(fs),
+           fa.get("error"))
+        rd = c.post("/api/rootcanal/pool/fit", json={
+            "members": [{"key": k_} for k_ in keys], "k": 3,
+            "measure": {"filt": "ds"}})
+        e_ = (rd.get_json() or {}).get("error") or ""
+        ck("measuring it another way is refused, naming it",
+           rd.status_code == 400 and x0["session_label"] in e_
+           and "Asked for DS filter" in e_, e_)
+    finally:
+        os.replace(npz + ".away", npz)
+
+    head("A VERSION'S NICKNAME TRAVELS, THE NEWER ONE WINS")
+    rec = A.ARTIFACTS.get(aid)
+    fp0 = A.ARTIFACTS.cloud_fingerprint(rec)
+    A.ARTIFACTS.set_version_nickname(aid, v_first, "renamed here")
+    ck("a rename changes what the shared database has to be sent",
+       A.ARTIFACTS.cloud_fingerprint(A.ARTIFACTS.get(aid)) != fp0)
+    theirs = json.loads(json.dumps(A.ARTIFACTS.get(aid)))
+    for v in theirs["versions"]:
+        if v["v"] == v_first:
+            v["nickname"] = "renamed there, later"
+            v["nickname_at"] = "2099-01-01T00:00:00+00:00"
+    A.ARTIFACTS.absorb_record(theirs)
+    ck("a later rename from another machine is taken",
+       [v["nickname"] for v in A.ARTIFACTS.get(aid)["versions"]
+        if v["v"] == v_first] == ["renamed there, later"])
+    for v in theirs["versions"]:
+        if v["v"] == v_first:
+            v["nickname"] = "an older name"
+            v["nickname_at"] = "2001-01-01T00:00:00+00:00"
+    A.ARTIFACTS.absorb_record(theirs)
+    ck("an older one is not",
+       [v["nickname"] for v in A.ARTIFACTS.get(aid)["versions"]
+        if v["v"] == v_first] == ["renamed there, later"])
+    ck("version nicknames are fields a version may carry",
+       "nickname" in artifactsmod.VERSION_FIELDS
+       and "nickname_at" in artifactsmod.VERSION_FIELDS)
+
+    head("A RESULT BANKED BEFORE VERSIONS, KEPT AS ONE")
+    real_store = A.ARTIFACTS
+    cls = [r for r in A.ROOTCANAL.all() if r.get("kind") == "classification"
+           and r.get("read")]
+    ck("there is a banked result to import", bool(cls))
+    if cls:
+        crec = cls[-1]
+        ent_id, ph = crec["entry_id"], crec["params_hash"]
+        made = []
+        try:
+            # Two fresh stores, as on a machine where nothing was kept yet.
+            for where in ("its read", "its numbers"):
+                made.append(tempfile.mkdtemp(prefix="rc_import_"))
+                A.ARTIFACTS = artifactsmod.Artifacts(os.path.join(
+                    made[-1], "GUI_logs"), None)
+                npz = A.ROOTCANAL.cached_path(crec["gid"], crec["read"],
+                                              ".npz")
+                moved = where == "its numbers" and os.path.exists(npz)
+                if moved:
+                    os.replace(npz, npz + ".away")
+                try:
+                    lst = c.get("/api/rootcanal/singles?entry_id=%s"
+                                % ent_id).get_json()
+                    ck("from %s: a banked result with no version is offered"
+                       % where, any(b["params_hash"] == ph
+                                    for b in lst.get("banked") or []),
+                       lst.get("banked"))
+                    im = c.post("/api/rootcanal/single/import", json={
+                        "entry_id": ent_id, "params_hash": ph}).get_json()
+                    ck("from %s: it is kept as v1, named for the version it "
+                       "banked" % where, im.get("ok") and im["version"] == 1
+                       and im["single"]["versions"][0]["nickname"]
+                       == "banked as v%s" % crec["ds_version"],
+                       im.get("error") or im.get("single"))
+                    lst2 = c.get("/api/rootcanal/singles?entry_id=%s"
+                                 % ent_id).get_json()
+                    ck("from %s: and is not offered again" % where,
+                       not any(b["params_hash"] == ph
+                               for b in lst2.get("banked") or []))
+                    op = c.get("/api/rootcanal/single/%s?version=1"
+                               % im["artifact_id"]).get_json()
+                    cnt = op["fit"]["counts"]
+                    ck("from %s: it opens with the banked counts" % where,
+                       op.get("ok") and cnt.get("ds") == crec["counts"]["ds"]
+                       and cnt.get("ied") == crec["counts"]["ied"],
+                       (cnt, crec["counts"]))
+                    ev_ = op["fit"]["events"]
+                    ck("from %s: every classed event is in a cluster whose "
+                       "call is its own" % where,
+                       all(e["cluster"] is not None
+                           and op["fit"]["clusters"][e["cluster"]]["call"]
+                           == e["cls"] for e in ev_ if e["cls"]
+                           and not e["flipped"]))
+                finally:
+                    if moved:
+                        os.replace(npz + ".away", npz)
+        finally:
+            A.ARTIFACTS = real_store
+            for d in made:
+                shutil.rmtree(d, ignore_errors=True)
+
+
+def _pools_of_pools(A, c, unbanked):
+    head("EVERY EVENT DS: THE CONTROLS' POOL")
+    a_ = c.post("/api/rootcanal/pool/save", json={
+        "members": [{"key": unbanked[0]["key"]}], "all_ds": True,
+        "k": 3, "nickname": "controls"}).get_json()
+    pa = A.ARTIFACTS.payload(a_["artifact_id"], 1)
+    ck("a pool marked every-event-DS is one cluster, every event DS, and "
+       "says so", pa["k"] == 1 and pa["params"].get("all_ds") is True
+       and all(e["cls_pool"] in ("ds", None) for e in pa["events"])
+       and pa["counts"]["ied"] == 0, pa["params"])
+    # The check's set is ONE recording, and two pools of one recording share
+    # a session (refused, below). So the IED mice's pool is that pool saved
+    # as another session: a fixture in the throwaway store, read elsewhere.
+    import uuid as _uuid
+    # Relabelled, so its pooled calls are not its singles' calls: v0 has to
+    # be the POOL's, and a v0 taken from the single would show.
+    b0 = c.post("/api/rootcanal/pool/fit", json={
+        "members": [{"key": unbanked[1]["key"]}], "k": 2,
+        "cluster_calls": {"0": "ied"}}).get_json()
+    pb = json.loads(json.dumps(dict(b0, pool_key="b-fixture",
+                                    mouse_types={}, focus=None)))
+    pb.pop("ok", None)
+    for m_ in pb["members"]:
+        m_["gid"] = "sCHECKB"
+        m_["session_label"] = "CHECK B"
+        m_["pin"] = dict(m_["pin"], read="b0b0b0b0b0b0")
+    brow = A.ARTIFACTS.create("rootcanal_pool",
+                              {"pool_key": _uuid.uuid4().hex,
+                               "name": "IED mice"}, pb,
+                              params=pb["params"], nickname="IED mice")
+    b_ = {"artifact_id": brow["id"]}
+    pools = [{"artifact_id": a_["artifact_id"], "version": 1},
+             {"artifact_id": b_["artifact_id"], "version": 1}]
+
+    head("A POOL OF POOLS")
+    d = c.post("/api/rootcanal/dpool/fit", json={"pools": pools, "k": 2}
+               ).get_json()
+    ck("it pools every event of both pools, from their saved numbers",
+       d.get("ok") and d["n"] == pa["n"] + pb["n"] and d["level"] == "double",
+       d.get("error"))
+    v0ok = all((e.get("v0") or {}).get("cls_pool") is not None
+               or e.get("cls_single") is None for e in d.get("events") or [])
+    ck("each event carries what its own pool called it (v0), and that is "
+       "what the switch is counted against",
+       v0ok and all(e["cls_single"] == (e.get("v0") or {}).get("cls_pool")
+                    for e in d["events"]))
+    ck("its pool's call, not its single's: the relabelled pool's events go "
+       "in as it called them",
+       any((e.get("v0") or {}).get("cls_pool")
+           != (e.get("v0") or {}).get("cls_single")
+           and e["cls_single"] == (e.get("v0") or {}).get("cls_pool")
+           for e in d["events"]))
+    ck("the controls' events all go in as DS",
+       all(e["cls_single"] == "ds" for e in d["events"]
+           if (e.get("v0") or {}).get("pool") == a_["artifact_id"]
+           and e["cls_single"]))
+    ck("and the switch is counted against the singles too",
+       "rate" in (d.get("switches_single") or {}))
+    dst = c.post("/api/rootcanal/stats", json={
+        "level": "double", "pools": pools, "k": 2, "n_sim": 50}).get_json()
+    ck("the cluster tests answer at the pool-of-pools level, on its events",
+       dst.get("ok") and dst["level"] == "double"
+       and dst["n"] == sum(1 for e in d["events"] if e.get("cluster")
+                           is not None and not e.get("partial")
+                           and not e.get("excluded")),
+       dst.get("error") or dst.get("n"))
+    dbp = c.post("/api/rootcanal/border/preview", json={
+        "level": "double", "pools": pools, "k": 2}).get_json()
+    ck("a border is drawn from a pool of pools against each event's own "
+       "pool's call (v0)", dbp.get("ok") and dbp["n_identity"]
+       == sum(1 for e in d["events"] if e.get("cls_single")),
+       dbp.get("error"))
+    # Relabelled, so the pool of pools' calls are not its pools': switches
+    # at this level, and singles whose call differs from their pool's that
+    # are NOT switches here -- the dive must tell the two apart.
+    dq = {"level": "double", "pools": pools, "k": 2,
+          "cluster_calls": {"0": "ied"}}
+    dd = c.post("/api/rootcanal/dpool/fit", json=dq).get_json()
+    ddv = c.post("/api/rootcanal/switches", json=dq).get_json()
+    want = {j for j, e in enumerate(dd["events"])
+            if e.get("cls_single") and e.get("cls_pool")
+            and e["cls_single"] != e["cls_pool"]}
+    decoy = {j for j, e in enumerate(dd["events"])
+             if (e.get("v0") or {}).get("cls_single")
+             and e.get("cls_single")
+             and e["v0"]["cls_single"] != e["cls_single"]} - want
+    ck("the deep dive of a pool of pools lists exactly the events that "
+       "switched between their own pool (v0) and the pool of pools -- not "
+       "the ones whose single and pool differed -- with all three calls",
+       ddv.get("ok") and want and decoy
+       and {r["j"] for r in ddv["rows"]} == want
+       and ddv["counts"]["switched"] == dd["switches"]["switched"]
+       and all(r["pool"] == dd["events"][r["j"]]["cls_single"]
+               and r["double"] == dd["events"][r["j"]]["cls_pool"]
+               and r["single"] == (dd["events"][r["j"]].get("v0") or {})
+               .get("cls_single") for r in ddv["rows"])
+       and "pool of pools call" in ddv["csv"].splitlines()[0],
+       ddv.get("error") or (len(want), len(decoy), ddv.get("counts")))
+    c_ = c.post("/api/rootcanal/pool/save", json={
+        "members": [{"key": unbanked[0]["key"]}], "k": 2,
+        "nickname": "overlap"}).get_json()
+    r_ = c.post("/api/rootcanal/dpool/fit", json={"pools": pools + [
+        {"artifact_id": c_["artifact_id"], "version": 1}], "k": 2})
+    e_ = (r_.get_json() or {}).get("error") or ""
+    ck("a session in two of the pools is refused, by session and by pool",
+       r_.status_code == 400 and unbanked[0]["session_label"] in e_
+       and "controls" in e_ and "overlap" in e_, e_)
+    d_ = c.post("/api/rootcanal/pool/save", json={
+        "members": [{"key": unbanked[1]["key"]}], "k": 2,
+        "measure": {"filt": "ds"}, "nickname": "on DS"}).get_json()
+    r2 = c.post("/api/rootcanal/dpool/fit", json={"pools": [
+        pools[0], {"artifact_id": d_["artifact_id"], "version": 1}], "k": 2})
+    e2 = (r2.get_json() or {}).get("error") or ""
+    ck("pools measured differently are refused, naming them",
+       r2.status_code == 400 and "measured differently" in e2
+       and "on DS" in e2, e2)
+    sv = c.post("/api/rootcanal/dpool/save", json={
+        "pools": pools, "k": 2, "nickname": "controls + IED mice"}).get_json()
+    op = c.get("/api/rootcanal/dpool/%s" % sv.get("artifact_id")).get_json()
+    ck("it saves, and reopens as saved",
+       sv.get("ok") and op.get("ok") and op["payload"]["level"] == "double"
+       and len(op["payload"]["events"]) == d["n"])
+    ls = c.get("/api/rootcanal/dpools").get_json()
+    ck("and is on the shelf of pools of pools",
+       any(x["artifact_id"] == sv["artifact_id"] for x in ls["dpools"]))
+    ev2 = [[x["key"], e["i"]] for e in d["events"][:6]
+           for x in [d["members"][e["m"]]]]
+    av = c.post("/api/rootcanal/pool/group", json={"pools": pools, "k": 2,
+                                                   "events": ev2}).get_json()
+    ck("an average over its dots works, from the reads that are here",
+       av.get("ok") is not False and av.get("n") == 6, av.get("error"))
+    mg = c.post("/api/rootcanal/margin/save", json={
+        "nickname": "double margin",
+        "extract": {"source": "pool", "pools": pools, "k": 2}}).get_json()
+    ck("its clusters can be kept as a margin", mg.get("ok"), mg.get("error"))
+
+    head("A POOL OF POOLS' IDENTITY, DOWN")
+    pr = c.post("/api/rootcanal/dpool/propagate", json={
+        "pools": pools, "k": 2, "to_pools": True, "to_singles": True,
+        "dpool": {"artifact_id": sv["artifact_id"], "version": 1,
+                  "nickname": "controls + IED mice"}}).get_json()
+    res_ = pr.get("results") or {}
+    ck("each pool gets a new version, and each recording's single one -- "
+       "where its read is here; the one read elsewhere is named",
+       pr.get("ok") and [x["ok"] for x in res_.get("pools") or []]
+       == [True, True] and [x["ok"] for x in res_.get("singles") or []]
+       == [True, False] and "another machine" in res_["singles"][1]["why"],
+       pr.get("error") or res_)
+    nb = A.ARTIFACTS.payload(b_["artifact_id"], 2) or {}
+    want = {e["i"]: e["cls_pool"] for e in d["events"]
+            if (e.get("v0") or {}).get("pool") == b_["artifact_id"]}
+    ck("the IED mice's new pool version calls every event as the pool of "
+       "pools did", nb.get("events") and all(
+           want.get(e["i"]) == e["cls_pool"] for e in nb["events"]))
+    ck("named for where its identity came from",
+       (A.ARTIFACTS.get(b_["artifact_id"])["versions"][-1].get("nickname")
+        or "").startswith("from pool of pools ‘controls + IED mice’ v1"))
+
+
+def _one_measure_and_propagation(A, c, unbanked):
+    from backend import rootcanal as rc
+    head("A SAVED SINGLE RE-CLUSTERED FROM ITS NUMBERS IS THE FIT")
+    u = unbanked[0]
+    sv = c.post("/api/rootcanal/single/save", json={
+        "entry_id": u["entry_id"], "read": u["read"], "k": 3,
+        "nickname": "k3"}).get_json()
+    pay, _row = A._rootcanal_single_payload(sv["artifact_id"], sv["version"])
+    p3 = rc.Params(**A._rootcanal_fit_part(pay["params"]))
+    _rec, _p, got_, _rh, _st = A._rootcanal_setup(
+        {"entry_id": u["entry_id"], "read": u["read"], "k": 3}, pinned=True)
+    live = rc.fit(got_, p3)
+    fr = rc.fit_rows(pay, p3)
+    ck("fit_rows on a version's numbers calls every event as fit does",
+       [e["cls"] for e in fr["events"]] == [e["cls"] for e in live["events"]]
+       and [e["cluster"] for e in fr["events"]]
+       == [e["cluster"] for e in live["events"]])
+
+    head("ONE MEASUREMENT FOR A POOL")
+    keys = []
+    for x in unbanked[:2]:
+        r_ = c.post("/api/rootcanal/single/save", json={
+            "entry_id": x["entry_id"], "read": x["read"], "k": 2,
+            "nickname": "lfp"}).get_json()
+        keys.append("s:%s:%d" % (r_["artifact_id"], r_["version"]))
+    mem = [{"key": k_} for k_ in keys]
+    m1 = c.post("/api/rootcanal/pool/measures", json={
+        "members": mem, "measure": {"filt": "ds"}}).get_json()
+    ck("asked for the DS filter, saved singles measured on LFP are said to "
+       "differ, each by name", m1.get("ok") and m1["mismatch"]
+       and all(not r_["same"] and r_["measure"]["filt"] == "lfp"
+               for r_ in m1["members"]), m1)
+    rm = c.post("/api/rootcanal/pool/remeasure", json={
+        "members": mem, "measure": {"filt": "ds"}}).get_json()
+    ck("measured again, each becomes a new version of its single",
+       rm.get("ok") and len(rm["done"]) == 2 and not rm["away"]
+       and all(d["new_key"] != d["key"] for d in rm["done"]), rm)
+    mem2 = [{"key": d["new_key"]} for d in rm["done"]]
+    m2 = c.post("/api/rootcanal/pool/measures", json={
+        "members": mem2, "measure": {"filt": "ds"}}).get_json()
+    ck("and then they agree", m2.get("ok") and not m2["mismatch"])
+    nv = (A.ARTIFACTS.get(rm["done"][0]["new_key"].split(":")[1])
+          if rm.get("done") else None) or {"versions": [{}]}
+    ck("the new version says what it was measured on, and why",
+       str(nv["versions"][-1].get("nickname") or "").startswith(
+           "re-measured to DS filter")
+       and ((nv["versions"][-1].get("params") or {}).get("measure") or {})
+       .get("filt") == "ds")
+    if not mem2:
+        return
+
+    head("A POOL'S IDENTITY, BACK INTO ITS SINGLES")
+    pb = {"members": mem2, "k": 2, "measure": {"filt": "ds"},
+          "cluster_names": {"1": {"name": "IED big", "type": "ied"}}}
+    pf = c.post("/api/rootcanal/pool/fit", json=pb).get_json()
+    x1 = unbanked[1]
+    npz = A.ROOTCANAL.cached_path(x1["gid"], x1["read"], ".npz")
+    os.replace(npz, npz + ".away")
+    try:
+        pr = c.post("/api/rootcanal/pool/propagate", json=dict(pb, pool={
+            "artifact_id": "pool-check", "version": 1,
+            "nickname": "Check pool"})).get_json()
+    finally:
+        os.replace(npz + ".away", npz)
+    ck("every member gets a new version: from its read where it is here, "
+       "from its saved numbers where it is not",
+       pr.get("ok") and pr["made"] == 2 and not pr["left"]
+       and [r_["how"] for r_ in pr["results"]]
+       == ["from its read", "from its saved numbers"], pr)
+    same = True
+    for mi, r_ in enumerate(pr.get("results") or []):
+        o = c.get("/api/rootcanal/single/%s?version=%s"
+                  % (r_["artifact_id"], r_["version"])).get_json()
+        mine = {e["i"]: (e["cls"], e.get("name")) for e in o["fit"]["events"]}
+        for e in pf["events"]:
+            if e["m"] == mi and mine.get(e["i"]) != (e["cls_pool"],
+                                                     e.get("name_pool")):
+                same = False
+        if not o["nickname"].startswith("from pool ‘Check pool’ v1"):
+            same = False
+    ck("and every event in it is called and named as the pool called it",
+       same)
+    mg = A.ARTIFACTS.get(pr["margin"]["artifact_id"])
+    ck("the pool's clusters are kept as a margin of their own, named for "
+       "the pool, with their names",
+       mg and mg["nickname"] == "Check pool v1 clusters"
+       and any(cl.get("name") == "IED big" for cl in A.ARTIFACTS.payload(
+           mg["id"])["clusters"]))
+
+
+def _names_and_reference(A, c, unbanked):
+    from backend import rootcanal as rc, sessionref
+    head("CLUSTER NAMES: A NAME SAYS WHAT A CLUSTER IS")
+    u = unbanked[0]
+    _rec, p0, got0, _rh, _st = A._rootcanal_setup(
+        {"entry_id": u["entry_id"], "read": u["read"]}, pinned=True)
+    base = rc.fit(got0, p0)
+    ds_r = [cl["rank"] for cl in base["clusters"] if cl["call"] == "ds"][0]
+    pn = rc.Params(**dict(p0.fit_params(), cluster_names={
+        str(ds_r): {"name": "IED odd", "type": "ied"}}))
+    rn = rc.fit(got0, pn)
+    cl = [x for x in rn["clusters"] if x["rank"] == ds_r][0]
+    ck("a cluster named with an IED name is called IED, by its name",
+       cl["call"] == "ied" and cl["call_by"] == "name"
+       and cl["name"] == "IED odd", cl)
+    ck("every event in it carries the name",
+       all(e["name"] == "IED odd" for e in rn["events"]
+           if e["cluster"] == ds_r))
+    ck("and a named result rebuilds from its params",
+       [e["cls"] for e in rc.fit(got0, rc.Params(**rn["params"]))["events"]]
+       == [e["cls"] for e in rn["events"]])
+    for bad, what in (({"0": {"name": "x", "type": "spike"}}, "a type "
+                       "that is neither DS nor IED"),
+                      ({"0": {"name": "y" * 61, "type": "ds"}},
+                       "a name longer than a name")):
+        try:
+            rc.Params(cluster_names=bad)
+            ck("%s is refused" % what, False)
+        except rc.RootCanalError:
+            ck("%s is refused" % what, True)
+
+    head("THE LAB'S LIST OF NAMES")
+    a1 = c.post("/api/rootcanal/names",
+                json={"name": "DS slow", "type": "ds"}).get_json()
+    ck("a name joins the list", a1.get("ok") and a1.get("added")
+       and [n["name"] for n in a1["names"]] == ["DS slow"])
+    a2 = c.post("/api/rootcanal/names",
+                json={"name": "ds SLOW", "type": "ied"})
+    ck("the same name as the other type is refused, by name",
+       a2.status_code == 400 and "already on the list as a DS name"
+       in a2.get_json()["error"])
+    a3 = c.post("/api/rootcanal/names",
+                json={"name": "DS slow", "type": "ds"}).get_json()
+    ck("adding it again changes nothing", a3.get("ok") and not a3["added"])
+    # A second machine's list, made before the first had synced.
+    from backend import artifacts as artifactsmod
+    other = A.ARTIFACTS.find("rootcanal_names", {"list": "lab"})
+    A.ARTIFACTS.create("rootcanal_names", {"list": "lab-elsewhere"},
+                       {"names": [{"name": "IED big", "type": "ied",
+                                   "at": "2026-10-06T12:00:00"}]})
+    ck("two lists made on two machines read as one",
+       {n["name"] for n in c.get("/api/rootcanal/names").get_json()["names"]}
+       == {"DS slow", "IED big"} and other is not None)
+
+    head("A SAVED SINGLE'S NAMES, AND A POOL OF ONE NAME")
+    sv = c.post("/api/rootcanal/single/save", json={
+        "entry_id": u["entry_id"], "read": u["read"],
+        "cluster_names": {str(ds_r): {"name": "DS slow", "type": "ds"}},
+        "nickname": "named"}).get_json()
+    vrow = sv["single"]["versions"][-1]
+    ck("a version lists the names it holds, for the name chips",
+       vrow["n_summary"].get("names") == ["DS slow"], vrow["n_summary"])
+    key = "s:%s:%d" % (sv["artifact_id"], sv["version"])
+    whole = c.post("/api/rootcanal/pool/fit", json={
+        "members": [{"key": key}], "k": 2}).get_json()
+    only = c.post("/api/rootcanal/pool/fit", json={
+        "members": [{"key": key, "names": ["DS slow"]}], "k": 1}).get_json()
+    n_named = sum(1 for e in whole["events"] if e["name_single"] == "DS slow")
+    ck("pooled for one name, only that name's events are in it",
+       only.get("ok") and only["n"] == n_named
+       and {e["name_single"] for e in only["events"]} == {"DS slow"},
+       only.get("error"))
+    pn2 = c.post("/api/rootcanal/pool/fit", json={
+        "members": [{"key": key}], "k": 2,
+        "cluster_names": {"1": {"name": "IED big", "type": "ied"}}}).get_json()
+    ck("a pool's own clusters can be named, and say so on every event",
+       pn2.get("ok") and any(e.get("name_pool") == "IED big"
+                             for e in pn2["events"])
+       and pn2["params"]["cluster_names"] == {
+           "1": {"name": "IED big", "type": "ied"}})
+
+    head("THE LAB'S SESSION WORKBOOK, AS A REFERENCE")
+    app_dir = A.APP_DIR
+    ref = sessionref.load(app_dir)
+    if not ref:
+        print("  skipped: no session workbook in this clone")
+        return
+    ck("it is read, keyed on project, mouse and session",
+       all(isinstance(k_, tuple) and len(k_) == 3 for k_ in ref))
+    m3 = ref.get(("PTEN", 3, 2)) or {}
+    ck("PTEN m3 s2 is a baseline session of an IED+ PTEN mouse",
+       m3.get("condition") == "Baseline" and m3.get("group") == "PTEN"
+       and m3.get("subgroup") == "IED+", m3)
+    ck("and KCNT1 m3 s2 is a different session, or none -- never PTEN's",
+       ref.get(("KCNT1", 3, 2)) != m3)
+    ck("a second read is from memory", sessionref.load(app_dir) is ref)
+    dis = sessionref.disagreements(
+        app_dir, [{"project": "PTEN", "mouse": 3, "session": 2,
+                   "paths": [r"X:\\PTEN\\M3_cno\\2023-09-20"],
+                   "label": "PTEN m3 s2"}],
+        {("PTEN", 3): {"group": "CTL", "subgroup": "IED+"}})
+    ck("where the mouse book or the folder disagrees, it is said, not "
+       "settled", sorted((d["field"], d["other_source"]) for d in dis)
+       == [("condition", "folder name"), ("group", "mouse book")], dis)
+    cands = c.get("/api/rootcanal/pool/candidates").get_json()["singles"]
+    ck("every candidate the workbook knows carries its condition, group "
+       "and subgroup, and says where they came from",
+       any(x.get("facts_from") == "workbook" and x.get("condition")
+           and x.get("group") for x in cands)
+       or not any(x.get("project") == "PTEN" for x in cands))
 
 
 def _saved_elsewhere(A, c, unbanked):
@@ -1858,6 +3103,33 @@ def _real_pool(A):
               % (r["mouse_key"], r["n"], r["switched"],
                  100 * (r["rate"] or 0)))
     ck("the real pool fits", res["n"] > 0 and g["n"] > 0)
+    if res["k"] == 2:
+        from backend import rcstats
+        t0 = time.time()
+        Z, lab, cz, gmm = A._rootcanal_stats_data(res)
+        st = rcstats.run(Z, lab, cz, gmm=gmm)
+        print("  are the clusters different? %s (%d complete events%s, "
+              "%.1f s)" % (st["verdict"], st["n"],
+                           ", %d drawn" % st["n_used"] if st["subsampled"]
+                           else "", time.time() - t0))
+        for t, r in st["tests"].items():
+            print("    %-10s %s" % (t, r.get("error") or r.get("say")))
+        ck("the cluster tests answer on the real pool",
+           st["verdict"] in ("genuine", "could be forced"), st["tests"])
+    from backend import rcborder
+    t0 = time.time()
+    b = rcborder.extract(res["events"])
+    print("  border (against each event's single): %s, %.2f s"
+          % (rcborder.name(b), time.time() - t0))
+    print("    strict: %s, %.1f%% switched" % (b["strict_counts"],
+                                               100 * b["strict_rate"]))
+    for lv in b["levels"]:
+        print("    grace %-5s %s, %d switched (%.1f%%), band ±%.2f SD"
+              % (rcborder.grace_words(lv["grace"]), lv["counts"],
+                 lv["wrong"], 100 * lv["switch_rate"], lv["s_sd"]))
+    ck("the real pool's border puts events in both solid classes",
+       b["strict_counts"]["ds"] > 0 and b["strict_counts"]["ied"] > 0,
+       b["strict_counts"])
     ck("no event's HF is a flat-window infinity",
        max(e["hf_db"] for e in res["events"] if e["hf_db"] is not None)
        < 80)

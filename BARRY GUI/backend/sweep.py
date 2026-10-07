@@ -118,8 +118,15 @@ WINDOWS = STATE + TRANSITION
 SLOW_LEN = (3.0, 3.0)
 FAST_LEN = (spark.TRANSITION_BEFORE_S, spark.TRANSITION_AFTER_S)
 
+#: The whole pair as heard (the lab, 2026-10-06): cue 1 onset to cue 2
+#: offset, 20 s, one window. A wire is usable in it only where it was clean
+#: in both cue windows (the planner joins their exclusions). Its rest is its
+#: own: 20 s epochs, so rest and cue windows are equally long.
+PAIR = ("pair",)
+PAIR_REST_S = 20.0
+
 KINDS = ("state", "trans_slow", "trans_fast", "rest", "pac", "pac_rest",
-         "pac_trans")
+         "pac_trans", "pair", "pac_pair", "rest_pair", "pac_rest_pair")
 
 #: Named bands of the sweep's own, beyond the circuits' three (coupling's
 #: BANDS, which the circuits share and this does not touch). Appended AFTER
@@ -194,9 +201,9 @@ def bands_for(kind):
         return [b for b in BAND_IDS if BAND_BY_ID[b]["speed"] == "slow"]
     if kind == "trans_fast":
         return [b for b in BAND_IDS if BAND_BY_ID[b]["speed"] == "fast"]
-    if kind in ("state", "rest"):
+    if kind in ("state", "rest", "pair", "rest_pair"):
         return list(BAND_IDS)
-    if kind in ("pac", "pac_rest", "pac_trans"):
+    if kind in ("pac", "pac_rest", "pac_trans", "pac_pair", "pac_rest_pair"):
         return []
     raise SweepError("There is no %r kind of sweep task." % (kind,))
 
@@ -744,8 +751,10 @@ def _windows_for(kind, unit):
         return spark.transition_windows(pair, *SLOW_LEN)
     if kind == "trans_fast":
         return spark.transition_windows(pair, *FAST_LEN)
-    if kind in ("rest", "pac_rest"):
+    if kind in ("rest", "pac_rest", "rest_pair", "pac_rest_pair"):
         return spark.rest_windows(pair)
+    if kind in ("pair", "pac_pair"):
+        return [("pair", float(pair["opener_t"]), float(pair["offset_t"]))]
     raise SweepError("There is no %r kind of sweep task." % (kind,))
 
 
@@ -794,9 +803,11 @@ def run_task(spec, progress=None):
     bad = sorted(int(c) for c in (spec.get("bad") or []))
     wnames = (STATE if kind in ("state", "pac") else
               TRANSITION if kind.startswith("trans") or kind == "pac_trans"
+              else PAIR if kind in ("pair", "pac_pair")
               else REST)
     U, W = len(units), len(wnames)
-    pac = kind in ("pac", "pac_rest", "pac_trans")
+    pac = kind in ("pac", "pac_rest", "pac_trans", "pac_pair",
+                   "pac_rest_pair")
     slowish = kind in ("trans_slow", "pac_trans")
     if pac:
         arr = np.full((U, W, len(PAC_CELLS), R * R), np.nan, np.float32)

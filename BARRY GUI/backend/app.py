@@ -38,6 +38,10 @@ from . import (aibeta as aibetamod,
                dspca,
                rootcanal,
                rootcanalpool,
+               sessionref as sessionrefmod,
+               rcstats,
+               rcborder,
+               rcdeep,
                guides as guidesmod,
                versions as versionsmod,
                panorama as panoramamod,
@@ -7169,7 +7173,8 @@ def _rootcanal_params(body, rec, stamps, sess=None, stored=None):
         k=body.get("k"), cluster_calls=body.get("cluster_calls"),
         margin=body.get("margin"),
         complete_only=bool(body.get("complete_only")),
-        drawn=body.get("drawn"), retry=body.get("retry"))
+        drawn=body.get("drawn"), retry=body.get("retry"),
+        cluster_names=body.get("cluster_names"))
 
 
 def _rootcanal_npz(gid, rh):
@@ -7591,6 +7596,13 @@ def api_rootcanal_fit():
         margin, used = _rootcanal_margin_for(p)
         res = rootcanal.fit(got, p, margin=margin)
         res["margin_used"] = used
+        # The tests' answer, when they were asked of this very picture.
+        res["stats"] = _rootcanal_stats_kept("single", res)
+        _rootcanal_border_on(res, body.get("border"),
+                             rootcanal.measure_of(p))
+        # The other preset filters, measured while the picture is looked
+        # at, so a filter click is answered from them.
+        rootcanal.warm_measures(got, p)
     except Exception as exc:                             # noqa: BLE001
         return fail("rootcanal/fit", exc, 400,
                     {"entry_id": body.get("entry_id"),
@@ -7737,6 +7749,10 @@ def api_rootcanal_commit():
         if hit is not None and hit.get("cls") == "ied":
             ied_src.append((ev, hit))
         else:
+            # Its cluster's name rides along, in its own field (the label
+            # still says dentate spike, which is what readers pick by).
+            if hit is not None and hit.get("name"):
+                ev = dict(ev, rc_name=hit["name"])
             ds_out.append(ev)
     counts = res["counts"]
     if len(ied_src) != counts["ied"]:
@@ -7811,6 +7827,8 @@ def api_rootcanal_commit():
                 for k in ("label", "label_id"):
                     if old.get(k) is not None:
                         item[k] = old[k]
+            if hit.get("name"):
+                item["rc_name"] = hit["name"]
             ied_events.append(item)
         ied_note = (
             "Root Canal: %d event(s) called IED in %s (entry %s, read from "
@@ -7968,8 +7986,30 @@ def api_rootcanal_commit():
                                "Banked, but the margin it used was not "
                                "cited: %s" % exc, None,
                                {"margin": mu.get("artifact_id")})
+    # BANKING KEEPS A VERSION OF THE SINGLE TOO (2026-10-06): the numbers
+    # and calls that were banked, as a version of this set's single, under
+    # the nickname given (or "banked as vN"), so the banked answer is one of
+    # the versions a pool can pick. A version that fails to save does not
+    # undo the bank; it is said, and the bank stands.
+    single_saved = None
+    try:
+        s_out, s_v, s_conf, _sp = _rootcanal_single_save(
+            body, body.get("version_nickname")
+            or "banked as v%s" % ds_version, note=user_note or None,
+            from_={"kind": "single",
+                   "banked": {"ds_version": ds_version,
+                              "ied_entry": ied_entry,
+                              "ied_version": ied_version,
+                              "params_hash": answer_hash}})
+        single_saved = {"artifact_id": s_out.get("id"), "version": s_v,
+                        "confirmed": s_conf}
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("rootcanal/commit-single",
+                           "Banked, but the single's version was not saved: "
+                           "%s" % exc, None, {"entry_id": rec["id"]})
     out = {"ok": True, "ds_entry": rec["id"], "ds_version": ds_version,
            "ied_entry": ied_entry, "ied_version": ied_version,
+           "single": single_saved,
            "removed": removed, "kept": kept,
            "unmeasured": counts["unmeasured"],
            "partial": counts["partial"], "wide": counts["wide"],
@@ -8163,7 +8203,12 @@ def _rootcanal_reg_index():
             if g and g not in out:
                 out[g] = {"project": r.get("project"),
                           "cohort": r.get("cohort") or sessreg.cohort_of(r),
-                          "paths": list(r.get("paths") or [])}
+                          "paths": list(r.get("paths") or []),
+                          # For the session workbook, which is keyed on
+                          # project, mouse and session.
+                          "mouse": r.get("mouse"),
+                          "session": r.get("session"),
+                          "label": r.get("label")}
     except Exception as exc:                             # noqa: BLE001
         STORE.record_error("rootcanal/pool-registry",
                            "Could not index the registry, so mouse types fall "
@@ -8267,9 +8312,213 @@ def _rootcanal_pool_candidates():
                 # draw a list would be seconds per row.
                 "counts": {},
             })
+    # SAVED SINGLES: a version of a `rootcanal_single`, offered at its
+    # latest, with every version listed for the picker. Its numbers travel
+    # with it, so it pools on any machine; "here" says whether its read is
+    # on this one too (for traces and for measuring it another way).
+    try:
+        singles = ARTIFACTS.list(kind="rootcanal_single")
+    except Exception:                                    # noqa: BLE001
+        singles = []
+    for r in singles:
+        if r.get("deleted"):
+            continue
+        row = _rootcanal_single_rows(r)
+        vs = [v for v in row["versions"] if v.get("here")]
+        if not vs:
+            continue
+        cur = vs[-1]
+        sub = r.get("subject") or {}
+        gid = sub.get("gid")
+        ent = BANK.get(sub.get("entry_id")) or {}
+        proj, mk, mt = _rootcanal_who(gid, ent.get("project")
+                                      or sub.get("project"),
+                                      ent.get("mouse"), reg)
+        rh = ((cur.get("inputs") or [{}])[0] or {}).get("read")
+        ns = cur.get("n_summary") or {}
+        out.append({
+            "key": "s:%s:%s" % (r["id"], cur["v"]),
+            "kind": "single",
+            "artifact_id": r["id"], "version": cur["v"],
+            "nickname": cur.get("nickname"),
+            "versions": row["versions"],
+            "entry_id": sub.get("entry_id"),
+            "session_label": sub.get("session_label")
+            or ent.get("session_label"),
+            "gid": gid, "project": proj, "mouse": ent.get("mouse"),
+            "mouse_key": mk, "mouse_type": mt,
+            "n": ns.get("events"), "banked": False,
+            "params_hash": None, "read": rh,
+            "here": bool(rh and ROOTCANAL.has_cached(gid, rh, ".npz")),
+            "measure": cur.get("measure"), "k": cur.get("k"),
+            "counts": {"ds": ns.get("ds"), "ied": ns.get("ied")},
+        })
+    _rootcanal_describe(out, reg)
     out.sort(key=lambda c: (str(c.get("project")), str(c.get("mouse_key")),
                             str(c.get("session_label")), not c["banked"]))
     return out
+
+
+def _rootcanal_mouse_facts():
+    """{(project, mouse): {"group", "subgroup"}} from the mouse book."""
+    out = {}
+    try:
+        for m in MICE.all() or []:
+            a = m.get("attrs") or {}
+            if a.get("group") or a.get("subgroup"):
+                out[(m.get("project"), m.get("mouse"))] = {
+                    "group": a.get("group"), "subgroup": a.get("subgroup")}
+    except Exception:                                    # noqa: BLE001
+        pass
+    return out
+
+
+def _rootcanal_describe(cands, reg):
+    """What each candidate's session IS, for the pool's category chips and
+    hovers: condition, group and subgroup from the lab's session workbook
+    (the reference), the mouse book where the workbook is silent, and the
+    folder name for CNO where neither says. Each says where it came from."""
+    mice = _rootcanal_mouse_facts()
+    for c in cands:
+        r = reg.get(c.get("gid")) or {}
+        proj = r.get("project") or c.get("project")
+        f = sessionrefmod.facts_for(APP_DIR, proj, r.get("mouse"),
+                                    r.get("session")) or {}
+        mb = mice.get((proj, r.get("mouse"))) or {}
+        c["session_no"] = r.get("session")
+        c["group"] = f.get("group") or mb.get("group")
+        c["subgroup"] = f.get("subgroup") or mb.get("subgroup")
+        fc = sessionrefmod.folder_condition(r.get("paths"), r.get("label"))
+        c["condition"] = f.get("condition") or fc
+        c["facts_from"] = ("workbook" if f else "mouse book" if mb
+                           else None)
+        c["condition_from"] = ("workbook" if f.get("condition")
+                               else "folder name" if fc else None)
+
+
+@app.route("/api/sessionref")
+def api_sessionref():
+    """The lab's session workbook as Jarvis reads it, and every place it
+    disagrees with the mouse book or a session's folder name."""
+    try:
+        data = sessionrefmod.load(APP_DIR)
+        dis = sessionrefmod.disagreements(APP_DIR, REG.all() or [],
+                                          _rootcanal_mouse_facts())
+        p = sessionrefmod.path_of(APP_DIR)
+        at = os.path.getmtime(p) if os.path.exists(p) else None
+    except Exception as exc:                             # noqa: BLE001
+        return fail("sessionref", exc, 400)
+    return jsonify({"ok": True, "file": sessionrefmod.SHEET_FILE,
+                    "modified": at,
+                    "sessions": sorted(data.values(), key=lambda r: (
+                        r["project"], r["mouse"], r["session"])),
+                    "disagreements": dis})
+
+
+_RC_SINGLE_PAY = {}
+
+
+def _rootcanal_single_payload(aid, v):
+    """A saved single version's payload, kept in memory by its digest."""
+    _r, row = ARTIFACTS.payload_version(aid, v)
+    if not row:
+        return None, None
+    ck = (aid, row.get("v"), row.get("digest"))
+    hit = _RC_SINGLE_PAY.get(ck)
+    if hit is None:
+        hit = ARTIFACTS.payload(aid, row.get("v"))
+        if hit is None:
+            return None, row
+        if len(_RC_SINGLE_PAY) >= 256:
+            _RC_SINGLE_PAY.pop(next(iter(_RC_SINGLE_PAY)))
+        _RC_SINGLE_PAY[ck] = hit
+    return hit, row
+
+
+def _rootcanal_member_from_single(key, w, over, k_pool, reg):
+    """A pool member that is a saved single version: its numbers from the
+    version, at the k asked for. Measured again only where asked to be
+    measured another way, and only where its read is.
+
+    Returns (member, None) or (None, (label, read_on, words)) when it would
+    have to be measured again and its read is elsewhere.
+    """
+    try:
+        _s, aid, v = str(key).split(":", 2)
+        v = int(v)
+    except ValueError:
+        raise rootcanalpool.PoolError("%s is not a saved single's version."
+                                      % key)
+    rec = ARTIFACTS.get(aid)
+    if not rec or rec.get("kind") != "rootcanal_single":
+        raise rootcanalpool.PoolError(
+            "The saved single %s is not on this machine (deleted, or not "
+            "synced yet). Take it out." % aid)
+    pay, row = _rootcanal_single_payload(aid, v)
+    if pay is None:
+        raise rootcanalpool.PoolError(
+            "Version %d of %s was saved on another machine and its numbers "
+            "have not reached this one yet. Give it a minute, or take it out."
+            % (v, (rec.get("subject") or {}).get("session_label") or aid))
+    sub = rec.get("subject") or {}
+    label = pay.get("session_label") or sub.get("session_label") or key
+    gid, rh = pay.get("gid"), pay.get("read")
+    here = bool(gid and rh and ROOTCANAL.has_cached(gid, rh, ".npz"))
+    saved_fit = _rootcanal_fit_part(pay.get("params"))
+    p0 = rootcanal.Params(**saved_fit)
+    fitp = dict(saved_fit, **over)
+    if k_pool:
+        fitp["k"] = k_pool
+    p = rootcanal.Params(entry_id=pay.get("entry_id"), **fitp)
+    remeasured = []
+    if not _rootcanal_same_measure(p0, p):
+        if not here:
+            return None, (label, pay.get("read_on"),
+                          _rootcanal_measure_words(p0, p)
+                          or ["%s, not %s" % (p.filter_label(),
+                                              p0.filter_label())])
+        rows = _rootcanal_member_rows(gid, rh, p)
+        remeasured = _rootcanal_measure_words(p0, p)
+        rows = rootcanalpool.single_calls(rows, p.k)
+        recalled = True
+    else:
+        rows = rootcanal.single_rows(pay)
+        recalled = p.k != p0.k
+        if recalled:
+            rows = rootcanalpool.single_calls(rows, p.k)
+    # ONE NAME'S EVENTS ONLY, when the pool was asked for a name ("DS slow"
+    # across every mouse): a name is a saved single's, so it is the single's
+    # numbers it filters, and a re-measured member keeps the names it had.
+    want_names = [str(x) for x in ((w or {}).get("names") or []) if x]
+    if want_names:
+        named = {int(r["i"]): r.get("name")
+                 for r in rootcanal.single_rows(pay)}
+        rows = [dict(r, name=named.get(int(r["i"])))
+                for r in rows if named.get(int(r["i"])) in want_names]
+    ent = BANK.get(pay.get("entry_id")) or {}
+    proj, mk, mt = _rootcanal_who(gid, ent.get("project")
+                                  or pay.get("project"), ent.get("mouse"),
+                                  reg)
+    pin = {"single": {"artifact_id": aid, "version": v,
+                      "nickname": row.get("nickname")},
+           "read": rh, "params": p.fit_params(),
+           "rows_digest": rootcanalpool.rows_digest(rows)}
+    if want_names:
+        pin["names"] = want_names
+    if remeasured:
+        pin["remeasured"] = remeasured
+    return {
+        "key": key, "kind": "single", "entry_id": pay.get("entry_id"),
+        "session_label": label, "gid": gid, "project": proj,
+        "mouse": ent.get("mouse"), "mouse_key": mk, "mouse_type": mt,
+        "banked": False, "read": rh, "rows": rows, "pin": pin, "here": here,
+        "rebanded": None, "remeasured": remeasured, "recalled": recalled,
+        "band": [p.band_lo, p.band_hi], "filter": p.filter_label(),
+        "read_on": None if here else pay.get("read_on"),
+        "from_saved": None, "short": 0,
+        "event_body": (dict(p.fit_params(), entry_id=pay.get("entry_id"),
+                            read=rh) if here else None),
+    }, None
 
 
 # A MEMBER'S NUMBERS, KEPT. Its amplitude, half-width and HF power depend
@@ -8568,14 +8817,26 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
             "A pool needs at least one member. Add a recording.")
     cands = {c["key"]: c for c in _rootcanal_pool_candidates()}
     kept = _rootcanal_saved_members(saved)
-    # One registry read for every member taken from the save, not one each.
-    reg = _rootcanal_reg_index() if kept else None
+    # One registry read for every member taken from a save or a saved
+    # single, not one each.
+    reg = (_rootcanal_reg_index()
+           if kept or any(str((w or {}).get("key") or "").startswith("s:")
+                          for w in want) else None)
     out = []
     # Members that would have to be measured again, and whose reads are on
     # another machine: all of them in one refusal, not the first alone.
     stuck = []
     for w in want:
         key = (w or {}).get("key")
+        # A saved single's version: its own numbers, any machine.
+        if str(key or "").startswith("s:"):
+            got_m, why = _rootcanal_member_from_single(key, w, over, k_pool,
+                                                        reg)
+            if got_m:
+                out.append(got_m)
+            else:
+                stuck.append(why)
+            continue
         c = cands.get(key)
         s = kept.get(key)
         if not c and s:
@@ -8701,6 +8962,12 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
 
 
 def _rootcanal_pool_fit(body):
+    # EVERY EVENT IS DS (2026-10-06, step 7: "pool the controls, label all
+    # of them dentate spikes"): one cluster, called DS, kept with the pool so
+    # a double pool takes its events in as DS.
+    if body.get("all_ds"):
+        body = dict(body, k=1, cluster_calls={}, cluster_names={},
+                    margin=None, drawn=[])
     members = _rootcanal_pool_members(body.get("members") or [],
                                       band=body.get("band"),
                                       measure=body.get("measure"),
@@ -8709,7 +8976,8 @@ def _rootcanal_pool_fit(body):
     # k and relabels are validated the way Single's are.
     kp = rootcanal.Params(k=body.get("k"),
                           cluster_calls=body.get("cluster_calls"),
-                          margin=body.get("margin"))
+                          margin=body.get("margin"),
+                          cluster_names=body.get("cluster_names"))
     margin, used = None, None
     if kp.margin:
         margin, used = _rootcanal_margin_load(kp.margin)
@@ -8733,7 +9001,8 @@ def _rootcanal_pool_fit(body):
                                  margin=margin,
                                  margin_mode=(kp.margin or {}).get("mode",
                                                                   "fixed"),
-                                 drawn=body.get("drawn"))
+                                 drawn=body.get("drawn"),
+                                 cluster_names=kp.cluster_names)
     res["margin_used"] = used
     res["k_from_margin"] = bool(margin) and int(margin["k"]) != kp.k
     # Whether the pool set its own band, as against each member keeping
@@ -8742,7 +9011,10 @@ def _rootcanal_pool_fit(body):
                          band_pool=body.get("band") is not None,
                          # Clusters drawn by hand, so a saved pool reopens
                          # with them.
-                         drawn=body.get("drawn") or [])
+                         drawn=body.get("drawn") or [],
+                         # And its clusters' names.
+                         cluster_names=kp.cluster_names,
+                         all_ds=bool(body.get("all_ds")))
     # Which members were re-measured over the pool's band, for the panel.
     by_key = {m["key"]: m for m in members}
     for m in res.get("members") or []:
@@ -8761,6 +9033,8 @@ def _rootcanal_pool_fit(body):
             (members[0].get("pin") or {}).get("params")))
         res["params"] = dict(res.get("params") or {},
                              measure=rootcanal.measure_of(p0))
+    _rootcanal_border_on(res, body.get("border"),
+                         (res.get("params") or {}).get("measure"))
     return members, res
 
 
@@ -8780,6 +9054,7 @@ def api_rootcanal_pool_fit():
     body = request.get_json(force=True) or {}
     try:
         _members, res = _rootcanal_pool_fit(body)
+        res["stats"] = _rootcanal_stats_kept("pool", res)
     except Exception as exc:                             # noqa: BLE001
         return fail("rootcanal/pool-fit", exc, 400,
                     {"members": [m.get("key") for m in
@@ -8806,6 +9081,9 @@ def api_rootcanal_pool_save():
                      "name it will be found by on the shelf. Give it one."}), 400
     try:
         members, res = _rootcanal_pool_fit(body)
+        kept = _rootcanal_stats_kept("pool", res)
+        if kept:
+            res["stats"] = kept
         pins = [dict(m["pin"], key=m["key"], entry_id=m["entry_id"],
                      banked=bool(m["banked"])) for m in members]
         note = (str(body.get("note") or "").strip() or None)
@@ -8855,6 +9133,7 @@ def api_rootcanal_pool_save():
                                "The pool was saved but could not cite the "
                                "margin it used: %s" % exc, None,
                                {"margin": mu.get("artifact_id")})
+    _rootcanal_border_cite(res, out, "pool")
     STORE.record_activity([{
         "action": "rootcanal.pool.save",
         "detail": {"artifact": out.get("id"), "version": out.get("version"),
@@ -8916,8 +9195,9 @@ def _rootcanal_margin_payload(res, measure, source):
         # round some dots, not a centre with a boundary, and applying its
         # mean as a nearest-centre rule elsewhere would be a different
         # thing under the same name.
-        "clusters": [{"rank": c["rank"], "call": c["call"],
-                      "centre_raw": c["centre_raw"], "n": c["n"]}
+        "clusters": [dict({"rank": c["rank"], "call": c["call"],
+                           "centre_raw": c["centre_raw"], "n": c["n"]},
+                          **({"name": c["name"]} if c.get("name") else {}))
                      for c in res["clusters"]
                      if c.get("call_by") != "drawn"],
         "calls_by_hand": [c["rank"] for c in res["clusters"]
@@ -8952,6 +9232,14 @@ def _rootcanal_margin_extract(body):
                   "from_margin": used}
         return _rootcanal_margin_payload(res, rootcanal.measure_of(p),
                                          source), [rec.get("gid")]
+    if body.get("pools"):
+        _m, res = _rootcanal_dpool_fit(body)
+        source = {"kind": "dpool", "pools": res.get("pools"),
+                  "n_events": res.get("n_placed")}
+        return (_rootcanal_margin_payload(
+                    res, (res.get("params") or {}).get("measure") or {},
+                    source),
+                sorted({m.get("gid") for m in _m if m.get("gid")}))
     if src not in ("pool", "pool_group"):
         raise rootcanal.RootCanalError(
             "A margin is cut from \"single\", \"pool\" or \"pool_group\".")
@@ -9052,11 +9340,13 @@ def api_rootcanal_pool_group():
     """
     body = request.get_json(force=True) or {}
     try:
-        members = _rootcanal_pool_members(body.get("members") or [],
-                                          band=body.get("band"),
-                                          measure=body.get("measure"),
-                                          k=body.get("k"),
-                                          saved=body.get("saved"))
+        members = (_rootcanal_dpool_members(body.get("pools"))
+                   if body.get("pools") else
+                   _rootcanal_pool_members(body.get("members") or [],
+                                           band=body.get("band"),
+                                           measure=body.get("measure"),
+                                           k=body.get("k"),
+                                           saved=body.get("saved")))
         by_key = {m["key"]: m for m in members}
         want = {}
         for key, i in body.get("events") or []:
@@ -9201,6 +9491,1560 @@ def api_rootcanal_margin_one(artifact_id):
                     {"artifact_id": artifact_id})
     return jsonify({"ok": True, "artifact": rec, "version": used["version"],
                     "payload": payload})
+
+
+# ==========================================================================
+# ROOT CANAL SINGLES, KEPT (2026-10-06)
+# ==========================================================================
+# A Single's answer saved as a version of a `rootcanal_single` artifact:
+# the numbers and calls column by column, a few KB, which the shared
+# database carries to every machine (the read never leaves the one that made
+# it). Refitted here from the request, never taken from the browser, like a
+# pool: a version is exactly what those settings produce.
+def _rootcanal_single_meta(rec, p, rh, gid, from_=None):
+    """Who and where, for a Single version's payload."""
+    proj, mk, _mt = _rootcanal_who(gid, rec.get("project"), rec.get("mouse"),
+                                   _rootcanal_reg_index())
+    return {"entry_id": rec["id"], "gid": gid,
+            "session_label": rec.get("session_label") or rec.get("name"),
+            "project": proj, "mouse": rec.get("mouse"), "mouse_key": mk,
+            "read": rh, "read_on": STORE.provenance().get("machine"),
+            "from_version": p.from_version,
+            "from": from_ or {"kind": "single"}}
+
+
+def _rootcanal_pin_read(body):
+    """Whether a Single request means exactly the read it names.
+
+    A request with a read and no DS version -- a pool member's read, a
+    version propagated from a pool -- is that read, whatever the entry's
+    live set has become since (a commit cleans it, and the live set then
+    holds fewer events than the read). One that names its version is read
+    against that version, as Single's own requests are.
+    """
+    return bool(body.get("read")) and not body.get("from_version")
+
+
+def _rootcanal_single_suggest(p, res):
+    """A nickname to start from: what makes this version itself."""
+    bits = ["k%d" % res["k"], p.filter_label().split(",")[0],
+            "%s–%s Hz" % (rootcanal._g(p.band_lo), rootcanal._g(p.band_hi))]
+    if p.complete_only:
+        bits.append("3 axes only")
+    if p.retry:
+        bits.append("%d searched again" % len(p.retry))
+    if p.margin:
+        bits.append("margin")
+    return " · ".join(bits)
+
+
+def _rootcanal_single_save(body, nickname, note=None, from_=None):
+    """Fit as the body asks, and keep it as the next version of its single.
+
+    Returns (artifact record, version number, confirmed, payload). The same
+    answer saved again is a confirmation of the version that holds it, as
+    for every artifact.
+    """
+    nick = str(nickname or "").strip()
+    if not nick:
+        raise rootcanal.RootCanalError(
+            "A version needs a nickname -- the name it will be found by. "
+            "Give it one.")
+    rec, p, got, rh, _st = _rootcanal_setup(body,
+                                            pinned=_rootcanal_pin_read(body))
+    margin, used = _rootcanal_margin_for(p)
+    res = rootcanal.fit(got, p, margin=margin)
+    res["params"] = dict(res["params"], read=rh)
+    gid = rec.get("gid")
+    payload = rootcanal.single_payload(
+        res, _rootcanal_single_meta(rec, p, rh, gid, from_))
+    payload["margin_used"] = used
+    kept = _rootcanal_stats_kept("single", res)
+    if kept:
+        payload["stats"] = kept
+    subject = {"entry_id": rec["id"], "gid": gid,
+               "session_label": payload["session_label"],
+               "project": payload["project"], "mouse_key": payload["mouse_key"]}
+    have = ARTIFACTS.find("rootcanal_single", subject)
+    before = (have or {}).get("version")
+    vparams = dict(p.fit_params(), measure=rootcanal.measure_of(p), read=rh)
+    inputs = [{"entry_id": rec["id"], "from_version": p.from_version,
+               "read": rh, "rows_digest": payload["rows_digest"]}]
+    # Which banked result this version is, so it is not offered for import.
+    banked_ph = ((from_ or {}).get("imported_from")
+                 or ((from_ or {}).get("banked") or {}).get("params_hash"))
+    if banked_ph:
+        inputs[0]["imported_from"] = banked_ph
+    if from_ and from_.get("artifact_id"):
+        inputs.append(dict(from_))
+    out = ARTIFACTS.put("rootcanal_single", subject, payload, params=vparams,
+                        inputs=inputs, note=note, version_nickname=nick)
+    confirmed = bool(have) and out.get("version") == before
+    return out, out.get("version"), confirmed, payload
+
+
+def _rootcanal_single_rows(rec):
+    """One single artifact for the panel: its versions, newest last, each
+    with its nickname, who/when/where, settings and counts -- what the
+    version list and its hovers draw. No payloads."""
+    vs = []
+    for v in rec.get("versions") or []:
+        vp = v.get("params") or {}
+        vs.append({"v": v.get("v"), "id": v.get("id"),
+                   "nickname": v.get("nickname"), "at": v.get("at"),
+                   "by": v.get("by"), "machine": v.get("machine"),
+                   "app_version": v.get("app_version"), "note": v.get("note"),
+                   "measure": vp.get("measure"), "k": vp.get("k"),
+                   "complete_only": vp.get("complete_only"),
+                   "retry": len(vp.get("retry") or []),
+                   "margin": vp.get("margin"),
+                   "n_summary": v.get("n_summary") or {},
+                   "confirmed": len(v.get("confirmed") or []),
+                   "here": bool(v.get("here", True)),
+                   "inputs": v.get("inputs") or []})
+    vs.sort(key=lambda x: int(x.get("v") or 0))
+    sub = rec.get("subject") or {}
+    return {"artifact_id": rec.get("id"), "entry_id": sub.get("entry_id"),
+            "gid": sub.get("gid"), "session_label": sub.get("session_label"),
+            "project": sub.get("project"), "mouse_key": sub.get("mouse_key"),
+            "version": rec.get("version"), "versions": vs,
+            "deleted": bool(rec.get("deleted"))}
+
+
+@app.route("/api/rootcanal/single/save", methods=["POST"])
+def api_rootcanal_single_save():
+    """Keep the Single as it stands as the next version of its set's single.
+    Body: the fit body, plus `nickname` (required) and `note`."""
+    body = request.get_json(force=True) or {}
+    try:
+        out, v, confirmed, payload = _rootcanal_single_save(
+            body, body.get("nickname"), note=body.get("note"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/single-save", exc, 400,
+                    {"entry_id": body.get("entry_id")})
+    STORE.record_activity([{
+        "action": "rootcanal.single.save",
+        "detail": {"artifact": out.get("id"), "version": v,
+                   "confirmed": confirmed, "entry_id": body.get("entry_id")},
+    }])
+    return jsonify({"ok": True, "artifact_id": out.get("id"), "version": v,
+                    "confirmed": confirmed,
+                    "rows_digest": payload["rows_digest"],
+                    "single": _rootcanal_single_rows(out)})
+
+
+@app.route("/api/rootcanal/single/suggest", methods=["POST"])
+def api_rootcanal_single_suggest():
+    """The nickname a version of this fit would start from."""
+    body = request.get_json(force=True) or {}
+    try:
+        rec, p, got, _rh, _st = _rootcanal_setup(
+            body, pinned=_rootcanal_pin_read(body))
+        margin, _used = _rootcanal_margin_for(p)
+        res = rootcanal.fit(got, p, margin=margin)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/single-suggest", exc, 400)
+    return jsonify({"ok": True,
+                    "nickname": _rootcanal_single_suggest(p, res)})
+
+
+def _rootcanal_banked_unkept(entry_id, singles):
+    """The set's banked Root Canal results that are not a version yet: what
+    "import as a version" offers, for results banked before Bank kept one."""
+    kept = set()
+    for sg in singles:
+        for v in sg.get("versions") or []:
+            for inp in v.get("inputs") or []:
+                if inp.get("imported_from"):
+                    kept.add(inp["imported_from"])
+            for inp in v.get("inputs") or []:
+                b = (inp or {}).get("banked") or {}
+                if b.get("params_hash"):
+                    kept.add(b["params_hash"])
+    out = []
+    for r in ROOTCANAL.all() or []:
+        if r.get("kind") != "classification" or r.get("entry_id") != entry_id:
+            continue
+        if r.get("params_hash") in kept:
+            continue
+        out.append({"params_hash": r.get("params_hash"),
+                    "ds_version": r.get("ds_version"),
+                    "at": ((r.get("updated") or r.get("created") or {})
+                           .get("at")),
+                    "counts": r.get("counts") or {}, "k": r.get("k"),
+                    "here": bool(r.get("read") and ROOTCANAL.has_cached(
+                        r.get("gid"), r.get("read"), ".npz"))})
+    out.sort(key=lambda x: str(x.get("at") or ""))
+    return out
+
+
+@app.route("/api/rootcanal/singles")
+def api_rootcanal_singles():
+    """Every saved single (or the one for `?entry_id=`), with its versions --
+    and, for one entry, its banked results not kept as a version yet."""
+    want = request.args.get("entry_id") or None
+    try:
+        rows = ARTIFACTS.list(kind="rootcanal_single")
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/singles", exc, 400)
+    out = [_rootcanal_single_rows(r) for r in rows
+           if not r.get("deleted")
+           and (not want or (r.get("subject") or {}).get("entry_id") == want)]
+    out.sort(key=lambda r: str(r.get("session_label") or ""))
+    body = {"ok": True, "singles": out}
+    if want:
+        try:
+            body["banked"] = _rootcanal_banked_unkept(want, out)
+        except Exception:                                # noqa: BLE001
+            body["banked"] = []
+    return jsonify(body)
+
+
+def _rootcanal_payload_from_record(rec):
+    """A banked classification as a single's payload, from its rows: for a
+    result whose read is not on this machine. Each event's cluster is the
+    nearest banked centre on the axes it has, in the banked scale -- the
+    rule the fit placed it by."""
+    import numpy as np
+    cols_in = list(rec.get("columns") or [])
+    sc = rec.get("scale") or {}
+    mu = np.array(sc.get("mean") or [0, 0, 0], float)
+    sd = np.array(sc.get("sd") or [1, 1, 1], float)
+    sd[sd == 0] = 1.0
+    cz = np.array([c.get("z") or [0, 0, 0] for c in rec.get("centres") or []],
+                  float).reshape(-1, 3)
+    events = []
+    for r in rec.get("rows") or []:
+        d = dict(zip(cols_in, r))
+        x = [d.get("amp_uV"), d.get("hw_ms"), d.get("hf_db")]
+        have = [v is not None for v in x]
+        z = [None if v is None else (float(v) - mu[a]) / sd[a]
+             for a, v in enumerate(x)]
+        cl = None
+        if d.get("cls") is not None and len(cz) and sum(have) >= 2:
+            m = np.array(have)
+            zz = np.array([v if v is not None else 0.0 for v in z])
+            cl = int(np.argmin(((cz[:, m] - zz[m]) ** 2).sum(axis=1)))
+        events.append({
+            "i": int(d.get("i")), "t": float(d.get("t")),
+            "amp_uV": x[0], "hw_ms": x[1], "hf_db": x[2],
+            "cluster": cl, "cls": d.get("cls"),
+            "axes": d.get("axes"), "partial": bool(d.get("partial")),
+            "wide": bool(d.get("wide")), "excluded": False,
+            "flipped": bool(d.get("flipped")), "unresolved": False,
+            "retried": None, "contact_row": None,
+            "contact": d.get("contact"), "hf_contact": None,
+            "polarity": None,
+        })
+    res = {"events": events, "k": rec.get("k") or len(cz) or 2,
+           "params": dict(rec.get("params") or {}, read=rec.get("read")),
+           "clusters": rec.get("clusters") or [],
+           "centres": rec.get("centres") or [], "scale": sc,
+           "axes": rec.get("axes") or [], "rule": rec.get("rule"),
+           "counts": rec.get("counts") or {}, "bad": {}, "missed": []}
+    return res
+
+
+@app.route("/api/rootcanal/single/import", methods=["POST"])
+def api_rootcanal_single_import():
+    """A banked Root Canal result kept as a version of its single. From its
+    read where the read is here (the same answer, refitted); from the
+    numbers the bank filed where it is not. Body: {entry_id, params_hash}."""
+    body = request.get_json(force=True) or {}
+    try:
+        ent = BANK.get(body.get("entry_id")) or {}
+        gid = ent.get("gid")
+        rec = ROOTCANAL.get(gid, body.get("params_hash")) if gid else None
+        if not rec or rec.get("kind") != "classification":
+            raise rootcanal.RootCanalError(
+                "There is no banked Root Canal result %s for this set."
+                % body.get("params_hash"))
+        nick = (str(body.get("nickname") or "").strip()
+                or "banked as v%s" % rec.get("ds_version"))
+        from_ = {"kind": "import", "imported_from": rec.get("params_hash"),
+                 "banked": {"ds_version": rec.get("ds_version"),
+                            "params_hash": rec.get("params_hash")}}
+        rh = rec.get("read")
+        if rh and ROOTCANAL.has_cached(gid, rh, ".npz"):
+            fbody = dict(_rootcanal_fit_part(rec.get("params")),
+                         entry_id=ent["id"], read=rh)
+            out, v, confirmed, _pay = _rootcanal_single_save(
+                fbody, nick, note="Imported from the banked result.",
+                from_=from_)
+        else:
+            res = _rootcanal_payload_from_record(rec)
+            p = rootcanal.Params(**_rootcanal_fit_part(rec.get("params")))
+            meta = _rootcanal_single_meta(ent, p, rh, gid, from_)
+            meta["read_on"] = ((rec.get("created") or {}).get("machine")
+                               or meta.get("read_on"))
+            payload = rootcanal.single_payload(res, meta)
+            subject = {"entry_id": ent["id"], "gid": gid,
+                       "session_label": payload["session_label"],
+                       "project": payload["project"],
+                       "mouse_key": payload["mouse_key"]}
+            have = ARTIFACTS.find("rootcanal_single", subject)
+            before = (have or {}).get("version")
+            out = ARTIFACTS.put(
+                "rootcanal_single", subject, payload,
+                params=dict(p.fit_params(), measure=rootcanal.measure_of(p),
+                            read=rh),
+                inputs=[{"entry_id": ent["id"], "read": rh,
+                         "rows_digest": payload["rows_digest"],
+                         "imported_from": rec.get("params_hash")}],
+                note="Imported from the banked result's numbers.",
+                version_nickname=nick)
+            v = out.get("version")
+            confirmed = bool(have) and v == before
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/single-import", exc, 400,
+                    {"entry_id": body.get("entry_id")})
+    return jsonify({"ok": True, "artifact_id": out.get("id"), "version": v,
+                    "confirmed": confirmed,
+                    "single": _rootcanal_single_rows(out)})
+
+
+@app.route("/api/rootcanal/single/<artifact_id>")
+def api_rootcanal_single_one(artifact_id):
+    """One version of a saved single: its payload, and the panel's fit built
+    from it -- no refit and no read, so it opens on any machine."""
+    version = request.args.get("version") or None
+    try:
+        rec = ARTIFACTS.get(artifact_id)
+        if not rec or rec.get("kind") != "rootcanal_single":
+            raise rootcanal.RootCanalError(
+                "There is no saved Root Canal single %s." % artifact_id)
+        payload = ARTIFACTS.payload(artifact_id, version)
+        if payload is None:
+            raise rootcanal.RootCanalError(
+                "That version was saved on another machine and its numbers "
+                "have not reached this one yet.")
+        _r, row = ARTIFACTS.payload_version(artifact_id, version)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/single", exc, 400,
+                    {"artifact_id": artifact_id})
+    gid, rh = payload.get("gid"), payload.get("read")
+    here = bool(gid and rh and ROOTCANAL.has_cached(gid, rh, ".npz"))
+    return jsonify({"ok": True, "version": row.get("v"),
+                    "nickname": row.get("nickname"),
+                    "single": _rootcanal_single_rows(rec),
+                    "payload": payload, "here": here,
+                    "fit": rootcanal.single_fit_view(payload)})
+
+
+@app.route("/api/rootcanal/single/<artifact_id>/rename", methods=["POST"])
+def api_rootcanal_single_rename(artifact_id):
+    """A version's nickname, changed. Body: {version, nickname}."""
+    body = request.get_json(force=True) or {}
+    try:
+        rec = ARTIFACTS.get(artifact_id)
+        if not rec or rec.get("kind") != "rootcanal_single":
+            raise rootcanal.RootCanalError(
+                "There is no saved Root Canal single %s." % artifact_id)
+        if not str(body.get("nickname") or "").strip():
+            raise rootcanal.RootCanalError("A version needs a nickname.")
+        out = ARTIFACTS.set_version_nickname(artifact_id, body.get("version"),
+                                             body.get("nickname"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/single-rename", exc, 400,
+                    {"artifact_id": artifact_id})
+    return jsonify({"ok": True, "single": _rootcanal_single_rows(out)})
+
+
+# THE LAB'S CLUSTER NAMES (2026-10-06): "DS slow", "IED big" -- one list
+# everybody picks from, so the same thing is spelled the same way in every
+# single, pool and bank entry. Kept as an artifact so it travels both ways
+# (presets only go up). Read as the union of every version of every list
+# artifact, the newest word on each name winning, so two machines adding
+# names at once lose nothing.
+RC_NAMES_SUBJECT = {"list": "lab"}
+
+
+def _rootcanal_names():
+    """[{name, type, by, at}], one per name, newest word on each."""
+    best = {}
+    try:
+        recs = [r for r in ARTIFACTS.list(kind="rootcanal_names")
+                if not r.get("deleted")]
+    except Exception:                                    # noqa: BLE001
+        recs = []
+    for r in recs:
+        for v in r.get("versions") or []:
+            try:
+                pay = ARTIFACTS.payload(r["id"], v.get("v"))
+            except Exception:                            # noqa: BLE001
+                pay = None
+            for n in (pay or {}).get("names") or []:
+                key = str(n.get("name") or "").strip().lower()
+                if not key:
+                    continue
+                if key not in best or str(n.get("at") or "") > str(
+                        best[key].get("at") or ""):
+                    best[key] = n
+    return sorted([n for n in best.values() if not n.get("retired")],
+                  key=lambda n: (n.get("type") != "ds",
+                                 str(n.get("name")).lower()))
+
+
+@app.route("/api/rootcanal/names")
+def api_rootcanal_names():
+    try:
+        return jsonify({"ok": True, "names": _rootcanal_names()})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/names", exc, 400)
+
+
+@app.route("/api/rootcanal/names", methods=["POST"])
+def api_rootcanal_names_add():
+    """A name joins the lab's list. Body: {name, type}. A name already there
+    under the other type is refused: one name means one thing."""
+    body = request.get_json(force=True) or {}
+    try:
+        name = str(body.get("name") or "").strip()
+        typ = str(body.get("type") or "").strip().lower()
+        rootcanal.Params(cluster_names={"0": {"name": name, "type": typ}})
+        if not name:
+            raise rootcanal.RootCanalError("A name needs some letters.")
+        have = {n["name"].lower(): n for n in _rootcanal_names()}
+        hit = have.get(name.lower())
+        if hit and hit.get("type") != typ:
+            raise rootcanal.RootCanalError(
+                "‘%s’ is already on the list as a%s %s name. One name means "
+                "one thing: pick it as it is, or choose another."
+                % (hit["name"], "n" if hit["type"] == "ied" else "",
+                   hit["type"].upper()))
+        if hit:
+            return jsonify({"ok": True, "added": False,
+                            "names": list(have.values())})
+        prov = STORE.provenance()
+        names = list(have.values()) + [{
+            "name": name, "type": typ, "by": prov.get("user"),
+            "machine": prov.get("machine"), "at": prov.get("at")}]
+        ARTIFACTS.put("rootcanal_names", RC_NAMES_SUBJECT,
+                      {"names": names}, note="added ‘%s’" % name,
+                      nickname="Root Canal cluster names")
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/names-add", exc, 400)
+    return jsonify({"ok": True, "added": True, "names": _rootcanal_names()})
+
+
+# ==========================================================================
+# ONE MEASUREMENT FOR A POOL, AND A POOL'S IDENTITY BACK INTO ITS SINGLES
+# (2026-10-06)
+# ==========================================================================
+def _rootcanal_member_measure(w, cands, kept):
+    """How one pool member was measured, without fitting anything: a saved
+    single's version, a banked result, or a saved pool's member. None for a
+    cached read, which is measured the pool's way whatever is asked."""
+    key = str((w or {}).get("key") or "")
+    if key.startswith("s:"):
+        try:
+            _s, aid, v = key.split(":", 2)
+            pay, _row = _rootcanal_single_payload(aid, int(v))
+        except Exception:                                # noqa: BLE001
+            pay = None
+        if not pay:
+            return None
+        gid, rh = pay.get("gid"), pay.get("read")
+        return {"params": _rootcanal_fit_part(pay.get("params")),
+                "label": pay.get("session_label") or key,
+                "here": bool(gid and rh and ROOTCANAL.has_cached(gid, rh,
+                                                                 ".npz")),
+                "read_on": pay.get("read_on"), "kind": "single"}
+    c = cands.get(key)
+    if c and c.get("banked"):
+        rec = ROOTCANAL.get(c["gid"], c["params_hash"]) or {}
+        return {"params": _rootcanal_fit_part(rec.get("params")),
+                "label": c.get("session_label") or key,
+                "here": bool(c.get("here")), "read_on": None,
+                "kind": "banked"}
+    s = kept.get(key)
+    if s:
+        return {"params": _rootcanal_fit_part(
+                    (s["member"].get("pin") or {}).get("params")),
+                "label": s["member"].get("session_label") or key,
+                "here": False, "read_on": s.get("read_on"),
+                "kind": "saved pool"}
+    return None
+
+
+def _measure_key(m):
+    return tuple(m[k] for k in RC_SAME_MEASURE)
+
+
+@app.route("/api/rootcanal/pool/measures", methods=["POST"])
+def api_rootcanal_pool_measures():
+    """How each member of a pool was measured, against the measurement the
+    pool asks for -- what the "one filter for everything" dialog shows
+    before a pool is fitted. Fits nothing and reads nothing."""
+    body = request.get_json(force=True) or {}
+    try:
+        over = {k: v for k, v in (body.get("measure") or {}).items()
+                if k in RC_MEASURE_KEYS and v is not None}
+        target = rootcanal.measure_of(rootcanal.Params(**over))
+        # The candidate list costs seconds cold, and only a banked member
+        # needs it: a saved single answers from its version.
+        want = body.get("members") or []
+        cands = ({c["key"]: c for c in _rootcanal_pool_candidates()}
+                 if any(str((w or {}).get("key") or "").startswith("b:")
+                        for w in want) else {})
+        kept = _rootcanal_saved_members(body.get("saved"))
+        rows, distinct = [], {}
+        for w in body.get("members") or []:
+            got = _rootcanal_member_measure(w, cands, kept)
+            if not got:
+                continue
+            ms = rootcanal.measure_of(rootcanal.Params(**got["params"]))
+            distinct.setdefault(_measure_key(ms), ms)
+            rows.append({"key": w.get("key"), "label": got["label"],
+                         "kind": got["kind"], "here": got["here"],
+                         "read_on": got["read_on"], "measure": ms,
+                         "same": _measure_key(ms) == _measure_key(target)})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-measures", exc, 400)
+    return jsonify({"ok": True, "target": target, "members": rows,
+                    "distinct": list(distinct.values()),
+                    "mismatch": any(not r["same"] for r in rows)})
+
+
+@app.route("/api/rootcanal/pool/remeasure", methods=["POST"])
+def api_rootcanal_pool_remeasure():
+    """Bring the pool's saved singles to one measurement: each one measured
+    another way, whose read is here, gets a new version measured the target
+    way. Those whose read is elsewhere are named, not touched. Body: the
+    pool body (members, measure)."""
+    body = request.get_json(force=True) or {}
+    try:
+        over = {k: v for k, v in (body.get("measure") or {}).items()
+                if k in RC_MEASURE_KEYS and v is not None}
+        tp = rootcanal.Params(**over)
+        target = rootcanal.measure_of(tp)
+        done, away = [], []
+        for w in body.get("members") or []:
+            key = str((w or {}).get("key") or "")
+            if not key.startswith("s:"):
+                continue
+            _s, aid, v = key.split(":", 2)
+            pay, _row = _rootcanal_single_payload(aid, int(v))
+            if not pay:
+                continue
+            fitp = _rootcanal_fit_part(pay.get("params"))
+            p0 = rootcanal.Params(**fitp)
+            if _rootcanal_same_measure(p0, tp):
+                continue
+            gid, rh = pay.get("gid"), pay.get("read")
+            if not (gid and rh and ROOTCANAL.has_cached(gid, rh, ".npz")):
+                away.append({"key": key, "label": pay.get("session_label"),
+                             "read_on": pay.get("read_on")})
+                continue
+            fbody = dict(fitp, **over)
+            fbody.update(entry_id=pay.get("entry_id"), read=rh)
+            fbody.pop("margin", None)        # a margin is one measurement's
+            out, nv, _conf, _p = _rootcanal_single_save(
+                fbody, "re-measured to %s"
+                % target["filter_label"].split(",")[0],
+                note="Measured again so a pool's members are one "
+                     "measurement: %s." % target["filter_label"],
+                from_={"kind": "remeasure", "from_key": key})
+            done.append({"key": key, "new_key": "s:%s:%s" % (out["id"], nv),
+                         "label": pay.get("session_label")})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-remeasure", exc, 400)
+    return jsonify({"ok": True, "target": target, "done": done,
+                    "away": away})
+
+
+def _rootcanal_propagate_members(members, k, mref, names, meas,
+                                 complete_only, from_, vnick):
+    """New single versions carrying an identity given as a margin (applied
+    fixed) and names, at a measurement: from each member's read where it is
+    here, from a saved single's numbers where it is not. A pool's member,
+    or a pool of pools' (whose own member is named in its pin)."""
+    out = []
+    for m in members:
+        # In a pool of pools, the recording's own key in its pool.
+        key = (((m.get("pin") or {}).get("pool") or {}).get("member")
+               or m["key"])
+        pin = m.get("pin") or {}
+        gid, rh = m.get("gid"), pin.get("read") or m.get("read")
+        here = bool(gid and rh and ROOTCANAL.has_cached(gid, rh, ".npz"))
+        try:
+            # The member's own settings (its retries, its window...),
+            # at the pool's measurement, with the pool's identity in
+            # place of its own: no relabels, centres, drawn clusters or
+            # flips of its own survive a pool's identity.
+            ident = dict(k=k, margin=mref,
+                         cluster_names=names, cluster_calls={},
+                         centres=None, drawn=[], flips=[],
+                         complete_only=complete_only)
+            if here:
+                fbody = dict(_rootcanal_fit_part(pin.get("params")),
+                             **meas)
+                fbody.update(ident, entry_id=m["entry_id"], read=rh)
+                so, sv, sc, _p = _rootcanal_single_save(
+                    fbody, vnick, note="The pool's identity, as a "
+                    "margin applied fixed.", from_=from_)
+                out.append({"key": key, "ok": True,
+                            "artifact_id": so["id"], "version": sv,
+                            "confirmed": sc, "how": "from its read"})
+                continue
+            if str(key).startswith("s:"):
+                _s, aid, v = key.split(":", 2)
+                pay, _row = _rootcanal_single_payload(aid, int(v))
+                if pay:
+                    p = rootcanal.Params(**dict(
+                        dict(_rootcanal_fit_part(pay.get("params")),
+                             **meas), **ident))
+                    mg, _u = _rootcanal_margin_load(mref)
+                    diff = rootcanal.margin_mismatch(mg, p)
+                    if diff:
+                        raise rootcanal.RootCanalError(
+                            "its saved numbers are measured another way "
+                            "(%s) and its read is elsewhere"
+                            % "; ".join(diff))
+                    r2 = rootcanal.fit_rows(pay, p, margin=mg)
+                    r2["margin_used"] = _u
+                    meta = {k: pay.get(k) for k in (
+                        "entry_id", "gid", "session_label", "project",
+                        "mouse", "mouse_key", "read", "read_on",
+                        "from_version")}
+                    meta["from"] = from_
+                    npay = rootcanal.single_payload(r2, meta)
+                    so = ARTIFACTS.add_version(
+                        aid, npay,
+                        params=dict(p.fit_params(),
+                                    measure=rootcanal.measure_of(p),
+                                    read=rh),
+                        inputs=[{"entry_id": pay.get("entry_id"),
+                                 "read": rh,
+                                 "rows_digest": npay["rows_digest"]},
+                                dict(from_)],
+                        note="The pool's identity, applied to the saved "
+                             "numbers (the read is elsewhere).",
+                        version_nickname=vnick)
+                    out.append({"key": key, "ok": True,
+                                "artifact_id": aid,
+                                "version": so.get("version"),
+                                "how": "from its saved numbers"})
+                    continue
+            out.append({"key": key, "ok": False,
+                        "why": "its read is on %s and it is not a saved "
+                               "single" % (m.get("read_on")
+                                           or "another machine")})
+        except Exception as exc:                     # noqa: BLE001
+            out.append({"key": key, "ok": False, "why": str(exc)})
+    return out
+
+
+@app.route("/api/rootcanal/pool/propagate", methods=["POST"])
+def api_rootcanal_pool_propagate():
+    """THE POOL'S IDENTITY, BACK INTO ITS SINGLES (asked for 2026-10-06:
+    after a pool changes, new versions of its singles, yes by default).
+
+    The pool is fitted as asked; its clusters -- centres, calls, names --
+    are kept as a margin named for the pool; and each member gets a new
+    version of its single with that margin applied, fixed, at the pool's
+    measurement. Nearest centre on the pool's own scale is exactly how the
+    pool placed each event, so every event keeps its pooled call (a cluster
+    drawn by hand is not a centre, and its events go to the nearest one).
+
+    A member whose read is here is refitted from it; a saved single whose
+    read is elsewhere is re-clustered from its saved numbers; anything else
+    is named and left. Body: the pool body, plus `pool` {artifact_id,
+    version, nickname}."""
+    body = request.get_json(force=True) or {}
+    try:
+        members, res = _rootcanal_pool_fit(body)
+        pref = body.get("pool") or {}
+        pnick = str(pref.get("nickname") or "a pool").strip()
+        pv = pref.get("version")
+        measure = (res.get("params") or {}).get("measure") or {}
+        payload = _rootcanal_margin_payload(
+            res, measure, {"kind": "pool", "pool": pref,
+                           "n_events": res.get("n_placed")})
+        mrow = ARTIFACTS.create(
+            "rootcanal_margin", {"margin_key": uuid.uuid4().hex,
+                                 "name": "Clusters of %s" % pnick},
+            payload, params={"pool": pref},
+            name="Clusters of %s" % pnick,
+            nickname="%s%s clusters" % (pnick, " v%s" % pv if pv else ""))
+        mref = {"artifact_id": mrow["id"], "version": mrow.get("version"),
+                "mode": "fixed"}
+        names = {}
+        for j, cl in enumerate(payload["clusters"]):
+            if cl.get("name"):
+                names[str(j)] = {"name": cl["name"], "type": cl["call"]}
+        meas = {k: measure.get(k) for k in RC_MEASURE_KEYS
+                if measure.get(k) is not None}
+        from_ = {"kind": "pool", "artifact_id": pref.get("artifact_id"),
+                 "version": pv, "nickname": pnick, "margin": mref}
+        vnick = "from pool ‘%s’%s" % (pnick, " v%s" % pv if pv else "")
+        out = _rootcanal_propagate_members(
+            members, payload["k"], mref, names, meas,
+            bool(body.get("complete_only")), from_, vnick)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-propagate", exc, 400)
+    STORE.record_activity([{
+        "action": "rootcanal.pool.propagate",
+        "detail": {"pool": (body.get("pool") or {}).get("artifact_id"),
+                   "made": sum(1 for r in out if r["ok"]),
+                   "margin": mref["artifact_id"]},
+    }])
+    return jsonify({"ok": True, "margin": mref, "results": out,
+                    "made": sum(1 for r in out if r["ok"]),
+                    "left": sum(1 for r in out if not r["ok"])})
+
+
+# ==========================================================================
+# A POOL OF POOLS (2026-10-06)
+# ==========================================================================
+# "Pool all the controls (one DS cluster), pool the IED mice (two), and pool
+# those pools." A double pool's members are saved pool versions; its events
+# are their events, each carrying what its own pool called it (its v0) and
+# what its single called it. The identity switch is counted at both levels.
+# Numbers come from the pools' saved payloads, so it needs no read anywhere.
+def _rootcanal_dpool_members(pools):
+    """Recording-level members for `fit_pool`, out of saved pool versions.
+
+    Refuses, naming them: a pool not on this machine yet; pools measured
+    differently (one axis is one measurement); and a session in two of the
+    pools -- it would be counted twice.
+    """
+    if not pools:
+        raise rootcanalpool.PoolError(
+            "A pool of pools needs at least one pool. Tick a saved pool.")
+    loaded, measures, where = [], {}, {}
+    for ref in pools:
+        aid = str((ref or {}).get("artifact_id") or "")
+        rec = ARTIFACTS.get(aid)
+        if not rec or rec.get("kind") != "rootcanal_pool":
+            raise rootcanalpool.PoolError(
+                "There is no saved pool %s on this machine." % aid)
+        pay = ARTIFACTS.payload(aid, ref.get("version"))
+        _r, row = ARTIFACTS.payload_version(aid, ref.get("version"))
+        if pay is None:
+            raise rootcanalpool.PoolError(
+                "Version %s of ‘%s’ was saved on another machine and its "
+                "contents have not reached this one yet."
+                % (row.get("v"), rec.get("nickname") or rec.get("name")))
+        nick = rec.get("nickname") or rec.get("name") or aid
+        pp = pay.get("params") or {}
+        ms = pp.get("measure")
+        if not ms and pay.get("members"):
+            ms = rootcanal.measure_of(rootcanal.Params(**_rootcanal_fit_part(
+                (pay["members"][0].get("pin") or {}).get("params"))))
+        if ms:
+            measures.setdefault(_measure_key(ms), (ms, []))[1].append(nick)
+        for mm in pay.get("members") or []:
+            g = mm.get("gid")
+            if g:
+                where.setdefault(g, []).append(
+                    (nick, mm.get("session_label") or g))
+        loaded.append((aid, row.get("v"), nick, pay))
+    if len(measures) > 1:
+        raise rootcanalpool.PoolError(
+            "These pools were measured differently, so their axes are not "
+            "one measurement: %s. Open the ones that differ, set the "
+            "measurement, save a version, and pool those."
+            % "; ".join("%s on %s" % (", ".join(names), ms["filter_label"])
+                        for ms, names in measures.values()))
+    twice = {g: v for g, v in where.items() if len(v) > 1}
+    if twice:
+        raise rootcanalpool.PoolError(
+            "A session is in more than one of these pools, so its events "
+            "would be counted twice: %s. Take one of the pools out, or save "
+            "a version of one without it."
+            % "; ".join("%s (in %s)" % (v[0][1], ", ".join(n for n, _s in v))
+                        for v in twice.values()))
+    out = []
+    for aid, v, nick, pay in loaded:
+        pmt = pay.get("mouse_types") or {}
+        evs = pay.get("events") or []
+        for j, mm in enumerate(pay.get("members") or []):
+            rows = []
+            for e in evs:
+                if e.get("m") != j:
+                    continue
+                rows.append({
+                    "i": int(e["i"]), "t": float(e["t"]),
+                    "amp_uV": e.get("amp_uV"), "hw_ms": e.get("hw_ms"),
+                    "hf_db": e.get("hf_db"),
+                    # v0: what its pool called it -- what a double pool's
+                    # identity switch is counted against.
+                    "cls": e.get("cls_pool"), "name": e.get("name_pool"),
+                    "wide": bool(e.get("wide")),
+                    "v0": {"pool": aid, "version": v, "pool_nickname": nick,
+                           "cls_pool": e.get("cls_pool"),
+                           "name_pool": e.get("name_pool"),
+                           "cls_single": e.get("cls_single"),
+                           "name_single": e.get("name_single"),
+                           "member": mm.get("key")}})
+            mk = mm.get("mouse_key")
+            pin = mm.get("pin") or {}
+            g_, rh_ = mm.get("gid"), pin.get("read")
+            here_ = bool(g_ and rh_ and ROOTCANAL.has_cached(g_, rh_, ".npz"))
+            out.append({
+                "key": "p:%s:%s:%s" % (aid, v, mm.get("key")),
+                "entry_id": mm.get("entry_id"),
+                "session_label": mm.get("session_label"),
+                "gid": mm.get("gid"), "project": mm.get("project"),
+                "mouse_key": mk,
+                "mouse_type": pmt.get(mk) or mm.get("mouse_type_default")
+                or mm.get("mouse_type"),
+                "banked": bool(mm.get("banked")), "rows": rows,
+                "pin": dict(pin, pool={"artifact_id": aid, "version": v,
+                                       "nickname": nick,
+                                       "member": mm.get("key")}),
+                "here": here_,
+                "band": [(pin.get("params") or {}).get("band_lo") or 500.0,
+                         (pin.get("params") or {}).get("band_hi") or 1000.0],
+                "filter": None,
+                "event_body": (dict(_rootcanal_fit_part(pin.get("params")),
+                                    entry_id=mm.get("entry_id"), read=rh_)
+                               if here_ else None),
+                "read_on": mm.get("read_on"),
+            })
+    return out
+
+
+def _rootcanal_dpool_fit(body):
+    """Fit a pool of pools: the pool's own clustering, on its pools' events,
+    with the identity switch counted against each event's pool (v0) and,
+    beside it, against its single."""
+    members = _rootcanal_dpool_members(body.get("pools") or [])
+    kp = rootcanal.Params(k=body.get("k"),
+                          cluster_calls=body.get("cluster_calls"),
+                          margin=body.get("margin"),
+                          cluster_names=body.get("cluster_names"))
+    margin, used = None, None
+    if kp.margin:
+        margin, used = _rootcanal_margin_load(kp.margin)
+    res = rootcanalpool.fit_pool(
+        members, body.get("mouse_types") or {}, body.get("focus"),
+        complete_only=bool(body.get("complete_only")), k=kp.k,
+        cluster_calls=kp.cluster_calls, margin=margin,
+        margin_mode=(kp.margin or {}).get("mode", "fixed"),
+        drawn=body.get("drawn"), cluster_names=kp.cluster_names)
+    res["level"] = "double"
+    res["margin_used"] = used
+    res["pools"] = [{"artifact_id": p.get("artifact_id"),
+                     "version": p.get("version")}
+                    for p in body.get("pools") or []]
+    # The second switch: single -> double, beside pool -> double.
+    alt = [dict(e, cls_single=(e.get("v0") or {}).get("cls_single"))
+           for e in res["events"]]
+    res["switches_single"] = rootcanalpool.switch_tables(alt,
+                                                         res["members"])
+    meas = None
+    for p in body.get("pools") or []:
+        pay = ARTIFACTS.payload(p.get("artifact_id"), p.get("version")) or {}
+        meas = (pay.get("params") or {}).get("measure") or meas
+    res["params"] = dict(res.get("params") or {},
+                         drawn=body.get("drawn") or [],
+                         cluster_names=kp.cluster_names,
+                         measure=meas, level="double",
+                         pools=res["pools"])
+    _rootcanal_border_on(res, body.get("border"), meas)
+    return members, res
+
+
+@app.route("/api/rootcanal/dpool/fit", methods=["POST"])
+def api_rootcanal_dpool_fit():
+    body = request.get_json(force=True) or {}
+    try:
+        _m, res = _rootcanal_dpool_fit(body)
+        res["stats"] = _rootcanal_stats_kept("double", res)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/dpool-fit", exc, 400,
+                    {"pools": body.get("pools")})
+    return jsonify(dict(res, ok=True))
+
+
+@app.route("/api/rootcanal/dpool/save", methods=["POST"])
+def api_rootcanal_dpool_save():
+    """A pool of pools, saved: refitted here from the pools named, as a
+    pool is; the same answer again confirms its version."""
+    body = request.get_json(force=True) or {}
+    nick = str(body.get("nickname") or "").strip()
+    if not nick:
+        return jsonify({"ok": False, "error": "A pool of pools needs a label "
+                        "before it can be saved. Give it one."}), 400
+    try:
+        members, res = _rootcanal_dpool_fit(body)
+        kept = _rootcanal_stats_kept("double", res)
+        if kept:
+            res["stats"] = kept
+        pins = [dict(m["pin"], key=m["key"], entry_id=m["entry_id"])
+                for m in members]
+        payload = rootcanalpool.payload_of(res, None,
+                                           body.get("mouse_types") or {},
+                                           body.get("focus"))
+        vnick = str(body.get("version_nickname") or "").strip() or nick
+        aid = body.get("artifact_id")
+        if aid:
+            have = ARTIFACTS.get(aid)
+            if not have or have.get("kind") != "rootcanal_dpool":
+                raise rootcanalpool.PoolError(
+                    "There is no saved pool of pools %s." % aid)
+            payload["pool_key"] = (have.get("subject") or {}).get("dpool_key")
+            before = have.get("version")
+            out = ARTIFACTS.add_version(aid, payload, params=res["params"],
+                                        inputs=pins, note=body.get("note"),
+                                        version_nickname=vnick)
+            if nick != out.get("nickname"):
+                out = ARTIFACTS.set_nickname(aid, nick)
+            confirmed = out.get("version") == before
+        else:
+            key = uuid.uuid4().hex
+            payload["pool_key"] = key
+            out = ARTIFACTS.create(
+                "rootcanal_dpool",
+                {"dpool_key": key, "name": "Pool of %d pools" % len(
+                    res["pools"]), "pools": res["pools"],
+                 "gids": sorted({m.get("gid") for m in members
+                                 if m.get("gid")})},
+                payload, params=res["params"], inputs=pins,
+                nickname=nick, note=body.get("note"),
+                version_nickname=vnick)
+            confirmed = False
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/dpool-save", exc, 400)
+    _rootcanal_border_cite(res, out, "dpool")
+    return jsonify({"ok": True, "artifact_id": out.get("id"),
+                    "version": out.get("version"), "confirmed": confirmed,
+                    "nickname": out.get("nickname"), "name": out.get("name")})
+
+
+@app.route("/api/rootcanal/dpools")
+def api_rootcanal_dpools():
+    try:
+        rows = ARTIFACTS.list(kind="rootcanal_dpool")
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/dpools", exc, 400)
+    out = [dict(r, artifact_id=r.get("id"),
+                updated=(r.get("current") or {}).get("at")) for r in rows
+           if not r.get("deleted")]
+    out.sort(key=lambda r: str(r.get("updated") or ""), reverse=True)
+    return jsonify({"ok": True, "dpools": out})
+
+
+@app.route("/api/rootcanal/dpool/<artifact_id>")
+def api_rootcanal_dpool_one(artifact_id):
+    version = request.args.get("version") or None
+    try:
+        rec = ARTIFACTS.summary(artifact_id)
+        if not rec or rec.get("kind") != "rootcanal_dpool":
+            raise rootcanalpool.PoolError(
+                "There is no saved pool of pools %s." % artifact_id)
+        payload = ARTIFACTS.payload(artifact_id, version)
+        if payload is None:
+            raise rootcanalpool.PoolError(
+                "That version was saved on another machine and its contents "
+                "have not reached this one yet.")
+        _r, row = ARTIFACTS.payload_version(artifact_id, version)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/dpool", exc, 400, {"artifact_id": artifact_id})
+    return jsonify({"ok": True, "artifact": rec, "version": row.get("v"),
+                    "payload": payload})
+
+
+@app.route("/api/rootcanal/dpool/propagate", methods=["POST"])
+def api_rootcanal_dpool_propagate():
+    """A pool of pools' identity, down: new versions of its pools (their
+    members re-clustered with the double pool's clusters, applied fixed)
+    and/or of its singles, as asked. Body: the double pool body, plus
+    `dpool` {artifact_id, version, nickname}, `to_pools`, `to_singles`."""
+    body = request.get_json(force=True) or {}
+    try:
+        members, res = _rootcanal_dpool_fit(body)
+        ref = body.get("dpool") or {}
+        dnick = str(ref.get("nickname") or "a pool of pools").strip()
+        dv = ref.get("version")
+        payload = _rootcanal_margin_payload(
+            res, (res.get("params") or {}).get("measure") or {},
+            {"kind": "dpool", "dpool": ref, "n_events": res.get("n_placed")})
+        mrow = ARTIFACTS.create(
+            "rootcanal_margin", {"margin_key": uuid.uuid4().hex,
+                                 "name": "Clusters of %s" % dnick},
+            payload, params={"dpool": ref}, name="Clusters of %s" % dnick,
+            nickname="%s%s clusters" % (dnick, " v%s" % dv if dv else ""))
+        mref = {"artifact_id": mrow["id"], "version": mrow.get("version"),
+                "mode": "fixed"}
+        names = {str(j): {"name": cl["name"], "type": cl["call"]}
+                 for j, cl in enumerate(payload["clusters"])
+                 if cl.get("name")}
+        vnick = "from pool of pools ‘%s’%s" % (dnick, " v%s" % dv if dv
+                                              else "")
+        out = {"pools": [], "singles": []}
+        if body.get("to_pools"):
+            for p in body.get("pools") or []:
+                aid = p.get("artifact_id")
+                try:
+                    pay = ARTIFACTS.payload(aid, p.get("version")) or {}
+                    pp = pay.get("params") or {}
+                    pbody = {"members": [{"key": m["key"],
+                                          "params": (m.get("pin") or {})
+                                          .get("params")}
+                                         for m in pay.get("members") or []],
+                             "mouse_types": pay.get("mouse_types") or {},
+                             "measure": {k: v for k, v in (pp.get("measure")
+                                                           or {}).items()
+                                         if k in RC_MEASURE_KEYS},
+                             "k": payload["k"], "margin": mref,
+                             "cluster_names": names,
+                             "complete_only": bool(pp.get("complete_only")),
+                             "saved": {"artifact_id": aid,
+                                       "version": p.get("version")}}
+                    pm, pres = _rootcanal_pool_fit(pbody)
+                    pins = [dict(m["pin"], key=m["key"],
+                                 entry_id=m["entry_id"],
+                                 banked=bool(m["banked"])) for m in pm]
+                    have = ARTIFACTS.get(aid)
+                    po = ARTIFACTS.add_version(
+                        aid, rootcanalpool.payload_of(
+                            pres, (have.get("subject") or {}).get("pool_key"),
+                            pbody["mouse_types"], pay.get("focus")),
+                        params=pres["params"], inputs=pins,
+                        note="The pool of pools' identity, as a margin "
+                             "applied fixed.", version_nickname=vnick)
+                    out["pools"].append({"artifact_id": aid, "ok": True,
+                                         "version": po.get("version")})
+                except Exception as exc:                 # noqa: BLE001
+                    out["pools"].append({"artifact_id": aid, "ok": False,
+                                         "why": str(exc)})
+        if body.get("to_singles"):
+            meas = {k: v for k, v in ((res.get("params") or {}).get("measure")
+                                      or {}).items() if k in RC_MEASURE_KEYS}
+            out["singles"] = _rootcanal_propagate_members(
+                members, payload["k"], mref, names, meas,
+                bool(body.get("complete_only")),
+                {"kind": "dpool", "artifact_id": ref.get("artifact_id"),
+                 "version": dv, "nickname": dnick, "margin": mref}, vnick)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/dpool-propagate", exc, 400)
+    return jsonify({"ok": True, "margin": mref, "results": out,
+                    "made": sum(1 for x in out["pools"] + out["singles"]
+                                if x.get("ok"))})
+
+
+# ==========================================================================
+# ARE THESE TWO CLUSTERS GENUINELY DIFFERENT? (2026-10-06)
+# ==========================================================================
+# Computed on request (a few seconds: simulated nulls), at k = 2, on the
+# picture as it stands -- and kept, by what the picture IS (its events'
+# numbers and clusters), so a version saved of the same picture carries
+# the answer the server computed rather than one a browser sent.
+_RC_STATS = {}
+
+
+def _rootcanal_stats_data(res):
+    """(Z, labels, centres_z, gmm) of a fit's complete events in k-means'
+    two clusters; refuses anything but two."""
+    import numpy as np
+    k = int(res.get("k") or 0)
+    if k != 2:
+        raise rcstats.StatsError(
+            "The tests ask one group or two, so they run at k = 2: this "
+            "picture has %d clusters." % k)
+    Z, lab = [], []
+    for e in res.get("events") or []:
+        z = e.get("z")
+        cl = e.get("cluster")
+        # Complete events only: a partial one's missing axis is imputed.
+        if (z is None or cl is None or cl >= 2 or e.get("partial")
+                or e.get("excluded") or any(v is None for v in z)):
+            continue
+        Z.append(z)
+        lab.append(int(cl))
+    cz = [c.get("centre_z") for c in (res.get("clusters") or [])[:2]]
+    return (np.asarray(Z, dtype=float).reshape(-1, 3),
+            np.asarray(lab, dtype=int), cz, res.get("gmm"))
+
+
+def _rootcanal_stats_key(level, res):
+    import hashlib
+    try:
+        Z, lab, _cz, _g = _rootcanal_stats_data(res)
+    except Exception:                                    # noqa: BLE001
+        return None
+    h = hashlib.sha1(("%s|" % level).encode())
+    h.update(Z.round(5).tobytes())
+    h.update(lab.tobytes())
+    return h.hexdigest()[:16]
+
+
+def _rootcanal_stats_kept(level, res):
+    """The answer the server computed for this very picture, if any."""
+    key = _rootcanal_stats_key(level, res)
+    hit = _RC_STATS.get(key) if key else None
+    # The pros and cons are the same for every answer: not saved with one.
+    return ({k: v for k, v in hit.items() if k != "about"}
+            if hit else None)
+
+
+# ==========================================================================
+# A DS / IED BORDER IN THREE NUMBERS, WITH GRACE (2026-10-06)
+# ==========================================================================
+# Drawn from a pool or a pool of pools, against each event's own identity
+# (v0); saved as an artifact; applied anywhere measured the same way, where
+# it classifies every event by its three numbers alone -- solid DS, solid
+# IED or ambiguous -- beside the clusters, which stay for what is counted
+# against them. See backend/rcborder.py.
+def _rootcanal_border_grace(v):
+    try:
+        g = float(v)
+    except (TypeError, ValueError):
+        raise rcborder.BorderError(
+            "A grace is a switch rate, such as 0.01 for 1%%; not %r." % (v,))
+    if not 0 <= g <= 0.5:
+        raise rcborder.BorderError(
+            "A grace is a switch rate between 0%% and 50%%; not %g%%."
+            % (100 * g))
+    return g
+
+
+def _rootcanal_border_payload(body):
+    """Fit the picture the body names and draw its border. Returns
+    (members, fit, border payload)."""
+    level = str(body.get("level") or "")
+    if level == "double":
+        members, res = _rootcanal_dpool_fit(dict(body, border=None))
+    elif level == "pool":
+        members, res = _rootcanal_pool_fit(dict(body, border=None))
+    else:
+        raise rcborder.BorderError(
+            "A border is drawn from a pool or a pool of pools: it is drawn "
+            "against each event's own identity (its v0), which a single "
+            "recording does not have.")
+    custom = body.get("custom")
+    b = rcborder.extract(res["events"], custom=(
+        None if custom in (None, "") else _rootcanal_border_grace(custom)))
+    meas = (res.get("params") or {}).get("measure")
+    if not meas:
+        raise rcborder.BorderError(
+            "This picture does not say how it was measured, so a border "
+            "drawn from it could not be checked against where it is applied.")
+    src = body.get("source") or {}
+    srec = ARTIFACTS.get(src.get("artifact_id")) if src.get(
+        "artifact_id") else None
+    if src.get("artifact_id") and (not srec or srec.get("kind") not in (
+            "rootcanal_pool", "rootcanal_dpool")):
+        raise rcborder.BorderError(
+            "There is no saved pool %s to draw a border from."
+            % src.get("artifact_id"))
+    b.update(
+        measure=meas, level=level,
+        source=({"kind": srec["kind"], "artifact_id": srec["id"],
+                 "version": src.get("version") or srec.get("version"),
+                 "nickname": srec.get("nickname") or srec.get("name")}
+                if srec else {"kind": level, "unsaved": True}),
+        made_from=([dict(p) for p in body.get("pools") or []]
+                   if level == "double" else
+                   [m.get("key") for m in members]),
+        gids=sorted({m.get("gid") for m in members if m.get("gid")}),
+        n_recordings=len({m.get("gid") for m in members if m.get("gid")}),
+        n_mice=len({m.get("mouse_key") for m in members
+                    if m.get("mouse_key")}))
+    b["rules"] = {str(lv["grace"]): rcborder.rule_words(b, lv["grace"])
+                  for lv in b["levels"]}
+    return members, res, b
+
+
+@app.route("/api/rootcanal/border/preview", methods=["POST"])
+def api_rootcanal_border_preview():
+    """The border a pool (or pool of pools) would give, at no grace, 1%, 5%
+    and a custom grace: the cut-offs, the solid and ambiguous counts and the
+    switch rate at each. Nothing is saved."""
+    body = request.get_json(force=True) or {}
+    try:
+        _m, _res, b = _rootcanal_border_payload(body)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/border-preview", exc, 400,
+                    {"level": body.get("level")})
+    return jsonify(dict(b, ok=True, name=rcborder.name(b)))
+
+
+@app.route("/api/rootcanal/border/save", methods=["POST"])
+def api_rootcanal_border_save():
+    """Save a border as an artifact, under a nickname (required), with the
+    grace it applies at unless another is picked."""
+    body = request.get_json(force=True) or {}
+    nick = str(body.get("nickname") or "").strip()
+    if not nick:
+        return jsonify({"ok": False, "error": "A border needs a nickname "
+                        "before it can be saved -- the name it is chosen by "
+                        "everywhere else. Give it one."}), 400
+    try:
+        _m, _res, b = _rootcanal_border_payload(body)
+        g = _rootcanal_border_grace(body.get("grace", 0.05))
+        rcborder.level_of(b, g)
+        b["grace_default"] = g
+        note = str(body.get("note") or "").strip() or None
+        name = rcborder.name(b)
+        subject = {"border_key": uuid.uuid4().hex, "name": name,
+                   "gids": b["gids"], "level": b["level"]}
+        src = b["source"]
+        inputs = ([{"artifact_id": src["artifact_id"],
+                    "version": src["version"], "kind": src["kind"]}]
+                  if src.get("artifact_id") else [])
+        out = ARTIFACTS.create(
+            "rootcanal_border", subject, b,
+            params={"measure": b["measure"], "grace": g,
+                    "level": b["level"]},
+            inputs=inputs, name=name, nickname=nick, note=note,
+            version_nickname=nick)
+        if src.get("artifact_id"):
+            try:
+                ARTIFACTS.cite(src["artifact_id"], src["version"],
+                               out["id"], out.get("version"))
+            except Exception as exc:                     # noqa: BLE001
+                STORE.record_error("rootcanal/border-cite",
+                                   "The border was saved but could not cite "
+                                   "the pool it was drawn from: %s" % exc,
+                                   None, {"pool": src.get("artifact_id")})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/border-save", exc, 400,
+                    {"level": body.get("level")})
+    STORE.record_activity([{
+        "action": "rootcanal.border.save",
+        "detail": {"artifact": out.get("id"), "version": out.get("version"),
+                   "grace": g, "level": b["level"]}}])
+    return jsonify({"ok": True, "artifact_id": out.get("id"),
+                    "version": out.get("version"), "name": name,
+                    "nickname": out.get("nickname"), "grace": g})
+
+
+def _rootcanal_border_row(r):
+    cur = r.get("current") or {}
+    ns = cur.get("n_summary") or {}
+    return dict(r, artifact_id=r.get("id"), updated=cur.get("at"),
+                strict=ns.get("strict"), levels=ns.get("levels") or [],
+                grace_default=ns.get("grace"), measure=ns.get("filter"),
+                source=ns.get("source"), level=ns.get("level"),
+                events=ns.get("events"))
+
+
+@app.route("/api/rootcanal/borders")
+def api_rootcanal_borders():
+    """Every saved border, newest first, with its numbers for the picker."""
+    try:
+        rows = ARTIFACTS.list(kind="rootcanal_border")
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/borders", exc, 400)
+    out = [_rootcanal_border_row(r) for r in rows]
+    out.sort(key=lambda r: str(r.get("updated") or ""), reverse=True)
+    return jsonify({"ok": True, "borders": out})
+
+
+@app.route("/api/rootcanal/border/<artifact_id>")
+def api_rootcanal_border_one(artifact_id):
+    version = request.args.get("version") or None
+    try:
+        rec = ARTIFACTS.get(artifact_id)
+        if not rec or rec.get("kind") != "rootcanal_border":
+            raise rcborder.BorderError("There is no saved border %s."
+                                       % artifact_id)
+        pay = ARTIFACTS.payload(artifact_id, version)
+        if pay is None:
+            raise rcborder.BorderError(
+                "That version of the border was saved on another machine "
+                "and has not reached this one yet.")
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/border", exc, 400,
+                    {"artifact_id": artifact_id})
+    return jsonify({"ok": True, "payload": pay,
+                    "artifact": ARTIFACTS.summary(artifact_id)})
+
+
+def _rootcanal_border_load(ref):
+    aid = (ref or {}).get("artifact_id")
+    rec = ARTIFACTS.summary(aid) if aid else None
+    if not rec or rec.get("kind") != "rootcanal_border":
+        raise rcborder.BorderError(
+            "The border %s is not on this machine." % aid)
+    pay = ARTIFACTS.payload(aid, ref.get("version"))
+    if pay is None:
+        raise rcborder.BorderError(
+            "The border ‘%s’ was saved on another machine and has not "
+            "reached this one yet." % (rec.get("nickname") or rec.get("name")))
+    _r, row = ARTIFACTS.payload_version(aid, ref.get("version"))
+    return pay, {"artifact_id": aid, "version": row.get("v"),
+                 "nickname": rec.get("nickname") or rec.get("name")}
+
+
+def _rootcanal_border_cite(res, out, where):
+    """A saved picture cites the border it was classified by, so the border
+    cannot be deleted from under it."""
+    bu = res.get("border_used")
+    if not (bu and out.get("id")):
+        return
+    try:
+        ARTIFACTS.cite(bu["artifact_id"], bu["version"], out["id"],
+                       out.get("version"))
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("rootcanal/%s-cite" % where,
+                           "Saved, but could not cite the border it used: %s"
+                           % exc, None, {"border": bu.get("artifact_id")})
+
+
+def _rootcanal_border_on(res, ref, measure):
+    """Each event's class under a saved border, onto a fit: `border` on
+    every event and `border_used` on the fit. Refuses, in a sentence that
+    starts "The border", one measured another way."""
+    if not ref:
+        return res
+    pay, used = _rootcanal_border_load(ref)
+    g = _rootcanal_border_grace(pay.get("grace_default", 0.05)
+                                if ref.get("grace") is None
+                                else ref.get("grace"))
+    mp = rootcanal.Params(**{k: v for k, v in (measure or {}).items()
+                             if k in ("filt", "mains_out", "lo_hz", "hi_hz",
+                                      "order", "win_ms", "cross_ms",
+                                      "band_lo", "band_hi")})
+    diff = rootcanal.margin_mismatch({"measure": pay.get("measure")}, mp)
+    if diff:
+        raise rcborder.BorderError(
+            "The border ‘%s’ cannot be applied here: %s. A border is "
+            "cut-offs in µV, dB and ms, and those are only the same numbers "
+            "under the same measurement."
+            % (used["nickname"],
+               "; ".join(diff).replace("the margin", "the border")
+               .replace("its ", "the border's ")))
+    try:
+        lv = rcborder.level_of(pay, g)
+    except rcborder.BorderError as exc:
+        raise rcborder.BorderError("The border ‘%s’: %s"
+                                   % (used["nickname"], exc))
+    cls, info = rcborder.apply(res.get("events") or [], pay, g)
+    for e, c in zip(res.get("events") or [], cls):
+        e["border"] = c
+    res["border_used"] = dict(
+        used, grace=g, grace_words=rcborder.grace_words(g),
+        rule=rcborder.rule_words(pay, g), strict=pay.get("strict"),
+        edges=lv["edges"], ied_above=pay.get("ied_above"),
+        saved={"counts": lv["counts"], "switch_rate": lv["switch_rate"]},
+        **info)
+    res["params"] = dict(res.get("params") or {}, border={
+        "artifact_id": used["artifact_id"], "version": used["version"],
+        "grace": g})
+    return res
+
+
+# ==========================================================================
+# THE DEEP DIVE (2026-10-06, steps 7-10): the events that change identity
+# ==========================================================================
+# Every event of a pool or pool of pools that switched identity at that
+# level, or that a border applied to it leaves ambiguous -- with where it
+# came from, summarised by mouse, type, group, subgroup and condition, as a
+# CSV, and banked. See backend/rcdeep.py.
+def _rootcanal_deep(body):
+    """Fit the picture the body names; (level, fit, rows, facts)."""
+    level = "double" if str(body.get("level") or "") == "double" else "pool"
+    if level == "double":
+        _m, res = _rootcanal_dpool_fit(body)
+    else:
+        _m, res = _rootcanal_pool_fit(body)
+    reg = _rootcanal_reg_index()
+    cands = [{"gid": m.get("gid"), "project": m.get("project")}
+             for m in res.get("members") or [] if m.get("gid")]
+    _rootcanal_describe(cands, reg)
+    facts = {c["gid"]: c for c in cands}
+    return level, res, rcdeep.rows(res, level, facts), facts
+
+
+@app.route("/api/rootcanal/switches", methods=["POST"])
+def api_rootcanal_switches():
+    """The deep dive of the pool the body names: its switching and
+    ambiguous events, the summaries and the CSV. Nothing is written."""
+    body = request.get_json(force=True) or {}
+    try:
+        level, res, rows, facts = _rootcanal_deep(body)
+        out = {"ok": True, "level": level, "rows": rows,
+               "counts": rcdeep.counts(rows, res, level),
+               "summary": rcdeep.summary(res, level, facts),
+               "border_used": res.get("border_used"),
+               "csv": rcdeep.csv_text(rows, level)}
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/switches", exc, 400,
+                    {"level": body.get("level")})
+    return jsonify(out)
+
+
+@app.route("/api/rootcanal/switches/bank", methods=["POST"])
+def api_rootcanal_switches_bank():
+    """Bank the deep dive's events: one Event Bank entry per recording.
+
+    Of type "other" ("Ambiguous DS / IED"), never "ds" or "ied": a reader
+    that picks a recording's DS set, or its IED candidates, must not pick
+    these up. Each stamp carries what the recording's own set has at that
+    time (end, channel, amplitude) and nothing it does not; why each one is
+    here -- its three calls, its border class, its numbers -- is in the
+    entry's parameters. Banking again from the same source adds a version
+    to the same entry.
+    """
+    import hashlib
+    body = request.get_json(force=True) or {}
+    who = (body.get("by") or "").strip() or None
+    try:
+        level, res, rows, _facts = _rootcanal_deep(body)
+        if not rows:
+            raise rootcanal.RootCanalError(
+                "Nothing here switched identity or is ambiguous, so there is "
+                "nothing to bank.")
+        src = body.get("source") or {}
+        srec = (ARTIFACTS.get(src.get("artifact_id"))
+                if src.get("artifact_id") else None)
+        noun = "pool of pools" if level == "double" else "pool"
+        if srec:
+            sv = src.get("version") or srec.get("version")
+            src_words = "%s ‘%s’ v%s" % (
+                noun, srec.get("nickname") or srec.get("name"), sv)
+            src_key = "%s:%s" % (srec["id"], sv)
+        else:
+            src_words = "an unsaved %s" % noun
+            src_key = "unsaved:" + hashlib.sha1(json.dumps(
+                body.get("pools") if level == "double" else
+                [m.get("key") for m in body.get("members") or []],
+                sort_keys=True).encode()).hexdigest()[:12]
+        bu = res.get("border_used")
+        bwords = (" under the border ‘%s’ v%s at grace %s"
+                  % (bu["nickname"], bu["version"], bu["grace_words"])
+                  if bu else "")
+        by_entry = {}
+        for r in rows:
+            by_entry.setdefault(r["entry_id"], []).append(r)
+        prior_of = {}
+        for e in BANK.all():
+            # The bank keeps what made an entry under its `source`.
+            so = e.get("source") or {}
+            if (so.get("pipeline") == "Root Canal deep dive"
+                    and (so.get("parameters") or {}).get("source_key")
+                    == src_key):
+                prior_of[e.get("gid")] = e.get("id")
+        made, left = [], []
+        for eid, rs in by_entry.items():
+            rec = BANK.get(eid) if eid else None
+            label = rs[0].get("session_label") or rs[0].get("gid") or eid
+            if not rec:
+                left.append({"session_label": label, "n": len(rs),
+                             "why": "its Event Bank entry is not on this "
+                                    "machine"})
+                continue
+            live = {curation._tkey(ev.get("start")): ev
+                    for ev in rec.get("events") or []}
+            items = []
+            for r in rs:
+                old = live.get(curation._tkey(r["t"])) or {}
+                item = {"start": old.get("start", r["t"])}
+                for k in ("end", "channel", "amplitude"):
+                    if old.get(k) is not None:
+                        item[k] = old[k]
+                items.append(item)
+            n_sw = sum(1 for r in rs if r["switch"])
+            n_amb = sum(1 for r in rs if r["border"] == "amb")
+            note = ("Root Canal deep dive: %d event(s) of %s from %s%s -- "
+                    "%d switched identity, %d ambiguous. Their three calls, "
+                    "border class and numbers are in this entry's "
+                    "parameters." % (len(rs), label, src_words, bwords,
+                                     n_sw, n_amb))
+            if body.get("note"):
+                note += " " + str(body["note"]).strip()
+            shared = {k: rec.get(k) for k in (
+                "gid", "project", "mouse", "session", "session_key",
+                "session_loose_key", "session_label", "session_path",
+                "recording_start", "duration_s")}
+            got = BANK.add(dict(
+                shared, id=prior_of.get(rec.get("gid")),
+                type="other", type_name="Ambiguous DS / IED",
+                name="Switching and ambiguous events (Root Canal)",
+                note=("Events whose DS / IED identity did not sit still in "
+                      "Root Canal's deep dive, from the DS set %s. Banked to "
+                      "be looked at, not as a DS or IED set." % eid),
+                events=items, curated=False,
+                pipeline="Root Canal deep dive", added_by=who,
+                parameters={
+                    "tool": "rootcanal-deep", "level": level,
+                    "source": ({"artifact_id": srec["id"],
+                                "version": src.get("version")
+                                or srec.get("version"),
+                                "nickname": srec.get("nickname")}
+                               if srec else {"unsaved": True}),
+                    "source_key": src_key, "from_entry": eid,
+                    "border": ({"artifact_id": bu["artifact_id"],
+                                "version": bu["version"],
+                                "grace": bu["grace"]} if bu else None),
+                    "events": [{k: r.get(k) for k in (
+                        "t", "i", "amp_uV", "hw_ms", "hf_db", "single",
+                        "pool", "double", "border", "switch", "why")}
+                        for r in rs]},
+                version_note=note, version_tag="rootcanal"))
+            made.append({"session_label": label, "gid": rec.get("gid"),
+                         "entry_id": got.get("id"), "n": len(rs),
+                         "replaced": bool(prior_of.get(rec.get("gid")))})
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/switches-bank", exc, 400,
+                    {"level": body.get("level")})
+    STORE.record_activity([{
+        "action": "rootcanal.deep.bank",
+        "detail": {"entries": [m["entry_id"] for m in made],
+                   "events": sum(m["n"] for m in made), "level": level}}])
+    return jsonify({"ok": True, "made": made, "left": left,
+                    "source": src_words})
+
+
+@app.route("/api/rootcanal/stats/about")
+def api_rootcanal_stats_about():
+    """The four tests in words, before any is run: what each asks, its pro
+    and its con, and which is recommended."""
+    return jsonify({"ok": True, "tests": list(rcstats.TESTS),
+                    "recommended": rcstats.RECOMMENDED,
+                    "about": rcstats.ABOUT, "alpha": rcstats.ALPHA,
+                    "n_sim": rcstats.N_SIM, "n_boot": rcstats.N_BOOT,
+                    "max_n": rcstats.MAX_N})
+
+
+@app.route("/api/rootcanal/stats", methods=["POST"])
+def api_rootcanal_stats():
+    """Body: the picture's own request (Single's fit body, a pool's or a
+    pool of pools'), with `level` ("single", "pool" or "double"), and
+    optionally `tests` and `n_sim`. A single version whose read is not
+    here is asked of by `single: {artifact_id, version}`: its saved numbers
+    are the picture."""
+    body = request.get_json(force=True) or {}
+    level = str(body.get("level") or "single")
+    try:
+        if level == "double":
+            _m, res = _rootcanal_dpool_fit(body)
+        elif level == "pool":
+            _m, res = _rootcanal_pool_fit(body)
+        elif body.get("single"):
+            ref = body["single"]
+            rec = ARTIFACTS.get(ref.get("artifact_id"))
+            if not rec or rec.get("kind") != "rootcanal_single":
+                raise rootcanal.RootCanalError(
+                    "There is no saved single %s." % ref.get("artifact_id"))
+            res = rootcanal.single_fit_view(
+                ARTIFACTS.payload(rec["id"], ref.get("version")))
+        else:
+            rec, p, got, _rh, _st = _rootcanal_setup(
+                body, pinned=_rootcanal_pin_read(body))
+            margin, _used = _rootcanal_margin_for(p)
+            res = rootcanal.fit(got, p, margin=margin)
+        key = _rootcanal_stats_key(level, res)
+        hit = _RC_STATS.get(key) if key else None
+        if hit is None:
+            Z, lab, cz, gmm = _rootcanal_stats_data(res)
+            tests = [t for t in (body.get("tests") or rcstats.TESTS)
+                     if t in rcstats.TESTS]
+            n_sim = max(50, min(1000, int(body.get("n_sim")
+                                          or rcstats.N_SIM)))
+            hit = rcstats.run(Z, lab, cz, tests=tests, n_sim=n_sim, gmm=gmm)
+            hit["level"] = level
+            if len(_RC_STATS) >= 64:
+                _RC_STATS.pop(next(iter(_RC_STATS)))
+            _RC_STATS[key] = hit
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/stats", exc, 400, {"level": level})
+    return jsonify(dict(hit, ok=True, stats_key=key))
 
 
 @app.route("/api/rootcanal/pools")
@@ -16677,6 +18521,9 @@ COLUMN_MIGRATIONS = {
     # artifact_payloads, which replaces artifact_snapshots: a whole table,
     # found missing the same way as health_checks above.
     "gz": "20_artifact_payloads.sql",
+    # shard_files (Braces sets and AI Beta runs travelling), found the same
+    # way: a probe for its `sha` is how a machine learns it was never made.
+    "sha": "21_shard_files.sql",
 }
 
 
@@ -16712,6 +18559,7 @@ COLUMN_TABLES = {
     "params_hash": "tool_results",
     "jarvis_version": "machines",
     "gz": "artifact_payloads",
+    "sha": "shard_files",
 }
 
 
@@ -18528,15 +20376,33 @@ def api_arc_monolith_run():
         if extra is not None:
             known = monolithmod.sweep.SWEEP_NAMED
             if not isinstance(extra, dict) or \
-                    set(extra) - {"bands", "pac_trans", "days"} or \
+                    set(extra) - {"bands", "pac_trans", "days", "pair",
+                                  "fast"} or \
+                    not all(isinstance(x, list) and len(x) == 2
+                            and isinstance(x[0], int) and x[1] in
+                            monolithmod.ALL_DAY_ORDER
+                            for x in extra.get("fast") or []) or \
                     any(b not in known for b in extra.get("bands") or []) \
                     or any(d not in monolithmod.TRAJ_NAMES
-                           for d in extra.get("days") or []) or \
-                    (extra.get("days") and set(extra) != {"days"}):
+                           for d in extra.get("days") or []):
                 return jsonify({"ok": False, "error": "An addition is "
-                                "`{bands: [...], pac_trans: true}`, of "
-                                "the sweep's own named bands, or `{days: "
-                                "[Precon2, Precon3]}` on its own."}), 400
+                                "`{bands: [...], pac_trans: true, pair: "
+                                "true, days: [Precon2, Precon3], fast: "
+                                "[[rat, day], ...]}`, any of them, bands of "
+                                "the sweep's own named ones."}), 400
+            # The fast transitions: those days re-read from the bank first,
+            # where Spark has clipping-checked them at -1/+2 s since.
+            if extra.get("fast"):
+                man, done = monolithmod.refresh_fast(_circuit_host(),
+                                                     extra["fast"])
+                if not done:
+                    raise monolithmod.MonolithError(
+                        "None of those recordings has had its transitions "
+                        "clipping-checked at −1/+2 s yet: run Spark's "
+                        "transition check on them first.", 409)
+                extra = dict(extra, fast=[[int(r), d] for r, d in
+                                          extra["fast"]
+                                          if "r%d %s" % (int(r), d) in done])
         run = monolithmod.run_now(man, cfg, APP_DIR, ssh=MONO_SSH,
                                   extra=extra)
     except monolithmod.MonolithError as exc:
@@ -18620,7 +20486,8 @@ def api_arc_monolith_forget():
     return jsonify({"ok": True, "status": _mono_status()})
 
 
-_MONO_DATA = {"summary": ("summary.json", "application/json")}
+_MONO_DATA = {"summary": ("summary.json", "application/json"),
+              "physical": ("physical.json", "application/json")}
 
 
 @app.route("/api/arc/monolith/data/<name>")
@@ -18635,15 +20502,35 @@ def api_arc_monolith_data(name):
     if name in _MONO_DATA:
         fname, mime = _MONO_DATA[name]
     else:
-        # <what>_<layer>, or <what>_<layer>__<split> for one cue-pair split.
-        what, _, rest = name.partition("_")
+        # <what>_<layer>, or <what>_<layer>__<split> for one cue-pair split;
+        # session_<what>_<layer>[__<split>]_<window> for Monolith Progress;
+        # phys_edges_<layer>__<comparison>, phys_groups_<layer> for section 6.
+        if name.startswith("phys_"):
+            ok_names = {"phys_groups_%s" % l for l in monolithmod.LAYERS} | {
+                "phys_edges_%s__%s" % (l, c) for l in monolithmod.LAYERS
+                for c in monolithmod.PHYS_IDS}
+            if name not in ok_names:
+                return jsonify({"ok": False, "error": "No such Monolith file: %s" % name}), 404
+            path = os.path.join(d, name + ".f32")
+            if not os.path.isfile(path):
+                return jsonify({"ok": False, "error": "No such Monolith file: %s" % name}), 404
+            return send_file(path, mimetype="application/octet-stream")
+        sess = name.startswith("session_")
+        body = name[len("session_"):] if sess else name
+        wnum = None
+        if sess:
+            body, _, wnum = body.rpartition("_")
+        what, _, rest = body.partition("_")
         layer, _, split = rest.partition("__")
         if what not in ("edges", "power", "pac") or \
                 layer not in monolithmod.LAYERS or \
-                (split and split not in monolithmod.SPLIT_IDS):
+                (split and split not in monolithmod.SPLIT_IDS) or \
+                (sess and not (wnum or "").isdigit()):
             return jsonify({"ok": False, "error": "No such Monolith file: "
                             "%s" % name}), 404
-        fname = "%s_%s%s.f32" % (what, layer, "__" + split if split else "")
+        fname = "%s%s_%s%s%s.f32" % ("session_" if sess else "", what, layer,
+                                     "__" + split if split else "",
+                                     "_" + wnum if sess else "")
         mime = "application/octet-stream"
     path = os.path.join(d, fname)
     if not os.path.isfile(path):
@@ -18688,7 +20575,8 @@ def api_arc_monolith_leaf():
         cfg = _mono_cfg()
         got = monolithmod.leaf(cfg, man, summ, d, run, layer, at, rat, day,
                                unit, cell=cell, ssh=MONO_SSH,
-                               app_dir=APP_DIR)
+                               app_dir=APP_DIR,
+                               chk=monolithmod.get_state().get("check"))
     except monolithmod.MonolithError as exc:
         return _mono_refused(exc)
     except vaccmod.SSHError as exc:
@@ -18926,6 +20814,41 @@ def api_arc_monolith_split():
     except Exception as exc:                                 # noqa: BLE001
         return fail("arc/monolith/split", exc, 500)
     STORE.record_activity([{"action": "arc.monolith.split", "detail": {}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/physical", methods=["POST"])
+def api_arc_monolith_physical():
+    """Section 6, the physical cues against the balanced ones, for the built
+    Monolith, here, from the day arrays already fetched. Refused without
+    `confirm`."""
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        w = monolithmod.start_work("physical", monolithmod.physical_work)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/physical", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.physical", "detail": {}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/sessions", methods=["POST"])
+def api_arc_monolith_sessions():
+    """Monolith Progress's session files for the built Monolith, here, from
+    the day arrays already fetched. Refused without `confirm`."""
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        w = monolithmod.start_work("sessions", monolithmod.sessions_work)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/sessions", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.sessions", "detail": {}}])
     return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
 # ============================= end of Drift ===============================
 
@@ -19657,6 +21580,10 @@ CLOUD = cloudsync.Sync(
 # attribute rather than a constructor argument so this line is the whole of
 # the wiring (see cloudsync.Sync.rows_artifacts).
 CLOUD.artifacts = ARTIFACTS
+# Braces sets and AI Beta runs travel as their shard files (migration 21),
+# each record known by the id inside it. See cloudsync.SHARD_PUSH_BYTES.
+CLOUD.shard_books = {"braces": (BRACES.book, "set_id"),
+                     "aibeta": (AIBETA.book, "id")}
 
 # Who is curating what, right now. Cloud-only by design -- see
 # backend/presence.py: a presence row that survives a restart is a lie.
@@ -20110,9 +22037,76 @@ def _cloud_loop_lock():
 # which have gone up. See syncitems.py.
 from . import syncitems as syncitemsmod  # noqa: E402
 
+@app.route("/api/cloud/unshared")
+def api_cloud_unshared():
+    """Everything on this machine that has not reached the shared database,
+    each by a name a person knows it by -- the "not shared yet" list in the
+    sync panel (2026-10-06). Answered from the push cursor, like the marks,
+    so it costs no request at the database."""
+    c = CLOUD.cloud
+    try:
+        cfg = c.cfg or {}
+    except Exception:                                    # noqa: BLE001
+        cfg = {}
+    on = bool(getattr(c, "configured", False) and cfg.get("enabled"))
+    if not on:
+        return jsonify({"ok": True, "on": False, "rows": []})
+    try:
+        st = c.state() or {}
+        reg = {r.get("gid"): r for r in (REG.all() or []) if r.get("gid")}
+        items = CLOUD.item_states(last_push=st.get("last_push"),
+                                  known_gids=set(reg))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("cloud/unshared", exc, 400)
+
+    def label_of(gid):
+        r = reg.get(gid) or {}
+        return r.get("label") or r.get("key") or gid
+
+    def name(kind, rid):
+        try:
+            if kind == "bank":
+                e = BANK.get(rid) or {}
+                return e.get("name") or e.get("session_label") or rid
+            if kind == "curation":
+                gid, _s, ck = str(rid).partition("__")
+                return "%s · %s" % (label_of(gid), ck)
+            if kind == "layers":
+                return label_of(rid)
+            if kind == "artifacts":
+                a = ARTIFACTS.get(rid) or {}
+                noun = (artifactsmod.KINDS.get(a.get("kind")) or {}).get(
+                    "noun") or a.get("kind") or "artifact"
+                return "%s · %s" % (noun, a.get("nickname") or a.get("name")
+                                    or rid)
+            if kind == "braces":
+                b = BRACES.get(rid) or {}
+                return "Braces · %s" % (b.get("name") or b.get("entry_id")
+                                        or rid)
+            if kind == "aibeta":
+                r = AIBETA.get(rid) or {}
+                return "AI Beta run · %s" % (r.get("at") or rid)
+        except Exception:                                # noqa: BLE001
+            pass
+        return rid
+
+    rows = []
+    for kind, d in (items or {}).items():
+        for rid, v in (d or {}).items():
+            if v.get("state") == "synced":
+                continue
+            rows.append({"kind": kind, "id": rid, "state": v.get("state"),
+                         "why": v.get("why"), "name": name(kind, rid)})
+    order = {"waiting": 0, "unknown": 1, "local": 2}
+    rows.sort(key=lambda r: (order.get(r["state"], 3), r["kind"],
+                             str(r["name"])))
+    return jsonify({"ok": True, "on": True, "rows": rows})
+
+
 syncitemsmod.install(
     app, cloud_sync=CLOUD,
-    stores=(BANK.book.dir, CURATE.book.dir, LAYERS.book.dir, ARTIFACTS.root),
+    stores=(BANK.book.dir, CURATE.book.dir, LAYERS.book.dir, ARTIFACTS.root,
+            BRACES.dir, AIBETA.dir),
     registry=REG, last=_cloud_last, touch=cloud_touch, lock=_cloud_lock)
 
 

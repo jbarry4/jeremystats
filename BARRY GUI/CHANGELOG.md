@@ -15,6 +15,1192 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.07.2 - AI Beta: the waveform as a picture at the aligned peak
+
+### Added
+
+- **Waveform images**, six new AI Beta inputs in the second read, all off
+  by default. Each is the 5–100 Hz voltage as a picture, taken at the peak
+  Braces' rule aligned the candidate to:
+  - 8 contacts either side of the candidate's own peak channel (400 µm,
+    the same depth on even channels only)
+  - ±3, ±5, ±10, ±15, ±25 or ±50 ms either side of the aligned peak
+  - 17 depths by 13 times whatever the window, scaled so the peak is 1
+  - in a window wider than 13 samples, each column is the mean of its
+    span rather than one point of it
+
+  A read cached before these inputs existed is read again only by a run
+  that asks for them. Every other run still uses it as it is.
+
+### Measured
+
+Garbage Dystrophy+'s blend on Avery+'s inputs, even channels, the same 45
+recordings (12,406 candidates, 1,424 garbage). Each picture was added on
+its own, and every score comes from mice the model never saw:
+
+| Added | AUC | Flagged at 20% lost | Garbage cleaned at 20% | Flagged at 30% lost |
+|---|---|---|---|---|
+| nothing | 0.925 | **17.4%** | 89.2% | **7.7%** |
+| ±3 ms | 0.926 | 18.8% | 89.2% | 9.1% |
+| ±5 ms | 0.926 | 18.0% | 89.5% | 8.3% |
+| ±10 ms | 0.926 | 18.1% | 89.3% | 8.4% |
+| ±15 ms | 0.926 | 19.8% | 88.9% | 10.1% |
+| ±25 ms | **0.928** | 18.6% | 89.6% | 8.9% |
+| ±50 ms | 0.927 | 18.3% | **90.2%** | 8.6% |
+
+**No window leaves less garbage to sift through.** The wide windows rank
+slightly better overall, but every picture flags 0.6 to 2.4 points more
+than the model without one. The flagged share is set by the few most
+spike-like pieces of garbage, so it moves by about that much on its own.
+Garbage Dystrophy+ stays as it is.
+
+### Checked
+
+- `tools/check_aibeta.py`: 81 ok. New checks:
+  - the picture's size, centring, narrow and wide windows, and averaged
+    columns
+  - the same depth on every other contact
+  - edge rows
+  - a read without the pictures, or with an older kind of them, is read
+    again only for a run that wants them
+- `_dev/aibeta.html`: 37 ok.
+
+---
+
+## 2026.10.07.1 - The Monolith's tab 6: physical cue against balanced cue
+
+From Shahriar: show whether the sounds themselves (Click, Noise, High tone,
+Low tone) left a mark on the Monolith, which compares cues by seat (A, B, C,
+D). The hope is that they did not. **Restart Jarvis**: the new page reads
+files only the new code serves.
+
+How it can be tested: the identity sheet has every rat open both its pairs
+with the same kind of sound. J3, J6, J7 and J8 open with Click or Noise
+("noise-first"); J4, J9, J10 and J11 open with a tone ("tone-first"). Every
+ordered pair of sounds is heard by exactly two rats. So each rat's own
+Precon4 − Precon1 change can be sorted by sound instead of by seat, and
+tested the same way.
+
+### Added
+
+- **Tab 6 · Physical vs balanced cue**, verdict first. It opens straight
+  from a link with `monolith.html#tab=phys`.
+  - **The seats:** each rat's group and its four sounds.
+  - **Across the whole Monolith,** one row a comparison, by seat (the
+    Monolith, Cue 2 − Cue 1, AB against CD) and by sound:
+    - tone-first rats against noise-first rats;
+    - the pair Click opens against the pair Noise opens, in the
+      noise-first rats;
+    - the high tone's pair against the low tone's, in the tone-first rats;
+    - Cue 2 − Cue 1 turned round to read tone − noise in all eight.
+
+    Each row gives what was tested, what passed p < .05, chance, and the
+    ratio. It also gives where that sorting ranks among every other
+    sorting of the same rats: 35 splits into two fours, 8 signings of four
+    rats, or 128 signings of eight. The entries move together, so that
+    rank is the fair test, not the 5%. A histogram of each set of
+    relabellings is drawn with the sound's sorting on it.
+  - **The leads, in each group of four:** the Monolith's 50 (Raw and
+    Minus FP) and Cue 2 − Cue 1's 50. Each lead gives:
+    - each group's own change ± SE;
+    - the difference between the groups (Welch's t);
+    - whether both groups go the same way;
+    - the equivalence test at ±½ the lead's own change (90% interval),
+      and beside it the narrowest margin the lead does reach.
+
+    A forest picture draws all of it. Click a lead to open it on the
+    Monolith, on its layer.
+  - **Any comparison as a circuit,** for any window, frequency, measure and
+    layer.
+  - A build without it offers "Compare them now" (a few minutes, here,
+    from the arrays already fetched). New builds make it themselves.
+  - Help (`?`) on every card, and a Guide section.
+- **The review site** copies the tab:
+  - `physical.json` and the raw circuits go in, ahead of Progress's files;
+  - the Minus FP circuits go in while room lasts.
+
+### On the real build (512b673a2f9d, histology v2)
+
+- **Every comparison by sound is an ordinary relabelling of its rats.**
+
+  | Sorted by sound | Raw: p < .05 against chance | Rank among the relabellings |
+  |---|---|---|
+  | Tone-first against noise-first | 2,221 against 2,891 | 5 of 35 |
+  | Click-first pair against Noise-first pair | 5,182 against 4,336 | 4 of 8 (by seat: 7) |
+  | High-first pair against Low-first pair | 6,708 against 6,071 | 2 of 8 (by seat: 6) |
+  | Cue 2 − Cue 1 as tone − noise | 2,149 against 1,817 | 24 of 128 (as it stands: 61) |
+
+  For comparison, the Monolith by seat passes 15,017 against 12,720.
+- **The Monolith's 50 raw leads:**
+  - All 50 go the same way in both groups. The leads were picked for most
+    rats going the same way, so this mostly rules out a lead carried by one
+    group alone.
+  - 3 differ between the groups at p < .05. Chance would give 2.5.
+  - 30 of the 50 can be split four against four; the other 20 lack a rat
+    in one group. None of the 30 is equivalent within ±½. The median is
+    equivalent within ±0.90× its own change, and 18 of the 30 within ±1×.
+  - Minus FP: 2 of 30 within ±½, a median of ±0.71×.
+- **Four rats a group cannot show "the same within ±½".** Most leads reach
+  about ±0.7 to ±0.9 of their own change.
+
+### Checked
+
+- `web/_dev/monolith.html`: 421. New checks:
+  - the seats and the verdict, from `physical.json`;
+  - the rule both ways (a sorting that beats every relabelling is named);
+  - the histograms hold every relabelling;
+  - the leads' counts, the equivalence picture (measured) and the
+    narrowest margins;
+  - a lead opens on the Monolith on its layer, and a Cue 2 − Cue 1 lead on
+    its own tab;
+  - the circuit against the array;
+  - the "Compare them now" button;
+  - 390 px.
+- `tools/check_monolith.py`: 225. Section 6 on eight made-up rats with
+  three planted changes. Each is found by its own comparison and by no
+  other. The nulls are complete.
+- `tools/check_review.py`: 52. The copy holds section 6, and the tab draws
+  from it.
+- Supabase: the review site's questions table is now `22_review_questions.sql`.
+  21 was taken by `21_shard_files.sql`.
+
+## 2026.10.06.13 - The deep dive: the events whose identity does not sit still
+
+Phase 8 of the plan from the meeting with Shahriar (steps 7–10). It is the
+last phase before the Storm. **Restart Jarvis.**
+
+### Added
+
+- **The deep dive**, a card under the identity switches in Pooled, at both
+  levels. It gathers every event that switched identity at that level:
+  - in a pool, single against pool;
+  - in a pool of pools, its own pool (v0) against the pool of pools.
+
+  With a border applied, it also gathers every event the border leaves
+  ambiguous. The card gives the recipe for steps 7–10 until it is opened.
+- **Browse.**
+  - The list shows all events, the switched ones, or the ambiguous ones.
+  - Each row has its session, time, three numbers, its single / pool /
+    pool-of-pools calls, its border class and why it is listed.
+  - ◀ ▶ and a pressed row pick that event's dot. Its traces open as for
+    any dot, and Xplorefinder follows.
+  - "Average these" averages the listed events.
+- **Where they come from.** A table by mouse, mouse type, group, subgroup
+  or condition. Each row gives events, recordings, switched (and each
+  way), and ambiguous, with each rate taken over that row's own events.
+  Group, subgroup and condition come from the session workbook, then the
+  mouse book where the workbook is silent; otherwise "not recorded".
+- **Export** every event as a CSV: one row each, with its session facts,
+  numbers, three calls, border class and why. It is marked UTF-8 so a
+  spreadsheet reads it.
+- **Bank.** One Event Bank entry per recording, named "Switching and
+  ambiguous events (Root Canal)".
+  - Type "Ambiguous DS / IED", never DS or IED, so nothing that reads a
+    recording's DS set or its IED candidates picks it up.
+  - Each stamp keeps the end, channel and amplitude the recording's own
+    set has at that time.
+  - Why each event is listed (its calls, border class and numbers) is kept
+    in the entry's parameters.
+  - Banking again from the same source adds a version to the same entries.
+    A recording whose entry is not on this machine is named and left out.
+
+### Steps 7–10 on the real PTEN reads (throwaway stores, a copy of the bank)
+
+- **The pools.** All CTL (10 sessions) was pooled with every event DS, and
+  the PTEN IED+ mice (5 sessions) at k = 2.
+- **The pool of pools:** 2,634 events. 451 (17.1%) switched against their
+  own pool, all of them DS → IED.
+- **Are the clusters different? Maybe forced.**
+  - SigClust p = 0.24.
+  - Dip p = 1.0: one hump along the DS→IED line.
+  - Stability: adjusted Rand 0.93.
+  - GMM: ΔBIC +810, but its components match the DS / IED call at only
+    0.09.
+- **The border:** 1323 µV, 15.7 dB and 25.4 ms (Youden 0.85).
+  - **None:** 15 solid DS and 49 solid IED.
+  - **1%:** 171 solid DS (amp < 1129 µV, HF < 13.3 dB, hw > 28.9 ms) and
+    284 solid IED (amp ≥ 1516 µV, HF ≥ 18.1 dB, hw ≤ 21.9 ms), 0.95%
+    switched.
+  - **5%:** 370 solid DS and 468 solid IED, 3.8% switched.
+- **The deep dive at 1%:** 2,204 of the 2,634 events, with 2,179
+  ambiguous.
+
+  | Grouping | Value | Switched | Ambiguous |
+  |---|---|---|---|
+  | Subgroup | CTL | 20.8% | 90.4% |
+  | Subgroup | IED+ | 12.0% | 72.0% |
+  | Condition | CNO | 19.7% | — |
+  | Condition | Baseline | 9.5% | — |
+  | Mouse | m60 | 33.9% | — |
+  | Mouse | m2 | 33.6% | — |
+  | Mouse | m22 | 0.7% | — |
+
+- **Banking** made 15 entries and 2,204 events in the copy.
+- **Applied to IED+ alone**, the border gives 48 solid DS, 259 solid IED
+  and 790 ambiguous, and only 1 event lands in the other's solid class.
+- **Wall clock:**
+
+  | Step | Time |
+  |---|---|
+  | Pool save | 0.3–1.8 s |
+  | Pool of pools | 0.5 s |
+  | The tests | 4.5 s |
+  | Border | 1.0 s |
+  | Deep dive | 1.0 s |
+  | Banking 15 entries | 8.7 s |
+
+### Checked
+
+- `tools/check_rootcanal.py`: 446.
+  - **A pool relabelled so its events switch:**
+    - every switched event is listed, as many as the switch table counts;
+    - each row is its dot (same time, same calls) and says why.
+  - **With a border:**
+    - the ambiguous events join the list;
+    - the five summaries each add up to the whole;
+    - the CSV has a row per event.
+  - **Banked into the throwaway bank:**
+    - one entry per recording, typed "other", with why kept per event;
+    - nothing else in the bank changed;
+    - banking again is a new version of the same entry.
+  - **Refusals:** a recording whose entry is not here is named and left
+    out; nothing to bank is said in a sentence.
+  - **At the pool-of-pools level:** exactly the events that switched
+    between v0 and the pool of pools, not those whose single and pool
+    differed. The fixture is relabelled so both kinds exist.
+- `rootcanalpool.html` 234 (the dive intercepted).
+  - The offer and the recipe, what is asked, the count line, the filters
+    and a row's cells.
+  - Stepping, pressing a row, and going back, each picking its dot.
+  - The CSV exactly as the server sent it, with a byte-order mark.
+  - The five groupings, and the condition table.
+  - The bank dialog, what it sends, and the line saying what was banked.
+- `rootcanal.html` 323, `dspca.html` 304, `syncmarks.html` 20,
+  `braces.html` 21, `aibeta.html` 37, `check_shard_files` 20.
+- **Bite tests.** Each of these turned the checks red:
+  - the pool-of-pools switch counted single against pool (it survived
+    the first check, which is why the fixture is now relabelled);
+  - the summary not counting ambiguous events;
+  - banking as type DS;
+  - re-banking making a new entry;
+  - the list not picking the pressed event's dot.
+- The event bank matches its backup from before the runs.
+
+## 2026.10.06.12 - Cue 2 − Cue 1: its own filter and top 50, against the Monolith's
+
+From Shahriar, on the new tab: changing a parameter for Cue 2 − Cue 1 meant
+going to 2 · The Monolith and back. Reload the Monolith page; nothing needs
+restarting.
+
+### Changed
+
+- **Controls and ranking under the circuits.** The Cue 2 − Cue 1 tab now
+  puts its controls and its points of interest straight under its three
+  circuits, side by side. They used to sit below every other card on the
+  page.
+  - Frequency, measure, cue pairs and the slider all change it in place.
+- **Its own filter.** It is kept apart from the Monolith's, so filtering
+  one tab leaves the other as it was.
+  - There is no window to choose.
+  - The direction reads "Cue 2 − Cue 1 grew / shrank by Precon4".
+- **Its own top 50**, ranked over Cue 2 − Cue 1 alone by the Monolith's
+  rule.
+  - It no longer offers ranking within each window.
+- **How it compares with 2 · The Monolith:**
+  - A line at the top says how many of its top 50 are also among the
+    Monolith's top 50. A match is the same region pair and measure, within
+    2 Hz, in any window.
+  - Each lead also shows the Monolith's own Precon4 − Precon1 change in Cue
+    1 and in Cue 2 for the same entry, with p (uncorrected). The contrast is
+    their difference, so it can stand out where neither does.
+  - Each lead also gives its rank in the Monolith's list, or says it is not
+    in its top 50.
+- **Follow a line across the sessions** sits above the circuit, in both
+  tabs.
+- **"(not measured)" goes under a region's name.** Beside it, a name on the
+  left of the circuit ran off the picture.
+
+### Checked
+
+- `web/_dev/monolith.html` 391. New checks:
+  - the controls and ranking sit under the circuits (measured);
+  - its own titles and filter;
+  - the comparison, from the arrays;
+  - both tabs' filters stay apart;
+  - everything goes back to its columns on the Monolith tab;
+  - the panels sit above the circuit (measured).
+
+## 2026.10.06.11 - A DS / IED border in three numbers, with grace
+
+Phase 7 of the plan from the meeting with Shahriar (steps 8–9). **Restart
+Jarvis.**
+
+### Added
+
+- **Draw a border from these identities**, in Pooled at both levels (in the
+  identity-switch card). It draws three cut-offs, one each in µV, dB and
+  ms, against each event's own identity:
+  - in a pool of pools: what its own pool called it (v0);
+  - in a pool: what its single called it.
+
+  The rule:
+  - past all three cut-offs is **solid IED**;
+  - short of all three is **solid DS**;
+  - anything else is **ambiguous**.
+
+  Which way "past" points is read from the data. IEDs are larger, louder
+  in the HF band and *narrower*, so the half-width cut-off is passed by
+  going under it.
+- **Grace** is the identity-switch rate allowed: how many events may land
+  in the other identity's solid class.
+  - Each cut-off widens into a band, the same number of standard
+    deviations on every axis, until the rate is at most the grace. Events
+    in the band are ambiguous.
+  - The preview shows none, 1%, 5% and any grace you add. Each row has
+    solid DS, solid IED, ambiguous, the switch rate and both edges in
+    words.
+  - You pick the grace it applies at; every grace previewed is saved with
+    it.
+- **Saved** as an artifact (`rootcanal_border`), with a required nickname.
+  - It keeps the three numbers, every grace's band and counts, how it was
+    measured, and what it was drawn from.
+  - A border drawn from a saved pool names that pool and cites it.
+  - It syncs like any artifact.
+- **Applied** anywhere: Single, Pooled, or a pool of pools.
+  - The Margins card is now "Margins and borders": pick a border and a
+    grace, then Apply.
+  - Every event is classified by its three numbers alone, with no k-means.
+    The k-means clusters stay underneath, for what is counted against
+    them.
+  - The dots are coloured solid DS / solid IED / ambiguous. Ambiguous is
+    grey and filled; hollow still means not measured.
+  - The card gives the counts, the rule in a sentence, and how many events
+    with an identity land in the other's solid class here.
+  - A border measured another way is refused, saying how, and taken off.
+    So is a grace it was not saved with.
+  - A pool saved while classified by a border keeps each event's class and
+    cites the border, so the border cannot be deleted from under it.
+- How the strict border is chosen: the three cut-offs, from 40 candidates
+  per axis, that maximise Youden's index for solid IED plus Youden's index
+  for solid DS.
+  - Youden's index is the share of each identity put in its own solid
+    class, less the share of the other identity put there.
+  - The first objective, the share put right alone, was won on the real
+    pool by a border that called nearly everything solid IED: 98% of IED
+    events solid IED, no DS solid at all, and half of the DS events called
+    solid IED. Youden's index cannot be won that way.
+
+### Measured on real data
+
+The real pool on this desktop has 19 singles and 3,087 events, drawn
+against each event's single's call. Its border is **1193 µV, 9.6 dB and
+30.8 ms**:
+
+| Grace | Solid DS | Solid IED | Ambiguous | Switched | Band |
+|---|---|---|---|---|---|
+| strict | 116 | 1,089 | 1,882 | 6.5% | — |
+| none | 0 | 212 | 2,875 | 0 | ±1.04 SD |
+| 1% | 16 | 526 | 2,545 | 1.0% | ±0.52 SD |
+| 5% | 84 | 967 | 2,036 | 4.7% | ±0.08 SD |
+
+Solid DS is small because "short of all three" asks a DS event to be small,
+quiet *and* wide, and many are not wide. That is the rule doing what was
+decided. The border meant for step 9 is the one drawn from the pool of
+pools (the controls against the IED mice), which Phase 8's run will draw.
+
+### Checked
+
+- `tools/check_rootcanal.py`: 433.
+  - **The rule, by hand:**
+    - past all three, short of all three, a mix, a missing axis, and no
+      numbers;
+    - the half-width read as narrower for IED.
+  - **On overlapping clouds:**
+    - the strict border falls between them;
+    - both solid classes are populated;
+    - the strict border alone switches some, so a band is needed;
+    - at each grace the rate is within it, and no grace means no switch;
+    - less grace means more ambiguous;
+    - every event is counted once;
+    - the band's edges sit either side of the border;
+    - applied from its saved numbers, it classifies as drawn.
+  - **Refusals:** a grace it was not saved with; too few of one identity;
+    drawing from a single recording.
+  - **Through the routes:**
+    - preview with a custom grace, then save (a nickname required);
+    - the borders list;
+    - applied to the pool it came from, it gives the preview's counts at
+      the grace it was saved for, and no switch at no grace;
+    - applied in Single;
+    - refused under another filter, starting "The border";
+    - a pool saved with it cites it, so it cannot be deleted;
+    - drawn from a saved pool, it names and cites that pool;
+    - drawn from a pool of pools against v0.
+  - **Real pool:** both solid classes are populated.
+- `rootcanalpool.html` 219 (the border runs intercepted).
+  - The offer in the switch card, and what the preview asks.
+  - Each grace's row and edges, 5% picked first, the strict line, adding
+    2%, picking a grace by its row, and the suggested nickname.
+  - What Save sends, and the pool classified at once.
+  - The legend, "border" in the colour list, three colours on the
+    picture, and the card's summary, counts and rule.
+  - Clearing it; a refusal shown in the card and taken off.
+- `rootcanal.html` 323.
+  - "Margins and borders · none applied" on one folded line.
+  - A refusal shown and taken off.
+  - A border applied: the request, "by border", the legend's ambiguous,
+    three colours and the card's counts.
+  - Taken off again.
+- `dspca.html` 304, `syncmarks.html` 20, `braces.html` 21, `aibeta.html`
+  37.
+- **Bite tests.** Each of these turned the checks red:
+  - the grace search ignored (this needed the overlapping clouds: on
+    clean ones the strict border switches nothing, so it survived);
+  - the old share-only objective (only the real pool catches it);
+  - the measurement check off;
+  - the saved grace ignored;
+  - the dialog saving at 5% whatever was picked;
+  - Pooled not taking a refused border off.
+- **The event bank.** It changed during these runs, from your own work and
+  not from this:
+  - Rain Younger's Incisor import of PTEN m3 s2 (16:41);
+  - Avery's sweep versions of m1 s2 (16:50, here) and m3 s2 and m8 s2
+    (BarryLab, 15:30–15:47);
+  - Rain's m5 s2 v4 (BarryLab, 15:23).
+
+  The checks' own before/after test of the bank passed.
+
+## 2026.10.06.10 - Cue 2 − Cue 1 gets its own tab; Progress moves onto the Monolith's circuit
+
+From Shahriar's review of 2026.10.06.7, checked instruction by instruction
+against the meeting notes and the 36 answers. **Restart Jarvis.** Then, in
+Drift → Monolith, Check the VACC and Fetch: the whole-pair run is waiting
+there.
+
+### Added
+
+- **A tab of its own: 3 · Cue 2 − Cue 1.** It holds the agreed comparison:
+  the second cue against the first within each presentation.
+  - Three circuits in a row:
+    - within Precon1;
+    - within Precon4;
+    - the change from Precon1 to Precon4, which is the one that is tested
+      (p uncorrected).
+  - The two within circuits are descriptive, from the session files, on
+    one shared scale. Precon2 and Precon3 sit underneath them.
+  - The cue pairs read "A+C vs B+D (both pairs)", "AB: B − A" and
+    "CD: D − C".
+  - It has its own counts against chance and its own points of interest.
+  - Clicking any of its edges opens that pair down to rats, presentations
+    and signals.
+  - It no longer appears in the Monolith tab's list of windows, which
+    points to the new tab instead.
+  - It has no layer to choose: it is raw only, and the tab says why.
+- **Monolith Progress is a button on the Monolith's circuit** ("Precon4 −
+  Precon1 | Monolith Progress"). Tab 5 is gone.
+  - Its circuits follow the Monolith's own controls on the right.
+  - The panels sit in the same tab, over the circuit they are dragged from.
+  - An edge from either circuit drags onto the panels.
+- **Making Progress's files from the page.** A build without session files
+  says so where the circuits would be and offers "Make them now". That
+  runs a new route here, `POST /api/arc/monolith/sessions`.
+  - It no longer points at "Rebuild under histology v2", which is gone once
+    pressed.
+- **Each presentation is named seat first**, e.g. "AB · A → B (Click → Low
+  tone)", in the ghost, the Progress drill-down and the signals header.
+  The sound is kept in brackets for checking.
+- **What was kept, while a session is not built yet.** A session that is
+  in what goes but not built yet is shown as such ("run and fetch") in the
+  words, the maps and the table, instead of being left out.
+  - The whole pair says "not measured yet" until its run is fetched.
+
+### Fixed
+
+- **The Check the VACC grid** put every chip under Precon1 and had no
+  column for Precon2 or Precon3.
+  - The cause: each cell was itself a flex box, which takes it out of the
+    table.
+  - It now has a column for every session in what goes, in order.
+- **The Check the VACC card stood still after a run was submitted.** It
+  only polled once a poll said "active", and a fresh run has no poll yet.
+  - It now asks at once, then every two minutes until the run is finished.
+  - The poll names which run it is about. A poll from the run before is no
+    longer shown as the new one's.
+- **Additions ran in Temp**, where the very first run was, although
+  Scratch was chosen. They now go where the upload went.
+- **Traces are read from wherever the last check found the recording
+  whole.** They used to come from the run's place, and Precon2/3 live only
+  on Scratch.
+
+### Changed
+
+- **Travis's site has no live link to the VACC.** The VACC's login nodes
+  ran a command the site's key asked for, whatever its authorized_keys
+  line said: their own forced command overrides the key's.
+  - The bridge is removed: `review/vacc` and `api/remote.js`.
+  - Instead, more is copied in when the site is built: the first 25 leads
+    of every comparison and layer, and of the contrast, down to their
+    presentations, plus traces for 10 of them.
+  - Anything else says it opens in Jarvis.
+
+### Checked
+
+- New or extended:
+  - `tools/check_monolith.py` 207:
+    - the sessions route;
+    - where additions run;
+    - traces read from where the check found the recording;
+    - seat names;
+    - sessions not built in the damage report.
+  - `tools/check_ratidentity.py` 7.
+  - `tools/check_review.py` 51.
+  - `web/_dev/monolith.html` 380, with the new tab and Progress on the
+    circuit.
+  - `web/_dev/driftmono.html` 75: four session columns, each chip measured
+    inside its own; a fresh run asked about at once.
+- Unchanged and passing: drift, driftprecon, arcmatrix, arcover, arctrans,
+  circuit, vacccircuit, monolithrank, tour and tournext.
+- Still failing, as before: `arc.html` (33 of 34), `cursearch.html` and
+  `devarchive.html`.
+
+## 2026.10.06.9 - Are these clusters statistically different?
+
+Phase 6 of the plan from the meeting with Shahriar. **Restart Jarvis.**
+
+k-means always finds two clusters when it is asked for two. So the question
+is not whether the two clusters differ: k-means makes them differ, and a
+t-test or MANOVA between them would say "different" of any cloud at all.
+None is offered, and the dialog says why. Each test here asks whether **one**
+cloud would have done as well.
+
+### Added
+
+- **Test the split**: a button in Single (beside the cluster chips), in
+  Pooled and in a pool of pools (beside the GMM). It runs at k = 2 only,
+  since the question is one group or two. Pooled says so at any other k;
+  Single, short of room, hides the button.
+- **Four tests, all offered.** SigClust is marked as recommended. Each
+  test's hover says what it asks, its pro and its con.
+  - **SigClust** (recommended): is the 2-means split better than splitting
+    one Gaussian cloud of the same covariance? Its null is simulated.
+    - Pro: it answers forced-or-genuine directly, in all three dimensions.
+    - Con: its null is Gaussian, so one skewed cloud can beat it too.
+  - **Dip test** (Hartigan): along the line between the two centres, one
+    hump or two? This is a port of R's `diptest`, and its p-value is
+    simulated against the uniform.
+    - Pro: it is shape-free.
+    - Con: it looks in one dimension only.
+  - **Stability**: resample the events, re-cluster, and check whether each
+    event keeps its cluster (adjusted Rand).
+    - Pro: it shows how much of the split is the data and how much is the
+      draw.
+    - Con: a forced split can still be stable.
+  - **GMM ΔBIC + agreement**: Pooled's existing test, read together with
+    its agreement. In Pooled it is the pool's own GMM, not a second fit.
+- **The answer.**
+  - **Verdict:** the recommended test gives it, either "genuine split" or
+    "maybe forced".
+  - **Table:** each test's own answer and how it reads, and how many tests
+    read the split as genuine.
+  - **Size:** a set larger than 2,000 complete events is drawn down to
+    2,000 (seeded, so the same draw each time), and the answer says so.
+  - **Time:** 200 null draws and 50 resamples, about 1.5 to 3 s.
+- **Kept with the picture, by the server.**
+  - The server keeps each answer under the picture's own numbers and
+    clusters. A refit of the same picture brings the answer back; a changed
+    picture does not carry it.
+  - A version saved of a tested picture (single, pool or pool of pools)
+    carries the answer, and its hover says the verdict. An answer sent by
+    a browser is never saved.
+  - A single whose read is elsewhere is tested on its saved numbers.
+
+### Measured on real data
+
+The real pool on this desktop (19 singles, 3,087 events, 12 mice) reads as
+**maybe forced**:
+
+| Test | Result | Reading |
+|---|---|---|
+| SigClust | p = 0.35 | forced |
+| Dip | p = 0.99 | one hump along the DS→IED line |
+| Stability | adjusted Rand 0.86; 6% of events unstable | |
+| GMM | ΔBIC +958 | its two components match the DS/IED call at only 0.13 |
+
+This is what the plan expected from ΔBIC +881 with ARI 0.07: two Gaussians
+fit the cloud's shape, but there is no gap between DS and IED. It is the
+reason for steps 7–10, the controls pool and the border with grace, which
+come next.
+
+### Checked
+
+- `tools/check_rootcanal.py`: 401.
+  - **The dip, against values R's `diptest` gives:**
+    - evenly spaced points: 1/(2n);
+    - two point masses: 0.25;
+    - points in a straight line return (the first port hung on them).
+  - **Clouds with a known answer:**
+    - one Gaussian: maybe forced, with the dip and the GMM agreeing;
+    - two blobs: genuine on all four tests;
+    - one skewed cloud: maybe forced, though the GMM's ΔBIC favours two;
+    - too few events: each test says why it did not run, and there is no
+      verdict;
+    - more than 2,000 events: drawn down, and the answer says so.
+  - **Through the routes:**
+    - refused at k = 3;
+    - kept with a refit of the same picture and not with a changed one;
+    - saved with a version (single and pool) and in its summary, while a
+      browser's answer is not saved;
+    - a single read elsewhere is tested on its numbers;
+    - the pool's own GMM is used;
+    - the pool-of-pools level.
+- `rootcanal.html`: 316. The button sits on the clusters' row, and none at
+  k = 3. Then:
+  - the four tests with SigClust recommended and pros and cons on hover;
+  - what is sent (Single's picture, the tests ticked);
+  - the verdict, the table and the count;
+  - the answer on the picture and in its hover;
+  - showing it again without asking again, and "Run other tests" keeping
+    what was ticked;
+  - a refusal handled;
+  - a changed picture dropping the answer;
+  - a version's hover saying whether its clusters were tested.
+- **The fold.** On the 455 px card the clusters' row has 116 px free and
+  the counts row 65 px. The first label wrapped the row and put the picked
+  event's bar 2 px below the fold, so the labels are short and the hover
+  says the whole question. The bar now sits at 883 px of a 908 px screen.
+  The harness now prints each row's free room.
+- `rootcanalpool.html` 200 (the pool level and the pool-of-pools level,
+  each asking with its own request), `dspca.html` 304, `syncmarks.html` 20.
+- **Bite tests.** Each of these turned the checks red:
+  - the answer not kept;
+  - a browser's answer saved;
+  - the verdict always "genuine";
+  - SigClust's p-value inverted;
+  - the UI asking every level as Single.
+
+  Leaving partial events in survived, because it changes nothing: a partial
+  event's missing axis is already empty, and those events are dropped
+  anyway.
+- The event bank matches its backup from before the runs.
+
+## 2026.10.06.8 - Pools of pools, and a pool where every event is DS
+
+Phase 5 of the plan from the meeting with Shahriar. **Restart Jarvis.**
+
+### Added
+
+- **Every event is DS**: a pool option ("every event is DS (the
+  controls)"). The pool is one cluster, called DS, and it is saved with the
+  pool, so a pool of pools takes its events in as DS. This is step 7's
+  controls pool.
+- **Pool pools.** Pooled now has two levels: "Pool recordings | Pool
+  pools". At the second level:
+  - **Members:** saved pools, each at a version (the latest unless another
+    is picked). Each says its identity (every event DS, or its k) and
+    carries its sync mark.
+  - **v0:** every event keeps what its own pool called it and named it.
+    The identity switch is counted against that (pool ↓ double →), and,
+    on a line beside it, against its single.
+  - **Numbers:** they come from the pools' saved payloads, so it needs no
+    read anywhere. Averages and dot clicks work where a recording's read
+    is here.
+  - **Refused by name:** a session in two of the pools (it would count
+    twice), and pools measured differently.
+  - **The rest:** it saves and reopens like a pool (kind
+    `rootcanal_dpool`, with nicknames per version), has a shelf of its own,
+    and its clusters can be kept as a margin.
+  - **After a save**, it offers to carry its identity down, both boxes
+    ticked:
+    - the pools: a new version of each, its members re-clustered with the
+      pool of pools' clusters;
+    - the singles: a new version of each recording's single.
+
+    Both are named "from pool of pools ‘X’ vN". A recording whose read is
+    elsewhere and is not a saved single is named and left.
+- Propagation to singles is now one helper, shared by pools and pools of
+  pools.
+
+### Measured on real data (throwaway store)
+
+- **The pools:** 4 control sessions with every event DS (313 events) and 4
+  IED+ sessions at k = 2.
+- **The pool of those two pools:** 1,245 events.
+  - 8.9% switch identity against their pool: 111 of the controls' DS
+    events land in the IED cluster, and no IED goes to DS. This is the
+    material for step 9.
+  - Carried down, the IED+ pool's new version calls all 932 of its events
+    as the pool of pools did, and all 8 singles got their versions.
+
+### Checked
+
+- `tools/check_rootcanal.py` 364.
+  - Every event DS: one cluster, all DS, said in params.
+  - The pool of pools: every event, v0 being the POOL's call (the fixture
+    relabels a cluster so the pool's and single's calls differ), the
+    controls going in as DS, and the switch against the singles too.
+  - Refusals of a shared session and of mixed measurements.
+  - Save, reopen, the shelf, averages and a margin.
+  - Carrying down: both pools versioned and calling as the double did,
+    and singles where their read is here.
+- `rootcanalpool.html` 195: every event DS sent; the second level (pools
+  listed, identity chips, versions, the request, the switch panel's two
+  lines); the offer with both boxes and what it sends; back to recordings.
+- `rootcanal.html` 297, `dspca.html` 304, `braces.html` 21,
+  `aibeta.html` 37, `syncmarks.html` 20, `check_shard_files` 20.
+- Bite-tested. Each of these turned the checks red:
+  - the overlap check off;
+  - v0 taken from the single (this needed the relabelled fixture, which
+    is why it is there);
+  - every event DS ignored;
+  - the second level sending to the pool route.
+- During this run the bank changed under it, from your own work, not
+  this: three Incisor imports on this desktop at 13:33, and three curation
+  versions from BarryLab (12:05–12:54) arriving by sync.
+
+## 2026.10.06.7 - The Monolith: A/B/C/D, the whole pair, Cue 2 − Cue 1, Monolith Progress, and a review site
+
+The next phase from the lab meeting of 2026-10-02, as planned and approved
+on 2026-10-06. **Restart Jarvis.** Then, in Drift → Monolith, in this order:
+Rebuild under histology v2, Add the pair window's rest, Upload (it resumes),
+Check, Run Precon2/3 and the pair window, Fetch.
+
+### Added
+
+- **A, B, C and D come from the lab's identity sheet**
+  (`RAT Identity for multisite 2026 - Sheet1.csv`, via
+  `backend/ratidentity.py`). It is checked cell for cell, and against
+  every rat's recorded pairings: all 8 agree.
+  - The cue-pair splits are now: AB and CD pooled, AB only, CD only.
+  - The food/other and sound/tone splits are gone, and with them every
+    "food".
+  - Nothing is read from the conditioning sessions.
+- **The whole pair: cue 1 onset to cue 2 offset, 20 s.**
+  - Every measure and PAC are taken over it.
+  - A wire is used only if it is clean in both cues.
+  - Minus FP stands it against new 20 s rest epochs.
+  - It comes from one VACC addition together with Precon2 and Precon3: 258
+    tasks, about 8 minutes on the real manifest.
+- **Cue 2 − Cue 1**, within each presentation, then Precon4 against
+  Precon1. It is worked out for AB and CD pooled, AB only (B − A) and CD
+  only (D − C).
+  - Raw only, and the page says why: the rest that Minus FP takes away is
+    the same for both cues, so it cancels.
+- **The physical cue check, under a lifted edge.** A grid of rats by A, B,
+  C and D shows each seat's sound and value. A readout says whether a change
+  follows the seat or the sound. Descriptive only.
+- **What was kept**, extended:
+  - Precon2 and Precon3 as sessions of their own, once built.
+  - The whole pair's own losses.
+  - Presentations kept per A, B, C and D.
+  - What histology v2 changed from v1, rat by rat.
+  - A section on how Minus FP works.
+- **Monolith Progress**, the Monolith's fifth tab.
+  - **Circuits:** every edge in every Precon session, as its value, its
+    change from Precon1, or both.
+    - Show all four sessions, or one at a time. Each turns into the next,
+      and Play runs them in order.
+    - Each circuit shows its 10 or 25 strongest lines, or all of them.
+  - **Panels:** one line across the sessions per panel, stacked.
+    - Add a line by dragging an edge or a node onto them, or build one
+      from any measure, frequency, window, layer and cue pairs.
+    - Each panel has its own units, with the mean ± SE and every rat.
+    - A point opens its rats, then a rat's presentations, then a
+      presentation's traces.
+    - CSV and SVG exports.
+  - "Across the four sessions" has a button into it.
+  - Built from per-session files that every build now writes.
+- **A link to one line:** `monolith.html#go=layer,window,band,measure,pair[,split]`
+  opens the Monolith on that line. A first visit's tour waits instead of
+  starting.
+- **A review site for Travis**, not deployed yet (`review/`,
+  `tools/export_review.py`, `tools/check_review.py`).
+  - **The write-up:**
+    - scope;
+    - A/B/C/D;
+    - the windows;
+    - Minus FP;
+    - histology v2;
+    - what was kept;
+    - the counts against chance and the leads.
+  - **The Monolith itself**, read only, from gzipped copies of its files.
+    Any line among the leads opens down to its rats and presentations.
+  - **A password gate:** an HMAC cookie checked on every request.
+  - **An open-questions list in the lab's Supabase** (migration 22, which
+    you run by hand). It starts with five questions.
+  - **Size:** it stays under Vercel Hobby's 100 MB. Progress's files go in
+    while they fit.
+  - **Every p on it is said to be uncorrected.**
+
+### Not done: live signals from the VACC
+
+- The site was meant to ask the VACC over SSH, with a key of its own that
+  could run one read-only command.
+- **Tested, and it does not hold:** the VACC's login nodes run the
+  client's own command whatever the key says. Their sshd forces a command
+  of its own, which overrides the key's, so the key could run a shell.
+- The key was removed at once and the site's private key deleted.
+- The bridge's code stays (`review/vacc`, `api/remote.js`). The site runs on
+  what is copied ahead.
+- `export_review.py key --install` now tries any key it installs, and takes
+  it out again if it can run a shell command.
+
+### Fixed
+
+- In Precon2 and Precon3, the whole pair's Minus FP used the 10 s rest. It
+  now uses its own 20 s rest.
+
+### Checked
+
+- New:
+  - `tools/check_review.py` 81. It runs the gate and the functions under
+    Node with stand-ins, and builds the site from a made-up Monolith with
+    all four sessions. It checks:
+    - every array, byte for byte;
+    - the budget;
+    - the leads asked ahead under the names the page looks for;
+    - the bridge's far end against Jarvis's own answers, and 12 refusals;
+    - the pages in Edge.
+- Updated:
+  - `tools/check_monolith.py` 198, including Progress's session means against
+    a hand count and its files served.
+  - `web/_dev/monolith.html` 360, including 46 for Progress.
+  - `web/_dev/driftmono.html` 67.
+  - `tools/check_sweep_pair.py` 8.
+  - `tools/check_ratidentity.py` 6.
+- Unchanged: drift, driftprecon, arcmatrix, arcover, arctrans, circuit,
+  vacccircuit, monolithrank, tour and tournext pass.
+- Still failing, as before these changes: `arc.html` (Spark ticks 33 of 34),
+  `cursearch.html` and `devarchive.html`.
+
+## 2026.10.06.6 - One measurement for a pool, and a pool's identity back into its singles
+
+Phase 4 of the plan from the meeting with Shahriar. **Restart Jarvis.**
+
+### Added
+
+- **One measurement for the whole pool.** Before a pool is fitted, its
+  saved and banked members are asked how they were measured.
+  - Where they differ from each other or from the settings bar, a dialog
+    lists who was measured how. You choose one for all; the bar's own is
+    the default.
+  - The settings bar takes the choice, so Single and Pooled agree.
+  - Each saved single measured another way, whose read is here, is
+    measured again to the choice as a **new version**, "re-measured to DS
+    filter". The pool takes the new versions.
+  - One whose read is elsewhere is named, with "take it out, or measure it
+    on the machine that read it".
+  - It is asked once per members and measurement, not on every press.
+- **Every saved single's row says the filter it was measured on.** A pool
+  has "How each member was measured", noting which were measured again
+  here. With each version's measurement in its hover, that is the
+  filtering log.
+- **A pool's identity, back into its singles.** After a pool is saved, it
+  offers "Make the new versions" (yes by default). Each member gets a new
+  version of its single, "from pool ‘X’ vN", with every event called and
+  named as the pool called it, at the pool's measurement.
+  - How: the pool's clusters (centres, calls, names) are kept as a margin
+    of their own, "X vN clusters", and applied fixed. Nearest centre on
+    the pool's own scale is exactly how the pool placed each event.
+  - A member whose read is here is refitted from it. A saved single whose
+    read is elsewhere is re-clustered from its saved numbers. Anything
+    else is named.
+  - Each member keeps its own window, search and retries; the pool's
+    identity replaces its own relabels, centres and drawn clusters.
+  - A cluster drawn by hand is not a centre, so its events go to the
+    nearest one, and the offer says so.
+  - **Measured on real reads:** every event of three members, two from
+    their reads and one from its saved numbers with the read moved away,
+    keeps its pooled call and name, 448 of 448.
+- `rootcanal.fit_rows`: the fit, on a saved version's numbers instead of
+  its read, for everything that does not measure.
+
+### Fixed
+
+- **Pressing Pool now shows the waiting line at once.** The new question
+  is asked behind it, and the line clears while the dialog waits for a
+  choice.
+
+### Checked
+
+- `tools/check_rootcanal.py` 349.
+  - `fit_rows` equals `fit`.
+  - Measures: LFP singles asked for DS are said to differ; measured again,
+    they are new versions and agree.
+  - Propagation: one member from its read and one from its numbers, every
+    event as the pool called and named it, and the margin named for the
+    pool, with its names.
+- `rootcanalpool.html` 184.
+  - The filter chip on a row.
+  - The dialog: asked before pooling, the table, the bar's choice as the
+    primary, the others offered, the singles re-measured, the pool taking
+    the new versions, and no asking again.
+  - After a save, the offer (yes is the primary) and its request.
+- `rootcanal.html` 297, `dspca.html` 304, `braces.html` 21,
+  `aibeta.html` 37, `syncmarks.html` 20.
+- Bite-tested. Each of these turned the checks red:
+  - names lost in propagation;
+  - a remeasure that does nothing;
+  - `fit_rows` reading the wrong axis;
+  - a pool that never asks.
+- The bank and the artifact store are unchanged.
+
+## 2026.10.06.5 - Cluster names, the lab's session workbook, and choosing who is in a pool
+
+Phase 3 of the plan from the meeting with Shahriar. **Restart Jarvis.**
+
+### Added
+
+- **Clusters can be named.** Every cluster chip, in Single and in Pooled,
+  has "name". The picker offers the lab's list (DS names and IED names) or
+  a new name typed with its type.
+  - **A name says what a cluster is.** Its type is the cluster's call,
+    over the rule and a relabel, shown as "by its name".
+  - **Where it travels:** onto every event in the cluster, into the saved
+    version, into pools, and into the bank.
+  - **Renaming:** pressing a named chip renames it, and the picker can
+    take the name off.
+  - **On a k change:** names go with the old clusters, as relabels do.
+- **The lab's list of names** is one shared artifact, so everybody picks
+  the same spelling. A new name joins it for everybody.
+  - One name means one thing: a name already on the list as the other
+    type is refused.
+  - Lists made on two machines before syncing read as one.
+- **Banked events keep their cluster's name** in a field of their own,
+  `rc_name`. Their label still says dentate spike, because that is what
+  every reader of a DS set picks its events by.
+- **Name chips in Pooled.** Pressing "DS slow" pools every saved single
+  holding a cluster of that name, and only those clusters' events.
+  Pressing it again pools every event. A pool's own clusters can be named
+  too, and every pooled event says both names (its single's and its
+  pool's).
+- **The lab's session workbook, read as the reference.**
+  `PTEN_KCNT1 Dentate Spike Data .xlsx` is read live and read again when
+  it changes. Jarvis never writes it.
+  - For PTEN it gives each session's condition (Baseline or CNO), group
+    (CTL, PTEN or DKO) and subgroup (IED+, IED−).
+  - For KCNT1 it gives sex and genotypes.
+  - It is keyed on project, mouse and session, never mouse and session
+    alone.
+  - `/api/sessionref` lists it, with every place it disagrees with the
+    mouse book or a session's folder name. There is one today: **PTEN m5
+    s2** is Baseline in the workbook, but one of its folders is named
+    `M5s2cnov16`.
+- **Choosing who is in a pool.**
+  - A search box: every word must match the session, mouse, group,
+    condition or a version's nickname.
+  - Category chips for group, subgroup, condition, project and kind
+    (saved, banked, read here): OR within a category, AND across them.
+  - "Select all shown" and "Unselect all".
+  - New columns for group and condition, each with where it came from on
+    hover.
+  - **A saved single is one row.** Its version is picked from a dropdown,
+    the latest by default, with each version's hover.
+
+### Checked
+
+- `tools/check_rootcanal.py` 341.
+  - Naming: the call follows the name, the events carry it, a named
+    result rebuilds, and bad names are refused.
+  - The lab list: adding, a refused clash, a repeat changing nothing, and
+    two lists merging.
+  - A version lists its names; a pool can take one name only; pool
+    clusters can be named.
+  - A commit with names writes `rc_name` on DS and IED events and leaves
+    the label alone.
+  - The workbook: keyed by project, PTEN m3 s2's facts, read once,
+    disagreements stated, and candidates carrying the facts.
+- `rootcanal.html` 297: naming from the list, typing a new IED name (the
+  list's save intercepted), renaming, and taking a name off.
+- `rootcanalpool.html` 174: the bar, the search, a condition chip, select
+  all and unselect all, versions per row, and a name chip's request.
+- `dspca.html` 304, `braces.html` 21, `aibeta.html` 37,
+  `syncmarks.html` 20, `tools/check_shard_files.py` 20.
+- Bite-tested. Each of these turned the checks red:
+  - a name that does not set its call;
+  - a name filter that is ignored;
+  - a search that matches everything;
+  - DS events banked without their name.
+- The bank and the artifact store are unchanged.
+
+## 2026.10.06.4 - A Single kept as versions that travel; Braces sets and AI Beta runs reach every machine
+
+Phase 2 of the plan from the meeting with Shahriar. **Restart Jarvis on
+every machine.** For Braces and AI Beta to travel, **run
+`supabase/21_shard_files.sql`** in the Supabase SQL editor once. Until
+then they travel by git, as before, and their marks say "this computer".
+
+### Added
+
+- **A Single is kept as versions.** "Save as vN…" sits in the card's row
+  of counts.
+  - A version is every event's three numbers and its call, with the
+    settings that made them, as a version of a `rootcanal_single`
+    artifact.
+  - It is a few KB (1.7 KB gzipped for 20 events, 12.7 KB for 486), so it
+    reaches every machine through the shared database.
+  - Its read never leaves the machine that made it, as before.
+- **Every version has a nickname**: required, pre-filled from what makes
+  it itself (for example "k3 · LFP filter · 500–1000 Hz"), and renameable.
+  - The nickname is kept on the version, at every level of artifact.
+  - A rename travels, and the newer one wins on the other machine.
+- **The version picker** shows each version's nickname. Its hover gives:
+  - **Settings:** k, filter, band, window, search, 3-axes, retries,
+    margin.
+  - **Counts.**
+  - **Who, where and when**, with the Jarvis version.
+  - **Confirmations.**
+
+  The set's sync mark is beside it.
+- **Opening a version.** Where its read is here, it is refitted from it
+  with its settings. Where it is not, the picture is drawn from its
+  numbers alone: the settings are locked, the traces say where the read
+  is, and "Read the set here" is offered.
+- **Leaving a changed picture asks "Save this as vN first?"**, and says
+  what changed. Save is the default.
+- **Bank keeps a version too**, named "banked as vN". A result banked
+  before today can be kept with "Keep the result banked as vN as a
+  version": refitted from its read where it is here, rebuilt from the
+  numbers the bank filed where it is not.
+- **Pools take saved singles as members.** They are offered in Pooled
+  with their nickname, hover and sync mark, at their latest version.
+  - Their numbers come from the version, so a pool of them needs no read
+    on any machine.
+  - Asking for another measurement re-measures them from their reads
+    where they are here, and names them where they are not.
+  - A pool of saved singles is the pool of their reads, event for event.
+- **Braces sets and AI Beta runs reach the other machines** without a git
+  pull, once migration 21 is run.
+  - They travel as their shard files, which is what git carries: each
+    machine sends only its own, only when one changes, at most about
+    800 KB a push.
+  - A pull writes other machines' shards into
+    `GUI_logs/.cache/cloudshards`. The store reads that folder beside its
+    own, and git ignores it, so a pulled file can never block a
+    `git pull`.
+  - AI Beta's trained models stay on the machine that trained them.
+  - The first push from this desktop is 9 Braces sets and 27 runs, about
+    610 KB, once.
+- **Sync marks** on Braces' alignments and on AI Beta's runs, next to the
+  existing ones.
+- **The sync panel lists everything not shared yet**: bank entries,
+  Checkup sets, layer sheets, artifacts, Braces sets and AI Beta runs,
+  each by name, with its state and why.
+
+### Fixed
+
+- Two harness checks were too loose: the "12 px off picks nothing" pick
+  and the amplitude label (Phase 1). Also, `.btn` alone is the primary
+  button; there is no `.primary` class.
+
+### Checked
+
+- `tools/check_rootcanal.py` 320.
+  - Save, confirm, version, rename, open from numbers, and suggest.
+  - Banking keeps a version.
+  - Pooling saved singles matches pooling their reads, and still pools
+    with a read taken away; a new measurement is refused, naming the
+    member.
+  - A version rename merges by the newer stamp.
+  - Import works from the read and from the bank's numbers alone.
+  - The commit checks now have a throwaway artifact store, since banking
+    writes a version.
+- New `tools/check_shard_files.py` 20, against a fake shared database.
+  - A push sends only this machine's own shards, once per change, paced.
+  - A pull writes into the cache folder only, refusing a path out of it,
+    our own shard, a mismatched machine, an unknown store and a damaged
+    file.
+  - A set edited on two machines merges.
+  - The marks are right.
+  - A database without the table: the push goes on without it.
+  - Other Books are unchanged.
+- `rootcanal.html` 288, 19 of them new: the picker and hovers, the sync
+  mark, Save with the suggested nickname and its request, "changed", the
+  nudge (Save is primary), and opening from numbers or from the read.
+  - Every save and lookup is intercepted.
+  - Moving the strip into the row of counts kept the event bar inside the
+    fold (measured: beside Bank it was 912 px down on a 908 screen).
+- `rootcanalpool.html` 161, `dspca.html` 304, `braces.html` 21,
+  `bracesbad.html` 8, `aibeta.html` 37, `syncmarks.html` 20,
+  `badsync.html` 7.
+- Nothing reached the real bank, artifacts, Braces or AI Beta stores.
+
+## 2026.10.06.3 - Root Canal: a missing half-width searched again, no per-event flip, a filter click in 0.1 s
+
+Phase 1 of the plan from the meeting with Shahriar. **Restart Jarvis.**
+
+### Changed
+
+- **No identity switch on a single event.** The DS | IED toggle on the
+  picked event's bar is gone. The bar shows the event's call and its
+  cluster instead.
+  - Identity now comes only from a cluster: the rule, a relabel, a margin
+    or a drawn cluster.
+  - A result banked with flips still rebuilds, and the bar says "flipped
+    by hand in an older result".
+- **The amplitude axis names the filter it was measured on**, for example
+  "max amplitude on LFP 1–100 Hz · µV", in Single and in Pooled.
+  - It always was measured on the filtered trace. On PTEN 841aad39cfff the
+    median is 1383 µV with no filter, 1200 with LFP and 1132 with the DS
+    filter.
+  - A new check fails the day an event's amplitude stops being the peak of
+    its own filtered trace.
+
+### Added
+
+- **Search again, wider.** An event with an amplitude but no half-width
+  never came back to half height inside the search. That is the usual
+  reason "only events on all 3 axes" leaves one out.
+  - The picked event's bar offers "Search again, to ±200 ms".
+  - The card offers "Search the N with no half-width again".
+  - Only those events are re-measured, out to the widest search the stored
+    waveform allows. Everything else keeps its numbers exactly.
+  - Found ones are marked "found by searching again", and the rule says
+    how many were found.
+  - It is a fit setting (`retry`), so a result rebuilds with it.
+  - **On the 19 cached reads here:** 33 of the 34 events with no half-width
+    have one at ±200 ms.
+
+### Fixed
+
+- **A filter click took 5 s.** Measured on the wall clock with the new
+  `tools/rc_perf.py`, on a 486-event read:
+  - **The cause:** k, a relabel and the 3-axes switch were already under
+    0.1 s. Choosing a filter was 5.3 s (DS) or 1.3 s (None), and opening a
+    set 5.5 s, all spent refiltering every contact.
+  - **The per-contact median** ran row by row: 1.7 s of 1.9 s with no
+    filter. It is now taken all at once, with the same numbers to the bit.
+  - **The zero-phase filter** runs on four threads, at most five chunks at
+    a time, so memory stays where it was.
+  - **The other preset filters** are measured in the background once a set
+    has answered, so a later click finds them done.
+  - **Now:** DS 0.08 s, None 0.17 s, opening a set 3.2 s. Every Single press
+    is under 0.2 s; every Pooled press is under 1.1 s on 19 recordings.
+  - All 19 cached reads give bit-identical amplitudes, half-widths, contacts
+    and polarities under every filter, old code against new. Measuring all
+    of them went from 57 s to 22 s.
+
+### Checked
+
+- `tools/check_rootcanal.py` 290 with real data, 285 without.
+  - A retried event is found and marked, its neighbours are untouched, it
+    rebuilds from params, the plain fit is unchanged, and the click panel
+    draws the retry's crossings.
+  - Amplitude is the peak of its own filtered trace on each filter.
+  - The fast median equals `nanmedian`, missing contacts and gaps
+    included. Threaded filtering equals one chunk at a time.
+- `rootcanal.html` 269.
+  - There is no DS/IED toggle; the call chip is shown; old flips still
+    rebuild.
+  - The retry offers, sends, marks and explains.
+  - Two older checks fixed: the amplitude label wraps on the 3D view, and
+    the "12 px off" pick needed a dot with no neighbour under the press.
+- `rootcanalpool.html` 161 and `dspca.html` 304.
+- Bite-tested. Each of these turned the checks red:
+  - a retry that is ignored;
+  - amplitude taken from the unfiltered trace;
+  - a mean in place of the median;
+  - the toggle back on the bar.
+
 ## 2026.10.06.2 - Root Canal: a saved pool works on any machine, and Save saves what is shown
 
 **Restart Jarvis**, on every machine that opens pools.

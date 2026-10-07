@@ -1,0 +1,80 @@
+/* The review site's own pages (the write-up, sign-in). The Monolith keeps
+   its own styles; these use the same tokens so the two read as one. */
+:root {
+  --bg: #f6f6f2; --surface: #ffffff; --surface-2: #fbfbf8; --ink: #16181b; --ink-2: #474c54; --ink-3: #6f747d;
+  --line: #e2e1db; --line-2: #cfcec7; --chip: #efeee9; --focus: #c98a00;
+  --up: #c63a39; --down: #1c5cab; --ok: #2e7d4f; --warn-bg: rgba(198, 58, 57, .08);
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace; --r: 8px; --gutter: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #191c20; --surface-2: #1d2025; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+    --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933;
+    --up: #f2807e; --down: #6aa5f2; --ok: #6fd39c; --warn-bg: rgba(242, 128, 126, .1);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #191c20; --surface-2: #1d2025; --ink: #e9eaec; --ink-2: #b7bbc2; --ink-3: #8b9099;
+  --line: #2b2f35; --line-2: #3a3f46; --chip: #23262b; --focus: #f2b933;
+  --up: #f2807e; --down: #6aa5f2; --ok: #6fd39c; --warn-bg: rgba(242, 128, 126, .1);
+}
+* { box-sizing: border-box; }
+html, body { overflow-x: hidden; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--sans); }
+main { max-width: 1040px; margin: 0 auto; padding: 24px var(--gutter) 72px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 19px; margin: 0 0 8px; overflow-wrap: anywhere; }
+h3 { font-size: 14px; margin: 14px 0 6px; color: var(--ink-2); }
+p { margin: 0 0 10px; }
+a { color: inherit; text-decoration-color: var(--line-2); text-underline-offset: 2px; }
+a:hover { text-decoration-color: var(--ink-3); }
+.lede { color: var(--ink-2); max-width: 75ch; }
+.muted { color: var(--ink-3); }
+.small { font-size: 13px; }
+.num { font-variant-numeric: tabular-nums; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; margin: 0 0 16px; min-width: 0; }
+.uncorrected { background: var(--warn-bg); border-left: 3px solid var(--up); padding: 8px 12px; border-radius: 4px; margin: 10px 0 16px; }
+.uncorrected strong { color: var(--up); }
+.nav { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 10px 0 18px; font-size: 14px; }
+.nav .btn { display: inline-block; text-decoration: none; border: 1px solid var(--line-2); background: var(--surface); padding: 5px 12px; border-radius: var(--r); }
+.nav .btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.nav button { font: inherit; border: 0; background: none; color: var(--ink-3); cursor: pointer; padding: 0; text-decoration: underline; text-decoration-color: var(--line-2); }
+.toc { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: var(--ink-3); margin: 0 0 16px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 8px; margin: 8px 0 4px; }
+.fact { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; min-width: 0; }
+.fact b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 12.5px; color: var(--ink-3); overflow-wrap: anywhere; }
+.twrap { overflow-x: auto; margin: 6px 0 4px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 5px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+thead th { border-top: 0; color: var(--ink-3); font-weight: 600; font-size: 12.5px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.up { color: var(--up); } td.down { color: var(--down); }
+tr.lead:hover { background: var(--chip); }
+.tag { display: inline-block; font-size: 11.5px; border: 1px solid var(--line-2); border-radius: 10px; padding: 0 7px; color: var(--ink-2); white-space: nowrap; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 3px; background: var(--chip); padding: 3px; border-radius: var(--r); margin: 4px 0 8px; }
+.seg button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--ink-2); padding: 3px 10px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line); }
+.q { border-top: 1px solid var(--line); padding: 10px 0; }
+.q:first-child { border-top: 0; }
+.q .meta { font-size: 12.5px; color: var(--ink-3); }
+.q .text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 2px 0 4px; }
+.q .answer { background: var(--surface-2); border-left: 3px solid var(--ok); padding: 6px 10px; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0; }
+.q.closed .text { color: var(--ink-3); }
+.q .acts { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+.q .acts button, form button { font: inherit; font-size: 13px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+form.add { display: grid; gap: 8px; margin-top: 10px; }
+form.add .row { display: flex; flex-wrap: wrap; gap: 8px; }
+textarea, input[type="text"], input[type="password"] { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line-2); border-radius: 6px;
+  background: var(--surface); color: var(--ink); width: 100%; max-width: 100%; }
+textarea { min-height: 80px; resize: vertical; }
+input[type="text"].who { max-width: 260px; }
+.warn { color: var(--up); }
+.ok { color: var(--ok); }
+.loading { color: var(--ink-3); }
+dl.windows { display: grid; grid-template-columns: minmax(120px, max-content) 1fr; gap: 4px 14px; margin: 6px 0; }
+dl.windows dt { font-weight: 600; }
+dl.windows dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 560px) { dl.windows { grid-template-columns: minmax(0, 1fr); } dl.windows dd { margin-bottom: 6px; } }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

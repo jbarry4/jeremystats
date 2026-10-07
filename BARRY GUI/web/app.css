@@ -10484,7 +10484,7 @@ div.cir-m, .cir-m > summary {
 .dmo-cost { margin: var(--sp-4) 0; font-size: var(--fs-12); color: var(--text);
             overflow-wrap: anywhere; max-width: 92ch; }
 .dmo-ok { margin: var(--sp-4) 0; font-size: var(--fs-12); color: var(--ok); }
-.dmo-days td.dmo-cell { display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+.dmo-days .dmo-chips { display: flex; gap: var(--sp-4); flex-wrap: wrap; }
 .dmo-dot { font: var(--fs-10) var(--mono); padding: 1px var(--sp-6);
            border-radius: var(--r-pill); border: 1px solid var(--line);
            color: var(--text-3); }
@@ -11829,6 +11829,7 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
            background: var(--text-3); }
 .rc-lg-m.rc-lg-ds { background: var(--ok); }
 .rc-lg-m.rc-lg-ied { background: var(--err); }
+.rc-lg-m.rc-lg-amb { background: var(--text-3); }
 .rc-lg-m.rc-lg-square { border-radius: 0; background: var(--text-2);
                         border: 1px solid var(--text); }
 .rc-lg-m.rc-lg-wide { outline: 1px dashed var(--text); outline-offset: 1px; }
@@ -11897,6 +11898,31 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .rc-lasso-bar { display: flex; flex-wrap: wrap; align-items: center;
                 gap: var(--sp-8); padding: var(--sp-6) var(--sp-10); flex: none; }
 .rc-lasso-toggle.on { color: var(--accent); border-color: var(--accent-line); }
+/* A Single's saved versions: the picker beside Bank, and the list a set
+   that has not been read here can open from. Long nicknames wrap rather
+   than being cut (constitution: never truncate). */
+.rc-ver-pick { max-width: 22rem; white-space: normal; }
+.rc-saved-versions { display: flex; flex-direction: column; gap: var(--sp-6);
+                     margin-bottom: var(--sp-10); }
+.rc-saved-only { margin: var(--sp-6) 0 0; }
+/* Choosing who is in the pool: a search, category chips, the names. */
+.rc-sel { display: flex; flex-direction: column; gap: var(--sp-6);
+          margin-bottom: var(--sp-8); }
+.rc-sel-top { display: flex; flex-wrap: wrap; align-items: center;
+              gap: var(--sp-8); }
+.rc-sel-cats { display: flex; flex-wrap: wrap; gap: var(--sp-6) var(--sp-16); }
+.rc-sel-cat { display: inline-flex; flex-wrap: wrap; align-items: center;
+              gap: var(--sp-4); }
+.rc-sel-k { font-size: var(--fs-11, 11px); color: var(--text-2);
+            margin-right: var(--sp-4); }
+.rc-cand-ver { max-width: 16rem; white-space: normal; }
+/* A named cluster's chip, and the picker. */
+.rc-clu.named span { font-weight: 600; }
+.rc-name-new { display: flex; flex-wrap: wrap; align-items: center;
+               gap: var(--sp-8); margin-top: var(--sp-8); }
+.rc-name-in { min-width: 14rem; }
+/* A pool member read on another machine, taken from the saved pool. */
+.rc-pool-cands tr.rc-from-save td { color: var(--text-2); }
 .rc-avg-head { display: flex; flex-wrap: wrap; align-items: baseline;
                gap: var(--sp-8); margin-bottom: var(--sp-6); }
 .rc-filt-is { white-space: nowrap; }
@@ -12453,3 +12479,48 @@ table.ai-tbl tr.ai-on td { background: var(--accent-soft); color: var(--text); }
 .histo-badge { margin: 0 0 8px; padding: 5px 9px; border-radius: 6px; font-size: 12.5px;
   border-left: 3px solid var(--accent); background: var(--bg-2); overflow-wrap: anywhere; }
 .histo-badge.notrun { border-left-color: var(--warn); }
+
+/* Are these clusters statistically different? (Root Canal, 2026-10-06) */
+.rc-stats-go.rc-stats-done.ok { color: var(--ok); border-color: var(--ok); }
+.rc-stats-go.rc-stats-done.warn { color: var(--warn); border-color: var(--warn); }
+/* The verdict a saved version carried, not one asked here. */
+.rc-stats-go.rc-stats-saved { border-style: dashed; }
+.rc-stats-row { margin: 0 0 var(--sp-6); }
+.rc-stats-picks { display: flex; flex-direction: column; gap: var(--sp-6); }
+.rc-stats-pick { display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: var(--sp-6); cursor: pointer; }
+.rc-stats-pick .hint { flex: 1 1 22ch; min-width: 0; }
+.rc-stats-tab th, .rc-stats-tab td { vertical-align: top; }
+.rc-stats-tab th .flagchip { margin-left: var(--sp-4); }
+.rc-stats-verdict { margin: 0; font-weight: 600; }
+.rc-stats-verdict.ok { color: var(--ok); }
+.rc-stats-verdict.warn { color: var(--warn); }
+
+/* A DS / IED border, drawn and applied (Root Canal, 2026-10-06) */
+.rc-border-row { margin-top: var(--sp-6); }
+.rc-border-rule { margin: var(--sp-4) 0 0; }
+.rc-border-go-row { margin: var(--sp-4) 0 var(--sp-6); }
+.rc-border-tab td, .rc-border-tab th { white-space: nowrap; }
+.rc-border-tab .rc-border-edges td { white-space: normal; padding-top: 0;
+  font-size: var(--fs-105); }
+.rc-border-tab tr.on td { color: var(--text); font-weight: 600; }
+.rc-border-pickg { display: inline-flex; align-items: center; gap: var(--sp-4);
+  cursor: pointer; }
+.rc-border-custom { width: 6em; }
+.rc-border-strict { margin: 0; font-weight: 600; }
+
+/* The deep dive: events whose identity does not sit still (2026-10-06) */
+.rc-deep .rc-deep-count { margin: 0 0 var(--sp-6); }
+.rc-deep-bar, .rc-deep-sumbar { margin: var(--sp-6) 0; align-items: center; }
+.rc-deep-at { font-size: var(--fs-115); color: var(--text-2); }
+.rc-deep-scroll { max-width: 100%; max-height: 22rem; overflow: auto; }
+.rc-deep-sumwrap { max-height: none; }
+.rc-deep-tab td, .rc-deep-tab th, .rc-deep-sum td, .rc-deep-sum th {
+  white-space: nowrap; }
+.rc-deep-row { cursor: pointer; }
+.rc-deep-row:hover td { background: var(--bg-2); }
+.rc-deep-row.on td { background: var(--bg-3); color: var(--text); }
+.rc-deep-tab td.rc-call-ds { color: var(--ok); }
+.rc-deep-tab td.rc-call-ied { color: var(--err); }
+.rc-deep-note { width: 100%; }
+.rc-deep-recipe { margin-top: 0; }

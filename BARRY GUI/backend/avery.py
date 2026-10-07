@@ -258,6 +258,10 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
             with np.load(path, allow_pickle=False) as z:
                 fam = {k[4:]: z[k] for k in z.files if k.startswith("fam_")}
                 ok = z["ok"].astype(bool)
+                # A read from before one of the model's inputs existed is
+                # read again rather than scored without it.
+                if any(f not in fam for f in fams if f not in AI.DERIVED):
+                    raise KeyError("an input this read does not hold")
                 if "trace_idx" in z.files:
                     traces = {"chans": [int(c) for c in z["trace_chans"]],
                               "by_event": {int(i): z["trace_arr"][n]
@@ -321,7 +325,9 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
                                     folder=sess.get("path"), job=job,
                                     on_span=tick2, aibeta=AI,
                                     workers=READ_WORKERS,
-                                    spacing=rec.get("spacing"))
+                                    spacing=rec.get("spacing"),
+                                    want_filt=bool(set(fams)
+                                                   & set(phys.FILT_IDS)))
             fam.update(got2["fam"])
             ok = ok & got2["ok"].astype(bool)
         os.makedirs(os.path.dirname(path), exist_ok=True)

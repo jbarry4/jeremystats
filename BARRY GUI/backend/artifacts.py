@@ -63,7 +63,12 @@ FIELDS = ("id", "kind", "schema", "subject", "subject_key", "name",
 # re-run reproduced this version exactly, who, when and where.
 VERSION_FIELDS = ("v", "id", "digest", "at", "by", "machine", "app_version",
                   "commit", "params", "params_hash", "inputs", "note",
-                  "n_summary", "confirmed")
+                  "n_summary", "confirmed", "nickname", "nickname_at")
+# A VERSION'S OWN NICKNAME (asked for 2026-10-06: every version of a single,
+# a pool and a double pool gets one, to find your way among them). Kept on
+# the version row, which travels to the shared database as JSON, so it needs
+# no new column: a rename re-sends the row (the fingerprint counts it) and
+# the newer `nickname_at` wins on the other side.
 
 # Left out of the digest. A payload's digest says what it IS, and when it was
 # made or on which computer is not that -- a VACC run that reproduces a local
@@ -452,7 +457,8 @@ def _rcpool_summary(payload):
             "events": p.get("n"),
             "mice": len({m.get("mouse_key") for m in mem}),
             "delta_bic": g.get("delta"),
-            "switch_rate": (p.get("switches") or {}).get("rate")}
+            "switch_rate": (p.get("switches") or {}).get("rate"),
+            "stats": (p.get("stats") or {}).get("verdict")}
 
 
 def _rcpool_gids(subject):
@@ -493,6 +499,104 @@ def _rcmargin_gids(subject):
 
 register_kind("rootcanal_margin", _rcmargin_key, _rcmargin_name,
               _rcmargin_summary, _rcmargin_gids, "Root Canal margin")
+
+
+# A Root Canal BORDER (2026-10-06): three cut-offs -- µV, dB, ms -- drawn
+# between DS and IED from a pool or a pool of pools, with a band at each
+# grace (the identity-switch rate allowed). Its own minted subject, like a
+# margin: the same pool can be cut twice on purpose.
+def _rcborder_key(subject):
+    _need(subject, ("border_key",), "Root Canal border")
+    return "rootcanal_border|%s" % subject["border_key"]
+
+
+def _rcborder_summary(payload):
+    p = payload or {}
+    return {"strict": p.get("strict"),
+            "grace": p.get("grace_default"),
+            "levels": [{"grace": lv.get("grace"),
+                        "switch_rate": lv.get("switch_rate"),
+                        "counts": lv.get("counts")}
+                       for lv in p.get("levels") or []],
+            "events": p.get("n"), "level": p.get("level"),
+            "recordings": p.get("n_recordings"), "mice": p.get("n_mice"),
+            "filter": (p.get("measure") or {}).get("filter_label"),
+            "source": (p.get("source") or {}).get("nickname")}
+
+
+register_kind("rootcanal_border", _rcborder_key,
+              lambda s: s.get("name") or "Root Canal border",
+              _rcborder_summary,
+              lambda s: [g for g in (s.get("gids") or []) if g],
+              "Root Canal border")
+
+
+# A Root Canal SINGLE: one DS set (an Event Bank entry) as Root Canal
+# measured and clustered it, kept as numbers -- every event's amplitude,
+# half-width, HF power and call, column by column -- so it can be opened,
+# pooled and compared on any machine, without the read it came from (the
+# read is cache and never leaves the machine that made it). One artifact
+# per entry; each saved state of it is a version, with its own nickname.
+def _rcsingle_key(subject):
+    _need(subject, ("entry_id",), "Root Canal single")
+    return "rootcanal_single|%s" % subject["entry_id"]
+
+
+def _rcsingle_name(subject):
+    return "Root Canal single · %s" % (subject.get("session_label")
+                                       or subject.get("entry_id"))
+
+
+def _rcsingle_summary(payload):
+    p = payload or {}
+    c = p.get("counts") or {}
+    return {"events": p.get("n"), "k": p.get("k"),
+            "ds": c.get("ds"), "ied": c.get("ied"),
+            "filter": (p.get("measure") or {}).get("filter_label"),
+            "names": sorted({cl.get("name") for cl in p.get("clusters") or []
+                             if cl.get("name")}),
+            "stats": (p.get("stats") or {}).get("verdict")}
+
+
+def _rcsingle_gids(subject):
+    return [subject["gid"]] if subject.get("gid") else []
+
+
+register_kind("rootcanal_single", _rcsingle_key, _rcsingle_name,
+              _rcsingle_summary, _rcsingle_gids, "Root Canal single")
+
+
+# A Root Canal POOL OF POOLS (a double pool): its members are saved pool
+# versions. Its own subject, a minted key, like a pool.
+def _rcdpool_key(subject):
+    _need(subject, ("dpool_key",), "Root Canal pool of pools")
+    return "rootcanal_dpool|%s" % subject["dpool_key"]
+
+
+register_kind("rootcanal_dpool", _rcdpool_key,
+              lambda s: s.get("name") or "Root Canal pool of pools",
+              lambda p: {"pools": len((p or {}).get("pools") or []),
+                         "members": len((p or {}).get("members") or []),
+                         "events": (p or {}).get("n"),
+                         "switch_rate": ((p or {}).get("switches") or {})
+                         .get("rate"),
+                         "stats": ((p or {}).get("stats") or {})
+                         .get("verdict")},
+              lambda s: [g for g in (s.get("gids") or []) if g],
+              "Root Canal pool of pools")
+
+
+# The lab's list of Root Canal cluster names: one artifact, each change a
+# version; read as the union of every version (see app.py, RC_NAMES_SUBJECT).
+def _rcnames_key(subject):
+    _need(subject, ("list",), "Root Canal cluster names")
+    return "rootcanal_names|%s" % subject["list"]
+
+
+register_kind("rootcanal_names", _rcnames_key,
+              lambda s: "Root Canal cluster names",
+              lambda p: {"names": len((p or {}).get("names") or [])},
+              lambda s: [], "list of Root Canal cluster names")
 
 
 def subject_key(kind, subject):
@@ -707,9 +811,11 @@ class Artifacts:
                                    for h in hit)))
         return hit[0]
 
-    def _version_row(self, payload, params, inputs, by, note, v, kind):
+    def _version_row(self, payload, params, inputs, by, note, v, kind,
+                     nickname=None):
         prov = self._prov()
         params = plain(params or {})
+        nick = (str(nickname).strip() or None) if nickname else None
         row = {
             "v": int(v),
             "id": uuid.uuid4().hex[:12],
@@ -724,6 +830,9 @@ class Artifacts:
             "inputs": plain(inputs or []),
             "note": note,
         }
+        if nick:
+            row["nickname"] = nick
+            row["nickname_at"] = row["at"]
         try:
             row["n_summary"] = plain(KINDS[kind]["summary"](payload))
         except Exception:                                # noqa: BLE001
@@ -734,7 +843,8 @@ class Artifacts:
     # The contract
     # ======================================================================
     def create(self, kind, subject, payload, params=None, inputs=None,
-               name=None, nickname=None, by=None, note=None):
+               name=None, nickname=None, by=None, note=None,
+               version_nickname=None):
         """A new artifact, at version 1.
 
         Refuses when one already exists for this subject: re-running a
@@ -758,7 +868,8 @@ class Artifacts:
             payload = plain(payload)
             prov = self._prov()
             aid = uuid.uuid4().hex[:12]
-            row = self._version_row(payload, params, inputs, by, note, 1, kind)
+            row = self._version_row(payload, params, inputs, by, note, 1, kind,
+                                    nickname=version_nickname)
             self._write_snap(aid, 1, row["digest"], payload)
             nick = (str(nickname).strip() or None) if nickname else None
             rec = {
@@ -779,7 +890,7 @@ class Artifacts:
             return self._write(kind, rec)
 
     def add_version(self, artifact_id, payload, params=None, inputs=None,
-                    by=None, note=None):
+                    by=None, note=None, version_nickname=None):
         """A re-run's answer.
 
         If it is byte-for-byte the current version's answer (by digest),
@@ -813,6 +924,13 @@ class Artifacts:
                     "note": note,
                 })
                 cur["confirmed"] = confirmed
+                # The same answer saved under a name it did not have yet:
+                # the name is kept, never a name it already had replaced.
+                vn = (str(version_nickname).strip() or None) \
+                    if version_nickname else None
+                if vn and not cur.get("nickname"):
+                    cur["nickname"] = vn
+                    cur["nickname_at"] = prov.get("at") or _now_utc()
                 # Whatever the machine that made it, a confirmation means
                 # the payload is here now too.
                 self._write_snap(rec["id"], cur["v"], dig, payload)
@@ -820,23 +938,47 @@ class Artifacts:
             top = max([v.get("v") or 0 for v in (rec.get("versions") or [])]
                       or [0])
             row = self._version_row(payload, params, inputs, by, note,
-                                    top + 1, kind)
+                                    top + 1, kind, nickname=version_nickname)
             self._write_snap(rec["id"], row["v"], dig, payload)
             rec["versions"] = list(rec.get("versions") or []) + [row]
             rec["version"] = row["v"]
             return self._write(kind, rec)
 
     def put(self, kind, subject, payload, params=None, inputs=None,
-            by=None, note=None, name=None, nickname=None):
+            by=None, note=None, name=None, nickname=None,
+            version_nickname=None):
         """`find`, then `add_version` or `create`. What a producer calls."""
         with _LOCK:
             have = self.find(kind, subject_key(kind, plain(subject or {})))
             if have:
                 return self.add_version(have["id"], payload, params=params,
-                                        inputs=inputs, by=by, note=note)
+                                        inputs=inputs, by=by, note=note,
+                                        version_nickname=version_nickname)
             return self.create(kind, subject, payload, params=params,
                                inputs=inputs, name=name, nickname=nickname,
-                               by=by, note=note)
+                               by=by, note=note,
+                               version_nickname=version_nickname)
+
+    def set_version_nickname(self, artifact_id, v, nickname):
+        """Rename one version. Empty clears it."""
+        with _LOCK:
+            kind, rec = self._read(artifact_id)
+            if not rec:
+                raise ArtifactError("There is no artifact %r." % artifact_id)
+            nick = str(nickname or "").strip() or None
+            if nick and len(nick) > 160:
+                raise ArtifactError("A nickname is a name, not a note: keep "
+                                    "it under 160 characters.")
+            row = next((x for x in rec.get("versions") or []
+                        if int(x.get("v") or 0) == int(v)), None)
+            if row is None:
+                raise ArtifactError("This %s has no version %s."
+                                    % (KINDS[kind]["noun"], v))
+            if (row.get("nickname") or None) == nick:
+                return self._clean(rec)
+            row["nickname"] = nick
+            row["nickname_at"] = self._prov().get("at") or _now_utc()
+            return self._write(kind, rec)
 
     def find(self, kind, subject_key_or_subject):
         """The one live artifact for this subject, or None.
@@ -1094,6 +1236,8 @@ class Artifacts:
         return _hash_of({
             "versions": sorted("%s:%d" % (v.get("id"),
                                           len(v.get("confirmed") or []))
+                               + ((":" + str(v.get("nickname")))
+                                  if v.get("nickname") else "")
                                for v in rec.get("versions") or []),
             "cited": sorted(c.get("id") or "" for c in rec.get("cited") or []),
             "nickname": rec.get("nickname"),
@@ -1173,6 +1317,15 @@ class Artifacts:
                     theirs = v.get("confirmed") or []
                     if len(theirs) > len(mine.get("confirmed") or []):
                         mine["confirmed"] = theirs
+                        changed = True
+                    # A version renamed over there, later than here.
+                    t_at = _parse_ts(v.get("nickname_at"))
+                    m_at = _parse_ts(mine.get("nickname_at"))
+                    if (v.get("nickname") or None) != (mine.get("nickname")
+                                                       or None) \
+                            and t_at and (m_at is None or t_at > m_at):
+                        mine["nickname"] = v.get("nickname") or None
+                        mine["nickname_at"] = v.get("nickname_at")
                         changed = True
             if changed:
                 rec["versions"] = versions

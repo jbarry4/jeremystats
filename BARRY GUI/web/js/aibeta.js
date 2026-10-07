@@ -308,7 +308,11 @@ BARRY.aibeta = (function () {
            st.families.filter((f) => !f.phys).map(toggleFor)),
         el('div', { class: 'ai-sub', text: 'Physiology — a second read' }),
         el('div', { class: 'ai-toggles' },
-           st.families.filter((f) => f.phys).map(toggleFor)),
+           st.families.filter((f) => f.phys && !f.group).map(toggleFor)),
+        el('div', { class: 'ai-sub',
+                    text: 'Pictures at the aligned peak — the second read' }),
+        el('div', { class: 'ai-toggles' },
+           st.families.filter((f) => f.group === 'pictures').map(toggleFor)),
       ]),
       hint: 'Each read takes every input in its group at once, so changing '
             + 'these later costs only the training. The second read is '
@@ -876,7 +880,10 @@ BARRY.aibeta = (function () {
           class: r.id === shownId ? 'ai-on' : '',
           onclick: () => { openRun(r.id); paintRunsSel(); },
         }, [
-          el('td', { text: when(r.at) }),
+          el('td', {}, [el('span', { text: when(r.at) }),
+            // Whether the run's record has reached the shared database.
+            BARRY.syncState ? BARRY.syncState.mark('aibeta', r.id) : null,
+          ].filter(Boolean)),
           el('td', { text: modelName((r.settings || {}).model)
             + (st && st.avery && st.avery.run_id === r.id ? ' · Avery' : '')
             + (st && st.avery_plus && st.avery_plus.run_id === r.id

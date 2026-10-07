@@ -297,7 +297,10 @@ const ENTRY = '46fd29a77cc7';
   const hfSaid = '500–1000 Hz power · dB re baseline';
   const has = (id, re) => (txt[id] || []).some((t) => re.test(t)
                                                     || t.indexOf(re) >= 0);
-  const hasS = (id, s) => (txt[id] || []).some((t) => t.indexOf(s) >= 0);
+  // A long label is wrapped onto two lines where it would not fit, so a
+  // label is looked for in the canvas's text as a whole, not line by line.
+  const hasS = (id, s) => (txt[id] || []).some((t) => t.indexOf(s) >= 0)
+    || (txt[id] || []).join(' ').indexOf(s) >= 0;
   /* Amplitude is measured on the filtered trace, so its axis says which
      filter: the default here is LFP. */
   const ampSaid = 'max amplitude on LFP 1–100 Hz · µV';
@@ -970,7 +973,12 @@ const ENTRY = '46fd29a77cc7';
     note('no two dots overlap in the space at this rotation; front-wins '
          + 'checked through _pickAt only');
   }
-  const sp1 = lonely(sp, 10);
+  /* A lone dot, and one whose press point 12 px to its right is more than
+     the 6 px pick radius from every OTHER dot too: lonely within 10 px
+     alone let a neighbour 16 px away sit under the press. */
+  const sp1 = sp.find((p) => sp.every((o) => o === p
+    || (Math.hypot(o.x - p.x, o.y - p.y) > 10
+        && Math.hypot(o.x - (p.x + 12), o.y - p.y) > 7)));
   if (sp1) {
     eq('a press 4 px off a lone dot still picks it (within 6 px)',
        ev(RC + '._pickAt("rcSpace",' + (sp1.x + 4) + ',' + sp1.y + ')'), sp1.i);
@@ -1246,8 +1254,37 @@ const ENTRY = '46fd29a77cc7';
                              ['Open in Xplorefinder', '.rc-pickbar .head-actions']]) {
     const r = box(sel);
     const b = r ? r.bottom - top0 : null;
+    /* Where everything above it sits, so a miss says which card grew. */
+    const above = ['.rc-choose', '.rc-controls', '.rc-why', '.rc-why-acts',
+                   '.rc-pickbar',
+                   /* and the why card's own rows, so a miss says which grew */
+                   '.rc-why .rc-rule', '.rc-why-t > .chip-row',
+                   '.rc-why .rc-clusters', '.rc-why .rc-clu',
+                   '.rc-why .rc-stats-go', '.rc-why .rc-margins',
+                   '.rc-why .head-actions'].map((s2) => {
+      const q2 = box(s2);
+      return q2 ? s2 + ' ' + (q2.top - top0).toFixed(0) + '+'
+                  + q2.height.toFixed(0) : s2 + ' -';
+    }).join(', ');
+    /* And the room left on each wrapping row's last line: what a control
+       added to the card could take without making it a line taller. */
+    const room = ['.rc-why-t > .chip-row', '.rc-why .rc-clusters'].map((s2) => {
+      const rw = D().querySelector(s2);
+      if (!rw || !rw.children.length) return s2 + ' -';
+      const R = rw.getBoundingClientRect();
+      const kids = Array.from(rw.children).map((c2) => c2.getBoundingClientRect());
+      const lastTop = Math.max.apply(null, kids.map((k2) => k2.top));
+      const used = Math.max.apply(null, kids.filter((k2) => k2.top >= lastTop - 2)
+                                           .map((k2) => k2.right));
+      return s2 + ' ' + (R.right - used).toFixed(0) + ' px free of '
+             + R.width.toFixed(0);
+    }).join(', ');
     ok(what + ' is within one screen of the top of the panel',
-       !!r && b <= vh + 1, r ? b.toFixed(0) + ' px down, screen ' + vh : 'missing');
+       !!r && b <= vh + 1, r ? b.toFixed(0) + ' px down, screen ' + vh
+                               + ' (' + above + '; ' + room + ')' : 'missing');
+    if (what === 'Open in Xplorefinder') {
+      say('       ' + (r ? b.toFixed(0) : '?') + ' of ' + vh + ' px; ' + room, 'dim');
+    }
   }
   const pic = box('#rcSpace');
   const lastCtl = Math.max.apply(null, ['.rc-recompute', '.rc-bank', '.rc-ev-call']
@@ -1460,6 +1497,427 @@ const ENTRY = '46fd29a77cc7';
      (bp.done || []).some((r) => r.entry_id === ENTRY),
      JSON.stringify((bp.done || []).map((r) => r.entry_id)).slice(0, 160));
 
+  /* ================================================================== */
+  head('NAMING A CLUSTER (THE LAB’S LIST INTERCEPTED; NOTHING IS SAVED)');
+
+  await until(() => st().fit && st().fit.ok && !st().fitting, 30000, 'a fit');
+  if (st().fit.k !== 2) {
+    const k2b = Array.from(D().querySelectorAll('.rc-kseg button'))
+      .find((b) => b.textContent.trim() === '2');
+    if (k2b) k2b.click();
+    await until(() => !st().fitting && st().fit.k === 2, 20000, 'k = 2');
+  }
+  ev('(function(){ var W = window; if (W.__rnFetch) return; W.__rnFetch = W.fetch;'
+     + ' W.__rnSent = []; W.fetch = function(u, o) { var s = String(u);'
+     + ' if (s.indexOf("/api/rootcanal/names") >= 0) { var r;'
+     + '   if (o && o.method === "POST") { W.__rnSent.push(JSON.parse(o.body ||'
+     + '     "{}")); r = { ok: true, added: true, names: [] }; }'
+     + '   else r = { ok: true, names: [{ name: "DS slow", type: "ds" },'
+     + '     { name: "IED big", type: "ied" }] };'
+     + '   return Promise.resolve(new Response(JSON.stringify(r), { status: 200,'
+     + '     headers: { "Content-Type": "application/json" } })); }'
+     + ' return W.__rnFetch.apply(this, arguments); }; })()');
+  const nmBtns = () => Array.from(D().querySelectorAll('.rc-why .rc-clu-name'));
+  eq('every cluster chip offers a name', nmBtns().length, st().fit.clusters.length);
+  const dsRank = st().fit.clusters.find((cl) => cl.call === 'ds').rank;
+  nmBtns()[dsRank].click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-name-dlg'),
+              8000, 'the name picker');
+  const picks = Array.from(D().querySelectorAll('#bigModal .rc-name-pick'));
+  eq('the picker offers the lab’s names, by type',
+     picks.map((b) => b.textContent), ['DS slow', 'IED big']);
+  picks[0].click();
+  await until(() => !st().fitting && st().fit.clusters
+    .some((cl) => cl.name === 'DS slow'), 20000, 'the named cluster');
+  const named = st().fit.clusters.find((cl) => cl.name === 'DS slow');
+  ok('the cluster is named, called by its name',
+     named.rank === dsRank && named.call === 'ds' && named.call_by === 'name');
+  ok('and its chip says the name', Array.from(D().querySelectorAll('.rc-why .rc-clu'))
+     .some((b) => /DS slow/.test(b.textContent)));
+  eq('the request carries it', (ev(RC + '._lastBody()').cluster_names
+     || {})[String(dsRank)], { name: 'DS slow', type: 'ds' });
+  ok('every event in it carries the name', st().fit.events
+     .filter((e) => e.cluster === dsRank).every((e) => e.name === 'DS slow'));
+  /* A new name, typed, as an IED name, on the other cluster. */
+  const iedRank = st().fit.clusters.find((cl) => cl.rank !== dsRank).rank;
+  nmBtns()[iedRank].click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-name-in'),
+              8000, 'the picker again');
+  D().querySelector('#bigModal .rc-name-in').value = 'IED harness';
+  const tIed = Array.from(D().querySelectorAll('#bigModal .rc-name-type button'))
+    .find((b) => b.textContent.trim() === 'IED');
+  if (tIed) tIed.click();
+  D().querySelector('#bigModal .rc-name-add').click();
+  await until(() => !st().fitting && st().fit.clusters
+    .some((cl) => cl.name === 'IED harness'), 20000, 'the typed name');
+  eq('a typed name joins the lab’s list, with its type',
+     JSON.parse(ev('JSON.stringify(window.__rnSent)')),
+     [{ name: 'IED harness', type: 'ied' }]);
+  ok('and names the cluster, called IED',
+     st().fit.clusters.find((cl) => cl.name === 'IED harness').call === 'ied');
+  /* Pressing a named chip renames it; the picker can take the name off. */
+  Array.from(D().querySelectorAll('.rc-why .rc-clu'))
+    .find((b) => /DS slow/.test(b.textContent)).click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-name-clear'),
+              8000, 'the rename picker');
+  D().querySelector('#bigModal .rc-name-clear').click();
+  await until(() => !st().fitting && !st().fit.clusters
+    .some((cl) => cl.name === 'DS slow'), 20000, 'the name off');
+  ok('a name can be taken off again',
+     !(String(dsRank) in (ev(RC + '._lastBody()').cluster_names || {})));
+  ev(RC + '._state().q.cluster_names = {}');
+  ev(RC + '._fit()');
+  await until(() => !st().fitting && !st().fit.clusters.some((cl) => cl.name),
+              20000, 'no names');
+  ev('(function(){ var W = window; if (W.__rnFetch) { W.fetch = W.__rnFetch;'
+     + ' delete W.__rnFetch; } })()');
+
+  /* ================================================================== */
+  head('SAVED VERSIONS OF A SINGLE (INTERCEPTED; NOTHING IS SAVED)');
+
+  await until(() => st().fit && st().fit.ok && !st().fitting, 30000, 'a fit');
+  const sRead = st().q.read, sFrom = st().q.from_version;
+  const sFit = JSON.parse(JSON.stringify(st().fit));
+  const sVer = (v, k, nick) => ({ v, id: 'hv' + v, nickname: nick,
+    at: '2026-10-06T12:00:00', by: 'Harness', machine: 'Elsewhere',
+    app_version: 'h', note: null,
+    measure: { filter_label: 'LFP filter, 1–100 Hz, 60 Hz mains left in',
+               band_lo: 500, band_hi: 1000, win_ms: 25, cross_ms: 50 },
+    k, complete_only: false, retry: 0, margin: null,
+    n_summary: { events: sFit.n, ds: 10, ied: 5, names: [] },
+    confirmed: 0, here: true, inputs: [{ read: sRead }] });
+  const sSingle = { artifact_id: 'harness-single', entry_id: ENTRY,
+    versions: [sVer(1, 2, 'two clusters'), sVer(2, 3, 'three clusters')],
+    version: 2 };
+  const sParams = (k) => ({ filt: 'lfp', mains_out: false, lo_hz: 1, hi_hz: 100,
+    win_ms: 25, band_lo: 500, band_hi: 1000, cross_ms: 50, k,
+    complete_only: false, cluster_calls: {}, margin: null, drawn: [],
+    retry: [], flips: [], centres: null });
+  ev('window.__rsSingle = ' + JSON.stringify(sSingle));
+  ev('(function(){ var W = window; if (W.__rsFetch) return; W.__rsFetch = W.fetch;'
+     + ' W.__rsSent = []; W.fetch = function(u, o) { var s = String(u);'
+     + ' var reply = null;'
+     + ' if (s.indexOf("/api/rootcanal/singles") >= 0) reply = { ok: true,'
+     + '   singles: [W.__rsSingle] };'
+     + ' else if (s.indexOf("/api/rootcanal/single/save") >= 0) {'
+     + '   W.__rsSent.push(JSON.parse((o && o.body) || "{}")); reply = W.__rsSave; }'
+     + ' else if (s.indexOf("/api/rootcanal/single/harness-single") >= 0)'
+     + '   reply = W.__rsOpen;'
+     + ' if (reply) return Promise.resolve(new Response(JSON.stringify(reply),'
+     + '   { status: 200, headers: { "Content-Type": "application/json" } }));'
+     + ' return W.__rsFetch.apply(this, arguments); }; })()');
+  await ev(RC + '._loadSingle()');
+  await until(() => D().querySelector('.rc-why .rc-ver-pick'), 8000, 'the picker');
+  const sPick = D().querySelector('.rc-why .rc-ver-pick');
+  const sOpts = Array.from(sPick.querySelectorAll('option')).slice(1);
+  eq('the set’s saved versions are offered beside Bank, newest first',
+     sOpts.map((o2) => o2.textContent),
+     ['v2 · three clusters', 'v1 · two clusters']);
+  ok('each one’s hover says its settings, counts, and who, where and when',
+     /Settings: k3 · LFP filter/.test(sOpts[0].title)
+     && /Counts: \d+ events · 10 DS · 5 IED/.test(sOpts[0].title)
+     && /Saved by Harness on Elsewhere, 2026-10-06 12:00/.test(sOpts[0].title),
+     sOpts[0].title);
+  ok('the set’s sync state is marked beside them',
+     !!D().querySelector('.rc-why .sync-mark'));
+  const sSave = () => D().querySelector('.rc-why .rc-save-ver');
+  eq('Save offers the next version', sSave() && sSave().textContent,
+     'Save as v3…');
+
+  /* Save, through the dialog, with the suggested nickname. */
+  ev('window.__rsSave = ' + JSON.stringify({ ok: true,
+    artifact_id: 'harness-single', version: 3, confirmed: false,
+    rows_digest: 'h', single: Object.assign({}, sSingle, { version: 3,
+      versions: sSingle.versions.concat([sVer(3, 2, 'harness save')]) }) }));
+  ev(RC + '._saveVersion()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-name'),
+              8000, 'the save dialog');
+  const sName = D().querySelector('#bigModal .bank-dlg-name');
+  ok('the nickname is suggested from what makes the version itself',
+     /^k\d · LFP filter · 500–1000 Hz/.test(sName.value), sName.value);
+  sName.value = 'harness save';
+  Array.from(D().querySelectorAll('#bigModal .mf button')).pop().click();
+  await until(() => JSON.parse(ev('JSON.stringify(window.__rsSent)')).length,
+              8000, 'the save');
+  const sBody = JSON.parse(ev('JSON.stringify(window.__rsSent)'))[0] || {};
+  ok('it would save under that nickname, with the read and every setting',
+     sBody.nickname === 'harness save' && sBody.entry_id === ENTRY
+     && sBody.read === sRead && Number(sBody.k) === Number(st().q.k)
+     && 'retry' in sBody && 'cluster_calls' in sBody,
+     JSON.stringify(sBody).slice(0, 200));
+  await until(() => ev(RC + '._viewing()') && ev(RC + '._viewing()').v === 3,
+              5000, 'the saved version');
+  ok('and the picture is then that version, unchanged',
+     ev(RC + '._viewing()').v === 3 && ev(RC + '._dirty()') === false);
+
+  /* A change makes it unsaved; leaving asks first. */
+  const sK = Number(st().q.k) === 2 ? 3 : 2;
+  const sKb = Array.from(D().querySelectorAll('.rc-kseg button'))
+    .find((b) => b.textContent.trim() === String(sK));
+  if (sKb) sKb.click();
+  await until(() => !st().fitting && st().fit && st().fit.k === sK, 20000, 'k');
+  ok('a change after saving is a change', ev(RC + '._dirty()') === true);
+  ok('and the picker says so', /\(changed\)/.test(
+    (D().querySelector('.rc-why .rc-ver-pick option') || {}).textContent || ''));
+  ev(RC + '._leaveTo("harness-elsewhere")');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-nudge'),
+              5000, 'the nudge');
+  const sNudge = D().querySelector('#bigModal .rc-nudge');
+  ok('leaving a changed picture asks to save it first, and says what changed',
+     /Save this as v4 first\?/.test(sNudge.textContent)
+     && /: k\b/.test(sNudge.textContent), sNudge.textContent.slice(0, 200));
+  const sLast = Array.from(sNudge.querySelectorAll('.mf button')).pop();
+  ok('saving is the default (the primary, last)',
+     !!sLast && /Save as v4/.test(sLast.textContent)
+     // The filled button is `.btn` alone: there is no `.primary` class.
+     && sLast.classList.contains('btn') && !sLast.classList.contains('ghost'));
+  ev('closeModal()');
+  ok('closing it stays on the set', st().q.entry === ENTRY);
+
+  /* A version whose read is on another machine: its numbers alone. */
+  ev('window.__rsOpen = ' + JSON.stringify({ ok: true, version: 1,
+    nickname: 'two clusters', single: sSingle, here: false,
+    payload: { params: sParams(2), read: sRead, read_on: 'Elsewhere',
+               from_version: sFrom },
+    fit: Object.assign({}, sFit, { params: sParams(2) }) }));
+  await ev(RC + '._openVersion("harness-single", 1)');
+  await until(() => D().querySelector('.rc-why .rc-saved-only'), 8000,
+              'the numbers-only picture');
+  ok('a version whose read is elsewhere opens from its numbers',
+     (ev(RC + '._savedOnly()') || {}).read_on === 'Elsewhere'
+     && geom().space.pts.length === sFit.events.length);
+  ok('it says so, and offers to read the set here',
+     /Elsewhere/.test(D().querySelector('.rc-why .rc-saved-only').textContent)
+     && !!D().querySelector('.rc-why .rc-read-here'));
+  ok('Bank and Save are off: there is no read here to bank or refit from',
+     D().querySelector('.rc-why .rc-bank').disabled && sSave().disabled);
+  eq('its settings came back into the controls', Number(st().q.k), 2);
+  const sKb3 = Array.from(D().querySelectorAll('.rc-kseg button'))
+    .find((b) => b.textContent.trim() === '3');
+  if (sKb3) sKb3.click();
+  await sleep(300);
+  eq('and cannot be changed here', Number(st().q.k), 2);
+  ev(RC + '._pick(' + sFit.events[0].i + ')');
+  await until(() => st().evData && st().evData.ok === false, 5000, 'the event');
+  ok('a dot says its traces are where its read is',
+     /saved numbers/.test(st().evData.error)
+     && /Elsewhere/.test(st().evData.error), st().evData.error);
+
+  /* And one whose read is here: refitted, with its settings. */
+  ev('window.__rsOpen = ' + JSON.stringify({ ok: true, version: 2,
+    nickname: 'three clusters', single: sSingle, here: true,
+    payload: { params: sParams(3), read: sRead, read_on: 'Bluebarry',
+               from_version: sFrom },
+    fit: sFit }));
+  await ev(RC + '._openVersion("harness-single", 2)');
+  await until(() => !st().fitting && st().fit && st().fit.k === 3
+                    && !ev(RC + '._savedOnly()'), 20000, 'the refit');
+  ok('a version whose read is here is refitted from it, with its settings',
+     st().fit.ok && Number(st().q.k) === 3 && ev(RC + '._viewing()').v === 2
+     && ev(RC + '._dirty()') === false);
+  ev('(function(){ var W = window; if (W.__rsFetch) { W.fetch = W.__rsFetch;'
+     + ' delete W.__rsFetch; } })()');
+
+  /* ================================================================== */
+  head('ARE THESE CLUSTERS DIFFERENT? (THE TESTS INTERCEPTED; NOTHING IS SAVED)');
+
+  await until(() => st().fit && st().fit.ok && !st().fitting, 30000, 'a fit');
+  const kBtn6 = (k) => Array.from(D().querySelectorAll('.rc-kseg button'))
+    .find((b) => b.textContent.trim() === String(k));
+  const stGo = () => D().querySelector('.rc-why .rc-stats-go');
+  if (st().fit.k !== 3) {
+    kBtn6(3).click();
+    await until(() => !st().fitting && st().fit.k === 3, 20000, 'k = 3');
+  }
+  ok('at k = 3 the question is not offered: the tests run at k = 2, and '
+     + 'the clusters’ row has no room for a control that is off', !stGo());
+  kBtn6(2).click();
+  await until(() => !st().fitting && st().fit.k === 2, 20000, 'k = 2');
+  ok('at k = 2 it can be asked, and nothing has been asked yet',
+     !!stGo() && !stGo().disabled
+     && stGo().textContent === 'Test the split' && !st().fit.stats
+     && /Are these clusters statistically different\?/.test(stGo().title),
+     stGo() && stGo().textContent);
+  ok('beside the clusters it asks about, on their row',
+     stGo().parentElement.classList.contains('rc-clusters')
+     && Math.abs(stGo().getBoundingClientRect().top
+                 - D().querySelector('.rc-why .rc-clu').getBoundingClientRect()
+                   .top) < 4, stGo().getBoundingClientRect().top);
+  const v1opt = Array.from(D().querySelectorAll('.rc-why .rc-ver-pick option'))
+    .find((o2) => /^v1 · /.test(o2.textContent));
+  ok('a version’s hover says whether its clusters were tested',
+     !!v1opt && /Are the clusters different\? not tested/.test(v1opt.title),
+     v1opt && v1opt.title);
+  const stReply = { ok: true, level: 'single', n: 120, n_used: 120,
+    subsampled: false, recommended: 'sigclust', verdict: 'could be forced',
+    stats_key: 'harness', tests: {
+      sigclust: { p: 0.62, n_sim: 200, genuine: false, say: 'p = 0.620: one '
+        + 'Gaussian cloud split in two does as well -- the split could be forced' },
+      dip: { dip: 0.02, p: 0.71, genuine: false,
+             say: 'dip 0.0200, p = 0.710: one hump along the DS→IED line' },
+      stability: { ari_mean: 0.95, genuine: true, say: 'adjusted Rand 0.95 over '
+        + '50 resamples; 2% of events change cluster in more than 1 in 10' },
+      gmm: { delta: 30.1, agree: 0.2, genuine: false,
+             say: 'ΔBIC = +30.1: two Gaussians, barely the DS / IED split' } } };
+  ev('window.__stReply = ' + JSON.stringify(stReply));
+  ev('(function(){ var W = window; if (W.__stFetch) return; W.__stFetch = W.fetch;'
+     + ' W.__stSent = []; W.__stFail = null; W.fetch = function(u, o) {'
+     + ' var s = String(u);'
+     + ' if (s.indexOf("/api/rootcanal/stats") >= 0 && s.indexOf("/about") < 0) {'
+     + '   var b = JSON.parse((o && o.body) || "{}"); W.__stSent.push(b);'
+     + '   if (W.__stFail) return Promise.resolve(new Response(JSON.stringify('
+     + '     { ok: false, error: W.__stFail }), { status: 400,'
+     + '     headers: { "Content-Type": "application/json" } }));'
+     + '   var t = {}; (b.tests || []).forEach(function(k) {'
+     + '     if (W.__stReply.tests[k]) t[k] = W.__stReply.tests[k]; });'
+     + '   return Promise.resolve(new Response(JSON.stringify(Object.assign({},'
+     + '     W.__stReply, { tests: t })), { status: 200,'
+     + '     headers: { "Content-Type": "application/json" } })); }'
+     + ' return W.__stFetch.apply(this, arguments); }; })()');
+  const stSent = () => JSON.parse(ev('JSON.stringify(window.__stSent)'));
+
+  stGo().click();
+  await until(() => D().querySelectorAll('#bigModal:not(.hidden) .rc-stats-pick')
+    .length === 4, 8000, 'the four tests');
+  const picks6 = Array.from(D().querySelectorAll('#bigModal .rc-stats-pick'));
+  eq('all four tests are offered, every one ticked', picks6.map((p6) =>
+    p6.querySelector('strong').textContent
+    + (p6.querySelector('input').checked ? ' ✓' : '')),
+     ['SigClust ✓', 'Dip test ✓', 'Stability ✓', 'GMM ΔBIC + agreement ✓']);
+  eq('SigClust is marked recommended, and only it',
+     picks6.map((p6) => /recommended/.test(p6.textContent)),
+     [true, false, false, false]);
+  ok('each one’s hover says what it asks, its pro and its con',
+     picks6.every((p6) => /asks: .+\nPro: .+\nCon: .+/.test(p6.title)),
+     picks6[0].title);
+  ok('the dialog says why a t-test between the two clusters is not offered',
+     /t-test/.test(D().querySelector('#bigModal .rc-stats-dlg').textContent));
+  picks6[1].querySelector('input').click();
+  D().querySelector('#bigModal .rc-stats-run').click();
+  await until(() => stSent().length
+    && D().querySelector('#bigModal:not(.hidden) .rc-stats-tab'), 8000, 'the answer');
+  const stB = stSent()[0];
+  ok('it asks of Single’s own picture at k = 2, for the tests ticked',
+     stB.level === 'single' && stB.entry_id === ENTRY && stB.read === st().q.read
+     && Number(stB.k) === 2
+     && JSON.stringify(stB.tests) === JSON.stringify(['sigclust', 'stability', 'gmm']),
+     JSON.stringify(stB).slice(0, 240));
+  const vrd = D().querySelector('#bigModal .rc-stats-verdict');
+  ok('the answer leads with the recommended test’s verdict',
+     /^Could be forced\. SigClust, recommended: p = 0\.620/.test(vrd.textContent)
+     && vrd.classList.contains('warn'), vrd.textContent);
+  const trs6 = Array.from(D().querySelectorAll('#bigModal .rc-stats-tab tbody tr'));
+  eq('then each test asked: its answer, and how it reads', trs6.map((tr) =>
+    tr.querySelector('th span').textContent + ': '
+    + tr.querySelector('td:last-child').textContent),
+     ['SigClust: could be forced', 'Stability: genuine',
+      'GMM ΔBIC + agreement: could be forced']);
+  ok('each row’s hover has its pros and cons',
+     trs6.every((tr) => /Pro: .+\nCon: /.test(tr.title)));
+  ok('and it says how many read the split as genuine, on how many events',
+     /1 of 3 tests read the split as genuine, on 120 complete events of this single recording/
+       .test(D().querySelector('#bigModal .rc-stats-dlg').textContent));
+  D().querySelector('#bigModal .rc-stats-close').click();
+  await until(() => D().querySelector('.rc-why .rc-stats-done'), 5000,
+              'the verdict on the picture');
+  const done6 = D().querySelector('.rc-why .rc-stats-done');
+  ok('the answer is then on the picture, with every test in its hover',
+     done6.textContent === 'maybe forced' && done6.classList.contains('warn')
+     && /SigClust: p = 0\.620/.test(done6.title)
+     && /Stability: adjusted Rand 0\.95/.test(done6.title), done6.title);
+  ok('kept on the fit itself', (st().fit.stats || {}).verdict === 'could be forced');
+  done6.click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-stats-tab'),
+              5000, 'the table again');
+  ok('pressed, it shows the answer again without asking again',
+     stSent().length === 1);
+  D().querySelector('#bigModal .rc-stats-again').click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-stats-pick'),
+              5000, 'the tests again');
+  eq('“Run other tests” goes back to the four, as they were ticked',
+     Array.from(D().querySelectorAll('#bigModal .rc-stats-pick input'))
+       .map((i6) => i6.checked), [true, false, true, true]);
+  ev('window.__stFail = "harness: refused"');
+  D().querySelector('#bigModal .rc-stats-run').click();
+  await until(() => stSent().length === 2
+    && D().querySelector('#bigModal:not(.hidden) .rc-stats-pick')
+    && !D().querySelector('.rc-why .rc-stats-busy'), 8000, 'the refusal');
+  ok('refused, the four are offered again, and the picture keeps its answer',
+     (st().fit.stats || {}).verdict === 'could be forced'
+     && /maybe forced/.test(stGo().textContent));
+  ev('window.__stFail = null');
+  ev('closeModal()');
+  kBtn6(3).click();
+  await until(() => !st().fitting && st().fit.k === 3, 20000, 'k = 3');
+  kBtn6(2).click();
+  await until(() => !st().fitting && st().fit.k === 2, 20000, 'k = 2');
+  ok('refitted, the picture carries only what the server kept for it -- '
+     + 'nothing, as that answer was the harness’s',
+     !st().fit.stats && stGo().textContent === 'Test the split');
+  ev('(function(){ var W = window; if (W.__stFetch) { W.fetch = W.__stFetch;'
+     + ' delete W.__stFetch; } })()');
+
+  /* ================================================================== */
+  head('A BORDER IN SINGLE (ITS CLASSES ADDED TO THE SERVER’S ANSWER)');
+
+  await until(() => st().fit && st().fit.ok && !st().fitting, 30000, 'a fit');
+  ok('folded, the card says margins and borders on one line',
+     D().querySelector('.rc-why .rc-margin-sum').textContent
+       === 'Margins and borders · none applied'
+     && !D().querySelector('.rc-why .rc-margins').open);
+  /* A border the server does not have is refused, said, and taken off. */
+  ev(RC + '._setBorder({ artifact_id: "harness-nope", version: null, grace: null })');
+  /* The refusal refits without it, a debounce later: wait for that
+     picture, which is the one that says so. */
+  await until(() => !st().fitting && ev(RC + '._borderErr()')
+    && D().querySelector('.rc-why .rc-border-err'), 20000, 'the refusal');
+  ok('a border the server refuses is said, taken off, and the set fitted '
+     + 'without it', /^The border harness-nope is not on this machine/
+       .test(ev(RC + '._borderErr()')) && !st().q.border && st().fit.ok
+     && /Not applied: The border harness-nope/.test(
+       (D().querySelector('.rc-why .rc-border-err') || {}).textContent || ''),
+     ev(RC + '._borderErr()'));
+  /* Applied: the real fit, with a border's classes put on it here. */
+  ev('(function(){ var W = window; if (W.__bdFetch) return; W.__bdFetch = W.fetch;'
+     + ' W.fetch = function(u, o) { var s = String(u);'
+     + ' if (s.indexOf("/api/rootcanal/fit") < 0 || !o || !o.body)'
+     + '   return W.__bdFetch.apply(this, arguments);'
+     + ' var b = JSON.parse(o.body); if (!b.border) return W.__bdFetch.apply(this, arguments);'
+     + ' var b2 = Object.assign({}, b, { border: null });'
+     + ' return W.__bdFetch(u, Object.assign({}, o, { body: JSON.stringify(b2) }))'
+     + '  .then(function(r) { return r.json(); }).then(function(j) {'
+     + '   var n = { ds: 0, ied: 0, amb: 0, none: 0 };'
+     + '   (j.events || []).forEach(function(e, k) { e.border = ["ds", "ied", "amb"][k % 3];'
+     + '     n[e.border] += 1; });'
+     + '   j.border_used = { artifact_id: "hb-s", version: 1, nickname: "single border",'
+     + '     grace: 0.05, grace_words: "5%", rule: "Solid IED: harness. Solid DS: harness.",'
+     + '     counts: n, wrong: 0, switch_rate: null, n_identity: 0 };'
+     + '   return new Response(JSON.stringify(j), { status: 200,'
+     + '     headers: { "Content-Type": "application/json" } }); }); }; })()');
+  ev(RC + '._setBorder({ artifact_id: "hb-s", version: null, grace: 0.05 })');
+  await until(() => !st().fitting && st().fit.border_used, 20000, 'the border on');
+  ok('the request carries the border', (ev(RC + '._lastBody()').border || {})
+     .artifact_id === 'hb-s');
+  ok('the call shown is the border’s: the seg says so and the legend has '
+     + 'ambiguous', Array.from(D().querySelectorAll('.rc-why .rc-colour-by button'))
+       .some((b) => b.textContent === 'by border')
+     && /solid DS\s*solid IED\s*ambiguous/.test(D().querySelector('.rc-legend')
+       .textContent));
+  const sFills = new Set(geom().space.pts.filter((p) => !p.hollow)
+                         .map((p) => p.fill));
+  eq('three colours on the picture, one per class', sFills.size, 3);
+  ok('the card opens with the border’s counts',
+     D().querySelector('.rc-why .rc-margins').open
+     && /solid DS · \d+ solid IED · \d+ ambiguous/.test(
+       D().querySelector('.rc-why .rc-border-on').textContent));
+  ev(RC + '._setBorder(null)');
+  await until(() => !st().fitting && !st().fit.border_used, 20000, 'the border off');
+  ok('taken off, the call is k-means’ again',
+     Array.from(D().querySelectorAll('.rc-why .rc-colour-by button'))
+       .some((b) => b.textContent === 'by call'));
+  ev('(function(){ var W = window; if (W.__bdFetch) { W.fetch = W.__bdFetch;'
+     + ' delete W.__bdFetch; } })()');
+
   } catch (err) {
     /* A throw used to end a suite in silence: fewer passing checks and no
        failures reads as a shorter suite rather than a broken one. */
@@ -1474,6 +1932,12 @@ const ENTRY = '46fd29a77cc7';
        written anywhere else. */
     try {
       if (ev) {
+        ev('(function(){ var W = window; if (W.__stFetch) { W.fetch = W.__stFetch;'
+           + ' delete W.__stFetch; } })()');
+        ev('(function(){ var W = window; if (W.__bdFetch) { W.fetch = W.__bdFetch;'
+           + ' delete W.__bdFetch; } })()');
+        ev('BARRY.rootcanal._setBorder(null)');
+        ev('try { closeModal(); } catch (e) {}');
         ev('(function(){ var W = window; if (W.__rcFetch) { W.fetch = W.__rcFetch;'
            + ' delete W.__rcFetch; } if (W.__rcLog) { BARRY.activity.log ='
            + ' W.__rcLog; delete W.__rcLog; } })()');
