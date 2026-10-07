@@ -114,6 +114,17 @@ def label(rat, cue_type):
     return "%s: %s → %s" % (p, SOUND_SAY[ids[p[0]]], SOUND_SAY[ids[p[1]]])
 
 
+def seat_say(rat, cue_type):
+    """"AB · A → B (Click → Low tone)": a presentation by its seats, the
+    sounds after them -- the name every view leads with."""
+    p = pair_of(rat, cue_type)
+    ids = identity(rat)
+    if not p or not ids:
+        return None
+    return "%s · %s → %s (%s → %s)" % (p, p[0], p[1], SOUND_SAY[ids[p[0]]],
+                                      SOUND_SAY[ids[p[1]]])
+
+
 def check(rat, cue_types):
     """Every cue type the bank holds for this rat is one of its two pairs on
     the sheet, and both pairs are there. Raises IdentityError, naming what

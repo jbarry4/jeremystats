@@ -87,10 +87,32 @@
        recording is gone; Finish and Escape leave it; the Take the tour
        button starts it again; at 390 px the box stays on screen
        (negative control: with the visit remembered it does not start)
+     - CUE 2 − CUE 1, a tab of its own: the comparison and its raw-only
+       note in place of the layer and windows, the cue pairs said as the
+       comparison says them, three circuits in a row (within Precon1,
+       within Precon4 from the session file, the tested change), Precon2
+       and Precon3 underneath, its own counts and points, a within edge
+       opening the change's ghost; gone from the Monolith's window list
+     - MONOLITH PROGRESS, a button on the Monolith's circuit: it swaps the
+       one circuit for every session's, the Monolith's controls driving
+       it; the trajectory card's button puts the line in a panel under
+       the circuit; four circuits, each line's width its
+       session's value on one scale (worked out here from the session
+       file), each session's own strongest 10; change from Precon1 turns
+       the same circuits (red where it rose), Precon1 empty and said so;
+       both readings; one at a time, a session picked, and Play; dragging
+       an edge onto the panels (a chip, the box lit; dropped elsewhere,
+       nothing), building one by hand (a Granger line asked backwards is
+       the other direction), reordering, remembering; a panel's mean over
+       rats from the session file, each rat, its own units, the Monolith's
+       p uncorrected; a session's point -> its rats -> a rat's
+       presentations -> a presentation's traces; a node's power; sessions
+       not run yet; CSV and SVG; 390 px; "On the Monolith"
 
    ?stop=<step> leaves the frame at a step for a screenshot: lifted, rats,
    days, units, leaf, help, granger (add &dark=1 for the dark tokens), range, avg, tour<n> (the tour at step n,
-   from 0; &phone=1 at 390 px, &dark=1 dark). Negative control: a planted edge moved out of the
+   from 0; &phone=1 at 390 px, &dark=1 dark), prog (Monolith Progress; &mode=chg|both, &layout=step,
+   &phone=1, &scroll=<id>), phys (section 6; &phone=1, &scroll=<id>). Negative control: a planted edge moved out of the
    slider's reach is not drawn. */
 const out = document.getElementById('out');
 let bad = 0;
@@ -169,7 +191,8 @@ BANDS.push({ id: 'theta', hz: null, low: 4, high: 12, lag_s: 0.5, speed: 'slow',
 BANDS.push({ id: 'beta', hz: null, low: 13, high: 30, lag_s: 0.15, speed: 'fast', named: true, pad: false, label: 'Beta 13–30 Hz' });
 BANDS.push({ id: 'gamma_low', hz: null, low: 30, high: 55, lag_s: 0.06, speed: 'fast', named: true, pad: false, label: 'Low gamma 30–55 Hz' });
 const WINDOWS = [['pre', 'Baseline', 'state'], ['cue1', 'Cue 1', 'state'], ['cue2', 'Cue 2', 'state'], ['post', 'After', 'state'],
-                 ['onset', 'Onset', 'transition'], ['switch', 'Switch', 'transition'], ['offset', 'Offset', 'transition']]
+                 ['onset', 'Onset', 'transition'], ['switch', 'Switch', 'transition'], ['offset', 'Offset', 'transition'],
+                 ['c21', 'Cue 2 − Cue 1', 'contrast']]
   .map(([id, label, kind]) => ({ id, label, kind }));
 const METHODS = [['coherence', 'Coherence'], ['icoh', 'Imaginary coherence'], ['raw_cc', 'Raw cc'], ['env_cc', 'Envelope cc'],
   ['env_cc0', 'Amplitude r, zero lag'], ['orth_env', 'Orthogonalised envelope r'], ['plv', 'PLV'], ['ppc', 'PPC'],
@@ -182,7 +205,7 @@ for (let fp = 2; fp <= 12; fp++) for (let fa = 15; fa <= 50; fa += 5) {
   const ok = alo >= phi + 2 && ahi - alo >= 2 * fp;
   CELLS.push({ fp, fa, phase_band: [fp - Math.max(0.5, 0.15 * fp), phi], amp_band: ok ? [alo, ahi] : null });
 }
-const N = { W: 7, B: BANDS.length, M: METHODS.length, P: PAIRS.length, R: REG.length, C: CELLS.length };
+const N = { W: WINDOWS.length, B: BANDS.length, M: METHODS.length, P: PAIRS.length, R: REG.length, C: CELLS.length };
 const GREY = 5;                              // Right POR: no rat has it
 const PLANT = { w: 1, b: 9, m: 0, p: 0 };    // Cue 1, 10 Hz, coherence, Right ACC – Right OFC
 const PLANT2 = { w: 2, b: 19, m: 6, p: 12 }; // Cue 2, 20 Hz, PLV
@@ -261,7 +284,7 @@ function topList(layer) {
   out2.push(mk(PLANT, 0.3, 1e-6, 8, 1));
   out2.push(mk(PLANT2, -0.2, 2e-5, 8, 2));
   for (let i = 3; i <= 50; i++) {
-    const x = { w: i % 7, b: (i * 7) % 55, m: i % 14, p: 20 + (i % 40) };
+    const x = { w: i % 7, b: (i * 7) % 55, m: i % 14, p: 20 + (i % 40) };   // never the contrast: it has its own list
     out2.push(mk(x, 0.01 * (i % 5 ? 1 : -1), 0.001 * i, 7, i));
   }
   return out2;
@@ -274,6 +297,12 @@ const SUMMARY = {
   why: { 0: null, 1: 'fewer than 5 rats have it on both days', 2: 'no spread', 3: 'identical', 4: 'same change', 5: 'no rat' },
   windows: WINDOWS, bands: BANDS, methods: METHODS, regions: REG, pairs: PAIRS, grey: [REG[GREY]],
   pac_cells: CELLS,
+  identity: { sheet: 'RAT Identity for multisite 2026 - Sheet1.csv',
+              seats: { 3: { A: 'Click', B: 'Low', C: 'Noise', D: 'High' }, 4: { A: 'High', B: 'Noise', C: 'Low', D: 'Click' },
+                       6: { A: 'Noise', B: 'High', C: 'Click', D: 'Low' }, 7: { A: 'Noise', B: 'Low', C: 'Click', D: 'High' },
+                       8: { A: 'Click', B: 'High', C: 'Noise', D: 'Low' }, 9: { A: 'High', B: 'Click', C: 'Low', D: 'Noise' },
+                       10: { A: 'Low', B: 'Noise', C: 'High', D: 'Click' }, 11: { A: 'Low', B: 'Click', C: 'High', D: 'Noise' } },
+              sound_say: { Click: 'Click', Noise: 'Noise', High: 'High tone', Low: 'Low tone' } },
   histology: { version: 2, date: '2026-10-05', rule: 'v2: y only, Left POR-SUB, no Right POR-SUB',
                say: 'Histology v2 (Joes multi site histo results.xlsx, rescored 2026-10-05). Only probes scored “y” are used.' },
   trajectory: { days: ['Precon2', 'Precon3'], rats: { Precon2: [3, 4, 6, 7, 8, 9, 10, 11], Precon3: [3, 4, 6, 7, 8, 9, 10, 11] },
@@ -299,13 +328,12 @@ const SUMMARY = {
    first asked for), points of interest and counts. The Click half has a
    change of its own -- pre, 30 Hz, envelope cc, Right ACC – Left OFC
    (pair 9) -- that the whole does not. */
-const SPLITS = [['snd_click', 'Click pair', 'sound'], ['snd_noise', 'Noise pair', 'sound'], ['tone_high', 'High-tone pair', 'tone'],
-                ['tone_low', 'Low-tone pair', 'tone'], ['role_food', 'The pair that later gets food', 'role'], ['role_other', 'The other pair', 'role']];
+const SPLITS = [['ab', 'AB pair (A → B)', 'pair'], ['cd', 'CD pair (C → D)', 'pair']];
 const PLANT3 = { w: 0, b: 29, m: 3, p: 9 };
 // Not in the whole: there it is an ordinary entry.
 ARR.edges_raw[(((1 * N.W + PLANT3.w) * N.B + PLANT3.b) * N.M + PLANT3.m) * N.P + PLANT3.p] = 0.6;
 function splitTop(g, layer) {
-  if (g !== 'snd_click') return topList(layer).slice(5, 25).map((t, i) => Object.assign({}, t, { rank: i + 1, more: [], n_more: 0 }));
+  if (g !== 'ab') return topList(layer).slice(5, 25).map((t, i) => Object.assign({}, t, { rank: i + 1, more: [], n_more: 0 }));
   return [{ layer, w: 'pre', wi: 0, kind: 'state', band: 'f30', bi: 29, hz: 30, m: 'env_cc', mi: 3, pair: PLANT3.p,
             a: REG[PAIRS[PLANT3.p][0]], b: REG[PAIRS[PLANT3.p][1]], est: 0.4, se: 0.02, p: 1e-7, k: 8, same: 8, up: true, rank: 1, more: [], n_more: 0 }]
     .concat(topList(layer).slice(2, 20).map((t, i) => Object.assign({}, t, { rank: i + 2, more: [], n_more: 0 })));
@@ -327,14 +355,158 @@ function splitsBlock() {
            files, top, counts, family_say: {}, roles: {}, role_map: {} };
 }
 SUMMARY.splits = splitsBlock();
+/* The contrast (Cue 2 − Cue 1): the last window, raw only, its own list.
+   Planted: 10 Hz coherence, Right ACC – Right DHC (pair 1). */
+const PLANT4 = { w: WINDOWS.length - 1, b: 9, m: 0, p: 1 };
+for (const A of [ARR.edges_raw, ARR.edges_minus_fp]) {
+  const at4 = (q) => (((q * N.W + PLANT4.w) * N.B + PLANT4.b) * N.M + PLANT4.m) * N.P + PLANT4.p;
+  A[at4(0)] = 0.05; A[at4(1)] = 1e-5; A[at4(3)] = 8;
+}
+SUMMARY.contrast = { id: 'c21', label: 'Cue 2 − Cue 1', say: 'Within each presentation, Cue 2 minus Cue 1.',
+  top: { raw: [{ layer: 'raw', w: 'c21', wi: PLANT4.w, kind: 'contrast', band: 'f10', bi: 9, hz: 10, m: 'coherence', mi: 0, pair: PLANT4.p,
+                 a: REG[PAIRS[PLANT4.p][0]], b: REG[PAIRS[PLANT4.p][1]], est: 0.05, se: 0.01, p: 1e-5, k: 8, same: 8, up: true, rank: 1,
+                 more: [], n_more: 0 }] },
+  counts: { raw: { tested: 40000, p05: 2100, p01: 420, p001: 45, chance_p05: 2000, agree: {} } } };
+/* Monolith Progress: the session files, made when first asked for, all
+   four sessions. The planted edge (Cue 1, 10 Hz, coherence, Right ACC –
+   Right OFC) climbs 0.42, 0.43, 0.45, 0.47 in the whole; anything with
+   Right POR is never there. */
+const SESS = { E: [4, 5, N.B, N.M, N.P], P: [4, 5, N.B, N.R] };
+const PROG_PLANT = [0.42, 0.43, 0.45, 0.47];
+SUMMARY.sessions = (() => {
+  const files = {};
+  for (const g of ['', '__ab', '__cd']) for (const layer of ['raw', 'minus_fp']) for (let w = 0; w < N.W; w++) {
+    files['session_edges_' + layer + g + '_' + w + '.f32'] = { shape: SESS.E };
+    files['session_power_' + layer + g + '_' + w + '.f32'] = { shape: SESS.P };
+  }
+  return { order: ['Precon1', 'Precon2', 'Precon3', 'Precon4'], quantities: ['mean', 'se', 'n', 'chg', 'chg_se'], files, at: '2026-10-06T12:00:00' };
+})();
+let sessAsked = [];
+function sessionArray(name) {
+  const m = /^session_(edges|power)_(raw|minus_fp)(?:__(\w+))?_(\d+)$/.exec(name);
+  if (!m) return null;
+  sessAsked.push(name);
+  const edges = m[1] === 'edges';
+  const r = rng(500 + Number(m[4]) * 13 + (m[2] === 'raw' ? 0 : 1) + (m[3] ? 3 : 0) + (edges ? 0 : 7));
+  const sh = edges ? SESS.E : SESS.P;
+  const per = sh.slice(2).reduce((x, y) => x * y, 1);
+  const a = new Float32Array(sh.reduce((x, y) => x * y, 1));
+  const grey = (i) => (edges ? PAIRS[i % N.P].indexOf(GREY) >= 0 : i % N.R === GREY);
+  const base = new Float32Array(per);
+  // The contrast's slot (the last window) is a difference: either sign.
+  const c21 = Number(m[4]) === N.W - 1;
+  for (let i = 0; i < per; i++) base[i] = c21 ? (r() - 0.5) * 0.1 : 0.3 + r() * 0.2;
+  for (let s = 0; s < 4; s++) for (let i = 0; i < per; i++) {
+    const v = grey(i) ? NaN : base[i] + (r() - 0.5) * 0.02 * s;
+    a[(s * 5) * per + i] = v; a[(s * 5 + 1) * per + i] = grey(i) ? NaN : 0.01; a[(s * 5 + 2) * per + i] = grey(i) ? 0 : 7;
+    a[(s * 5 + 3) * per + i] = grey(i) ? NaN : v - base[i]; a[(s * 5 + 4) * per + i] = s && !grey(i) ? 0.01 : NaN;
+  }
+  if (edges && Number(m[4]) === PLANT.w && !m[3]) {
+    const i = (PLANT.b * N.M + PLANT.m) * N.P + PLANT.p;
+    PROG_PLANT.forEach((v, s) => { a[(s * 5) * per + i] = v; a[(s * 5 + 3) * per + i] = v - PROG_PLANT[0]; });
+  }
+  ARR[name] = a;
+  return a;
+}
+/* Section 6, physical cue against balanced cue, made up: by sound, every
+   comparison at chance (an ordinary relabelling); the Monolith's first lead
+   the same in both groups of four, its second carried by the tone-first
+   rats alone. The tone-first rats' change planted on its own: Cue 1, 10 Hz,
+   coherence, Right ACC – Right PER (pair 3) in the order's array. */
+const PHYS_IDS = ['order', 'sound_noise', 'sound_tone', 'tone_noise', 'seat_abcd'];
+const PHYS_PLANT = { w: 1, b: 9, m: 0, p: 3 };
+let PHYS_MISSING = false, physPosted = [], physAsked = [];
+function physLeads(layer) {
+  return topList(layer).slice(0, layer === 'raw' ? 50 : 30).map((t, i) => {
+    const two = i === 1;
+    const tone = { est: two ? t.est * 1.9 : t.est * 1.05, se: 0.03, k: 4 };
+    const noise = { est: two ? 0.02 : t.est * 0.95, se: 0.03, k: 4 };
+    const d = tone.est - noise.est, se = Math.hypot(tone.se, noise.se), h = 1.943 * se, m = Math.abs(t.est) / 2;
+    return { w: t.w, wi: t.wi, band: t.band, bi: t.bi, hz: t.hz, m: t.m, mi: t.mi, pair: t.pair, a: t.a, b: t.b, est: t.est, p: t.p, k: t.k, same: t.same,
+             tone, noise, diff: { est: d, se, df: 6, p: two ? 0.004 : 0.6 },
+             both_ways: Math.sign(tone.est) === Math.sign(noise.est) && Math.sign(noise.est) === Math.sign(t.est),
+             equivalence: { lo: d - h, hi: d + h, margin: m, within: d - h > -m && d + h < m } };
+  });
+}
+function physPerm(n, observed, extra) {
+  const r = rng(7 + n + observed);
+  const counts = Array.from({ length: n }, () => Math.round(observed * (0.9 + 0.2 * r())));
+  counts[0] = observed;
+  return Object.assign({ counts, observed, n, rank: counts.filter((c) => c >= observed).length }, extra || {});
+}
+const PHYS = (() => {
+  const c = (tested, p05) => ({ tested, p05, p01: Math.round(p05 / 5), p001: Math.round(p05 / 50), chance_p05: Math.round(0.05 * tested) });
+  const counts = {
+    order: { raw: c(340000, 17100), minus_fp: c(330000, 16300) },
+    sound_noise: { raw: c(330000, 16400), minus_fp: c(320000, 16100) },
+    sound_tone: { raw: c(330000, 16600), minus_fp: c(320000, 15800) },
+    tone_noise: { raw: c(40000, 1980), minus_fp: c(40000, 1980) },
+    seat_abcd: { raw: c(330000, 16700), minus_fp: c(320000, 16000) },
+  };
+  const perm = { order: {}, tone_noise: {}, sound_noise: {}, sound_tone: {} };
+  for (const L of ['raw', 'minus_fp']) {
+    perm.order[L] = physPerm(35, counts.order[L].p05, { say: 'every way of splitting the eight rats into two fours' });
+    perm.tone_noise[L] = physPerm(128, counts.tone_noise[L].p05, { balanced: 2100, say: 'every way of signing' });
+    perm.tone_noise[L].counts[1] = 2100;
+    perm.tone_noise[L].balanced_rank = perm.tone_noise[L].counts.filter((x) => x >= 2100).length;
+    perm.sound_noise[L] = physPerm(8, counts.sound_noise[L].p05, { seat: counts.sound_noise[L].p05 + 100, rats: [3, 6, 7, 8] });
+    perm.sound_tone[L] = physPerm(8, counts.sound_tone[L].p05, { seat: counts.sound_tone[L].p05 + 100, rats: [4, 9, 10, 11] });
+    for (const k of ['sound_noise', 'sound_tone']) {
+      perm[k][L].counts[1] = perm[k][L].seat;
+      perm[k][L].rank = perm[k][L].counts.filter((x) => x >= perm[k][L].observed).length;
+      perm[k][L].seat_rank = perm[k][L].counts.filter((x) => x >= perm[k][L].seat).length;
+    }
+  }
+  const files = {};
+  for (const L of ['raw', 'minus_fp']) {
+    for (const cid of PHYS_IDS) files['phys_edges_' + L + '__' + cid + '.f32'] = { shape: SHAPES.edges };
+    files['phys_groups_' + L + '.f32'] = { shape: SHAPES.edges };
+  }
+  const ct = SUMMARY.contrast.top.raw[0];
+  return { ok: true, at: '2026-10-06T18:00:00', groups: { noise: [3, 6, 7, 8], tone: [4, 9, 10, 11] },
+           group_say: { noise: 'open both pairs with Click or Noise', tone: 'open both pairs with a tone' }, left_out: [],
+           comparisons: PHYS_IDS.map((id) => ({ id, label: id, by: id === 'seat_abcd' ? 'seat' : 'sound' })),
+           files, counts, perm,
+           leads: { monolith: { raw: physLeads('raw'), minus_fp: physLeads('minus_fp') },
+                    contrast: { raw: [Object.assign({}, physLeads('raw')[0], { w: ct.w, wi: ct.wi, band: ct.band, bi: ct.bi, hz: ct.hz, m: ct.m, mi: ct.mi,
+                                                                               pair: ct.pair, a: ct.a, b: ct.b, est: ct.est, p: ct.p,
+                                                                               tone: { est: 0.052, se: 0.012, k: 4 }, noise: { est: 0.048, se: 0.012, k: 4 },
+                                                                               diff: { est: 0.004, se: 0.017, df: 6, p: 0.82 },
+                                                                               equivalence: { lo: -0.029, hi: 0.037, margin: 0.025, within: false } })] } },
+           seat_counts: { monolith: SUMMARY.counts, contrast: SUMMARY.contrast.counts },
+           control_p05: 0.055, control_say: 'made-up data with no change at all' };
+})();
+SUMMARY.physical = { at: PHYS.at, files: PHYS.files, comparisons: PHYS.comparisons };
+function physArray(name) {
+  const m = /^phys_edges_(raw|minus_fp)__(\w+)$/.exec(name);
+  if (!m || PHYS_IDS.indexOf(m[2]) < 0) return null;
+  physAsked.push(name);
+  const a = makeEdges(300 + PHYS_IDS.indexOf(m[2]) * 5 + (m[1] === 'raw' ? 0 : 1));
+  const at = (q, w, b, mm, pp) => (((q * N.W + w) * N.B + b) * N.M + mm) * N.P + pp;
+  // makeEdges plants the Monolith's own leads: here they are ordinary.
+  for (const x of [PLANT, PLANT2]) { a[at(0, x.w, x.b, x.m, x.p)] = 0.01; a[at(1, x.w, x.b, x.m, x.p)] = 0.7; }
+  if (m[2] === 'order') {
+    const x = PHYS_PLANT;
+    a[at(0, x.w, x.b, x.m, x.p)] = 0.2; a[at(1, x.w, x.b, x.m, x.p)] = 1e-4; a[at(2, x.w, x.b, x.m, x.p)] = 8;
+  }
+  // Tone − noise is the contrast's alone.
+  if (m[2] === 'tone_noise') {
+    for (let q = 0; q < 6; q++) for (let w = 0; w < N.W - 1; w++) for (let b = 0; b < N.B; b++) for (let mm = 0; mm < N.M; mm++) for (let pp = 0; pp < N.P; pp++) {
+      a[at(q, w, b, mm, pp)] = q === 5 ? 5 : q === 2 ? 0 : NaN;
+    }
+  }
+  ARR[name] = a;
+  return a;
+}
 let splitAsked = [];
+let sessionsPosted = [];
 let splitDone = true;
 function splitArray(name) {
   const m = /^(edges|power|pac)_(raw|minus_fp)__(\w+)$/.exec(name);
   if (!m) return null;
   const seed = 100 + SPLITS.findIndex((x) => x[0] === m[3]) * 7 + (m[2] === 'raw' ? 0 : 3);
   const a = m[1] === 'edges' ? makeEdges(seed) : m[1] === 'power' ? makePower(seed) : makePac(seed);
-  if (m[1] === 'edges' && m[3] === 'snd_click') {
+  if (m[1] === 'edges' && m[3] === 'ab') {
     const at6 = (q) => (((q * N.W + PLANT3.w) * N.B + PLANT3.b) * N.M + PLANT3.m) * N.P + PLANT3.p;
     a[at6(0)] = 0.4; a[at6(1)] = 1e-7; a[at6(3)] = 8;
   }
@@ -346,11 +518,12 @@ let entryAsked = [];
 function detail(layer, at) {
   const r = rng(at.reduce((s, x) => s * 31 + x, 7));
   const rats = SUMMARY.rats.map((rat, i) => {
-    if (i === 7) return { rat, days: {}, why: 'Precon4: not computed', weight: null };
+    if (i === 7) return { rat, days: {}, why: 'Precon4: not computed', weight: null, seats: SUMMARY.identity.seats[rat] };
     const days = {};
     for (const day of ['Precon1', 'Precon4']) {
       const units = Array.from({ length: 12 }, (_x, u) => ({ id: 'p' + String(u + 1).padStart(2, '0'),
         label: u % 2 ? 'Click → Low Tone' : 'Noise → High tone', cue: u % 2 ? 'Click → Low Tone' : 'Noise → High tone',
+        pair: u % 2 ? 'AB' : 'CD',
         v: u === 3 ? null : 0.4 + (day === 'Precon4' ? 0.05 : 0) + (r() - 0.5) * 0.1, wires: [5 + u % 2, 21],
         why: u === 3 ? 'no usable wire in ' + REG[1] : undefined }));
       const s = { cue: 0.42, cue_se2: 0.0004, n: 11, of: 12, units, x: 0.42 + (day === 'Precon4' ? 0.05 : 0), se2: 0.0004 };
@@ -372,9 +545,10 @@ function detail(layer, at) {
       if (layer === 'minus_fp') { t.rest = 0.38; t.rest_se2 = 0.0003; t.n_rest = 6; t.x = t.cue - t.rest; }
       traj[day] = t;
     }
-    return { rat, days, traj, delta, v: 0.0008, ci: [delta - 0.055, delta + 0.055], left: days.Precon1.x, right: days.Precon4.x, weight: 1 / 7 };
+    return { rat, days, traj, delta, v: 0.0008, ci: [delta - 0.055, delta + 0.055], left: days.Precon1.x, right: days.Precon4.x, weight: 1 / 7,
+             seats: SUMMARY.identity.seats[rat] };
   });
-  return { ok: true, what: 'edges', layer, at, rats, agree: true, trajectory_days: (SUMMARY.trajectory || { days: [] }).days,
+  return { ok: true, what: 'edges', layer, at, rats, agree: true, contrast: at[0] === WINDOWS.length - 1, trajectory_days: (SUMMARY.trajectory || { days: [] }).days,
            pooled: { est: 0.05, se: 0.01, ci: [0.03, 0.07], p: 0.002, df: 6, k: 7, tau2: 0 }, arrays: { est: 0.05, p: 0.002 } };
 }
 
@@ -456,7 +630,9 @@ function damageFixture() {
       }
       return { name, state: st, trans: tr, rest: re };
     });
+    const seat = () => ({ total: 6, kept: 5, partial: 1, lost: 0 });
     days.push({ rat, day, cue: { total: U, kept: 9, partial: 2, lost: 1 }, rest: { total: Ur, kept: Ur, lost: 0 },
+                seats: { A: seat(), B: seat(), C: seat(), D: seat() },
                 histology: [REG[GREY]], bad: [], refused: rat === 3 ? 2 : 0,
                 notes: rat === 7 && day === 'Precon1' ? ['FP1 2026-07-22 has no records (an aborted acquisition), so it was passed over.'] : [],
                 regions });
@@ -469,6 +645,11 @@ function damageFixture() {
   const whole = { cue: { total: 0, kept: 0, partial: 0, lost: 0 }, rest: { total: 0, kept: 0, lost: 0 },
                   state: sum('state'), trans: sum('trans'), rest_regions: sum('rest') };
   for (const d of days) { for (const k in whole.cue) whole.cue[k] += d.cue[k]; for (const k in whole.rest) whole.rest[k] += d.rest[k]; }
+  whole.seats = {};
+  for (const s of ['A', 'B', 'C', 'D']) {
+    whole.seats[s] = { total: 0, kept: 0, partial: 0, lost: 0 };
+    for (const d of days) for (const k in whole.seats[s]) whole.seats[s][k] += d.seats[s][k];
+  }
   // Right POR's pairs have no rat; Right DHC – Right RSC has only four.
   const pairs = PAIRS.map(([a, b]) => {
     const n = (a === GREY || b === GREY) ? 0 : (Math.min(a, b) === 2 && Math.max(a, b) === 3) ? 4 : 8;
@@ -484,7 +665,10 @@ function damageFixture() {
            pairs, min_rats: 5, core_days: ['Precon1', 'Precon4'],
            aliasing: { say: 'worst leakage into 1–55 Hz −142 dB; no recording’s hardware filter above half its rate.', at: '2026-10-02T12:00:00' },
            histology: { say: 'Histology v2 (Joes multi site histo results.xlsx, rescored 2026-10-05). Only probes scored “y” are used.',
-                        rule: 'v2: y only, Left POR-SUB, no Right POR-SUB', built: 'v2: y only, Left POR-SUB, no Right POR-SUB' },
+                        rule: 'v2: y only, Left POR-SUB, no Right POR-SUB', built: 'v2: y only, Left POR-SUB, no Right POR-SUB',
+                        changes: { 3: [{ region: 'Right PER', v1: 'lateral entorhinal', v2: 'y', monolith: true }],
+                                   10: [{ region: 'Left PER', v1: 'subiculum', v2: 'lateral entorhinal', monolith: false }] } },
+           seat_say: { 3: { A: 'Click', B: 'Low', C: 'Noise', D: 'High' }, 4: { A: 'High', B: 'Noise', C: 'Low', D: 'Click' } },
            sanity: { version: 2, date: '2026-10-05', run: { id: 'b0016ad03ed4', at: '2026-10-05T16:13:43-04:00', version: 2,
                                                          totals: { recordings: 53 } } } };
 }
@@ -550,6 +734,11 @@ window.MONO_FIXTURE = {
   async json(path) {
     if (path === '/data/summary') return JSON.parse(JSON.stringify(SUMMARY));
     if (path === '/damage') return JSON.parse(JSON.stringify(DAMAGE));
+    if (path === '/data/physical') {
+      physAsked.push(path);
+      if (PHYS_MISSING) throw new Error('No such Monolith file: physical');
+      return JSON.parse(JSON.stringify(PHYS));
+    }
     const m = /^\/entry\?what=(\w+)&layer=(\w+)&at=([\d,]+)(&split=\w+)?$/.exec(path);
     if (m) { entryAsked.push(path); return detail(m[2], m[3].split(',').map(Number)); }
     if (path === '/status' && evRunning) {
@@ -566,11 +755,13 @@ window.MONO_FIXTURE = {
   },
   async post(path, body) {
     if (path === '/split') { splitAsked.push(body); splitDone = true; return { ok: true }; }
+    if (path === '/sessions') { sessionsPosted.push(body); return { ok: true }; }
+    if (path === '/physical') { physPosted.push(body); PHYS_MISSING = false; return { ok: true }; }
     if (path === '/events') { evPosted.push(body); evRunning = 2; return { ok: true, work: { what: 'events', status: 'running', progress: {} } }; }
     throw new Error('no fixture for POST ' + path);
   },
   async array(name, shape) {
-    const a = ARR[name] || splitArray(name);
+    const a = ARR[name] || splitArray(name) || sessionArray(name) || physArray(name);
     if (!a) throw new Error('no fixture array ' + name);
     const want = shape.reduce((x, y) => x * y, 1);
     if (a.length !== want) throw new Error(name + ' has ' + a.length + ', shape says ' + want);
@@ -589,9 +780,11 @@ window.MONO_FIXTURE = {
   // tours is put back at the end, whatever it was.
   const TOUR_KEY = 'barry.monolith.tour.seen', DONE_KEY = 'barry.tour.done';
   let keptTour = null, keptDone = null, keptEv = null;
-  const EV_KEY = 'barry.monolith.events';
+  const EV_KEY = 'barry.monolith.events', PROG_KEY = 'barry.monolith.progress';
+  let keptProg = null;
   try {
     keptEv = localStorage.getItem(EV_KEY); localStorage.removeItem(EV_KEY);
+    keptProg = localStorage.getItem(PROG_KEY); localStorage.removeItem(PROG_KEY);
     keptTour = localStorage.getItem(TOUR_KEY); keptDone = localStorage.getItem(DONE_KEY);
     localStorage.setItem(TOUR_KEY, 'harness');
   } catch (e) { /* none */ }
@@ -601,6 +794,7 @@ window.MONO_FIXTURE = {
       if (keptTour == null) localStorage.removeItem(TOUR_KEY); else localStorage.setItem(TOUR_KEY, keptTour);
       if (keptDone == null) localStorage.removeItem(DONE_KEY); else localStorage.setItem(DONE_KEY, keptDone);
       if (keptEv == null) localStorage.removeItem(EV_KEY); else localStorage.setItem(EV_KEY, keptEv);
+      if (keptProg == null) localStorage.removeItem(PROG_KEY); else localStorage.setItem(PROG_KEY, keptProg);
     } catch (e) { /* none */ }
   };
   GUIDE = await fetch('/monolith_guide.json', { cache: 'no-cache' }).then((r) => r.json()).catch(() => null);
@@ -619,7 +813,7 @@ window.MONO_FIXTURE = {
 
   head('1 · what was kept, first');
   const tabs = () => Array.from(D().querySelectorAll('#tabs > button[role="tab"]'));
-  check('four tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · When we averaged | 4 · Events first',
+  check('six tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · Cue 2 − Cue 1 | 4 · When we averaged | 5 · Events first | 6 · Physical vs balanced cue',
         tabs().map((b) => txt(b)).join(' | '));
   check('a fresh page opens on what was kept, the Monolith behind it', M.state.tab === 'cov' && !D().getElementById('covpane').hidden
         && D().getElementById('mainpane').hidden && D().getElementById('tab-cov').getAttribute('aria-selected') === 'true', M.state.tab);
@@ -650,7 +844,7 @@ window.MONO_FIXTURE = {
   await sleep(10);
   check('its hover says why the rest were lost', /Cue-pair windows: 28 of 48 kept \(20 clipped\)/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
   dcell.dispatchEvent(new MouseEvent('mouseleave'));
-  const drows = dmg().querySelectorAll('table.dtable tbody tr');
+  const drows = dmg().querySelector('table.dtable').querySelectorAll('tbody tr');
   check('a row per rat and a total', drows.length === 9 && txt(drows[8].querySelector('th')) === 'All');
   check('the total is the sum of the rows: 144 kept, 32 partly, 16 lost of 192 · rest 96/96',
         /144 kept, 32 partly, 16 lost of 192 cue pairs · rest 96\/96/.test(txt(drows[8])), txt(drows[8]));
@@ -684,6 +878,22 @@ window.MONO_FIXTURE = {
   check('a pair with enough: how much of it was tested', /8 rats have both regions/.test(txt(D().getElementById('tip')))
         && /800 of 1,000 of its entries were tested \(80%\)/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
   okc.dispatchEvent(new MouseEvent('mouseleave'));
+  const seatRow = (rat) => D().querySelector('#seattable tr[data-rat="' + rat + '"]');
+  check('presentations kept per cue, A/B/C/D, a row per rat and a total, each seat’s sound named',
+        D().querySelectorAll('#seattable tbody tr').length === 9 && /^10 of 12 kept, 2 partly/.test(txt(seatRow(3).children[1]))
+        && /Click$/.test(txt(seatRow(3).children[1])) && /Low tone$/.test(txt(seatRow(3).children[2])) && /High tone$/.test(txt(seatRow(4).children[1])),
+        txt(seatRow(3)));
+  const hc = D().querySelectorAll('#histochanges tbody tr');
+  check('what histology v2 changed from v1, and whether the Monolith uses it now', hc.length === 2
+        && /r3Right PERlateral entorhinalyused/.test(txt(hc[0])) && /left out/.test(txt(hc[1])), Array.from(hc).map(txt).join(' | '));
+  check('how Minus FP works, its steps and what it means for the pair window and the contrast',
+        D().querySelectorAll('#minusfp ol.qsteps li').length === W().MONO_HELP.T.layer.steps.length
+        && /rest pieces are 20 s too/.test(txt(D().getElementById('minusfp'))) && /raw only/.test(txt(D().getElementById('minusfp'))));
+  const mfp = D().getElementById('minusfp');
+  const mrows = Array.from(D().querySelectorAll('#mfptable tbody tr')).map((r) => Array.from(r.children).map(txt).join(' | '));
+  check('it starts with an example, worked both ways in a table', mfp.querySelector('.qexample') === mfp.children[1]
+        && mrows.join(' / ') === 'Precon1 | 0.42 | 0.38 | 0.04 / Precon4 | 0.49 | 0.43 | 0.06 / Change | +0.07 Raw | +0.05 the whole day | +0.02 Minus FP',
+        mrows.join(' / '));
   const dw = figWords(dmg());
   check('no word in its pictures is cut off or on another', dw.length === 0, dw.slice(0, 4).join(' | '));
 
@@ -706,6 +916,25 @@ window.MONO_FIXTURE = {
   check('the counts’ “what was lost” link goes back to it', M.state.tab === 'cov' && !D().getElementById('covpane').hidden);
   D().getElementById('tab-main').click();
   await sleep(60);
+
+  // Sessions in what goes that are not built yet are said, not dropped.
+  M.damage.pending_days = ['Precon2', 'Precon3'];
+  M.damage.pair_measured = false;
+  M.renderDamage();
+  const dmgT = txt(dmg());
+  const dhead = Array.from(dmg().querySelector('table.dtable').querySelectorAll('thead th')).map(txt);
+  check('sessions in what goes but not built: said, a placeholder each, a column each, in Precon order',
+        /^Precon2 and Precon3 are in what goes but not built yet: run them on the VACC and fetch/.test(txt(D().getElementById('dmgpending')))
+        && Array.from(dmg().querySelectorAll('.dmap-pending')).map((x) => x.dataset.day).join() === 'Precon2,Precon3'
+        && dhead.join('|') === 'Rat|Precon1|Precon2|Precon3|Precon4|All sessions'
+        && /in what goes, not built yet: run and fetch/.test(txt(dmg().querySelector('table.dtable tbody tr'))), dhead.join('|'));
+  check('and the whole pair, before its run is fetched, says it is not measured yet',
+        /not measured yet: its run on the VACC/.test(txt(D().getElementById('pairpending'))));
+  delete M.damage.pending_days;
+  delete M.damage.pair_measured;
+  M.renderDamage();
+  check('CONTROL: with nothing pending, neither is said', !D().getElementById('dmgpending') && !D().getElementById('pairpending')
+        && !dmg().querySelector('.dmap-pending'));
 
   head('what it says first');
   const v = D().getElementById('verdict');
@@ -756,6 +985,22 @@ window.MONO_FIXTURE = {
   D().body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
   await sleep(10);
   check('a click elsewhere closes it', !pop());
+  // Node power, opened under the legend.
+  const pmore = () => D().getElementById('powmore');
+  check('node power: a ▸ under the legend, closed, saying what it is', !!pmore() && pmore().tagName === 'DETAILS' && !pmore().open
+        && D().querySelector('#legend #powmore') && /What node power is, and how it is worked out/.test(txt(pmore().querySelector('summary'))));
+  pmore().open = true;
+  await until(() => pmore().open, 20);
+  await sleep(30);
+  check('opened: how it is worked out, step by step, and how to read the number', pmore().querySelectorAll('ol.qsteps li').length === H.T.power.powsteps.length
+        && /10\^0\.30 = 2/.test(txt(pmore())), pmore().querySelectorAll('ol.qsteps li').length);
+  M.renderAll();
+  await sleep(30);
+  check('and it stays open when the circuit is drawn again', !!pmore() && pmore().open);
+  pmore().open = false;
+  await sleep(30);
+  check('Granger: A and B named, the two ways read side by side, and what an arrow means', /A is the region named first/.test(H.T.gc_ab.plain)
+        && /A→B up, B→A flat/.test(H.T.gc_ba.look) && /points from the region whose lead grew/.test(H.T.arrows.plain));
 
   head('broadband');
   check('the pair that passes almost everywhere is flagged', !!items()[1].querySelector('.chip.bb') && /broadband/i.test(txt(items()[1])), txt(items()[1]).slice(0, 160));
@@ -770,6 +1015,7 @@ window.MONO_FIXTURE = {
   function brute(F) {
     const out = [];
     for (let w = 0; w < N.W; w++) for (let b = 0; b < N.B; b++) for (let m = 0; m < N.M; m++) for (let p = 0; p < N.P; p++) {
+      if (WINDOWS[w].kind === 'contrast') continue;          // its own tab
       const pv = at5(ARR.edges_raw, 1, w, b, m, p);
       if (!(pv < 0.05)) continue;
       const est = at5(ARR.edges_raw, 0, w, b, m, p);
@@ -853,7 +1099,9 @@ window.MONO_FIXTURE = {
   await sleep(30);
   const pwn = D().getElementById('perwin');
   const FD = { measure: 'any', region: 'any', withRegion: 'any', from: 1, to: 55, named: true, bins: true, win: 'any', dir: 'either', bb: 'show' };
-  const perOk = WINDOWS.map((w, wi) => {
+  const MAINW = WINDOWS.filter((w) => w.kind !== 'contrast');
+  const perOk = MAINW.map((w) => {
+    const wi = WINDOWS.indexOf(w);
     const ol = pwn && pwn.querySelector('ol[data-win="' + w.id + '"]');
     const want = M.filteredPoints('raw', Object.assign({}, FD, { win: w.id }));
     const lis = ol ? Array.from(ol.querySelectorAll('li[data-rank]')) : [];
@@ -862,47 +1110,156 @@ window.MONO_FIXTURE = {
              && txt(ol.previousElementSibling).indexOf(n.toLocaleString() + ' pass p < .05') >= 0 };
   });
   check('the best three of each of the seven windows, each ranked on its own', !!pwn && perOk.every((x) => x.ok), JSON.stringify(perOk.filter((x) => !x.ok)));
-  check('so the onset cannot take the list: every window is heard', pwn && pwn.querySelectorAll('h3.perwin-h').length === 7);
+  check('so the onset cannot take the list: every window is heard (the Monolith’s own; the contrast has its tab)',
+        pwn && pwn.querySelectorAll('h3.perwin-h').length === MAINW.length && !pwn.querySelector('ol[data-win="c21"]'));
   rk().querySelector('.seg button[data-id="all"]').click();
   await sleep(30);
   check('Overall brings the one list back', !D().getElementById('perwin') && items().length === 10);
 
+  head('3 · Cue 2 − Cue 1, a tab of its own');
+  const vw0 = M.state;
+  check('the Monolith’s windows no longer hold it, and say where it went', !D().querySelector('#winctl .seg button[data-id="c21"]')
+        && /Cue 2 − Cue 1 has a tab of its own/.test(txt(D().getElementById('winctl'))) && !!D().getElementById('tocontrast'));
+  M.set({ band: 'f10', method: 'coherence', level: 1, hi: null });
+  await sleep(20);
+  D().getElementById('tab-c21').click();
+  await until(() => M.state.win === 'c21' && D().querySelectorAll('#within svg.progc').length === 2, 120);
+  check('its tab shows the Monolith’s pane, on the contrast', M.state.tab === 'c21' && M.family === 'contrast' && M.state.win === 'c21'
+        && !D().getElementById('mainpane').hidden && D().getElementById('tab-c21').getAttribute('aria-selected') === 'true');
+  check('no layer and no window to choose: the comparison and why it is raw only, with its ?',
+        !D().querySelector('#controls .seg button[data-id="minus_fp"]') && !D().getElementById('winctl')
+        && /^Raw only: the rest Minus FP takes away is the same for both cue windows/.test(txt(D().getElementById('contrastsay')))
+        && !!D().querySelector('#contrastctl .qmark[data-help="contrast"]'));
+  const sp21 = Array.from(D().querySelectorAll('#splitctl .seg button')).map(txt);
+  check('the cue pairs read as the comparison: A+C vs B+D, AB: B − A, CD: D − C', sp21.join(' | ') === 'A+C vs B+D (both pairs) | AB: B − A | CD: D − C', sp21.join(' | '));
+  const row21 = Array.from(D().querySelectorAll('#circrow > .within > .progcell, #circrow > .changebox'));
+  check('three circuits in a row: within Precon1, within Precon4, then the change, tested', row21.length === 3
+        && /^Within Precon1/.test(txt(row21[0].querySelector('h4'))) && /^Within Precon4/.test(txt(row21[1].querySelector('h4')))
+        && /^Precon4 against Precon1 · tested/.test(txt(row21[2].querySelector('h4'))) && !!row21[2].querySelector('#circsvg'),
+        row21.map((x) => txt(x.querySelector('h4'))).join(' | '));
+  const rr21 = row21.map((x) => x.getBoundingClientRect());
+  check('side by side, in that order (measured)', rr21.length === 3 && rr21[0].right <= rr21[1].left + 1 && rr21[1].right <= rr21[2].left + 1
+        && Math.abs(rr21[0].top - rr21[2].top) < 4, rr21.map((r) => Math.round(r.left) + '-' + Math.round(r.right)).join(' '));
+  // Within each session: the session file at the contrast's slot.
+  const C21W = N.W - 1;
+  await until(() => ARR['session_edges_raw_' + C21W], 60);
+  const SC = ARR['session_edges_raw_' + C21W];
+  const scAt = (s, p) => SC[(((s * 5) * N.B + 9) * N.M + 0) * N.P + p];
+  let camax = 0;
+  for (let s = 0; s < 4; s++) for (let p = 0; p < N.P; p++) { const v = scAt(s, p); if (isFinite(v)) camax = Math.max(camax, Math.abs(v)); }
+  const cwW = (day, p) => Number(D().querySelector('#circrow .progcell[data-day="' + day + '"] path.pedge[data-pair="' + p + '"]').getAttribute('stroke-width'));
+  const wantW = (s, p) => 0.6 + 6.4 * Math.abs(scAt(s, p)) / camax;
+  const shownW = (day) => Array.from(D().querySelectorAll('#circrow .progcell[data-day="' + day + '"] path.pedge')).filter((x) => Number(x.getAttribute('stroke-opacity')) > 0);
+  await until(() => shownW('Precon1').length === 25 && shownW('Precon1').every((x) => Math.abs(Number(x.getAttribute('stroke-width')) - wantW(0, Number(x.dataset.pair))) < 0.02), 120);
+  check('within Precon1 and Precon4: Cue 2 − Cue 1 from the session file, on one scale (widths measured)',
+        ['Precon1', 'Precon4'].every((day, k) => shownW(day).every((x) => Math.abs(Number(x.getAttribute('stroke-width')) - wantW(k ? 3 : 0, Number(x.dataset.pair))) < 0.02))
+        && shownW('Precon1').length > 0, shownW('Precon1').slice(0, 3).map((x) => x.dataset.pair + ':' + x.getAttribute('stroke-width') + '/' + wantW(0, Number(x.dataset.pair)).toFixed(2)).join(' '));
+  check('and Precon2 and Precon3 between them, underneath', Array.from(D().querySelectorAll('#between .progcell')).map((c) => c.dataset.day).join() === 'Precon2,Precon3');
+  check('the change circuit draws what passes at the contrast (the planted one)', !!D().querySelector('#circsvg path.edge[data-pair="1"]'));
+  check('its own points of interest: the planted contrast first', /Right ACC – Right DHC/.test(txt(items()[0])) && /8\/8 rats/.test(txt(items()[0])), txt(items()[0]));
+  check('the counts are the contrast’s own, with what chance would give', /^Cue 2 − Cue 1, A\+C vs B\+D \(both pairs\): 40,000 entries tested; 2,100 have p < \.05 for Precon4 against Precon1, where about 2,000/.test(txt(D().getElementById('c21verdict'))),
+        txt(D().getElementById('c21verdict')));
+  // Its controls and its own ranking where the Monolith's are: their own
+  // columns, right of the circuits on a wide screen.
+  const where3 = () => ['circcard', 'controls', 'poi'].map((id) => D().getElementById(id).getBoundingClientRect());
+  const wide0 = f.style.width;
+  f.style.width = '1600px';
+  await sleep(120);
+  const [ccb, ctb, pob] = where3();
+  check('its controls and its own ranking sit right of its circuits, in their own columns, as on the Monolith tab (measured at 1600 px)',
+        D().getElementById('controls').parentNode.classList.contains('col-ctl') && D().getElementById('poi').parentNode.classList.contains('col-poi')
+        && !D().getElementById('c21bar') && ctb.left >= ccb.right - 1 && pob.left >= ctb.right - 1
+        && Math.abs(ctb.top - D().querySelector('#maingrid .col-circ').getBoundingClientRect().top) < 4,
+        [ccb, ctb, pob].map((b) => Math.round(b.left) + '-' + Math.round(b.right) + '@' + Math.round(b.top)).join(' '));
+  f.style.width = wide0;
+  await sleep(60);
+  check('its own top points of interest, ranked on their own; no ranking within windows here',
+        /^Cue 2 − Cue 1: its own top 1 points of interest/.test(txt(D().querySelector('#poi h2'))) && !D().querySelector('#poi .rankrow')
+        && /over Cue 2 − Cue 1 alone/.test(txt(D().getElementById('poi'))), txt(D().querySelector('#poi h2')));
+  check('and how they compare with the Monolith’s ranking', /^Against 2 · The Monolith: 0 of these 1 are also among the Monolith’s top 50/.test(txt(D().getElementById('c21vs')))
+        && !!D().getElementById('tomain'), txt(D().getElementById('c21vs')));
+  const vs0 = txt(D().querySelector('#toplist li .vsm'));
+  const one21 = (w) => M.f3(at5(ARR.edges_raw, 0, w, 9, 0, 1)) + ' (p ' + M.fp(at5(ARR.edges_raw, 1, w, 9, 0, 1)) + ')';
+  check('each says the Monolith’s own Cue 1 and Cue 2 change for the same entry, from its arrays, and whether it is in its top 50',
+        vs0 === 'In the Monolith: Cue 1 ' + one21(1) + ', Cue 2 ' + one21(2) + ' · not in its top 50', vs0);
+  const vsr = D().querySelector('#toplist li .vsm').getBoundingClientRect(), prr = D().querySelector('#toplist li .pr').getBoundingClientRect();
+  check('… under the lead’s name, as wide as it, not squeezed into the rank’s column (measured)',
+        Math.abs(vsr.left - prr.left) < 2 && vsr.width >= prr.width - 2, Math.round(vsr.left) + '/' + Math.round(prr.left) + ' ' + Math.round(vsr.width));
+  const mFilt = JSON.stringify(M.state.filt || null);
+  if (!D().querySelector('#poi details.fwrap').open) D().querySelector('#poi details.fwrap > summary').click();
+  check('its own filter: no window to choose, its direction said as the contrast', !D().getElementById('f-win')
+        && /Cue 2 − Cue 1 grew by Precon4/.test(txt(D().getElementById('f-dir'))));
+  fsel('f-measure', 'coherence');
+  await until(() => M.state.filtC && M.state.filtC.measure === 'coherence' && D().getElementById('filtsay'), 60);
+  const L21 = M.filteredPoints('raw', Object.assign({ measure: 'any', region: 'any', withRegion: 'any', from: 1, to: 55, named: true, bins: true,
+                                                      win: 'any', dir: 'either', bb: 'show', split: 'view' }, M.state.filtC || {}));
+  check('filtered here, ranked here: every entry is the contrast’s, in this measure', L21.length > 0 && L21.every((t) => t.w === 'c21' && t.m === 'coherence'),
+        L21.slice(0, 3).map((t) => t.w + ' ' + t.m).join(', '));
+  check('and the Monolith’s own filter is left as it was', JSON.stringify(M.state.filt || null) === mFilt, JSON.stringify(M.state.filt));
+  D().getElementById('f-clear').click();
+  await sleep(20);
+  check('Clear brings its own top points back', !M.state.filtC && /^Cue 2 − Cue 1: its own top 1 points/.test(txt(D().querySelector('#poi h2'))));
+  check('the trail says what its numbers are', /^Cue 2 − Cue 1/.test(txt(D().querySelector('#trail .crumb')))
+        && /of Cue 2 − Cue 1, pooled over rats \(raw only\)/.test(txt(D().getElementById('trailsay'))), txt(D().getElementById('trailsay')));
+  entryAsked = [];
+  D().querySelector('#circrow .progcell[data-day="Precon1"] path.pedge[data-pair="1"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => M.ghost.pair === 1 && M.ghost.lifted, 120);
+  check('an edge of a within circuit opens the change of that pair, down to its rats', M.ghost.pair === 1 && M.state.sel === 1
+        && entryAsked.some((x) => new RegExp('at=' + (N.W - 1) + ',9,0,1$').test(x)), entryAsked.join(' '));
+  M.closeGhost(true);
+  const c21w = figWords(D().getElementById('circcard'));
+  check('no word in its pictures cut off or overlapping', c21w.length === 0, c21w.slice(0, 4).join(' | '));
+  const csr = D().getElementById('circsvg').getBoundingClientRect();
+  const outL = Array.from(D().querySelectorAll('#circsvg text.node-l')).filter((t) => { const r = t.getBoundingClientRect();
+    return r.left < csr.left - 1 || r.right > csr.right + 1 || r.top < csr.top - 1 || r.bottom > csr.bottom + 1; }).map(txt);
+  check('the change circuit’s region names, drawn larger here, all inside it (measured)', outL.length === 0, outL.join(', '));
+  if (STOP === 'c21') { restore(); document.title = 'stopped at c21'; return; }
+  D().getElementById('tab-main').click();
+  await until(() => M.state.win !== 'c21', 60);
+  check('back on the Monolith: its own window again, the row gone', M.family === 'main' && M.state.win === vw0.win
+        && D().getElementById('within').hidden && !D().getElementById('changebox').hidden, M.state.win);
+  check('and its controls and ranking back in their own columns', D().getElementById('controls').parentNode.classList.contains('col-ctl')
+        && D().getElementById('poi').parentNode.classList.contains('col-poi') && !D().getElementById('c21bar')
+        && /points of interest · Raw$/.test(txt(D().querySelector('#poi h2'))), txt(D().querySelector('#poi h2')));
+  M.set({ kind: vw0.kind, win: vw0.win, band: vw0.band, method: vw0.method, level: vw0.level, sel: vw0.sel, hi: null });
+  await sleep(20);
+
   head('cue pairs: both, or one half');
   const viewWas = M.state;
   const sc = () => D().getElementById('splitctl');
-  check('a Cue pairs control: both pooled, and each half', !!sc() && sc().querySelectorAll('.seg button').length === 7
+  check('a Cue pairs control: both pooled, and each half', !!sc() && sc().querySelectorAll('.seg button').length === 3
         && sc().querySelector('.seg button[aria-pressed="true"]').dataset.id === 'all', sc() && txt(sc()));
   M.set({ kind: 'state', win: 'pre', band: 'f30', hi: null, method: 'env_cc', level: 1 });
   await sleep(20);
   const drawnAll = D().querySelectorAll('#circsvg path.edge').length;
-  sc().querySelector('.seg button[data-id="snd_click"]').click();
-  await until(() => M.split === 'snd_click' && M.data.edges['raw__snd_click'], 120);
+  sc().querySelector('.seg button[data-id="ab"]').click();
+  await until(() => M.split === 'ab' && M.data.edges['raw__ab'], 120);
   const countIn = (arr) => { let n = 0; for (let p = 0; p < N.P; p++) { const pv = at(arr, 1, 0, 29, 3, p); if (isFinite(pv) && pv < 0.05) n++; } return n; };
-  check('the Click pair: exactly what passes in its own arrays is drawn (' + countIn(ARR['edges_raw__snd_click']) + ')',
-        D().querySelectorAll('#circsvg path.edge').length === countIn(ARR['edges_raw__snd_click'])
+  check('the Click pair: exactly what passes in its own arrays is drawn (' + countIn(ARR['edges_raw__ab']) + ')',
+        D().querySelectorAll('#circsvg path.edge').length === countIn(ARR['edges_raw__ab'])
         && !!D().querySelector('#circsvg path.edge[data-pair="' + PLANT3.p + '"]'), D().querySelectorAll('#circsvg path.edge').length);
   check('CONTROL: its change is not in the whole', at(ARR.edges_raw, 1, 0, 29, 3, PLANT3.p) >= 0.05 || !isFinite(at(ARR.edges_raw, 1, 0, 29, 3, PLANT3.p)));
-  check('the view says which half', /Pre-baseline · 30 Hz · Envelope cc · Raw · Click pair/.test(txt(D().getElementById('ctitle'))), txt(D().getElementById('ctitle')));
+  check('the view says which half', /Pre-baseline · 30 Hz · Envelope cc · Raw · AB pair/.test(txt(D().getElementById('ctitle'))), txt(D().getElementById('ctitle')));
   check('its own points of interest, its change first', /Right ACC – Left OFC/.test(txt(items()[0])) && /Envelope cc/.test(txt(items()[0])), txt(items()[0]));
-  check('the counts say only that half is shown', /Showing the click pair only: 8 rats, 96 cue pairs/.test(txt(D().getElementById('verdict'))), txt(D().getElementById('verdict')).slice(0, 300));
+  check('the counts say only that half is shown', /Showing the AB pair only: 8 rats, 96 presentations/.test(txt(D().getElementById('verdict'))), txt(D().getElementById('verdict')).slice(0, 300));
   entryAsked = [];
   D().querySelector('#circsvg path.edge[data-pair="' + PLANT3.p + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await until(() => entryAsked.length, 80);
-  check('opening an edge asks for that half', /&split=snd_click$/.test(entryAsked[0] || ''), entryAsked.join(' '));
+  check('opening an edge asks for that half', /&split=ab$/.test(entryAsked[0] || ''), entryAsked.join(' '));
   M.closeGhost(true);
   sc().querySelector('.seg button[data-id="all"]').click();
-  await until(() => M.split === 'all' && !/Click pair/.test(txt(D().getElementById('ctitle'))), 80);
-  check('and Both brings the whole back', D().querySelectorAll('#circsvg path.edge').length === drawnAll && !/Click pair/.test(txt(D().getElementById('ctitle'))));
+  await until(() => M.split === 'all' && !/AB pair/.test(txt(D().getElementById('ctitle'))), 80);
+  check('and Both brings the whole back', D().querySelectorAll('#circsvg path.edge').length === drawnAll && !/AB pair/.test(txt(D().getElementById('ctitle'))));
   // The filter ranks any half; a point from another half snaps the view to it.
   if (!D().querySelector('#poi details.fwrap').open) D().querySelector('#poi details.fwrap > summary').click();
-  fsel('f-split', 'snd_click');
-  await until(() => M.data.edges['raw__snd_click'] && /Click pair/.test(txt(D().querySelector('#poi details.fwrap > summary'))), 80);
+  fsel('f-split', 'ab');
+  await until(() => M.data.edges['raw__ab'] && /AB pair/.test(txt(D().querySelector('#poi details.fwrap > summary'))), 80);
   const LS = listed();
   check('the filter ranks the Click pair\'s entries while the view shows both', M.split === 'all' && LS[0] && LS[0].pair === PLANT3.p
-        && LS[0].split === 'snd_click' && /Click pair/.test(txt(D().querySelector('#poi details.fwrap > summary'))), LS[0] && JSON.stringify([LS[0].pair, LS[0].split]));
+        && LS[0].split === 'ab' && /AB pair/.test(txt(D().querySelector('#poi details.fwrap > summary'))), LS[0] && JSON.stringify([LS[0].pair, LS[0].split]));
   items()[0].click();
-  await until(() => M.split === 'snd_click', 80);
-  check('and clicking one snaps the view to its half', M.split === 'snd_click' && M.state.sel === PLANT3.p && M.state.band === 'f30');
+  await until(() => M.split === 'ab', 80);
+  check('and clicking one snaps the view to its half', M.split === 'ab' && M.state.sel === PLANT3.p && M.state.band === 'f30');
   D().getElementById('f-clear').click();
   await sleep(20);
   await M.switchSplit('all');
@@ -916,9 +1273,9 @@ window.MONO_FIXTURE = {
   check('a Monolith with no split offers to split it', !!D().getElementById('splitnow') && /not been split/.test(txt(sc())));
   D().getElementById('splitnow').click();
   await until(() => splitAsked.length, 80);
-  await until(() => M.data.S.splits && sc() && sc().querySelectorAll('.seg button').length === 7, 160);
+  await until(() => M.data.S.splits && sc() && sc().querySelectorAll('.seg button').length === 3, 160);
   check('pressed, it splits, waits, and then shows the halves', splitAsked.length === 1 && !!M.data.S.splits
-        && sc().querySelectorAll('.seg button').length === 7);
+        && sc().querySelectorAll('.seg button').length === 3);
   // Back to the view the page opened on, for the checks that follow.
   M.set({ kind: viewWas.kind, win: viewWas.win, band: viewWas.band, method: viewWas.method, level: viewWas.level,
           sel: viewWas.sel, hi: null });
@@ -1005,7 +1362,8 @@ window.MONO_FIXTURE = {
   await sleep(20);
   check('Theta snaps to the named band', M.state.band === 'theta' && /Theta 4–12 Hz/.test(txt(D().getElementById('ctitle'))));
   const wc = D().getElementById('winctl');
-  check('the seven windows in two named groups: 4 states, 3 transitions', /4 states \(10 s each\)/.test(txt(wc)) && /3 transitions \(around each boundary\)/.test(txt(wc))
+  check('the windows in named groups: 4 states and 3 transitions; Cue 2 − Cue 1 pointed to its tab', /4 states \(10 s each\)/.test(txt(wc))
+        && /3 transitions \(around each boundary\)/.test(txt(wc)) && /Cue 2 − Cue 1 has a tab of its own/.test(txt(wc))
         && wc.querySelectorAll('.seg').length === 2 && txt(wc.querySelectorAll('.seg')[0]) === 'Pre-baselineCue 1Cue 2Post-baseline'
         && txt(wc.querySelectorAll('.seg')[1]) === 'OnsetSwitchOffset', txt(wc));
   check('no State/Transition switch to hide three of them behind', !D().querySelector('#controls .seg button[data-id="transition"]'));
@@ -1163,6 +1521,23 @@ window.MONO_FIXTURE = {
   const gnames = Array.from(D().querySelectorAll('#ghostsvg .gname')).map((x) => x.textContent);
   check('named as the edge was', gnames.indexOf(REG[PAIRS[PLANT2.p][0]]) >= 0 && gnames.indexOf(REG[PAIRS[PLANT2.p][1]]) >= 0, gnames.join(','));
   check('the crumbs say where', txt(D().getElementById('crumbs')).indexOf('Pooled') === 0);
+  const PC = () => D().getElementById('physcheck');
+  await until(() => PC(), 40);
+  const prow = (rat) => PC() && PC().querySelector('tr[data-rat="' + rat + '"]');
+  check('a physical cue sanity check under the lifted edge, a row per rat', !!PC() && PC().querySelectorAll('tbody tr').length === 8
+        && !!PC().querySelector('.qmark[data-help="physcheck"]'), PC() && PC().querySelectorAll('tbody tr').length);
+  check('Cue 2 is B in AB and D in CD, named by each rat’s own sounds (J3: B = Low tone, D = High tone; J4: B = Noise, D = Click)',
+        /^B · Low tone/.test(txt(prow(3).querySelector('td[data-pair="AB"]'))) && /^D · High tone/.test(txt(prow(3).querySelector('td[data-pair="CD"]')))
+        && /^B · Noise/.test(txt(prow(4).querySelector('td[data-pair="AB"]'))) && /^D · Click/.test(txt(prow(4).querySelector('td[data-pair="CD"]'))),
+        txt(prow(3)) + ' | ' + txt(prow(4)));
+  const pr3 = M.ghost.detail.rats.find((r) => r.rat === 3);
+  const m3 = (day) => { const vs = pr3.days[day].units.filter((u) => u.pair === 'AB' && u.v != null).map((u) => u.v); return vs.reduce((a, b) => a + b, 0) / vs.length; };
+  check('each cell is that rat’s change in that pair, from its own presentations', txt(prow(3).querySelector('td[data-pair="AB"] .num'))
+        === W().MONO_FIGS.sig(Math.abs(m3('Precon4') - m3('Precon1'))).replace(/^/, m3('Precon4') - m3('Precon1') >= 0 ? '+' : '−'),
+        txt(prow(3).querySelector('td[data-pair="AB"] .num')));
+  check('grouped by seat and by sound, and said which it follows', /^By seat: AB .* · CD /.test(txt(D().getElementById('physseat')))
+        && (txt(D().getElementById('physsound')).match(/(Click|Noise|High tone|Low tone) /g) || []).length === 4
+        && !!D().getElementById('physsay'), txt(D().getElementById('physsound')));
   const p2name = sh(REG[PAIRS[PLANT2.p][0]]) + ' – ' + sh(REG[PAIRS[PLANT2.p][1]]);
   check('the trail: the Monolith › this pair, the pooled change', crumbsT().join('|') === 'The Monolith|' + p2name
         && /^Showing one region pair’s change Precon4 − Precon1, pooled over rats/.test(trailSay()), crumbsT().join('|') + ' / ' + trailSay());
@@ -1559,6 +1934,463 @@ window.MONO_FIXTURE = {
   D().getElementById('tab-main').click();
   await sleep(30);
 
+  head('Monolith Progress, a button on the Monolith’s circuit');
+  M.closeLeaf(); M.closeGhost(true);
+  if (M.state.tab !== 'main') D().getElementById('tab-main').click();
+  M.set({ kind: 'state', win: 'cue1', band: 'f10', hi: null, method: 'coherence', level: 1, sel: PLANT.p, layer: 'raw', split: 'all', prog: false });
+  await sleep(20);
+  const MP = W().MONO_PROGRESS;
+  const PGn = () => D().getElementById('progcircs');
+  const DAYS4 = ['Precon1', 'Precon2', 'Precon3', 'Precon4'];
+  check('no tab of its own: it is on the Monolith’s circuit', !D().getElementById('tab-prog')
+        && Array.from(D().querySelectorAll('#circmode .seg button')).map(txt).join(' | ') === 'Precon4 − Precon1 | Monolith Progress'
+        && !D().getElementById('changebox').hidden && D().getElementById('progcircs').hidden);
+  D().querySelector('#circmode .seg button[data-id="prog"]').click();
+  await until(() => PGn().querySelectorAll('#progcircs svg.progc').length === 4 && MP.cur, 200);
+  check('the button swaps the one circuit for every session’s, in the same tab', M.state.tab === 'main' && M.state.prog === true
+        && D().getElementById('changebox').hidden && !D().getElementById('progcircs').hidden && !D().getElementById('mainpane').hidden
+        && /^Monolith Progress · Cue 1 · 10 Hz · Coherence · Raw/.test(txt(D().getElementById('ctitle'))), txt(D().getElementById('ctitle')));
+  check('the change circuit’s legend and list are not shown under the sessions’ circuits',
+        D().getElementById('legend').offsetParent === null && D().getElementById('lines').offsetParent === null);
+  await until(() => D().getElementById('trajprog'), 80);
+  check('the trajectory card offers the way into the panels', !!D().getElementById('trajprog'));
+  D().getElementById('trajprog').click();
+  await until(() => D().querySelector('.progpanel svg.progfig'), 200);
+  const kP = 'edges|' + PLANT.p + '|cue1|f10|coherence|raw|all';
+  const psr = D().getElementById('progseries').getBoundingClientRect(), ccr = D().getElementById('circcard').getBoundingClientRect();
+  check('the panels sit over the circuit they are dragged from (measured)', psr.bottom <= ccr.top + 1, Math.round(psr.bottom) + ' / ' + Math.round(ccr.top));
+  check('“Follow it across the sessions” puts that line in a panel over the circuit, in the same tab', M.state.tab === 'main'
+        && MP.state.series.length === 1 && MP.seriesKey(MP.state.series[0]) === kP
+        && D().getElementById('progseries').closest('#mainpane') !== null, JSON.stringify(MP.state.series));
+  check('it says nothing here is tested, and the one p is uncorrected',
+        /Descriptive: nothing here is tested; the only p is the Monolith’s own, Precon4 − Precon1, uncorrected/.test(txt(D().getElementById('progsay'))));
+  check('the circuits read only the window in view (and the contrast tab its own)', sessAsked.indexOf('session_edges_raw_1') >= 0
+        && !sessAsked.some((x) => new RegExp('_raw_(?!1$|' + (N.W - 1) + '$)[0-9]+$').test(x)), sessAsked.join(' '));
+  const cells = () => Array.from(PGn().querySelectorAll('#progcircs .progcell'));
+  check('four circuits, a session each, in order', cells().map((c) => c.dataset.day).join() === DAYS4.join() && cells().every((c) => c.dataset.mode === 'value'),
+        cells().map((c) => c.dataset.day + ':' + c.dataset.mode).join());
+  check('a fresh view draws the 25 strongest lines of each session', MP.state.top === 25
+        && PGn().querySelector('.progtop button[aria-pressed="true"]').dataset.id === '25');
+  PGn().querySelector('.progtop button[data-id="0"]').click();
+  // The widths, worked out here from the session file: one scale for all four.
+  const SA = ARR.session_edges_raw_1;
+  const sAt = (s, q, p) => SA[(((s * 5 + q) * N.B + PLANT.b) * N.M + PLANT.m) * N.P + p];
+  let slo = Infinity, shi = -Infinity, samax = 0;
+  for (let s = 0; s < 4; s++) for (let p = 0; p < N.P; p++) {
+    const v = sAt(s, 0, p), c = sAt(s, 3, p);
+    if (isFinite(v)) { slo = Math.min(slo, v); shi = Math.max(shi, v); }
+    if (isFinite(c)) samax = Math.max(samax, Math.abs(c));
+  }
+  const cw = (day, p, mode) => Number(PGn().querySelector('.progcell[data-day="' + day + '"]' + (mode ? '[data-mode="' + mode + '"]' : '')
+    + ' path.pedge[data-pair="' + p + '"]').getAttribute('stroke-width'));
+  const wantV = (s, p) => 0.6 + 6.4 * (sAt(s, 0, p) - slo) / (shi - slo);
+  await until(() => DAYS4.every((d, s) => Math.abs(cw(d, PLANT.p) - wantV(s, PLANT.p)) < 0.02), 80);
+  check('each line’s width is its session’s value, on one scale for all four sessions',
+        DAYS4.every((d, s) => Math.abs(cw(d, PLANT.p) - wantV(s, PLANT.p)) < 0.02) && DAYS4.every((d, s) => Math.abs(cw(d, 9) - wantV(s, 9)) < 0.02),
+        DAYS4.map((d, s) => cw(d, PLANT.p).toFixed(2) + '/' + wantV(s, PLANT.p).toFixed(2)).join(' '));
+  check('the planted line thickens from Precon1 to Precon4', cw('Precon1', PLANT.p) < cw('Precon2', PLANT.p) && cw('Precon2', PLANT.p) < cw('Precon3', PLANT.p)
+        && cw('Precon3', PLANT.p) < cw('Precon4', PLANT.p));
+  const greyP = PAIRS.findIndex((x) => x.indexOf(GREY) >= 0);
+  check('a pair no rat has is not drawn', cw('Precon2', greyP) === 0);
+  check('the scale is said once, under the circuits', /Thicker and darker: higher, from .* \(thinnest\) to .* \(widest\), on one scale for all four sessions/.test(txt(D().getElementById('proglegend')))
+        && !/one scale/.test(txt(PGn().querySelector('.progcell .plegend'))), txt(D().getElementById('proglegend')));
+  const drawnIn = (d) => Array.from(PGn().querySelectorAll('.progcell[data-day="' + d + '"] path.pedge')).filter((x) => Number(x.getAttribute('stroke-opacity')) > 0)
+    .map((x) => Number(x.dataset.pair)).sort((x, y) => x - y).join();
+  const top10 = (s) => { const ps = []; for (let p = 0; p < N.P; p++) if (isFinite(sAt(s, 0, p))) ps.push(p);
+    return ps.sort((x, y) => sAt(s, 0, y) - sAt(s, 0, x)).slice(0, 10).sort((x, y) => x - y).join(); };
+  PGn().querySelector('.progtop button[data-id="10"]').click();
+  await until(() => DAYS4.every((d) => drawnIn(d).split(',').length === 10), 80);
+  check('“Strongest 10”: each session draws its own ten strongest lines', DAYS4.every((d, s) => drawnIn(d) === top10(s)), DAYS4.map(drawnIn).join(' | '));
+  check('and says so', txt(PGn().querySelector('.progcell[data-day="Precon2"] .plegend')) === '10 of the 55 region pairs measured drawn: the 10 strongest.',
+        txt(PGn().querySelector('.progcell[data-day="Precon2"] .plegend')));
+  PGn().querySelector('.progtop button[data-id="0"]').click();
+  await until(() => drawnIn('Precon2').split(',').length === 55, 80);
+  const pe3 = PGn().querySelector('.progcell[data-day="Precon3"] path.pedge[data-pair="' + PLANT.p + '"]');
+  pe3.dispatchEvent(new MouseEvent('mouseenter', { clientX: 200, clientY: 200 }));
+  await sleep(10);
+  const tip3 = txt(D().getElementById('tip'));
+  check('an edge’s hover: its session value over rats, its change from Precon1, and how to follow it',
+        tip3.indexOf('value ' + M.sig(sAt(2, 0, PLANT.p)) + ' ± ' + M.sig(sAt(2, 1, PLANT.p)) + ' SE over 7 rats') >= 0 && tip3.indexOf('change from Precon1 ' + M.f3(sAt(2, 3, PLANT.p))) >= 0
+        && /Drag it onto the panels above, or click it/.test(tip3), tip3);
+  pe3.dispatchEvent(new MouseEvent('mouseleave'));
+  const svg4 = PGn().querySelector('.progcell[data-day="Precon4"] svg.progc');
+  PGn().querySelector('.progmode button[data-id="chg"]').click();
+  const wantC = (s, p) => 0.6 + 6.4 * Math.abs(sAt(s, 3, p)) / samax;
+  await until(() => MP.state.mode === 'chg' && Math.abs(cw('Precon4', PLANT.p) - wantC(3, PLANT.p)) < 0.02, 80);
+  const hexRgb = (h) => { h = h.replace('#', ''); return 'rgb(' + [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)).join(',') + ')'; };
+  const upC = hexRgb(getComputedStyle(D().documentElement).getPropertyValue('--up').trim());
+  check('change from Precon1: the same circuits turn into the change, not drawn again', PGn().querySelector('.progcell[data-day="Precon4"] svg.progc') === svg4
+        && cells().every((c) => c.dataset.mode === 'chg'));
+  check('… red where it rose, its width the change, on one scale for all four sessions', Math.abs(cw('Precon4', PLANT.p) - wantC(3, PLANT.p)) < 0.02
+        && PGn().querySelector('.progcell[data-day="Precon4"] path.pedge[data-pair="' + PLANT.p + '"]').getAttribute('stroke') === upC,
+        cw('Precon4', PLANT.p) + ' ' + wantC(3, PLANT.p));
+  const p1cell = PGn().querySelector('.progcell[data-day="Precon1"]');
+  check('Precon1 is where every change starts: nothing drawn, and said so', Array.from(p1cell.querySelectorAll('path.pedge')).every((x) => Number(x.getAttribute('stroke-opacity')) === 0)
+        && /Precon1: the start/.test(txt(p1cell)));
+  const pan = (k) => D().querySelector('.progpanel[data-key="' + k + '"]');
+  await until(() => pan(kP) && pan(kP).querySelector('svg.progfig[data-mode="chg"]'), 80);
+  const ysC = Array.from(pan(kP).querySelectorAll('svg.progfig[data-mode="chg"] .pmeanpt')).map((c) => Number(c.dataset.y));
+  check('the panels follow: each session less Precon1', ysC.length === 4 && ysC.every((y, i) => Math.abs(y - (PROG_PLANT[i] - PROG_PLANT[0])) < 1e-6), ysC.join());
+  PGn().querySelector('.progmode button[data-id="both"]').click();
+  await until(() => PGn().querySelectorAll('#progcircs svg.progc').length === 8 && pan(kP) && pan(kP).querySelectorAll('svg.progfig').length === 2, 80);
+  check('both: a row of each reading, eight circuits', Array.from(PGn().querySelectorAll('.progrowh')).map(txt).join('|') === 'Each session’s value|Change from Precon1'
+        && PGn().querySelectorAll('#progcircs svg.progc').length === 8);
+  check('and each panel shows the two side by side', Array.from(pan(kP).querySelectorAll('svg.progfig')).map((x) => x.dataset.mode).join() === 'value,chg');
+  PGn().querySelector('.proglayout button[data-id="step"]').click();
+  await until(() => PGn().querySelectorAll('#progcircs svg.progc').length === 2, 60);
+  check('one at a time, both readings: the two circuits of one session', cells().map((c) => c.dataset.day + ':' + c.dataset.mode).join() === 'Precon1:value,Precon1:chg',
+        cells().map((c) => c.dataset.day + ':' + c.dataset.mode).join());
+  PGn().querySelector('.progmode button[data-id="value"]').click();
+  await until(() => PGn().querySelectorAll('#progcircs svg.progc').length === 1, 60);
+  const one = PGn().querySelector('#progcircs svg.progc');
+  PGn().querySelector('.progsess button[data-id="3"]').click();
+  await until(() => one.dataset.day === 'Precon4' && Math.abs(cw('Precon4', PLANT.p) - wantV(3, PLANT.p)) < 0.02, 80);
+  check('a session picked: the same circuit turns into it', PGn().querySelector('#progcircs svg.progc') === one && one.dataset.day === 'Precon4'
+        && Math.abs(cw('Precon4', PLANT.p) - wantV(3, PLANT.p)) < 0.02);
+  D().getElementById('progplay').click();
+  await until(() => MP.state.playing, 20);
+  const seen = new Set();
+  await until(() => { seen.add(one.dataset.day); return !MP.state.playing; }, 300, 30);
+  check('Play runs Precon1 to Precon4, each turning into the next, and stops', DAYS4.every((d) => seen.has(d)) && MP.state.step === 3 && !MP.state.playing,
+        Array.from(seen).join());
+  PGn().querySelector('.proglayout button[data-id="all"]').click();
+  await until(() => PGn().querySelectorAll('#progcircs svg.progc').length === 4, 60);
+  // Dragging an edge onto the panels.
+  const PE = W().PointerEvent;
+  const src = PGn().querySelector('.progcell[data-day="Precon2"] path.pedge[data-pair="1"]');
+  await sleep(400);    // the circuits' words are in: nothing below them moves now
+  const sb = src.getBoundingClientRect(), ib = D().getElementById('verdict').getBoundingClientRect();
+  src.dispatchEvent(new PE('pointerdown', { clientX: sb.x + sb.width / 2, clientY: sb.y + sb.height / 2, button: 0, bubbles: true }));
+  W().dispatchEvent(new PE('pointermove', { clientX: ib.x + 20, clientY: ib.y + 20, bubbles: true }));
+  W().dispatchEvent(new PE('pointerup', { clientX: ib.x + 20, clientY: ib.y + 20, bubbles: true }));
+  await sleep(30);
+  check('CONTROL: dropped anywhere else, nothing is followed', MP.state.series.length === 1 && !D().getElementById('progdrag'));
+  const zb = D().getElementById('progdrop').getBoundingClientRect();
+  src.dispatchEvent(new PE('pointerdown', { clientX: sb.x + sb.width / 2, clientY: sb.y + sb.height / 2, button: 0, bubbles: true }));
+  W().dispatchEvent(new PE('pointermove', { clientX: zb.x + 40, clientY: zb.y + 40, bubbles: true }));
+  check('dragging: a chip names the line and every parameter it carries, and the box lights up',
+        txt(D().getElementById('progdrag')) === 'R ACC – R DHC · Coherence · 10 Hz · Cue 1 · Raw · AB and CD pooled'
+        && D().getElementById('progseries').classList.contains('over'), txt(D().getElementById('progdrag')));
+  W().dispatchEvent(new PE('pointerup', { clientX: zb.x + 40, clientY: zb.y + 40, bubbles: true }));
+  await until(() => MP.state.series.length === 2 && pan('edges|1|cue1|f10|coherence|raw|all') && pan('edges|1|cue1|f10|coherence|raw|all').querySelector('svg.progfig'), 120);
+  check('dropped: that edge, with the view’s window, frequency, measure, layer and cue pairs, is followed first',
+        MP.seriesKey(MP.state.series[0]) === 'edges|1|cue1|f10|coherence|raw|all' && !D().getElementById('progdrag')
+        && !D().getElementById('progseries').classList.contains('over'), JSON.stringify(MP.state.series[0]));
+  const ys = Array.from(pan(kP).querySelectorAll('svg.progfig[data-mode="value"] .pmeanpt')).map((c) => Number(c.dataset.y));
+  check('a panel: each session’s mean over rats, from the session file', ys.length === 4 && ys.every((y, i) => Math.abs(y - PROG_PLANT[i]) < 1e-6), ys.join());
+  check('each rat its own thin line (the seven with values)', pan(kP).querySelectorAll('svg.progfig[data-mode="value"] g.pratline path').length === 7);
+  check('in its own units, with the Monolith’s one p, uncorrected', /coherence \(0–1\)/.test(txt(pan(kP).querySelector('svg.progfig')))
+        && /Precon4 − Precon1 on the Monolith: \+0\.050, p \.002 \(uncorrected\) over 7 rats/.test(txt(pan(kP).querySelector('.progp'))), txt(pan(kP).querySelector('.progp')));
+  // Built by hand.
+  const setSel = (id, v) => { const s = D().getElementById(id); s.value = String(v); s.dispatchEvent(new Event('change')); };
+  setSel('pbm', 'plv');
+  D().getElementById('pbadd').click();
+  const kPlv = 'edges|0|cue1|f10|plv|raw|all';
+  await until(() => MP.state.series.length === 3 && pan(kPlv) && pan(kPlv).querySelector('svg.progfig'), 120);
+  check('built by hand: the same pair in PLV, stacked on top, in its own units', MP.seriesKey(MP.state.series[0]) === kPlv
+        && /PLV \(0–1\)/.test(txt(pan(kPlv).querySelector('svg.progfig'))), MP.state.series.map(MP.seriesKey).join(' '));
+  MP.build = Object.assign({}, MP.build, { what: 'edges', a: 1, b: 0, m: 'gc_ab' });
+  const pbb = MP.built();
+  check('a Granger line asked the other way round is the pair’s other direction', pbb.p === 0 && pbb.m === 'gc_ba', JSON.stringify(pbb));
+  MP.build = Object.assign({}, MP.build, { a: 0, b: 1, m: 'coherence' });
+  // ?stop=prog leaves the frame here (&scroll=<id> to look further down,
+  // &mode=both|chg, &layout=step).
+  if (STOP === 'prog') {
+    const sa = new URLSearchParams(location.search);
+    if (sa.get('mode')) MP.setMode(sa.get('mode'));
+    if (sa.get('layout')) MP.setLayout(sa.get('layout'));
+    if (sa.get('phone')) f.style.width = '390px';
+    await sleep(900);
+    if (sa.get('scroll')) D().getElementById(sa.get('scroll')).scrollIntoView();
+    restore(); document.title = 'stopped at prog'; return;
+  }
+  const pkeys = () => Array.from(D().querySelectorAll('#progpanels .progpanel')).map((x) => x.dataset.key);
+  const k0 = pkeys();
+  pan(k0[0]).querySelector('button[title="Move down"]').click();
+  check('↓ moves a panel down', pkeys()[1] === k0[0] && pkeys()[0] === k0[1], pkeys().join(' '));
+  pan(k0[0]).querySelector('button[title="Move up"]').click();
+  check('↑ moves it back', pkeys().join() === k0.join());
+  let keptSeries = null;
+  try { keptSeries = JSON.parse(localStorage.getItem('barry.monolith.progress')).series.length; } catch (e) { /* none */ }
+  check('the lines followed are remembered in this browser', keptSeries === 3, keptSeries);
+  // Down to the signal.
+  await until(() => pan(kP).querySelector('svg.progfig .progpt[data-day="Precon2"]'), 60);
+  pan(kP).querySelector('svg.progfig .progpt[data-day="Precon2"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => pan(kP).querySelectorAll('.prograts button').length === 8, 80);
+  const rbtn = Array.from(pan(kP).querySelectorAll('.prograts button'));
+  check('a session’s point opens its rats, each with its value and its change from Precon1', /^r3 0\.430 \(\+0\.010\)$/.test(txt(rbtn[0])) && rbtn[7].disabled,
+        rbtn.map(txt).join(' | '));
+  rbtn[0].click();
+  await until(() => pan(kP).querySelectorAll('svg.progstrip .progunit').length === 9, 80);
+  check('a rat opens its presentations in that session, in order', pan(kP).querySelectorAll('svg.progstrip .progunit').length === 9
+        && /r3 · Precon2: 9 presentations, in order/.test(txt(pan(kP).querySelector('#progdrill'))));
+  leafAsked = [];
+  pan(kP).querySelector('svg.progstrip .progunit[data-unit="p01"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => M.leaf.open && M.leaf.data, 120);
+  check('and a presentation opens its traces, at that line', M.leaf.rat === 3 && M.leaf.day === 'Precon2' && M.leaf.unit === 'p01'
+        && /at=1,9,0,0&rat=3&day=Precon2&unit=p01/.test(leafAsked[0] || ''), leafAsked.join(' '));
+  check('stepping goes through that session’s presentations', /1 of 9/.test(txt(D().querySelector('#leaf .leafctl'))), txt(D().querySelector('#leaf .leafctl')));
+  M.closeLeaf();
+  const nd = PGn().querySelector('.progcell[data-day="Precon1"] circle.pnode[data-region="2"]');
+  nd.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  const kPow = 'power|2|cue1|f10||raw|all';
+  await until(() => pan(kPow) && pan(kPow).querySelector('svg.progfig'), 120);
+  check('a node followed: its power, in its own units', /^R DHC power · 10 Hz · Cue 1 · Raw/.test(txt(pan(kPow).querySelector('h3')))
+        && /power \(log10\)/.test(txt(pan(kPow).querySelector('svg.progfig'))), txt(pan(kPow).querySelector('h3')));
+  pan(kPow).querySelector('svg.progfig .progpt[data-day="Precon1"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await until(() => pan(kPow).querySelectorAll('.prograts button').length === 8, 80);
+  pan(kPow).querySelector('.prograts button').click();
+  await until(() => pan(kPow).querySelector('svg.progstrip'), 80);
+  check('its presentations, and why there are no traces for power', /Power has no trace view of its own/.test(txt(pan(kPow).querySelector('#progdrill'))));
+  // Sessions not run yet.
+  const keepOrder = M.data.S.sessions.order;
+  M.data.S.sessions.order = ['Precon1', 'Precon4'];
+  MP.forget(); M.renderAll(); MP.mountSeries();
+  await until(() => /Not run yet/.test(txt(PGn().querySelector('.progcell[data-day="Precon2"]'))) && pan(kP) && pan(kP).querySelector('svg.progfig'), 120);
+  check('sessions not run yet are said so, with how to run them, in the circuits and the panels',
+        /Not run yet/.test(txt(PGn().querySelector('.progcell[data-day="Precon2"]'))) && /Run Precon2\/3 and the pair window/.test(txt(PGn().querySelector('.progcell[data-day="Precon3"]')))
+        && /not run yet/.test(txt(pan(kP).querySelector('svg.progfig'))) && pan(kP).querySelectorAll('svg.progfig .pmeanpt').length === 2);
+  M.data.S.sessions.order = keepOrder;
+  MP.forget(); M.renderAll(); MP.mountSeries();
+  await until(() => pan(kP) && pan(kP).querySelectorAll('svg.progfig .pmeanpt').length === 4, 120);
+  // Taking it away.
+  let dl = null;
+  const keepDl = W().MONO.download;
+  W().MONO.download = (name, blob) => { dl = { name, blob }; };
+  D().getElementById('progcsv').click();
+  await until(() => dl, 80);
+  const pcsv = dl ? await dl.blob.text() : '';
+  const cl = pcsv.split('\n');
+  const p3 = cl.find((l) => l.indexOf('"R ACC – R OFC · Coherence · 10 Hz · Cue 1 · Raw · AB and CD pooled"') === 0 && /"Precon3","mean over rats",/.test(l));
+  check('CSV: every line followed, each session’s mean over rats and each rat', dl && dl.name === 'monolith-progress.csv'
+        && cl[0] === '"line","what","layer","cue_pairs","window","frequency","measure","session","rat","value","se","rats","change_from_precon1","change_se"'
+        && p3 && Math.abs(parseFloat(p3.split('"mean over rats",')[1]) - 0.45) < 1e-6 && cl.some((l) => /"Precon2","r3",0\.43/.test(l)), (p3 || cl[0]).slice(0, 160));
+  dl = null;
+  D().getElementById('progsvg').click();
+  await until(() => dl, 80);
+  const svgT = dl ? await dl.blob.text() : '';
+  check('SVG: the panels as one picture, each titled', dl && dl.name === 'monolith-progress.svg' && /^<svg/.test(svgT)
+        && svgT.indexOf('R ACC – R OFC · Coherence · 10 Hz') >= 0 && svgT.indexOf('R DHC power') >= 0);
+  W().MONO.download = keepDl;
+  const pgw = figWords(PGn()).concat(figWords(D().getElementById('progseries')));
+  check('no word in its pictures cut off or overlapping', pgw.length === 0, pgw.slice(0, 4).join(' | '));
+  f.style.width = '390px';
+  await sleep(350);
+  check('at 390 px nothing scrolls sideways', D().scrollingElement.scrollWidth <= D().scrollingElement.clientWidth + 1, D().scrollingElement.scrollWidth);
+  await until(() => pan(kP) && pan(kP).querySelector('svg.progfig'), 80);
+  const pgw2 = figWords(PGn()).concat(figWords(D().getElementById('progseries')));
+  check('and at 390 px no word in its pictures is cut off or overlapping', pgw2.length === 0, pgw2.slice(0, 4).join(' | '));
+  f.style.width = '';
+  // A build with no session files: made here, from the button.
+  const keepSess = M.data.S.sessions;
+  delete M.data.S.sessions;
+  MP.forget(); M.renderAll(); MP.mountSeries();
+  await until(() => D().getElementById('makesessions'), 60);
+  check('a build without session files says so and offers to make them here, not a button that may be gone',
+        !!D().getElementById('makesessions') && /no session files/.test(txt(D().getElementById('progcircs')))
+        && /no session files/.test(txt(D().getElementById('progpanels'))) && !/Rebuild under histology/.test(txt(D().getElementById('progcircs'))));
+  sessionsPosted = [];
+  D().getElementById('makesessions').click();
+  await until(() => sessionsPosted.length && M.data.S.sessions && PGn().querySelectorAll('#progcircs svg.progc').length === 4, 160);
+  check('pressed: asked of Jarvis, confirmed, and Progress is back on the summary read again',
+        sessionsPosted.length === 1 && sessionsPosted[0].confirm === true && !!M.data.S.sessions && !D().getElementById('makesessions'),
+        JSON.stringify(sessionsPosted) + ' ' + !!M.data.S.sessions + ' ' + PGn().querySelectorAll('svg.progc').length + ' ' + MP.state.making + ' ' + txt(PGn()).slice(0, 200));
+  if (!M.data.S.sessions) M.data.S.sessions = keepSess;
+  pan(kP) && await until(() => pan(kP) && pan(kP).querySelector('svg.progfig'), 80);
+  pan(kP).querySelector('button[title="Show this line on the circuit below, Precon4 − Precon1"]').click();
+  await until(() => M.state.prog === false, 60);
+  check('“On the circuit” shows that line on the Monolith’s own circuit', M.state.tab === 'main' && M.state.sel === PLANT.p && M.state.win === 'cue1'
+        && M.state.band === 'f10' && M.state.method === 'coherence' && !D().getElementById('changebox').hidden && D().getElementById('progcircs').hidden);
+  // An edge of the Monolith's own circuit drags onto the panels too.
+  await sleep(200);
+  const msrc = D().querySelector('#circsvg path.edge[data-pair="' + PLANT.p + '"]');
+  const n0s = MP.state.series.length;
+  MP.removeSeries(kP);
+  const mb = msrc.getBoundingClientRect();
+  const zb2 = D().getElementById('progdrop').getBoundingClientRect();
+  msrc.dispatchEvent(new PE('pointerdown', { clientX: mb.x + mb.width / 2, clientY: mb.y + mb.height / 2, button: 0, bubbles: true }));
+  W().dispatchEvent(new PE('pointermove', { clientX: zb2.x + 40, clientY: zb2.y + 40, bubbles: true }));
+  W().dispatchEvent(new PE('pointerup', { clientX: zb2.x + 40, clientY: zb2.y + 40, bubbles: true }));
+  await until(() => MP.state.series.some((x) => MP.seriesKey(x) === kP), 60);
+  check('an edge dragged from the Monolith’s own circuit lands on the panels with its view', MP.state.series.some((x) => MP.seriesKey(x) === kP)
+        && MP.state.series.length === n0s, MP.state.series.map(MP.seriesKey).join(' '));
+  await sleep(30);
+
+  head('6 · physical cue against balanced cue');
+  M.closeLeaf(); M.closeGhost(true);
+  const PH = W().MONO_PHYS;
+  M.showTab('phys');
+  await until(() => D().getElementById('physverdict') && D().getElementById('physcircsvg').querySelector('svg'), 120);
+  check('the tab shows its own pane, and only that', !D().getElementById('physpane').hidden && D().getElementById('mainpane').hidden
+        && D().getElementById('tab-phys').getAttribute('aria-selected') === 'true');
+  const seatRows = Array.from(D().querySelectorAll('#physseats tbody tr'));
+  const tcells = (tr) => Array.from(tr.children).map(txt);
+  check('the seats, by rat: the group each opens with, and its four sounds', seatRows.length === 8
+        && seatRows.filter((r) => r.dataset.group === 'noise').map((r) => r.dataset.rat).join() === '3,6,7,8'
+        && seatRows.filter((r) => r.dataset.group === 'tone').map((r) => r.dataset.rat).join() === '4,9,10,11'
+        && tcells(seatRows[1]).join(' / ') === 'J4 / tone-first / High tone / Noise / Low tone / Click', seatRows.map((r) => tcells(r).join(' / ')).join(' | '));
+  const vrows = () => Array.from(D().querySelectorAll('#physverdict tbody tr'));
+  const vrow = (id) => D().querySelector('#physverdict tbody tr[data-cmp="' + id + '"]');
+  check('the verdict: one row a comparison, by seat first, then by sound',
+        vrows().map((r) => r.dataset.cmp + ':' + r.className).join() === 'monolith:seat,contrast:seat,seat_abcd:seat,order:sound,sound_noise:sound,sound_tone:sound,tone_noise:sound',
+        vrows().map((r) => r.dataset.cmp + ':' + r.className).join());
+  const oc6 = tcells(vrow('order'));
+  check('each with what was tested, what passed, chance and the ratio, from physical.json',
+        oc6[2] === '340,000' && oc6[3] === '17,100' && oc6[4] === '17,000' && oc6[5] === '1.01'
+        && tcells(vrow('monolith'))[3] === '18,000' && tcells(vrow('tone_noise'))[2] === '40,000', oc6.join(' | '));
+  check('and where it ranks among the relabellings of the same rats, at chance',
+        new RegExp('^ranks ' + PHYS.perm.order.raw.rank + ' of 35 splits of the rats into two fours · at chance$').test(oc6[7])
+        && /^ranks \d of 8 ways of signing its four rats \(by seat: \d\) · at chance$/.test(tcells(vrow('sound_noise'))[7]), oc6[7] + ' | ' + tcells(vrow('sound_noise'))[7]);
+  const ans6 = txt(D().getElementById('physanswer'));
+  check('the answer first, in the intro: no sign the physical sound had an effect, with why and the leads, and its limit',
+        D().getElementById('physanswer').classList.contains('ok') && /^The answer: no sign that the physical sound had an effect\./.test(ans6)
+        && /in all 7 comparisons by sound/.test(ans6) && /Of the Monolith’s 50 leads, 49 go the same way/.test(ans6) && /cannot be ruled out/.test(ans6)
+        && D().getElementById('physintro').contains(D().getElementById('physanswer')), ans6);
+  check('the verdict line: every comparison by sound at chance', D().getElementById('physsay').classList.contains('ok')
+        && /every comparison sits at chance/.test(txt(D().getElementById('physsay'))), txt(D().getElementById('physsay')));
+  const hists = Array.from(D().querySelectorAll('.physhists > div')).map((x) => x.dataset.perm);
+  check('every relabelling drawn: 35 splits, 8 + 8 signings, 128 signings', hists.join() === 'order,sound_noise,sound_tone,tone_noise', hists.join());
+  const ordH = D().querySelector('.physhists > div[data-perm="order"] svg');
+  const binN = Array.from(ordH.querySelectorAll('rect.hbin')).reduce((s0, x) => s0 + Number(x.dataset.n), 0);
+  const ordK = Array.from(D().querySelectorAll('.physhists > div[data-perm="order"] .hlegend span')).map(txt);
+  check('the splits’ histogram holds all 35, with the observed and chance marked, and named under it',
+        binN === 35 && Number(ordH.querySelector('line[data-mark="order"]').dataset.v) === 17100
+        && Number(ordH.querySelector('line[data-mark="chance"]').dataset.v) === 17000
+        && ordK.join(' | ') === 'chance (5%) 17,000 | tone-first vs noise-first 17,100', binN + ' ' + ordK.join(' | '));
+  // The rule, the other way: tone-first against noise-first passing more
+  // entries than every other split.
+  PHYS.perm.order.raw.rank = 1;
+  await PH.load();
+  check('and the answer at the top says possibly, naming it', /^The answer: possibly, in 1 of 7 comparisons by sound\./.test(txt(D().getElementById('physanswer')))
+        && D().getElementById('physanswer').classList.contains('warn'), txt(D().getElementById('physanswer')));
+  check('a sorting by sound that beats every relabelling: the verdict says so, and names it',
+        D().getElementById('physsay').classList.contains('warn') && /^Tone-first rats against noise-first rats passes/.test(txt(D().getElementById('physsay')))
+        && / · above chance$/.test(tcells(vrow('order'))[7]), txt(D().getElementById('physsay')));
+  PHYS.perm.order.raw.rank = PHYS.perm.order.raw.counts.filter((x) => x >= PHYS.perm.order.raw.observed).length;
+  await PH.load();
+  D().querySelector('.physlayer button[data-id="minus_fp"]').click();
+  await until(() => tcells(vrow('order'))[3] === '16,300', 40);
+  check('Minus FP: its own counts', tcells(vrow('order'))[3] === '16,300' && tcells(vrow('monolith'))[3] === '17,000', tcells(vrow('order')).join(' | '));
+  D().querySelector('.physlayer button[data-id="raw"]').click();
+  await until(() => tcells(vrow('order'))[3] === '17,100', 40);
+
+  const leadRows = () => Array.from(D().querySelectorAll('#physleadtbl tbody tr.lead'));
+  check('the leads: the top 10 of the Monolith’s 50 first', leadRows().length === 10 && /50 points of interest/.test(txt(D().getElementById('physleadsay'))),
+        leadRows().length);
+  const say6 = txt(D().getElementById('physleadsay'));
+  const L6 = PHYS.leads.monolith.raw;
+  check('and how many go the same way in both groups, are equivalent, and differ, said over all 50',
+        say6.indexOf(L6.filter((x) => x.both_ways).length + ' go the same way') >= 0
+        && say6.indexOf(L6.filter((x) => x.equivalence.within).length + ' is the same in both groups') >= 0
+        && /1 differs between the groups at p < \.05 \(uncorrected; chance alone would give about 2\.5\)/.test(say6), say6);
+  const l1 = tcells(leadRows()[0]), l2 = tcells(leadRows()[1]);
+  check('the first lead the same in both groups, the second carried by the tone-first rats alone',
+        l1[7] === 'yes' && l1[8] === 'yes · ±0.37×' && l2[7] === 'no' && l2[8] === 'no · ±2.41×' && /^\+0\.315 ± 0\.030$/.test(l1[3]),
+        l1.join(' | ') + ' // ' + l2.join(' | '));
+  check('and the narrowest margin they reach, said over the leads', /the median is equivalent within ±\d\.\d\d× its own change/.test(say6), say6);
+  const fx = (tr, g) => Number(tr.querySelector('svg.physforest circle.g-' + g).getAttribute('cx'));
+  check('drawn: the second lead’s tone-first rats far left of its noise-first rats, the first lead’s two close',
+        fx(leadRows()[1], 'tone') < fx(leadRows()[1], 'noise') - 50 && Math.abs(fx(leadRows()[0], 'tone') - fx(leadRows()[0], 'noise')) < 20,
+        [fx(leadRows()[1], 'tone'), fx(leadRows()[1], 'noise'), fx(leadRows()[0], 'tone'), fx(leadRows()[0], 'noise')].join(' '));
+  const inBand = (tr) => { const b = tr.querySelector('rect.g-band'), c = tr.querySelector('line.g-ci');
+    const x0 = Number(b.getAttribute('x')), x1 = x0 + Number(b.getAttribute('width'));
+    return Number(c.getAttribute('x1')) > x0 && Number(c.getAttribute('x2')) < x1; };
+  const zero = (tr) => Number(tr.querySelector('svg.physforest line').getAttribute('x1'));
+  const bandMid = (tr) => { const b = tr.querySelector('rect.g-band'); return Number(b.getAttribute('x')) + Number(b.getAttribute('width')) / 2; };
+  check('and below, the difference’s interval inside the band around zero for the first (equivalent), outside it for the second',
+        inBand(leadRows()[0]) && !inBand(leadRows()[1]) && Math.abs(bandMid(leadRows()[0]) - zero(leadRows()[0])) < 0.2
+        && Math.abs(bandMid(leadRows()[1]) - zero(leadRows()[1])) < 0.2, [inBand(leadRows()[0]), inBand(leadRows()[1])].join());
+  D().getElementById('physall').click();
+  check('Show all: every one of the 50', leadRows().length === 50, leadRows().length);
+  leadRows()[0].click();
+  await until(() => M.state.tab === 'main' && M.state.sel === PLANT.p, 60);
+  check('a lead clicked opens on the Monolith, that line selected', M.state.tab === 'main' && M.state.sel === PLANT.p && M.state.win === 'cue1'
+        && M.state.band === 'f10' && M.state.method === 'coherence' && M.state.layer === 'raw' && !D().getElementById('mainpane').hidden,
+        JSON.stringify([M.state.tab, M.state.sel, M.state.win, M.state.band, M.state.method, M.state.layer]));
+  M.showTab('phys');
+  await until(() => D().getElementById('physleadsel'), 40);
+  D().querySelector('#physleadsel button[data-id="monolith_m"]').click();
+  await until(() => leadRows().length === 10 && /30 points of interest/.test(txt(D().getElementById('physleadsay'))), 40);
+  leadRows()[1].click();
+  await until(() => M.state.tab === 'main' && M.state.layer === 'minus_fp' && M.state.sel === PLANT2.p, 80);
+  check('a Minus FP lead opens on Minus FP', M.state.layer === 'minus_fp' && M.state.sel === PLANT2.p && M.state.win === 'cue2',
+        JSON.stringify([M.state.tab, M.state.sel, M.state.win, M.state.layer]));
+  M.set({ layer: 'raw' });
+  M.showTab('phys');
+  await until(() => D().getElementById('physleadsel'), 40);
+  D().querySelector('#physleadsel button[data-id="contrast"]').click();
+  await until(() => leadRows().length === 1, 40);
+  leadRows()[0].click();
+  await until(() => M.state.tab === 'c21', 60);
+  check('Cue 2 − Cue 1’s lead opens on its own tab', M.state.tab === 'c21' && M.state.win === 'c21' && M.state.sel === PLANT4.p,
+        JSON.stringify([M.state.tab, M.state.win, M.state.sel]));
+  M.showTab('phys');
+  await until(() => D().getElementById('physcmp'), 40);
+
+  // Any comparison as a circuit.
+  const setPh = (id, v) => { const x = D().getElementById(id); x.value = String(v); x.dispatchEvent(new Event('change')); };
+  D().querySelector('#physcmp button[data-id="order"]').click();
+  await until(() => D().getElementById('physw'), 40);
+  setPh('physw', 'cue1'); setPh('physb', 'f10'); setPh('physm', 'coherence'); setPh('physl', 'raw'); setPh('physlv', 1);
+  await until(() => D().querySelector('#physcircsvg path.pedge[data-pair="' + PHYS_PLANT.p + '"]'), 60);
+  const OA = ARR.phys_edges_raw__order;
+  const want6 = PAIRS.map((_x, p) => at(OA, 1, 1, 9, 0, p)).filter((v) => v < 0.05).length;
+  const tested6 = PAIRS.map((_x, p) => at(OA, 1, 1, 9, 0, p)).filter((v) => isFinite(v)).length;
+  check('tone-first against noise-first as a circuit: the tone-first rats’ own change drawn, the Monolith’s lead not',
+        !!D().querySelector('#physcircsvg path.pedge[data-pair="' + PHYS_PLANT.p + '"]') && !D().querySelector('#physcircsvg path.pedge[data-pair="' + PLANT.p + '"]')
+        && D().querySelectorAll('#physcircsvg path.pedge').length === want6, D().querySelectorAll('#physcircsvg path.pedge').length + ' vs ' + want6);
+  check('and counted against chance, uncorrected', txt(D().getElementById('physcircsay')).indexOf(want6 + ' of ' + tested6 + ' tested region pairs pass p < .05 (uncorrected') === 0,
+        txt(D().getElementById('physcircsay')));
+  D().querySelector('#physcmp button[data-id="tone_noise"]').click();
+  await until(() => physAsked.indexOf('phys_edges_raw__tone_noise') >= 0 && !D().getElementById('physw') && D().querySelector('#physcircsvg svg'), 60);
+  const TA = ARR.phys_edges_raw__tone_noise;
+  const want7 = PAIRS.map((_x, p) => at(TA, 1, N.W - 1, 9, 0, p)).filter((v) => v < 0.05).length;
+  check('tone − noise: the contrast’s slot, raw, no window to choose', !D().getElementById('physw') && !D().getElementById('physl')
+        && D().querySelectorAll('#physcircsvg path.pedge').length === want7, D().querySelectorAll('#physcircsvg path.pedge').length + ' vs ' + want7);
+  check('every card has its ?', ['physintro', 'physverdictcard', 'physleads', 'physcirc'].every((id) => D().querySelector('#' + id + ' .hrow button, #' + id + ' .hrow .q')));
+  // The second ?: the sheet and the two outcomes, in pictures.
+  D().querySelector('#physhow .qmark').click();
+  await until(() => pop() && pop().dataset.key === 'physical.how' && pop().querySelector('svg.physseatfig'), 80);
+  const seatRects = pop() ? pop().querySelectorAll('svg.physseatfig rect[data-seat]').length : 0;
+  check('a second ?, in pictures: the sheet (a row per rat, four sounds each) and the two made-up outcomes', seatRects === 32
+        && pop().querySelectorAll('.qdemo svg.mfig').length === 3, seatRects);
+  const pw7 = figWords(pop());
+  if (STOP === 'physhow') { restore(); document.title = 'stopped at physhow'; return; }
+  check('none of its words cut off or overlapping', pw7.length === 0, pw7.slice(0, 4).join(' | '));
+  D().body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(10);
+  const pw6 = figWords(D().getElementById('physpane'));
+  check('no word in a figure here cut off or overlapping', pw6.length === 0, pw6.slice(0, 4).join(' | '));
+  check('no text here ends in an ellipsis', txt(D().getElementById('physpane')).indexOf('…') < 0);
+  f.style.width = '390px';
+  await sleep(150);
+  const se6 = D().scrollingElement;
+  check('at 390 px nothing scrolls sideways', se6.scrollWidth <= se6.clientWidth + 1, se6.scrollWidth + ' > ' + se6.clientWidth);
+  const pw6p = figWords(D().getElementById('physpane'));
+  check('and no figure word cut there either', pw6p.length === 0, pw6p.slice(0, 4).join(' | '));
+  if (STOP === 'phys') {
+    const sa = new URLSearchParams(location.search);
+    if (!sa.get('phone')) f.style.width = '';
+    await sleep(600);
+    if (sa.get('scroll')) D().getElementById(sa.get('scroll')).scrollIntoView();
+    restore(); document.title = 'stopped at phys'; return;
+  }
+  f.style.width = '';
+  // Not compared yet: made here, from the button.
+  PHYS_MISSING = true; physPosted = [];
+  await PH.load();
+  check('a build not compared yet says so and offers to do it here', !!D().getElementById('physmake') && !D().getElementById('physverdict')
+        && /not been sorted by sound yet/.test(txt(D().getElementById('physpane'))));
+  D().getElementById('physmake').click();
+  await until(() => physPosted.length && D().getElementById('physverdict'), 120);
+  check('pressed: asked of Jarvis, confirmed, and the comparisons read again', physPosted.length === 1 && physPosted[0].confirm === true
+        && !!D().getElementById('physverdict'), JSON.stringify(physPosted));
+  M.showTab('c21');
+  await until(() => M.state.tab === 'c21' && D().querySelector('#legend #powmore'), 40);
+  check('tab 3 has the same node power ▸ under its legend', !!D().querySelector('#legend #powmore'));
+  M.showTab('main');
+  await sleep(30);
+
   head('the tour');
   M.closeLeaf(); M.closeGhost(true);
   try { localStorage.removeItem(TOUR_KEY); } catch (e) { /* none */ }
@@ -1710,7 +2542,7 @@ window.MONO_FIXTURE = {
   const keys = Object.keys(GT);
   check('every ? has an entry', keys.every((k) => D().getElementById(k) && D().getElementById(k).classList.contains('entry')), keys.filter((k) => !D().getElementById(k)).join(','));
   check('and a line in the contents', D().querySelectorAll('#toc a').length === keys.length, D().querySelectorAll('#toc a').length + ' of ' + keys.length);
-  const drawnKeys = keys.filter((k) => GT[k].demo || (GT[k].plot && GUIDE.measures[k === 'arrows' ? 'gc_net' : /^pac\./.test(k) ? 'pac' : k]));
+  const drawnKeys = keys.filter((k) => GT[k].demo || GT[k].draw || (GT[k].plot && GUIDE.measures[k === 'arrows' ? 'gc_net' : /^pac\./.test(k) ? 'pac' : k]));
   await until(() => D().querySelectorAll('.entry .qdemo').length === drawnKeys.length, 120);
   check('each measure and statistic drawn (' + drawnKeys.length + ')', D().querySelectorAll('.entry .qdemo').length === drawnKeys.length,
         drawnKeys.filter((k) => !D().getElementById(k).querySelector('.qdemo')).join(','));

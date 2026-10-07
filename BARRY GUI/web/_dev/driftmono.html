@@ -264,6 +264,49 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
     check('Cancel is there while it runs', !!btn(/^Cancel the run$/));
     check('the cluster is asked again on a timer while it runs', ev('BARRY.driftMono.state.watching') === true);
 
+    head('the check: every session, and a run nothing has asked about yet');
+    const days4 = RATS.flatMap((rat) => ['Precon1', 'Precon2', 'Precon3', 'Precon4'].map((day) => ({ rat, day, gid: 'g', spc_ready: true, rest_ready: true,
+      folders: ['SPC', 'FP1', 'FP2'].map((role) => ({ role, gid: 'g', use: 'scratch', remote: '/s', at: { scratch: { state: 'complete', have: 50, of: 50 } } })) })));
+    const checked4 = Object.assign({}, checked, { days: days4, n_folders: 96, n_ready: 96 });
+    await show(Object.assign(base(), { upload: { dest: 'scratch', status: 'done' }, check: checked4, run,
+      poll: { rid: run.rid, tasks: [], tally: { done: 144 }, n: 144, answered: [0], finished: true, active: false, at: iso(5) } }));
+    const fd = step('check').querySelector('details.dpc-fold');
+    if (fd && !fd.open) fd.querySelector('summary').click();
+    await sleep(40);
+    const grid = step('check').querySelector('table.dmo-days');
+    const heads = grid ? Array.from(grid.querySelectorAll('th')).map((t) => t.textContent) : [];
+    check('the grid has a column for every session in what goes, in order', heads.join() === 'rat,Precon1,Precon2,Precon3,Precon4', heads.join());
+    const ths = grid ? Array.from(grid.querySelectorAll('th')) : [];
+    const misplaced = [];
+    for (const td of grid ? grid.querySelectorAll('td.dmo-cell') : []) {
+      const col = ths.find((t) => t.textContent === td.dataset.day);
+      const cb = col && col.getBoundingClientRect();
+      for (const chip of td.querySelectorAll('.dmo-dot')) {
+        const b = chip.getBoundingClientRect();
+        if (!cb || b.left < cb.left - 1 || b.right > cb.right + 40 || b.left > cb.right) misplaced.push(td.dataset.day);
+      }
+    }
+    check('every chip sits in its own session’s column (measured: 8 rats × 4 sessions × 3)',
+          grid && grid.querySelectorAll('.dmo-dot').length === 96 && misplaced.length === 0, misplaced.slice(0, 4).join());
+    check('the poll says which run it is about', /The run submitted 10 hours? ago · 144 tasks/.test(step('check').textContent)
+          || /The run submitted .* · 144 tasks · asked/.test(step('check').textContent), step('check').textContent.slice(0, 300));
+    stub.calls.length = 0;
+    const run2 = Object.assign({}, run, { rid: 'fedcba543210', submitted_at: iso(1) });
+    await show(Object.assign(base(), { upload: { dest: 'scratch', status: 'done' }, check: checked4, run: run2,
+      poll: { rid: run.rid, tasks: [], tally: { done: 144 }, n: 144, answered: [0], finished: true, active: false, at: iso(5) } }));
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/check'), 60);
+    const autoc = stub.calls.filter((c) => c.path === '/api/arc/monolith/check');
+    check('a run just submitted is asked about at once, about the run only', autoc.length === 1 && autoc[0].body.run_only === true,
+          JSON.stringify(autoc.map((c) => c.body)));
+    check('and the last run’s poll is not shown as this one’s', /has not been asked about yet/.test(step('check').textContent)
+          && !/144 done/.test(step('check').textContent), step('check').textContent.slice(0, 300));
+    check('and the cluster is asked on a timer until it answers', ev('BARRY.driftMono.state.watching') === true);
+    await show(Object.assign(base(), { upload: { dest: 'scratch', status: 'done' }, check: checked4, run: run2, poll: null }));
+    check('with no poll at all, the same: watched', ev('BARRY.driftMono.state.watching') === true);
+    await show(Object.assign(base(), { upload: { dest: 'scratch', status: 'done' }, check: checked4, run: run2,
+      poll: { rid: run2.rid, tasks: [], tally: { done: 144 }, n: 144, answered: [0], finished: true, active: false, at: iso(1) } }));
+    check('and once its own poll says it is finished, the timer stops', ev('BARRY.driftMono.state.watching') === false);
+
     head('fetch, only when pressed');
     await show(Object.assign(base(), { upload: { dest: 'temp', status: 'done' }, check: checked, run,
       poll: { tasks: [], tally: { done: 144 }, n: 144, answered: run.tasks.map((t) => t.i), out_bytes: 3.6e8, finished: true, active: false, at: iso(5) } }));
@@ -353,6 +396,25 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
           && JSON.stringify(trCall.body.extra) === JSON.stringify({ days: ['Precon2', 'Precon3'] }), JSON.stringify(trCall.body));
     await show(trajSt(Object.assign({}, tdef, { in_manifest: ['Precon2', 'Precon3'], built: ['Precon2', 'Precon3'] })));
     check('built: said so, nothing to press', /Precon2 and Precon3 are in this Monolith/.test(step('view').textContent) && !btn(/Precon2 and Precon3$/));
+
+    head('the whole pair (cue 1 + cue 2) goes with them');
+    const pairSt = (t) => Object.assign(trajSt(Object.assign({}, tdef, t)), { missing: { pair: true },
+      additions_say: { pair: 'the whole pair (cue 1 + cue 2, 20 s)' } });
+    await show(pairSt({ in_manifest: ['Precon2', 'Precon3'], pair_rest: false }));
+    const pr0 = btn(/^Add the pair window’s rest$/);
+    check('its 20 s rest not yet in what goes: added first, by the same step', !!pr0 && !pr0.disabled);
+    await show(pairSt({ in_manifest: ['Precon2', 'Precon3'], pair_rest: true, ready: [[3, 'Precon2']] }));
+    const pr1 = btn(/^Run Precon2\/3 and the pair window$/);
+    check('one run, one button: Precon2/3 and the whole pair, and no second button for the pair alone',
+          !!pr1 && !pr1.disabled && !btn(/^Add the whole pair/) && /measures the whole pair \(cue 1 \+ cue 2, 20 s\) on Precon1 and Precon4/.test(step('view').textContent));
+    stub.calls.length = 0;
+    pr1.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/run'), 60);
+    const prCall = stub.calls.find((c) => c.path === '/api/arc/monolith/run');
+    check('  pressed: Precon2/3 whole and the whole pair, confirmed', prCall.body.confirm === true
+          && JSON.stringify(prCall.body.extra) === JSON.stringify({ days: ['Precon2', 'Precon3'], pair: true }), JSON.stringify(prCall.body));
+    await show(pairSt({ in_manifest: ['Precon2', 'Precon3'], pair_rest: true, built: ['Precon2', 'Precon3'] }));
+    check('Precon2/3 built but not the whole pair: offered on its own', !!btn(/^Add the whole pair \(cue 1 \+ cue 2, 20 s\)$/));
 
     head('what goes wrong says so');
     await show(Object.assign(base(), { interrupted: { what: 'upload', id: 'x', started: iso(3600), status: 'running' } }));

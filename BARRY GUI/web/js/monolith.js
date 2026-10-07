@@ -44,11 +44,20 @@ window.MONO = (function () {
   // What each layer is, said where it is chosen: "raw" and the flower-pot
   // adjustment were the two words that confused people.
   const LAYER_LONG = { raw: 'Raw: the cue windows as measured', minus_fp: 'Minus FP: each session’s flower-pot rest taken off first' };
-  const TABS = [['cov', '1 · What was kept'], ['main', '2 · The Monolith'], ['avg', '3 · When we averaged'], ['ev', '4 · Events first']];
+  // The Monolith and Cue 2 − Cue 1 share one pane: two families of the
+  // same circuit, points of interest and drill-down (the lab, 2026-10-06).
+  const TABS = [['cov', '1 · What was kept'], ['main', '2 · The Monolith'], ['c21', '3 · Cue 2 − Cue 1'], ['avg', '4 · When we averaged'],
+                ['ev', '5 · Events first'], ['phys', '6 · Physical vs balanced cue']];
+  const PANES = { cov: 'covpane', main: 'mainpane', c21: 'mainpane', avg: 'avgpane', ev: 'evpane', phys: 'physpane' };
   // The windows by their meeting names; the switch is cue 1 giving way to cue 2.
-  const WLABEL = { pre: 'Pre-baseline', cue1: 'Cue 1', cue2: 'Cue 2', post: 'Post-baseline', onset: 'Onset', switch: 'Switch', offset: 'Offset' };
-  const WTITLE = { pre: 'The ten seconds before cue 1', cue1: 'Cue 1 sounding', cue2: 'Cue 2 sounding', post: 'The ten seconds after cue 2 ends',
-                   onset: 'Around cue 1 starting', switch: 'Around cue 1 giving way to cue 2', offset: 'Around cue 2 ending' };
+  const WLABEL = { pre: 'Pre-baseline', cue1: 'Cue 1', cue2: 'Cue 2', post: 'Post-baseline', pair: 'Cue 1 + Cue 2',
+                   onset: 'Onset', switch: 'Switch', offset: 'Offset', c21: 'Cue 2 − Cue 1' };
+  const WTITLE = { pre: 'The ten seconds before cue 1', cue1: 'Cue 1 sounding (A or C)', cue2: 'Cue 2 sounding (B or D)',
+                   post: 'The ten seconds after cue 2 ends', pair: 'The whole pair as heard: cue 1 onset to cue 2 offset, 20 s',
+                   onset: 'Around cue 1 starting', switch: 'Around cue 1 giving way to cue 2', offset: 'Around cue 2 ending',
+                   c21: 'Within each presentation, cue 2 minus cue 1 (B − A, D − C), then Precon4 against Precon1. Raw only.' };
+  const CONTRAST_NOTE = 'Raw only: the rest Minus FP takes away is the same for both cue windows, so it cancels exactly from '
+    + 'Cue 2 − Cue 1; Minus FP shows the same numbers here.';
   const DIRECTED = { gc_ab: 1, gc_ba: -1, gc_net: 0 };
 
   const D = { S: null, edges: {}, power: {}, pac: {}, err: null };
@@ -104,7 +113,8 @@ window.MONO = (function () {
   function remember() {
     try {
       const keep = {};
-      for (const k of ['layer', 'kind', 'win', 'band', 'method', 'level', 'arrows', 'power', 'pacWin', 'pacRegion', 'filt', 'hi', 'rangeRule', 'split', 'tab', 'rank']) keep[k] = st[k];
+      for (const k of ['layer', 'kind', 'win', 'band', 'method', 'level', 'arrows', 'power', 'pacWin', 'pacRegion', 'filt', 'hi', 'rangeRule', 'split', 'tab', 'rank',
+                       'family', 'mainWin', 'prog', 'filtC']) keep[k] = st[k];
       localStorage.setItem(VIEW_KEY, JSON.stringify(keep));
     } catch (e) { /* per viewer only */ }
   }
@@ -115,11 +125,13 @@ window.MONO = (function () {
   /* ---------------- data ---------------- */
   /* _dev/monolith.html loads this page in a frame and hands it made-up
      data through `MONO_FIXTURE` on itself, so the page can be checked with
-     nothing built. Never set in Jarvis. */
+     nothing built. Never set in Jarvis. The review site's copy of this page
+     (tools/export_review.py) sets `MONO_STATIC` on itself instead: the same
+     three doors, onto its own files and its bridge to the cluster. */
   const FIX = (() => {
     try { return window.parent !== window && window.parent.MONO_FIXTURE ? window.parent.MONO_FIXTURE : null; }
     catch (e) { return null; }
-  })();
+  })() || window.MONO_STATIC || null;
   async function getJSON(path) {
     if (FIX) return FIX.json(path);
     const r = await fetch(API + path, { cache: 'no-cache' });
@@ -144,7 +156,7 @@ window.MONO = (function () {
      reads the arrays is handed a layer and reads the view's split; a key
      with "__" in it asks for that split whatever the view shows ("__all":
      both pairs, pooled). */
-  const SPLIT_SAY = { all: 'Both pairs, pooled' };
+  const SPLIT_SAY = { all: 'AB and CD, pooled' };
   function splitsOf() { return (D.S && D.S.splits) || null; }
   function hasSplit(g) { const sp = splitsOf(); return !!(sp && sp.groups.some((x) => x.id === g)); }
   function splitLabel(g) {
@@ -179,6 +191,11 @@ window.MONO = (function () {
   /* The view's points of interest: the whole's, or its split's. */
   function topOf(layer) {
     const g = st.split;
+    if (st.win === 'c21' && D.S.contrast) {
+      // The contrast is raw only: both layers show its raw points.
+      if (g && g !== 'all' && hasSplit(g)) return ((((splitsOf().contrast || {}).top || {})[g]) || {}).raw || [];
+      return (D.S.contrast.top || {}).raw || [];
+    }
     if (g && g !== 'all' && hasSplit(g)) return ((splitsOf().top || {})[g] || {})[layer] || [];
     return (D.S.top || {})[layer] || [];
   }
@@ -439,45 +456,64 @@ window.MONO = (function () {
                      onclick: () => { if (window.MONO_TOUR) window.MONO_TOUR.start(); } }),
     ]));
     app.appendChild(el('p', { class: 'lede', text: 'Each rat compared with itself, Precon4 minus Precon1, '
-      + 'both cue pairings pooled; the changes pooled over rats (DerSimonian–Laird, Hartung–Knapp t on '
+      + 'its AB and CD pooled (A/B/C/D from the lab’s identity sheet); the changes pooled over rats (DerSimonian–Laird, Hartung–Knapp t on '
       + 'k − 1 df, at least ' + S.min_rats + ' rats). Every p on this page is uncorrected: this is for '
       + 'sifting, and the counts below say how many to expect by chance.' }));
     // Two tabs: the Monolith itself, and how one of its lines was made.
     // A staged workflow, in order: what the data allow, then the result,
     // then how one value of it was made (the lab meeting, 2026-10-02).
-    if (!TABS.some((t) => t[0] === st.tab)) st.tab = 'cov';
-    app.appendChild(el('div', { class: 'tabs', role: 'tablist', id: 'tabs' }, TABS.map(([id, label]) =>
+    if (!TABS.some((t) => t[0] === st.tab) || (st.tab === 'c21' && !hasContrast())) st.tab = 'cov';
+    app.appendChild(el('div', { class: 'tabs', role: 'tablist', id: 'tabs' }, TABS.filter(([id]) => id !== 'c21' || hasContrast()).map(([id, label]) =>
       el('button', { type: 'button', role: 'tab', id: 'tab-' + id, 'aria-selected': String(st.tab === id),
                      text: label, onclick: () => showTab(id) }))));
     const cp = el('div', { id: 'covpane', role: 'tabpanel', hidden: st.tab === 'cov' ? null : 'hidden' }, [
       el('div', { class: 'card', id: 'damage' }, [el('p', { class: 'loading', text: 'Counting what was kept…' })]),
+      el('details', { class: 'card', id: 'minusfpwrap' }, [el('summary', { text: 'How Minus FP works' }), el('div', { id: 'minusfp' })]),
       el('div', { class: 'hrow covnext' }, [el('button', { type: 'button', class: 'more-btn', text: 'Go on to the Monolith →',
                                                       onclick: () => showTab('main') })]),
     ]);
     app.appendChild(cp);
-    const mp = el('div', { id: 'mainpane', role: 'tabpanel', hidden: st.tab === 'main' ? null : 'hidden' });
+    const mp = el('div', { id: 'mainpane', role: 'tabpanel', hidden: PANES[st.tab] === 'mainpane' ? null : 'hidden' });
     app.appendChild(mp);
     app.appendChild(el('div', { id: 'avgpane', role: 'tabpanel', hidden: st.tab === 'avg' ? null : 'hidden' }));
     app.appendChild(el('div', { id: 'evpane', role: 'tabpanel', hidden: st.tab === 'ev' ? null : 'hidden' }));
+    app.appendChild(el('div', { id: 'physpane', role: 'tabpanel', hidden: st.tab === 'phys' ? null : 'hidden' }));
     // Where a value comes from, and the way back: the trail over the result.
     mp.appendChild(el('nav', { class: 'trail', id: 'trail', 'aria-label': 'Where this value comes from' }));
     mp.appendChild(el('div', { class: 'card', id: 'verdict' }));
     mp.appendChild(el('p', { class: 'small muted guide-link' }, ['Every ? opens what that thing is, with a strong and a no-effect example '
       + 'made by this analysis’s own engine. All of it in one place: ', el('a', { href: 'monolith-guide.html', target: '_blank', rel: 'noopener', text: 'the Guide' }), '.']));
-    mp.appendChild(el('div', { class: 'grid' }, [
+    mp.appendChild(el('div', { class: 'grid', id: 'maingrid' }, [
       el('div', { class: 'col-circ' }, [
-        el('div', { class: 'card circ' }, [
+        // The lines followed across the sessions, over the circuit they
+        // are dragged from (the lab, 2026-10-06).
+        el('div', { class: 'card', id: 'progseries' }),
+        el('div', { class: 'card circ', id: 'circcard' }, [
           el('div', { class: 'hrow' }, [el('h2', { id: 'ctitle' }), qh('circuit')]),
+          // The Monolith: the change, or Monolith Progress (every session).
+          // Cue 2 − Cue 1: within Precon1, within Precon4, and the change.
+          el('div', { id: 'circmode' }),
           el('div', { class: 'crumbs', id: 'crumbs' }),
-          el('div', { class: 'circ-svg', id: 'circwrap', style: 'position:relative' }, [
-            el('div', { id: 'circ' }),
+          el('div', { class: 'circrow', id: 'circrow' }, [
+            el('div', { class: 'within', id: 'within' }),
+            el('div', { class: 'changebox', id: 'changebox' }, [
+              el('h4', { class: 'boxh', id: 'changeh' }),
+              el('div', { class: 'circ-svg', id: 'circwrap', style: 'position:relative' }, [
+                el('div', { id: 'circ' }),
+              ]),
+            ]),
           ]),
+          el('div', { class: 'between', id: 'between' }),
+          el('p', { class: 'small muted', id: 'withinlegend' }),
+          el('div', { id: 'progcircs' }),
           el('div', { class: 'gstats', id: 'gstats', hidden: 'hidden' }),
           el('div', { id: 'circempty' }),
           el('div', { class: 'legend', id: 'legend' }),
           el('div', { id: 'lines' }),
           el('p', { class: 'small muted', id: 'circsay' }),
         ]),
+        // Cue 2 − Cue 1: its controls and its own ranking, straight under
+        // its circuits (the cards move here from the right-hand columns).
         el('div', { class: 'card spec', id: 'speccard' }, [
           el('div', { class: 'hrow' }, [el('h2', { id: 'spectitle' }), qh('spectrum')]), el('div', { id: 'spec' }),
           el('p', { class: 'small muted', id: 'specsay' }),
@@ -497,21 +533,55 @@ window.MONO = (function () {
      ================================================================== */
   const AV = { seq: 0, detail: null, leaf: null, err: null, leafErr: null, rat: null, day: 'Precon4', unit: null, key: null };
   function showTab(t) {
-    st.tab = TABS.some((x) => x[0] === t) ? t : 'main';
-    remember();
+    st.tab = TABS.some((x) => x[0] === t) && (t !== 'c21' || hasContrast()) ? t : 'main';
     for (const [id] of TABS) {
       const b = $('tab-' + id);
       if (b) b.setAttribute('aria-selected', String(st.tab === id));
     }
-    const panes = { cov: 'covpane', main: 'mainpane', avg: 'avgpane', ev: 'evpane' };
-    for (const [id, pane] of Object.entries(panes)) {
+    for (const pane of new Set(Object.values(PANES))) {
       const n = $(pane);
-      if (n) n.hidden = st.tab !== id;
+      if (n) n.hidden = PANES[st.tab] !== pane;
     }
+    if (st.tab === 'main' || st.tab === 'c21') setFamily(st.tab === 'c21' ? 'contrast' : 'main');
+    remember();
     if (st.tab === 'avg') loadAvg();
     if (st.tab === 'ev' && window.MONO_EVENTS) window.MONO_EVENTS.show();
-    if (st.tab === 'main') renderTrail();
+    if (st.tab === 'phys' && window.MONO_PHYS) window.MONO_PHYS.show();
+    if (st.tab === 'main' || st.tab === 'c21') renderTrail();
     try { scrollTo(0, 0); } catch (e) { /* none */ }
+  }
+  /* The family the shared pane shows: the Monolith (every measured window)
+     or Cue 2 − Cue 1 (its one derived window, c21). Each keeps its own
+     window; everything else -- frequency, measure, cue pairs, slider, the
+     line selected -- carries over. */
+  const family = () => (st.family === 'contrast' ? 'contrast' : 'main');
+  const hasContrast = () => !!(D.S && D.S.windows.some((w) => w.id === 'c21'));
+  const inFamily = (w) => (family() === 'contrast') === (w.kind === 'contrast');
+  function setFamily(f) {
+    if (family() === f && (f !== 'contrast' || st.win === 'c21')) return false;
+    const S = D.S;
+    if (f === 'contrast') {
+      if (!hasContrast()) return false;
+      if (st.win !== 'c21') st.mainWin = st.win;
+      Object.assign(st, { family: 'contrast', win: 'c21', kind: 'contrast', hi: null });
+    } else {
+      const w = S.windows.find((x) => x.id === st.mainWin && x.kind !== 'contrast') || S.windows.find((x) => x.id === 'cue1');
+      Object.assign(st, { family: 'main', win: w.id, kind: w.kind });
+    }
+    closeGhost(true);
+    remember();
+    renderAll();
+    return true;
+  }
+  /* A line selected from elsewhere on the page (a Progress circuit, the
+     within-session circuits): the Monolith follows it; `ghost` lifts it
+     out on the circuit, as a click there does. */
+  function pickPair(p, ghost) {
+    st.sel = p;
+    hideTip();
+    remember();
+    renderCircuit(); renderSpectrum(); renderTop(); renderPac(); renderTraj();
+    if (ghost) openGhost(p, null);
   }
   /* The entry the walk-through follows: the selected pair in this view
      (over a range, its strongest band), else the first point of interest. */
@@ -780,17 +850,30 @@ window.MONO = (function () {
     const host = $('controls');
     host.innerHTML = '';
     host.appendChild(el('h2', { text: 'View' }));
-    host.appendChild(el('div', { class: 'ctl' }, [lab('Layer', 'layer'),
-      seg(LAYERS.map(([id, l]) => [id, l, LAYER_LONG[id]]), st.layer, (id) => switchLayer(id), 'big'),
-      el('div', { class: 'readout', id: 'layersay', text: LAYER_LONG[st.layer] + '.' })]));
+    if (family() === 'contrast') {
+      host.appendChild(el('div', { class: 'ctl', id: 'contrastctl' }, [lab('The comparison', 'contrast'),
+        el('div', { class: 'readout', text: 'Cue 2 − Cue 1 within each presentation (B − A in AB, D − C in CD): within Precon1, '
+          + 'within Precon4, and Precon4 against Precon1.' }),
+        el('div', { class: 'readout splitsay', id: 'contrastsay', text: CONTRAST_NOTE })]));
+    } else {
+      host.appendChild(el('div', { class: 'ctl' }, [lab('Layer', 'layer'),
+        seg(LAYERS.map(([id, l]) => [id, l, LAYER_LONG[id]]), st.layer, (id) => switchLayer(id), 'big'),
+        el('div', { class: 'readout', id: 'layersay', text: LAYER_LONG[st.layer] + '.' })]));
+    }
     // The seven windows, always both kinds: the four states and the three
     // transitions, each group named.
     const pickWin = (id) => set({ win: id, kind: S.windows.find((w) => w.id === id).kind });
-    host.appendChild(el('div', { class: 'ctl', id: 'winctl' }, [lab('Window', 'windows'),
+    const ofKind = (k) => S.windows.filter((w) => w.kind === k).map((w) => [w.id, w.label, WTITLE[w.id]]);
+    if (family() !== 'contrast') host.appendChild(el('div', { class: 'ctl', id: 'winctl' }, [lab('Window', 'windows'),
       el('div', { class: 'mgroup hrow' }, [el('span', { text: '4 states (10 s each)' }), qh('window')]),
-      seg(S.windows.filter((w) => w.kind === 'state').map((w) => [w.id, w.label, WTITLE[w.id]]), st.win, pickWin),
+      seg(ofKind('state'), st.win, pickWin),
+      ofKind('pair').length ? el('div', { class: 'mgroup', id: 'pairgroup', text: 'The whole pair (cue 1 + cue 2, 20 s)'
+        + (S.additions && S.additions.pair === false ? ' — not measured yet: Drift → Monolith runs it' : '') }) : null,
+      ofKind('pair').length ? seg(ofKind('pair'), st.win, pickWin) : null,
       el('div', { class: 'mgroup', text: '3 transitions (around each boundary)' }),
-      seg(S.windows.filter((w) => w.kind === 'transition').map((w) => [w.id, w.label, WTITLE[w.id]]), st.win, pickWin)]));
+      seg(ofKind('transition'), st.win, pickWin),
+      hasContrast() ? el('p', { class: 'small muted' }, ['Cue 2 − Cue 1 has a tab of its own: ',
+        el('button', { type: 'button', class: 'linkish', id: 'tocontrast', text: '3 · Cue 2 − Cue 1', onclick: () => showTab('c21') })]) : null]));
 
     // Frequency: two knobs over every whole hertz -- together, one band;
     // apart, every band between them -- and the named bands. The knobs are
@@ -951,8 +1034,8 @@ window.MONO = (function () {
     const sp = splitsOf();
     const box = el('div', { class: 'ctl', id: 'splitctl' }, [lab('Cue pairs', 'split')]);
     if (!sp) {
-      box.appendChild(el('p', { class: 'small muted', text: 'Every rat hears two pairings. This Monolith pools both; it has not been split '
-        + 'into its halves yet (Click or Noise, High or Low tone, the pair that later gets food or the other).' }));
+      box.appendChild(el('p', { class: 'small muted', text: 'Every rat hears its AB and its CD. This Monolith pools both; it has not '
+        + 'been split into them yet.' }));
       box.appendChild(el('button', { type: 'button', class: 'more-btn', id: 'splitnow', disabled: SPL.running ? 'disabled' : null,
         text: SPL.running ? 'Splitting… ' + SPL.note : 'Split it by cue pair (a couple of minutes, here)', onclick: runSplit }));
       if (SPL.err) box.appendChild(el('p', { class: 'small warn', text: 'The split did not finish: ' + SPL.err }));
@@ -961,13 +1044,23 @@ window.MONO = (function () {
     const cur = st.split && hasSplit(st.split) ? st.split : 'all';
     const fam = {};
     for (const g of sp.groups) (fam[g.family] = fam[g.family] || []).push(g);
-    box.appendChild(seg([['all', 'Both, pooled', 'Every cue pair of every rat, both pairings together']], cur, (id) => switchSplit(id)));
-    const FAM = { sound: 'Click or Noise', tone: 'High or low tone', role: 'What conditioning later did' };
+    // AB and CD, by each rat's seats on the lab's identity sheet; a split
+    // made before (by sound, tone or later role) is shown as it was made.
+    const FAM = { pair: null, sound: 'Click or Noise (older split)', tone: 'High or low tone (older split)', role: 'Older split' };
+    const C21 = { all: 'A+C vs B+D (both pairs)', ab: 'AB: B − A', cd: 'CD: D − C' };
+    if (fam.pair) {
+      box.appendChild(seg([['all', family() === 'contrast' ? C21.all : 'AB and CD, pooled', 'Every presentation of every rat, both pairs together']]
+        .concat(fam.pair.map((g) => [g.id, family() === 'contrast' && C21[g.id] ? C21[g.id] : g.label.replace(/ \(.*\)$/, ''),
+          g.label + ' — ' + g.rats.length + ' rats, ' + g.n_units + ' presentations'])),
+        cur, (id) => switchSplit(id)));
+    } else {
+      box.appendChild(seg([['all', 'Both, pooled', 'Every presentation of every rat, both pairs together']], cur, (id) => switchSplit(id)));
+    }
     for (const f of ['sound', 'tone', 'role']) {
       if (!fam[f]) continue;
       box.appendChild(el('div', { class: 'mgroup', text: FAM[f] }));
-      box.appendChild(seg(fam[f].map((g) => [g.id, g.label.replace(/^The pair that later gets food$/, 'Later gets food').replace(/^The other pair$/, 'The other'),
-        g.label + ' — ' + g.rats.length + ' rats, ' + g.n_units + ' cue pairs']), cur, (id) => switchSplit(id)));
+      box.appendChild(seg(fam[f].map((g) => [g.id, g.label, g.label + ' — ' + g.rats.length + ' rats, ' + g.n_units + ' presentations']),
+        cur, (id) => switchSplit(id)));
     }
     return box;
   }
@@ -1104,6 +1197,7 @@ window.MONO = (function () {
                            openGhost(e.p, e.range && e.range.best ? e.range.best.b : null); };
       path.addEventListener('click', pick);
       path.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(); } });
+      if (window.MONO_PROGRESS) window.MONO_PROGRESS.dragFromMain(path, e.p, e.range && e.range.best ? S.bands[e.range.best.b].id : null);
       svg.appendChild(path);
       if (g) {
         const head = sv('polygon', { points: g.head, class: 'ahead' + (st.sel === e.p ? ' sel' : ''), fill: col,
@@ -1179,8 +1273,12 @@ window.MONO = (function () {
       svg.appendChild(c);
       const lx = CX + (RING + 26) * Math.cos(p.a), ly = CY + (RING + 26) * Math.sin(p.a);
       const anchor = Math.abs(Math.cos(p.a)) < 0.2 ? 'middle' : (Math.cos(p.a) > 0 ? 'start' : 'end');
-      svg.appendChild(sv('text', { x: lx, y: ly + 4, 'text-anchor': anchor, class: 'node-l' + (grey ? ' grey' : '') },
-        name + (grey ? ' (not measured)' : '')));
+      // "(not measured)" on a line of its own under the name: beside it, a
+      // name on the left of the ring ran off the picture.
+      const lbl = sv('text', { x: lx, y: ly + 4 - (grey && Math.sin(p.a) < 0 ? 12 : 0), 'text-anchor': anchor,
+                               class: 'node-l' + (grey ? ' grey' : '') }, name + (grey ? ' ' : ''));
+      if (grey) lbl.appendChild(sv('tspan', { x: lx, dy: '1.15em' }, '(not measured)'));
+      svg.appendChild(lbl);
     });
     host.appendChild(svg);
     const empty = $('circempty');
@@ -1204,10 +1302,27 @@ window.MONO = (function () {
       lg.appendChild(el('span', {}, [el('b', { class: 'sw', style: 'background:' + css('--up') }), 'louder']));
       lg.appendChild(el('span', {}, [el('b', { class: 'sw', style: 'background:' + css('--down') }), 'quieter (node power)']));
     }
+    if (st.power) lg.appendChild(powerMore());
     lg.appendChild(el('span', { class: 'legend-key', text: 'Line thickness = how big the change is, not its p. The p of every line is in the list below and on its hover. A ringed node’s power change passes the slider.' }));
     renderLines(shown);
     $('circsay').textContent = (method().say || '') + (st.method === 'gc_net' ? ' An arrow points the way the net drive grew.' : '');
     if (GH.pair != null) drawGhostStatic();
+  }
+
+  /* What node power is and how it is worked out, under the legend in
+     both tabs: a ▸ to open, remembered while the page is open. */
+  let powOpen = false;
+  function powerMore() {
+    const T = (window.MONO_HELP && MONO_HELP.T && MONO_HELP.T.power) || {};
+    const d = el('details', { class: 'powmore', id: 'powmore', open: powOpen ? 'open' : null }, [
+      el('summary', { text: 'What node power is, and how it is worked out' }),
+      T.plain ? el('p', { text: T.plain }) : null,
+      (T.powsteps || []).length ? el('ol', { class: 'qsteps' }, T.powsteps.map((x) => el('li', { text: x }))) : null,
+      T.look ? el('p', { class: 'small' }, [el('b', { text: 'What to look for: ' }), T.look]) : null,
+      T.traps ? el('p', { class: 'small' }, [el('b', { text: 'What fools it: ' }), T.traps]) : null,
+    ]);
+    d.addEventListener('toggle', () => { powOpen = d.open; });
+    return d;
   }
 
   /* ---------------- the spectrum strip ---------------- */
@@ -1315,7 +1430,9 @@ window.MONO = (function () {
   const FILT0 = { measure: 'any', region: 'any', withRegion: 'any', from: 1, to: 55, named: true, bins: true,
                   win: 'any', dir: 'either', bb: 'show', split: 'view' };
   const P_POINT = 0.05, TOP_N = 50, PER_PAIR = 3, SAME_HZ = 2;
-  function filt() { return Object.assign({}, FILT0, st.filt || {}); }
+  // Each tab its own filter: the Monolith's, and Cue 2 − Cue 1's.
+  const filtKey = () => (family() === 'contrast' ? 'filtC' : 'filt');
+  function filt() { return Object.assign({}, FILT0, st[filtKey()] || {}); }
   function filtActive(F) { return Object.keys(FILT0).some((k) => F[k] !== FILT0[k]); }
   function filtSay(F) {
     const S = D.S, out = [];
@@ -1329,7 +1446,8 @@ window.MONO = (function () {
     }
     if (F.win !== 'any') out.push(F.win === 'state' ? 'state windows' : F.win === 'transition' ? 'transitions'
       : (S.windows.find((w) => w.id === F.win) || {}).label);
-    if (F.dir !== 'either') out.push(F.dir === 'up' ? 'stronger on Precon4' : 'weaker on Precon4');
+    if (F.dir !== 'either') out.push(family() === 'contrast' ? (F.dir === 'up' ? 'Cue 2 − Cue 1 grew' : 'Cue 2 − Cue 1 shrank')
+      : F.dir === 'up' ? 'stronger on Precon4' : 'weaker on Precon4');
     if (F.bb !== 'show') out.push(F.bb === 'hide' ? 'no broadband' : 'broadband only');
     if (F.split !== 'view') out.push(splitLabel(F.split));
     return out.join(' · ');
@@ -1352,7 +1470,7 @@ window.MONO = (function () {
       && (wi2 < 0 || (ri >= 0 ? (a === ri && b === wi2) || (b === ri && a === wi2) : (a === wi2 || b === wi2))));
     const bandsOk = S.bands.map((b) => b.named ? F.named && b.low >= F.from - 1e-9 && b.high <= F.to + 1e-9
       : F.bins && b.hz >= F.from && b.hz <= F.to);
-    const winsOk = S.windows.map((w) => F.win === 'any' || F.win === w.kind || F.win === w.id);
+    const winsOk = S.windows.map((w) => inFamily(w) && (F.win === 'any' || F.win === w.kind || F.win === w.id));
     const bbMemo = new Map();
     const isBB = (w, m, p) => {
       const k = w + ',' + m + ',' + p;
@@ -1420,7 +1538,7 @@ window.MONO = (function () {
   }
   const FCACHE = { key: null, list: null, n: 0 };
   function filteredPoints(layer, F) {
-    const key = layer + '|' + JSON.stringify(F) + '|' + st.level + '|' + (st.split || 'all');
+    const key = family() + '|' + layer + '|' + JSON.stringify(F) + '|' + st.level + '|' + (st.split || 'all');
     if (FCACHE.key !== key) {
       const cands = filterCandidates(layer, F);
       FCACHE.key = key;
@@ -1430,7 +1548,7 @@ window.MONO = (function () {
     return FCACHE.list;
   }
   async function setFilt(patch) {
-    st.filt = Object.assign(filt(), patch);
+    st[filtKey()] = Object.assign(filt(), patch);
     st.showAll = false;
     remember();
     const F = filt();
@@ -1470,12 +1588,14 @@ window.MONO = (function () {
                    return el('label', {}, [c, ' 1 Hz bins']); })(),
           (() => { const c = el('input', { type: 'checkbox', id: 'f-named' }); c.checked = F.named; c.addEventListener('change', () => setFilt({ named: c.checked }));
                    return el('label', { title: named.map((b) => b.label).join(', ') }, [c, ' named bands inside it']); })()])]),
-      sel('f-win', 'Window', F.win, [['any', 'Any window'], ['state', 'State (baseline, cues, after)'], ['transition', 'Transitions (onset, switch, offset)'],
-        ['One window', S.windows.map((w) => [w.id, w.label])]], (v) => setFilt({ win: v })),
-      sel('f-dir', 'Change', F.dir, [['either', 'Either way'], ['up', 'Stronger on Precon4'], ['down', 'Weaker on Precon4']], (v) => setFilt({ dir: v })),
+      family() === 'contrast' ? null : sel('f-win', 'Window', F.win, [['any', 'Any window'], ['state', 'States (pre-baseline, cues, post-baseline)'], ['transition', 'Transitions (onset, switch, offset)'],
+        ['One window', S.windows.filter(inFamily).map((w) => [w.id, w.label])]], (v) => setFilt({ win: v })),
+      family() === 'contrast'
+        ? sel('f-dir', 'Change', F.dir, [['either', 'Either way'], ['up', 'Cue 2 − Cue 1 grew by Precon4'], ['down', 'Cue 2 − Cue 1 shrank by Precon4']], (v) => setFilt({ dir: v }))
+        : sel('f-dir', 'Change', F.dir, [['either', 'Either way'], ['up', 'Stronger on Precon4'], ['down', 'Weaker on Precon4']], (v) => setFilt({ dir: v })),
       sel('f-bb', 'Broadband', F.bb, [['show', 'Include'], ['hide', 'Leave out'], ['only', 'Only broadband']], (v) => setFilt({ bb: v })),
-      splitsOf() ? sel('f-split', 'Cue pairs', F.split, [['view', 'As the view (' + splitLabel(st.split) + ')'], ['all', 'Both, pooled'],
-        ['Halves', splitsOf().groups.map((g) => [g.id, g.label])]], (v) => setFilt({ split: v })) : null,
+      splitsOf() ? sel('f-split', 'Cue pairs', F.split, [['view', 'As the view (' + splitLabel(st.split) + ')'], ['all', 'AB and CD, pooled'],
+        ['One pair', splitsOf().groups.map((g) => [g.id, g.label])]], (v) => setFilt({ split: v })) : null,
     ]);
     return box;
   }
@@ -1488,22 +1608,31 @@ window.MONO = (function () {
     const active = filtActive(F);
     const list = active ? filteredPoints(st.layer, F) : topOf(st.layer);
     const n = st.showAll ? list.length : Math.min(10, list.length);
-    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: (st.showAll ? 'Top ' + list.length : 'Top ' + Math.min(10, list.length)) + ' points of interest · '
-      + layerSay(st.layer) }), qh('points')]));
-    host.appendChild(el('p', { class: 'small muted', text: S.points_rule + '. Click one to snap the view to it.' }));
-    host.appendChild(el('div', { class: 'hrow rankrow' }, [el('span', { class: 'small', text: 'Rank' }),
-      seg([['all', 'Overall'], ['win', 'Within each window']], st.rank || 'all', (id) => { st.rank = id; remember(); renderTop(); }), qh('rank')]));
+    const c21 = family() === 'contrast';
+    if (c21) {
+      host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'Cue 2 − Cue 1: its own top ' + (st.showAll ? list.length : Math.min(10, list.length))
+        + ' points of interest' }), qh('points')]));
+      host.appendChild(el('p', { class: 'small muted', text: 'Ranked on their own, over Cue 2 − Cue 1 alone, by the Monolith’s rule: '
+        + S.points_rule + '. Click one to snap the view to it.' }));
+      host.appendChild(el('p', { class: 'small', id: 'c21vs' }, compareSay(list)));
+    } else {
+      host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: (st.showAll ? 'Top ' + list.length : 'Top ' + Math.min(10, list.length)) + ' points of interest · '
+        + layerSay(st.layer) }), qh('points')]));
+      host.appendChild(el('p', { class: 'small muted', text: S.points_rule + '. Click one to snap the view to it.' }));
+      host.appendChild(el('div', { class: 'hrow rankrow' }, [el('span', { class: 'small', text: 'Rank' }),
+        seg([['all', 'Overall'], ['win', 'Within each window']], st.rank || 'all', (id) => { st.rank = id; remember(); renderTop(); }), qh('rank')]));
+    }
     host.appendChild(el('details', { class: 'fwrap', open: active || st.filtOpen ? 'open' : null,
                                      ontoggle: (e) => { st.filtOpen = e.target.open; } }, [
       el('summary', {}, [el('span', { text: active ? 'Filtered: ' + filtSay(F) : 'Filter these' }), qh('filter')]),
       filterPanel(F),
       active ? el('p', { class: 'small', id: 'filtsay' }, [FCACHE.n.toLocaleString() + ' entries pass p < .05 with these filters. ',
-        el('button', { type: 'button', class: 'linkish', id: 'f-clear', text: 'Clear the filter', onclick: () => { st.filt = null; st.filtOpen = true; remember(); renderTop(); } })])
+        el('button', { type: 'button', class: 'linkish', id: 'f-clear', text: 'Clear the filter', onclick: () => { st[filtKey()] = null; st.filtOpen = true; remember(); renderTop(); } })])
         : null]));
-    if ((st.rank || 'all') === 'win') {
+    if ((st.rank || 'all') === 'win' && !c21) {
       // The best few of each window, so one window cannot take the list.
       const perWin = el('div', { id: 'perwin' });
-      for (const w of S.windows) {
+      for (const w of S.windows.filter(inFamily)) {
         const F2 = Object.assign({}, F, { win: w.id });
         const cands = filterCandidates(st.layer, F2);
         const best = rankPoints(fkey(st.layer, F2), cands).slice(0, 3);
@@ -1535,6 +1664,7 @@ window.MONO = (function () {
                    return bb ? el('span', { class: 'chip bb', title: 'Passes at ' + bb.n + ' of ' + bb.of + ' frequencies in this window and measure',
                                             text: 'broadband' }) : null; })()]),
         el('span', { class: 'bs num', text: poiSay(t) + ': ' + f3(t.est) + ', p ' + fp(t.p) }),
+        c21 ? el('span', { class: 'vsm small' }, vsMonolith(t, active ? fkey(st.layer, filt()) : st.layer)) : null,
         t.n_more ? el('span', { class: 'mr' }, [
           el('button', { type: 'button', text: '+' + t.n_more + ' more like it', onclick: (e) => {
             e.stopPropagation();
@@ -1566,9 +1696,44 @@ window.MONO = (function () {
         onclick: () => { st.showAll = !st.showAll; renderTop(); } }));
     }
   }
+  /* Cue 2 − Cue 1 against the Monolith's own ranking. The Monolith's list
+     is over the eight measured windows; a contrast lead is "in it" when the
+     same region pair and measure, within 2 Hz, is among its top 50 in any
+     window (the same split). */
+  function monolithTop() {
+    const g = st.split && st.split !== 'all' && hasSplit(st.split) ? st.split : null;
+    return g ? (((splitsOf().top || {})[g] || {})[st.layer] || []) : ((D.S.top || {})[st.layer] || []);
+  }
+  function inMonolith(t) {
+    return monolithTop().filter((x) => x.pair === t.pair && x.m === t.m && near(x.bi, t.bi));
+  }
+  function compareSay(list) {
+    const top = monolithTop();
+    const both = list.filter((t) => inMonolith(t).length).length;
+    return [el('strong', { text: 'Against 2 · The Monolith: ' }),
+      both + ' of these ' + list.length + ' are also among the Monolith’s top ' + top.length
+      + ' (the same region pair and measure, within 2 Hz, in any of its windows). Each line below gives the Monolith’s own Precon4 − Precon1 '
+      + 'change in Cue 1 and in Cue 2 for the same entry: the contrast is their difference, so it can stand out where neither does on its own. ',
+      el('button', { type: 'button', class: 'linkish', id: 'tomain', text: 'Open the Monolith’s ranking', onclick: () => showTab('main') })];
+  }
+  function vsMonolith(t, key) {
+    const S = D.S;
+    const w1 = S.windows.findIndex((w) => w.id === 'cue1'), w2 = S.windows.findIndex((w) => w.id === 'cue2');
+    const one = (w) => { const e = E(key, Q.est, w, t.bi, t.mi, t.pair), p = E(key, Q.p, w, t.bi, t.mi, t.pair);
+      return f3(e) + (isFinite(p) ? ' (p ' + fp(p) + ')' : ' (not tested)'); };
+    const hit = inMonolith(t).sort((a, b) => a.rank - b.rank)[0];
+    return ['In the Monolith: Cue 1 ' + one(w1) + ', Cue 2 ' + one(w2) + ' · ',
+      hit ? el('span', { class: 'chip vsin', text: '#' + hit.rank + ' in its top ' + monolithTop().length + ' (' + poiSay(hit) + ')' })
+        : el('span', { class: 'muted', text: 'not in its top ' + monolithTop().length })];
+  }
   function go(t) {
     const S = D.S;
     const w = S.windows.find((x) => x.id === t.w);
+    const want = w && w.kind === 'contrast' ? 'c21' : 'main';
+    if ((family() === 'contrast' ? 'c21' : 'main') !== want) {
+      if (want === 'main') st.mainWin = t.w;
+      showTab(want);
+    }
     let level = st.level;
     if (!(isFinite(t.p) && LEVELS[level][1](t.p))) {
       level = 1;
@@ -1577,9 +1742,15 @@ window.MONO = (function () {
     closeGhost(true);
     st.sel = t.pair;
     const patch = { kind: w.kind, win: t.w, band: t.band, method: t.m, level, hi: null };
-    if (t.split && t.split !== (st.split || 'all') && (t.split === 'all' || hasSplit(t.split))) {
-      patch.split = t.split;
-      ensureLayer(st.layer + '__' + t.split).then(() => set(patch)).catch(() => set(patch));
+    // A line named with its layer (section 6's leads) opens on that layer.
+    const toLayer = t.layer && t.layer !== st.layer && LAYERS.some((x) => x[0] === t.layer) && w.kind !== 'contrast' ? t.layer : null;
+    const toSplit = t.split && t.split !== (st.split || 'all') && (t.split === 'all' || hasSplit(t.split)) ? t.split : null;
+    if (toLayer || toSplit) {
+      if (toLayer) patch.layer = toLayer;
+      if (toSplit) patch.split = toSplit;
+      const L = toLayer || st.layer;
+      (toLayer ? ensureLayer(L) : Promise.resolve()).then(() => (toSplit ? ensureLayer(L + '__' + toSplit) : null))
+        .then(() => set(patch)).catch(() => set(patch));
       return;
     }
     set(patch);
@@ -1862,6 +2033,11 @@ window.MONO = (function () {
     host.appendChild(el('p', { class: 'small muted', text: 'A session’s value is the mean over its presentations'
       + (st.layer === 'minus_fp' ? ', less the mean over its flower-pot rest epochs' : '') + '. Precon1 and Precon4 are the two '
       + 'the Monolith’s change is taken between; Precon2 and Precon3 never enter it.' }));
+    if (window.MONO_PROGRESS && S.sessions) {
+      host.appendChild(el('div', { class: 'hrow' }, [el('button', { type: 'button', class: 'more-btn', id: 'trajprog',
+        text: 'Follow it across the sessions ↑', title: 'This line in a panel of its own over the circuit, beside any others you follow',
+        onclick: () => window.MONO_PROGRESS.addFromMain() })]));
+    }
   }
 
   /* ---------------- PAC within a region: the conventional route ----------------
@@ -2095,7 +2271,19 @@ window.MONO = (function () {
     const v = $('verdict');
     v.innerHTML = '';
     v.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'What it found' }), qh('verdict')]));
-    for (const [id, name] of LAYERS) {
+    const g0 = st.split && st.split !== 'all' && hasSplit(st.split) ? st.split : null;
+    if (family() === 'contrast') {
+      const cc = g0 ? ((((splitsOf() || {}).contrast || {}).counts || {})[g0] || {}).raw : ((S.contrast || {}).counts || {}).raw;
+      const say = { null: 'A+C vs B+D (both pairs)', ab: 'AB only: B − A', cd: 'CD only: D − C' }[g0];
+      if (cc) {
+        v.appendChild(el('p', { id: 'c21verdict' }, [el('strong', { text: 'Cue 2 − Cue 1, ' + say + ': ' }),
+          cc.tested.toLocaleString() + ' entries tested; ' + cc.p05.toLocaleString() + ' have p < .05 for Precon4 against Precon1, where about '
+          + cc.chance_p05.toLocaleString() + ' would by chance alone; ' + cc.p001.toLocaleString() + ' have p < .001.']));
+      }
+      v.appendChild(el('p', { class: 'small', text: 'Within Precon1 and within Precon4, each session’s Cue 2 − Cue 1 is descriptive: '
+        + 'the mean over rats of each rat’s mean over its presentations. Only the change between the two sessions is tested. ' + CONTRAST_NOTE }));
+    }
+    for (const [id, name] of (family() === 'contrast' ? [] : LAYERS)) {
       const c = (S.counts || {})[id];
       if (!c) continue;
       const top = String(Math.max(...Object.keys(c.agree || {}).map(Number).concat([0])));
@@ -2106,12 +2294,12 @@ window.MONO = (function () {
         + (ag.tested ? 'All ' + top + ' rats the same way: ' + ag.all_same.toLocaleString() + ' (chance: about '
           + ag.chance_all_same.toLocaleString() + ').' : '')]));
     }
-    const g = st.split && st.split !== 'all' && hasSplit(st.split) ? st.split : null;
+    const g = family() === 'contrast' ? null : g0;
     if (g) {
       const c = ((splitsOf().counts || {})[g] || {})[st.layer];
       const grp = splitsOf().groups.find((x) => x.id === g);
-      if (c) v.appendChild(el('p', { class: 'splitsay' }, [el('strong', { text: 'Showing the ' + grp.label.replace(/^The /, '').toLowerCase() + ' only: ' }),
-        grp.rats.length + ' rats, ' + grp.n_units + ' cue pairs. ' + c.tested.toLocaleString() + ' entries tested; ' + c.p05.toLocaleString()
+      if (c) v.appendChild(el('p', { class: 'splitsay' }, [el('strong', { text: 'Showing the ' + grp.label.replace(/ \(.*\)$/, '') + ' only: ' }),
+        grp.rats.length + ' rats, ' + grp.n_units + ' presentations. ' + c.tested.toLocaleString() + ' entries tested; ' + c.p05.toLocaleString()
         + ' have p < .05, where about ' + c.chance_p05.toLocaleString() + ' would by chance alone.']));
     }
     if (DMG.data) {
@@ -2315,6 +2503,16 @@ window.MONO = (function () {
   /* ---------------- the trail: where this value comes from ---------------- */
   // What the numbers at each level ARE, said in words, with the layer.
   function levelMeans(lv) {
+    if (st.win === 'c21') {
+      return {
+        circuit: 'the change Precon4 − Precon1 of Cue 2 − Cue 1, pooled over rats (raw only)',
+        pooled: 'one region pair’s change Precon4 − Precon1 of Cue 2 − Cue 1, pooled over rats (raw only)',
+        rats: 'each rat’s own change, Precon4 − Precon1, of Cue 2 − Cue 1',
+        days: 'one rat’s Cue 2 − Cue 1 in each session: the mean over that session’s presentations',
+        units: 'one session’s presentations, each its own Cue 2 − Cue 1 — not a change',
+        leaf: 'one presentation: its Cue 2 window, and every measure computed on it',
+      }[lv];
+    }
     const L = st.layer === 'minus_fp' ? ' (each session less its flower-pot rest)' : ' (cue windows as measured)';
     return {
       circuit: 'the change Precon4 − Precon1, pooled over rats' + L,
@@ -2330,7 +2528,8 @@ window.MONO = (function () {
     if (!host || !D.S) return;
     host.innerHTML = '';
     const S = D.S;
-    const steps = [{ label: 'The Monolith', title: viewSay(), lv: 'circuit', go: () => { closeLeaf(); closeGhost(false); } }];
+    const steps = [{ label: family() === 'contrast' ? 'Cue 2 − Cue 1' : st.prog ? 'Monolith Progress' : 'The Monolith', title: viewSay(),
+                     lv: 'circuit', go: () => { closeLeaf(); closeGhost(false); } }];
     if (GH.pair != null) {
       const [a, b] = S.pairs[GH.pair];
       steps.push({ label: short(S.regions[a]) + ' – ' + short(S.regions[b]), lv: 'pooled', go: () => { closeLeaf(); ghostTo(1); } });
@@ -2426,7 +2625,7 @@ window.MONO = (function () {
     const items = (s.units || []).map((u) => ({
       key: u.id, label: u.id + ' ' + sig(u.v), value: u.v, width: 1.8, leaf: true,
       color: top.day === 'Precon1' ? ink3 : ink, dash: u.v == null ? '3 4' : null,
-      tip: ['r' + rat.rat + ' · ' + top.day + ' · ' + u.id, u.label + ' (' + u.cue + ')',
+      tip: ['r' + rat.rat + ' · ' + top.day + ' · ' + u.id, u.seat_say || (u.label + ' (' + u.cue + ')'),
         u.v == null ? 'Not measured: ' + (u.why || 'no value in this window') : 'value ' + sig(u.v),
         u.wires ? 'read on CSC ' + (u.wires[0] >= 0 ? u.wires[0] : '—') + ' and CSC ' + (u.wires[1] >= 0 ? u.wires[1] : '—') : '',
         'Click to see its traces and how each number was made.'],
@@ -2626,6 +2825,107 @@ window.MONO = (function () {
         + '; the bar is the mean and the whisker its standard error. A hollow dot at the bottom gave no value. Click any dot for its traces.' }));
     }
     host.appendChild(el('p', { class: 'small muted hrow' }, [el('span', { text: coverSay(d) }), qh('coverage')]));
+    if (top.lv === 'pooled' || top.lv === 'rats') {
+      const pc = physCheck(d);
+      if (pc) host.appendChild(pc);
+    }
+  }
+
+  /* ---------------- physical cue sanity check ----------------
+     The comparisons are by seat (A/B/C/D), which counterbalancing makes
+     blind to the sounds. This asks the reverse: for this entry, each rat's
+     change in its AB and in its CD, labelled with the sound heard in this
+     window; then the same changes grouped by seat and grouped by sound. A
+     change that follows one sound rather than a seat shows up as a wider
+     spread between sounds than between seats. Descriptive: no test. */
+  const HEARD = { cue1: [0], onset: [0], cue2: [1], offset: [1], pair: [0, 1], switch: [0, 1], c21: [1, 0] };
+  function physDeltas(d) {
+    const minus = GH.layer === 'minus_fp' && !d.contrast;
+    const out = [];
+    for (const r of d.rats || []) {
+      const row = { rat: r.rat, seats: r.seats, d: {} };
+      for (const pr of ['AB', 'CD']) {
+        const m = {};
+        for (const day of ['Precon1', 'Precon4']) {
+          const s = (r.days || {})[day];
+          if (!s) continue;
+          const vs = (s.units || []).filter((u) => u.pair === pr && u.v != null).map((u) => u.v);
+          if (!vs.length) continue;
+          let mu = vs.reduce((a, b) => a + b, 0) / vs.length;
+          if (minus) { if (s.rest == null) continue; mu -= s.rest; }
+          m[day] = mu;
+        }
+        row.d[pr] = (m.Precon1 != null && m.Precon4 != null) ? m.Precon4 - m.Precon1 : null;
+      }
+      out.push(row);
+    }
+    return out;
+  }
+  function physCheck(d) {
+    const S = D.S;
+    const SAY = ((S.identity || {}).sound_say) || {};
+    const wid = (S.windows[(GH.at || [])[0]] || {}).id;
+    const rows = physDeltas(d).filter((r) => r.seats);
+    if (!rows.length) return null;
+    const heard = HEARD[wid] || [];
+    const seatOf = (pr) => heard.map((i) => pr[i]);
+    const soundsOf = (r, pr) => seatOf(pr).map((s) => SAY[r.seats[s]] || r.seats[s]);
+    const joiner = wid === 'c21' ? ' − ' : ' + ';
+    const ms = (xs) => {
+      const v = xs.filter((x) => x != null && isFinite(x));
+      if (!v.length) return { m: null, se: null, n: 0 };
+      const m = v.reduce((a, b) => a + b, 0) / v.length;
+      const se = v.length > 1 ? Math.sqrt(v.reduce((a, b) => a + (b - m) ** 2, 0) / (v.length - 1) / v.length) : null;
+      return { m, se, n: v.length };
+    };
+    const msSay = (x) => (x.m == null ? '—' : f3(x.m) + (x.se != null ? ' ± ' + sig(x.se) : '') + ' (' + x.n + ')');
+    const box = el('div', { class: 'physcheck', id: 'physcheck' }, [el('div', { class: 'hrow' }, [el('h3', { text: 'Physical cue sanity check' }), qh('physcheck')])]);
+    box.appendChild(el('p', { class: 'small muted', text: 'Each rat’s change, Precon4 − Precon1, in its AB and in its CD'
+      + (heard.length ? ', with the sound' + (heard.length > 1 ? 's' : '') + ' heard in this window' : ' (no cue sounds in this window)')
+      + '. The comparisons are made by seat, which averages the sounds out; this shows whether the change instead follows one sound. Descriptive: no test.' }));
+    const tb = el('table', { class: 'linetable physgrid' });
+    tb.appendChild(el('thead', {}, [el('tr', {}, ['Rat', 'AB', 'CD'].map((t) => el('th', { text: t })))]));
+    const body = el('tbody');
+    for (const r of rows) {
+      body.appendChild(el('tr', { 'data-rat': String(r.rat) }, [el('th', { text: 'r' + r.rat })].concat(['AB', 'CD'].map((pr) => {
+        const lab2 = heard.length ? seatOf(pr).join(joiner) + ' · ' + soundsOf(r, pr).join(joiner) : pr;
+        const v = r.d[pr];
+        return el('td', { 'data-pair': pr, class: v == null ? 'muted' : (v >= 0 ? 'up' : 'down') }, [
+          el('div', { class: 'small muted', text: lab2 }), el('div', { class: 'num', text: v == null ? '—' : f3(v) })]);
+      }))));
+    }
+    tb.appendChild(body);
+    box.appendChild(el('div', { class: 'dtwrap' }, [tb]));
+    const bySeat = { AB: ms(rows.map((r) => r.d.AB)), CD: ms(rows.map((r) => r.d.CD)) };
+    const sums = el('div', { class: 'physsum' });
+    sums.appendChild(el('p', { class: 'small', id: 'physseat' }, [el('strong', { text: 'By seat: ' }),
+      'AB ' + msSay(bySeat.AB) + ' · CD ' + msSay(bySeat.CD)]));
+    let spreadSeat = null, spreadSound = null;
+    if (bySeat.AB.m != null && bySeat.CD.m != null) spreadSeat = Math.abs(bySeat.AB.m - bySeat.CD.m);
+    if (heard.length === 1) {
+      // One sound per cell: group the same changes by the sound heard.
+      const bySound = {};
+      for (const r of rows) for (const pr of ['AB', 'CD']) {
+        const s = soundsOf(r, pr)[0];
+        (bySound[s] = bySound[s] || []).push(r.d[pr]);
+      }
+      const keys = Object.keys(bySound).sort();
+      const got = keys.map((k) => [k, ms(bySound[k])]);
+      sums.appendChild(el('p', { class: 'small', id: 'physsound' }, [el('strong', { text: 'By sound: ' }),
+        got.map(([k, x]) => k + ' ' + msSay(x)).join(' · ')]));
+      const means = got.map(([_k, x]) => x.m).filter((x) => x != null);
+      if (means.length > 1) spreadSound = Math.max(...means) - Math.min(...means);
+    }
+    if (spreadSeat != null && spreadSound != null) {
+      const follows = spreadSound > 1.5 * spreadSeat;
+      sums.appendChild(el('p', { class: 'small ' + (follows ? 'warn' : 'muted'), id: 'physsay', text: follows
+        ? 'It varies more by which sound was heard (' + sig(spreadSound) + ' between sounds) than by seat (' + sig(spreadSeat)
+          + ' between AB and CD): look at the sounds before reading it as a seat effect.'
+        : 'It varies about as much, or less, by sound (' + sig(spreadSound) + ') as by seat (' + sig(spreadSeat)
+          + '): nothing here says one sound carries it.' }));
+    }
+    box.appendChild(sums);
+    return box;
   }
 
   /* ==================================================================
@@ -2699,7 +2999,8 @@ window.MONO = (function () {
   }
   const secs = (v) => String(+(+v).toFixed(2));
   function leafSay(d) {
-    return 'r' + d.rat + ' · ' + d.day + ' · ' + d.unit + (d.label ? ' (' + d.label + ')' : '') + ' · ' + d.window.name + ' window, '
+    return 'r' + d.rat + ' · ' + d.day + ' · ' + d.unit + ((d.seat_say || d.pair_say || d.label) ? ' (' + (d.seat_say || d.pair_say || d.label) + ')' : '')
+      + (d.contrast ? ' · its Cue 2 window (the contrast takes Cue 1 from it)' : '') + ' · ' + d.window.name + ' window, '
       + secs(d.window.t1 - d.window.t0) + ' s · ' + (d.band.named ? d.band.label : d.band.hz + ' Hz') + ' · ' + d.regions.join(' – ');
   }
   const PLOT_OF = { coherence: 'coherence', icoh: 'icoh', raw_cc: 'raw_cc', env_cc: 'env_cc', env_cc0: 'env_cc0', orth_env: 'orth_env',
@@ -2994,6 +3295,91 @@ window.MONO = (function () {
     });
     return svg;
   }
+  /* Each cue as heard, by its seat: in how many presentations its own
+     window (Cue 1 for A and C, Cue 2 for B and D) kept every region
+     histology allows, rat by rat, with the sound each seat is in that rat. */
+  function seatTable(d) {
+    const SEATS = ['A', 'B', 'C', 'D'];
+    const SAY = ((D.S && D.S.identity) || {}).sound_say || { Click: 'Click', Noise: 'Noise', High: 'High tone', Low: 'Low tone' };
+    const rats = Array.from(new Set(d.days.map((x) => x.rat))).sort((a, b) => a - b);
+    const sum = (rows) => {
+      const t = {};
+      for (const s of SEATS) t[s] = { total: 0, kept: 0, partial: 0, lost: 0 };
+      for (const x of rows) for (const s of SEATS) for (const k in t[s]) t[s][k] += ((x.seats || {})[s] || {})[k] || 0;
+      return t;
+    };
+    const cell = (t, sound) => el('td', { class: 'num' }, [
+      el('div', { text: t.total ? t.kept + ' of ' + t.total + ' kept' + (t.partial ? ', ' + t.partial + ' partly' : '') + (t.lost ? ', ' + t.lost + ' lost' : '') : '—' }),
+      sound ? el('div', { class: 'small muted', text: sound }) : null]);
+    const tb = el('table', { class: 'dtable seattable', id: 'seattable' });
+    tb.appendChild(el('thead', {}, [el('tr', {}, [el('th', { text: 'Rat' })].concat(SEATS.map((s) => el('th', { text: s }))))]));
+    const body = el('tbody');
+    for (const rat of rats) {
+      const t = sum(d.days.filter((x) => x.rat === rat));
+      const ids = (d.seat_say || {})[String(rat)] || {};
+      body.appendChild(el('tr', { 'data-rat': String(rat) }, [el('th', { text: 'r' + rat })].concat(SEATS.map((s) => cell(t[s], SAY[ids[s]] || ids[s])))));
+    }
+    const all = d.whole.seats;
+    body.appendChild(el('tr', { class: 'dtot' }, [el('th', { text: 'All' })].concat(SEATS.map((s) => cell(all[s], null)))));
+    tb.appendChild(body);
+    return el('div', { class: 'pairwrap' }, [el('h3', { text: 'Presentations kept, per cue (A/B/C/D)' }),
+      el('p', { class: 'small muted', text: 'Each cue in its own window — Cue 1 is A (in AB) or C (in CD), Cue 2 is B or D — kept when every '
+        + 'region histology allows was read there. Under each count, the sound that seat is in that rat (the lab’s identity sheet).' }),
+      el('div', { class: 'dtwrap' }, [tb])]);
+  }
+  /* What histology v2 changed from v1, rat by rat. */
+  function histoChanges(d) {
+    const ch = d.histology.changes;
+    const rats = Object.keys(ch).map(Number).sort((a, b) => a - b);
+    const tb = el('table', { class: 'dtable', id: 'histochanges' });
+    tb.appendChild(el('thead', {}, [el('tr', {}, ['Rat', 'Probe', 'v1', 'v2', 'In the Monolith now'].map((t) => el('th', { text: t })))]));
+    const body = el('tbody');
+    let n = 0;
+    for (const rat of rats) {
+      for (const c of ch[String(rat)] || []) {
+        n++;
+        body.appendChild(el('tr', { 'data-rat': String(rat) }, [el('th', { text: 'r' + rat }), el('td', { text: c.region }),
+          el('td', { text: c.v1 }), el('td', { text: c.v2 }), el('td', { class: c.monolith ? 'up' : 'muted', text: c.monolith ? 'used' : 'left out' })]));
+      }
+    }
+    tb.appendChild(body);
+    return el('div', { class: 'pairwrap' }, [el('h3', { text: 'What histology v2 changed (rescored 2026-10-05)' }),
+      el('p', { class: 'small muted', text: n + ' cell' + (n === 1 ? '' : 's') + ' scored differently from v1. The Monolith uses a probe only where v2 '
+        + 'says “y” (or, for the left POR probes, subiculum: Left POR-SUB).' }),
+      el('div', { class: 'dtwrap' }, [tb])]);
+  }
+
+  /* How Minus FP works, on the first tab: the Guide's own steps, and what
+     it means for the whole-pair window and the contrast. */
+  function renderMinusFP() {
+    const host = $('minusfp');
+    if (!host) return;
+    host.innerHTML = '';
+    const T = (window.MONO_HELP && MONO_HELP.T && MONO_HELP.T.layer) || {};
+    host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'How Minus FP works' }), qh('layer')]));
+    // An example first: one rat's numbers, worked both ways.
+    if (T.example) host.appendChild(el('p', { class: 'qexample', text: T.example }));
+    const wk = T.worked;
+    if (wk) {
+      const two = (v) => v.toFixed(2), sgn = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
+      const net = wk.cue.map((c, i) => c - wk.rest[i]);
+      host.appendChild(el('div', { class: 'dtwrap' }, [el('table', { class: 'mfptable', id: 'mfptable' }, [
+        el('thead', {}, [el('tr', {}, ['', 'Cue pairs', 'Rest (no cues)', 'Cue − rest'].map((h) => el('th', { text: h })))]),
+        el('tbody', {}, wk.day.map((d, i) => el('tr', {}, [el('th', { text: d }), el('td', { text: two(wk.cue[i]) }),
+          el('td', { text: two(wk.rest[i]) }), el('td', { text: two(net[i]) })])).concat([
+          el('tr', { class: 'chg' }, [el('th', { text: 'Change' }),
+            el('td', {}, [el('b', { text: sgn(wk.cue[1] - wk.cue[0]) }), ' Raw']),
+            el('td', { text: sgn(wk.rest[1] - wk.rest[0]) + ' the whole day' }),
+            el('td', {}, [el('b', { text: sgn(net[1] - net[0]) }), ' Minus FP'])])])),
+      ])]));
+    }
+    if (T.plain) host.appendChild(el('p', { text: T.plain }));
+    if (T.steps) host.appendChild(el('ol', { class: 'qsteps' }, T.steps.map((x) => el('li', { text: x }))));
+    if (T.note) host.appendChild(el('p', { text: T.note }));
+    host.appendChild(el('p', { class: 'small', text: 'The whole pair window (Cue 1 + Cue 2) is 20 s, so its rest pieces are 20 s too. '
+      + 'Cue 2 − Cue 1 is raw only: the same rest comes off both cues, so it cancels.' }));
+  }
+
   /* Region × region: how many rats have the pair on both sessions; under
      the minimum, the comparison is never tested. */
   function pairMatrix(d) {
@@ -3049,7 +3435,8 @@ window.MONO = (function () {
     host.innerHTML = '';
     host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'What was kept, and what was lost' }), qh('damage')]));
     host.appendChild(el('p', { class: 'lede', text: 'Before any result: how much of the experiment the Monolith could use. A presentation is one cue '
-      + 'pair (cue 1 then cue 2) heard once; each was measured in seven windows, in every region with a usable wire. What was left out stays '
+      + 'pair (cue 1 then cue 2) heard once; each was measured in every window — the four states, the three transitions and the whole '
+      + 'pair — in every region with a usable wire. What was left out stays '
       + 'inspectable — open any presentation from the Monolith to see its wires, used or not — but it was not used in the analysis.' }));
     const d = DMG.data;
     if (!d) {
@@ -3072,7 +3459,11 @@ window.MONO = (function () {
     const W0 = d.whole;
     const days = d.days;
     const rats = Array.from(new Set(days.map((x) => x.rat))).sort((a, b) => a - b);
-    const dayNames = Array.from(new Set(days.map((x) => x.day)));
+    const ORDER = ['Precon1', 'Precon2', 'Precon3', 'Precon4'];
+    const pending = d.pending_days || [];
+    const builtNames = Array.from(new Set(days.map((x) => x.day)));
+    const dayNames = ORDER.filter((x) => builtNames.includes(x) || pending.includes(x))
+      .concat(builtNames.filter((x) => !ORDER.includes(x)));
     const tS = sumTally(W0.state), tT = sumTally(W0.trans), tR = sumTally(W0.rest_regions);
     // In all.
     host.appendChild(el('p', {}, [el('strong', { text: 'In all: ' }),
@@ -3080,6 +3471,11 @@ window.MONO = (function () {
       + ' kept every region histology allows, in every window; ' + W0.cue.partial + ' lost a region somewhere; '
       + W0.cue.lost + ' were lost entirely (no two regions read in any window). Rest epochs (flower-pot recordings): ' + W0.rest.kept + ' of '
       + W0.rest.total + ' usable.']));
+    if (pending.length) {
+      host.appendChild(el('p', { class: 'small warn', id: 'dmgpending', text: pending.join(' and ') + ' ' + (pending.length === 1 ? 'is' : 'are')
+        + ' in what goes but not built yet: run ' + (pending.length === 1 ? 'it' : 'them') + ' on the VACC and fetch (Drift → Monolith). '
+        + 'Until then ' + (pending.length === 1 ? 'it is' : 'they are') + ' shown here as not built, and not counted.' }));
+    }
     // Losses by cause, not one total: clipping (the signal at the rail)
     // against probe placement (histology) and bad wires.
     const causes = ['clipped', 'histology', 'bad', 'unread'].filter((k) => tS[k]).map((k) =>
@@ -3089,7 +3485,14 @@ window.MONO = (function () {
     const row = (label, t) => el('div', { class: 'drow' }, [el('span', { class: 'dlab small', text: label }), damageBar(t, 520),
       el('span', { class: 'small muted', text: pct(t.kept, t.of) + ' kept' })]);
     host.appendChild(el('div', { class: 'dbars' }, [
-      row('Cue-pair windows', tS), row('Transition windows', tT), row('Rest epochs', tR)]));
+      row('Cue-pair windows', tS), row('Transition windows', tT),
+      ...(() => {
+        const tP = sumTally(W0.pair || []);
+        if (tP.of) return [row('Whole-pair windows', tP)];
+        return d.pair_measured === false ? [el('div', { class: 'drow', id: 'pairpending' }, [el('span', { class: 'dlab small', text: 'Whole-pair windows' }),
+          el('span', { class: 'small muted', text: 'not measured yet: its run on the VACC (Drift → Monolith) is fetched, then they are counted here.' })])] : [];
+      })(),
+      row('Rest epochs', tR)]));
     host.appendChild(el('div', { class: 'legend' }, ['kept', 'histology', 'clipped', 'bad', 'unread'].map((r) =>
       el('span', { title: r === 'kept' ? '' : d.reason_say[r] }, [el('b', { class: 'sw', style: 'background:' + reasonColor(r) }), REASON_LABEL[r]]))));
     // What it cost the pooled result.
@@ -3109,11 +3512,13 @@ window.MONO = (function () {
     }
     // Rat by rat.
     host.appendChild(el('h3', { text: 'Each rat, each day' }));
-    host.appendChild(el('div', { class: 'dmaps' }, dayNames.map((day) => damageMap(day))));
+    host.appendChild(el('div', { class: 'dmaps' }, dayNames.map((day) => (pending.includes(day)
+      ? el('div', { class: 'dmap-pending', 'data-day': day }, [el('strong', { text: day }), el('p', { class: 'small muted', text: 'In what goes, not built yet: run and fetch.' })])
+      : damageMap(day)))));
     host.appendChild(el('p', { class: 'small muted', text: 'A cell is the share of that region’s cue-pair windows (cue pairs × 4 windows) '
       + 'that were kept; hatched: histology says the probe is not there. Hover a cell for transitions and rest.' }));
     const tbl = el('table', { class: 'dtable' });
-    const head = el('tr', {}, [el('th', { text: 'Rat' })].concat(dayNames.map((day) => el('th', { text: day }))).concat([el('th', { text: 'Both days' })]));
+    const head = el('tr', {}, [el('th', { text: 'Rat' })].concat(dayNames.map((day) => el('th', { text: day }))).concat([el('th', { text: 'All sessions' })]));
     tbl.appendChild(el('thead', {}, [head]));
     const body = el('tbody');
     const cueSay = (c, r) => c.kept + ' kept, ' + c.partial + ' partly, ' + c.lost + ' lost of ' + c.total + ' cue pairs · rest ' + r.kept + '/' + r.total;
@@ -3121,6 +3526,7 @@ window.MONO = (function () {
       const mine = days.filter((x) => x.rat === rat);
       const cells = dayNames.map((day) => {
         const x = mine.find((y) => y.day === day);
+        if (!x && pending.includes(day)) return el('td', { class: 'muted', text: 'in what goes, not built yet: run and fetch' });
         if (!x) return el('td', { class: 'muted', text: 'not in the Monolith' });
         const extra = [];
         if (x.refused) extra.push(x.refused + ' refused on the cluster');
@@ -3134,6 +3540,7 @@ window.MONO = (function () {
         el('div', { text: cueSay(c, r) }), hist.length ? el('div', { class: 'small muted', text: 'histology: no ' + hist.join(', ') }) : null])])));
     }
     const tot = el('tr', { class: 'dtot' }, [el('th', { text: 'All' })].concat(dayNames.map((day) => {
+      if (pending.includes(day)) return el('td', { class: 'muted', text: 'not built yet' });
       const c = { total: 0, kept: 0, partial: 0, lost: 0 }, r = { total: 0, kept: 0 };
       for (const x of days.filter((y) => y.day === day)) { for (const k in c) c[k] += x.cue[k]; r.total += x.rest.total; r.kept += x.rest.kept; }
       return el('td', { text: cueSay(c, r) });
@@ -3143,6 +3550,8 @@ window.MONO = (function () {
     host.appendChild(el('div', { class: 'dtwrap' }, [tbl]));
     // Which comparisons survive the exclusions.
     if ((d.pairs || []).length) host.appendChild(pairMatrix(d));
+    if (d.whole && d.whole.seats) host.appendChild(seatTable(d));
+    if (d.histology && d.histology.changes) host.appendChild(histoChanges(d));
   }
 
   /* A summary read from the server, in the page's words (the windows'
@@ -3153,18 +3562,89 @@ window.MONO = (function () {
     return S;
   }
 
+  /* ---------------- the circuit card's mode ----------------
+     The Monolith: its one circuit of the change, or -- Monolith Progress,
+     the button on the card -- every Precon session's own circuit. Cue 2 −
+     Cue 1: within Precon1 and within Precon4 (descriptive, from the
+     session files), then the tested change, in a row; Precon2 and Precon3
+     between them underneath. js/monolith_progress.js draws the sessions. */
+  function renderMode() {
+    const card = $('circcard');
+    if (!card || !D.S) return;
+    const fam = family();
+    const prog = fam === 'main' && !!st.prog;
+    card.classList.toggle('prog', prog);
+    card.classList.toggle('contrast', fam === 'contrast');
+    const cm = $('circmode');
+    cm.innerHTML = '';
+    if (fam === 'main') {
+      cm.appendChild(seg([['one', 'Precon4 − Precon1', 'The change, pooled over rats and tested'],
+                          ['prog', 'Monolith Progress', 'Every Precon session: its own value, its change from Precon1, or both']],
+        prog ? 'prog' : 'one', (id) => { st.prog = id === 'prog'; closeGhost(true); remember(); renderTrail(); renderMode(); }, 'circmodeseg'));
+    } else {
+      cm.appendChild(el('p', { class: 'small', id: 'c21say', text: 'Cue 2 − Cue 1 within each presentation, then the mean over each rat’s '
+        + 'presentations and over rats: within Precon1, within Precon4, and the change from one to the other, which is the one '
+        + 'that is tested (p uncorrected).' }));
+    }
+    $('ctitle').textContent = (prog ? 'Monolith Progress · ' : '') + viewSay();
+    $('changeh').textContent = fam === 'contrast' ? 'Precon4 against Precon1 · tested' : '';
+    $('changeh').hidden = fam !== 'contrast';
+    $('changebox').hidden = prog;
+    for (const id of ['legend', 'lines', 'circsay', 'circempty']) { const n = $(id); if (n) n.hidden = prog; }
+    $('progcircs').hidden = !prog;
+    for (const id of ['within', 'between', 'withinlegend']) $(id).hidden = fam !== 'contrast';
+    // Its controls and its points of interest stay in their own columns,
+    // right of the circuits, as on the Monolith's tab (the lab, 2026-10-07).
+    if (window.MONO_PROGRESS) window.MONO_PROGRESS.render({ prog, contrast: fam === 'contrast' });
+  }
+  /* Something run here, from this page, and waited for: the split, or
+     Progress's session files. The summary is read again after it. */
+  async function runHere(path, body, onNote) {
+    await postJSON(path, body || {});
+    for (;;) {
+      await new Promise((r) => setTimeout(r, FIX ? 30 : 1500));
+      const stt = await getJSON('/status');
+      const w = (stt.status || stt).work || stt.work;
+      if (w && w.status === 'running') {
+        const pr = w.progress || {};
+        if (onNote) onNote((pr.item ? pr.item + ' · ' : '') + (pr.of ? (pr.i + 1) + ' of ' + pr.of : 'working'));
+        continue;
+      }
+      if (w && w.status === 'failed') throw new Error(w.error || 'it failed');
+      break;
+    }
+    adopt(await getJSON('/data/summary'));
+    ENTRY.clear();
+    loadDamage();
+  }
+
   /* ---------------- everything ---------------- */
   function renderAll(viewChanged) {
     if (st.tab === 'avg') loadAvg();
     renderTrail();
     renderControls();
     renderCircuit();
+    renderMode();
     renderSpectrum();
     renderTop();
     renderTraj();
     renderPacSelf();
     renderPac();
     if (viewChanged === undefined) { renderVerdict(); renderFoot(); }
+  }
+
+  /* `#go=layer,window,band,measure,pair[,split]`: one line of the
+     Monolith, opened on the Monolith tab with that line selected. */
+  function linkView(S) {
+    const m = /(?:^#|&)go=([^&]+)/.exec(location.hash || '');
+    if (!m) return null;
+    const [layer, win0, band0, method0, pair, split] = decodeURIComponent(m[1]).split(',');
+    const w = S.windows.find((x) => x.id === win0);
+    const p = Number(pair);
+    if (!w || !S.bands.some((b) => b.id === band0) || !S.methods.some((x) => x.id === method0)
+        || !LAYERS.some((l) => l[0] === layer) || !(Number.isInteger(p) && p >= 0 && p < S.pairs.length)) return null;
+    return { tab: w.kind === 'contrast' ? 'c21' : 'main', layer, kind: w.kind, win: win0, band: band0, method: method0, sel: p, hi: null, level: 1,
+             split: split && split !== 'all' ? split : 'all' };
   }
 
   async function init() {
@@ -3176,6 +3656,20 @@ window.MONO = (function () {
       st.kind = S.windows.find((w) => w.id === st.win).kind;
       if (!S.methods.some((m) => m.id === st.method)) st.method = 'coherence';
       if (!LAYERS.some((l) => l[0] === st.layer)) st.layer = 'raw';
+      // A link to one line (the review site's leads) opens on it.
+      const link = linkView(S);
+      if (link) Object.assign(st, link);
+      // `#tab=<id>`: a link to one tab (6 · Physical vs balanced cue, say).
+      const tl = /(?:^#|&)tab=(\w+)/.exec(location.hash || '');
+      if (!link && tl && TABS.some((x) => x[0] === tl[1])) st.tab = tl[1];
+      // The family follows the tab: Cue 2 − Cue 1 is its own tab.
+      if (st.tab === 'c21' && S.windows.some((w) => w.id === 'c21')) Object.assign(st, { family: 'contrast', win: 'c21', kind: 'contrast' });
+      else {
+        if (st.win === 'c21') st.win = st.mainWin && st.mainWin !== 'c21' ? st.mainWin : 'cue1';
+        st.family = 'main';
+        if (st.tab === 'c21' || st.tab === 'prog') st.tab = st.tab === 'prog' ? 'main' : 'cov';
+        st.kind = S.windows.find((w) => w.id === st.win).kind;
+      }
       await ensureLayer(st.layer);
     } catch (e) {
       D.err = e.message;
@@ -3199,9 +3693,13 @@ window.MONO = (function () {
       Object.assign(st, { kind: D.S.windows.find((w) => w.id === t.w).kind, win: t.w, band: t.band, method: t.m, sel: t.pair });
     }
     renderAll();
+    if (window.MONO_PROGRESS) window.MONO_PROGRESS.mountSeries();
+    renderMinusFP();
     loadDamage();
     try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { renderAll(); renderDamage(); }); } catch (e) { /* old browser */ }
     D.ready = true;
+    if (st.tab === 'ev' && window.MONO_EVENTS) window.MONO_EVENTS.show();
+    if (st.tab === 'phys' && window.MONO_PHYS) window.MONO_PHYS.show();
     document.dispatchEvent(new CustomEvent('monolith:ready'));
   }
 
@@ -3217,6 +3715,9 @@ window.MONO = (function () {
     rangeBins, switchSplit, topOf, showTab, renderTrail, levelMeans, renderPacSelf, openPacExample, get pacSelf() { return PS; },
     // For js/monolith_events.js: the same door to the server (and to the
     // harness's fixture), the same ? and the same hover.
-    getJSON, postJSON, qh, el, hover, renderTraj, get traj() { return TJ; }, get avg() { return Object.assign({}, AV); }, get split() { return st.split || 'all'; }, get leaf() { return Object.assign({}, LF); }, broadband, bbCount, here, arrowGeom, filteredPoints, setFilt, get filtN() { return FCACHE.n; }, get damage() { return DMG.data; }, renderDamage,
+    getJSON, postJSON, qh, el, hover, renderTraj,
+    // For js/monolith_progress.js: the same files, entries, words and motion.
+    seg, getArray, entryJSON, mix, sig, f3, fp, short, tween, ensureLayer, E, download,
+    pickPair, setFamily, runHere, viewSay, get family() { return family(); }, get traj() { return TJ; }, get avg() { return Object.assign({}, AV); }, get split() { return st.split || 'all'; }, get leaf() { return Object.assign({}, LF); }, broadband, bbCount, here, arrowGeom, filteredPoints, setFilt, get filtN() { return FCACHE.n; }, get damage() { return DMG.data; }, renderDamage,
   };
 })();

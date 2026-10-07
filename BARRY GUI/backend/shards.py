@@ -412,11 +412,20 @@ class Book:
     decision is the one that stands.
     """
 
-    def __init__(self, dirpath, spec=None, store=None, ext=".json"):
+    def __init__(self, dirpath, spec=None, store=None, ext=".json",
+                 extra_dirs=None):
         self.dir = os.path.abspath(dirpath)
         self.spec = dict(spec or {})
         self.store = store
         self.ext = ext
+        # OTHER MACHINES' SHARDS, PULLED FROM THE SHARED DATABASE (2026-10-06,
+        # Braces sets and AI Beta runs). Read with the rest, never written:
+        # this machine writes only its own shard, in `dir`. They live under
+        # GUI_logs/.cache, which git ignores, so a pull can never leave a
+        # tracked file that a later `git pull` refuses to overwrite. The same
+        # shard arriving by git as well is harmless: records merge by their
+        # own stamps, so two copies of one shard are one shard.
+        self.extra = [os.path.abspath(d) for d in (extra_dirs or [])]
         # The compiled-record cache and its stamp. See all(). Its own lock
         # rather than the module's: two threads reading a store must not
         # queue behind each other, and this guards nothing else.
@@ -471,29 +480,35 @@ class Book:
             back unchanged.
         """
         rows, sig = [], []
-        try:
-            with os.scandir(self.dir) as it:
-                for entry in it:
-                    name = entry.name
-                    if not name.endswith(self.ext):
-                        continue
-                    try:
-                        st = entry.stat()
-                    except OSError:
-                        continue
-                    base, machine = split_name(name, self.ext)
-                    if not base:
-                        continue
-                    rows.append((name, base, machine))
-                    sig.append((name, st.st_mtime_ns, st.st_size))
-        except OSError:
-            return {}, ()
+        for k, d in enumerate([self.dir] + self.extra):
+            try:
+                with os.scandir(d) as it:
+                    for entry in it:
+                        name = entry.name
+                        if not name.endswith(self.ext):
+                            continue
+                        try:
+                            st = entry.stat()
+                        except OSError:
+                            continue
+                        base, machine = split_name(name, self.ext)
+                        if not base:
+                            continue
+                        # Sorted by name first, then the tracked folder
+                        # before the pulled one, so the order within a base
+                        # is the one it always was.
+                        rows.append((name, k, base, machine,
+                                     os.path.join(d, name)))
+                        sig.append((k, name, st.st_mtime_ns, st.st_size))
+            except OSError:
+                if k == 0:
+                    return {}, ()
+                continue                 # no pulled folder yet: nothing pulled
         rows.sort()
         sig.sort()
         idx = {}
-        for name, base, machine in rows:
-            idx.setdefault(base, []).append(
-                (machine, os.path.join(self.dir, name)))
+        for name, _k, base, machine, path in rows:
+            idx.setdefault(base, []).append((machine, path))
         return idx, tuple(sig)
 
     def shard_files(self, base):

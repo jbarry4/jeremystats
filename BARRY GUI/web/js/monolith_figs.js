@@ -332,7 +332,7 @@ window.MONO_FIGS = (function () {
     const s = svg(W, H, o.label || 'cue pairs');
     const all = [];
     groups.forEach((g) => { all.push(...g.values.filter(fin)); if (fin(g.mean)) all.push(g.mean - (g.se || 0), g.mean + (g.se || 0)); });
-    const yr = ext([all], 0.08);
+    const yr = o.yr || ext([all], 0.08);
     const Y = (v) => H - m.b - (v - yr[0]) / (yr[1] - yr[0]) * (H - m.t - m.b);
     const gw = (W - m.l - m.r) / Math.max(1, groups.length);
     s.appendChild(sv('text', { x: m.l - 4, y: Y(yr[1]) + 9, 'text-anchor': 'end', 'font-size': 9.5, fill: css('--ink-3') }, sig(yr[1])));

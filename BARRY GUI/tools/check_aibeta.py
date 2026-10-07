@@ -345,10 +345,101 @@ ck("an even read is filed apart",
    != AI.cache_key(e_k, "h3", 100.0, [8]))
 ck("every contact: the second read's windows as they always were",
    PH._row_windows(1.0) == {"near": 4, "far": 12, "lat": 10,
-                            "depth": PH.ALIGN_DEPTH}, PH._row_windows(1.0))
+                            "depth": PH.ALIGN_DEPTH, "img": 8},
+   PH._row_windows(1.0))
 ck("every other contact: half the rows, the same depth",
    PH._row_windows(0.5) == {"near": 2, "far": 6, "lat": 5,
-                            "depth": PH.ALIGN_DEPTH // 2}, PH._row_windows(0.5))
+                            "depth": PH.ALIGN_DEPTH // 2, "img": 4},
+   PH._row_windows(0.5))
+
+# --------------------------------------------------------------------------
+print("\nThe waveform image at the aligned peak")
+blk_ = np.zeros((32, 301))
+blk_[20, 140:161] = np.hanning(21)            # a bump on row 20, peak at 150
+im3 = PH._wave_image(blk_, 20, 150, 3, 8)
+im50 = PH._wave_image(blk_, 20, 150, 50, 8)
+ck("17 depths by 13 times whatever the window",
+   im3.shape == im50.shape == (PH.IMG_ROWS, PH.IMG_COLS), (im3.shape, im50.shape))
+ck("the peak in the middle of the picture",
+   np.unravel_index(im3.argmax(), im3.shape) == (8, 6)
+   and np.unravel_index(im50.argmax(), im50.shape) == (8, 6),
+   (np.unravel_index(im3.argmax(), im3.shape),
+    np.unravel_index(im50.argmax(), im50.shape)))
+ck("a narrow window sees only the top of it",
+   im3[8].min() > 0.75, im3[8].round(2).tolist())
+ck("a wide one the whole bump, its columns averaged rather than sampled",
+   im50[8, 0] == 0 and im50[8, -1] == 0
+   and (im50[8] > 0.05).sum() >= 3
+   and abs(im50[8].sum() * (101 / 13.0) - blk_[20].sum()) < 1.0,
+   im50[8].round(2).tolist())
+ck("every other contact covers the same depth with half the rows",
+   np.allclose(PH._wave_image(blk_[::2], 10, 150, 10, 4)[[0, 8, 16]],
+               PH._wave_image(blk_, 20, 150, 10, 8)[[0, 8, 16]]))
+ck("rows past the end of the probe repeat the last one",
+   np.allclose(PH._wave_image(blk_, 0, 150, 10, 8)[:8],
+               PH._wave_image(blk_, 0, 150, 10, 8)[8]))
+ck("one input per window, 3 to 50 ms",
+   [f for f in AI.FAMILY_IDS if f.startswith("wimg")]
+   == ["wimg3", "wimg5", "wimg10", "wimg15", "wimg25", "wimg50"]
+   and all(len(AI._NAMES[f]) == 221 for f in PH.IMG_IDS))
+import tempfile                                           # noqa: E402
+tmp_ = os.path.join(tempfile.mkdtemp(), "phys.npz")
+PH.save(tmp_, {"ok": np.ones(2, bool), "missed": 0, "has_video": False,
+               "n_markers": 0, "fam": {"mua": np.zeros((2, 5))}})
+ck("a read from before an input existed is read again for it",
+   PH.has(tmp_, ["mua"]) and not PH.has(tmp_, ["mua", "wimg15"])
+   and PH.has(tmp_, []))
+PH.save(tmp_, {"ok": np.ones(2, bool), "missed": 0, "has_video": False,
+               "n_markers": 0, "fam": {"mua": np.zeros((2, 5)),
+                                       "wimg15": np.zeros((2, 221))}})
+ck("pictures of the current kind are used as they are",
+   PH.has(tmp_, ["mua", "wimg15"]))
+with np.load(tmp_) as z_:
+    np.savez(tmp_[:-4] + "_old.npz", **{k: z_[k] for k in z_.files
+                                       if k != "iv"})
+ck("pictures from before the current kind are read again",
+   not PH.has(tmp_[:-4] + "_old.npz", ["wimg15"])
+   and PH.has(tmp_[:-4] + "_old.npz", ["mua"]))
+ck("and still loads for a run that does not want it",
+   "mua" in (PH.load(tmp_[:-4] + "_old.npz") or {}).get("fam", {}))
+
+# --------------------------------------------------------------------------
+print("\nThe snapshots through other filters")
+ck("six filters, three snapshots each",
+   [f for f, _b in PH.FILTERS] == ["notch", "1_20", "1_100", "5_50",
+                                    "10_40", "5_100"]
+   and len(PH.FILT_IDS) == 18
+   and all(f in AI.FAMILY_IDS for f in PH.FILT_IDS))
+ck("pictures 17 by 13, the trace +-50 ms at 2 ms",
+   len(AI._NAMES["fwhole_1_20"]) == len(AI._NAMES["fthin_10_40"]) == 221
+   and len(AI._NAMES["ftrace_notch"]) == 51)
+ck("listed with the pictures, off by default",
+   all(f.get("group") == "pictures" and not f["default"]
+       for f in AI.FAMILIES if f["id"] in PH.FILT_IDS))
+tt_ = np.arange(301)
+slow_ = np.tile(np.sin(2 * np.pi * 10 * tt_ / 1000.0), (32, 1)) \
+    * np.hanning(32)[:, None]
+st_f = {"filt": {f: (slow_ + 7.0).astype(np.float32) if f == "notch"
+                 else slow_.astype(np.float32)
+                 for f, _b in PH.FILTERS if f != "5_100"}}
+spec_ = {"band": (5.0, 100.0), "line_hz": 60.0, "line_q": 30.0,
+         "lfp_fs": 1000.0, "spacing_um": 100.0, "csd_smooth": True}
+fam_f = {k: np.full((2, len(AI._NAMES[k])), np.nan) for k in PH.FILT_IDS}
+PH._filtered_snapshots(st_f, slow_, 16, 150, 1000.0, spec_,
+                       PH._row_windows(0.5), fam_f, 0)
+ck("every snapshot filled, scaled so its largest value is 1",
+   all(np.isfinite(fam_f[k][0]).all()
+       and abs(np.abs(fam_f[k][0]).max() - 1) < 1e-6 for k in PH.FILT_IDS))
+ck("the notch-only snapshot has each row's offset taken off",
+   np.allclose(fam_f["ftrace_notch"][0], fam_f["ftrace_1_20"][0], atol=0.05))
+ck("the 5-100 Hz ones are the band the read already holds",
+   np.allclose(fam_f["fthin_5_100"][0],
+               PH._unit(PH._wave_image(slow_, 16, 150, 25, 4)).ravel()))
+fam_n = {k: np.full((1, len(AI._NAMES[k])), np.nan) for k in PH.FILT_IDS}
+PH._filtered_snapshots({"filt": {}}, slow_, 16, 150, 1000.0, spec_,
+                       PH._row_windows(0.5), fam_n, 0)
+ck("nothing is taken when the filters were not asked for",
+   all(np.isnan(fam_n[k]).all() for k in PH.FILT_IDS))
 
 # --------------------------------------------------------------------------
 print("\nThe blend")

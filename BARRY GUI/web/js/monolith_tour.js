@@ -393,6 +393,9 @@ window.MONO_TOUR = (function () {
     let seen = null;
     try { seen = localStorage.getItem(SEEN); } catch (e) { return; }
     if (seen) return;
+    // Arriving by a link to one line (the review site's leads) or to one
+    // tab: that is what was asked for; the tour waits for its button.
+    if (/(?:^#|&)(?:go|tab)=/.test(location.hash || '')) return;
     setTimeout(start, 400);
   }
   document.addEventListener('monolith:ready', firstVisit);

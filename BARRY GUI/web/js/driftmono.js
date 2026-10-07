@@ -90,6 +90,13 @@ BARRY.driftMono = (function () {
 
   const working = (S) => !!(S && S.work && S.work.status === 'running');
   const runActive = (S) => !!(S && S.run && S.poll && S.poll.active);
+  // The poll in hand is about the run in hand (a poll from before the run
+  // was submitted, or from the run before it, is not).
+  const pollIsRun = (S) => !!(S && S.run && S.poll && (!S.poll.rid || S.poll.rid === S.run.rid));
+  // A run to follow: one the cluster has not finished, or one nothing has
+  // asked about yet -- a fresh submission has no poll at all, and waiting
+  // for an "active" poll that never comes left the card standing still.
+  const runWatch = (S) => !!(S && S.run && (!pollIsRun(S) || S.poll.active || S.poll.error));
 
   function poll() {
     const here = !!(ms.host && ms.host.isConnected);
@@ -103,7 +110,13 @@ BARRY.driftMono = (function () {
       clearInterval(ms.timer);
       ms.timer = null;
     }
-    const watch = runActive(ms.status) && here;
+    const watch = runWatch(ms.status) && here;
+    // Asked once at once about a run nothing has asked about yet.
+    const R0 = ms.status && ms.status.run;
+    if (watch && R0 && !pollIsRun(ms.status) && ms.askedFor !== R0.rid && !ms.acting) {
+      ms.askedFor = R0.rid;
+      setTimeout(() => { if (!ms.acting) act('/api/arc/monolith/check', { run_only: true }, 'check.auto'); }, 0);
+    }
     if (watch && !ms.clusterTimer) {
       ms.clusterTimer = setInterval(() => {
         if (!ms.host || !ms.host.isConnected) { stop(); return; }
@@ -172,9 +185,12 @@ BARRY.driftMono = (function () {
   /* The trajectory: Precon2 and Precon3 into what goes, then (after the
      upload and a check) a run of only them. */
   const extendIt = () => act('/api/arc/monolith/manifest/extend', { confirm: true }, 'extend',
-    'Adding Precon2 and Precon3 to what goes. Upload next: it sends only what is not on the cluster yet.');
-  const runTraj = () => act('/api/arc/monolith/run', { confirm: true, extra: { days: ['Precon2', 'Precon3'] } }, 'run.traj',
-    'Submitted Precon2 and Precon3. Check the VACC to see them move; fetching rebuilds the Monolith with them.');
+    'Adding Precon2 and Precon3, and the whole pair’s 20 s rest, to what goes. Upload next: it sends only what is not on the cluster yet.');
+  /* One run: Precon2 and Precon3 whole, and -- when the Monolith lacks it
+     -- the whole pair (cue 1 + cue 2) on the sessions it already has. */
+  const runTraj = (pair) => act('/api/arc/monolith/run', { confirm: true, extra: pair ? { days: ['Precon2', 'Precon3'], pair: true }
+    : { days: ['Precon2', 'Precon3'] } }, 'run.traj',
+    'Submitted. Check the VACC to see it move; fetching rebuilds the Monolith with it.');
   const rebuildIt = () => act('/api/arc/monolith/rebuild', { confirm: true }, 'rebuild',
     'Rebuilding the Monolith under the histology in force, from the answers already fetched.');
   const fetchIt = () => act('/api/arc/monolith/fetch', { confirm: true }, 'fetch',
@@ -475,7 +491,11 @@ BARRY.driftMono = (function () {
           + (S.min_rats || 5) + ' are needed. Upload, then check again.' }));
       card.appendChild(daysGrid(C));
     }
-    if (R && P) card.appendChild(pollBlock(S));
+    if (R && P && pollIsRun(S)) card.appendChild(pollBlock(S));
+    else if (R) {
+      card.appendChild(el('p', { class: 'hint dmo-runwait', text: 'The run submitted ' + ago(R.submitted_at)
+        + ' (' + plural((R.tasks || []).length, 'task') + ') has not been asked about yet: asking the cluster now, then every two minutes.' }));
+    }
     card.appendChild(el('div', { class: 'head-actions dpc-actions' }, [
       el('span', { class: 'hint', text: R ? 'Reads only. While the run goes it is asked again every two minutes this tab is open.'
         : 'Reads only: one listing of the cluster.' }),
@@ -486,11 +506,18 @@ BARRY.driftMono = (function () {
     return card;
   }
 
+  // Every session in what goes, in Precon order -- the grid once had only
+  // Precon1 and Precon4, whatever the manifest held.
+  const SESSION_ORDER = ['Precon1', 'Precon2', 'Precon3', 'Precon4'];
   function daysGrid(C) {
     const days = C.days || [];
     const rats = [];
     for (const d of days) if (rats.indexOf(d.rat) < 0) rats.push(d.rat);
-    const cell = (d) => el('td', { class: 'dmo-cell' }, (d ? d.folders : []).map((f) => {
+    const named = Array.from(new Set(days.map((d) => d.day)));
+    const sessions = SESSION_ORDER.filter((s) => named.indexOf(s) >= 0).concat(named.filter((s) => SESSION_ORDER.indexOf(s) < 0));
+    // The chips go in a box inside the cell: a cell that is itself a flex
+    // box leaves the table, and every chip landed under the first column.
+    const cell = (d, day) => el('td', { class: 'dmo-cell', 'data-day': day }, [el('div', { class: 'dmo-chips' }, (d ? d.folders : []).map((f) => {
       const at = f.at || {};
       const st = f.use ? 'complete' : (Object.values(at).some((x) => x.state === 'partial') ? 'partial' : 'missing');
       const best = f.use || Object.keys(at).find((k) => at[k].state === 'partial') || 'scratch';
@@ -498,14 +525,11 @@ BARRY.driftMono = (function () {
       return el('span', { class: 'dmo-dot ' + st, title: f.role + ': ' + st
         + (f.use ? ' in ' + destLabel(f.use) : x.of ? ' — ' + x.have + ' of ' + x.of + ' files' : ''),
         text: f.role });
-    }));
+    }))]);
     const t = el('table', { class: 'art-params dpc-t dmo-days' }, [el('tbody', {}, [
-      el('tr', {}, ['rat', 'Precon1', 'Precon4'].map((h) => el('th', { text: h }))),
-    ].concat(rats.map((r) => el('tr', {}, [
-      el('td', { text: 'r' + r }),
-      cell(days.find((d) => d.rat === r && d.day === 'Precon1')),
-      cell(days.find((d) => d.rat === r && d.day === 'Precon4')),
-    ]))))]);
+      el('tr', {}, ['rat'].concat(sessions).map((h) => el('th', { text: h }))),
+    ].concat(rats.map((r) => el('tr', { 'data-rat': String(r) }, [el('td', { text: 'r' + r })]
+      .concat(sessions.map((s) => cell(days.find((d) => d.rat === r && d.day === s), s)))))))]);
     return fold('days', 'Rat by rat', el('div', { class: 'dpc-items' }, [t]));
   }
 
@@ -515,7 +539,8 @@ BARRY.driftMono = (function () {
     const T = P.tally || {};
     const n = P.n || 0;
     const box = el('div', { class: 'dmo-poll' }, [
-      el('div', { class: 'section-label', text: 'The run · ' + plural(n, 'task') + ' · asked ' + ago(P.at) }),
+      el('div', { class: 'section-label', text: 'The run submitted ' + ago((S.run || {}).submitted_at) + ' · '
+        + plural(n, 'task') + ' · asked ' + ago(P.at) }),
       el('div', { class: 'dmo-tally' }, [
         ['done', T.done], ['running', T.running], ['queued', T.queued], ['failed', T.failed], ['unknown', T.unknown],
       ].filter(([, v]) => v).map(([k, v]) => el('span', { class: 'dmo-chip ' + k, text: v + ' ' + k }))),
@@ -660,10 +685,19 @@ BARRY.driftMono = (function () {
           + ' had not answered when it was built; their rat-days are thinner. Fetch again once they have.' }));
       }
       // What a small run can still add, and the button that runs it.
-      const miss = S.missing || {};
+      const miss = Object.assign({}, S.missing || {});
+      // The whole pair goes with Precon2 and Precon3 while they are still
+      // to run (one run, one button: the trajectory's).
+      const T0 = S.trajectory || {};
+      if ((T0.in_manifest || []).length && (T0.built || []).length < 2) delete miss.pair;
       const says = [];
       if ((miss.bands || []).length) says.push((S.additions_say || {}).delta || 'the delta band');
       if (miss.pac_trans) says.push((S.additions_say || {}).pac_trans || 'PAC at the transitions');
+      if (miss.pair) says.push((S.additions_say || {}).pair || 'the whole pair (cue 1 + cue 2)');
+      if ((miss.fast || []).length) {
+        says.push(((S.additions_say || {}).fast || 'the fast transitions') + ' of ' + plural(miss.fast.length, 'recording')
+          + ' (' + [...new Set(miss.fast.map((x) => x[1]))].join(', ') + ')');
+      }
       if (says.length && !(S.run && S.built && S.run.rid !== S.built.rid)) {
         const C = S.check;
         card.appendChild(el('div', { class: 'dmo-add', 'data-go': 'add' }, [
@@ -717,27 +751,32 @@ BARRY.driftMono = (function () {
       return box;
     }
     const inMan = (T.in_manifest || []).length > 0;
+    const pairRest = T.pair_rest !== false;
     const ready = T.ready || [];
     const going = S.run && S.built && S.run.rid !== S.built.rid;
+    const withPair = !!(S.missing || {}).pair;
+    const runLabel = withPair ? 'Run Precon2/3 and the pair window' : 'Run Precon2 and Precon3';
     box.appendChild(el('p', { text: 'The trajectory: Precon2 and Precon3, measured exactly as Precon1 and Precon4 are, to follow '
-      + 'each line across the four sessions. They never enter the change and are not tested.' }));
+      + 'each line across the four sessions. They never enter the change and are not tested.'
+      + (withPair ? ' The same run measures the whole pair (cue 1 + cue 2, 20 s) on Precon1 and Precon4, which this Monolith lacks.' : '') }));
     const C = S.check;
     let say, button;
-    if (!inMan) {
-      say = 'First, add them to what goes: worked out here from the bank, as the two days were (reads only; a minute or two).';
+    if (!inMan || !pairRest) {
+      say = 'First, add ' + (inMan ? 'the whole pair’s 20 s rest epochs' : 'them, and the whole pair’s 20 s rest epochs,')
+        + ' to what goes: worked out here from the bank, as the two days were (reads only; a few minutes).';
       button = el('button', { class: 'btn ghost', 'data-go': 'traj-add', disabled: off(!!S.work && S.work.status === 'running'),
-        text: 'Add Precon2 and Precon3', onclick: extendIt });
+        text: inMan ? 'Add the pair window’s rest' : 'Add Precon2 and Precon3', onclick: extendIt });
     } else if (going) {
       say = 'A run is on the cluster. Check the VACC to follow it, then fetch.';
     } else if (!C || !T.checked_now || !ready.length) {
       say = 'They are in what goes. Upload (step 1) sends only what is not on the cluster yet; then Check the VACC (step 2).'
         + (C && T.checked_now ? ' None is whole on the cluster yet.' : '');
-      button = el('button', { class: 'btn ghost', 'data-go': 'traj-run', disabled: 'disabled', text: 'Run Precon2 and Precon3' });
+      button = el('button', { class: 'btn ghost', 'data-go': 'traj-run', disabled: 'disabled', text: runLabel });
     } else {
       say = ready.length + ' rat-session' + (ready.length === 1 ? ' is' : 's are') + ' whole on the cluster. A run of only them '
         + 'uses the lab’s cluster allocation (about as long as the first run took for two days).';
       button = el('button', { class: 'btn ghost', 'data-go': 'traj-run', disabled: off((S.code_changed || []).length > 0),
-        text: 'Run Precon2 and Precon3', onclick: runTraj });
+        text: runLabel, onclick: () => runTraj(withPair) });
     }
     box.appendChild(el('div', { class: 'head-actions dpc-actions' }, [
       el('span', { class: 'hint', text: say }), el('div', { class: 'spacer' }), button]));

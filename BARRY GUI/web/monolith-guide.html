@@ -96,16 +96,17 @@ svg.mfig { display: block; width: 100%; height: auto; }
   const H = window.MONO_HELP;
   const PARTS = [
     ['What was kept, and how the signals were checked', ['damage', 'aliasing']],
-    ['Across the four sessions', ['trajectory']],
+    ['Across the four sessions', ['trajectory', 'progress', 'progress.circuits', 'progress.series']],
     ['Events first', ['events']],
+    ['Physical cue against balanced cue', ['physical', 'physical.verdict', 'physical.leads', 'physical.circuit']],
     ['Reading the page', ['verdict', 'layer', 'trail', 'circuit', 'sig', 'arrows', 'points', 'rank', 'filter', 'broadband', 'spectrum', 'coverage']],
-    ['Choosing what to look at', ['windows', 'window', 'frequency', 'range', 'bands', 'split', 'measure']],
+    ['Choosing what to look at', ['windows', 'window', 'contrast', 'frequency', 'range', 'bands', 'split', 'measure']],
     ['The measures: phase together, at zero lag', ['coherence', 'plv', 'ppc']],
     ['The measures: phase together, with a lag', ['icoh', 'pli', 'wpli', 'dwpli']],
     ['The measures: amplitude and correlation', ['raw_cc', 'env_cc', 'env_cc0', 'orth_env']],
     ['The measures: direction', ['gc_ab', 'gc_ba', 'gc_net']],
     ['Power and phase–amplitude coupling', ['power', 'pac.self', 'pac', 'pac.circuit']],
-    ['Opening an edge', ['averaged', 'ghost.pooled', 'ghost.rats', 'ghost.days', 'ghost.units', 'leaf', 'excluded']],
+    ['Opening an edge', ['averaged', 'ghost.pooled', 'ghost.rats', 'physcheck', 'ghost.days', 'ghost.units', 'leaf', 'excluded']],
   ];
   // Anything written but not placed above still gets its own entry.
   const placed = new Set(PARTS.flatMap((p) => p[1]));

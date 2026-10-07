@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import base64
 import gzip
+import hashlib
 import json
 import os
 import re
@@ -64,6 +65,18 @@ ART_ABSENT_RETRY_S = 15 * 60
 #: largest one on record is ~10 MB of JSON and ~0.7 MB like this.
 PAYLOAD_GZ_MAX = 3000000
 
+#: SHARD FILES (migration 21, 2026-10-06): stores whose records are a
+#: machine's own shard files -- Braces sets, AI Beta runs -- travel as those
+#: files, gzipped, the way git carries them. A machine sends only its OWN
+#: shards, and only when one's bytes change; a pull writes another
+#: machine's shard into GUI_logs/.cache/cloudshards, which the store reads
+#: beside its own (shards.Book `extra_dirs`) and git ignores, so a pulled
+#: file can never stand in the way of a `git pull`. At most this many bytes
+#: of them go per push; the rest go on the next one, so the first push of a
+#: store that has never travelled is paced rather than one big request
+#: (memory: big payloads took the database down 2026-09-30).
+SHARD_PUSH_BYTES = 800000
+
 #: What a pull asks of artifact_payloads: everything but the payload.
 PAYLOAD_KEY_COLUMNS = "artifact_id,version_id,v,digest,bytes,machine,updated_at"
 
@@ -100,6 +113,9 @@ ORDER = [
     # payloads go up gzipped, one bounded request at a time, and are fetched
     # by key, never in bulk. See rows_artifacts.
     "artifacts", "artifact_payloads",
+    # Braces sets and AI Beta runs, as their shard files (migration 21).
+    # Last: nothing references them.
+    "shard_files",
 ]
 PUSH_ONLY =["runs", "activity", "errors", "error_marks"]
 
@@ -263,6 +279,25 @@ def _after(stamp, since):
 
 
 
+_SHARD_IDS = {}
+
+
+def _shard_id(path, idf):
+    """The record id a shard file holds, read once per file version."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    key = (path, st.st_mtime_ns, st.st_size)
+    if key not in _SHARD_IDS:
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                _SHARD_IDS[key] = (json.load(fh) or {}).get(idf)
+        except (OSError, ValueError):
+            _SHARD_IDS[key] = None
+    return _SHARD_IDS[key]
+
+
 def _absent(exc):
     """Is this "no such table" rather than a real failure?
 
@@ -301,6 +336,10 @@ class Sync:
         # let a quiet push skip the artifact tables without a request: see
         # rows_artifacts.
         self.artifacts = None
+        # {store name: (shards.Book, id field)} whose shard files travel as
+        # files, set by app.py. See SHARD_PUSH_BYTES.
+        self.shard_books = {}
+        self._shard_absent_until = 0.0
         self._art_sent_sig = None
         self._art_pending_sig = None
         # Artifact id -> the fingerprint the cloud row carries, as of the
@@ -1419,7 +1458,8 @@ class Sync:
     # ==================================================================
     # Has it gone up? Per record, without asking the database
     # ==================================================================
-    ITEM_KINDS = ("bank", "curation", "layers", "artifacts")
+    ITEM_KINDS = ("bank", "curation", "layers", "artifacts", "braces",
+                  "aibeta")
 
     def item_states(self, kinds=None, last_push=None, known_gids=None):
         """{kind: {id: {"state", "at"}}} for the records a person works on.
@@ -1540,6 +1580,163 @@ class Sync:
                           else "waiting" if self._art_cloud_fp
                           else "unknown"}
             out["artifacts"] = d
+        for kind in ("braces", "aibeta"):
+            if kind in want and kind in self.shard_books:
+                try:
+                    out[kind] = self._shard_states(kind)
+                except Exception:                        # noqa: BLE001
+                    out[kind] = {}
+        return out
+
+    # -- shard files (migration 21) ----------------------------------------
+    def _shard_sent(self):
+        """{"store/name": sha} of what the last finished push carried."""
+        try:
+            return dict((self.cloud.state() or {}).get("shard_sha") or {})
+        except Exception:                                # noqa: BLE001
+            return {}
+
+    def _own_shards(self):
+        """(key, store, name, path) for every shard file this machine wrote
+        in a travelling store."""
+        me = shards.machine_id()
+        tail = shards.SIGIL + me + ".json"
+        out = []
+        for store, (book, _idf) in sorted(self.shard_books.items()):
+            try:
+                names = sorted(os.listdir(book.dir))
+            except OSError:
+                continue
+            for name in names:
+                if name.endswith(tail):
+                    out.append((store + "/" + name, store, name,
+                                os.path.join(book.dir, name)))
+        return out
+
+    def rows_shard_files(self):
+        """This machine's own changed shard files, gzipped, paced."""
+        if not self.shard_books or time.time() < self._shard_absent_until:
+            return {}
+        sent = self._shard_sent()
+        todo = []
+        for key, store, name, path in self._own_shards():
+            try:
+                with open(path, "rb") as fh:
+                    raw = fh.read()
+            except OSError:
+                continue
+            sha = hashlib.sha1(raw).hexdigest()
+            if sent.get(key) != sha:
+                todo.append((key, store, raw, sha))
+        if not todo:
+            return {}
+        # One cheap question before the first send: is the table there?
+        # Without migration 21 it is not, and the push must go on without
+        # it rather than fail every table after it.
+        try:
+            self.cloud.select("shard_files", "", limit=1, columns="path")
+        except Exception as exc:                         # noqa: BLE001
+            if _absent(exc):
+                self._shard_absent_until = time.time() + ART_ABSENT_RETRY_S
+            return {}
+        me = shards.machine_id()
+        now = cloud.now()
+        out, used, after = [], 0, dict(sent)
+        for key, store, raw, sha in todo:
+            gz = base64.b64encode(gzip.compress(raw, 6)).decode("ascii")
+            if len(gz) > PAYLOAD_GZ_MAX:
+                continue
+            if out and used + len(gz) > SHARD_PUSH_BYTES:
+                break                    # the rest next push
+            out.append({"path": key, "store": store, "machine": me,
+                        "sha": sha, "bytes": len(raw), "gz": gz,
+                        "updated_at": now, "updated_by": self.machine})
+            used += len(gz)
+            after[key] = sha
+        # Remembered as sent only once the push that carries them finishes.
+        self._pending["shard_sha"] = after
+        return {"shard_files": out}
+
+    def _apply_shard_files(self, rows):
+        """Other machines' shard files, written where their store reads
+        pulled ones. Never this machine's own, never outside that folder."""
+        me = shards.machine_id()
+        n = 0
+        for r in rows or []:
+            key = str(r.get("path") or "")
+            mach = str(r.get("machine") or "")
+            store, _sl, name = key.partition("/")
+            hit = self.shard_books.get(store)
+            if not hit or not name or mach == me or "/" in name \
+                    or "\\" in name or ".." in name \
+                    or not name.endswith(shards.SIGIL + mach + ".json"):
+                continue
+            book = hit[0]
+            if not book.extra:
+                continue
+            dest = os.path.join(book.extra[0], name)
+            mine = os.path.join(book.dir, name)
+            try:
+                raw = gzip.decompress(base64.b64decode(r.get("gz") or ""))
+            except Exception:                            # noqa: BLE001
+                continue
+            if hashlib.sha1(raw).hexdigest() != r.get("sha"):
+                continue                 # damaged on the way: not written
+            same = False
+            for have in (dest, mine):
+                try:
+                    with open(have, "rb") as fh:
+                        if fh.read() == raw:
+                            same = True
+                            break
+                except OSError:
+                    pass
+            if same:
+                continue
+            os.makedirs(book.extra[0], exist_ok=True)
+            tmp = dest + ".tmp"
+            with open(tmp, "wb") as fh:
+                fh.write(raw)
+            os.replace(tmp, dest)
+            n += 1
+        return n
+
+    def _shard_states(self, store):
+        """{record id: state} for one travelling store."""
+        hit = self.shard_books.get(store)
+        if not hit:
+            return {}
+        book, idf = hit
+        sent = self._shard_sent()
+        absent = time.time() < self._shard_absent_until
+        # This machine's own shard of each record, by the id inside it.
+        own = {}
+        for key, st, _name, path in self._own_shards():
+            if st == store:
+                rid0 = _shard_id(path, idf)
+                if rid0:
+                    own[rid0] = (key, path)
+        out = {}
+        for rec in book.all():
+            rid = rec.get(idf)
+            if not rid:
+                continue
+            if rid not in own:
+                # Not written here: it came from another machine, by git or
+                # by the shared database, so it is shared already.
+                out[rid] = {"state": "synced", "why": "from another machine"}
+                continue
+            key, path = own[rid]
+            try:
+                with open(path, "rb") as fh:
+                    sha = hashlib.sha1(fh.read()).hexdigest()
+            except OSError:
+                continue
+            if absent:
+                out[rid] = {"state": "local", "why": "no table"}
+            else:
+                out[rid] = {"state": "synced" if sent.get(key) == sha
+                            else "waiting"}
         return out
 
     def collect(self, include_history=True):
@@ -1568,6 +1765,7 @@ class Sync:
         # snapshots. One missing line, invisible from either end.
         rows.update(self.rows_tool_results())
         rows.update(self.rows_artifacts())
+        rows.update(self.rows_shard_files())
         if include_history:
             rows.update(self.rows_runs())
             rows.update(self.rows_activity())
@@ -1580,7 +1778,8 @@ class Sync:
     # out what is missing by asking the database -- filtering that answer by
     # those stamps would drop every snapshot older than the last push, which
     # is all of them.
-    NO_INCREMENTAL = {"bank_snapshots", "artifacts", "artifact_payloads"}
+    NO_INCREMENTAL = {"bank_snapshots", "artifacts", "artifact_payloads",
+                      "shard_files"}
 
     ON_CONFLICT = {
         # Keyed on the permanent id, and stated rather than left to the
@@ -1605,6 +1804,7 @@ class Sync:
         "presets": "kind,id",
         "artifacts": "id",
         "artifact_payloads": "artifact_id,version_id",
+        "shard_files": "path",
     }
 
     def push(self, include_history=True, on_progress=None, dry_run=False,
@@ -2063,6 +2263,9 @@ class Sync:
             # no answer is ever two hundred payloads long.
             applied["artifact_payloads"] = self._apply_artifact_payloads(
                 fetch("artifact_payloads", columns=PAYLOAD_KEY_COLUMNS))
+        if self.shard_books:
+            applied["shard_files"] = self._apply_shard_files(
+                fetch("shard_files"))
         if on_progress:
             on_progress(applied)
 

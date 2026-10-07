@@ -1306,7 +1306,7 @@ BARRY.braces = (function () {
   function recentSets() {
     const box = el('div', { class: 'card br-recent' });
     box.appendChild(el('div', { class: 'section-label',
-                                text: 'Alignments on this machine' }));
+                                text: 'Alignments' }));
     box.appendChild(el('p', { class: 'hint', id: 'brRecent',
                               text: 'Looking…' }));
     api('/api/braces/sets').then((got) => {
@@ -1331,7 +1331,10 @@ BARRY.braces = (function () {
             ? 'accepted as v' + s.committed.version
             : (c.waiting || 0) + ' still to answer · ' + s.n
               + ' stamps' }),
-        ]));
+          /* Whether it has reached the shared database, so a set reviewed
+             here can be picked up on another machine (2026-10-06). */
+          BARRY.syncState ? BARRY.syncState.mark('braces', s.set_id) : null,
+        ].filter(Boolean)));
       }
       n.replaceWith(wrap);
     }).catch(() => {});
