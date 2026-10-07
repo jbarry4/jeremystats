@@ -88,6 +88,56 @@ ALIGN_SAME_MS = braces.SAME_MS
 # wide, so +-15 ms is the event and almost nothing else.
 AL_MS = 15.0
 
+# THE WAVEFORM AS A PICTURE, at the peak Braces' rule put each candidate on
+# (the user, 2026-10-07: "in addition to the braces algorithm which adds the
+# center aligned data, try including an image of the wave form. Try out a
+# range of 3-50ms"). The 5-100 Hz voltage, depth against time: 8 contacts
+# either side of the candidate's own peak channel (400 um on an H3; the
+# same depth on every other contact), +-W ms either side of the aligned
+# peak, scaled so the peak is 1 and its sign kept. Each window is its own
+# input, so a run picks one; every picture is 17 depths by 13 times,
+# whatever the window, so a wide one is coarser in time, not bigger.
+IMG_WINDOWS_MS = (3, 5, 10, 15, 25, 50)
+IMG_ROWS = 17
+IMG_COLS = 13
+IMG_IDS = tuple("wimg%d" % w for w in IMG_WINDOWS_MS)
+
+# THE SAME SNAPSHOTS THROUGH OTHER FILTERS (the user, 2026-10-07: "are the
+# CSD images filtered? try adding a variety of filters to the whole
+# snapshot and the thinner snapshot ... also add a variety of filtered
+# data"). Everything above is the 5-100 Hz band Incisor detects in, after
+# Braces' mains notch. Each filter here is applied to the notched 1 kHz
+# signal over the whole stretch read -- never to the short block kept per
+# candidate, which is too short for a 1 Hz edge -- and then three things are
+# taken at the aligned peak:
+#   fwhole   the whole shank's CSD, +-50 ms (the "whole snapshot")
+#   fthin    the voltage 8 contacts either side of the peak channel,
+#            +-25 ms (the "thinner snapshot", the best window above)
+#   ftrace   the peak channel's voltage, +-50 ms at 2 ms (filtered data)
+# Each picture is scaled so its largest value is 1, sign kept. "notch" is
+# the notch alone, with each row's mean over the block taken off.
+FILTERS = (("notch", None), ("1_20", (1.0, 20.0)), ("1_100", (1.0, 100.0)),
+           ("5_50", (5.0, 50.0)), ("10_40", (10.0, 40.0)),
+           ("5_100", (5.0, 100.0)))
+SNAPS = (("fwhole", "Whole shank CSD, +-50 ms"),
+         ("fthin", "Voltage, 8 contacts either side, +-25 ms"),
+         ("ftrace", "Peak channel trace, +-50 ms"))
+FILT_IDS = tuple("%s_%s" % (s, f) for s, _n in SNAPS for f, _b in FILTERS)
+THIN_MS = 25
+TRACE_MS = 50
+TRACE_STEP_MS = 2
+# Bumped when the pictures change, so a read holding older ones is read
+# again for them -- the rest of the second read is unaffected. 2: a wide
+# window averages each column's span instead of sampling one point of it,
+# which at +-50 ms showed a 20 ms spike as a single column. 3: the
+# filtered snapshots.
+IMG_VERSION = 3
+
+
+def _filter_label(fid):
+    band = dict(FILTERS)[fid]
+    return "notch only" if band is None else "%g-%g Hz" % band
+
 
 FAMILIES = [
     {"id": "context500", "name": "Context, +-500 ms",
@@ -134,6 +184,19 @@ FAMILIES = [
     {"id": "shape", "name": "Spike shape",
      "blurb": "Rise and decay times, ringing, zero crossings and where its "
               "power sits in frequency."},
+] + [
+    {"id": "wimg%d" % w, "name": "Waveform image, +-%d ms" % w,
+     "group": "pictures",
+     "blurb": "The voltage as a picture at the peak Braces' rule found: "
+              "8 contacts either side of the candidate's own peak channel, "
+              "%d ms either side in time, 17 by 13." % w}
+    for w in IMG_WINDOWS_MS
+] + [
+    {"id": "%s_%s" % (s, f), "name": "%s, %s" % (n, _filter_label(f)),
+     "group": "pictures",
+     "blurb": "%s at the peak Braces' rule found, through %s." % (
+         n, _filter_label(f))}
+    for s, n in SNAPS for f, _b in FILTERS
 ]
 
 NAMES = {
@@ -172,6 +235,18 @@ NAMES = {
     "shape": ["rise_ms", "decay_ms", "zero_crossings", "ringing",
               "centroid_hz", "low_over_high"],
 }
+NAMES.update({
+    "wimg%d" % w: ["wi%02d_r%+d_t%02d" % (w, r - IMG_ROWS // 2, t)
+                   for r in range(IMG_ROWS) for t in range(IMG_COLS)]
+    for w in IMG_WINDOWS_MS})
+for _f, _b in FILTERS:
+    NAMES["fwhole_" + _f] = ["fw_%s_d%02d_t%02d" % (_f, r, t)
+                             for r in range(IMG_ROWS) for t in range(IMG_COLS)]
+    NAMES["fthin_" + _f] = ["ft_%s_r%+d_t%02d" % (_f, r - IMG_ROWS // 2, t)
+                            for r in range(IMG_ROWS) for t in range(IMG_COLS)]
+    NAMES["ftrace_" + _f] = ["fr_%s_%+d" % (_f, k)
+                             for k in range(-TRACE_MS, TRACE_MS + 1,
+                                            TRACE_STEP_MS)]
 FAMILY_IDS = [f["id"] for f in FAMILIES]
 
 
@@ -235,12 +310,46 @@ def _row_windows(scale):
     def r(n, lo=1):
         return max(lo, int(round(n * scale)))
     return {"near": r(4), "far": r(12), "lat": r(10),
-            "depth": r(ALIGN_DEPTH, 3)}
+            "depth": r(ALIGN_DEPTH, 3), "img": r(8)}
+
+
+def _wave_image(blk, r, a, half, span):
+    """`blk` rows r-span..r+span, samples a-half..a+half, as 17 by 13.
+
+    Rows past either end of the probe repeat the last one; the picture is
+    resampled to the same size whatever the window, linearly.
+    """
+    nr, w = blk.shape
+    rows = np.clip(r + np.arange(-span, span + 1), 0, nr - 1)
+    return _picture(blk[rows], a, half)
+
+
+def _picture(sub, a, half):
+    """Rows of `sub`, samples a-half..a+half, as IMG_ROWS by IMG_COLS."""
+    w = sub.shape[1]
+    if 2 * half + 1 > IMG_COLS:
+        # Wider than the picture: each column is the mean of its own span
+        # of samples, so nothing between two columns is skipped.
+        edges = np.linspace(a - half, a + half + 1, IMG_COLS + 1)
+        edges = np.clip(np.round(edges).astype(int), 0, w)
+        img = np.stack([sub[:, e0:max(e1, e0 + 1)].mean(axis=1)
+                        for e0, e1 in zip(edges[:-1], edges[1:])], axis=1)
+    else:
+        tt = np.clip(np.linspace(a - half, a + half, IMG_COLS), 0, w - 1)
+        x = np.arange(w)
+        img = np.stack([np.interp(tt, x, sub[q])
+                        for q in range(sub.shape[0])])
+    if img.shape[0] != IMG_ROWS:
+        src = np.arange(img.shape[0])
+        dst = np.linspace(0, img.shape[0] - 1, IMG_ROWS)
+        img = np.stack([np.interp(dst, src, img[:, k])
+                        for k in range(IMG_COLS)], axis=1)
+    return img
 
 
 def read_physio(session, channels, probe, bad, times,
                 report=None, folder=None, job=None, on_span=None,
-                aibeta=None, workers=1, spacing=None):
+                aibeta=None, workers=1, spacing=None, want_filt=False):
     """The second read. Returns {"fam": {id: array}, "ok": bool array}.
 
     `spacing` is the distance between neighbouring rows of `channels` when
@@ -348,6 +457,15 @@ def read_physio(session, channels, probe, bad, times,
         n1 = min(band.shape[1], mua.shape[1], rip.shape[1])
         band, clean, mua, rip = (band[:, :n1], clean[:, :n1], mua[:, :n1],
                                  rip[:, :n1])
+        # The other filters, over the whole stretch, before anything is
+        # cut to a candidate.
+        filt = {}
+        if want_filt:
+            for fid, fb in FILTERS:
+                if fid == "5_100":
+                    continue
+                y = clean if fb is None else incisor._filtered(clean, fs, fb)
+                filt[fid] = braces.repair(y, channels, badd)[rows]
         band = braces.repair(band, channels, badd)[rows]
         clean = braces.repair(clean, channels, badd)[rows]
         mua = braces.repair(mua, channels, badd)[rows]
@@ -394,12 +512,14 @@ def read_physio(session, channels, probe, bad, times,
                                  cm[i0 - Ck:i0 + Ck + 1],
                                  spr[i0 - Ck:i0 + Ck + 1]]).astype(np.float32),
                 "state": pw,
+                "filt": {fid: v[:, i0 - Bk:i0 + Bk + 1].astype(np.float32)
+                         for fid, v in filt.items()},
                 "clip": [float(zmax.max()), float(np.max(steps)),
                          float((dseg[good] == 0).mean()) if dseg.shape[1]
                          else np.nan,
                          float((zmax > 20).mean())],
             }
-        del X, dX, x, clean, band, mua, rip
+        del X, dX, x, clean, band, mua, rip, filt
         return out_
 
     if workers > 1:
@@ -637,6 +757,11 @@ def read_physio(session, channels, probe, bad, times,
             fam["motion"][i, 3] = float((fin < sp_arr[j]).mean())
     for k in fam:
         fam[k][~np.isfinite(fam[k])] = np.nan
+    if not want_filt:
+        # Left out rather than left empty: a cached read that holds them
+        # all-NaN would be taken by a later run as having read them.
+        for k in FILT_IDS:
+            fam.pop(k, None)
     return {"fam": fam, "ok": ok, "missed": int(n_all - ok.sum()),
             "has_video": bool(nvt[0] is not None),
             "n_markers": int(nev_us.size)}
@@ -786,6 +911,11 @@ def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam,
         ct = traces[j][a - A + 1:a + A + 1:step]
         ct = ct / (float(ct.max()) + 1e-9)
         sharp = (2 * tr[a] - tr[a - 2] - tr[a + 2]) / abs(amp)
+        _filtered_snapshots(st, blk, r, a, fs, spec, RW, fam, i)
+        for w_ms in IMG_WINDOWS_MS:
+            half = int(round(w_ms / 1000.0 * fs))
+            fam["wimg%d" % w_ms][i] = (
+                _wave_image(blk, r, a, half, RW["img"]) / abs(amp)).ravel()
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
@@ -853,6 +983,7 @@ def save(path, got):
     tmp = path + ".part.npz"
     np.savez_compressed(
         tmp, ok=got["ok"], pv=np.array([PHYS_VERSION]),
+        iv=np.array([IMG_VERSION]),
         meta=np.array([str({k: got[k] for k in ("missed", "has_video",
                                                 "n_markers")})]),
         **{"fam_" + k: v for k, v in got["fam"].items()})
@@ -867,6 +998,59 @@ def load(path):
             if int(z["pv"][0]) != PHYS_VERSION:
                 return None
             return {"ok": z["ok"].astype(bool),
-                    "fam": {k: z["fam_" + k] for k in FAMILY_IDS}}
+                    "fam": {k: z["fam_" + k] for k in FAMILY_IDS
+                            if "fam_" + k in z.files}}
     except Exception:                                    # noqa: BLE001
         return None
+
+
+def _unit(x):
+    m = float(np.nanmax(np.abs(x))) if np.size(x) else 0.0
+    return x / m if m > 0 else x
+
+
+def _filtered_snapshots(st, blk, r, a, fs, spec, RW, fam, i):
+    """The three snapshots through every filter, at aligned peak `a`."""
+    if not st.get("filt"):
+        return              # not asked for: see the end of read_physio
+    w = blk.shape[1]
+    full_half = int(round(50 / 1000.0 * fs))
+    thin_half = int(round(THIN_MS / 1000.0 * fs))
+    tt = np.clip(np.arange(a - int(round(TRACE_MS / 1000.0 * fs)),
+                           a + int(round(TRACE_MS / 1000.0 * fs)) + 1,
+                           max(1, int(round(TRACE_STEP_MS / 1000.0 * fs)))),
+                 0, w - 1)
+    for fid, _fb in FILTERS:
+        if fid == "5_100":
+            b = blk
+        elif fid in (st.get("filt") or {}):
+            b = st["filt"][fid].astype(np.float64)
+        else:
+            continue
+        if fid == "notch":
+            b = b - b.mean(axis=1, keepdims=True)
+        cs = braces.csd_of(b, spec)
+        fam["fwhole_" + fid][i] = _unit(_picture(cs, a, full_half)).ravel()
+        fam["fthin_" + fid][i] = _unit(
+            _wave_image(b, r, a, thin_half, RW["img"])).ravel()
+        fam["ftrace_" + fid][i] = _unit(b[r, tt])
+
+
+def has(path, fams):
+    """Whether the second read cached at `path` holds every one of `fams`.
+
+    A read made before an input existed holds everything it had then and
+    nothing since: a run asking for a newer input reads that recording
+    again, and one that does not uses the file as it is."""
+    if not os.path.exists(path):
+        return False
+    try:
+        with np.load(path, allow_pickle=False) as z:
+            if int(z["pv"][0]) != PHYS_VERSION:
+                return False
+            if any(f in IMG_IDS or f in FILT_IDS for f in fams) and (
+                    "iv" not in z.files or int(z["iv"][0]) != IMG_VERSION):
+                return False
+            return all("fam_" + f in z.files for f in fams)
+    except Exception:                                    # noqa: BLE001
+        return False

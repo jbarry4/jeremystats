@@ -57,6 +57,10 @@ def main():
     check("J3: AB is Click → Low tone, CD is Noise → High tone, Cue 2 of CD is D (High tone)",
           RI.cue_type_of_pair(3, "AB") == "Click_LowTone" and RI.cue_type_of_pair(3, "CD") == "Noise_HighTone"
           and RI.seat(3, "Noise_HighTone", "cue2") == {"seats": ["D"], "sounds": ["High tone"]})
+    check("a presentation is named by its seats first, the sounds after",
+          RI.seat_say(3, "Click_LowTone") == "AB · A → B (Click → Low tone)"
+          and RI.seat_say(3, "Noise_HighTone") == "CD · C → D (Noise → High tone)"
+          and RI.seat_say(3, "Nothing_Here") is None, RI.seat_say(3, "Click_LowTone"))
     try:
         from backend import monolith as MO
         MO.configure(os.path.join(APP, "GUI_logs"))

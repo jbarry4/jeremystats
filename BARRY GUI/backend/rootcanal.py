@@ -127,9 +127,13 @@ somebody actually looked at.
 """
 from __future__ import annotations
 
+import collections
 import hashlib
 import json
 import os
+import threading
+import warnings
+from concurrent.futures import ThreadPoolExecutor
 from fractions import Fraction
 
 import numpy as np
@@ -337,7 +341,7 @@ class Params:
     FIT_KEYS = ("filt", "mains_out", "lo_hz", "hi_hz", "order", "win_ms",
                 "band_lo", "band_hi", "cross_ms", "flank_ms", "seed", "n_init",
                 "flips", "centres", "k", "cluster_calls", "margin",
-                "complete_only", "drawn", "retry")
+                "complete_only", "drawn", "retry", "cluster_names")
 
     def __init__(self, **kw):
         g = kw.get
@@ -459,6 +463,34 @@ class Params:
         except (TypeError, ValueError):
             raise RootCanalError(
                 "The hand-flipped events have to be a list of event numbers.")
+        # CLUSTER NAMES (2026-10-06): {"<rank>": {"name", "type"}}, from the
+        # lab's list or typed. The type is DS or IED and IS the cluster's
+        # call -- a name says what a cluster is -- so a named cluster is
+        # called by its name, over the rule and a hand relabel. A fit param,
+        # so a named result rebuilds from params alone.
+        nm = g("cluster_names") or {}
+        if not isinstance(nm, dict):
+            raise RootCanalError(
+                "Cluster names have to be {cluster: {name, type}}.")
+        self.cluster_names = {}
+        for key, v in nm.items():
+            try:
+                r = int(key)
+            except (TypeError, ValueError):
+                raise RootCanalError("A cluster is named by its number, not "
+                                     "%r." % (key,))
+            v = v or {}
+            name = str(v.get("name") or "").strip()
+            typ = str(v.get("type") or "").strip().lower()
+            if not name:
+                continue
+            if len(name) > 60:
+                raise RootCanalError("A cluster name is a name: keep it under "
+                                     "60 characters, not %d." % len(name))
+            if typ not in ("ds", "ied"):
+                raise RootCanalError("A cluster name is a DS name or an IED "
+                                     "name, not %r." % (typ,))
+            self.cluster_names[str(r)] = {"name": name, "type": typ}
         # EVENTS WHOSE HALF-WIDTH WAS NOT FOUND, SEARCHED AGAIN ON REQUEST.
         # Each one is measured once more with the widest search the stored
         # snippet allows (`retry_cross_ms`) -- only those events, so the
@@ -1094,13 +1126,78 @@ def _bad_rows(got, extra=()):
     return np.array([int(n) in want for n in got["nums"]], dtype=bool)
 
 
+def _row_median(y):
+    """`np.nanmedian(y, axis=-1)`, the same numbers, about three times
+    faster.
+
+    nanmedian walks every row in Python (`apply_along_axis`) once any NaN
+    could be present, and that was most of a fit's time with no filter:
+    1.7 s of 1.9 s on a 486-event read (measured 2026-10-06). A finite row's
+    nanmedian IS its median, so every row is taken at once and only a row
+    with a NaN in it goes the slow way.
+    """
+    base = np.median(y, axis=-1)
+    gap = np.isnan(base)
+    if gap.any():
+        flat = y.reshape(-1, y.shape[-1])
+        fb = base.reshape(-1)
+        idx = np.flatnonzero(gap.reshape(-1))
+        # An all-NaN row (a contact the read could not take) stays NaN,
+        # without nanmedian's warning about it.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            fb[idx] = np.nanmedian(flat[idx], axis=-1)
+        base = fb.reshape(base.shape)
+    return base
+
+
+# Filtering the stack is the expensive half of a fit: every contact of
+# every event, zero-phase with a snippet-long extension. scipy's sosfilt
+# lets go of the interpreter while it runs, so a few chunks at once go
+# about twice as fast, with the same numbers to the bit. Bounded: at most
+# FILTER_AHEAD chunks of FILTER_STEP events are held at once, so the
+# float64 working copy stays tens of megabytes, as it was.
+FILTER_STEP = 24
+FILTER_WORKERS = min(4, os.cpu_count() or 1)
+FILTER_AHEAD = FILTER_WORKERS + 1
+
+
+def _filtered_chunks(snip, p, fs, bad, c, h):
+    """(first event, filtered chunk, pick) for every FILTER_STEP events, in
+    order, filtered a few at a time on threads."""
+    n_ev = snip.shape[0]
+    starts = iter(range(0, n_ev, FILTER_STEP))
+
+    def work(s0):
+        yf = _filter(snip[s0:s0 + FILTER_STEP], p, fs)
+        return s0, yf, _pick(yf, bad, c, h)
+
+    if FILTER_WORKERS <= 1:
+        for s0 in starts:
+            yield work(s0)
+        return
+    with ThreadPoolExecutor(FILTER_WORKERS,
+                            thread_name_prefix="rc-filter") as ex:
+        ahead = collections.deque()
+        for s0 in starts:
+            ahead.append(ex.submit(work, s0))
+            if len(ahead) >= FILTER_AHEAD:
+                break
+        while ahead:
+            done = ahead.popleft().result()
+            nxt = next(starts, None)
+            if nxt is not None:
+                ahead.append(ex.submit(work, nxt))
+            yield done
+
+
 def _pick(yf, bad_rows, c, h):
     """v4's `winning_contact`: the largest |x - median| inside +-h samples.
 
     `yf` is [.., ch, T]. The median is over the whole snippet, per contact,
     which is v4's `st._base` over its whole cached view.
     """
-    base = np.nanmedian(yf, axis=-1)
+    base = _row_median(yf)
     dev = np.abs(yf[..., c - h:c + h + 1] - base[..., None]).max(axis=-1)
     dev = np.where(np.isfinite(dev), dev, -np.inf)
     dev[..., bad_rows] = -np.inf
@@ -1136,10 +1233,7 @@ def _measure(got, p):
     # not by looking at where the crossing landed -- so "wide" means exactly
     # "v1 would have called this unresolved".
     wide = np.zeros(n_ev, dtype=bool)
-    step = 24
-    for s0 in range(0, n_ev, step):
-        yf = _filter(snip[s0:s0 + step], p, fs)
-        dev = _pick(yf, bad, c, h)
+    for s0, yf, dev in _filtered_chunks(snip, p, fs, bad, c, h):
         for k in range(yf.shape[0]):
             i = s0 + k
             if not np.isfinite(dev[k]).any() or dev[k].max() == -np.inf:
@@ -1162,11 +1256,57 @@ def _measure(got, p):
     # A handful of filters are worth remembering and no more: each is a few
     # hundred numbers, but a session of somebody sweeping the corner would
     # otherwise grow without bound.
+    # Four: the three presets `warm_measures` fills in, and one custom.
     old = [k for k in memo if k and k[0] == "measure"]
-    for k in old[:-3]:
+    for k in old[:-(MEASURES_KEPT - 1)]:
         memo.pop(k, None)
     memo[key] = out
     return out
+
+
+# THE OTHER PRESETS, MEASURED BEFORE THEY ARE ASKED FOR. A filter is a
+# click that refits at once, and a filter this read has not been measured
+# on costs about two seconds of refiltering every contact (measured
+# 2026-10-06 on a 486-event read; k, a relabel or the 3-axes switch cost
+# under 0.1 s). So once a read has answered its first fit, the presets it
+# has not been measured on are measured in the background, one at a time,
+# at the same window and search -- and pressing DS or None finds them done.
+MEASURES_KEPT = 4
+
+
+def warm_measures(got, p):
+    """Measure `got` on the preset filters it lacks, in a background thread.
+
+    One warming per read at a time. Nothing is returned and nothing is
+    written anywhere but the read's own memo, which is cache.
+    """
+    if got.get("_warming"):
+        return None
+    want = []
+    for f in ("lfp", "ds", "none"):
+        if f == p.filt:
+            continue
+        q = Params(**dict(p.fit_params(), filt=f))
+        key = ("measure", q.filt, q.mains_out, q.lo_hz, q.hi_hz, q.order,
+               q.win_ms, q.cross_ms, tuple(q.flank_ms))
+        if key not in got.get("_memo", {}):
+            want.append(q)
+    if not want:
+        return None
+    got["_warming"] = True
+
+    def run():
+        try:
+            for q in want:
+                _measure(got, q)
+        except Exception:                                # noqa: BLE001
+            pass                    # a warm-up that fails is a cold click
+        finally:
+            got["_warming"] = False
+
+    th = threading.Thread(target=run, daemon=True, name="rc-warm-measures")
+    th.start()
+    return th
 
 
 def measure(got, p):
@@ -1291,7 +1431,8 @@ def fit(got, p, margin=None):
                         cluster_calls=p.cluster_calls, margin=margin,
                         margin_mode=(p.margin or {}).get("mode", "fixed"),
                         complete_only=p.complete_only,
-                        drawn=[(g_["events"], g_["call"]) for g_ in p.drawn])
+                        drawn=[(g_["events"], g_["call"]) for g_ in p.drawn],
+                        cluster_names=p.cluster_names)
     use, part, placed = core["use"], core["part"], core["placed"]
     n_used, mu, sd, Z = core["n_used"], core["mu"], core["sd"], core["Z"]
     C, raw_c, lab = core["C"], core["raw_c"], core["lab"]
@@ -1352,6 +1493,10 @@ def fit(got, p, margin=None):
             "unresolved": bool((m["detail"][i] or {}).get("unresolved")),
             # Searched again wider on request: True found, False not.
             "retried": m["retried"].get(i),
+            # Its cluster's name, when the cluster has one.
+            "name": ((core.get("names") or [None])[cl]
+                     if (cl is not None and cl < len(core.get("names") or []))
+                     else None),
         })
 
     cls_of = {r: core["calls"][r]
@@ -1483,7 +1628,8 @@ def measure_of(p):
 
 def cluster_core(X, k=K_DEFAULT, seed=SEED, n_init=N_INIT, centres=None,
                  cluster_calls=None, margin=None, margin_mode="fixed",
-                 what="events", complete_only=False, drawn=None):
+                 what="events", complete_only=False, drawn=None,
+                 cluster_names=None):
     """One clustering, for Single and for Pooled alike.
 
     `X` is [n x 3] raw amp, hw, hf, NaN where unmeasured. Returns the scale,
@@ -1619,7 +1765,19 @@ def cluster_core(X, k=K_DEFAULT, seed=SEED, n_init=N_INIT, centres=None,
         C = np.vstack([C, np.asarray(Cd, dtype=float)])
         raw_c = np.vstack([raw_c, np.asarray(Rd, dtype=float)])
         placed = placed | held
+    # NAMES, last: a named cluster's call is its name's type. A drawn one
+    # keeps saying it was drawn; any other is called by its name.
+    names = [None] * len(calls)
+    for key, v in (cluster_names or {}).items():
+        r = int(key)
+        if 0 <= r < len(calls) and (v or {}).get("name"):
+            names[r] = v["name"]
+            if v.get("type") in ("ds", "ied"):
+                calls[r] = v["type"]
+                if by[r] != "drawn":
+                    by[r] = "name"
     return {"n": n, "have": have, "n_axes": n_axes, "use": use,
+            "names": names,
             "n_drawn": len(drawn), "held": held,
             "part": part, "placed": placed, "n_used": n_used,
             "excluded": excluded,
@@ -1631,12 +1789,256 @@ def cluster_core(X, k=K_DEFAULT, seed=SEED, n_init=N_INIT, centres=None,
 def clusters_out(core):
     """The `clusters` list a fit hands back: one row per rank."""
     lab, C, raw_c = core["lab"], core["C"], core["raw_c"]
+    nm = core.get("names") or []
     return [{"rank": r, "call": core["calls"][r], "call_by": core["call_by"][r],
+             "name": nm[r] if r < len(nm) else None,
              "n": int((lab == r).sum()),
              "drawn": core["call_by"][r] == "drawn",
              "centre_raw": [_f(v) for v in raw_c[r]],
              "centre_z": [_f(v) for v in C[r]]}
             for r in range(core["k"] + core.get("n_drawn", 0))]
+
+
+# ==========================================================================
+# A SINGLE, KEPT: a fit as a version's payload, and back again
+# ==========================================================================
+# The numbers travel; the read does not. A saved Single is every event's
+# three numbers and its call, column by column, rounded to what the
+# measurement can mean (4 decimals of a microvolt, a millisecond or a dB;
+# 6 of a second), which gzips to about 17 bytes an event -- a few KB for a
+# set, so a version costs the shared database next to nothing (memory: big
+# payloads took it down). Everything else the panel draws is rebuilt from
+# them: the z values from the scale kept beside them, the centres and the
+# clusters as they were.
+SINGLE_SCHEMA = "rootcanal.single/1"
+SINGLE_DP = 4
+_POL = {"max": 1, "min": -1}
+_POL_BACK = {1: "max", -1: "min"}
+
+
+def _rd(v, dp=SINGLE_DP):
+    v = _f(v)
+    return None if v is None else round(float(v), dp)
+
+
+def single_payload(res, meta=None):
+    """One fit as a Single version's payload.
+
+    `res` is what `fit` returns (with `params` as the route sends them);
+    `meta` is who and where: entry_id, gid, session_label, project, mouse,
+    mouse_key, read, read_on, from_version, from (what made this version:
+    Single, or a pool or a double pool it was propagated from).
+    """
+    ev = res["events"]
+
+    def col(fn):
+        return [fn(e) for e in ev]
+    cols = {
+        "i": col(lambda e: int(e["i"])),
+        "t": col(lambda e: round(float(e["t"]), 6)),
+        "amp": col(lambda e: _rd(e["amp_uV"])),
+        "hw": col(lambda e: _rd(e["hw_ms"])),
+        "hf": col(lambda e: _rd(e["hf_db"])),
+        "cluster": col(lambda e: e["cluster"]),
+        "cls": col(lambda e: e["cls"]),
+        "axes": col(lambda e: e["axes"]),
+        "flags": col(lambda e: (1 if e.get("partial") else 0)
+                     | (2 if e.get("wide") else 0)
+                     | (4 if e.get("excluded") else 0)
+                     | (8 if e.get("flipped") else 0)
+                     | (16 if e.get("unresolved") else 0)),
+        "retried": col(lambda e: (None if e.get("retried") is None
+                                  else int(bool(e["retried"])))),
+        "row": col(lambda e: e.get("contact_row")),
+        "contact": col(lambda e: e.get("contact")),
+        "hf_contact": col(lambda e: e.get("hf_contact")),
+        "pol": col(lambda e: _POL.get(e.get("polarity"))),
+    }
+    fitp = {k: res["params"].get(k) for k in Params.FIT_KEYS
+            if k in (res.get("params") or {})}
+    out = {
+        "schema": SINGLE_SCHEMA,
+        "n": len(ev), "k": res["k"],
+        "params": dict(res.get("params") or {}),
+        "measure": measure_of(Params(**fitp)),
+        "clusters": res.get("clusters") or [],
+        "centres": res.get("centres") or [],
+        "scale": res.get("scale") or {},
+        "axes": res.get("axes") or [],
+        "rule": res.get("rule"),
+        "counts": res.get("counts") or {},
+        "retry_cross_ms": res.get("retry_cross_ms"),
+        "bad": res.get("bad") or {},
+        "missed": res.get("missed") or [],
+        "cols": cols,
+    }
+    out.update(meta or {})
+    out["rows_digest"] = _single_digest(out)
+    return out
+
+
+def single_rows(payload):
+    """A saved Single's events as pool rows -- what `rootcanalpool.fit_pool`
+    takes from a member -- with no read. Each carries its cluster's name."""
+    c = payload.get("cols") or {}
+    names = {cl.get("rank"): cl.get("name")
+             for cl in payload.get("clusters") or []}
+    out = []
+    for j in range(len(c.get("i") or [])):
+        fl = int((c.get("flags") or [0])[j] or 0) if c.get("flags") else 0
+        out.append({"i": int(c["i"][j]), "t": float(c["t"][j]),
+                    "amp_uV": c["amp"][j], "hw_ms": c["hw"][j],
+                    "hf_db": c["hf"][j], "cls": c["cls"][j],
+                    "flipped": bool(fl & 8), "wide": bool(fl & 2),
+                    "row": c["row"][j],
+                    "pol": _POL_BACK.get(c["pol"][j]),
+                    "name": names.get(c["cluster"][j])})
+    return out
+
+
+def _single_digest(payload):
+    """The rows a saved Single holds, as a name -- what a pool pins it by."""
+    rows = single_rows(payload)
+    blob = json.dumps([[r["i"], r["t"], r["amp_uV"], r["hw_ms"], r["hf_db"],
+                        r["cls"]] for r in rows], separators=(",", ":"))
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:12]
+
+
+def single_fit_view(payload):
+    """A saved Single as the Single panel's `fit`: the events with their z
+    values (from the scale kept with them), centres, clusters, rule and
+    counts. What opens a version where its read is not."""
+    c = payload.get("cols") or {}
+    sc = payload.get("scale") or {}
+    names = {cl.get("rank"): cl.get("name")
+             for cl in payload.get("clusters") or []}
+    mu = [float(v) for v in (sc.get("mean") or [0, 0, 0])]
+    sd = [float(v) or 1.0 for v in (sc.get("sd") or [1, 1, 1])]
+    events = []
+    for j in range(len(c.get("i") or [])):
+        x = [c["amp"][j], c["hw"][j], c["hf"][j]]
+        fl = int(c["flags"][j] or 0)
+        placed = c["cluster"][j] is not None
+        events.append({
+            "i": int(c["i"][j]), "t": float(c["t"][j]),
+            "amp_uV": x[0], "hw_ms": x[1], "hf_db": x[2],
+            "z": ([None if v is None else (float(v) - mu[a]) / sd[a]
+                   for a, v in enumerate(x)] if placed else None),
+            "cluster": c["cluster"][j], "cls": c["cls"][j],
+            "flipped": bool(fl & 8), "axes": c["axes"][j],
+            "partial": bool(fl & 1), "wide": bool(fl & 2),
+            "excluded": bool(fl & 4), "unresolved": bool(fl & 16),
+            "missing": [AXES[a] for a in range(3) if x[a] is None],
+            "contact": c["contact"][j], "contact_row": c["row"][j],
+            "polarity": _POL_BACK.get(c["pol"][j]),
+            "hf_contact": c["hf_contact"][j],
+            "retried": (None if c["retried"][j] is None
+                        else bool(c["retried"][j])),
+            "name": names.get(c["cluster"][j]),
+        })
+    n_placed = sum(1 for e in events if e["cluster"] is not None)
+    return {
+        "n": payload.get("n", len(events)),
+        "n_used": sum(1 for e in events if e["cluster"] is not None
+                      and not e["partial"]),
+        "n_placed": n_placed,
+        "axes": payload.get("axes") or [],
+        "events": events,
+        "centres": payload.get("centres") or [],
+        "k": payload.get("k"),
+        "clusters": payload.get("clusters") or [],
+        "rule": payload.get("rule"),
+        "counts": payload.get("counts") or {},
+        "scale": sc,
+        "bad": payload.get("bad") or {},
+        "missed": payload.get("missed") or [],
+        "params": payload.get("params") or {},
+        "retry_cross_ms": payload.get("retry_cross_ms"),
+        "flips_ignored": [],
+        "manual_centres": False,
+        "k_from_margin": False,
+        # The cluster tests' answer, when the version was saved with one.
+        "stats": payload.get("stats"),
+    }
+
+
+def fit_rows(payload, p, margin=None):
+    """`fit`, on a saved Single's numbers instead of its read.
+
+    For what does not measure: a margin applied, k, names, relabels -- so a
+    version can be re-clustered (a pool's identity propagated to it, say)
+    on a machine its read never reached. The three numbers are the saved
+    ones; `p` must measure the way they were measured, which the caller
+    checks. Returns what `fit` returns, as far as stored numbers allow.
+    """
+    c = payload.get("cols") or {}
+    n = len(c.get("i") or [])
+    X = np.array([[np.nan if c["amp"][j] is None else c["amp"][j],
+                   np.nan if c["hw"][j] is None else c["hw"][j],
+                   np.nan if c["hf"][j] is None else c["hf"][j]]
+                  for j in range(n)], dtype=float).reshape(-1, 3)
+    core = cluster_core(X, k=p.k, seed=p.seed, n_init=p.n_init,
+                        centres=(None if margin else p.centres),
+                        cluster_calls=p.cluster_calls, margin=margin,
+                        margin_mode=(p.margin or {}).get("mode", "fixed"),
+                        complete_only=p.complete_only,
+                        drawn=[(g_["events"], g_["call"]) for g_ in p.drawn],
+                        cluster_names=p.cluster_names)
+    placed, part, lab, Z = core["placed"], core["part"], core["lab"], core["Z"]
+    names = core.get("names") or []
+    counts = {"ds": 0, "ied": 0, "unmeasured": 0, "partial": 0, "wide": 0,
+              "excluded": 0}
+    events = []
+    for j in range(n):
+        fl = int((c.get("flags") or [0] * n)[j] or 0)
+        cl = int(lab[j]) if placed[j] else None
+        cls = core["calls"][cl] if cl is not None else None
+        if cls:
+            counts[cls] += 1
+        else:
+            counts["excluded" if core["excluded"][j] else "unmeasured"] += 1
+        if part[j]:
+            counts["partial"] += 1
+        if fl & 2:
+            counts["wide"] += 1
+        events.append({
+            "i": int(c["i"][j]), "t": float(c["t"][j]),
+            "amp_uV": c["amp"][j], "hw_ms": c["hw"][j], "hf_db": c["hf"][j],
+            "z": ([_f(v) for v in Z[j]] if placed[j] else None),
+            "cluster": cl, "cls": cls, "flipped": False,
+            "axes": int(np.isfinite(X[j]).sum()) if placed[j] else None,
+            "partial": bool(part[j]), "wide": bool(fl & 2),
+            "excluded": bool(core["excluded"][j]),
+            "unresolved": bool(fl & 16),
+            "retried": (None if c["retried"][j] is None
+                        else bool(c["retried"][j])),
+            "contact_row": c["row"][j], "contact": c["contact"][j],
+            "hf_contact": c["hf_contact"][j],
+            "polarity": _POL_BACK.get(c["pol"][j]),
+            "name": names[cl] if cl is not None and cl < len(names) else None,
+        })
+    general = k_sentence(core, p.band_label()) or (
+        "Clustered from the saved numbers")
+    rule = "%s (%d DS, %d IED)." % (general.rstrip("."), counts["ds"],
+                                    counts["ied"])
+    return {
+        "n": n, "n_used": int(core["n_used"]), "n_placed": int(placed.sum()),
+        "axes": payload.get("axes") or [],
+        "events": events,
+        "centres": [{"z": [_f(v) for v in core["C"][r]],
+                     "raw": [_f(v) for v in core["raw_c"][r]],
+                     "cls": core["calls"][r], "drawn": r >= core["k"],
+                     "n": int((lab == r).sum())}
+                    for r in range(core["k"] + core["n_drawn"])],
+        "k": core["k"],
+        "clusters": clusters_out(core),
+        "rule": rule, "counts": counts,
+        "scale": {"mean": [float(v) for v in core["mu"]],
+                  "sd": [float(v) for v in core["sd"]]},
+        "bad": payload.get("bad") or {}, "missed": payload.get("missed") or [],
+        "retry_cross_ms": payload.get("retry_cross_ms"),
+        "params": dict(payload.get("params") or {}, **p.fit_params()),
+    }
 
 
 def k_sentence(core, band_label):

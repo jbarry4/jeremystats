@@ -133,8 +133,13 @@ BARRY.rootcanal = (function () {
     cluster_calls: {},
     /* A saved margin to apply: { artifact_id, version, mode }. */
     margin: null,
+    /* A saved border to classify by: { artifact_id, version, grace }. */
+    border: null,
     /* Clusters drawn by hand with the lasso: [{ events: [i...], call }]. */
     drawn: [],
+    /* Names given to clusters: {"<rank>": { name, type }} -- the type is the
+       cluster's call. From the lab's list or typed (2026-10-06). */
+    cluster_names: {},
     /* Events with no half-width, searched again with the widest search the
        read allows -- on request, one or all. A fit param. */
     retry: [],
@@ -169,6 +174,11 @@ BARRY.rootcanal = (function () {
   let margins = null;
   let marginsErr = null;
   let marginErr = null;
+  /* Saved borders, the same way (2026-10-06), and Single's last refusal. */
+  let borders = null;
+  let bordersErr = null;
+  let bordersLoading = false;
+  let borderErr = null;
   /* Single's dots coloured by DS / IED call, or by cluster. */
   let singleColour = 'call';
   /* AVERAGES AND THE LASSO. `avg` is Single's average on show ({ label,
@@ -177,6 +187,22 @@ BARRY.rootcanal = (function () {
      (scene ids), and `lassoMode` makes a plain drag draw rather than turn. */
   let avg = null;
   let avgGen = 0;
+  /* SAVED VERSIONS OF THIS SET (2026-10-06). `single` is the set's
+     `rootcanal_single` artifact ({ artifact_id, versions }) or null;
+     `viewing` the version the picture is ({ artifact_id, v, nickname });
+     `savedOnly` set when the picture is drawn from a version's numbers
+     alone because its read is on another machine ({ read_on }), which
+     makes the settings read-only until the set is read here; `cleanSig`
+     the settings as last saved, opened or first fitted -- the picture is
+     "changed" when they differ. */
+  let single = null;
+  /* Banked results of this set not kept as a version yet (banked before
+     Bank kept one): offered as "import as a version". */
+  let singleBanked = [];
+  let singleGen = 0;
+  let viewing = null;
+  let savedOnly = null;
+  let cleanSig = null;
   let lasso = null;
   let lassoMode = false;
   let lassoSel = [];
@@ -245,12 +271,31 @@ BARRY.rootcanal = (function () {
     /* The pool's own calls by hand and margin. Its settings -- measurement,
        k, complete events -- are Single's own (`q`): one set for both views. */
     cluster_calls: {}, margin: null, marginErr: null,
+    /* A saved border to classify the pool by, and its last refusal. */
+    border: null, borderErr: null,
+    /* The deep dive (steps 7-10), for the request it was gathered from. */
+    deep: null,
     /* Pooled's own average on show, dots drawn round, and drawn clusters
        as [member key, event number] pairs. */
     avg: null, lassoSel: [], drawn: [],
     /* The opened pool's members as it saved them: the rows for the ones
        this machine does not offer. */
     savedMembers: [],
+    /* Names given to the pool's own clusters: {"<rank>": {name, type}}. */
+    cluster_names: {},
+    /* What the member list shows (2026-10-06): a search, and chips per
+       category -- each category a set of values, OR within one category
+       and AND across them -- and the name the pool is limited to, if any. */
+    filt: { q: '', group: [], subgroup: [], condition: [], project: [],
+            kind: [] },
+    name: null,
+    /* WHICH LEVEL (2026-10-06): pooling recordings, or pooling saved pools
+       (a pool of pools). At the second level `sel` holds the pools, as
+       "P:<artifact>:<version>". */
+    level: 'pool',
+    dshelf: null, dshelfErr: null,
+    /* Every event of this pool is DS -- the controls (step 7). */
+    all_ds: false,
     fit: null, fitting: false, gen: 0, lastBody: null, dirty: false,
     evs: null, evsFor: null,
     picked: null, evData: null, evFor: null, evGen: 0, evBusy: false,
@@ -347,13 +392,25 @@ BARRY.rootcanal = (function () {
       (v) => String(versionRef(v)) === String(ref)) || null;
   }
 
+  /* Leaving a set whose picture has changed since it was saved, opened or
+     first fitted asks "save as vN?" first -- yes by default (2026-10-06). */
   function pickSet(id) {
+    if (id !== q.entry && isDirty()) {
+      nudgeThen(() => pickSetNow(id));
+      return;
+    }
+    pickSetNow(id);
+  }
+
+  function pickSetNow(id) {
     q.entry = id;
     const s = setOf(id);
     q.gid = s ? s.gid : null;
     const v = defaultVersion(s);
     q.from_version = v ? versionRef(v) : null;
     forget();
+    single = null;
+    loadSingle();
     render();
   }
 
@@ -364,8 +421,12 @@ BARRY.rootcanal = (function () {
     q.centres = null;
     q.drawn = [];
     q.retry = [];
+    q.cluster_names = {};
     avg = null;
     lassoSel = [];
+    viewing = null;
+    savedOnly = null;
+    cleanSig = null;
     fit = null;
     picked = null;
     evData = null;
@@ -455,8 +516,10 @@ BARRY.rootcanal = (function () {
       complete_only: !!q.complete_only,
       cluster_calls: Object.assign({}, q.cluster_calls),
       margin: q.margin ? Object.assign({}, q.margin) : null,
+      border: q.border ? Object.assign({}, q.border) : null,
       drawn: q.drawn.map((g) => ({ events: g.events.slice(), call: g.call })),
       retry: q.retry.slice(),
+      cluster_names: JSON.parse(JSON.stringify(q.cluster_names || {})),
       flips: q.flips.slice(),
       centres: q.centres ? q.centres.map((c) => c.slice()) : null,
     }, extra || {});
@@ -481,6 +544,13 @@ BARRY.rootcanal = (function () {
          the margin card, the margin is taken off, and the set is fitted as
          it was -- the picture should not vanish because a boundary from
          another measurement did not fit. */
+      if (body.border && /^The border /.test(e.message)) {
+        borderErr = e.message;
+        q.border = null;
+        fitting = false;
+        refit();
+        return;
+      }
       if (body.margin) {
         marginErr = e.message;
         q.margin = null;
@@ -499,6 +569,8 @@ BARRY.rootcanal = (function () {
     fit = got;
     fitting = false;
     live = null;
+    // The settings this set was first fitted with are its clean state.
+    if (cleanSig == null) cleanSig = sigOf(body);
     /* The server's own statement of what it computed, back into the form
        where the form is still asking that. It can round a corner or cap a
        band; the chips then describe the picture rather than the request. */
@@ -529,7 +601,10 @@ BARRY.rootcanal = (function () {
     }
   }, 60);
 
-  function refit() { refitSoon(); }
+  function refit() {
+    if (savedOnly) { refusedSavedOnly(); return; }
+    refitSoon();
+  }
 
   /* Recompute: the typed settings become the question.
 
@@ -593,11 +668,17 @@ BARRY.rootcanal = (function () {
      waiting for Recompute read as the picture not updating. Typed numbers
      still wait, so a half-typed band does not refit. */
   function applyNow(key, v) {
+    if (savedOnly && viewMode !== 'pooled') {
+      refusedSavedOnly();
+      swapTop();
+      return;
+    }
     pend[key] = v;
     const was = q[key];
     q[key] = asParam(key, v);
     if (key === 'k' && Number(was) !== Number(q.k)) {
       q.centres = null; q.cluster_calls = {}; pool.cluster_calls = {};
+      q.cluster_names = {}; pool.cluster_names = {};
     }
     swapTop();
     if (viewMode === 'pooled') {
@@ -618,6 +699,7 @@ BARRY.rootcanal = (function () {
       if (pool.sel.length) runPool(); else render();
       return true;
     }
+    if (savedOnly) { refusedSavedOnly(); return false; }
     if (!pending() || fitting) return false;
     const bad = problems(pend);
     if (bad.length) { toast('Not yet: ' + bad[0] + '.', 'warn', 7000); return false; }
@@ -1077,7 +1159,24 @@ BARRY.rootcanal = (function () {
     if (!cur) return el('div', {});
     const v = versionOf(cur, q.from_version);
     const n = (v && v.n) || cur.n;
+    const vs = ((single && single.versions) || []).slice().reverse();
     return el('div', { class: 'card rc-read' }, [
+      /* Saved versions open from their numbers, here or on any machine:
+         the read is only needed to change their settings or see traces. */
+      singleBanked.length ? el('div', { class: 'chip-row rc-import' },
+                               importButtons()) : null,
+      vs.length ? el('div', { class: 'rc-saved-versions' }, [
+        el('p', { class: 'hint', text: 'Saved versions of this set. Each '
+          + 'opens from its numbers, without a read, on any machine.' }),
+        el('div', { class: 'chip-row' }, vs.map((x) => BARRY.ui.button({
+          kind: 'ghost', size: 'sm', extra: 'rc-open-ver',
+          text: 'Open v' + x.v + ' · ' + (x.nickname || 'no nickname'),
+          title: versionHover(x),
+          onclick: () => openVersion(single.artifact_id, x.v) })).concat([
+          BARRY.syncState ? BARRY.syncState.mark('artifacts',
+                                                 single.artifact_id) : null,
+        ].filter(Boolean))),
+      ]) : null,
       el('p', { class: 'hint', text:
         'Reading takes every event on every contact at 5 kHz: a ±250 ms '
         + 'snippet kept at 2 kHz, and the event and baseline spectra. That '
@@ -1089,7 +1188,315 @@ BARRY.rootcanal = (function () {
           disabled: cur.readable === false || busy,
           onclick: () => startRead() }),
       ]),
+    ].filter(Boolean));
+  }
+
+  /* ==================================================================
+     Saved versions of a Single
+     ================================================================== */
+  const SIG_KEYS = ['filt', 'mains_out', 'lo_hz', 'hi_hz', 'win_ms', 'band_lo',
+                    'band_hi', 'cross_ms', 'k', 'complete_only',
+                    'cluster_calls', 'cluster_names', 'margin', 'drawn',
+                    'retry', 'flips', 'centres'];
+  const SIG_WORDS = { filt: 'the filter', mains_out: 'the mains',
+    lo_hz: 'the filter', hi_hz: 'the filter', win_ms: 'the amplitude window',
+    band_lo: 'the HF band', band_hi: 'the HF band',
+    cross_ms: 'the half-width search', k: 'k',
+    complete_only: 'only events on all 3 axes', cluster_calls: 'the calls',
+    cluster_names: 'the names',
+    margin: 'the margin', drawn: 'the drawn clusters',
+    retry: 'the events searched again', flips: 'the flips',
+    centres: 'the centres' };
+
+  function sigOf(body) {
+    const b = body || fitBody();
+    const keep = {};
+    for (const k of SIG_KEYS) keep[k] = b[k] === undefined ? null : b[k];
+    return JSON.stringify(keep);
+  }
+
+  function isDirty() {
+    return !!(fit && fit.ok && !savedOnly && cleanSig != null
+              && sigOf() !== cleanSig);
+  }
+
+  function changedWords() {
+    let was = {};
+    try { was = JSON.parse(cleanSig || '{}'); } catch (e) { was = {}; }
+    const now = JSON.parse(sigOf());
+    const out = [];
+    for (const k of SIG_KEYS) {
+      if (JSON.stringify(was[k]) !== JSON.stringify(now[k])
+          && out.indexOf(SIG_WORDS[k]) < 0) out.push(SIG_WORDS[k]);
+    }
+    return out.join(', ') || 'the settings';
+  }
+
+  async function loadSingle() {
+    const entry = q.entry;
+    const mine = ++singleGen;
+    if (!entry) { single = null; return; }
+    let got;
+    try {
+      got = await api('/api/rootcanal/singles?entry_id='
+                      + encodeURIComponent(entry));
+    } catch (e) {
+      return;            // no list is no versions; the panel still works
+    }
+    if (mine !== singleGen || q.entry !== entry) return;
+    single = (got.singles || [])[0] || null;
+    singleBanked = got.banked || [];
+    render();
+  }
+
+  /* A banked result kept as the next version: from its read where it is
+     here, from the numbers the bank filed where it is not. */
+  async function importBanked(b) {
+    let rep;
+    try {
+      rep = await apiPost('/api/rootcanal/single/import', {
+        entry_id: q.entry, params_hash: b.params_hash });
+    } catch (e) {
+      toast('It could not be imported: ' + e.message, 'err', 9000);
+      return null;
+    }
+    single = rep.single;
+    singleBanked = singleBanked.filter((x) => x.params_hash !== b.params_hash);
+    toast(rep.confirmed ? 'It was already v' + rep.version + ', so that '
+          + 'version is confirmed.' : 'Kept as v' + rep.version
+          + ' of this set.', rep.confirmed ? 'warn' : 'ok', 8000);
+    BARRY.activity.log('rootcanal.single_import', {
+      artifact: rep.artifact_id, version: rep.version, entry: q.entry });
+    render();
+    return rep;
+  }
+
+  function importButtons() {
+    return singleBanked.map((b) => BARRY.ui.button({ kind: 'mini',
+      extra: 'rc-import-banked',
+      text: 'Keep the result banked as v' + b.ds_version + ' as a version',
+      title: 'Banked ' + String(b.at || '').replace('T', ' ').slice(0, 16)
+        + (b.k ? ' at k = ' + b.k : '') + ': ' + (b.counts.ds || 0) + ' DS, '
+        + (b.counts.ied || 0) + ' IED. Kept '
+        + (b.here ? 'from its read, refitted' : 'from the numbers the bank '
+                    + 'filed (its read is not on this machine)')
+        + ', so it can be pooled and reopened like any version.',
+      onclick: () => importBanked(b) }));
+  }
+
+  function nextVersion() {
+    const vs = (single && single.versions) || [];
+    return vs.length ? Math.max.apply(null, vs.map((x) => x.v)) + 1 : 1;
+  }
+
+  /* What a version is, for its hover: settings, counts, who/when/where. */
+  function versionHover(x) {
+    if (!x) return '';
+    const m = x.measure || {};
+    const ns = x.n_summary || {};
+    const set = ['k' + (x.k != null ? x.k : '?'),
+                 m.filter_label || 'filter not recorded',
+                 m.band_lo != null ? hz(m.band_lo) + '–' + hz(m.band_hi)
+                                     + ' Hz power' : null,
+                 m.win_ms != null ? 'amplitude ±' + hz(m.win_ms) + ' ms' : null,
+                 m.cross_ms != null ? 'half-width search ±' + hz(m.cross_ms)
+                                      + ' ms' : null,
+                 x.complete_only ? 'only events on all 3 axes' : null,
+                 x.retry ? x.retry + ' searched again' : null,
+                 x.margin ? 'a margin applied' : null].filter(Boolean);
+    const cnt = [ns.events != null ? ns.events + ' events' : null,
+                 ns.ds != null ? ns.ds + ' DS' : null,
+                 ns.ied != null ? ns.ied + ' IED' : null,
+                 (ns.names || []).length ? 'names: ' + ns.names.join(', ')
+                                         : null].filter(Boolean);
+    return ['v' + x.v + ' · ' + (x.nickname || 'no nickname'),
+            'Settings: ' + set.join(' · '),
+            'Counts: ' + (cnt.join(' · ') || 'not recorded'),
+            ns.stats ? 'Are the clusters different? ' + verdictWords(ns.stats)
+                       + ' (SigClust)'
+              : (x.k === 2 ? 'Are the clusters different? not tested' : null),
+            'Saved by ' + (x.by || 'someone') + (x.machine ? ' on '
+              + x.machine : '') + (x.at ? ', ' + String(x.at).replace('T', ' ')
+              .slice(0, 16) : '') + (x.app_version ? ' (Jarvis '
+              + x.app_version + ')' : ''),
+            x.confirmed ? 'Confirmed ' + x.confirmed + ' time'
+              + (x.confirmed === 1 ? '' : 's') + ' since' : null,
+            x.note ? 'Note: ' + x.note : null].filter(Boolean).join('\n');
+  }
+
+  /* The picker and Save, beside Bank. */
+  function versionStrip() {
+    const vs = ((single && single.versions) || []).slice().reverse();
+    const cur = viewing && single && viewing.artifact_id === single.artifact_id
+      ? vs.find((x) => x.v === viewing.v) : null;
+    const dirty = isDirty();
+    const out = [];
+    if (vs.length) {
+      out.push(el('select', {
+        class: 'rc-in rc-ver-pick',
+        title: cur ? versionHover(cur) + (dirty ? '\n(changed since)' : '')
+                   : 'Saved versions of this set. Pick one to open it.',
+        onchange: (ev2) => {
+          const v = Number(ev2.target.value);
+          if (!v) return;
+          const go = () => openVersion(single.artifact_id, v);
+          if (isDirty()) nudgeThen(go); else go();
+        },
+      }, [el('option', { value: '', text: cur
+          ? 'v' + cur.v + ' · ' + (cur.nickname || 'no nickname')
+            + (dirty ? ' (changed)' : '')
+          : (dirty ? 'not saved: changed' : 'not saved as a version'),
+          selected: 'selected', disabled: 'disabled' })]
+        .concat(vs.map((x) => el('option', { value: String(x.v),
+          title: versionHover(x),
+          text: 'v' + x.v + ' · ' + (x.nickname || 'no nickname') })))));
+      if (BARRY.syncState) {
+        out.push(BARRY.syncState.mark('artifacts', single.artifact_id));
+      }
+    }
+    for (const b of importButtons()) out.push(b);
+    out.push(BARRY.ui.button({ kind: 'ghost', size: 'sm',
+      text: 'Save as v' + nextVersion() + '…', extra: 'rc-save-ver',
+      disabled: fitting || !fit || !fit.ok || !!savedOnly,
+      title: 'Keep this picture -- every event’s numbers and call, and the '
+           + 'settings that made them -- as a version you can reopen and pool '
+           + 'on any machine. Nothing goes to the Event Bank.',
+      onclick: saveVersionDialog }));
+    return out;
+  }
+
+  function refusedSavedOnly() {
+    toast('This version is drawn from its saved numbers; its read is on '
+          + (savedOnly ? savedOnly.read_on : 'another machine')
+          + '. Read the set here to change its settings.', 'warn', 8000);
+  }
+
+  async function saveVersionDialog() {
+    if (!fit || !fit.ok || fitting || savedOnly) return null;
+    let sug = '';
+    try {
+      sug = (await apiPost('/api/rootcanal/single/suggest', fitBody()))
+        .nickname || '';
+    } catch (e) { /* a name can still be typed */ }
+    const cur = setOf();
+    const nv = nextVersion();
+    const what = el('div', { class: 'rc-ask' }, [
+      el('p', { text: 'Keeps this picture as v' + nv + ' of '
+        + ((cur && (cur.session_label || cur.name)) || 'this set')
+        + ': every event’s three numbers and its call, with the settings '
+        + 'that made them. If nothing has changed since a saved version, '
+        + 'that one is confirmed and no new one is made.' }),
+      el('ul', {}, [
+        el('li', { text: 'A few kilobytes, shared with every machine: it '
+          + 'reopens and pools anywhere, without this recording’s read.' }),
+        el('li', { text: 'Nothing is written to the Event Bank. Bank does '
+          + 'that, and keeps a version of its own.' }),
+      ]),
     ]);
+    let rep = null;
+    return BARRY.ui.bankDialog({
+      kind: 'entry',
+      title: 'Save this as v' + nv,
+      name: sug,
+      what,
+      okText: 'Save as v' + nv,
+      onBank: async ({ name, note }) => {
+        const nick = String(name || '').trim();
+        if (!nick) throw new Error('A version needs a nickname.');
+        rep = await apiPost('/api/rootcanal/single/save',
+                            fitBody({ nickname: nick, note: note || '' }));
+      },
+    }).then((ok) => {
+      if (!ok || !rep) return null;
+      single = rep.single;
+      const row = (single.versions || []).find((x) => x.v === rep.version);
+      viewing = { artifact_id: rep.artifact_id, v: rep.version,
+                  nickname: row ? row.nickname : null };
+      cleanSig = sigOf();
+      toast(rep.confirmed
+        ? 'Nothing has changed since v' + rep.version + ', so that version '
+          + 'is confirmed rather than a new one made.'
+        : 'Saved as v' + rep.version + ' of this set.',
+        rep.confirmed ? 'warn' : 'ok', 8000);
+      BARRY.activity.log('rootcanal.single_save', {
+        artifact: rep.artifact_id, version: rep.version,
+        confirmed: rep.confirmed, entry: q.entry });
+      render();
+      return rep;
+    });
+  }
+
+  /* Open a saved version. Its settings come back into the controls. Where
+     its read is here it is refitted from the read (traces and all); where
+     it is not, it is drawn from its numbers, read-only. */
+  async function openVersion(aid, v) {
+    let got;
+    try {
+      got = await api('/api/rootcanal/single/' + encodeURIComponent(aid)
+                      + '?version=' + encodeURIComponent(v));
+    } catch (e) {
+      toast('That version could not be opened: ' + e.message, 'err', 9000);
+      return null;
+    }
+    const pay = got.payload || {};
+    const pp = pay.params || {};
+    for (const k of PKEYS) {
+      if (pp[k] != null) { q[k] = asParam(k, pp[k]); pend[k] = q[k]; }
+    }
+    q.cluster_calls = Object.assign({}, pp.cluster_calls || {});
+    q.cluster_names = JSON.parse(JSON.stringify(pp.cluster_names || {}));
+    q.margin = pp.margin || null;
+    q.drawn = (pp.drawn || []).map((g) => ({ events: (g.events || []).slice(),
+                                            call: g.call }));
+    q.retry = (pp.retry || []).slice();
+    q.flips = (pp.flips || []).slice();
+    q.centres = pp.centres ? pp.centres.map((c) => c.slice()) : null;
+    if (pay.from_version != null) q.from_version = pay.from_version;
+    viewing = { artifact_id: aid, v: got.version, nickname: got.nickname };
+    avg = null; lassoSel = []; picked = null; evData = null; evKey = null;
+    chooserOpen = false;
+    q.read = pay.read;
+    if (got.here) {
+      savedOnly = null;
+      cleanSig = sigOf();
+      refit();
+    } else {
+      savedOnly = { read_on: pay.read_on || 'another machine' };
+      fit = Object.assign({ ok: true }, got.fit);
+      cleanSig = sigOf();
+      render();
+    }
+    BARRY.activity.log('rootcanal.single_open', { artifact: aid,
+                                                  version: got.version,
+                                                  here: !!got.here });
+    return got;
+  }
+
+  /* "Save as vN?" before leaving a changed picture -- yes by default. */
+  function nudgeThen(go) {
+    const nv = nextVersion();
+    showModal(el('div', { class: 'rc-nudge' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Save this as v' + nv + ' first?' }),
+        el('div', { class: 'spacer' })]),
+      el('div', { class: 'mb' }, [el('div', { class: 'rc-ask' }, [
+        el('p', { text: 'This set’s picture has changed since it was '
+          + (viewing ? 'opened from v' + viewing.v : 'first fitted')
+          + ': ' + changedWords() + '. Saved, it is a version you can '
+          + 'reopen and pool on any machine.' }),
+      ])]),
+      BARRY.ui.modalFoot([], [
+        BARRY.ui.button({ kind: 'ghost', text: 'Leave without saving',
+          extra: 'rc-nudge-skip',
+          onclick: () => { closeModal(); cleanSig = null; go(); } }),
+        BARRY.ui.button({ kind: 'primary', text: 'Save as v' + nv + '…',
+          extra: 'rc-nudge-save',
+          onclick: () => {
+            closeModal();
+            saveVersionDialog().then((rep) => { if (rep) go(); });
+          } }),
+      ]),
+    ]), { replace: true });
   }
 
   /* The read, while it runs.
@@ -1466,7 +1873,12 @@ BARRY.rootcanal = (function () {
           cs.length ? BARRY.ui.chip(
             (fit.n_placed != null ? fit.n_placed : fit.n_used) + ' of '
             + fit.n + ' classified') : null,
-          BARRY.ui.seg([['call', 'by call'], ['cluster', 'by cluster']],
+          /* Its saved versions and Save, in the row of counts: beside Bank
+             they made the card a line taller and put the picked event's
+             bar below the fold (measured: 912 px down on a 908 screen). */
+          ...versionStrip(),
+          BARRY.ui.seg([['call', fit.border_used ? 'by border' : 'by call'],
+                        ['cluster', 'by cluster']],
             singleColour, (v) => { singleColour = v; render(); },
             { extra: 'rc-colour-by' }),
         ].filter(Boolean)),
@@ -1480,24 +1892,45 @@ BARRY.rootcanal = (function () {
           },
           () => { q.cluster_calls = {}; refit(); },
           (fit.clusters || []).some((c) => c.call_by === 'hand'),
-          { onAvg: (c) => showAverage('cluster #' + (c.rank + 1) + ' '
-                                       + c.call.toUpperCase(),
+          { onName: (c) => nameDialog(c, (nm) => {
+              if (nm) q.cluster_names[String(c.rank)] = nm;
+              else delete q.cluster_names[String(c.rank)];
+              refit();
+            }),
+            onAvg: (c) => showAverage('cluster #' + (c.rank + 1) + ' '
+                                       + (c.name || c.call.toUpperCase()),
                                        (fit.events || []).filter(
                                          (e) => e.cluster === c.rank)),
             onRemove: (c) => { q.drawn.splice(c.rank - (fit.k || 0), 1);
-                               refit(); } }),
+                               refit(); },
+            /* Beside the clusters it asks about, SHORT: at 455 px wide
+               the row has 116 px left after two clusters (the counts row
+               65), and a control that wraps either one puts the picked
+               event's bar below the fold (measured: 910 on a 908 screen,
+               882 without it). */
+            tail: statsButton('single') }),
         marginCard(singleMarginCtx()),
       ]),
+      savedOnly ? el('p', { class: 'hint rc-warn rc-saved-only', text:
+        'Drawn from v' + (viewing ? viewing.v : '?') + '’s saved numbers. Its '
+        + 'read is on ' + savedOnly.read_on + ', so the settings cannot be '
+        + 'changed and the traces cannot be opened here.' }) : null,
       BARRY.ui.actions([
+        savedOnly ? BARRY.ui.button({ kind: 'ghost', size: 'sm',
+          text: 'Read the set here', extra: 'rc-read-here',
+          title: 'Read this set on this machine, then work on it as usual. '
+               + 'Minutes, once.',
+          onclick: () => { savedOnly = null; q.read = null; fit = null;
+                           render(); startRead(); } }) : null,
         BARRY.ui.button({ kind: 'primary', text: bankLabel(),
           extra: 'rc-bank',
-          disabled: fitting || !fit.ok,
+          disabled: fitting || !fit.ok || !!savedOnly,
           title: 'Bank the DS class as the next version of this set and the '
                + 'IED class as a set of candidate IEDs. A dialog first.',
           onclick: bankDialog }),
-      ]),
+      ].filter(Boolean)),
     ];
-    return el('div', { class: 'card rc-why' }, kids);
+    return el('div', { class: 'card rc-why' }, kids.filter(Boolean));
   }
 
   /* How many clusters: a seg of 1..6, or -- while a margin is applied -- a
@@ -1528,24 +1961,37 @@ BARRY.rootcanal = (function () {
       type: 'button',
       class: 'rc-clu' + (c.call === 'ied' ? ' ied' : ' ds')
              + (c.call_by === 'hand' ? ' hand' : '')
-             + (c.call_by === 'drawn' ? ' drawn' : ''),
+             + (c.call_by === 'drawn' ? ' drawn' : '')
+             + (c.name ? ' named' : ''),
       title: 'Cluster ' + (c.rank + 1) + ' of ' + clusters.length + ': '
            + (c.n || 0) + ' events, centre ' + hz(c.centre_raw[0]) + ' µV, '
            + hz(c.centre_raw[1]) + ' ms, ' + hz(c.centre_raw[2]) + ' dB. '
            + 'Called ' + c.call.toUpperCase() + ' '
            + (c.call_by === 'hand' ? 'by hand' : c.call_by === 'margin'
               ? 'by the margin' : c.call_by === 'drawn'
-              ? 'as drawn round by hand' : 'by the rule') + '. Press to call it '
-           + (c.call === 'ied' ? 'DS' : 'IED') + '.',
-      onclick: () => onToggle(c.rank, c.call === 'ied' ? 'ds' : 'ied'),
+              ? 'as drawn round by hand' : c.call_by === 'name'
+              ? 'by its name, ‘' + c.name + '’' : 'by the rule') + '. '
+           + (c.name && ex.onName ? 'Press to rename it.'
+              : 'Press to call it ' + (c.call === 'ied' ? 'DS' : 'IED') + '.'),
+      onclick: () => (c.name && ex.onName ? ex.onName(c)
+                      : onToggle(c.rank, c.call === 'ied' ? 'ds' : 'ied')),
     }, [
       el('i', { class: 'rc-swatch', style: 'background:' + cluFill(c.rank, c.call) }),
-      el('span', { text: '#' + (c.rank + 1) + ' ' + c.call.toUpperCase()
+      el('span', { text: '#' + (c.rank + 1) + ' '
+                         + (c.name ? c.name : c.call.toUpperCase())
                          + ' · ' + (c.n || 0)
                          + (c.call_by === 'hand' ? ' · by hand'
                             : c.call_by === 'margin' ? ' · margin'
                             : c.call_by === 'drawn' ? ' · drawn' : '') }),
     ]),
+      /* Its name, from the lab's list or typed; the name's type is its call. */
+      ex.onName ? el('button', { type: 'button', class: 'rc-clu-x rc-clu-name',
+        text: c.name ? 'rename' : 'name',
+        title: 'Give cluster ' + (c.rank + 1) + ' a name from the lab’s list, '
+             + 'or a new one -- “DS slow”, “IED big”. The name says whether it '
+             + 'is a DS or an IED, travels with the version, the pool and the '
+             + 'bank, and becomes a chip to pool by.',
+        onclick: () => ex.onName(c) }) : null,
       /* Its average: the four pictures of a dot, over every event in it. */
       ex.onAvg ? el('button', { type: 'button', class: 'rc-clu-x rc-clu-avg',
         text: 'avg', title: 'The average of cluster ' + (c.rank + 1)
@@ -1561,7 +2007,79 @@ BARRY.rootcanal = (function () {
       row.push(BARRY.ui.button({ kind: 'mini', text: 'Calls back to the rule',
         title: 'Undo every cluster called by hand.', onclick: onReset }));
     }
+    // Whatever is asked of the clusters as a whole, after them.
+    if (ex.tail) row.push(ex.tail);
     return el('div', { class: 'chip-row rc-clusters' }, row);
+  }
+
+  /* THE LAB'S NAMES, and the picker. A name is picked from the list or
+     typed new with its type (DS or IED); a new one joins the list for
+     everybody. One name means one thing: the server refuses a name that is
+     already on the list as the other type. */
+  let labNames = null;
+
+  async function loadNames() {
+    try {
+      labNames = (await api('/api/rootcanal/names')).names || [];
+    } catch (e) {
+      labNames = labNames || [];
+    }
+    return labNames;
+  }
+
+  async function nameDialog(c, onDone) {
+    const names = await loadNames();
+    let typ = c.call === 'ied' ? 'ied' : 'ds';
+    const input = el('input', { type: 'text', class: 'rc-in rc-name-in',
+                                placeholder: 'A new name', value: '' });
+    const errP = el('p', { class: 'hint rc-warn rc-name-err', text: '' });
+    const typeSeg = BARRY.ui.seg([['ds', 'DS', 'A dentate spike name.'],
+                                  ['ied', 'IED', 'An IED name.']],
+      typ, (v) => { typ = v; }, { extra: 'rc-name-type' });
+    const use = (nm) => { closeModal(); onDone(nm); };
+    const byType = (t) => names.filter((n) => n.type === t);
+    const list = (t) => byType(t).length ? el('div', { class: 'chip-row' },
+      [el('span', { class: 'rc-sel-k', text: t === 'ds' ? 'DS names'
+                                                       : 'IED names' })]
+        .concat(byType(t).map((n) => BARRY.ui.button({ kind: 'mini',
+          text: n.name, extra: 'rc-name-pick', on: c.name === n.name,
+          title: 'Added by ' + (n.by || 'someone')
+               + (n.at ? ' on ' + String(n.at).slice(0, 10) : '') + '.',
+          onclick: () => use({ name: n.name, type: n.type }) })))) : null;
+    showModal(el('div', { class: 'rc-name-dlg' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Name cluster #' + (c.rank + 1) }),
+        el('div', { class: 'spacer' })]),
+      el('div', { class: 'mb' }, [el('div', { class: 'rc-ask' }, [
+        el('p', { class: 'hint', text: 'Its ' + (c.n || 0) + ' events, centre '
+          + hz(c.centre_raw[0]) + ' µV, ' + hz(c.centre_raw[1]) + ' ms, '
+          + hz(c.centre_raw[2]) + ' dB. A name says what the cluster is: '
+          + 'its type is its call.' }),
+        names.length ? null : el('p', { class: 'hint',
+          text: 'The lab’s list is empty: the first name typed starts it.' }),
+        list('ds'), list('ied'),
+        el('div', { class: 'rc-name-new' }, [input, typeSeg,
+          BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Add and use',
+            extra: 'rc-name-add',
+            onclick: async () => {
+              const nm = String(input.value || '').trim();
+              if (!nm) { errP.textContent = 'Type a name first.'; return; }
+              try {
+                await apiPost('/api/rootcanal/names', { name: nm, type: typ });
+              } catch (e) { errP.textContent = e.message; return; }
+              labNames = null;
+              use({ name: nm, type: typ });
+            } })]),
+        errP,
+      ].filter(Boolean))]),
+      BARRY.ui.modalFoot([
+        c.name ? BARRY.ui.button({ kind: 'ghost', text: 'Remove the name',
+          extra: 'rc-name-clear', onclick: () => use(null) }) : null,
+      ].filter(Boolean), [
+        BARRY.ui.button({ kind: 'ghost', text: 'Cancel',
+                          onclick: closeModal }),
+      ]),
+    ]), { replace: true });
   }
 
   function curAvg() { return viewMode === 'pooled' ? pool.avg : avg; }
@@ -1690,6 +2208,242 @@ BARRY.rootcanal = (function () {
   /* THE MARGINS CARD, for both views. Pick a saved margin and how to use
      it, apply or clear it, and save this view's own. A refusal -- a margin
      measured some other way -- is said here, in place. */
+  /* ==================================================================
+     A DS / IED BORDER IN THREE NUMBERS, WITH GRACE (2026-10-06)
+     ================================================================== */
+  /* Drawn in Pooled (either level) against each event's own identity;
+     applied anywhere measured the same way, where it classifies every event
+     by its three numbers alone: solid DS, solid IED or ambiguous. The
+     k-means clusters stay underneath, for what is counted against them. */
+  const graceWords = (g) => (Number(g) === 0 ? 'none'
+                             : +(100 * Number(g)).toFixed(2) + '%');
+  const BAX = [['amp_uV', 'amplitude', 'µV'], ['hf_db', 'HF', 'dB'],
+               ['hw_ms', 'half-width', 'ms']];
+  const bnum = (v) => (v == null ? '?' : Math.abs(v) >= 100
+                       ? Number(v).toFixed(0) : Number(v).toFixed(1));
+
+  async function loadBorders() {
+    if (bordersLoading) return;
+    bordersLoading = true;
+    try {
+      borders = (await api('/api/rootcanal/borders')).borders || [];
+      bordersErr = null;
+    } catch (e) {
+      borders = [];
+      bordersErr = e.message;
+    }
+    bordersLoading = false;
+    render();
+  }
+
+  /* One side of a band: "amplitude ≥ 1482 µV · HF ≥ 13.2 dB · ...". */
+  function edgeWords(b, edges, side) {
+    const ab = b.ied_above || {};
+    return BAX.map(([k, word, unit]) => {
+      const up = ab[k] !== false;
+      const op = side === 'ied' ? (up ? '≥' : '≤') : (up ? '<' : '>');
+      return word + ' ' + op + ' ' + bnum(((edges || {})[k] || {})[side + '_at'])
+             + ' ' + unit;
+    }).join(' · ');
+  }
+
+  function borderWords(r) {
+    const st = r.strict || {};
+    return (r.nickname || r.name || r.artifact_id) + ' · '
+      + BAX.map(([k, , unit]) => bnum(st[k]) + ' ' + unit).join(', ')
+      + ' · ' + (r.measure || 'measurement not recorded')
+      + (r.source ? ' · from ‘' + r.source + '’' : '');
+  }
+
+  /* Picking a saved border and its grace, beside the margins. */
+  function borderRow(b) {
+    if (borders === null) loadBorders();
+    const list = borders || [];
+    let pickId = b.applied ? b.applied.artifact_id
+                           : (list[0] && list[0].artifact_id) || '';
+    let grace = b.applied ? b.applied.grace : null;
+    const rowOf = (id) => list.find((x) => x.artifact_id === id) || null;
+    const gsel = el('select', { class: 'rc-margin-pick rc-border-grace',
+      'aria-label': 'grace', onchange: (e) => { grace = Number(e.target.value); } });
+    const fillGrace = () => {
+      const r = rowOf(pickId);
+      const lv = (r && r.levels) || [];
+      if (grace == null || !lv.some((x) => Math.abs(x.grace - grace) < 1e-9)) {
+        grace = r && r.grace_default != null ? r.grace_default
+              : (lv[0] ? lv[0].grace : null);
+      }
+      gsel.replaceChildren(...(lv.length ? lv.map((x) => el('option', {
+        value: String(x.grace),
+        text: 'grace ' + graceWords(x.grace) + ': '
+              + ((x.counts || {}).amb != null ? x.counts.amb : '?')
+              + ' ambiguous',
+        selected: Math.abs(x.grace - grace) < 1e-9 ? 'selected' : null }))
+        : [el('option', { value: '', text: 'no grace saved' })]));
+    };
+    const sel = el('select', { class: 'rc-margin-pick rc-border-pick',
+      'aria-label': 'saved border',
+      onchange: (e) => { pickId = e.target.value; grace = null; fillGrace(); } },
+      list.length ? list.map((r) => el('option', { value: r.artifact_id,
+          text: borderWords(r),
+          selected: r.artifact_id === pickId ? 'selected' : null }))
+        : [el('option', { value: '', text: 'no borders saved yet: draw one in '
+                                          + 'Pooled' })]);
+    fillGrace();
+    const u = b.used;
+    const c = (u && u.counts) || {};
+    return el('div', { class: 'rc-margin-row rc-border-row' }, [
+      el('div', { class: 'rc-group-l', text: 'Border' }),
+      u ? BARRY.ui.chip(c.ds + ' solid DS · ' + c.ied + ' solid IED · '
+                        + c.amb + ' ambiguous', { extra: 'rc-border-on',
+        title: 'Classified by the border ‘' + u.nickname + '’ v' + u.version
+             + ' at grace ' + u.grace_words + '. ' + u.rule }) : null,
+      sel, gsel,
+      BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Apply',
+        extra: 'rc-border-apply', disabled: !pickId,
+        title: 'Classify every event by this border: solid DS, solid IED or '
+             + 'ambiguous, by its three numbers alone.',
+        onclick: () => b.onApply({ artifact_id: pickId, version: null,
+                                   grace }) }),
+      b.applied ? BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Clear',
+        extra: 'rc-border-clear', onclick: () => b.onApply(null) }) : null,
+    ].filter(Boolean));
+  }
+
+  /* Each grace's band: its counts, its switch rate, and its edges. */
+  function borderTable(b, pick, onPick) {
+    const rows = [];
+    for (const lv of b.levels || []) {
+      const on = Math.abs(lv.grace - pick) < 1e-9;
+      const c = lv.counts || {};
+      rows.push(el('tr', { class: 'rc-border-lv' + (on ? ' on' : ''),
+                           'data-grace': String(lv.grace) }, [
+        el('td', {}, [el('label', { class: 'rc-border-pickg' }, [
+          el('input', { type: 'radio', name: 'rc-border-grace',
+                        checked: on ? 'checked' : null,
+                        onchange: () => onPick(lv.grace) }),
+          el('span', { text: graceWords(lv.grace) })])]),
+        el('td', { text: String(c.ds) }),
+        el('td', { text: String(c.ied) }),
+        el('td', { text: String(c.amb) }),
+        el('td', { text: pct(lv.switch_rate) + ' (' + lv.wrong + ')'
+                         + (lv.reached ? '' : ', not reached') }),
+      ]));
+      rows.push(el('tr', { class: 'rc-border-edges' }, [el('td', {
+        colspan: '5', class: 'hint',
+        text: 'solid IED: ' + edgeWords(b, lv.edges, 'ied') + '; solid DS: '
+              + edgeWords(b, lv.edges, 'ds')
+              + (lv.s_sd ? ' (band ±' + lv.s_sd + ' SD)' : ' (no band)') })]));
+    }
+    return el('table', { class: 'tbl rc-border-tab' }, [
+      el('thead', {}, [el('tr', {}, ['grace', 'solid DS', 'solid IED',
+                                     'ambiguous', 'switches']
+        .map((t) => el('th', { text: t })))]),
+      el('tbody', {}, rows)]);
+  }
+
+  /* Draw one from this pool, preview it at every grace, and save it. */
+  async function borderDialog() {
+    const lvl = pool.level === 'double' ? 'double' : 'pool';
+    const src = pool.saved && pool.open
+      ? { artifact_id: pool.open.artifact_id,
+          version: (pool.open.source || {}).version || pool.open.version }
+      : null;
+    const base = () => Object.assign({}, pool.lastBody || poolBody(),
+                                     { level: lvl, source: src, border: null });
+    let prev;
+    try {
+      prev = await apiPost('/api/rootcanal/border/preview', base());
+    } catch (e) {
+      toast('No border could be drawn: ' + e.message, 'err', 12000);
+      return null;
+    }
+    let pick = 0.05;
+    let custom = null;
+    let applyNow = true;
+    const holder = el('div', { class: 'rc-border-prev' });
+    const draw = () => holder.replaceChildren(borderTable(prev, pick,
+      (g) => { pick = g; draw(); }));
+    draw();
+    const cin = el('input', { type: 'number', class: 'rc-in rc-border-custom',
+      min: '0', max: '50', step: '0.5', 'aria-label': 'another grace, in %' });
+    const cgo = BARRY.ui.button({ kind: 'mini', text: 'Add this grace',
+      extra: 'rc-border-custom-go', onclick: async () => {
+        const v = Number(cin.value);
+        if (cin.value === '' || !isFinite(v) || v < 0 || v > 50) {
+          toast('A grace is a switch rate between 0% and 50%.', 'warn', 6000);
+          return;
+        }
+        try {
+          prev = await apiPost('/api/rootcanal/border/preview',
+                               Object.assign(base(), { custom: v / 100 }));
+        } catch (e) {
+          toast(e.message, 'err', 9000);
+          return;
+        }
+        custom = v / 100;
+        pick = custom;
+        draw();
+      } });
+    const what = el('div', { class: 'rc-ask rc-border-dlg' }, [
+      el('p', { text: 'Three cut-offs, one each in µV, dB and ms, drawn '
+        + 'between the events’ own identities: ' + (lvl === 'double'
+          ? 'what each event’s own pool called it (v0)'
+          : 'what each event’s single called it')
+        + '. Past all three is solid IED, short of all three solid DS, and '
+        + 'anything else ambiguous. It is the same border only where things '
+        + 'are measured the same way (' + ((prev.measure || {}).filter_label
+                                           || 'this measurement') + ').' }),
+      el('p', { class: 'rc-border-strict', text: 'The border: '
+        + BAX.map(([k, word, unit]) => word + ' ' + bnum(prev.strict[k]) + ' '
+                  + unit).join(' · ') + ', on ' + prev.n_identity
+        + ' events with an identity.' }),
+      el('p', { class: 'hint', text: 'Grace is the identity-switch rate '
+        + 'allowed. Each cut-off widens into a band, the same number of '
+        + 'standard deviations on every axis, until at most that share of '
+        + 'the events land in the other identity’s solid class; the events '
+        + 'in a band are ambiguous. Pick the grace it applies at; every one '
+        + 'listed is saved with it.' }),
+      holder,
+      el('div', { class: 'chip-row rc-border-custom-row' }, [
+        el('span', { class: 'hint', text: 'Another grace, in %:' }), cin, cgo]),
+      el('label', { class: 'rc-num rc-border-apply-now' }, [
+        el('input', { type: 'checkbox', checked: 'checked',
+                      onchange: (e) => { applyNow = e.target.checked; } }),
+        el('span', { class: 'rc-num-l', text: 'classify this pool by it once '
+                                            + 'saved' })]),
+    ]);
+    const sugg = 'border · ' + ((pool.open && pool.open.nickname)
+                                || (lvl === 'double' ? 'pool of pools' : 'pool'));
+    let rep = null;
+    return BARRY.ui.bankDialog({
+      kind: 'entry', title: 'Save a DS / IED border', name: sugg, what,
+      okText: 'Save the border',
+      onBank: async ({ name, note }) => {
+        const nick = String(name || '').trim();
+        if (!nick) throw new Error('A border needs a nickname.');
+        rep = await apiPost('/api/rootcanal/border/save', Object.assign(base(),
+          { nickname: nick, note: note || '', grace: pick, custom }));
+      },
+    }).then((ok) => {
+      if (!ok || !rep) return null;
+      toast('Saved the border ‘' + rep.nickname + '’, applied at grace '
+            + graceWords(rep.grace) + '.', 'ok', 8000);
+      BARRY.activity.log('rootcanal.border_save', { artifact: rep.artifact_id,
+                                                    grace: rep.grace });
+      borders = null;
+      if (applyNow) {
+        pool.border = { artifact_id: rep.artifact_id, version: rep.version,
+                        grace: rep.grace };
+        pool.borderErr = null;
+        pool.colour = 'border';
+        runPool();
+      } else {
+        render();
+      }
+      return rep;
+    });
+  }
+
   function marginCard(ctx) {
     if (margins === null) { loadMargins(); }
     const list = margins || [];
@@ -1735,16 +2489,38 @@ BARRY.rootcanal = (function () {
     /* FOLDED to one line unless a margin is on or was just refused: the
        card sits above the pictures, and an open one pushed the event's own
        controls below the fold. */
-    const open = !!(ctx.applied || ctx.err || ctx.used);
+    const b = ctx.border || null;
+    const bu = b && b.used;
+    const open = !!(ctx.applied || ctx.err || ctx.used
+                    || (b && (b.applied || b.err || bu)));
+    /* SHORT, folded: the card is 455 px wide in Single and its summary
+       must stay one line. The rest is in its hover. */
+    const on = [used ? 'margin ‘' + used.nickname + '’ v' + used.version
+                       + ' · ' + used.mode : null,
+                bu ? 'border ‘' + bu.nickname + '’ · grace '
+                     + bu.grace_words : null].filter(Boolean);
     return el('details', { class: 'card rc-margins',
                            open: open ? 'open' : null }, [
-      el('summary', { class: 'rc-margin-sum', text: 'Margins'
-        + (used ? ' · ‘' + used.nickname + '’ v' + used.version + ' · '
-                  + used.mode
-                : ' · none applied — use a saved one, or save these') }),
+      el('summary', { class: 'rc-margin-sum',
+        title: 'Margins: saved cluster centres, applied in place of k-means’ '
+             + 'own. Borders: three cut-offs drawn between DS and IED in a '
+             + 'pool, which classify every event as solid DS, solid IED or '
+             + 'ambiguous. Use a saved one, or save these.',
+        text: 'Margins and borders · ' + (on.join(' · ') || 'none applied') }),
       el('div', { class: 'rc-margin-row' }, kids.filter(Boolean)),
       ctx.err ? el('p', { class: 'hint rc-warn rc-margin-err',
                           text: 'Not applied: ' + ctx.err }) : null,
+      b ? borderRow(b) : null,
+      bu ? el('p', { class: 'hint rc-border-rule', text: bu.rule
+        + (bu.switch_rate != null ? ' Here ' + bu.wrong + ' of '
+           + bu.n_identity + ' events with an identity ('
+           + pct(bu.switch_rate) + ') land in the other’s solid class.'
+           : '') }) : null,
+      b && b.err ? el('p', { class: 'hint rc-warn rc-border-err',
+                             text: 'Not applied: ' + b.err }) : null,
+      bordersErr ? el('p', { class: 'hint rc-warn',
+                             text: 'Saved borders could not be listed: '
+                                 + bordersErr }) : null,
       marginsErr ? el('p', { class: 'hint rc-warn',
                              text: 'Saved margins could not be listed: '
                                  + marginsErr }) : null,
@@ -1792,6 +2568,8 @@ BARRY.rootcanal = (function () {
     return {
       applied: q.margin, used: fit && fit.margin_used, err: marginErr,
       onApply: (ref) => { q.margin = ref; marginErr = null; refit(); },
+      border: { applied: q.border, used: fit && fit.border_used, err: borderErr,
+                onApply: (ref) => { q.border = ref; borderErr = null; refit(); } },
       saves: [{ label: 'Save these margins…',
         title: 'This recording’s clusters as a named margin.',
         what: 'Saves this recording’s ' + ((fit && fit.k) || q.k)
@@ -2035,15 +2813,17 @@ BARRY.rootcanal = (function () {
   function legend() {
     const item = (cls, text) => el('span', { class: 'rc-lg' }, [
       el('i', { class: 'rc-lg-m ' + cls }), el('span', { text })]);
+    const byBorder = !!(fit && fit.border_used) && singleColour !== 'cluster';
     return el('div', { class: 'rc-legend' }, [
-      item('rc-lg-ds', 'DS'),
-      item('rc-lg-ied', 'IED'),
+      item('rc-lg-ds', byBorder ? 'solid DS' : 'DS'),
+      item('rc-lg-ied', byBorder ? 'solid IED' : 'IED'),
+      byBorder ? item('rc-lg-amb', 'ambiguous') : null,
       item('rc-lg-square', 'on 2 of 3 axes'),
       item('rc-lg-wide', 'half-width by the widened search'),
       item('rc-lg-flip', 'set by hand'),
       item('rc-lg-hollow', 'not measured'),
       item('rc-lg-centre', 'centre'),
-    ]);
+    ].filter(Boolean));
   }
 
   function pickedEvent() {
@@ -2100,6 +2880,14 @@ BARRY.rootcanal = (function () {
      event's class and nothing about its trace, so it does not refetch. */
   const loadEvent = debounce(async function loadEvent_() {
     if (picked == null || !q.read || !fit || !fit.ok) return;
+    if (savedOnly) {
+      evData = { ok: false, error: 'This version is drawn from its saved '
+        + 'numbers: its read is on ' + savedOnly.read_on + ', not here, so '
+        + 'its traces open only there. Read the set here to see them.' };
+      evKey = null;
+      drawEvent();
+      return;
+    }
     // The filter is in it: on a new filter the same event's trace is a
     // different trace, and a key without it showed the old one.
     const key = JSON.stringify([picked, q.read, q.filt, q.mains_out, q.lo_hz,
@@ -2320,7 +3108,14 @@ BARRY.rootcanal = (function () {
       gid: q.gid, entry: q.entry, ds_version: rep.ds_version,
       ied_entry: rep.ied_entry, kept: rep.kept, removed: rep.removed,
     });
-    // The set's versions have changed, so the chooser is stale.
+    // The set's versions have changed, so the chooser is stale -- and Bank
+    // kept a version of the single too.
+    if (rep.single) {
+      viewing = { artifact_id: rep.single.artifact_id,
+                  v: rep.single.version, nickname: null };
+      cleanSig = sigOf();
+    }
+    loadSingle();
     cands = null;
     loadCandidates();
     return rep;
@@ -2655,8 +3450,12 @@ BARRY.rootcanal = (function () {
       fitCentres: fit.centres || [],
       params: shownParams(),
       picked,
+      /* With a border on, the call shown is the border's: solid DS,
+         solid IED, or ambiguous (grey, and filled -- not hollow, which is
+         "not measured"). */
       fill: (e) => (singleColour === 'cluster' && e.cluster != null
-                    ? cluColour(e.cluster) : colOf(e.cls)),
+                    ? cluColour(e.cluster)
+                    : colOf(fit.border_used ? e.border : e.cls)),
       shape: (e) => (singleColour === 'cluster' && e.cluster != null
                      ? cluShape(e.cluster) : null),
       centreFill: (c) => cluFill(c.k, c.cls),
@@ -4220,7 +5019,44 @@ BARRY.rootcanal = (function () {
     if (!quiet && viewMode === 'pooled') swap('.rc-shelf', shelfCard());
   }
 
-  const candOf = (key) => (pool.cands || []).find((c) => c.key === key) || null;
+  /* A candidate by a member's key. A saved single is ONE candidate whatever
+     version of it is picked: "s:<artifact>:<v>" finds it by its artifact. */
+  function candOf(key) {
+    const cs = pool.cands || [];
+    const hit = cs.find((c) => c.key === key);
+    if (hit) return hit;
+    const m = /^s:([^:]+):/.exec(String(key || ''));
+    return m ? cs.find((c) => c.kind === 'single' && c.artifact_id === m[1])
+               || null : null;
+  }
+
+  /* The selection entry for a candidate, whichever version is picked. */
+  function selOf(c) {
+    if (!c) return null;
+    if (c.kind === 'single') {
+      return pool.sel.find((m) => String(m.key)
+        .indexOf('s:' + c.artifact_id + ':') === 0) || null;
+    }
+    return pool.sel.find((m) => m.key === c.key) || null;
+  }
+
+  /* The version of a saved single a member uses: its picked one, or the
+     latest. */
+  function versionOfCand(c) {
+    const m = selOf(c);
+    const v = m ? Number(String(m.key).split(':')[2]) : c.version;
+    return (c.versions || []).find((x) => x.v === v) || null;
+  }
+
+  function setVersion(c, v) {
+    const m = selOf(c);
+    const key = 's:' + c.artifact_id + ':' + v;
+    if (m) m.key = key;
+    else pool.sel.push({ key });
+    pool.dirty = true;
+    pool.fitErr = null;
+    render();
+  }
 
   /* The settings an unbanked member is fitted at: Single's, as they stand.
      Stated on the members card, because a pool whose members were fitted at
@@ -4237,9 +5073,14 @@ BARRY.rootcanal = (function () {
 
   function toggleMember(key, on) {
     const c = candOf(key);
-    const have = pool.sel.findIndex((m) => m.key === key);
+    // A saved single is in or out whatever version is picked.
+    const have = c && c.kind === 'single'
+      ? pool.sel.indexOf(selOf(c))
+      : pool.sel.findIndex((m) => m.key === key);
     if (on && have < 0) {
-      pool.sel.push(c && !c.banked ? { key, params: singleParams() } : { key });
+      // A saved single pools its own numbers: no fit settings go with it.
+      pool.sel.push(c && !c.banked && c.kind !== 'single'
+        ? { key, params: singleParams() } : { key });
       pool.fitErr = null;
     } else if (!on && have >= 0) {
       pool.sel.splice(have, 1);
@@ -4248,6 +5089,226 @@ BARRY.rootcanal = (function () {
     }
     pool.dirty = true;
     render();
+  }
+
+  /* ---------- choosing who is in the pool ---------- */
+  const CATS = [
+    ['group', 'group', (c) => c.group],
+    ['subgroup', 'subgroup', (c) => c.subgroup],
+    ['condition', 'condition', (c) => c.condition],
+    ['project', 'project', (c) => c.project],
+    ['kind', 'kind', (c) => (c.kind === 'single' ? 'saved'
+                             : c.banked ? 'banked' : 'read here')],
+  ];
+
+  function facetValues(cs, f) {
+    return Array.from(new Set(cs.map(f).filter((v) => v != null && v !== '')))
+      .sort((a, b) => String(a).localeCompare(String(b)));
+  }
+
+  function shown(c) {
+    const f = pool.filt;
+    for (const [key, _w, get] of CATS) {
+      const want = f[key] || [];
+      if (want.length && want.indexOf(get(c)) < 0) return false;
+    }
+    const text = String(f.q || '').trim().toLowerCase();
+    if (text) {
+      const hay = [c.session_label, c.mouse_key, c.group, c.subgroup,
+                   c.condition, c.project, c.nickname, c.entry_id]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (text.split(/\s+/).some((w) => hay.indexOf(w) < 0)) return false;
+    }
+    return true;
+  }
+
+  /* The names a candidate's picked version holds. */
+  function namesOf(c) {
+    if (c.kind !== 'single') return [];
+    const v = versionOfCand(c);
+    return ((v && v.n_summary) || {}).names || [];
+  }
+
+  /* A name chip: every saved single holding that name, pooled for that
+     name's events only. Pressed again, the pool is every event again. */
+  function pickName(nm, cs) {
+    if (pool.name === nm) {
+      pool.name = null;
+      for (const m of pool.sel) delete m.names;
+    } else {
+      pool.name = nm;
+      pool.sel = cs.filter((c) => namesOf(c).indexOf(nm) >= 0).map((c) => {
+        const m = selOf(c);
+        return { key: m ? m.key : c.key, names: [nm] };
+      });
+    }
+    pool.dirty = true;
+    pool.fitErr = null;
+    render();
+    if (pool.sel.length) runPool();
+  }
+
+  function selectBar(cs) {
+    const f = pool.filt;
+    const groups = CATS.map(([key, words, get]) => {
+      const vals = facetValues(cs, get);
+      if (vals.length < 2 && !(f[key] || []).length) return null;
+      return el('div', { class: 'rc-sel-cat' }, [
+        el('span', { class: 'rc-sel-k', text: words }),
+      ].concat(vals.map((v) => BARRY.ui.button({ kind: 'mini',
+        text: String(v), on: (f[key] || []).indexOf(v) >= 0,
+        extra: 'rc-sel-chip',
+        title: 'Show only ' + words + ' ' + v + ' (with any other '
+             + words + ' pressed too).',
+        onclick: () => {
+          const have = f[key] || [];
+          f[key] = have.indexOf(v) >= 0 ? have.filter((x) => x !== v)
+                                        : have.concat([v]);
+          swap('.rc-sel', selectBar(cs));
+          swap('.rc-pool-cands', membersTable(cs, null, null));
+        } }))));
+    }).filter(Boolean);
+    const names = Array.from(new Set([].concat(...cs.map(namesOf)))).sort();
+    const nShown = cs.filter(shown).length;
+    return el('div', { class: 'rc-sel' }, [
+      el('div', { class: 'rc-sel-top' }, [
+        BARRY.ui.searchField({ placeholder: 'Find a recording, mouse or nickname',
+          value: f.q, width: '22rem',
+          title: 'Words in the session, the mouse, its group, condition or '
+               + 'a saved version’s nickname -- every word has to match.',
+          oninput: (ev2) => {
+            f.q = ev2.target.value;
+            swap('.rc-pool-cands', membersTable(cs, null, null));
+            const n2 = document.querySelector('.rc-sel-n');
+            if (n2) n2.textContent = cs.filter(shown).length + ' of '
+              + cs.length + ' shown';
+          } }),
+        el('span', { class: 'hint rc-sel-n', text: nShown + ' of '
+                     + cs.length + ' shown' }),
+        el('span', { class: 'spacer' }),
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Select all shown',
+          extra: 'rc-sel-all',
+          title: 'Tick every recording the filters show (one that cannot be '
+               + 'pooled here is left).',
+          onclick: () => {
+            for (const c of cs.filter(shown)) {
+              if (!(c.banked || c.here !== false || c.kind === 'single')) continue;
+              if (!selOf(c)) toggleMember(c.key, true);
+            }
+          } }),
+        BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Unselect all',
+          extra: 'rc-sel-none',
+          title: 'Untick every recording, shown or not.',
+          onclick: () => { pool.sel = []; pool.name = null; pool.dirty = true;
+                           render(); } }),
+      ]),
+      groups.length ? el('div', { class: 'rc-sel-cats' }, groups) : null,
+      names.length ? el('div', { class: 'rc-sel-cat rc-sel-names' }, [
+        el('span', { class: 'rc-sel-k', text: 'names' }),
+      ].concat(names.map((nm) => BARRY.ui.button({ kind: 'mini', text: nm,
+        on: pool.name === nm, extra: 'rc-name-chip',
+        title: 'Pool every saved single holding a cluster named “' + nm
+             + '”, and only those clusters’ events. Press again for every '
+             + 'event.',
+        onclick: () => pickName(nm, cs) })))) : null,
+    ].filter(Boolean));
+  }
+
+  function membersTable(cs, fromSaveIn, selIn) {
+    const fromSave = fromSaveIn
+      || (pool.savedMembers || []).filter((m) => !candOf(m.key));
+    const sel = selIn || new Set(pool.sel.map((m) => m.key));
+    const isOn = (c) => !!selOf(c);
+    return el('table', { class: 'tbl rc-pool-cands' }, [
+      el('thead', {}, [el('tr', {}, ['', 'recording', 'mouse', 'group',
+                                     'condition', 'kind', 'events']
+        .map((t) => el('th', { text: t })))]),
+      el('tbody', {}, cs.filter(shown).map((c) => {
+        const can = c.banked || c.here !== false || c.kind === 'single';
+        const vv = c.kind === 'single' ? versionOfCand(c) : null;
+        return el('tr', { class: isOn(c) ? 'on' : null, 'data-key': c.key }, [
+          el('td', {}, [el('input', {
+            type: 'checkbox', class: 'rc-pool-pick',
+            checked: isOn(c) ? 'checked' : null,
+            disabled: can ? null : 'disabled',
+            title: can ? '' : 'Its read is not on this machine, and it is '
+                            + 'not banked, so there is nothing to pool.',
+            onchange: (ev2) => toggleMember(c.key, ev2.target.checked),
+          })]),
+          el('td', { text: c.session_label || c.entry_id,
+            title: [c.session_label, c.group ? 'Group ' + c.group : null,
+                    c.subgroup ? 'Subgroup ' + c.subgroup : null,
+                    c.condition ? 'Condition ' + c.condition
+                      + (c.condition_from ? ' (' + c.condition_from + ')' : '')
+                      : null,
+                    c.facts_from ? 'Group from the ' + c.facts_from : null]
+              .filter(Boolean).join('\n') }),
+          el('td', { text: c.mouse_key || '' }),
+          el('td', { text: [c.group, c.subgroup && c.subgroup !== c.group
+                            ? c.subgroup : null].filter(Boolean).join(' · ')
+                           || typeFor(c.mouse_key, c.mouse_type) }),
+          el('td', { text: c.condition || '' }),
+          el('td', {}, [
+            /* A saved single: which version, picked here -- the latest
+               unless another is chosen -- with its hover. */
+            c.kind === 'single'
+              ? el('select', { class: 'rc-in rc-cand-ver',
+                  title: versionHover(vv),
+                  onchange: (ev2) => setVersion(c, Number(ev2.target.value)) },
+                  (c.versions || []).slice().reverse().map((x) => el('option', {
+                    value: String(x.v), title: versionHover(x),
+                    selected: vv && x.v === vv.v ? 'selected' : null,
+                    text: 'v' + x.v + ' · ' + (x.nickname || 'no nickname') })))
+              : c.banked
+              ? BARRY.ui.chip('banked' + (c.version ? ' v' + c.version : ''),
+                              { flag: true })
+              : BARRY.ui.chip('not banked', { flag: true, kind: 'warn' }),
+            c.kind === 'single' && BARRY.syncState
+              ? BARRY.syncState.mark('artifacts', c.artifact_id) : null,
+            /* What it was measured on: the filter is part of the version. */
+            c.kind === 'single' && vv && vv.measure
+              ? BARRY.ui.chip(String(vv.measure.filter_label || '')
+                                .split(',')[0], { flag: true,
+                  extra: 'rc-cand-filter', title: vv.measure.filter_label })
+              : null,
+            c.here === false
+              ? BARRY.ui.chip('read elsewhere', { flag: true,
+                  title: 'Its numbers can be pooled; its traces cannot be '
+                       + 'opened on this machine.' })
+              : null,
+          ].filter(Boolean)),
+          el('td', { text: String(c.n != null ? c.n : '') }),
+        ]);
+      }).concat(fromSave.map((m) => {
+        const fm = poolMemberByKey(m.key) || m;
+        const where = fm.read_on || 'another machine';
+        return el('tr', { class: (sel.has(m.key) ? 'on ' : '') + 'rc-from-save',
+                          'data-key': m.key }, [
+          el('td', {}, [el('input', {
+            type: 'checkbox', class: 'rc-pool-pick',
+            checked: sel.has(m.key) ? 'checked' : null,
+            onchange: (ev2) => toggleMember(m.key, ev2.target.checked),
+          })]),
+          el('td', { text: m.session_label || m.entry_id }),
+          el('td', { text: m.mouse_key || '' }),
+          el('td', { text: typeFor(m.mouse_key, m.mouse_type_default
+                                                || m.mouse_type) }),
+          el('td', { text: '' }),
+          el('td', {}, [
+            m.banked
+              ? BARRY.ui.chip('banked', { flag: true })
+              : BARRY.ui.chip('not banked', { flag: true, kind: 'warn' }),
+            BARRY.ui.chip('read on ' + where, { flag: true,
+              extra: 'rc-read-on',
+              title: 'Its read is on ' + where + ', not here. Its numbers '
+                   + 'come from the saved pool, exactly as they were saved, '
+                   + 'so it pools as saved. Measuring it another way needs '
+                   + 'its read.' }),
+          ]),
+          el('td', { text: String(m.n != null ? m.n : '') }),
+        ]);
+      }))),
+    ]);
   }
 
   function setType(mk, value, fallback) {
@@ -4267,9 +5328,29 @@ BARRY.rootcanal = (function () {
   }
 
   function poolBody() {
+    if (pool.level === 'double') {
+      return {
+        pools: pool.sel.map((m) => {
+          const parts = String(m.key).split(':');
+          return { artifact_id: parts[1], version: Number(parts[2]) };
+        }),
+        mouse_types: Object.assign({}, pool.types),
+        focus: serverFocus(),
+        k: +q.k,
+        complete_only: !!q.complete_only,
+        cluster_calls: Object.assign({}, pool.cluster_calls),
+        cluster_names: JSON.parse(JSON.stringify(pool.cluster_names || {})),
+        margin: pool.margin ? Object.assign({}, pool.margin) : null,
+        border: pool.border ? Object.assign({}, pool.border) : null,
+        drawn: pool.drawn.map((g) => ({ events: g.events.map((x) => x.slice()),
+                                        call: g.call })),
+      };
+    }
     return {
-      members: pool.sel.map((m) => (m.params ? { key: m.key, params: m.params }
-                                             : { key: m.key })),
+      all_ds: pool.all_ds || undefined,
+      members: pool.sel.map((m) => Object.assign({ key: m.key },
+        m.params ? { params: m.params } : {},
+        (m.names && m.names.length) ? { names: m.names.slice() } : {})),
       mouse_types: Object.assign({}, pool.types),
       focus: serverFocus(),
       /* The SAME settings as Single: every member measured with them and
@@ -4286,7 +5367,9 @@ BARRY.rootcanal = (function () {
       k: +q.k,
       complete_only: !!q.complete_only,
       cluster_calls: Object.assign({}, pool.cluster_calls),
+      cluster_names: JSON.parse(JSON.stringify(pool.cluster_names || {})),
       margin: pool.margin ? Object.assign({}, pool.margin) : null,
+      border: pool.border ? Object.assign({}, pool.border) : null,
       drawn: pool.drawn.map((g) => ({ events: g.events.map((x) => x.slice()),
                                       call: g.call })),
       /* The saved version this pool was opened from. A member whose read is
@@ -4321,8 +5404,184 @@ BARRY.rootcanal = (function () {
       err: pool.marginErr,
       onApply: (ref) => { pool.margin = ref; pool.marginErr = null;
                           if (pool.sel.length) runPool(); else render(); },
+      border: { applied: pool.border, used: pool.fit && pool.fit.border_used,
+                err: pool.borderErr,
+                onApply: (ref) => {
+                  pool.border = ref;
+                  pool.borderErr = null;
+                  if (ref) pool.colour = 'border';
+                  else if (pool.colour === 'border') pool.colour = 'pool';
+                  if (pool.sel.length) runPool(); else render();
+                } },
       saves,
     };
+  }
+
+  function measureSig() {
+    const b = poolBody();
+    return JSON.stringify([b.members.map((m) => m.key).sort(), b.measure]);
+  }
+
+  async function measuresAgreed() {
+    const sig = measureSig();
+    if (pool.measureOk === sig) return true;
+    let got;
+    try {
+      got = await apiPost('/api/rootcanal/pool/measures', {
+        members: poolBody().members, measure: poolBody().measure,
+        saved: poolBody().saved });
+    } catch (e) {
+      return true;          // no answer: the pool says what it can't do
+    }
+    if (!got.mismatch) { pool.measureOk = sig; return true; }
+    // Waiting on a person now, not on the pool.
+    pool.fitting = false;
+    tickBusy();
+    return measureDialog(got);
+  }
+
+  /* The table of who was measured how, and the choice of one for all. */
+  function measureDialog(got) {
+    return new Promise((resolve) => {
+      const words = (m) => m.filter_label + ' · ±' + hz(m.win_ms)
+        + ' ms · search ±' + hz(m.cross_ms) + ' ms · ' + hz(m.band_lo) + '–'
+        + hz(m.band_hi) + ' Hz';
+      const choose = async (m) => {
+        closeModal();
+        // The bar takes the chosen measurement, so Single and Pooled agree.
+        for (const k2 of ['filt', 'mains_out', 'lo_hz', 'hi_hz', 'win_ms',
+                          'cross_ms', 'band_lo', 'band_hi']) {
+          if (m[k2] != null) { q[k2] = asParam(k2, m[k2]); pend[k2] = q[k2]; }
+        }
+        swapTop();
+        let rep;
+        try {
+          rep = await apiPost('/api/rootcanal/pool/remeasure', {
+            members: poolBody().members, measure: poolBody().measure });
+        } catch (e) {
+          toast('The singles could not be measured again: ' + e.message,
+                'err', 10000);
+          resolve(false);
+          return;
+        }
+        for (const d of rep.done || []) {
+          const sm = pool.sel.find((x) => x.key === d.key);
+          if (sm) sm.key = d.new_key;
+        }
+        if ((rep.done || []).length) {
+          toast((rep.done.length) + ' single' + (rep.done.length === 1
+            ? ' was' : 's were') + ' measured again as a new version: '
+            + rep.done.map((d) => d.label).join(', ') + '.', 'ok', 10000);
+          loadPool();
+        }
+        if ((rep.away || []).length) {
+          toast(rep.away.length + ' could not be: '
+            + rep.away.map((a) => a.label + ' (read on '
+              + (a.read_on || 'another machine') + ')').join(', ')
+            + '. Take ' + (rep.away.length === 1 ? 'it' : 'them')
+            + ' out, or measure ' + (rep.away.length === 1 ? 'it' : 'them')
+            + ' on the machine that read ' + (rep.away.length === 1
+              ? 'it' : 'them') + '.', 'warn', 15000);
+        }
+        pool.measureOk = measureSig();
+        resolve(!(rep.away || []).length);
+      };
+      const target = got.target;
+      const others = (got.distinct || []).filter((m) => words(m) !== words(target));
+      showModal(el('div', { class: 'rc-measure-dlg' }, [
+        el('div', { class: 'mh' }, [
+          el('h3', { text: 'One measurement for the whole pool' }),
+          el('div', { class: 'spacer' })]),
+        el('div', { class: 'mb' }, [el('div', { class: 'rc-ask' }, [
+          el('p', { text: 'These members were not all measured the way the '
+            + 'pool asks (' + words(target) + '). Amplitude and half-width '
+            + 'measured on two filters are two measurements under one axis, '
+            + 'so they all have to be one. Choose which; each saved single '
+            + 'measured another way is measured again to it as a new version, '
+            + 'where its read is on this machine.' }),
+          el('table', { class: 'tbl rc-measure-tbl' }, [
+            el('thead', {}, [el('tr', {}, ['member', 'kind', 'measured',
+                                           'read'].map((t) => el('th', { text: t })))]),
+            el('tbody', {}, (got.members || []).map((r) => el('tr', {
+              class: r.same ? '' : 'rc-measure-diff' }, [
+              el('td', { text: r.label }),
+              el('td', { text: r.kind }),
+              el('td', { text: words(r.measure) + (r.same ? '' : ' (differs)') }),
+              el('td', { text: r.here ? 'here' : 'on ' + (r.read_on
+                                                            || 'another machine') }),
+            ]))),
+          ]),
+        ])]),
+        BARRY.ui.modalFoot([
+          BARRY.ui.button({ kind: 'ghost', text: 'Cancel', extra: 'rc-measure-cancel',
+            onclick: () => { closeModal(); resolve(false); } }),
+        ], others.map((m) => BARRY.ui.button({ kind: 'ghost',
+          text: 'All on ' + m.filter_label.split(',')[0], extra: 'rc-measure-other',
+          title: words(m), onclick: () => choose(m) })).concat([
+          BARRY.ui.button({ kind: 'primary', extra: 'rc-measure-bar',
+            text: 'All on ' + target.filter_label.split(',')[0],
+            title: 'The settings bar’s: ' + words(target),
+            onclick: () => choose(target) }),
+        ])),
+      ]), { replace: true });
+    });
+  }
+
+  /* THE POOL'S IDENTITY BACK INTO ITS SINGLES (2026-10-06): after a pool is
+     saved, a new version of each of its singles carrying the pooled call
+     and name of every event -- yes by default. */
+  function propagateDialog(rep) {
+    const n = pool.sel.length;
+    showModal(el('div', { class: 'rc-prop-dlg' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'New versions of the ' + n + ' single'
+                         + (n === 1 ? '' : 's') + '?' }),
+        el('div', { class: 'spacer' })]),
+      el('div', { class: 'mb' }, [el('div', { class: 'rc-ask' }, [
+        el('p', { text: 'Each member gets a new version of its single with '
+          + 'this pool’s identity: every event called and named as the pool '
+          + 'called it, at the pool’s measurement, named “from pool ‘'
+          + rep.nickname + '’ v' + rep.version + '”.' }),
+        el('ul', {}, [
+          el('li', { text: 'The pool’s clusters are kept as a margin of their '
+            + 'own and applied, fixed: nearest centre on the pool’s scale is '
+            + 'how the pool placed each event.' }),
+          el('li', { text: 'A cluster drawn by hand is not a centre: its '
+            + 'events go to the nearest one.' }),
+          el('li', { text: 'A saved single whose read is elsewhere is done '
+            + 'from its saved numbers. Nothing goes to the Event Bank.' }),
+        ]),
+      ])]),
+      BARRY.ui.modalFoot([], [
+        BARRY.ui.button({ kind: 'ghost', text: 'Not now', extra: 'rc-prop-no',
+          onclick: closeModal }),
+        BARRY.ui.button({ kind: 'primary', text: 'Make the new versions',
+          extra: 'rc-prop-yes',
+          onclick: async () => {
+            closeModal();
+            let got;
+            try {
+              got = await apiPost('/api/rootcanal/pool/propagate',
+                Object.assign(poolBody(), { pool: {
+                  artifact_id: rep.artifact_id, version: rep.version,
+                  nickname: rep.nickname } }));
+            } catch (e) {
+              toast('No new versions were made: ' + e.message, 'err', 12000);
+              return;
+            }
+            const left = (got.results || []).filter((r) => !r.ok);
+            toast(got.made + ' new version' + (got.made === 1 ? '' : 's')
+              + ' made with this pool’s identity'
+              + (left.length ? '; ' + left.length + ' left: '
+                 + left.map((r) => r.why).join('; ') : '') + '.',
+              left.length ? 'warn' : 'ok', 14000);
+            BARRY.activity.log('rootcanal.pool_propagate', {
+              artifact: rep.artifact_id, version: rep.version,
+              made: got.made, left: left.length });
+            loadPool();
+          } }),
+      ]),
+    ]), { replace: true });
   }
 
   function poolMemberByKey(key) {
@@ -4333,6 +5592,21 @@ BARRY.rootcanal = (function () {
   async function runPool() {
     if (!pool.sel.length) {
       toast('Tick at least one recording to pool.', 'warn', 5000);
+      return null;
+    }
+    /* ONE MEASUREMENT (2026-10-06): before a pool is fitted, its saved and
+       banked members are asked how they were measured. Where they differ
+       from each other or from the settings bar, the person chooses which
+       one they all take, and the saved singles are measured again to it as
+       new versions -- asked once per members-and-measurement, not on every
+       press. */
+    // Busy at once, so the press is answered before the question is asked.
+    pool.fitting = true;
+    tickBusy();
+    if (pool.level !== 'double' && !(await measuresAgreed())) {
+      pool.fitting = false;
+      tickBusy();
+      render();
       return null;
     }
     const mine = ++pool.gen;
@@ -4346,7 +5620,9 @@ BARRY.rootcanal = (function () {
     tickBusy();
     let got;
     try {
-      got = await apiPost('/api/rootcanal/pool/fit', body);
+      got = await apiPost(pool.level === 'double' ? '/api/rootcanal/dpool/fit'
+                                                  : '/api/rootcanal/pool/fit',
+                          body);
     } catch (e) {
       if (mine !== pool.gen) return null;
       pool.fitting = false;
@@ -4356,6 +5632,13 @@ BARRY.rootcanal = (function () {
          the answer for the members it was drawn from. */
       /* A refused margin is the margin's problem: said in its card, taken
          off, and the pool fitted without it. */
+      if (body.border && /^The border /.test(e.message)) {
+        pool.borderErr = e.message;
+        pool.border = null;
+        pool.fitting = false;
+        render();
+        return runPool();
+      }
       if (body.margin) {
         pool.marginErr = e.message;
         pool.margin = null;
@@ -4382,7 +5665,9 @@ BARRY.rootcanal = (function () {
     pool.evData = null;
     pool.evFor = null;
     BARRY.activity.log('rootcanal.pool_fit', {
-      members: body.members.length, focus: body.focus,
+      // A pool of pools names its pools, not its members.
+      members: (body.members || []).length,
+      pools: body.pools ? body.pools.length : undefined, focus: body.focus,
     });
     render();
     if (pool.picked != null) loadPoolEvent();
@@ -4415,7 +5700,7 @@ BARRY.rootcanal = (function () {
   const COLOURS = [
     ['pool', 'pooled call'], ['single', 'single call'], ['switches', 'switches'],
     ['recording', 'recording'], ['mouse', 'mouse'], ['type', 'mouse type'],
-    ['cluster', 'cluster'],
+    ['cluster', 'cluster'], ['border', 'border'],
   ];
   /* The categorical palette is the theme's own (`--c1`..`--c4`, what
      `BARRY.hues` hands out once its neutral is dropped). Past four the
@@ -4479,6 +5764,9 @@ BARRY.rootcanal = (function () {
 
   function poolFill(e) {
     const mode = pool.colour;
+    if (mode === 'border') {
+      return colOf(pool.fit && pool.fit.border_used ? e.border : e.cls_pool);
+    }
     if (mode === 'cluster') return e.cluster != null ? cluColour(e.cluster)
                                                      : tok('--text-3');
     if (mode === 'single') return colOf(e.cls_single);
@@ -4716,6 +6004,17 @@ BARRY.rootcanal = (function () {
                               'banked Root Canal results and reads cached here'));
       return;
     }
+    box.appendChild(levelBar());
+    if (pool.level === 'double') {
+      box.appendChild(dshelfCard());
+      if (pool.open || pool.fit || pool.sel.length) box.appendChild(openPoolCard());
+      box.appendChild(controlsBar());
+      box.appendChild(poolsCard());
+      box.appendChild(poolBusyLine());
+      const w2 = poolWork();
+      if (w2) box.appendChild(w2);
+      return;
+    }
     box.appendChild(shelfCard());
     if (pool.open || pool.fit || pool.sel.length) box.appendChild(openPoolCard());
     /* The same controls bar as Single: one set of settings for both views. */
@@ -4727,6 +6026,228 @@ BARRY.rootcanal = (function () {
     box.appendChild(poolBusyLine());
     const w = poolWork();
     if (w) box.appendChild(w);
+  }
+
+  /* POOL RECORDINGS | POOL POOLS. The second level pools saved pools: the
+     controls' (every event DS) and the IED mice's, say. Each event keeps
+     what its own pool called it -- its v0 -- and the identity switch is
+     counted against that, and against its single. */
+  function levelBar() {
+    return el('div', { class: 'rc-levelbar' }, [
+      BARRY.ui.seg([
+        ['pool', 'Pool recordings', 'Recordings -- saved singles, banked '
+                                    + 'results, reads here -- pooled.'],
+        ['double', 'Pool pools', 'Saved pools pooled: a pool of pools. Each '
+                                 + 'event keeps what its own pool called it.'],
+      ], pool.level, (v) => setLevel(v), { extra: 'rc-level' }),
+    ]);
+  }
+
+  function setLevel(v) {
+    if (v === pool.level) return;
+    closePool();
+    pool.level = v;
+    if (v === 'double' && !pool.dshelf) loadDshelf();
+    if (!pool.shelf) loadShelf(true);
+    render();
+  }
+
+  async function loadDshelf() {
+    try {
+      pool.dshelf = (await api('/api/rootcanal/dpools')).dpools || [];
+      pool.dshelfErr = null;
+    } catch (e) {
+      pool.dshelf = [];
+      pool.dshelfErr = e.message;
+    }
+    if (viewMode === 'pooled' && pool.level === 'double') render();
+  }
+
+  function dshelfCard() {
+    const kids = [el('div', { class: 'section-label', text: 'Saved pools of pools' })];
+    const list = pool.dshelf;
+    if (!list) {
+      kids.push(el('p', { class: 'hint', text: 'Reading them…' }));
+    } else if (pool.dshelfErr) {
+      kids.push(el('p', { class: 'hint rc-warn', text: 'They could not be read: '
+                                                       + pool.dshelfErr }));
+    } else if (!list.length) {
+      kids.push(el('p', { class: 'hint', text: 'None saved yet. Tick saved pools '
+        + 'below, pool them, and save that under a label.' }));
+    } else {
+      kids.push(el('div', { class: 'bm-list rc-dshelf-list' }, list.map((p) => {
+        const id = p.artifact_id || p.id;
+        const cur = p.current || {};
+        return el('div', { class: 'bm-row rc-shelf-row' }, [
+          el('span', { class: 'mk-name', text: p.nickname || p.name || id }),
+          p.version != null ? el('span', { class: 'flagchip',
+                                           text: 'v' + p.version }) : null,
+          el('span', { class: 'flagchip', text: ((cur.n_summary || {}).pools
+                                                 || 0) + ' pools' }),
+          BARRY.syncState ? BARRY.syncState.mark('artifacts', id) : null,
+          BARRY.ui.button({ kind: 'mini', text: 'Open',
+            title: 'Reopen it as it was saved. Nothing is refitted.',
+            onclick: () => openSaved(id) }),
+        ].filter(Boolean));
+      })));
+    }
+    return el('div', { class: 'card rc-shelf rc-dshelf' }, kids);
+  }
+
+  /* What a saved pool version is, for its hover. */
+  function poolHover(p, v) {
+    const ns = (v && v.n_summary) || {};
+    const pp = (v && v.params) || {};
+    return [(p.nickname || p.name) + ' · v' + (v ? v.v : '?')
+              + (v && v.nickname ? ' · ' + v.nickname : ''),
+            (ns.members != null ? ns.members + ' recordings' : null),
+            (ns.events != null ? ns.events + ' events' : null),
+            (ns.mice != null ? ns.mice + ' mice' : null),
+            pp.all_ds ? 'every event DS' : (pp.k ? 'k = ' + pp.k : null),
+            (pp.measure && pp.measure.filter_label) || null,
+            ns.stats ? 'Are the clusters different? ' + verdictWords(ns.stats)
+                       + ' (SigClust)' : null,
+            v ? 'Saved by ' + (v.by || 'someone') + (v.machine ? ' on '
+              + v.machine : '') + (v.at ? ', ' + String(v.at).replace('T', ' ')
+              .slice(0, 16) : '') : null]
+      .filter(Boolean).join('\n');
+  }
+
+  /* The saved pools, to pool: each at a version, the latest unless
+     another is picked. */
+  function poolsCard() {
+    const kids = [el('div', { class: 'section-label', text: 'Pools in the pool' }),
+      el('p', { class: 'hint', text: 'Each event keeps what its own pool '
+        + 'called it (its v0); the identity switch below is counted against '
+        + 'that, and against what its single called it. Pools measured '
+        + 'differently, or sharing a session, are refused by name.' })];
+    const list = pool.shelf || [];
+    if (!list.length) {
+      kids.push(el('p', { class: 'hint', text: 'No pool has been saved yet. '
+        + 'Pool recordings first, and save the pools.' }));
+    }
+    const selOfPool = (id) => pool.sel.find((m) => String(m.key)
+      .indexOf('P:' + id + ':') === 0) || null;
+    if (list.length) {
+      kids.push(el('table', { class: 'tbl rc-pool-pools' }, [
+        el('thead', {}, [el('tr', {}, ['', 'pool', 'version', 'recordings',
+                                       'identity']
+          .map((t) => el('th', { text: t })))]),
+        el('tbody', {}, list.map((p) => {
+          const id = p.artifact_id || p.id;
+          const vs = (p.versions || []).filter((v) => v.here !== false);
+          const sm = selOfPool(id);
+          const curV = sm ? Number(String(sm.key).split(':')[2])
+                          : (vs.length ? vs[vs.length - 1].v : p.version);
+          const vrow = vs.find((v) => v.v === curV) || vs[vs.length - 1];
+          const pp = (vrow && vrow.params) || {};
+          return el('tr', { class: sm ? 'on' : null, 'data-pool': id }, [
+            el('td', {}, [el('input', { type: 'checkbox', class: 'rc-pool-pick',
+              checked: sm ? 'checked' : null,
+              onchange: (ev2) => {
+                if (ev2.target.checked && !selOfPool(id)) {
+                  pool.sel.push({ key: 'P:' + id + ':' + curV });
+                } else if (!ev2.target.checked) {
+                  pool.sel = pool.sel.filter((m) => m !== selOfPool(id));
+                }
+                pool.dirty = true;
+                pool.fitErr = null;
+                render();
+              } })]),
+            el('td', { text: p.nickname || p.name || id,
+                       title: poolHover(p, vrow) }),
+            el('td', {}, [el('select', { class: 'rc-in rc-pool-ver',
+              title: poolHover(p, vrow),
+              onchange: (ev2) => {
+                const v = Number(ev2.target.value);
+                const m = selOfPool(id);
+                if (m) m.key = 'P:' + id + ':' + v;
+                else pool.sel.push({ key: 'P:' + id + ':' + v });
+                pool.dirty = true;
+                render();
+              } }, vs.slice().reverse().map((v) => el('option', {
+                value: String(v.v), title: poolHover(p, v),
+                selected: v.v === curV ? 'selected' : null,
+                text: 'v' + v.v + (v.nickname ? ' · ' + v.nickname : '') })))]),
+            el('td', { text: String(((vrow || {}).n_summary || {}).members
+                                    || p.n_members || '') }),
+            el('td', {}, [
+              pp.all_ds ? BARRY.ui.chip('every event DS', { flag: true })
+                        : BARRY.ui.chip('k = ' + (pp.k || 2), { flag: true }),
+              BARRY.syncState ? BARRY.syncState.mark('artifacts', id) : null,
+            ].filter(Boolean)),
+          ]);
+        })),
+      ]));
+    }
+    if (pool.fitErr) {
+      kids.push(el('p', { class: 'hint rc-warn rc-pool-refused',
+                          text: 'Not pooled: ' + pool.fitErr }));
+    }
+    kids.push(BARRY.ui.actions([
+      el('span', { class: 'hint', text: pool.sel.length + ' pool'
+        + (pool.sel.length === 1 ? '' : 's') + ' ticked'
+        + (pool.dirty && pool.fit ? ' — changed since the picture below' : '') }),
+      BARRY.ui.button({ kind: (pool.dirty || !pool.fit) ? 'primary' : 'ghost',
+        text: 'Pool ' + pool.sel.length + ' pool' + (pool.sel.length === 1 ? '' : 's'),
+        extra: 'rc-pool-run', disabled: !pool.sel.length || pool.fitting,
+        onclick: runPool }),
+    ]));
+    return el('div', { class: 'card rc-members rc-pools' }, kids);
+  }
+
+  /* After a pool of pools is saved: its identity down, to its pools and/or
+     its singles, each a new version -- both ticked by default. */
+  function dpropagateDialog(rep) {
+    const toPools = el('input', { type: 'checkbox', class: 'rc-dprop-pools',
+                                  checked: 'checked' });
+    const toSingles = el('input', { type: 'checkbox', class: 'rc-dprop-singles',
+                                    checked: 'checked' });
+    showModal(el('div', { class: 'rc-prop-dlg rc-dprop-dlg' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Carry this identity down?' }),
+        el('div', { class: 'spacer' })]),
+      el('div', { class: 'mb' }, [el('div', { class: 'rc-ask' }, [
+        el('p', { text: 'New versions named “from pool of pools ‘'
+          + rep.nickname + '’ v' + rep.version + '”, each event called and '
+          + 'named as this pool of pools called it.' }),
+        el('label', { class: 'rc-dprop-row' }, [toPools,
+          el('span', { text: ' the pools: a new version of each, its members '
+                             + 're-clustered with these clusters' })]),
+        el('label', { class: 'rc-dprop-row' }, [toSingles,
+          el('span', { text: ' the singles: a new version of each recording’s '
+                             + 'single' })]),
+      ])]),
+      BARRY.ui.modalFoot([], [
+        BARRY.ui.button({ kind: 'ghost', text: 'Not now', extra: 'rc-prop-no',
+                          onclick: closeModal }),
+        BARRY.ui.button({ kind: 'primary', text: 'Make the new versions',
+          extra: 'rc-prop-yes',
+          onclick: async () => {
+            const tp = toPools.checked, ts = toSingles.checked;
+            closeModal();
+            if (!tp && !ts) return;
+            let got;
+            try {
+              got = await apiPost('/api/rootcanal/dpool/propagate',
+                Object.assign(poolBody(), { to_pools: tp, to_singles: ts,
+                  dpool: { artifact_id: rep.artifact_id, version: rep.version,
+                           nickname: rep.nickname } }));
+            } catch (e) {
+              toast('No new versions were made: ' + e.message, 'err', 12000);
+              return;
+            }
+            const res = got.results || {};
+            const left = (res.pools || []).concat(res.singles || [])
+              .filter((r) => !r.ok);
+            toast(got.made + ' new version' + (got.made === 1 ? '' : 's')
+              + ' made' + (left.length ? '; ' + left.length + ' left: '
+                + left.map((r) => r.why).join('; ') : '') + '.',
+              left.length ? 'warn' : 'ok', 14000);
+            loadShelf(true);
+          } }),
+      ]),
+    ]), { replace: true });
   }
 
   /* The saved pools: the shelf. Opening one restores its members, its
@@ -4839,6 +6360,7 @@ BARRY.rootcanal = (function () {
     // Members of the opened pool that this machine does not offer: read on
     // another machine, pooled from the save.
     const fromSave = (pool.savedMembers || []).filter((m) => !candOf(m.key));
+    if (cs.length) kids.push(selectBar(cs));
     if (!cs.length && !fromSave.length && !pool.candsErr) {
       kids.push(el('div', { class: 'empty-state rc-pool-empty' }, [
         el('p', { text: 'Nothing can be pooled yet. Bank a set in Single, or '
@@ -4848,69 +6370,7 @@ BARRY.rootcanal = (function () {
     }
     const sel = new Set(pool.sel.map((m) => m.key));
     if (cs.length || fromSave.length) {
-      kids.push(el('table', { class: 'tbl rc-pool-cands' }, [
-        el('thead', {}, [el('tr', {}, ['', 'recording', 'mouse', 'type',
-                                       'kind', 'events']
-          .map((t) => el('th', { text: t })))]),
-        el('tbody', {}, cs.map((c) => {
-          const can = c.banked || c.here !== false;
-          return el('tr', { class: sel.has(c.key) ? 'on' : null,
-                            'data-key': c.key }, [
-            el('td', {}, [el('input', {
-              type: 'checkbox', class: 'rc-pool-pick',
-              checked: sel.has(c.key) ? 'checked' : null,
-              disabled: can ? null : 'disabled',
-              title: can ? '' : 'Its read is not on this machine, and it is '
-                              + 'not banked, so there is nothing to pool.',
-              onchange: (ev2) => toggleMember(c.key, ev2.target.checked),
-            })]),
-            el('td', { text: c.session_label || c.entry_id }),
-            el('td', { text: c.mouse_key || '' }),
-            el('td', { text: typeFor(c.mouse_key, c.mouse_type) }),
-            el('td', {}, [
-              c.banked
-                ? BARRY.ui.chip('banked' + (c.version ? ' v' + c.version : ''),
-                                { flag: true })
-                : BARRY.ui.chip('not banked', { flag: true, kind: 'warn' }),
-              c.here === false
-                ? BARRY.ui.chip('read elsewhere', { flag: true,
-                    title: 'Its numbers can be pooled; its traces cannot be '
-                         + 'opened on this machine.' })
-                : null,
-            ].filter(Boolean)),
-            /* The set's size. Its DS/IED counts are not drawn here: an
-               unbanked read is fitted when it is pooled, not to draw a list. */
-            el('td', { text: String(c.n != null ? c.n : '') }),
-          ]);
-        }).concat(fromSave.map((m) => {
-          const fm = poolMemberByKey(m.key) || m;
-          const where = fm.read_on || 'another machine';
-          return el('tr', { class: (sel.has(m.key) ? 'on ' : '') + 'rc-from-save',
-                            'data-key': m.key }, [
-            el('td', {}, [el('input', {
-              type: 'checkbox', class: 'rc-pool-pick',
-              checked: sel.has(m.key) ? 'checked' : null,
-              onchange: (ev2) => toggleMember(m.key, ev2.target.checked),
-            })]),
-            el('td', { text: m.session_label || m.entry_id }),
-            el('td', { text: m.mouse_key || '' }),
-            el('td', { text: typeFor(m.mouse_key, m.mouse_type_default
-                                                  || m.mouse_type) }),
-            el('td', {}, [
-              m.banked
-                ? BARRY.ui.chip('banked', { flag: true })
-                : BARRY.ui.chip('not banked', { flag: true, kind: 'warn' }),
-              BARRY.ui.chip('read on ' + where, { flag: true,
-                extra: 'rc-read-on',
-                title: 'Its read is on ' + where + ', not here. Its numbers '
-                     + 'come from the saved pool, exactly as they were saved, '
-                     + 'so it pools as saved. Measuring it another way needs '
-                     + 'its read.' }),
-            ]),
-            el('td', { text: String(m.n != null ? m.n : '') }),
-          ]);
-        }))),
-      ]));
+      kids.push(membersTable(cs, fromSave, sel));
     }
     /* Members of an opened pool that this machine does not offer. They
        pool from the saved version, number for number, so everything that
@@ -4980,6 +6440,16 @@ BARRY.rootcanal = (function () {
       kids.push(el('p', { class: 'hint rc-warn rc-pool-refused',
                           text: 'Not pooled: ' + pool.fitErr }));
     }
+    kids.push(el('label', { class: 'rc-all-ds',
+      title: 'Every event of this pool is a dentate spike: one cluster, '
+           + 'called DS, saved with the pool -- the controls. In a pool of '
+           + 'pools its events go in as DS.' }, [
+      el('input', { type: 'checkbox', class: 'rc-all-ds-box',
+        checked: pool.all_ds ? 'checked' : null,
+        onchange: (ev2) => { pool.all_ds = ev2.target.checked;
+                             pool.dirty = true; render(); } }),
+      el('span', { text: ' every event is DS (the controls)' }),
+    ]));
     kids.push(BARRY.ui.actions([
       el('span', { class: 'hint', text: pool.sel.length + ' recording'
         + (pool.sel.length === 1 ? '' : 's') + ' ticked, ' + nMice + ' mice'
@@ -5031,6 +6501,7 @@ BARRY.rootcanal = (function () {
       el('div', { class: 'rc-main' }, [spacePane(), flatsPane(), eventPane()]),
       gmmPanel(),
       switchPanel(),
+      deepPanel(),
     ]);
   }
 
@@ -5056,8 +6527,24 @@ BARRY.rootcanal = (function () {
           + 'the pool’s band -- its single call is at the pool’s band, not '
           + 'the one that was banked').join('; ') }));
     }
+    const memMeasured = (f && f.members) || [];
     return el('div', { class: 'card rc-pool-clusters' }, [
       el('div', { class: 'chip-row' }, notes),
+      memMeasured.length ? el('details', { class: 'rc-pool-measured' }, [
+        el('summary', { text: 'How each member was measured' }),
+        el('table', { class: 'tbl' }, [el('tbody', {}, memMeasured.map((m) => {
+          const pp = (m.pin || {}).params || {};
+          return el('tr', {}, [
+            el('td', { text: m.session_label || m.key }),
+            el('td', { text: filterWords(pp, true) + ' · ±' + hz(pp.win_ms)
+              + ' ms · ' + hz(pp.band_lo) + '–' + hz(pp.band_hi) + ' Hz'
+              + ((m.remeasured || []).length ? ' (measured again here)' : '') }),
+            el('td', { class: 'hint', text: (m.pin || {}).single
+              ? 'saved v' + m.pin.single.version
+              : m.banked ? 'banked' : 'read here' }),
+          ]);
+        }))]),
+      ]) : null,
       clusterChips(f && f.clusters,
         (rank, call) => {
           const dj = rank - ((f && f.k) || 0);
@@ -5067,8 +6554,13 @@ BARRY.rootcanal = (function () {
         },
         () => { pool.cluster_calls = {}; runPool(); },
         ((f && f.clusters) || []).some((x) => x.call_by === 'hand'),
-        { onAvg: (c) => showAverage('pooled cluster #' + (c.rank + 1) + ' '
-                                     + c.call.toUpperCase(),
+        { onName: (c) => nameDialog(c, (nm) => {
+            if (nm) pool.cluster_names[String(c.rank)] = nm;
+            else delete pool.cluster_names[String(c.rank)];
+            runPool();
+          }),
+          onAvg: (c) => showAverage('pooled cluster #' + (c.rank + 1) + ' '
+                                     + (c.name || c.call.toUpperCase()),
                                      poolEvents().filter(
                                        (e) => e.cluster === c.rank)),
           onRemove: (c) => { pool.drawn.splice(c.rank - ((f && f.k) || 0), 1);
@@ -5086,7 +6578,8 @@ BARRY.rootcanal = (function () {
     const sw = f.switches || {};
     const colour = el('select', { class: 'rc-colour',
       onchange: (e) => setColour(e.target.value) },
-      COLOURS.map(([id, nm]) => el('option', { value: id, text: nm,
+      COLOURS.filter(([id]) => id !== 'border' || f.border_used)
+        .map(([id, nm]) => el('option', { value: id, text: nm,
         selected: pool.colour === id ? 'selected' : null })));
     const mice = Array.from(new Set(poolEvents().map((e) => e.mouse_key)
       .filter(Boolean))).sort();
@@ -5193,7 +6686,10 @@ BARRY.rootcanal = (function () {
     const mode = pool.colour;
     const kids = [el('span', { class: 'rc-lg-h', text: (COLOURS.find(
       ([id]) => id === mode) || [0, ''])[1] + ':' })];
-    if (mode === 'pool' || mode === 'single') {
+    if (mode === 'border' && pool.fit && pool.fit.border_used) {
+      kids.push(item('rc-lg-ds', 'solid DS'), item('rc-lg-ied', 'solid IED'),
+                item('rc-lg-amb', 'ambiguous'));
+    } else if (mode === 'pool' || mode === 'single' || mode === 'border') {
       kids.push(item('rc-lg-ds', 'DS'), item('rc-lg-ied', 'IED'));
     } else if (mode === 'switches') {
       kids.push(item('rc-lg-same', 'unchanged'),
@@ -5224,6 +6720,290 @@ BARRY.rootcanal = (function () {
   }
 
   /* ---------- clear vs blur ---------- */
+  /* ==================================================================
+     ARE THESE CLUSTERS STATISTICALLY DIFFERENT? (2026-10-06)
+     ================================================================== */
+  /* k-means always finds two clusters when it is asked for two, so a test
+     BETWEEN them (a t-test, a MANOVA) says "different" of any cloud at all
+     and is not offered. Each test here asks whether ONE cloud would have
+     done as well. The answer comes back on the picture itself (`stats` on
+     a fit) from the server, which keeps it by what the picture is: a refit
+     of the same picture brings it back, a changed one does not, and a
+     version saved of it carries it. At k = 2 only: past two there is no
+     single yes or no. */
+  let statsAbout = null;          // the four tests in words, asked once
+  let statsPick = null;           // the tests ticked: all four at first
+  let statsBusy = null;           // the level being tested, while it is
+  const STATS_LEVEL = { single: 'single recording', pool: 'pool',
+                        double: 'pool of pools' };
+
+  async function statsAboutNow() {
+    if (!statsAbout) statsAbout = await api('/api/rootcanal/stats/about');
+    if (!statsPick) statsPick = (statsAbout.tests || []).slice();
+    return statsAbout;
+  }
+
+  function statsName(t) {
+    return (((statsAbout || {}).about || {})[t] || {}).name || t;
+  }
+
+  /* What a test asks, its pro and its con: wherever a test is named. */
+  function statsHover(t) {
+    const a = ((statsAbout || {}).about || {})[t];
+    if (!a) return null;
+    return a.name + ' asks: ' + a.asks + '\nPro: ' + a.pro + '\nCon: '
+      + a.con + (t === (statsAbout || {}).recommended ? '\nRecommended.' : '');
+  }
+
+  /* The picture at a level: its fit, the request that made it, and the
+     verdict a saved version of it carried when the answer itself is not
+     here (after a restart the server no longer has it). */
+  function statsCtx(lvl) {
+    if (lvl === 'single') {
+      let savedV = null;
+      if (viewing && single && viewing.artifact_id === single.artifact_id
+          && !isDirty()) {
+        const row = (single.versions || []).find((x) => x.v === viewing.v);
+        const v = row && (row.n_summary || {}).stats;
+        if (v) savedV = { v: row.v, verdict: v };
+      }
+      /* A version drawn from its saved numbers is asked of by those. */
+      const body = savedOnly && viewing
+        ? () => ({ single: { artifact_id: viewing.artifact_id,
+                             version: viewing.v } })
+        : () => lastBody || fitBody();
+      return { level: 'single', f: fit, body, savedV };
+    }
+    return { level: pool.level === 'double' ? 'double' : 'pool',
+             f: pool.fit, body: () => pool.lastBody || poolBody(),
+             savedV: null };
+  }
+
+  function verdictWords(v) {
+    return v === 'genuine' ? 'two genuine groups'
+      : v === 'could be forced' ? 'could be one group cut in two'
+        : 'no verdict';
+  }
+
+  function statsLines(st) {
+    const T = st.tests || {};
+    return ['Are these clusters different? ' + verdictWords(st.verdict)
+              + ', by ' + statsName(st.recommended) + ' (recommended).']
+      .concat(Object.keys(T).map((t) => statsName(t) + ': '
+                                        + (T[t].error || T[t].say)))
+      .concat(['Press for the table, and each test’s pros and cons.'])
+      .join('\n');
+  }
+
+  /* The control: before the tests, the question; after, the answer. Its
+     words are short on purpose -- in Single it shares the clusters' row --
+     and the hover says the whole of it. */
+  const STATS_SAID = { genuine: 'genuine split',
+                       'could be forced': 'maybe forced' };
+
+  function statsButton(lvl) {
+    const c = statsCtx(lvl);
+    const f = c.f;
+    if (!f || !f.ok) return null;
+    if (!statsAbout) statsAboutNow().catch(() => {});
+    if (statsBusy === c.level) {
+      return BARRY.ui.chip('testing', { extra: 'rc-stats-go rc-stats-busy',
+        title: 'The cluster tests are running: a few seconds.' });
+    }
+    const st = f.stats || null;
+    const verdict = st ? st.verdict : (c.savedV ? c.savedV.verdict : null);
+    if (f.k !== 2) {
+      // In Single the row has no room to spare for a control that is off.
+      if (lvl === 'single') return null;
+      return BARRY.ui.button({ kind: 'mini', extra: 'rc-stats-go',
+        text: 'Test the split', disabled: true,
+        title: 'The tests ask one group or two, so they run at k = 2. This '
+             + 'picture has ' + f.k + ' cluster' + (f.k === 1 ? '' : 's')
+             + '.' });
+    }
+    if (!verdict) {
+      return BARRY.ui.button({ kind: 'mini', extra: 'rc-stats-go',
+        text: 'Test the split',
+        title: 'Are these clusters statistically different? k-means always '
+             + 'finds two when asked for two. Four tests of whether one '
+             + 'cloud would have done as well: pick which, each with its '
+             + 'pros and cons. A few seconds.',
+        onclick: () => statsDialog(lvl) });
+    }
+    const ok = verdict === 'genuine';
+    return BARRY.ui.button({ kind: 'mini',
+      extra: 'rc-stats-go rc-stats-done ' + (ok ? 'ok' : 'warn')
+             + (st ? '' : ' rc-stats-saved'),
+      text: STATS_SAID[verdict] || verdict,
+      title: st ? statsLines(st)
+        : 'Saved with v' + c.savedV.v + ': ' + verdictWords(verdict)
+          + '. Press to run the tests again and see each one.',
+      onclick: () => statsDialog(lvl) });
+  }
+
+  async function statsDialog(lvl) {
+    try {
+      await statsAboutNow();
+    } catch (e) {
+      toast('The tests could not be described: ' + e.message, 'err', 9000);
+      return;
+    }
+    const f = statsCtx(lvl).f;
+    if (f && f.stats) statsShow(lvl, f.stats, false);
+    else statsAsk(lvl, false);
+  }
+
+  function statsHead() {
+    return el('div', { class: 'mh' }, [
+      el('h3', { text: 'Are these clusters statistically different?' }),
+      el('div', { class: 'spacer' })]);
+  }
+
+  /* Which tests: all four offered, the recommended one marked, each one's
+     pros and cons on hover. */
+  function statsAsk(lvl, replace) {
+    const A = statsAbout || {};
+    const c = statsCtx(lvl);
+    const n = c.f ? c.f.n_used : null;
+    const go = BARRY.ui.button({ kind: 'primary', text: 'Run the tests',
+      extra: 'rc-stats-run', disabled: !statsPick.length,
+      onclick: () => statsRun(lvl) });
+    const rows = (A.tests || []).map((t) => {
+      const a = (A.about || {})[t] || {};
+      return el('label', { class: 'rc-stats-pick', title: statsHover(t) }, [
+        el('input', { type: 'checkbox', value: t,
+          checked: statsPick.indexOf(t) >= 0 ? 'checked' : null,
+          onchange: (e) => {
+            statsPick = (A.tests || []).filter((x) => (x === t
+              ? e.target.checked : statsPick.indexOf(x) >= 0));
+            go.disabled = !statsPick.length;
+          } }),
+        el('strong', { text: a.name || t }),
+        t === A.recommended ? BARRY.ui.chip('recommended',
+                                            { kind: 'ok', flag: true }) : null,
+        el('span', { class: 'hint', text: a.asks || '' }),
+      ].filter(Boolean));
+    });
+    showModal(el('div', { class: 'rc-stats-dlg' }, [
+      statsHead(),
+      el('div', { class: 'mb' }, [el('div', { class: 'rc-ask' }, [
+        el('p', { text: 'k-means always finds two clusters when it is asked '
+          + 'for two. Each test asks whether ONE cloud of events would have '
+          + 'done as well. A test between the two clusters, such as a '
+          + 't-test, is not offered: k-means makes them differ, so it would '
+          + 'say “different” of any cloud.' }),
+        el('div', { class: 'rc-stats-picks' }, rows),
+        el('p', { class: 'hint', text: 'On the '
+          + (n != null ? n + ' ' : '') + 'complete events of this '
+          + STATS_LEVEL[c.level] + (n != null && n > A.max_n
+            ? ', ' + A.max_n + ' of them drawn for speed (seeded, so the '
+              + 'same each time)' : '')
+          + '. Simulated: ' + A.n_sim + ' null draws and ' + A.n_boot
+          + ' resamples, a few seconds. Hover a test for its pros and '
+          + 'cons.' }),
+      ])]),
+      BARRY.ui.modalFoot([], [
+        BARRY.ui.button({ kind: 'ghost', text: 'Cancel',
+                          extra: 'rc-stats-cancel', onclick: closeModal }),
+        go,
+      ]),
+    ]), replace ? { replace: true } : undefined);
+  }
+
+  async function statsRun(lvl) {
+    const c = statsCtx(lvl);
+    const f0 = c.f;
+    const body = Object.assign({}, c.body(), { level: c.level,
+                                               tests: statsPick.slice() });
+    statsBusy = c.level;
+    showModal(el('div', { class: 'rc-stats-dlg' }, [
+      statsHead(),
+      el('div', { class: 'mb' }, [loader('Running ' + statsPick.map(statsName)
+        .join(', ') + ': a few seconds')]),
+    ]), { replace: true });
+    render();
+    let got;
+    try {
+      got = await apiPost('/api/rootcanal/stats', body);
+    } catch (e) {
+      statsBusy = null;
+      render();
+      statsAsk(lvl, true);
+      toast('The tests did not run: ' + e.message, 'err', 12000);
+      return null;
+    }
+    statsBusy = null;
+    /* Onto the picture it was asked of, if that is still the one on
+       screen; a picture changed meanwhile asks again. */
+    if (f0 && statsCtx(lvl).f === f0) f0.stats = got;
+    BARRY.activity.log('rootcanal.stats', { level: c.level,
+      verdict: got.verdict, n: got.n, tests: Object.keys(got.tests || {}) });
+    render();
+    statsShow(lvl, got, true);
+    return got;
+  }
+
+  /* The answer: the recommended test's verdict first, then every test's
+     own answer and how it reads, each with its pros and cons on hover. */
+  function statsShow(lvl, st, replace) {
+    const A = statsAbout || {};
+    const T = st.tests || {};
+    const rec = st.recommended || A.recommended;
+    const order = (A.tests || Object.keys(T)).filter((t) => T[t]);
+    const ok = st.verdict === 'genuine';
+    const recR = T[rec] || {};
+    const head = st.verdict
+      ? (ok ? 'Two genuine groups. ' : 'Could be forced. ') + statsName(rec)
+        + ', recommended: ' + (recR.say || '') + '.'
+      : 'No verdict: the recommended test, ' + statsName(rec) + ', '
+        + (recR.error ? 'did not run: ' + recR.error : 'was not asked') + '.';
+    const rows = order.map((t) => {
+      const r = T[t];
+      return el('tr', { title: statsHover(t),
+                        class: 'rc-stats-r-' + t + (t === rec ? ' rc-stats-rec'
+                                                              : '') }, [
+        el('th', {}, [el('span', { text: statsName(t) }),
+          t === rec ? BARRY.ui.chip('recommended', { kind: 'ok', flag: true })
+                    : null].filter(Boolean)),
+        el('td', { text: r.error || r.say || '' }),
+        el('td', {}, [r.error ? BARRY.ui.chip('did not run', { flag: true })
+          : BARRY.ui.chip(r.genuine ? 'genuine' : 'could be forced',
+                          { kind: r.genuine ? 'ok' : 'warn', flag: true })]),
+      ]);
+    });
+    const ran = order.filter((t) => !T[t].error);
+    const nGen = ran.filter((t) => T[t].genuine).length;
+    showModal(el('div', { class: 'rc-stats-dlg' }, [
+      statsHead(),
+      el('div', { class: 'mb' }, [el('div', { class: 'rc-ask' }, [
+        el('p', { class: 'rc-stats-verdict ' + (st.verdict ? (ok ? 'ok'
+                                                                 : 'warn')
+                                                           : ''),
+                  text: head }),
+        el('table', { class: 'tbl rc-stats-tab' }, [
+          el('thead', {}, [el('tr', {}, ['test', 'its answer', 'reads as']
+            .map((x) => el('th', { text: x })))]),
+          el('tbody', {}, rows),
+        ]),
+        el('p', { class: 'hint', text: nGen + ' of ' + ran.length + ' test'
+          + (ran.length === 1 ? '' : 's') + ' read the split as genuine, on '
+          + st.n + ' complete events of this ' + (STATS_LEVEL[st.level]
+                                                  || 'picture')
+          + (st.subsampled ? ' (' + st.n_used + ' of them drawn for speed, '
+                             + 'seeded)' : '')
+          + '. The verdict is the recommended test’s. A version saved of '
+          + 'this picture carries this answer. Hover a test for its pros '
+          + 'and cons.' }),
+      ])]),
+      BARRY.ui.modalFoot([BARRY.ui.button({ kind: 'ghost',
+        text: 'Run other tests', extra: 'rc-stats-again',
+        onclick: () => statsAsk(lvl, true) })], [
+        BARRY.ui.button({ kind: 'primary', text: 'Close',
+                          extra: 'rc-stats-close', onclick: closeModal }),
+      ]),
+    ]), replace ? { replace: true } : undefined);
+  }
+
   function gmmBlock(g, title, cls) {
     const kids = [el('strong', { text: title })];
     const finiteN = (v) => v != null && isFinite(v);
@@ -5309,6 +7089,8 @@ BARRY.rootcanal = (function () {
     const fg = pool.focus && (pool.focus.mouse_key || pool.focus.mouse_type);
     return el('div', { class: 'card rc-gmm' }, [
       el('div', { class: 'section-label', text: 'Two clear groups, or one spectrum?' }),
+      el('div', { class: 'chip-row rc-stats-row' },
+         [statsButton('pool')].filter(Boolean)),
       el('div', { class: 'rc-gmm-row' }, [
         gmmBlock(f.gmm, 'The whole pool', 'rc-gmm-pool'),
         /* The visual check the sentence points at, right beside it: two
@@ -5434,6 +7216,288 @@ BARRY.rootcanal = (function () {
                       ied: ied.reduce((x, y) => x + y, 0) };
   }
 
+  /* ==================================================================
+     THE DEEP DIVE (2026-10-06, steps 7-10)
+     ================================================================== */
+  /* Every event whose identity does not sit still: switched at this level,
+     or ambiguous under the border applied. Gathered by the server from the
+     picture's own request, so each row's `j` is its dot. A refit is a
+     different picture, and the dive is gathered again for it. */
+  const DEEP_GROUPS = [['mouse_key', 'mouse'], ['mouse_type', 'mouse type'],
+                       ['group', 'group'], ['subgroup', 'subgroup'],
+                       ['condition', 'condition']];
+
+  const deepSig = () => JSON.stringify(pool.lastBody || null);
+
+  function deepNoun() {
+    return pool.level === 'double' ? 'pool of pools' : 'pool';
+  }
+
+  function deepSource() {
+    return pool.saved && pool.open
+      ? { artifact_id: pool.open.artifact_id,
+          version: (pool.open.source || {}).version || pool.open.version }
+      : null;
+  }
+
+  function swapDeep() {
+    if (!swap('.rc-deep', deepPanel())) render();
+    const on = host() && host().querySelector('.rc-deep tr.on');
+    if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
+  }
+
+  async function loadDeep() {
+    const body = Object.assign({}, pool.lastBody || poolBody(),
+                               { level: pool.level === 'double' ? 'double'
+                                                                : 'pool' });
+    const sig = deepSig();
+    pool.deep = { for: sig, busy: true, filter: 'all', at: -1,
+                  group: (pool.deep && pool.deep.group) || 'mouse_key' };
+    swapDeep();
+    let got;
+    try {
+      got = await apiPost('/api/rootcanal/switches', body);
+    } catch (e) {
+      if (deepSig() !== sig) return null;
+      pool.deep = { for: null, err: e.message };
+      swapDeep();
+      return null;
+    }
+    // The picture changed while it was gathered: that answer is not its.
+    if (deepSig() !== sig || !pool.deep) return null;
+    Object.assign(pool.deep, got, { busy: false });
+    BARRY.activity.log('rootcanal.deep_open', { level: got.level,
+                                                rows: (got.counts || {}).rows });
+    swapDeep();
+    return got;
+  }
+
+  function deepRows() {
+    const d = pool.deep;
+    const rs = (d && d.rows) || [];
+    if (!d || d.filter === 'all') return rs;
+    if (d.filter === 'switched') return rs.filter((r) => r.switch);
+    return rs.filter((r) => r.border === 'amb');
+  }
+
+  /* Step to the k-th listed event: its dot picked, its traces opened, and
+     Xplorefinder following, as for any dot. */
+  function deepPick(k) {
+    const rs = deepRows();
+    const d = pool.deep;
+    if (!rs.length || !d) return;
+    d.at = ((k % rs.length) + rs.length) % rs.length;
+    poolPick(rs[d.at].j);
+    swapDeep();
+  }
+
+  function deepCsv() {
+    const d = pool.deep;
+    if (!d || !d.csv) return;
+    const nick = pool.open && pool.open.nickname
+      ? String(pool.open.nickname).replace(/[^\w.-]+/g, '_') : deepNoun()
+        .replace(/ /g, '-');
+    const name = 'rootcanal-deep-dive-' + nick + '.csv';
+    // A byte-order mark, so a spreadsheet reads the µ and the arrows.
+    BARRY.saveText(name, '\ufeff' + d.csv, 'text/csv;charset=utf-8');
+    BARRY.activity.log('rootcanal.deep_csv', { rows: (d.rows || []).length });
+    toast('Saved ' + name + ': ' + (d.rows || []).length + ' events.', 'ok',
+          6000);
+  }
+
+  function deepBank() {
+    const d = pool.deep;
+    if (!d || !d.counts) return;
+    const c = d.counts;
+    const src = deepSource();
+    const noun = deepNoun();
+    const note = el('textarea', { class: 'rc-in rc-deep-note', rows: '2',
+      'aria-label': 'a note for the entries',
+      placeholder: 'A note for the entries, if any' });
+    showModal(el('div', { class: 'rc-deep-dlg' }, [
+      el('div', { class: 'mh' }, [
+        el('h3', { text: 'Bank the ' + c.rows + ' events?' }),
+        el('div', { class: 'spacer' })]),
+      el('div', { class: 'mb' }, [el('div', { class: 'rc-ask' }, [
+        el('p', { text: 'One Event Bank entry per recording ('
+          + c.recordings + '), named “Switching and ambiguous events (Root '
+          + 'Canal)”, from ' + (src ? 'the saved ' + noun + ' ‘'
+            + pool.open.nickname + '’'
+            : 'this ' + noun + ', which is not saved: save it first for the '
+              + 'entries to name it') + '.' }),
+        el('ul', {}, [
+          el('li', { text: 'Of type “Ambiguous DS / IED”, never DS or IED: '
+            + 'nothing that reads a recording’s DS set or its IED candidates '
+            + 'picks these up.' }),
+          el('li', { text: 'Each stamp keeps what the recording’s own set has '
+            + 'at that time. Why it is here -- its calls, its border class, '
+            + 'its numbers -- is kept with the entry.' }),
+          el('li', { text: 'Banking again from the same source adds a version '
+            + 'to the same entries.' }),
+        ]),
+        note,
+      ])]),
+      BARRY.ui.modalFoot([], [
+        BARRY.ui.button({ kind: 'ghost', text: 'Cancel',
+                          extra: 'rc-deep-bank-no', onclick: closeModal }),
+        BARRY.ui.button({ kind: 'primary', text: 'Bank ' + c.rows + ' events',
+          extra: 'rc-deep-bank-yes', onclick: async () => {
+            closeModal();
+            let got;
+            try {
+              got = await apiPost('/api/rootcanal/switches/bank',
+                Object.assign({}, pool.lastBody || poolBody(), {
+                  level: d.level, source: src, note: note.value || '',
+                  by: (BARRY.profile && BARRY.profile.who
+                       && BARRY.profile.who()) || '' }));
+            } catch (e) {
+              toast('Nothing was banked: ' + e.message, 'err', 12000);
+              return;
+            }
+            const made = got.made || [];
+            const left = got.left || [];
+            d.banked = got;
+            toast('Banked ' + made.reduce((a, m) => a + m.n, 0) + ' events in '
+              + made.length + ' entr' + (made.length === 1 ? 'y' : 'ies')
+              + (left.length ? '; not banked: ' + left.map((x) =>
+                x.session_label + ' (' + x.why + ')').join('; ') : '') + '.',
+              left.length ? 'warn' : 'ok', 14000);
+            BARRY.activity.log('rootcanal.deep_bank', { entries: made.length,
+                                                        left: left.length });
+            swapDeep();
+          } }),
+      ]),
+    ]));
+  }
+
+  function deepPanel() {
+    const f = pool.fit;
+    if (!f || !f.ok) return el('div', { class: 'rc-deep' });
+    const dbl = f.level === 'double';
+    const d = pool.deep;
+    const kids = [el('div', { class: 'section-label', text: 'The deep dive: '
+      + 'the events whose identity does not sit still' })];
+    const fresh = d && !d.err && d.for === deepSig();
+    if (!fresh || d.busy) {
+      kids.push(el('p', { class: 'hint', text: 'Every event that switched '
+        + 'identity ' + (dbl ? 'between its own pool (v0) and this pool of pools'
+                             : 'between its single and this pool')
+        + (f.border_used ? ', and every one the border ‘'
+                           + f.border_used.nickname + '’ leaves ambiguous'
+                         : ' (apply a border, in Margins and borders, to add '
+                           + 'the ones it leaves ambiguous)')
+        + '. Step through them with their traces, average them, see where '
+        + 'they come from by mouse, type, group, subgroup and condition, '
+        + 'export them as a CSV and bank them.' }));
+      kids.push(el('p', { class: 'hint rc-deep-recipe', text: 'Steps 7–10: '
+        + 'pool the controls with “every event is DS”, pool the IED mice at '
+        + 'k = 2, pool those two pools (“Pool pools”), draw a border from the '
+        + 'identity switches, apply it, then open this.' }));
+      if (d && d.err) {
+        kids.push(el('p', { class: 'hint rc-warn rc-deep-err',
+                            text: 'Not gathered: ' + d.err }));
+      }
+      kids.push(d && d.busy && fresh ? loader('Gathering the events')
+        : BARRY.ui.actions([BARRY.ui.button({ kind: 'ghost', size: 'sm',
+            text: 'Open the deep dive', extra: 'rc-deep-go',
+            onclick: loadDeep })]));
+      return el('div', { class: 'card rc-deep' }, kids);
+    }
+    const c = d.counts || {};
+    const bu = d.border_used;
+    kids.push(el('p', { class: 'rc-deep-count', text: c.rows + ' of ' + c.n
+      + ' events: ' + c.switched + ' switched (' + c.ds_to_ied + ' DS → IED, '
+      + c.ied_to_ds + ' IED → DS)'
+      + (bu ? ', ' + c.ambiguous + ' ambiguous under the border ‘'
+              + bu.nickname + '’ at grace ' + bu.grace_words : '')
+      + ', from ' + c.recordings + ' recording'
+      + (c.recordings === 1 ? '' : 's') + '. An event can be both.' }));
+    const items = [['all', 'all ' + c.rows], ['switched', 'switched ' + c.switched]];
+    if (bu) items.push(['ambiguous', 'ambiguous ' + c.ambiguous]);
+    const rs = deepRows();
+    kids.push(el('div', { class: 'chip-row rc-deep-bar' }, [
+      BARRY.ui.seg(items, d.filter, (v) => { d.filter = v; d.at = -1; swapDeep(); },
+                   { extra: 'rc-deep-filter' }),
+      BARRY.ui.button({ kind: 'mini', text: '◀', extra: 'rc-deep-prev',
+        title: 'The one before: its dot, its traces.', disabled: !rs.length,
+        onclick: () => deepPick(d.at < 0 ? rs.length - 1 : d.at - 1) }),
+      el('span', { class: 'rc-deep-at', text: d.at >= 0 && rs.length
+        ? (d.at + 1) + ' of ' + rs.length : rs.length + ' listed' }),
+      BARRY.ui.button({ kind: 'mini', text: '▶', extra: 'rc-deep-next',
+        title: 'The next one: its dot, its traces.', disabled: !rs.length,
+        onclick: () => deepPick(d.at + 1) }),
+      BARRY.ui.button({ kind: 'mini', text: 'Average these ' + rs.length,
+        extra: 'rc-deep-avg', disabled: !rs.length,
+        onclick: () => {
+          const evs = poolEvents();
+          showAverage('deep dive · ' + d.filter, rs.map((r) => evs[r.j])
+            .filter(Boolean));
+        } }),
+      BARRY.ui.button({ kind: 'mini', text: 'Export all ' + c.rows + ' as CSV',
+        extra: 'rc-deep-csv', disabled: !c.rows, onclick: deepCsv }),
+      BARRY.ui.button({ kind: 'mini', text: 'Bank all ' + c.rows + '…',
+        extra: 'rc-deep-bank', disabled: !c.rows, onclick: deepBank }),
+    ]));
+    if (d.banked) {
+      const mk = d.banked.made || [];
+      kids.push(el('p', { class: 'hint rc-deep-banked', text: 'Banked: '
+        + mk.map((m) => m.session_label + ' ' + m.n + (m.replaced
+          ? ' (a new version)' : '')).join(', ')
+        + ((d.banked.left || []).length ? '. Not banked: ' + d.banked.left
+          .map((x) => x.session_label + ', ' + x.why).join('; ') : '') + '.' }));
+    }
+    const callTd = (v) => el('td', { class: v ? 'rc-call-' + v : null,
+                                     text: v ? v.toUpperCase() : '—' });
+    const head = ['session', 't · s', 'amp · µV', 'hw · ms', 'HF · dB',
+                  'single', dbl ? 'pool (v0)' : 'pool',
+                  dbl ? 'pool of pools' : null, bu ? 'border' : null, 'why']
+      .filter(Boolean);
+    kids.push(el('div', { class: 'rc-deep-scroll' }, [
+      el('table', { class: 'tbl rc-deep-tab' }, [
+        el('thead', {}, [el('tr', {}, head.map((h) => el('th', { text: h })))]),
+        el('tbody', {}, rs.map((r, k) => el('tr', {
+          class: 'rc-deep-row' + (k === d.at ? ' on' : ''),
+          'data-j': String(r.j), title: 'Pick this event: its dot and traces.',
+          onclick: () => deepPick(k) }, [
+          el('td', { text: r.session_label || r.gid || '?' }),
+          el('td', { text: fmt(r.t, 3) }),
+          el('td', { text: fmt(r.amp_uV, 0) }),
+          el('td', { text: fmt(r.hw_ms, 1) }),
+          el('td', { text: fmt(r.hf_db, 1) }),
+          callTd(r.single), callTd(r.pool), dbl ? callTd(r.double) : null,
+          bu ? el('td', { text: r.border === 'amb' ? 'ambiguous'
+            : r.border ? 'solid ' + r.border.toUpperCase() : '—' }) : null,
+          el('td', { text: (r.why || []).join('; ') }),
+        ].filter(Boolean)))),
+      ])]));
+    const sm = (d.summary || {})[d.group] || { rows: [] };
+    kids.push(el('div', { class: 'chip-row rc-deep-sumbar' }, [
+      el('strong', { text: 'Where they come from, by' }),
+      BARRY.ui.seg(DEEP_GROUPS, d.group, (v) => { d.group = v; swapDeep(); },
+                   { extra: 'rc-deep-group' })]));
+    kids.push(el('div', { class: 'rc-deep-scroll rc-deep-sumwrap' }, [
+      el('table', { class: 'tbl rc-deep-sum' }, [
+        el('thead', {}, [el('tr', {}, [sm.label || d.group, 'recordings', 'events',
+          'switched', 'DS → IED', 'IED → DS', bu ? 'ambiguous' : null]
+          .filter(Boolean).map((h) => el('th', { text: h })))]),
+        el('tbody', {}, (sm.rows || []).map((x) => el('tr', {}, [
+          el('td', { text: x.value }),
+          el('td', { text: String(x.recordings) }),
+          el('td', { text: String(x.n) }),
+          el('td', { text: x.switched + ' (' + pct(x.switch_rate) + ')' }),
+          el('td', { text: String(x.ds_to_ied) }),
+          el('td', { text: String(x.ied_to_ds) }),
+          bu ? el('td', { text: x.ambiguous + ' (' + pct(x.ambiguous_rate) + ')' })
+             : null,
+        ].filter(Boolean)))),
+      ])]));
+    kids.push(el('p', { class: 'hint', text: 'Group, subgroup and condition '
+      + 'are the lab’s session workbook’s, the mouse book’s where it is '
+      + 'silent, and “not recorded” where neither says. Each rate is of that '
+      + 'row’s own events.' }));
+    return el('div', { class: 'card rc-deep' }, kids);
+  }
+
   /* ---------- identity switches ---------- */
   function switchPanel() {
     const sw = (pool.fit && pool.fit.switches) || {};
@@ -5465,12 +7529,32 @@ BARRY.rootcanal = (function () {
     ]);
     const f = pool.focus || {};
     const members = (pool.fit && pool.fit.members) || [];
+    const dbl = !!(pool.fit && pool.fit.level === 'double');
+    const sw2 = dbl ? (pool.fit.switches_single || {}) : null;
     return el('div', { class: 'card rc-switch' }, [
-      el('div', { class: 'section-label', text:
-        'Identity switches: each event’s own call against the pooled one' }),
+      el('div', { class: 'section-label', text: dbl
+        ? 'Identity switches: each event’s call in its own pool (v0) against '
+          + 'the pool of pools'
+        : 'Identity switches: each event’s own call against the pooled one' }),
+      sw2 ? el('p', { class: 'hint rc-sw-single', text: 'Against its single '
+        + 'instead: ' + (sw2.switched || 0) + ' of ' + (sw2.n || 0) + ' ('
+        + pct(sw2.rate) + ') -- ' + (sw2.ds_to_ied || 0) + ' DS → IED, '
+        + (sw2.ied_to_ds || 0) + ' IED → DS.' }) : null,
+      /* Steps 8-9: the border between these identities, with grace. */
+      el('div', { class: 'chip-row rc-border-go-row' }, [
+        BARRY.ui.button({ kind: 'mini', extra: 'rc-border-go',
+          text: 'Draw a border from these identities…',
+          title: 'Three cut-offs, in µV, dB and ms, between the events’ own '
+               + 'identities (' + (dbl ? 'their own pools’ calls'
+                                       : 'their singles’ calls')
+               + '): past all three is solid IED, short of all three solid '
+               + 'DS, anything else ambiguous. With grace, the switch rate '
+               + 'allowed. Previewed before it is saved.',
+          onclick: borderDialog })]),
       el('div', { class: 'rc-sw-top' }, [
         el('table', { class: 'tbl rc-crosstab' }, [
-          el('thead', {}, [el('tr', {}, ['single ↓  pooled →', 'DS', 'IED']
+          el('thead', {}, [el('tr', {}, [(pool.fit && pool.fit.level === 'double'
+              ? 'pool ↓  double →' : 'single ↓  pooled →'), 'DS', 'IED']
             .map((t) => el('th', { text: t })))]),
           el('tbody', {}, [
             el('tr', {}, [el('th', { text: 'DS' }), el('td', { text: cell('ds', 'ds') }),
@@ -5546,7 +7630,8 @@ BARRY.rootcanal = (function () {
            the types and the focus alone, and the server refitted at its
            defaults: a pool shown at k = 1 was saved at k = 2, and its
            relabels, margin, drawn clusters and measurement were lost. */
-        rep = await apiPost('/api/rootcanal/pool/save', Object.assign(
+        rep = await apiPost(pool.level === 'double'
+          ? '/api/rootcanal/dpool/save' : '/api/rootcanal/pool/save', Object.assign(
           poolBody(), {
             artifact_id: pool.open ? pool.open.artifact_id : null,
             nickname: nick,
@@ -5559,6 +7644,10 @@ BARRY.rootcanal = (function () {
     }).then((ok) => {
       if (!ok || !rep) return null;
       afterSave(rep);
+      if (!rep.confirmed) {
+        if (pool.level === 'double') dpropagateDialog(rep);
+        else propagateDialog(rep);
+      }
       return rep;
     });
   }
@@ -5587,7 +7676,9 @@ BARRY.rootcanal = (function () {
   async function openSaved(id, version) {
     let got;
     try {
-      got = await api('/api/rootcanal/pool/' + encodeURIComponent(id)
+      got = await api((pool.level === 'double' ? '/api/rootcanal/dpool/'
+                                               : '/api/rootcanal/pool/')
+                      + encodeURIComponent(id)
                       + (version != null ? '?version=' + encodeURIComponent(version)
                                          : ''));
     } catch (e) {
@@ -5603,13 +7694,18 @@ BARRY.rootcanal = (function () {
     pool.picked = null;
     pool.evData = null;
     pool.evFor = null;
-    pool.sel = (pay.members || []).map((m) => (m.banked === false
-      ? { key: m.key, params: (m.pin || {}).params || singleParams() }
-      : { key: m.key }));
+    pool.sel = pool.level === 'double'
+      ? (pay.pools || []).map((p) => ({ key: 'P:' + p.artifact_id + ':'
+                                             + p.version }))
+      : (pay.members || []).map((m) => (m.banked === false
+        ? { key: m.key, params: (m.pin || {}).params || singleParams() }
+        : { key: m.key }));
+    pool.all_ds = !!((pay.params || {}).all_ds);
     pool.types = Object.assign({}, pay.mouse_types || {});
     pool.focus = pay.focus || null;
     const pp = pay.params || {};
     pool.cluster_calls = Object.assign({}, pp.cluster_calls || {});
+    pool.cluster_names = JSON.parse(JSON.stringify(pp.cluster_names || {}));
     pool.drawn = (pp.drawn || []).map((g) => ({ call: g.call,
       events: (g.events || []).map((x) => x.slice()) }));
     pool.avg = null; pool.lassoSel = [];
@@ -5629,6 +7725,10 @@ BARRY.rootcanal = (function () {
     const mu = pay.margin_used;
     pool.margin = mu ? { artifact_id: mu.artifact_id, version: mu.version,
                          mode: mu.mode || 'fixed' } : null;
+    // And the border it was classified by, coloured by it.
+    pool.border = pp.border ? Object.assign({}, pp.border) : null;
+    if (pool.border) pool.colour = 'border';
+    else if (pool.colour === 'border') pool.colour = 'pool';
     /* The band reopens as the pool's own only when it set one: a pool that
        kept each member's band saved that band in params all the same. */
 
@@ -5656,8 +7756,12 @@ BARRY.rootcanal = (function () {
     // And what was drawn and called on it: the next pool's clusters are
     // its own.
     pool.savedMembers = []; pool.drawn = []; pool.cluster_calls = {};
+    pool.cluster_names = {}; pool.name = null; pool.measureOk = null;
+    pool.all_ds = false;
     pool.margin = null; pool.marginErr = null; pool.avg = null;
-    pool.lassoSel = []; pool.fitErr = null;
+    pool.border = null; pool.borderErr = null;
+    if (pool.colour === 'border') pool.colour = 'pool';
+    pool.lassoSel = []; pool.fitErr = null; pool.deep = null;
     render();
   }
 
@@ -5685,7 +7789,10 @@ BARRY.rootcanal = (function () {
     _state: () => ({ q, pend, fit, picked, job, cands, evData, busy,
                      fitting, chooserOpen, live, view: Object.assign({}, view),
                      bulk }),
-    _pickSet: pickSet,
+    // Straight to the set, as the harness's own steps mean it; the nudge
+    // a person gets on leaving a changed picture is `_leaveTo`.
+    _pickSet: pickSetNow,
+    _leaveTo: pickSet,
     _read: startRead,
     _fit: refit,
     _fitBody: () => fitBody({}),
@@ -5781,6 +7888,34 @@ BARRY.rootcanal = (function () {
     _marginErr: () => marginErr,
     _relabel: (rank, call) => { q.cluster_calls[String(rank)] = call; refit(); },
     _avg: () => curAvg(),
+    _single: () => single,
+    _setLevel: setLevel,
+    _measuresAgreed: measuresAgreed,
+    _deep: () => pool.deep,
+    _loadDeep: loadDeep,
+    _deepPick: deepPick,
+    _borderDialog: borderDialog,
+    _borders: () => borders,
+    _loadBorders: loadBorders,
+    _setBorder: (ref) => { q.border = ref; borderErr = null; refit(); },
+    _borderErr: () => borderErr,
+    _statsDialog: statsDialog,
+    _statsRun: statsRun,
+    _statsPick: (ts) => { if (ts) statsPick = ts.slice(); return statsPick; },
+    _propagateDialog: propagateDialog,
+    _render: () => render(),
+    _nameDialog: nameDialog,
+    _names: loadNames,
+    _pickName: (nm) => pickName(nm, pool.cands || []),
+    _singleBanked: () => singleBanked,
+    _importBanked: importBanked,
+    _loadSingle: loadSingle,
+    _viewing: () => viewing,
+    _savedOnly: () => savedOnly,
+    _dirty: () => isDirty(),
+    _openVersion: openVersion,
+    _saveVersion: saveVersionDialog,
+    _pickSetNow: pickSetNow,
     _showAverage: showAverage,
     _lasso: (path) => { lasso = path.map((p2) => p2.slice()); finishLasso();
                         return lassoIds().slice(); },

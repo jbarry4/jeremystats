@@ -161,6 +161,15 @@ div.hrow:has(> h3) { margin: 12px 0 6px; }
 .qsteps { margin: 0 0 8px; padding-left: 20px; color: var(--ink); }
 .qsteps li { margin: 0 0 5px; overflow-wrap: anywhere; }
 .qexample { background: var(--surface-2); border: 1px dashed var(--line-2); border-radius: 6px; padding: 6px 8px; }
+.legend .powmore { flex: 1 1 100%; margin-top: 4px; }
+.powmore summary { cursor: pointer; color: var(--ink-2); font-size: 12.5px; }
+.powmore[open] { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 10px; }
+.powmore p, .powmore li { font-size: 12.5px; color: var(--ink); overflow-wrap: anywhere; }
+.qpics { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
+.mfptable { border-collapse: collapse; font-size: 13px; margin: 8px 0 10px; font-variant-numeric: tabular-nums; }
+.mfptable th, .mfptable td { padding: 4px 12px 4px 0; text-align: left; border-top: 1px solid var(--line); }
+.mfptable thead th { border-top: 0; color: var(--ink-3); font-weight: 600; font-size: 11.5px; }
+.mfptable tr.chg th, .mfptable tr.chg td { border-top: 1.5px solid var(--line-2); }
 .qfigs:empty { display: none; }
 .qfigs { margin: 8px 0; }
 .qdemo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -394,6 +403,137 @@ svg.dmap rect[data-region] { cursor: default; }
   font-size: 13px; margin: 0 0 10px; overflow-wrap: anywhere; }
 .histosay.stale { border-left-color: var(--up); }
 .histosay .warn { margin-top: 4px; }
+/* Physical cue sanity check, under a lifted edge. */
+.physcheck { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 6px; }
+.physgrid td { vertical-align: top; }
+.physgrid td.up .num { color: var(--up); } .physgrid td.down .num { color: var(--down); }
+.physsum p { margin: 4px 0; overflow-wrap: anywhere; }
+/* Monolith Progress. */
+.progctl { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-end; margin: 6px 0 8px; }
+.progctl .pctl { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 100%; }
+.progctl .pctl.pchk { flex-direction: row; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); flex: 1 1 260px; }
+.progctl .lab { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; }
+.progctl select, .progbuild select { font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid var(--line-2);
+  border-radius: 6px; background: var(--surface); color: var(--ink); max-width: 100%; }
+.progctl .more-btn { margin-top: 0; }
+.progstep { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 2px 0 8px; }
+.progstep .more-btn { margin-top: 0; }
+.progrowh { margin: 10px 0 4px; }
+.progcells { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 1250px) { .progcells { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .progcells { grid-template-columns: minmax(0, 1fr); } }
+.progcells.step { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); max-width: 1180px; }
+/* The circuit card's modes: Monolith Progress in the Monolith tab, and the
+   Cue 2 − Cue 1 tab's row -- within Precon1, within Precon4, the change. */
+#circmode { margin: 0 0 6px; }
+/* What a mode hides stays hidden, whatever display the element has. */
+#circcard [hidden] { display: none !important; }
+/* The change circuit a third as wide in the contrast's row: its names
+   drawn larger so they read at the same size as the circuits beside it. */
+.circ.contrast .node-l { font-size: 15px; }
+#circmode .seg { margin-bottom: 4px; }
+#c21vs { margin: 4px 0 8px; overflow-wrap: anywhere; }
+ol.top .vsm { grid-column: 2; display: block; font-size: 12px; color: var(--ink-3); margin-top: 1px; overflow-wrap: anywhere; }
+ol.top .vsm .chip.vsin { color: var(--ink); }
+.circ.contrast .circrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.circ.contrast .within { display: contents; }
+@media (max-width: 760px) { .circ.contrast .circrow { grid-template-columns: minmax(0, 1fr); } }
+.circ.contrast .changebox { border: 1px solid var(--line); border-radius: var(--r); padding: 6px 8px; background: var(--surface); min-width: 0; }
+.changebox .boxh, .within .progcell h4, .between .progcell h4 { margin: 0 0 2px; font-size: 13px; overflow-wrap: anywhere; }
+.between { margin-top: 10px; }
+.between .progcells { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 300px)); }
+.circ.prog #progcircs { margin-top: 4px; }
+.dmap-pending { border: 1px dashed var(--line-2); border-radius: var(--r); padding: 8px 10px; background: var(--surface-2); min-width: 0; }
+.dmap-pending p { margin: 4px 0 0; }
+.progcells.step.one { max-width: 600px; }
+.progcell { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); padding: 6px 8px; min-width: 0; }
+.progcell h4 { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.progcell .plegend { margin: 2px 0 0; overflow-wrap: anywhere; }
+svg.progc { display: block; width: 100%; height: auto; }
+svg.progc .pedge, svg.progc .pnode { cursor: grab; touch-action: none; }
+svg.progc .pedge:focus, svg.progc .pnode:focus { outline: none; stroke: var(--focus); }
+#progseries { border: 2px dashed transparent; }
+#progseries.over { border-color: var(--focus); background: color-mix(in srgb, var(--focus) 6%, var(--surface)); }
+.progdrop { border: 1px dashed var(--line-2); border-radius: var(--r); padding: 8px 10px; background: var(--surface-2); margin: 6px 0 8px; }
+.progbuild { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: flex-end; }
+.progbuild label { display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; color: var(--ink-3); min-width: 0; max-width: 100%; }
+.progbuild .more-btn { margin-top: 0; }
+.progexp { gap: 8px; justify-content: flex-end; }
+.progexp .more-btn { margin-top: 0; }
+.progpanel { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 10px; border-radius: 4px; }
+.progpanel.flash { animation: progflash 1.4s ease-out; }
+@keyframes progflash { from { background: color-mix(in srgb, var(--focus) 22%, transparent); } to { background: transparent; } }
+.progph { gap: 6px; align-items: flex-start; }
+.progph h3 { flex: 1 1 auto; margin: 2px 0; text-transform: none; letter-spacing: 0; font-size: 13.5px; color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
+.progph button { font: inherit; font-size: 12.5px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2);
+  border-radius: 6px; padding: 1px 8px; cursor: pointer; flex: none; }
+.progph button:disabled { opacity: .4; cursor: default; }
+.progplot { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.progplot.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 760px) { .progplot.two { grid-template-columns: minmax(0, 1fr); } }
+svg.progfig .progpt, svg.progfig .pratpt, svg.progstrip .progunit { cursor: pointer; }
+svg.progfig .progpt:focus, svg.progstrip .progunit:focus { outline: 2px solid var(--focus); }
+.progp { margin-top: 4px; overflow-wrap: anywhere; }
+.progdrill .dbox { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface-2); padding: 8px 10px; margin-top: 6px; }
+.progdrill h4 { margin: 0; flex: 1 1 auto; overflow-wrap: anywhere; min-width: 0; }
+.progdrill .pclose { margin-top: 0; }
+.prograts { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0 8px; }
+.prograts button { font: inherit; font-size: 12.5px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink);
+  border-radius: 12px; padding: 2px 10px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.prograts button[aria-pressed="true"] { border-color: var(--ink); font-weight: 600; background: var(--chip); }
+.prograts button:disabled { opacity: .5; cursor: default; }
+.prograts b.sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.progchip { position: fixed; z-index: 60; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 12px;
+  padding: 4px 8px; border-radius: 6px; max-width: 300px; overflow-wrap: anywhere; box-shadow: 0 2px 8px rgba(0, 0, 0, .25); }
+/* 6 · Physical vs balanced cue (js/monolith_physical.js) */
+#physpane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
+#physpane[hidden] { display: none; }
+#physpane .card > p { max-width: 78ch; overflow-wrap: anywhere; }
+.physseats { width: auto; }
+.physseats td.snd { white-space: nowrap; }
+.physseats td.snd.tone { color: var(--up); } .physseats td.snd.noisy { color: var(--down); }
+.physseats tbody tr, .physverdict tbody tr { cursor: default; }
+.physseats tbody tr:hover, .physverdict tbody tr:hover { background: transparent; }
+.physverdict th[scope], .physverdict tbody th { color: var(--ink); font-weight: 600; font-size: 12.5px; }
+.physverdict tr.seat td, .physverdict tr.seat th { color: var(--ink-2); }
+.physverdict svg.physbar { display: block; }
+.physanswer { border-left: 4px solid var(--line-2); background: var(--chip); border-radius: var(--r); padding: 8px 12px; margin: 4px 0 10px; max-width: 78ch; }
+.physanswer.ok { border-left-color: var(--ok); } .physanswer.warn { border-left-color: var(--up); }
+.physanswer p { margin: 0; overflow-wrap: anywhere; } .physanswer p + p { margin-top: 4px; }
+.physanswer .head { font-weight: 700; font-size: 15px; }
+.physsay { font-weight: 600; padding: 6px 10px; border-radius: var(--r); background: var(--chip); }
+.physsay.ok { color: var(--ink); } .physsay.warn { color: var(--up); }
+.physhists { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px 16px; margin-top: 10px; }
+.physhists > div { min-width: 0; }
+.physleadtbl td.yn { text-align: center; }
+.physleadtbl svg.physforest { display: block; }
+.physleadtbl tr.lead:focus { outline: 2px solid var(--focus); outline-offset: -2px; }
+#physcircsvg { min-height: 120px; }
+#physcmp button { white-space: normal; text-align: left; }
+.physverdict thead th { white-space: nowrap; }
+.physleadtbl td.lead-name { min-width: 10em; }
+.physleadtbl td.lead-name > div:first-child { white-space: nowrap; }
+.physverdict thead th:first-child, .physverdict thead th:last-child { white-space: normal; }
+.physverdict td.num, .physleadtbl td.num { white-space: nowrap; }
+.physleadtbl td.num.wrap { white-space: normal; }
+.hfig .hlegend { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 11.5px; color: var(--ink-2); margin: 2px 0 0 12px; }
+.hfig .hlegend span { display: inline-flex; align-items: center; gap: 5px; }
+.hfig .hlegend i { display: inline-block; width: 14px; border-top: 2px solid; }
+.hfig .hlegend i.dash { border-top-style: dashed; border-top-width: 1.5px; }
+/* On a phone, each row of the two tables is a small card of its own. */
+@media (max-width: 640px) {
+  .physverdict thead, .physleadtbl thead { display: none; }
+  .physverdict, .physverdict tbody, .physverdict tr, .physleadtbl, .physleadtbl tbody, .physleadtbl tr { display: block; width: 100%; }
+  .physverdict tr, .physleadtbl tr { border-top: 1px solid var(--line); padding: 6px 0; }
+  .physverdict tbody th, .physverdict td, .physleadtbl td { display: block; border: 0; padding: 1px 0; }
+  .physverdict td.by, .physverdict td.num, .physleadtbl td.num, .physleadtbl td.yn { display: inline-block; margin-right: 12px; white-space: normal; }
+  .physverdict td[data-label]::before, .physleadtbl td[data-label]::before { content: attr(data-label) " "; color: var(--ink-3); font-size: 11.5px; }
+  .physleadtbl td.rank { display: none; }
+  .physleadtbl td.lead-name { min-width: 0; }
+  .physleadtbl td.yn { text-align: left; }
+  .physseats td.snd { white-space: normal; }
+  .physseats th, .physseats td { padding: 3px 4px; }
+}
 </style>
 </head>
 <body>
@@ -405,6 +545,8 @@ svg.dmap rect[data-region] { cursor: default; }
 <script src="js/monolith_help.js"></script>
 <script src="js/monolith.js"></script>
 <script src="js/monolith_events.js"></script>
+<script src="js/monolith_progress.js"></script>
+<script src="js/monolith_physical.js"></script>
 <script src="js/monolith_tour.js"></script>
 <script src="js/tour.js"></script>
 </body>

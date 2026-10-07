@@ -1305,6 +1305,59 @@ function conflictNote(c) {
 
 
 
+/* NOT SHARED YET (2026-10-06): everything made on this machine that has not
+   reached the shared database -- bank entries, curation sets, layer sheets,
+   artifacts (Root Canal singles, pools, margins...), Braces sets and AI
+   Beta runs -- each by its name, with why. Filled after the panel opens,
+   from the same push cursor the marks use, so asking costs nothing at the
+   database. */
+function unsharedSection() {
+  const box = el('div', { class: 'sync-unshared' }, [
+    el('div', { class: 'section-label', text: 'Not shared yet' }),
+    el('p', { class: 'hint', text: 'Looking…' }),
+  ]);
+  const KIND = { bank: 'Event Bank', curation: 'Checkup set', layers: 'Layers',
+                 artifacts: 'Artifact', braces: 'Braces set',
+                 aibeta: 'AI Beta run' };
+  const STATE = { waiting: 'sending', unknown: 'not checked',
+                  local: 'this computer' };
+  const WHY = { demo: 'a demo or harness record, never shared',
+                'no recording': 'its recording is not in the shared registry',
+                'no table': 'the shared database has no table for these yet '
+                            + '(supabase/21_shard_files.sql)' };
+  api('/api/cloud/unshared').then((got) => {
+    const p = box.querySelector('p');
+    if (!p) return;
+    if (!got.on) {
+      p.textContent = 'This computer is not connected to the shared '
+                    + 'database, so nothing made here leaves it except by git.';
+      return;
+    }
+    const rows = got.rows || [];
+    if (!rows.length) {
+      p.textContent = 'Everything made here is in the shared database.';
+      return;
+    }
+    p.textContent = rows.length + ' thing' + (rows.length === 1 ? '' : 's')
+      + ' made here ' + (rows.length === 1 ? 'has' : 'have') + ' not reached '
+      + 'the shared database. “Sending” goes up by itself within a minute.';
+    box.appendChild(el('table', { class: 'tbl sync-unshared-tbl' }, [
+      el('thead', {}, [el('tr', {}, ['what', 'name', 'state', 'why']
+        .map((t) => el('th', { text: t })))]),
+      el('tbody', {}, rows.map((r) => el('tr', {}, [
+        el('td', { text: KIND[r.kind] || r.kind }),
+        el('td', { text: r.name || r.id }),
+        el('td', { text: STATE[r.state] || r.state }),
+        el('td', { class: 'hint', text: WHY[r.why] || r.why || '' }),
+      ]))),
+    ]));
+  }).catch((e) => {
+    const p = box.querySelector('p');
+    if (p) p.textContent = 'Could not ask: ' + e.message;
+  });
+  return box;
+}
+
 function showSync() {
   const d = BARRY.sync || {};
   const git = d.git || {};
@@ -1342,6 +1395,7 @@ function showSync() {
       ]),
       files.length ? el('div', { class: 'section-label', text: 'Uncommitted files' }) : null,
       files.length ? el('div', { class: 'source-box' }, [el('pre', { text: files.join('\n') })]) : null,
+      unsharedSection(),
     ]),
     el('div', { class: 'mf' }, [
       el('button', { class: 'btn ghost sm', text: 'Open folder',

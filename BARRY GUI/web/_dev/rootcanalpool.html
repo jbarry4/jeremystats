@@ -111,6 +111,22 @@ const NL = String.fromCharCode(10);
      + '  else if (s.indexOf("/api/rootcanal/margin/save") >= 0) hit = "msave";'
      + '  else if (s.indexOf("/api/rootcanal/pool/fit") >= 0 && W.__rcpReply.fit)'
      + '   hit = "fit";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/measures") >= 0'
+     + '   && W.__rcpReply.measures) hit = "measures";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/remeasure") >= 0) hit = "remeasure";'
+     + '  else if (s.indexOf("/api/rootcanal/pool/propagate") >= 0) hit = "propagate";'
+     + '  else if (s.indexOf("/api/rootcanal/dpool/fit") >= 0) hit = "dfit";'
+     + '  else if (s.indexOf("/api/rootcanal/dpool/save") >= 0) hit = "dsave";'
+     + '  else if (s.indexOf("/api/rootcanal/dpool/propagate") >= 0) hit = "dprop";'
+     + '  else if (s.indexOf("/api/rootcanal/dpools") >= 0) hit = "dpools";'
+     + '  else if (s.indexOf("/api/rootcanal/stats") >= 0'
+     + '   && s.indexOf("/about") < 0) hit = "stats";'
+     + '  else if (s.indexOf("/api/rootcanal/switches/bank") >= 0) hit = "dbank";'
+     + '  else if (s.indexOf("/api/rootcanal/switches") >= 0) hit = "deep";'
+     + '  else if (s.indexOf("/api/rootcanal/border/preview") >= 0) hit = "bprev";'
+     + '  else if (s.indexOf("/api/rootcanal/border/save") >= 0) hit = "bsave";'
+     + '  else if (s.indexOf("/api/rootcanal/borders") >= 0'
+     + '   && W.__rcpReply.borders) hit = "borders";'
      + '  else if (s.indexOf("/api/rootcanal/pool/harness-") >= 0) hit = "open";'
      + '  if (hit) { W.__rcpSent.push([hit, JSON.parse((o && o.body) || "{}")]);'
      + '   var r = W.__rcpReply[hit] || { status: 500, body: { ok: false,'
@@ -413,6 +429,303 @@ const NL = String.fromCharCode(10);
   await until(() => !P().fitting, 120000, 'the refit without a focus');
   ok('clearing the focus brightens everything',
      geom().space.pts.every((p) => p.alpha === 1));
+
+  /* ================================================================== */
+  head('ARE THESE CLUSTERS DIFFERENT? ASKED OF THE POOL (INTERCEPTED)');
+
+  const sGoP = () => D().querySelector('.rc-gmm .rc-stats-go');
+  await until(() => P().fit && P().fit.ok && !P().fitting, 20000, 'the pool');
+  if (P().fit.k === 2) {
+    ev('window.__rcpReply.stats = ' + JSON.stringify({ status: 200, body: {
+      ok: true, level: 'pool', n: 300, n_used: 300, subsampled: false,
+      recommended: 'sigclust', verdict: 'could be forced', stats_key: 'h',
+      tests: { sigclust: { p: 0.4, genuine: false, say: 'p = 0.400: one '
+        + 'Gaussian cloud split in two does as well -- the split could be '
+        + 'forced' } } } }));
+    ok('the cluster tests are offered beside the GMM, at k = 2',
+       !!sGoP() && !sGoP().disabled, sGoP() && sGoP().title);
+    sGoP().click();
+    await until(() => D().querySelector('#bigModal:not(.hidden) .rc-stats-run'),
+                8000, 'the tests');
+    const nS0 = sent().filter(([k]) => k === 'stats').length;
+    D().querySelector('#bigModal .rc-stats-run').click();
+    await until(() => sent().filter(([k]) => k === 'stats').length > nS0
+      && D().querySelector('#bigModal:not(.hidden) .rc-stats-tab'), 8000, 'the answer');
+    const sB0 = sent().filter(([k]) => k === 'stats').pop()[1];
+    ok('asked as a pool, of its members, measured as the pool is',
+       sB0.level === 'pool' && JSON.stringify(sB0.members)
+       === JSON.stringify(P().lastBody.members) && !!sB0.measure
+       && !('pools' in sB0), JSON.stringify(sB0).slice(0, 200));
+    ev('closeModal()');
+    await until(() => D().querySelector('.rc-gmm .rc-stats-done'), 5000, 'the verdict');
+    ok('the answer is then on the pool’s picture, beside the GMM',
+       /maybe forced/.test(D().querySelector('.rc-gmm .rc-stats-done')
+         .textContent) && (P().fit.stats || {}).verdict === 'could be forced');
+  } else {
+    ok('the cluster tests are offered but off away from k = 2',
+       !!sGoP() && sGoP().disabled, P().fit.k);
+  }
+
+  /* ================================================================== */
+  head('A BORDER: DRAWN, PREVIEWED, SAVED, APPLIED (INTERCEPTED)');
+
+  await until(() => P().fit && P().fit.ok && !P().fitting, 20000, 'the pool');
+  const bLv = (g, s, ds, ied, amb, wrong, rate, ie, de) => ({
+    grace: g, s_sd: s, reached: true, counts: { ds, ied, amb, none: 0 },
+    wrong, switch_rate: rate,
+    edges: { amp_uV: { ied_at: ie[0], ds_at: de[0], at: 1193.1 },
+             hf_db: { ied_at: ie[1], ds_at: de[1], at: 9.56 },
+             hw_ms: { ied_at: ie[2], ds_at: de[2], at: 30.8 } } });
+  const bLevels = [
+    bLv(0, 1.04, 0, 212, 2875, 0, 0, [1482, 13.2, 25.4], [904, 5.9, 36.3]),
+    bLv(0.01, 0.52, 16, 526, 2545, 30, 0.0097, [1330, 11.4, 28.1],
+        [1050, 7.7, 33.5]),
+    bLv(0.05, 0.08, 84, 967, 2036, 146, 0.0473, [1216, 9.8, 30.4],
+        [1170, 9.3, 31.2])];
+  const bPrev = { ok: true, level: 'pool', n: 3087, n_identity: 3087,
+    n_complete: 3053, ied_above: { amp_uV: true, hf_db: true, hw_ms: false },
+    strict: { amp_uV: 1193.1, hf_db: 9.56, hw_ms: 30.8 },
+    measure: { filter_label: 'LFP filter, 1–100 Hz' }, levels: bLevels,
+    name: 'Border · 1193 µV · 9.6 dB · 30.8 ms' };
+  ev('window.__rcpReply.bprev = ' + JSON.stringify({ status: 200, body: bPrev }));
+  const bGo = D().querySelector('.rc-switch .rc-border-go');
+  ok('the switch panel offers to draw a border from these identities, '
+     + 'saying what against', !!bGo && /singles’ calls/.test(bGo.title),
+     bGo && bGo.title);
+  bGo.click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-border-tab'),
+              8000, 'the preview');
+  const bp0 = sent().filter(([k]) => k === 'bprev').pop()[1];
+  ok('it asks for this pool’s border, as a pool, of its members, with no '
+     + 'border on', bp0.level === 'pool' && bp0.border === null
+     && JSON.stringify(bp0.members) === JSON.stringify(P().lastBody.members),
+     JSON.stringify(bp0).slice(0, 200));
+  const lvRows = () => Array.from(D().querySelectorAll('#bigModal .rc-border-lv'));
+  eq('every grace is a row: solid DS, solid IED, ambiguous, switches',
+     lvRows().map((r) => Array.from(r.children).map((td) => td.textContent
+       .trim()).join(' | ')),
+     ['none | 0 | 212 | 2875 | 0.0% (0)', '1% | 16 | 526 | 2545 | 1.0% (30)',
+      '5% | 84 | 967 | 2036 | 4.7% (146)']);
+  ok('5% is the one picked unless another is',
+     lvRows()[2].querySelector('input').checked);
+  const edg = Array.from(D().querySelectorAll('#bigModal .rc-border-edges'))
+    .map((r) => r.textContent);
+  ok('each says its two edges in words, the half-width passed by going under',
+     /^solid IED: amplitude ≥ 1482 µV · HF ≥ 13\.2 dB · half-width ≤ 25\.4 ms; solid DS: amplitude < 904 µV · HF < 5\.9 dB · half-width > 36\.3 ms \(band ±1\.04 SD\)$/
+       .test(edg[0]), edg[0]);
+  ok('and the strict border is said in numbers',
+     /The border: amplitude 1193 µV · HF 9\.6 dB · half-width 30\.8 ms, on 3087 events/
+       .test(D().querySelector('#bigModal .rc-border-strict').textContent));
+  ok('the dialog says what grace is',
+     /identity-switch rate allowed/.test(D().querySelector('#bigModal .rc-border-dlg')
+       .textContent));
+  const bPrev2 = Object.assign({}, bPrev, { levels: [bLevels[0], bLevels[1],
+    bLv(0.02, 0.3, 40, 700, 2347, 61, 0.0198, [1290, 10.9, 28.9],
+        [1090, 8.2, 32.6]), bLevels[2]] });
+  ev('window.__rcpReply.bprev = ' + JSON.stringify({ status: 200, body: bPrev2 }));
+  D().querySelector('#bigModal .rc-border-custom').value = '2';
+  D().querySelector('#bigModal .rc-border-custom-go').click();
+  await until(() => lvRows().length === 4, 8000, 'the custom grace');
+  const bp1 = sent().filter(([k]) => k === 'bprev').pop()[1];
+  ok('another grace is asked for as a fraction, and then it is the one picked',
+     bp1.custom === 0.02 && lvRows()[2].querySelector('input').checked,
+     bp1.custom);
+  lvRows()[1].querySelector('input').click();
+  await sleep(50);
+  ok('a grace is picked by its row', lvRows()[1].querySelector('input').checked
+     && lvRows()[1].classList.contains('on'));
+  const bName = D().querySelector('#bigModal .bank-dlg-name');
+  ok('a nickname is suggested', !!bName && /^border · /.test(bName.value),
+     bName && bName.value);
+  bName.value = 'harness border';
+  ev('window.__rcpReply.bsave = ' + JSON.stringify({ status: 200, body: {
+    ok: true, artifact_id: 'hb-1', version: 1, nickname: 'harness border',
+    grace: 0.01 } }));
+  ev('window.__rcpReply.borders = ' + JSON.stringify({ status: 200, body: {
+    ok: true, borders: [{ artifact_id: 'hb-1', nickname: 'harness border',
+      name: bPrev.name, version: 1, strict: bPrev.strict, grace_default: 0.01,
+      levels: bPrev2.levels.map((l) => ({ grace: l.grace,
+        switch_rate: l.switch_rate, counts: l.counts })),
+      measure: 'LFP filter, 1–100 Hz', source: null }] } }));
+  /* The pool classified by it: the server's answer, with a border's
+     classes put on it here. */
+  // `ok` kept: a fit without it is drawn as a refusal.
+  const fitB = JSON.parse(JSON.stringify(P().fit));
+  fitB.events.forEach((e, j) => { e.border = ['ds', 'ied', 'amb'][j % 3]; });
+  const nB = { ds: 0, ied: 0, amb: 0, none: 0 };
+  fitB.events.forEach((e) => { nB[e.border] += 1; });
+  fitB.border_used = { artifact_id: 'hb-1', version: 1,
+    nickname: 'harness border', grace: 0.01, grace_words: '1%',
+    rule: 'Solid IED: max amplitude ≥ 1330 µV, HF power ≥ 11.4 dB, '
+      + 'half-width ≤ 28.1 ms. Solid DS: max amplitude < 1050 µV, HF power < '
+      + '7.7 dB, half-width > 33.5 ms. Anything else is ambiguous (grace 1%).',
+    counts: nB, wrong: 3, switch_rate: 0.03, n_identity: 100 };
+  fitB.params = Object.assign({}, fitB.params, { border: { artifact_id: 'hb-1',
+    version: 1, grace: 0.01 } });
+  ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 200, body: fitB }));
+  const nFitB = JSON.parse(ev('window.__rcpFits'));
+  Array.from(D().querySelectorAll('#bigModal .mf button')).pop().click();
+  await until(() => sent().some(([k]) => k === 'bsave')
+    && JSON.parse(ev('window.__rcpFits')) > nFitB && !P().fitting
+    && P().fit && P().fit.border_used, 10000, 'the save and the refit');
+  const bsv = sent().filter(([k]) => k === 'bsave').pop()[1];
+  ok('it saves under that nickname at the grace picked, keeping the other one',
+     bsv.nickname === 'harness border' && bsv.grace === 0.01
+     && bsv.custom === 0.02 && bsv.level === 'pool', JSON.stringify(bsv)
+       .slice(0, 200));
+  const fb = sent().filter(([k]) => k === 'fit').pop()[1];
+  ok('and, ticked by default, classifies the pool by it at once',
+     JSON.stringify(P().border) === JSON.stringify({ artifact_id: 'hb-1',
+       version: 1, grace: 0.01 }) && fb.border && fb.border.artifact_id === 'hb-1',
+     JSON.stringify(fb.border));
+  ok('coloured by the border: solid DS, solid IED and ambiguous',
+     P().colour === 'border' && /border:\s*solid DS\s*solid IED\s*ambiguous/
+       .test(D().querySelector('.rc-pool-legend').textContent),
+     D().querySelector('.rc-pool-legend').textContent.slice(0, 80));
+  ok('“border” is offered as a colour now that one is on',
+     Array.from(D().querySelectorAll('.rc-colour option')).some((o) =>
+       o.value === 'border' && o.selected));
+  const fills = new Set(geom().space.pts.filter((p) => !p.hollow)
+                        .map((p) => p.fill));
+  eq('three colours on the picture, one per class', fills.size, 3);
+  const card = D().querySelector('.rc-pool-work .rc-margins');
+  ok('the card opens, and says which border and what it made of the pool',
+     card.open && /Margins and borders · border ‘harness border’ · grace 1%/
+       .test(card.querySelector('summary').textContent)
+     && D().querySelector('.rc-pool-work .rc-border-on').textContent
+        === nB.ds + ' solid DS · ' + nB.ied + ' solid IED · ' + nB.amb
+            + ' ambiguous', card.querySelector('summary').textContent);
+  ok('with its rule, and how many switch here',
+     /Solid IED: max amplitude ≥ 1330 µV.*Here 3 of 100 events with an identity \(3\.0%\) land in the other’s solid class/
+       .test(D().querySelector('.rc-pool-work .rc-border-rule').textContent));
+  ev('window.__rcpReply.fit = null');
+  D().querySelector('.rc-pool-work .rc-border-clear').click();
+  await until(() => !P().fitting && P().fit && !P().fit.border_used
+              && !P().border, 20000, 'cleared');
+  ok('cleared, the pool is fitted without it and coloured by its call again',
+     P().colour === 'pool' && !P().fit.border_used);
+  await until(() => D().querySelector('.rc-pool-work .rc-border-apply'), 5000,
+              'the picker');
+  D().querySelector('.rc-pool-work .rc-border-apply').click();
+  await until(() => !P().fitting && P().borderErr, 20000, 'the refusal');
+  ok('a border the server refuses (this one is the harness’s, not on this '
+     + 'machine) is said in the card, taken off, and the pool fitted without it',
+     /^The border hb-1 is not on this machine/.test(P().borderErr)
+     && !P().border && P().fit.ok
+     && /Not applied: The border hb-1/.test(D().querySelector(
+       '.rc-pool-work .rc-border-err').textContent), P().borderErr);
+  ev(RC + '._pool().borderErr = null');
+  ev(RC + '._render()');
+  ev('try { closeModal(); } catch (e) {}');
+
+  /* ================================================================== */
+  head('THE DEEP DIVE: BROWSE, AVERAGE, SUMMARISE, EXPORT, BANK (INTERCEPTED)');
+
+  await until(() => P().fit && P().fit.ok && !P().fitting
+              && D().querySelector('.rc-deep'), 20000, 'the pool');
+  const dGo = () => D().querySelector('.rc-deep .rc-deep-go');
+  ok('the deep dive is offered under the switches, saying what it gathers',
+     !!dGo() && /between its single and this pool/.test(D().querySelector('.rc-deep')
+       .textContent) && /Steps 7–10/.test(D().querySelector('.rc-deep').textContent));
+  const fe = P().fit.events;
+  const dRow = (j, why, sw) => ({ j, key: (P().fit.members[fe[j].m] || {}).key,
+    entry_id: 'e', gid: 'g', session_label: 'Harness s' + j, project: 'PTEN',
+    mouse_key: fe[j].mouse_key, mouse_type: fe[j].mouse_type, group: 'CTL',
+    subgroup: 'CTL', condition: 'CNO', i: fe[j].i, t: fe[j].t,
+    amp_uV: 1234.5, hw_ms: 21.25, hf_db: 14.5, single: 'ds', pool: 'ied',
+    double: null, border: null, switch: sw, why: [why] });
+  const dRows = [dRow(0, 'switched DS → IED', 'ds_to_ied'),
+                 dRow(1, 'switched DS → IED', 'ds_to_ied'),
+                 dRow(2, 'switched DS → IED', 'ds_to_ied')];
+  const dSum = (lab, v) => ({ label: lab, rows: [{ value: v, n: 40,
+    switched: 3, ds_to_ied: 3, ied_to_ds: 0, ambiguous: 0, recordings: 2,
+    switch_rate: 0.075, ambiguous_rate: null }] });
+  const dReply = { ok: true, level: 'pool', rows: dRows,
+    counts: { n: 40, rows: 3, switched: 3, ds_to_ied: 3, ied_to_ds: 0,
+              ambiguous: 0, recordings: 2 },
+    summary: { mouse_key: dSum('mouse', 'PTEN|m1'),
+               mouse_type: dSum('mouse type', 'PTEN'),
+               group: dSum('group', 'CTL'), subgroup: dSum('subgroup', 'CTL'),
+               condition: dSum('condition', 'CNO') },
+    border_used: null, csv: 'session,why\r\nHarness s0,switched DS → IED\r\n' };
+  ev('window.__rcpReply.deep = ' + JSON.stringify({ status: 200, body: dReply }));
+  dGo().click();
+  await until(() => D().querySelectorAll('.rc-deep .rc-deep-row').length === 3,
+              8000, 'the dive');
+  const dB = sent().filter(([k]) => k === 'deep').pop()[1];
+  ok('it asks of this very picture, as a pool',
+     dB.level === 'pool' && JSON.stringify(dB.members)
+       === JSON.stringify(P().lastBody.members), JSON.stringify(dB).slice(0, 160));
+  ok('it says how many, each way, from how many recordings',
+     /^3 of 40 events: 3 switched \(3 DS → IED, 0 IED → DS\), from 2 recordings/
+       .test(D().querySelector('.rc-deep .rc-deep-count').textContent));
+  eq('with no border on, the list is all of them or the switched ones',
+     Array.from(D().querySelectorAll('.rc-deep .rc-deep-filter button'))
+       .map((b) => b.textContent), ['all 3', 'switched 3']);
+  eq('each row: session, time, the three numbers, its calls and why',
+     Array.from(D().querySelectorAll('.rc-deep .rc-deep-row')[0].children)
+       .map((td) => td.textContent),
+     ['Harness s0', Number(fe[0].t).toFixed(3), '1235', '21.3', '14.5', 'DS',
+      'IED', 'switched DS → IED']);
+  D().querySelector('.rc-deep .rc-deep-next').click();
+  await until(() => P().picked === 0, 5000, 'the first');
+  ok('stepping picks its dot, and the list says where it is',
+     P().picked === 0 && D().querySelector('.rc-deep .rc-deep-at').textContent
+       === '1 of 3' && D().querySelectorAll('.rc-deep .rc-deep-row')[0]
+       .classList.contains('on'));
+  D().querySelectorAll('.rc-deep .rc-deep-row')[2].click();
+  await until(() => P().picked === 2, 5000, 'the third');
+  ok('a row pressed is picked too, its traces asked for',
+     P().picked === 2 && D().querySelector('.rc-deep .rc-deep-at').textContent
+       === '3 of 3');
+  D().querySelector('.rc-deep .rc-deep-prev').click();
+  await until(() => P().picked === 1, 5000, 'back one');
+  ok('and back', D().querySelector('.rc-deep .rc-deep-at').textContent
+     === '2 of 3');
+  ev('(function(){ window.__rcpSaved = []; window.__rcpSaveText = BARRY.saveText;'
+     + ' BARRY.saveText = function(n, t, m) { window.__rcpSaved.push([n, t, m]); }; })()');
+  D().querySelector('.rc-deep .rc-deep-csv').click();
+  const saved = JSON.parse(ev('JSON.stringify(window.__rcpSaved)'));
+  ev('(function(){ BARRY.saveText = window.__rcpSaveText;'
+     + ' delete window.__rcpSaveText; })()');
+  ok('Export saves the server’s CSV as it is, marked UTF-8 for a spreadsheet',
+     saved.length === 1 && saved[0][1] === '\ufeff' + dReply.csv
+     && /^rootcanal-deep-dive-.*\.csv$/.test(saved[0][0])
+     && /text\/csv/.test(saved[0][2]), JSON.stringify(saved).slice(0, 160));
+  const grpB = Array.from(D().querySelectorAll('.rc-deep .rc-deep-group button'));
+  eq('where they come from: by mouse, type, group, subgroup, condition',
+     grpB.map((b) => b.textContent),
+     ['mouse', 'mouse type', 'group', 'subgroup', 'condition']);
+  grpB[4].click();
+  await until(() => /condition/.test((D().querySelector('.rc-deep .rc-deep-sum th')
+    || {}).textContent || ''), 5000, 'by condition');
+  eq('by condition: its events, switched and each way',
+     Array.from(D().querySelectorAll('.rc-deep .rc-deep-sum tbody td'))
+       .map((td) => td.textContent), ['CNO', '2', '40', '3 (7.5%)', '3', '0']);
+  ev('window.__rcpReply.dbank = ' + JSON.stringify({ status: 200, body: {
+    ok: true, made: [{ session_label: 'Harness s0', gid: 'g', entry_id: 'hd',
+      n: 3, replaced: false }], left: [], source: 'an unsaved pool' } }));
+  D().querySelector('.rc-deep .rc-deep-bank').click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-deep-bank-yes'),
+              5000, 'the bank dialog');
+  ok('banking says it makes one entry per recording, never a DS or IED set',
+     /One Event Bank entry per recording \(2\)/.test(D().querySelector(
+       '#bigModal .rc-deep-dlg').textContent) && /never DS or IED/.test(
+       D().querySelector('#bigModal .rc-deep-dlg').textContent));
+  D().querySelector('#bigModal .rc-deep-note').value = 'harness note';
+  D().querySelector('#bigModal .rc-deep-bank-yes').click();
+  await until(() => sent().some(([k]) => k === 'dbank')
+              && D().querySelector('.rc-deep .rc-deep-banked'), 8000, 'banked');
+  const dbB = sent().filter(([k]) => k === 'dbank').pop()[1];
+  ok('it sends this picture, its note, and the pool it came from if saved',
+     dbB.level === 'pool' && dbB.note === 'harness note' && 'source' in dbB
+     && JSON.stringify(dbB.members) === JSON.stringify(P().lastBody.members),
+     JSON.stringify(dbB).slice(0, 160));
+  ok('and says what it banked', /^Banked: Harness s0 3\./.test(
+    D().querySelector('.rc-deep .rc-deep-banked').textContent));
+  const dAvg = D().querySelector('.rc-deep .rc-deep-avg');
+  ok('the listed ones can be averaged together',
+     !!dAvg && dAvg.textContent === 'Average these 3');
 
   /* ================================================================== */
   head('CLICK A DOT');
@@ -775,6 +1088,330 @@ const NL = String.fromCharCode(10);
   eq('and so does a save, as the next version of it',
      [awSave.saved, awSave.artifact_id],
      [{ artifact_id: 'harness-away', version: 1 }, 'harness-away']);
+
+  /* ================================================================== */
+  head('CHOOSING WHO IS IN THE POOL: SEARCH, CATEGORIES, VERSIONS, NAMES');
+
+  ev(RC + '._poolClose()');
+  await until(() => (P().cands || []).length > 0, 20000, 'the candidates');
+  /* A saved single, as another machine's would arrive: two versions, the
+     newer holding a named cluster. */
+  const hv = (v, nick, names) => ({ v, id: 'hs' + v, nickname: nick,
+    at: '2026-10-06T12:00:00', by: 'Harness', machine: 'Elsewhere',
+    measure: { filter_label: 'LFP filter, 1–100 Hz, 60 Hz mains left in',
+               band_lo: 500, band_hi: 1000, win_ms: 25, cross_ms: 50 },
+    k: 2, n_summary: { events: 40, ds: 30, ied: 10, names }, confirmed: 0,
+    here: true, inputs: [{}] });
+  ev(RC + '._pool().cands.push(' + JSON.stringify({ key: 's:harness-s1:2',
+    kind: 'single', artifact_id: 'harness-s1', version: 2, nickname: 'named',
+    versions: [hv(1, 'first', []), hv(2, 'named', ['DS slow'])],
+    entry_id: 'harness-e1', session_label: 'Harness saved single',
+    gid: 'sharness1', project: 'PTEN', mouse_key: 'PTEN|m98',
+    mouse_type: 'PTEN', n: 40, banked: false, here: false, group: 'CTL',
+    subgroup: 'CTL', condition: 'CNO', facts_from: 'workbook',
+    condition_from: 'workbook', counts: {} }) + ')');
+  ev(RC + '._render()');
+  await until(() => D().querySelector('.rc-sel'), 8000, 'the selection bar');
+  const selRows = () => Array.from(D().querySelectorAll('.rc-pool-cands tbody tr'));
+  const nAll = selRows().length;
+  ok('a search, select-all and unselect-all sit above the list',
+     !!D().querySelector('.rc-sel input[type=search]')
+     && !!D().querySelector('.rc-sel-all') && !!D().querySelector('.rc-sel-none'));
+  const catChip = (txt) => Array.from(D().querySelectorAll('.rc-sel-chip'))
+    .find((b) => b.textContent === txt);
+  ok('with chips for each category, from the session workbook',
+     !!catChip('CNO') && !!catChip('CTL'));
+  const sIn = D().querySelector('.rc-sel input[type=search]');
+  sIn.value = 'harness saved';
+  sIn.dispatchEvent(new W.Event('input', { bubbles: true }));
+  await until(() => selRows().length === 1, 5000, 'the search');
+  ok('a search shows only what matches every word',
+     selRows().length === 1 && /Harness saved single/.test(selRows()[0].textContent));
+  sIn.value = '';
+  sIn.dispatchEvent(new W.Event('input', { bubbles: true }));
+  await until(() => selRows().length === nAll, 5000, 'the search cleared');
+  catChip('CNO').click();
+  await until(() => selRows().length < nAll, 5000, 'the condition chip');
+  ok('a condition chip shows that condition only',
+     selRows().every((r) => /CNO/.test(r.children[4].textContent)));
+  catChip('CNO').click();
+  await until(() => selRows().length === nAll, 5000, 'the chip off');
+  D().querySelector('.rc-sel-all').click();
+  await sleep(100);
+  ok('select all shown ticks every one that can be pooled',
+     P().sel.length >= nAll - selRows().filter((r) => r.querySelector('input')
+       .disabled).length && P().sel.some((m) => m.key === 's:harness-s1:2'));
+  D().querySelector('.rc-sel-none').click();
+  await sleep(100);
+  eq('unselect all clears it', P().sel.length, 0);
+
+  /* Versions: the latest unless another is picked. */
+  const vSel = () => D().querySelector('.rc-pool-cands tr[data-key="s:harness-s1:2"] .rc-cand-ver');
+  ok('a saved single offers its versions, latest first, each with its hover',
+     !!vSel() && Array.from(vSel().options).map((o) => o.textContent)
+       .join('|') === 'v2 · named|v1 · first'
+     && /Settings: k2 · LFP filter/.test(vSel().options[0].title));
+  D().querySelector('.rc-pool-cands tr[data-key="s:harness-s1:2"] .rc-pool-pick').click();
+  await sleep(100);
+  eq('ticked, it is its latest version', P().sel.map((m) => m.key),
+     ['s:harness-s1:2']);
+  vSel().value = '1';
+  vSel().dispatchEvent(new W.Event('change', { bubbles: true }));
+  await sleep(100);
+  eq('picking another version pools that one', P().sel.map((m) => m.key),
+     ['s:harness-s1:1']);
+  ok('v1 holds no name, so no name chip is offered for it',
+     !D().querySelector('.rc-name-chip'));
+  vSel().value = '2';
+  vSel().dispatchEvent(new W.Event('change', { bubbles: true }));
+  await until(() => D().querySelector('.rc-name-chip'), 5000, 'the name chip');
+
+  /* A name chip: every saved single holding the name, that name only. */
+  ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 200,
+    body: Object.assign({ ok: true }, aw) }));
+  const nFit2 = sent().filter(([k]) => k === 'fit').length;
+  D().querySelector('.rc-name-chip').click();
+  await until(() => sent().filter(([k]) => k === 'fit').length > nFit2, 8000,
+              'the pool of one name');
+  const nmFit = sent().filter(([k]) => k === 'fit').pop()[1];
+  eq('a name chip pools every single holding it, for that name only',
+     nmFit.members, [{ key: 's:harness-s1:2', names: ['DS slow'] }]);
+  ok('and is shown pressed', D().querySelector('.rc-name-chip.on') !== null);
+  D().querySelector('.rc-name-chip').click();
+  await sleep(150);
+  ok('pressed again, the pool is every event again',
+     P().name === null && P().sel.every((m) => !m.names));
+  ev('delete window.__rcpReply.fit');
+  await until(() => !P().fitting, 8000, 'settled');
+  ev(RC + '._poolClose()');
+
+  /* ================================================================== */
+  head('ONE MEASUREMENT FOR A POOL, AND ITS IDENTITY BACK INTO ITS SINGLES');
+
+  ev(RC + '._poolClose()');
+  ev(RC + '._pool().cands.push(' + JSON.stringify({ key: 's:harness-s1:2',
+    kind: 'single', artifact_id: 'harness-s1', version: 2, nickname: 'named',
+    versions: [hv(1, 'first', []), hv(2, 'named', ['DS slow'])],
+    entry_id: 'harness-e1', session_label: 'Harness saved single',
+    gid: 'sharness1', project: 'PTEN', mouse_key: 'PTEN|m98',
+    mouse_type: 'PTEN', n: 40, banked: false, here: false, group: 'CTL',
+    subgroup: 'CTL', condition: 'CNO', counts: {} }) + ')');
+  ev(RC + '._render()');
+  await until(() => D().querySelector('.rc-pool-cands tr[data-key="s:harness-s1:2"]'),
+              5000, 'the saved single');
+  ok('a saved single’s row says the filter it was measured on',
+     /LFP filter/.test((D().querySelector('.rc-pool-cands tr[data-key="s:harness-s1:2"] '
+                        + '.rc-cand-filter') || {}).textContent || ''));
+  const lfp = { filt: 'lfp', mains_out: false, lo_hz: 1, hi_hz: 100, order: 4,
+    filter_label: 'LFP filter, 1–100 Hz, 60 Hz mains left in', win_ms: 25,
+    cross_ms: 50, band_lo: 500, band_hi: 1000 };
+  const ds = Object.assign({}, lfp, { filt: 'ds', mains_out: true, lo_hz: 5,
+    order: 3, filter_label: 'DS filter, 5–100 Hz, 60 Hz mains out' });
+  ev('window.__rcpReply.measures = ' + JSON.stringify({ status: 200, body: {
+    ok: true, target: lfp, mismatch: true, distinct: [ds],
+    members: [{ key: 's:harness-s1:2', label: 'Harness saved single',
+                kind: 'single', here: true, read_on: null, measure: ds,
+                same: false }] } }));
+  ev('window.__rcpReply.remeasure = ' + JSON.stringify({ status: 200, body: {
+    ok: true, target: lfp, away: [],
+    done: [{ key: 's:harness-s1:2', new_key: 's:harness-s1:3',
+             label: 'Harness saved single' }] } }));
+  ev('window.__rcpReply.fit = ' + JSON.stringify({ status: 200,
+    body: Object.assign({ ok: true }, aw) }));
+  ev(RC + '._poolToggle("s:harness-s1:2", true)');
+  const nMeas = sent().filter(([k]) => k === 'measures').length;
+  const nFitM = sent().filter(([k]) => k === 'fit').length;
+  ev(RC + '._poolRun()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-measure-dlg'),
+              8000, 'the one-measurement dialog');
+  ok('before pooling, members measured another way are asked about',
+     sent().filter(([k]) => k === 'measures').length === nMeas + 1
+     && sent().filter(([k]) => k === 'fit').length === nFitM);
+  const mTbl = D().querySelector('#bigModal .rc-measure-tbl');
+  ok('the dialog lists who was measured how, and marks the difference',
+     !!mTbl && /Harness saved single/.test(mTbl.textContent)
+     && /DS filter.*\(differs\)/.test(mTbl.textContent));
+  const mBar = D().querySelector('#bigModal .rc-measure-bar');
+  ok('the settings bar’s measurement is the default (the primary, last)',
+     !!mBar && /All on LFP filter/.test(mBar.textContent)
+     && mBar === Array.from(D().querySelectorAll('#bigModal .mf button')).pop());
+  ok('and each other one is offered', !!D().querySelector('#bigModal .rc-measure-other'));
+  mBar.click();
+  await until(() => sent().filter(([k]) => k === 'fit').length > nFitM, 8000,
+              'the pool after measuring again');
+  const rmBody = (sent().filter(([k]) => k === 'remeasure').pop() || [])[1] || {};
+  ok('the singles are measured again to it, as new versions',
+     rmBody.measure && rmBody.measure.filt === 'lfp'
+     && rmBody.members.some((m) => m.key === 's:harness-s1:2'));
+  eq('and the pool takes the new versions', P().sel.map((m) => m.key),
+     ['s:harness-s1:3']);
+  const nMeas2 = sent().filter(([k]) => k === 'measures').length;
+  ev(RC + '._poolRun()');
+  await until(() => !P().fitting, 8000, 'settled');
+  eq('agreed once, the same members are not asked about again',
+     sent().filter(([k]) => k === 'measures').length, nMeas2);
+  ev('delete window.__rcpReply.measures');
+
+  /* After a save: the pool's identity into its singles, yes by default. */
+  ev('window.__rcpReply.save = ' + JSON.stringify({ status: 200, body: {
+    ok: true, artifact_id: 'harness-prop', version: 2, confirmed: false,
+    name: 'Root Canal pool', nickname: 'harness prop' } }));
+  ev('window.__rcpReply.propagate = ' + JSON.stringify({ status: 200, body: {
+    ok: true, made: 1, left: 0, margin: { artifact_id: 'm1', version: 1 },
+    results: [{ key: 's:harness-s1:3', ok: true, artifact_id: 'harness-s1',
+                version: 4, how: 'from its read' }] } }));
+  ev(RC + '._poolSave()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-name'),
+              5000, 'the save dialog');
+  D().querySelector('#bigModal .bank-dlg-name').value = 'harness prop';
+  Array.from(D().querySelectorAll('#bigModal .mf button')).pop().click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-prop-dlg'),
+              8000, 'the propagation offer');
+  const pYes = D().querySelector('#bigModal .rc-prop-yes');
+  ok('a saved pool offers new versions of its singles, yes by default',
+     !!pYes && pYes === Array.from(D().querySelectorAll('#bigModal .mf button')).pop()
+     && /from pool ‘harness prop’ v2/.test(D().querySelector('#bigModal .rc-prop-dlg').textContent));
+  const nProp = sent().filter(([k]) => k === 'propagate').length;
+  pYes.click();
+  await until(() => sent().filter(([k]) => k === 'propagate').length > nProp,
+              8000, 'the propagation');
+  const prBody = sent().filter(([k]) => k === 'propagate').pop()[1];
+  ok('it sends the pool as it is, and which saved version it is',
+     prBody.pool && prBody.pool.artifact_id === 'harness-prop'
+     && prBody.pool.version === 2 && prBody.members.length === 1
+     && 'cluster_names' in prBody && prBody.measure);
+  ev('delete window.__rcpReply.fit');
+  await until(() => !P().fitting, 8000, 'settled');
+  ev(RC + '._poolClose()');
+
+  /* ================================================================== */
+  head('A POOL OF POOLS, AND EVERY EVENT DS');
+
+  /* Every event DS: the controls' pool option. */
+  await until(() => D().querySelector('.rc-all-ds-box'), 5000, 'the option');
+  D().querySelector('.rc-all-ds-box').click();
+  await sleep(100);
+  ok('“every event is DS” is a pool option, sent with the pool',
+     ev(RC + '._pool().all_ds') === true
+     && JSON.parse(ev('JSON.stringify(' + RC + '._pool().all_ds)')) === true);
+  D().querySelector('.rc-all-ds-box').click();
+  await sleep(100);
+
+  /* The second level, with two saved pools as this machine would list them. */
+  const pv = (v, nick, allDs) => ({ v, id: 'pv' + v, nickname: nick, here: true,
+    at: '2026-10-06T12:00:00', by: 'Harness', machine: 'Elsewhere',
+    n_summary: { members: 4, events: 300, mice: 2 },
+    params: { k: allDs ? 1 : 2, all_ds: allDs,
+              measure: { filter_label: 'LFP filter, 1–100 Hz, 60 Hz mains left in' } } });
+  ev('window.__rcpReply.dpools = ' + JSON.stringify({ status: 200, body: {
+    ok: true, dpools: [] } }));
+  ev(RC + '._setLevel("double")');
+  await until(() => D().querySelector('.rc-pools'), 8000, 'the pools card');
+  ev(RC + '._pool().shelf = ' + JSON.stringify([
+    { artifact_id: 'hp-ctl', nickname: 'All CTL', name: 'pool', version: 1,
+      n_members: 4, versions: [pv(1, 'controls', true)] },
+    { artifact_id: 'hp-ied', nickname: 'IED+', name: 'pool', version: 2,
+      n_members: 4, versions: [pv(1, 'first', false), pv(2, 'k2', false)] }]));
+  ev(RC + '._render()');
+  await until(() => D().querySelectorAll('.rc-pool-pools tbody tr').length === 2,
+              5000, 'the pools');
+  ok('“Pool pools” lists the saved pools, not the recordings',
+     !D().querySelector('.rc-pool-cands') && !!D().querySelector('.rc-dshelf'));
+  const prow = (id) => D().querySelector('.rc-pool-pools tr[data-pool="' + id + '"]');
+  ok('each says its identity: every event DS, or its k',
+     /every event DS/.test(prow('hp-ctl').textContent)
+     && /k = 2/.test(prow('hp-ied').textContent));
+  prow('hp-ctl').querySelector('.rc-pool-pick').click();
+  await sleep(80);
+  prow('hp-ied').querySelector('.rc-pool-pick').click();
+  await sleep(80);
+  eq('ticked, each is in at its latest version', P().sel.map((m) => m.key),
+     ['P:hp-ctl:1', 'P:hp-ied:2']);
+  const pvSel = prow('hp-ied').querySelector('.rc-pool-ver');
+  pvSel.value = '1';
+  pvSel.dispatchEvent(new W.Event('change', { bubbles: true }));
+  await sleep(80);
+  eq('another version can be picked', P().sel.map((m) => m.key),
+     ['P:hp-ctl:1', 'P:hp-ied:1']);
+  const dfitBody = Object.assign({ ok: true }, aw, { level: 'double',
+    switches_single: { n: 10, switched: 2, rate: 0.2, ds_to_ied: 2,
+                       ied_to_ds: 0 } });
+  ev('window.__rcpReply.dfit = ' + JSON.stringify({ status: 200, body: dfitBody }));
+  const nD = sent().filter(([k]) => k === 'dfit').length;
+  D().querySelector('.rc-pools .rc-pool-run').click();
+  await until(() => sent().filter(([k]) => k === 'dfit').length > nD
+                    && !P().fitting, 8000, 'the pool of pools');
+  const dBody = sent().filter(([k]) => k === 'dfit').pop()[1];
+  eq('it asks for the pool of pools by its pools and versions', dBody.pools,
+     [{ artifact_id: 'hp-ctl', version: 1 }, { artifact_id: 'hp-ied', version: 1 }]);
+  ok('with the shared settings', dBody.k === Number(ev(RC + '._state()').q.k)
+     && 'cluster_names' in dBody && !('members' in dBody));
+  await until(() => D().querySelector('.rc-switch'), 8000, 'the switches');
+  /* The cluster tests, asked of the pool of pools as one. */
+  ev('window.__rcpReply.stats = ' + JSON.stringify({ status: 200, body: {
+    ok: true, level: 'double', n: 300, n_used: 300, subsampled: false,
+    recommended: 'sigclust', verdict: 'genuine', stats_key: 'h',
+    tests: { sigclust: { p: 0.005, genuine: true, say: 'p = 0.005: the split '
+      + 'is stronger than one Gaussian cloud split in two would give' } } } }));
+  const sGoD = () => D().querySelector('.rc-gmm .rc-stats-go');
+  if (P().fit.k === 2 && sGoD() && !sGoD().disabled) {
+    sGoD().click();
+    await until(() => D().querySelector('#bigModal:not(.hidden) .rc-stats-run'),
+                8000, 'the tests');
+    const nSD = sent().filter(([k]) => k === 'stats').length;
+    D().querySelector('#bigModal .rc-stats-run').click();
+    await until(() => sent().filter(([k]) => k === 'stats').length > nSD
+      && D().querySelector('#bigModal:not(.hidden) .rc-stats-tab'), 8000, 'the answer');
+    const sBD = sent().filter(([k]) => k === 'stats').pop()[1];
+    ok('the cluster tests ask as a pool of pools, of its pools and versions',
+       sBD.level === 'double' && JSON.stringify(sBD.pools)
+       === JSON.stringify(dBody.pools) && !('members' in sBD),
+       JSON.stringify(sBD).slice(0, 200));
+    ev('closeModal()');
+    await until(() => D().querySelector('.rc-gmm .rc-stats-done.ok'), 5000,
+                'the verdict');
+    ok('and the answer is on its picture',
+       /genuine split/.test(D().querySelector('.rc-gmm .rc-stats-done')
+         .textContent));
+  } else {
+    ok('the cluster tests are offered at the pool-of-pools level', false,
+       'k ' + P().fit.k + ', button ' + !!sGoD());
+  }
+  ok('its switches are counted against each event’s pool, and against its '
+     + 'single beside', /own pool \(v0\)/.test(D().querySelector('.rc-switch')
+       .textContent) && /pool ↓\s+double →/.test(D().querySelector('.rc-crosstab')
+       .textContent) && /Against its single instead: 2 of 10/.test(
+       D().querySelector('.rc-switch').textContent));
+  /* Saved: the offer to carry its identity down, both ticked. */
+  ev('window.__rcpReply.dsave = ' + JSON.stringify({ status: 200, body: {
+    ok: true, artifact_id: 'hd-1', version: 1, confirmed: false,
+    nickname: 'controls + IED+', name: 'Pool of 2 pools' } }));
+  ev('window.__rcpReply.dprop = ' + JSON.stringify({ status: 200, body: {
+    ok: true, made: 3, margin: { artifact_id: 'm', version: 1 },
+    results: { pools: [{ ok: true }, { ok: true }], singles: [{ ok: true }] } } }));
+  ev(RC + '._poolSave()');
+  await until(() => D().querySelector('#bigModal:not(.hidden) .bank-dlg-name'),
+              5000, 'the save dialog');
+  D().querySelector('#bigModal .bank-dlg-name').value = 'controls + IED+';
+  Array.from(D().querySelectorAll('#bigModal .mf button')).pop().click();
+  await until(() => D().querySelector('#bigModal:not(.hidden) .rc-dprop-dlg'),
+              8000, 'the offer');
+  ok('saved, it offers to carry its identity to the pools and the singles, '
+     + 'both ticked', D().querySelector('#bigModal .rc-dprop-pools').checked
+     && D().querySelector('#bigModal .rc-dprop-singles').checked
+     && sent().some(([k]) => k === 'dsave'));
+  D().querySelector('#bigModal .rc-dprop-singles').click();
+  const nP = sent().filter(([k]) => k === 'dprop').length;
+  D().querySelector('#bigModal .rc-prop-yes').click();
+  await until(() => sent().filter(([k]) => k === 'dprop').length > nP, 8000,
+              'the propagation');
+  const dp = sent().filter(([k]) => k === 'dprop').pop()[1];
+  ok('it sends what was ticked: the pools, not the singles',
+     dp.to_pools === true && dp.to_singles === false
+     && dp.dpool.artifact_id === 'hd-1' && dp.pools.length === 2);
+  ev(RC + '._setLevel("pool")');
+  await until(() => D().querySelector('.rc-pool-cands'), 8000, 'back to recordings');
+  ok('and back to pooling recordings', !D().querySelector('.rc-pools'));
 
   /* ================================================================== */
   head('NOTHING IS CUT OFF');

@@ -1,0 +1,132 @@
+{
+  "_at": {
+    "added": "2026-09-28T17:36:18.734484+00:00",
+    "by_label": "2026-09-28T17:36:18.734484+00:00",
+    "curation_label": "2026-09-28T17:36:18.734484+00:00",
+    "duration_s": "2026-09-28T17:36:18.734484+00:00",
+    "events": "2026-09-28T17:36:18.734484+00:00",
+    "gid": "2026-09-28T17:36:18.734484+00:00",
+    "id": "2026-09-28T17:36:18.734484+00:00",
+    "label_names": "2026-09-28T17:36:18.734484+00:00",
+    "mouse": "2026-09-28T17:36:18.734484+00:00",
+    "n": "2026-09-28T17:36:18.734484+00:00",
+    "name": "2026-09-28T17:36:18.734484+00:00",
+    "note": "2026-09-28T17:36:18.734484+00:00",
+    "project": "2026-09-28T17:36:18.734484+00:00",
+    "recording_start": "2026-09-28T17:36:18.734484+00:00",
+    "schema": "2026-09-28T17:36:18.734484+00:00",
+    "session": "2026-09-28T17:36:18.734484+00:00",
+    "session_key": "2026-09-28T17:36:18.734484+00:00",
+    "session_label": "2026-09-28T17:36:18.734484+00:00",
+    "session_loose_key": "2026-09-28T17:36:18.734484+00:00",
+    "session_path": "2026-09-28T17:36:18.734484+00:00",
+    "source": "2026-09-28T17:36:18.734484+00:00",
+    "specified": "2026-09-28T17:36:18.734484+00:00",
+    "type": "2026-09-28T17:36:18.734484+00:00",
+    "type_name": "2026-09-28T17:36:18.734484+00:00",
+    "units": "2026-09-28T17:36:18.734484+00:00",
+    "version": "2026-09-28T17:36:18.734484+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "a97f3efa7cc2": [
+        "set",
+        "2026-09-28T17:36:18.734484+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-09-28T17:36:18.734484+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-28T13:36:18-04:00",
+    "by": "harness@test",
+    "machine": "LCOM549913"
+  },
+  "by_label": {
+    "unspecified": 3
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "end": 20.0,
+      "start": 10.0
+    },
+    {
+      "end": 40.0,
+      "start": 30.0
+    },
+    {
+      "end": 60.0,
+      "start": 50.0
+    }
+  ],
+  "gid": null,
+  "id": "eaa49e94f8fe",
+  "label_names": {},
+  "mouse": 99,
+  "n": 3,
+  "name": "seeded cue pairs",
+  "note": "",
+  "project": "HARNESS",
+  "recording_start": null,
+  "schema": 1,
+  "session": 1,
+  "session_key": null,
+  "session_label": "harness exclusion",
+  "session_loose_key": null,
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {
+      "clip_fraction": 0.995,
+      "clip_measured": true,
+      "clip_min_run": 16
+    },
+    "pipeline": "The Arc \u00b7 Spark \u00b7 harness",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ttl",
+  "type_name": "ttl",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-09-28T13:36:18-04:00",
+      "by": "harness@test",
+      "by_label": {
+        "unspecified": 3
+      },
+      "changed": 0,
+      "from_v": null,
+      "gained": 0,
+      "id": "a97f3efa7cc2",
+      "imported": true,
+      "lost": 0,
+      "machine": "LCOM549913",
+      "moves": {},
+      "n": 3,
+      "note": "Imported from The Arc \u00b7 Spark \u00b7 harness. 3 candidates, none decided yet.",
+      "snap": [
+        [
+          10.0,
+          null
+        ],
+        [
+          30.0,
+          null
+        ],
+        [
+          50.0,
+          null
+        ]
+      ],
+      "v": 0
+    }
+  ]
+}

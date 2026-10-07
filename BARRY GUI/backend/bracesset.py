@@ -130,7 +130,11 @@ class BracesSets:
         self.dir = os.path.join(root, "braces")
         self.store = store
         os.makedirs(self.dir, exist_ok=True)
-        self.book = shards.Book(self.dir, SET_SPEC, store)
+        # Other machines' sets, pulled from the shared database into the
+        # cache (see shards.Book's `extra_dirs` and cloudsync's shard_files).
+        self.pulled = os.path.join(root, ".cache", "cloudshards", "braces")
+        self.book = shards.Book(self.dir, SET_SPEC, store,
+                                extra_dirs=[self.pulled])
 
     # ------------------------------------------------------------------
     # Reading

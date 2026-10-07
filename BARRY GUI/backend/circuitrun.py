@@ -777,9 +777,12 @@ def montage_channels(blocked):
                    if name not in (blocked or {}) for c in csc})
 
 
-def prepare_rest(host, gid, body_params=None, specs=None):
+def prepare_rest(host, gid, body_params=None, specs=None, epoch_s=None):
     """A rest circuit's prep: the day of SPC recording `gid`, its FP1/FP2,
-    the epochs, and everything `prepare` gives a cue circuit."""
+    the epochs, and everything `prepare` gives a cue circuit. `epoch_s`
+    cuts longer epochs than the 10 s default, cut the same way (the
+    Monolith's whole-pair window takes 20 s ones)."""
+    epoch_s = float(epoch_s or spark.REST_EPOCH_S)
     entry = host.entry(gid)
     if not entry:
         raise CircuitRunError(
@@ -806,7 +809,8 @@ def prepare_rest(host, gid, body_params=None, specs=None):
     try:
         epochs = spark.rest_epochs(
             [{"key": f["gid"], "run": f["run"],
-              "duration_s": f["duration_s"]} for f in fps], n_epochs)
+              "duration_s": f["duration_s"]} for f in fps], n_epochs,
+            epoch_s=epoch_s)
     except spark.SparkError as exc:
         raise CircuitRunError(str(exc), 409)
     try:
@@ -819,7 +823,7 @@ def prepare_rest(host, gid, body_params=None, specs=None):
     bad_by = {f["gid"]: f["bad_channels"] for f in fps}
     extra = {"rest": {
         "epochs": [[e["key"], e["t0"], e["t1"]] for e in epochs],
-        "bad": bad_by, "epoch_s": spark.REST_EPOCH_S,
+        "bad": bad_by, "epoch_s": epoch_s,
         "edge_s": spark.REST_EDGE_S}}
     phash = params_hash(params, (), blocked, extra)
     band_params, band_phash = _band_prep(

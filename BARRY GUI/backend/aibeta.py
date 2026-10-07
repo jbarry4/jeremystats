@@ -1800,7 +1800,8 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
             if r["entry_id"] in failed or not r["ok"]:
                 continue
             r["phys_path"] = phys_path(runs, by_id[r["entry_id"]], r)
-            if not os.path.exists(r["phys_path"]):
+            if not phys.has(r["phys_path"],
+                            [f for f in fams if f in PHYS_IDS]):
                 todo2.append(r)
         if job:
             job.begin("ai physio", of=len(todo2), unit="recordings")
@@ -1825,7 +1826,8 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
                 times, report=report,
                 folder=rec["session"].get("path"), job=job,
                 on_span=on_span, aibeta=sys.modules[__name__],
-                spacing=rec.get("spacing"))
+                spacing=rec.get("spacing"),
+                want_filt=bool(set(fams) & set(phys.FILT_IDS)))
             phys.save(r["phys_path"], got)
             return r
 
@@ -1956,7 +1958,13 @@ class Runs:
         self.models = os.path.join(self.root, "models")
         self.cache = os.path.join(logs_dir, ".cache", "aibeta")
         self.logs = logs_dir
-        self.book = shards.Book(self.dir, {}, store)
+        # Other machines' runs, pulled from the shared database into the
+        # cache. The records only: a model file stays on the machine that
+        # trained it (see cloudsync's shard_files).
+        self.pulled = os.path.join(logs_dir, ".cache", "cloudshards",
+                                   "aibeta", "runs")
+        self.book = shards.Book(self.dir, {}, store,
+                                extra_dirs=[self.pulled])
         # Which run Avery is: one record, the latest designation winning.
         self.avery_book = shards.Book(os.path.join(self.root, "avery"), {},
                                       store)

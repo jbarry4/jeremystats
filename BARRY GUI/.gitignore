@@ -33,6 +33,12 @@ GUI_logs/.cloud.json
 # already ignoring it.
 GUI_logs/.vacc.json
 
+# The review site's own SSH key (tools/export_review.py key --make). On the
+# VACC it can run one read-only command and nothing else, but it is still a
+# key to the account: it goes to Vercel's environment and nowhere else.
+GUI_logs/.review_key
+GUI_logs/.review_key.pub
+
 # The browsable copy of the Event Bank. Derived from GUI_logs/event_bank (and
 # from Supabase), regenerated whenever the bank changes, and deterministic --
 # so it is safe to delete and pointless to track. Committing it would mean two

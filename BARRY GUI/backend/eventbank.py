@@ -409,6 +409,12 @@ class EventBank:
                     pass
             if ev.get("align_flag"):
                 item["align_flag"] = ev["align_flag"]
+            # Root Canal's name for the cluster this event was in
+            # (2026-10-06): "DS slow", "IED big". Its own field, never the
+            # label -- the label is what says an event is a dentate spike at
+            # all, and every reader of a DS set picks events by it.
+            if ev.get("rc_name"):
+                item["rc_name"] = str(ev["rc_name"])[:60]
             # Channels this event is not valid on, and the two different
             # reasons it might not be.
             #
