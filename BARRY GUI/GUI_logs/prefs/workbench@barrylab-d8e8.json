@@ -1,16 +1,16 @@
 {
   "_at": {
-    "braces_curve": "2026-09-22T19:14:33.231377+00:00",
-    "curate_at": "2026-10-07T18:36:02.045606+00:00",
-    "curate_span": "2026-10-06T20:43:53.953340+00:00",
+    "braces_curve": "2026-10-07T19:25:45.859231+00:00",
+    "curate_at": "2026-10-07T20:07:32.976261+00:00",
+    "curate_span": "2026-10-07T20:06:07.274964+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
     "radio": "2026-09-28T16:42:12.462673+00:00",
-    "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
+    "recent_scripts": "2026-10-06T21:01:09.048786+00:00",
     "result_group": "2026-09-28T20:50:31.306822+00:00",
     "spotter_at": "2026-09-29T18:09:12.028303+00:00",
     "spotter_light": "2026-09-25T22:03:51.166243+00:00",
-    "updated": "2026-10-07T18:36:02.045606+00:00"
+    "updated": "2026-10-07T20:07:32.976261+00:00"
   },
   "_keys": {
     "themes": {
@@ -20,7 +20,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-01T17:13:50.163448+00:00"
+        "2026-10-06T21:04:41.842988+00:00"
       ],
       "Home": [
         "set",
@@ -42,7 +42,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-03T00:09:11.998556+00:00"
+        "2026-10-06T21:04:20.348602+00:00"
       ],
       "Home": [
         "set",
@@ -50,12 +50,12 @@
       ],
       "LCOM549913": [
         "set",
-        "2026-09-18T18:07:09.210843+00:00"
+        "2026-09-23T17:54:40.635410+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-07T18:36:02.045606+00:00",
+    "at": "2026-10-07T20:07:32.976261+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -118,11 +118,11 @@
       "t": 3259.302795
     },
     "s45bae70722f2:ds": {
-      "at": 1791305054083,
-      "id": "e5d43a15765",
+      "at": 1791403563315,
+      "id": "e0115571298",
       "n": 130,
-      "review": "all",
-      "t": 1705.696248
+      "review": "flag",
+      "t": 1698.528251
     },
     "s4cba75610a75:ds": {
       "at": 1790782214099,
@@ -179,6 +179,13 @@
       "n": 586,
       "review": "all",
       "t": 1797.668706
+    },
+    "s9eb56573e0b4:ds": {
+      "at": 1791403652971,
+      "id": "eb530e43459",
+      "n": 224,
+      "review": "flag",
+      "t": 983.454605
     },
     "sa9275263c832:ds": {
       "at": 1790863242755,
@@ -257,29 +264,29 @@
     "volume": 55
   },
   "recent_scripts": [
+    "Kilosort/Kilosort-4_additional_code/Config files/AD_channel_mapping_figures.py",
+    "Kilosort/Kilosort-4_additional_code/H3_channel_journey_flowchart.py",
+    "Kilosort/Kilosort-4_additional_code/automate_kilosort/kilosort_automation.py",
+    "IED/VoltageRaster_EventsAvg.m",
+    "IED/vacc_ied_detect1.m",
+    "IED/vacc_ied_detect.m",
+    "IED/spreadsheet_to_gui.m",
+    "IED/Python helpers/Solid or Sputter Web.py",
     "IED/03_IED_Detection/vacc_ied_detect.m",
     "IED/07_Grand_Average/CSDRaster_GrandAverage_Spatial_Norm.m",
     "IED/08_Anatomical_Labeling/blank_png_gen.py",
-    "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m",
-    "IED/05_Session_Pipeline/components/Scalogram_Waveform_Stacked_ThirdEvent_RandomControl_Pipeline.m",
-    "IED/06_IPP_Take4/Run_Take4_IPP_v2.m",
-    "IED/05_Session_Pipeline/components/VoltageRaster_Events.m",
-    "IED/05_Session_Pipeline/components/SpikeAmpWidthScatter.m",
-    "IED/05_Session_Pipeline/components/SolidSputterAvgStack.m",
-    "IED/02_CSC_Conversion/CSC2microVoltPatchCode.m",
-    "IED/03_IED_Detection/Analyze_MatFile_Start.m",
-    "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m"
+    "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m"
   ],
   "result_group": "",
   "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"left\",\"index\":9,\"id\":\"e65f937a512\",\"t\":1842.3047,\"at\":1790705349768},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151}}",
   "spotter_light": "lit",
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "slate",
+    "DESKTOP-4H65AI7": "jirai-yami",
     "Home": "dark",
     "LCOM549913": "light"
   },
-  "updated": "2026-10-07T14:36:02-04:00",
+  "updated": "2026-10-07T16:07:32-04:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": false,
