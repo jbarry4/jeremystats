@@ -184,9 +184,12 @@ POLICY_PLUS = {"ds_catch": 0.99, "review_catch": 0.98,
 # built to leave people as little garbage to sift through as possible --
 # catch as much of it as it can, at a share of real spikes the person
 # sweeping chooses.
-SLOTS = ("avery", "avery_plus", "avery_gd")
+# TOOTH FAIRY (named by the user, 2026-10-07): "use all the information you
+# have about what works the best", retrained on everything curated since.
+SLOTS = ("avery", "avery_plus", "avery_gd", "tooth_fairy")
 SLOT_NAMES = {"avery": "Avery", "avery_plus": "Avery+",
-              "avery_gd": "Avery Garbage Dystrophy+"}
+              "avery_gd": "Avery Garbage Dystrophy+",
+              "tooth_fairy": "Tooth Fairy"}
 POLICY_LABELS = ("spike", "review", "flag", "garbage")
 
 
@@ -232,6 +235,9 @@ def apply_policy(p, pol):
 
 N_FOLDS = 5
 N_INNER = 3
+# Two versions' stamps for one candidate, before Braces moved anything:
+# the same time to the microsecond, give or take a rounding.
+SAME_EVENT_S = 0.002
 
 # Labels, by id and by display name: older bank entries carry only names.
 DS_LABELS = {"spike", "dentate spike"}
@@ -315,6 +321,60 @@ def _now():
 # --------------------------------------------------------------------------
 # Which entries, which version, which labels
 # --------------------------------------------------------------------------
+def _is_avery(ver):
+    """A version a model wrote. Tagged when banked by an accepted sweep;
+    the curation set's own version from that accept carries only the author,
+    so both are asked."""
+    return ver.get("tag") == AVERY_TAG or ver.get("by") == AVERY_BY
+
+
+def _avery_unreviewed(bank, rec, named, target, events):
+    """Which of `events` hold a call Avery made that nobody changed.
+
+    An accepted sweep fills every undecided candidate with Avery's call, and
+    the person then works through the flags. A candidate Avery called DS or
+    Garbage that still holds that call afterwards may never have been looked
+    at -- learning from it is the model learning from itself. So such a
+    candidate is left out when it was undecided before the sweep. Kept: what
+    a person had decided before Avery came, everything Avery flagged, and
+    every call a person changed. Returns a set of indices into `events`, or
+    None when the versions needed to tell are not on this machine.
+    """
+    order = [ver for ver, _n in named]
+    try:
+        at = next(k for k, v in enumerate(order) if v is target)
+    except StopIteration:
+        return set()
+    av = [k for k in range(at) if _is_avery(order[k])]
+    if not av:
+        return set()
+    pre = [k for k in range(av[0]) if not _is_avery(order[k])]
+
+    def classes(ver):
+        if not ver.get("snap"):
+            return None
+        try:
+            evs, _ = bank.events_at(rec, bank.version_key(ver))
+        except Exception:                                # noqa: BLE001
+            return None
+        return {round(float(e["start"]), 4):
+                _cls(e.get("label_id") or e.get("label")) for e in evs}
+
+    calls = classes(order[av[-1]])
+    if calls is None:
+        return None
+    before = classes(order[pre[-1]]) if pre else {}
+    if before is None:
+        return None
+    out = set()
+    for j, e in enumerate(events):
+        t = round(float(e["t_bank"]), 4)
+        a = calls.get(t)
+        if a in (0, 1) and before.get(t) not in (0, 1) and e["y"] == a:
+            out.add(j)
+    return out
+
+
 def _cls(label):
     """1 for a dentate spike, 0 for garbage, None for anything else."""
     if label is None:
@@ -439,7 +499,7 @@ def dataset(bank, curate=None, pin=None):
         for ver, name in named:
             if ver.get("aligned"):
                 break
-            if ver.get("tag") == AVERY_TAG:
+            if _is_avery(ver):
                 continue
             before.append((ver, name))
         target = tname = None
@@ -497,6 +557,56 @@ def dataset(bank, curate=None, pin=None):
                                    "does not match it" % tname})
             continue
         events = [e for e in events if e["y"] is not None]
+        # THE GARBAGE A LATER VERSION DROPPED (2026-10-07). Eleven sets go
+        # DS + Garbage, then DS alone -- the garbage deleted to make the
+        # set Braces aligns -- and the DS-only version is the last settled
+        # one, so 429 decided garbage were never learned from. A candidate
+        # an earlier settled version called Garbage that the answer no
+        # longer holds at all was deleted as garbage, and comes back as
+        # garbage. One the answer still holds keeps the answer's call.
+        n_restored = 0
+        if source == "bank":
+            order_ = [v for v, _n in named]
+            upto = next((k for k, v in enumerate(order_) if v is target),
+                        len(order_))
+            richer = None
+            for v in order_[:upto]:
+                if v.get("aligned"):
+                    break
+                st_ = _settled(v.get("by_label"))
+                if not _is_avery(v) and st_ and st_[1] > 0:
+                    richer = v
+            if richer is not None and richer.get("snap"):
+                try:
+                    old_evs, _ = bank.events_at(rec, bank.version_key(richer))
+                except Exception:                        # noqa: BLE001
+                    old_evs = []
+                have_t = np.array(sorted(e["t_bank"] for e in events))
+                for e2 in old_evs:
+                    if _cls(e2.get("label_id") or e2.get("label")) != 0:
+                        continue
+                    t = float(e2["start"])
+                    k = int(np.searchsorted(have_t, t))
+                    near = min((abs(have_t[q] - t) for q in (k - 1, k)
+                                if 0 <= q < have_t.size), default=np.inf)
+                    if near > SAME_EVENT_S:
+                        events.append({"t_bank": t, "y": 0})
+                        n_restored += 1
+                events.sort(key=lambda e: e["t_bank"])
+        # AVERY'S OWN CALLS, where a person finished a set Avery swept
+        # (2026-10-07: three entries did). See `_avery_unreviewed`.
+        n_avery = 0
+        if any(_is_avery(v) for v, _n in named):
+            drop = _avery_unreviewed(bank, rec, named, target, events)
+            if drop is None:
+                skipped.append({"label": label, "entry_id": rec.get("id"),
+                                "gid": rec.get("gid"),
+                                "why": "Avery swept it, and the versions "
+                                       "that tell its calls from a person's "
+                                       "are not on this machine"})
+                continue
+            n_avery = len(drop)
+            events = [e for j, e in enumerate(events) if j not in drop]
         if not events:
             continue
         # REJECTED WHOLE: left out, by the user's call (2026-10-02).
@@ -538,6 +648,8 @@ def dataset(bank, curate=None, pin=None):
             "n": len(events),
             "n_ds": sum(1 for e in events if e["y"] == 1),
             "n_garbage": sum(1 for e in events if e["y"] == 0),
+            "n_avery_left_out": n_avery,
+            "n_garbage_restored": n_restored,
             "events": events,
             "first_pass": _first_pass(bank, rec, named, target, events),
         }
@@ -625,7 +737,10 @@ def true_times(entry, report):
 # pitch apart. The CSD is taken over that pitch, and the second read's
 # windows that are counted in contacts are halved so they cover the same
 # depth. Only for a single linear array: on the H10-D or the dual array the
-# even channels are not a line.
+# even channels are not a line, so a recording on one is read the way its
+# probe is laid out instead -- every channel, one column at a time, as the
+# full read always has -- and says so (`subset_note`). Refusing it stopped
+# Tooth Fairy sweeping PTEN m3 s7, an H10-D recording, at all.
 CHANNEL_SETS = ("all", "even")
 
 
@@ -636,9 +751,11 @@ def subset_channels(rec, which):
     if which not in CHANNEL_SETS:
         raise AiBetaError("No channel set %r." % which)
     if (probes.get(rec["probe"]) or {}).get("columns"):
-        raise AiBetaError(
-            "Even channels only is for a single linear array; this "
-            "recording's probe (%s) is laid out in columns." % rec["probe"])
+        return dict(rec, subset_note=(
+            "This recording's probe (%s) is laid out in columns, so the even "
+            "channels are not a line on it; it was read the way the probe is "
+            "laid out, every channel, rather than even channels only."
+            % ((probes.get(rec["probe"]) or {}).get("name") or rec["probe"])))
     chans = [c for c in rec["channels"] if int(c["number"]) % 2 == 0]
     if len(chans) < 3:
         raise AiBetaError("Fewer than three even channels on this "
@@ -1827,7 +1944,8 @@ def run(bank, curate, runs, open_recording, settings, prov=None, job=None):
                 folder=rec["session"].get("path"), job=job,
                 on_span=on_span, aibeta=sys.modules[__name__],
                 spacing=rec.get("spacing"),
-                want_filt=bool(set(fams) & set(phys.FILT_IDS)))
+                want_filt=phys.filters_for(fams),
+                want_xray=bool(set(fams) & set(phys.XR_IDS)))
             phys.save(r["phys_path"], got)
             return r
 
@@ -1972,7 +2090,27 @@ class Runs:
         # the bars, and the run -- the record the edge cases are mined from.
         self.sweeps = shards.Book(os.path.join(self.root, "sweeps"), {},
                                   store)
+        # What has been tried and what it did: one record per question, the
+        # summary report AI Beta shows (the user, 2026-10-07: "generate a
+        # summary report in the AI Beta tab"). Written by whoever ran the
+        # comparison, with the numbers in it, never recomputed on read.
+        self.reports = shards.Book(os.path.join(self.root, "reports"), {},
+                                   store)
         self.store = store
+
+    def save_report(self, rec):
+        """File one report. `rec` needs an `id`; the rest is
+        {title, order, at, by, question, how, verdict, tables}."""
+        if not rec.get("id"):
+            raise AiBetaError("A report needs an id.")
+        rec = dict(rec)
+        rec.setdefault("at", _now())
+        return self.reports.write(rec["id"], rec)
+
+    def all_reports(self):
+        out = [r for r in (self.reports.all() or []) if r.get("id")]
+        out.sort(key=lambda r: (r.get("order", 999), r.get("at") or ""))
+        return out
 
     def feature_path(self, gid, key):
         return os.path.join(self.cache, "%s__%s.npz"

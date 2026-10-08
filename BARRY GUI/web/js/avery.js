@@ -42,7 +42,7 @@ BARRY.avery = (function () {
   let scanT = null;
   let result = null;
   let filter = null;     // which call the summary list shows
-  let model = null;      // 'avery', 'avery_plus' or 'avery_gd'
+  let model = null;      // 'avery', 'avery_plus', 'avery_gd', 'tooth_fairy'
   let streamT = null;
   let tol = null;        // share of real spikes that may be called Garbage
   let pool = [];         // the candidates scanned, round and round, while reading
@@ -78,7 +78,7 @@ BARRY.avery = (function () {
       return;
     }
     const models = st.models || { avery: st };
-    const ready = ['avery_gd', 'avery_plus', 'avery']
+    const ready = ['tooth_fairy', 'avery_gd', 'avery_plus', 'avery']
       .filter((k) => (models[k] || {}).ready);
     if (!ready.length) {
       toast(st.why || 'Avery is not ready.', 'warn', 9000);
@@ -110,9 +110,15 @@ BARRY.avery = (function () {
                      ['avery_gd', 'Avery Garbage Dystrophy+', 'Built to leave '
                       + 'you the least garbage to sift through: catches as '
                       + 'much of it as it can at the share of real spikes '
-                      + 'you allow.']]
+                      + 'you allow.'],
+                     ['tooth_fairy', 'Tooth Fairy', 'Everything that worked '
+                      + 'best, trained on everything curated so far.']]
       .filter(([k]) => (models[k] || {}).ready);
-    const plain = (k) => k === 'avery_gd'
+    const plain = (k) => k === 'tooth_fairy'
+      ? 'Garbage Dystrophy+’s recipe on even channels, retrained on every '
+        + 'set curated so far. Choose how many real spikes may go with the '
+        + 'garbage; the more, the less is left in Flag.'
+      : k === 'avery_gd'
       ? 'Built to leave a person the least garbage to sift through. Choose '
         + 'how many real spikes may go with the garbage; the more, the less '
         + 'is left in Flag.'
@@ -288,7 +294,8 @@ BARRY.avery = (function () {
     ov.appendChild(el('div', { class: 'avery-panel' }, [
       el('div', { class: 'avery-top' }, [
         el('span', { class: 'avery-mark',
-                     text: model === 'avery_gd' ? 'AVERY GARBAGE DYSTROPHY+'
+                     text: model === 'tooth_fairy' ? 'TOOTH FAIRY'
+                       : model === 'avery_gd' ? 'AVERY GARBAGE DYSTROPHY+'
                        : model === 'avery_plus' ? 'AVERY+' : 'AVERY' }),
         el('span', { class: 'avery-sep', text: '//' }),
         el('span', { class: 'avery-what', text: 'SWEEP' }),
@@ -677,6 +684,7 @@ BARRY.avery = (function () {
     })));
 
     const notes = [];
+    if (r.channels_note) notes.push(r.channels_note);
     const ho = r.held_out || {};
     const share = (lab, of) => {
       const b = ho[lab];

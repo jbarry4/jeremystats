@@ -12357,6 +12357,26 @@ table.ai-tbl tr { cursor: default; }
 table.ai-tbl td.ai-wrap { white-space: normal; min-width: 10rem; }
 table.ai-tbl tr.ai-on td { background: var(--accent-soft); color: var(--text); }
 .ai-notes p { margin: 0 0 var(--sp-4); }
+/* The summary report: a question per section, the answer always showing. */
+.ai-report { gap: var(--sp-6); }
+.ai-rep { border-top: 1px solid var(--line-soft); padding-top: var(--sp-6);
+          display: flex; flex-direction: column; gap: var(--sp-6); }
+.ai-rep-head { display: flex; align-items: baseline; gap: var(--sp-8);
+               background: none; border: 0; padding: 0; text-align: left;
+               font: inherit; color: var(--text); cursor: pointer; }
+.ai-rep-caret { color: var(--text-3); width: 1em; flex: none; }
+.ai-rep-title { font-weight: 600; flex: 1 1 auto; min-width: 0; }
+.ai-rep-when { color: var(--text-3); font-size: var(--fs-11); flex: none; }
+.ai-rep-verdict { margin: 0 0 0 1.6em; color: var(--text-2);
+                  font-size: var(--fs-125); line-height: 1.5; }
+.ai-rep .hint { margin: 0 0 0 1.6em; }
+.ai-rep .ai-sub, .ai-rep .br-scroll { margin-left: 1.6em; }
+table.ai-rep-tbl td.ai-num { font-variant-numeric: tabular-nums;
+                             text-align: right; white-space: nowrap; }
+table.ai-rep-tbl td.ai-best { font-weight: 700; color: var(--text); }
+table.ai-rep-tbl tr.ai-rep-ref td { color: var(--text-3); }
+table.ai-rep-tbl tr.ai-rep-chosen td:first-child { color: var(--accent);
+                                                   font-weight: 600; }
 
 /* ---------- Avery (avery.js): the sweep screen ----------
    Full-window, over Xplorefinder, because a sweep is minutes and the set

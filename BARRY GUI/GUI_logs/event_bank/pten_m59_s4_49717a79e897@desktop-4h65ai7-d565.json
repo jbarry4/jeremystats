@@ -1,0 +1,5071 @@
+{
+  "_at": {
+    "added": "2026-10-07T22:28:55.393903+00:00",
+    "by_label": "2026-10-07T22:28:55.393903+00:00",
+    "curation_label": "2026-10-07T22:28:55.393903+00:00",
+    "duration_s": "2026-10-07T22:28:55.393903+00:00",
+    "events": "2026-10-07T22:28:55.393903+00:00",
+    "gid": "2026-10-07T22:28:55.393903+00:00",
+    "id": "2026-10-07T22:28:55.393903+00:00",
+    "label_names": "2026-10-07T22:28:55.393903+00:00",
+    "mouse": "2026-10-07T22:28:55.393903+00:00",
+    "n": "2026-10-07T22:28:55.393903+00:00",
+    "name": "2026-10-07T22:28:55.393903+00:00",
+    "note": "2026-10-07T22:28:55.393903+00:00",
+    "project": "2026-10-07T22:28:55.393903+00:00",
+    "recording_start": "2026-10-07T22:28:55.393903+00:00",
+    "schema": "2026-10-07T22:28:55.393903+00:00",
+    "session": "2026-10-07T22:28:55.393903+00:00",
+    "session_key": "2026-10-07T22:28:55.393903+00:00",
+    "session_label": "2026-10-07T22:28:55.393903+00:00",
+    "session_loose_key": "2026-10-07T22:28:55.393903+00:00",
+    "session_path": "2026-10-07T22:28:55.393903+00:00",
+    "source": "2026-10-07T22:28:55.393903+00:00",
+    "specified": "2026-10-07T22:28:55.393903+00:00",
+    "type": "2026-10-07T22:28:55.393903+00:00",
+    "type_name": "2026-10-07T22:28:55.393903+00:00",
+    "units": "2026-10-07T22:28:55.393903+00:00",
+    "version": "2026-10-07T22:28:55.393903+00:00"
+  },
+  "_keys": {
+    "versions": {
+      "87a56f7d6d17": [
+        "set",
+        "2026-10-07T22:28:55.393903+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-07T22:28:55.393903+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-10-07T18:28:55-04:00",
+    "by": "Rain Younger",
+    "machine": "DESKTOP-4H65AI7"
+  },
+  "by_label": {
+    "unspecified": 535
+  },
+  "curation_label": null,
+  "duration_s": 3202.95253333333,
+  "events": [
+    {
+      "amplitude": 564.1219,
+      "channel": 47,
+      "start": 25.096071
+    },
+    {
+      "amplitude": 534.977,
+      "channel": 47,
+      "start": 36.913104
+    },
+    {
+      "amplitude": 506.0893,
+      "channel": 46,
+      "start": 38.747109
+    },
+    {
+      "amplitude": 585.0448,
+      "channel": 47,
+      "start": 40.380114
+    },
+    {
+      "amplitude": 742.724,
+      "channel": 46,
+      "start": 43.193122
+    },
+    {
+      "amplitude": 597.384,
+      "channel": 43,
+      "start": 65.497185
+    },
+    {
+      "amplitude": 808.2215,
+      "channel": 45,
+      "start": 69.648197
+    },
+    {
+      "amplitude": 612.435,
+      "channel": 45,
+      "start": 70.569199
+    },
+    {
+      "amplitude": 557.9549,
+      "channel": 47,
+      "start": 94.782267
+    },
+    {
+      "amplitude": 475.3321,
+      "channel": 48,
+      "start": 94.942268
+    },
+    {
+      "amplitude": 476.7004,
+      "channel": 47,
+      "start": 97.134274
+    },
+    {
+      "amplitude": 717.0979,
+      "channel": 37,
+      "start": 117.693332
+    },
+    {
+      "amplitude": 1132.2781,
+      "channel": 46,
+      "start": 149.768423
+    },
+    {
+      "amplitude": 503.3644,
+      "channel": 46,
+      "start": 152.631431
+    },
+    {
+      "amplitude": 608.8035,
+      "channel": 47,
+      "start": 160.354452
+    },
+    {
+      "amplitude": 548.1923,
+      "channel": 46,
+      "start": 199.944564
+    },
+    {
+      "amplitude": 746.0881,
+      "channel": 46,
+      "start": 253.441715
+    },
+    {
+      "amplitude": 518.5243,
+      "channel": 46,
+      "start": 253.673716
+    },
+    {
+      "amplitude": 565.0983,
+      "channel": 47,
+      "start": 255.06272
+    },
+    {
+      "amplitude": 931.3437,
+      "channel": 34,
+      "start": 283.700801
+    },
+    {
+      "amplitude": 644.6204,
+      "channel": 47,
+      "start": 283.728801
+    },
+    {
+      "amplitude": 678.7278,
+      "channel": 47,
+      "start": 289.553817
+    },
+    {
+      "amplitude": 500.362,
+      "channel": 46,
+      "start": 294.638831
+    },
+    {
+      "amplitude": 530.7492,
+      "channel": 44,
+      "start": 307.503868
+    },
+    {
+      "amplitude": 512.505,
+      "channel": 46,
+      "start": 315.833891
+    },
+    {
+      "amplitude": 417.7749,
+      "channel": 50,
+      "start": 316.118892
+    },
+    {
+      "amplitude": 514.8183,
+      "channel": 47,
+      "start": 318.9399
+    },
+    {
+      "amplitude": 364.3946,
+      "channel": 53,
+      "start": 319.1019
+    },
+    {
+      "amplitude": 380.3259,
+      "channel": 52,
+      "start": 348.339983
+    },
+    {
+      "amplitude": 513.3225,
+      "channel": 46,
+      "start": 360.213016
+    },
+    {
+      "amplitude": 461.1472,
+      "channel": 48,
+      "start": 360.319017
+    },
+    {
+      "amplitude": 499.2439,
+      "channel": 46,
+      "start": 364.139027
+    },
+    {
+      "amplitude": 500.1346,
+      "channel": 46,
+      "start": 391.552105
+    },
+    {
+      "amplitude": 505.272,
+      "channel": 46,
+      "start": 426.239203
+    },
+    {
+      "amplitude": 395.3185,
+      "channel": 54,
+      "start": 429.905213
+    },
+    {
+      "amplitude": 488.655,
+      "channel": 43,
+      "start": 435.284228
+    },
+    {
+      "amplitude": 709.8557,
+      "channel": 46,
+      "start": 446.942261
+    },
+    {
+      "amplitude": 649.6504,
+      "channel": 46,
+      "start": 468.666322
+    },
+    {
+      "amplitude": 507.1082,
+      "channel": 45,
+      "start": 503.952422
+    },
+    {
+      "amplitude": 492.5763,
+      "channel": 46,
+      "start": 509.865439
+    },
+    {
+      "amplitude": 541.8934,
+      "channel": 46,
+      "start": 521.01847
+    },
+    {
+      "amplitude": 505.955,
+      "channel": 46,
+      "start": 537.409516
+    },
+    {
+      "amplitude": 592.2453,
+      "channel": 46,
+      "start": 540.211524
+    },
+    {
+      "amplitude": 360.3014,
+      "channel": 54,
+      "start": 544.673537
+    },
+    {
+      "amplitude": 507.5912,
+      "channel": 46,
+      "start": 564.092592
+    },
+    {
+      "amplitude": 520.4911,
+      "channel": 40,
+      "start": 566.046597
+    },
+    {
+      "amplitude": 643.1775,
+      "channel": 46,
+      "start": 577.84063
+    },
+    {
+      "amplitude": 689.7731,
+      "channel": 46,
+      "start": 587.868659
+    },
+    {
+      "amplitude": 438.2574,
+      "channel": 49,
+      "start": 599.148691
+    },
+    {
+      "amplitude": 468.4921,
+      "channel": 48,
+      "start": 624.678763
+    },
+    {
+      "amplitude": 566.6681,
+      "channel": 46,
+      "start": 647.010826
+    },
+    {
+      "amplitude": 497.852,
+      "channel": 46,
+      "start": 648.49683
+    },
+    {
+      "amplitude": 491.0518,
+      "channel": 46,
+      "start": 689.369945
+    },
+    {
+      "amplitude": 720.8047,
+      "channel": 47,
+      "start": 690.308948
+    },
+    {
+      "amplitude": 624.5208,
+      "channel": 38,
+      "start": 698.11897
+    },
+    {
+      "amplitude": 497.0092,
+      "channel": 44,
+      "start": 703.241984
+    },
+    {
+      "amplitude": 635.8416,
+      "channel": 46,
+      "start": 709.854003
+    },
+    {
+      "amplitude": 878.6565,
+      "channel": 48,
+      "start": 728.553056
+    },
+    {
+      "amplitude": 477.6634,
+      "channel": 47,
+      "start": 744.117438
+    },
+    {
+      "amplitude": 1043.5607,
+      "channel": 46,
+      "start": 775.312526
+    },
+    {
+      "amplitude": 582.9463,
+      "channel": 46,
+      "start": 790.63857
+    },
+    {
+      "amplitude": 540.0001,
+      "channel": 47,
+      "start": 803.128605
+    },
+    {
+      "amplitude": 610.6157,
+      "channel": 46,
+      "start": 808.834621
+    },
+    {
+      "amplitude": 756.1245,
+      "channel": 47,
+      "start": 809.548623
+    },
+    {
+      "amplitude": 541.7038,
+      "channel": 46,
+      "start": 814.357637
+    },
+    {
+      "amplitude": 728.7018,
+      "channel": 46,
+      "start": 818.208647
+    },
+    {
+      "amplitude": 561.3553,
+      "channel": 46,
+      "start": 821.708657
+    },
+    {
+      "amplitude": 630.3151,
+      "channel": 46,
+      "start": 821.872658
+    },
+    {
+      "amplitude": 777.6716,
+      "channel": 45,
+      "start": 825.051667
+    },
+    {
+      "amplitude": 818.1037,
+      "channel": 47,
+      "start": 826.19767
+    },
+    {
+      "amplitude": 717.6003,
+      "channel": 46,
+      "start": 829.377679
+    },
+    {
+      "amplitude": 618.6807,
+      "channel": 46,
+      "start": 831.545685
+    },
+    {
+      "amplitude": 352.8413,
+      "channel": 55,
+      "start": 831.604685
+    },
+    {
+      "amplitude": 707.4728,
+      "channel": 46,
+      "start": 843.367718
+    },
+    {
+      "amplitude": 866.8669,
+      "channel": 35,
+      "start": 847.53973
+    },
+    {
+      "amplitude": 508.7566,
+      "channel": 46,
+      "start": 849.377735
+    },
+    {
+      "amplitude": 846.9184,
+      "channel": 46,
+      "start": 860.408767
+    },
+    {
+      "amplitude": 873.6156,
+      "channel": 46,
+      "start": 863.328775
+    },
+    {
+      "amplitude": 561.3026,
+      "channel": 46,
+      "start": 863.500775
+    },
+    {
+      "amplitude": 825.6579,
+      "channel": 46,
+      "start": 869.303792
+    },
+    {
+      "amplitude": 522.5907,
+      "channel": 46,
+      "start": 871.625798
+    },
+    {
+      "amplitude": 490.2465,
+      "channel": 46,
+      "start": 873.429803
+    },
+    {
+      "amplitude": 518.5497,
+      "channel": 46,
+      "start": 880.624824
+    },
+    {
+      "amplitude": 1116.6258,
+      "channel": 33,
+      "start": 904.858892
+    },
+    {
+      "amplitude": 936.9131,
+      "channel": 46,
+      "start": 912.313913
+    },
+    {
+      "amplitude": 708.4933,
+      "channel": 45,
+      "start": 918.40893
+    },
+    {
+      "amplitude": 707.1759,
+      "channel": 46,
+      "start": 931.946968
+    },
+    {
+      "amplitude": 624.7231,
+      "channel": 46,
+      "start": 936.509981
+    },
+    {
+      "amplitude": 505.7093,
+      "channel": 46,
+      "start": 951.288023
+    },
+    {
+      "amplitude": 620.3804,
+      "channel": 46,
+      "start": 964.27506
+    },
+    {
+      "amplitude": 703.6297,
+      "channel": 37,
+      "start": 964.36806
+    },
+    {
+      "amplitude": 768.1322,
+      "channel": 45,
+      "start": 967.716069
+    },
+    {
+      "amplitude": 779.453,
+      "channel": 46,
+      "start": 967.85107
+    },
+    {
+      "amplitude": 752.5966,
+      "channel": 46,
+      "start": 977.827098
+    },
+    {
+      "amplitude": 862.0952,
+      "channel": 46,
+      "start": 977.949098
+    },
+    {
+      "amplitude": 1144.1678,
+      "channel": 34,
+      "start": 1007.992183
+    },
+    {
+      "amplitude": 703.7913,
+      "channel": 45,
+      "start": 1008.020183
+    },
+    {
+      "amplitude": 1000.8403,
+      "channel": 34,
+      "start": 1008.128183
+    },
+    {
+      "amplitude": 965.6926,
+      "channel": 46,
+      "start": 1008.159183
+    },
+    {
+      "amplitude": 371.2032,
+      "channel": 53,
+      "start": 1033.388255
+    },
+    {
+      "amplitude": 493.379,
+      "channel": 46,
+      "start": 1035.12726
+    },
+    {
+      "amplitude": 659.2313,
+      "channel": 46,
+      "start": 1043.296283
+    },
+    {
+      "amplitude": 532.5403,
+      "channel": 46,
+      "start": 1044.739287
+    },
+    {
+      "amplitude": 682.2162,
+      "channel": 46,
+      "start": 1076.567376
+    },
+    {
+      "amplitude": 510.3629,
+      "channel": 46,
+      "start": 1079.299384
+    },
+    {
+      "amplitude": 494.8139,
+      "channel": 45,
+      "start": 1080.541388
+    },
+    {
+      "amplitude": 1163.9992,
+      "channel": 31,
+      "start": 1085.682402
+    },
+    {
+      "amplitude": 553.4272,
+      "channel": 46,
+      "start": 1087.830408
+    },
+    {
+      "amplitude": 1018.2781,
+      "channel": 32,
+      "start": 1102.149449
+    },
+    {
+      "amplitude": 553.5752,
+      "channel": 46,
+      "start": 1112.749479
+    },
+    {
+      "amplitude": 1605.7186,
+      "channel": 33,
+      "start": 1121.751504
+    },
+    {
+      "amplitude": 638.2202,
+      "channel": 38,
+      "start": 1127.642521
+    },
+    {
+      "amplitude": 781.5254,
+      "channel": 36,
+      "start": 1127.804521
+    },
+    {
+      "amplitude": 516.6639,
+      "channel": 46,
+      "start": 1137.048547
+    },
+    {
+      "amplitude": 517.2229,
+      "channel": 46,
+      "start": 1143.467565
+    },
+    {
+      "amplitude": 837.4497,
+      "channel": 46,
+      "start": 1153.547594
+    },
+    {
+      "amplitude": 522.735,
+      "channel": 46,
+      "start": 1162.066618
+    },
+    {
+      "amplitude": 562.741,
+      "channel": 45,
+      "start": 1165.220627
+    },
+    {
+      "amplitude": 529.0281,
+      "channel": 44,
+      "start": 1172.441647
+    },
+    {
+      "amplitude": 580.9977,
+      "channel": 45,
+      "start": 1181.348672
+    },
+    {
+      "amplitude": 343.3025,
+      "channel": 58,
+      "start": 1182.331675
+    },
+    {
+      "amplitude": 649.6102,
+      "channel": 45,
+      "start": 1189.933696
+    },
+    {
+      "amplitude": 573.7892,
+      "channel": 44,
+      "start": 1205.34474
+    },
+    {
+      "amplitude": 489.5321,
+      "channel": 46,
+      "start": 1211.310757
+    },
+    {
+      "amplitude": 743.6037,
+      "channel": 46,
+      "start": 1215.584769
+    },
+    {
+      "amplitude": 847.4507,
+      "channel": 46,
+      "start": 1225.951798
+    },
+    {
+      "amplitude": 555.1195,
+      "channel": 46,
+      "start": 1230.831812
+    },
+    {
+      "amplitude": 500.7374,
+      "channel": 46,
+      "start": 1253.148875
+    },
+    {
+      "amplitude": 866.5997,
+      "channel": 45,
+      "start": 1276.872942
+    },
+    {
+      "amplitude": 856.6142,
+      "channel": 46,
+      "start": 1277.082942
+    },
+    {
+      "amplitude": 613.1419,
+      "channel": 47,
+      "start": 1278.219945
+    },
+    {
+      "amplitude": 508.9153,
+      "channel": 46,
+      "start": 1286.80397
+    },
+    {
+      "amplitude": 526.8878,
+      "channel": 46,
+      "start": 1288.224974
+    },
+    {
+      "amplitude": 561.7655,
+      "channel": 39,
+      "start": 1289.578977
+    },
+    {
+      "amplitude": 558.3658,
+      "channel": 46,
+      "start": 1292.748986
+    },
+    {
+      "amplitude": 1020.785,
+      "channel": 33,
+      "start": 1305.518022
+    },
+    {
+      "amplitude": 718.2222,
+      "channel": 47,
+      "start": 1305.557023
+    },
+    {
+      "amplitude": 520.1325,
+      "channel": 46,
+      "start": 1322.571071
+    },
+    {
+      "amplitude": 625.4545,
+      "channel": 46,
+      "start": 1327.241084
+    },
+    {
+      "amplitude": 558.636,
+      "channel": 44,
+      "start": 1331.297095
+    },
+    {
+      "amplitude": 588.8547,
+      "channel": 46,
+      "start": 1335.380107
+    },
+    {
+      "amplitude": 511.3424,
+      "channel": 45,
+      "start": 1347.495141
+    },
+    {
+      "amplitude": 876.6142,
+      "channel": 46,
+      "start": 1348.584144
+    },
+    {
+      "amplitude": 459.7742,
+      "channel": 48,
+      "start": 1354.18616
+    },
+    {
+      "amplitude": 567.1231,
+      "channel": 46,
+      "start": 1363.257185
+    },
+    {
+      "amplitude": 801.8737,
+      "channel": 46,
+      "start": 1371.099208
+    },
+    {
+      "amplitude": 505.9256,
+      "channel": 45,
+      "start": 1371.220208
+    },
+    {
+      "amplitude": 818.6376,
+      "channel": 46,
+      "start": 1378.079227
+    },
+    {
+      "amplitude": 536.3035,
+      "channel": 47,
+      "start": 1383.764243
+    },
+    {
+      "amplitude": 681.0347,
+      "channel": 46,
+      "start": 1387.512254
+    },
+    {
+      "amplitude": 482.7325,
+      "channel": 47,
+      "start": 1390.850263
+    },
+    {
+      "amplitude": 484.3601,
+      "channel": 47,
+      "start": 1392.619268
+    },
+    {
+      "amplitude": 686.6824,
+      "channel": 47,
+      "start": 1400.584291
+    },
+    {
+      "amplitude": 647.2898,
+      "channel": 47,
+      "start": 1412.970326
+    },
+    {
+      "amplitude": 693.5464,
+      "channel": 46,
+      "start": 1419.154343
+    },
+    {
+      "amplitude": 967.7121,
+      "channel": 46,
+      "start": 1425.409361
+    },
+    {
+      "amplitude": 519.5873,
+      "channel": 45,
+      "start": 1430.727376
+    },
+    {
+      "amplitude": 461.3396,
+      "channel": 48,
+      "start": 1436.274391
+    },
+    {
+      "amplitude": 697.4593,
+      "channel": 46,
+      "start": 1440.589404
+    },
+    {
+      "amplitude": 722.9376,
+      "channel": 46,
+      "start": 1445.485417
+    },
+    {
+      "amplitude": 581.293,
+      "channel": 46,
+      "start": 1472.499151
+    },
+    {
+      "amplitude": 500.3308,
+      "channel": 41,
+      "start": 1477.458165
+    },
+    {
+      "amplitude": 534.2619,
+      "channel": 47,
+      "start": 1478.307168
+    },
+    {
+      "amplitude": 530.6529,
+      "channel": 45,
+      "start": 1495.547216
+    },
+    {
+      "amplitude": 525.2335,
+      "channel": 40,
+      "start": 1495.664217
+    },
+    {
+      "amplitude": 503.2164,
+      "channel": 46,
+      "start": 1496.299218
+    },
+    {
+      "amplitude": 585.8181,
+      "channel": 46,
+      "start": 1502.013234
+    },
+    {
+      "amplitude": 492.6421,
+      "channel": 46,
+      "start": 1503.697239
+    },
+    {
+      "amplitude": 653.41,
+      "channel": 46,
+      "start": 1505.484244
+    },
+    {
+      "amplitude": 986.7391,
+      "channel": 33,
+      "start": 1522.619293
+    },
+    {
+      "amplitude": 857.1951,
+      "channel": 46,
+      "start": 1522.648293
+    },
+    {
+      "amplitude": 651.2606,
+      "channel": 46,
+      "start": 1522.848293
+    },
+    {
+      "amplitude": 693.6697,
+      "channel": 46,
+      "start": 1523.478295
+    },
+    {
+      "amplitude": 794.735,
+      "channel": 36,
+      "start": 1529.723313
+    },
+    {
+      "amplitude": 828.2204,
+      "channel": 47,
+      "start": 1529.834313
+    },
+    {
+      "amplitude": 575.1812,
+      "channel": 46,
+      "start": 1539.50334
+    },
+    {
+      "amplitude": 783.6941,
+      "channel": 46,
+      "start": 1553.72638
+    },
+    {
+      "amplitude": 647.5391,
+      "channel": 46,
+      "start": 1556.721389
+    },
+    {
+      "amplitude": 622.4626,
+      "channel": 38,
+      "start": 1557.445391
+    },
+    {
+      "amplitude": 492.922,
+      "channel": 46,
+      "start": 1557.926392
+    },
+    {
+      "amplitude": 491.0437,
+      "channel": 46,
+      "start": 1563.593408
+    },
+    {
+      "amplitude": 516.8515,
+      "channel": 46,
+      "start": 1566.665417
+    },
+    {
+      "amplitude": 377.1915,
+      "channel": 52,
+      "start": 1586.865474
+    },
+    {
+      "amplitude": 550.889,
+      "channel": 45,
+      "start": 1596.368501
+    },
+    {
+      "amplitude": 1124.6752,
+      "channel": 46,
+      "start": 1607.631532
+    },
+    {
+      "amplitude": 421.3053,
+      "channel": 50,
+      "start": 1622.582575
+    },
+    {
+      "amplitude": 517.2296,
+      "channel": 45,
+      "start": 1649.39565
+    },
+    {
+      "amplitude": 586.0947,
+      "channel": 46,
+      "start": 1654.576665
+    },
+    {
+      "amplitude": 643.1831,
+      "channel": 46,
+      "start": 1655.741668
+    },
+    {
+      "amplitude": 497.8785,
+      "channel": 41,
+      "start": 1655.884669
+    },
+    {
+      "amplitude": 495.9405,
+      "channel": 46,
+      "start": 1661.452684
+    },
+    {
+      "amplitude": 926.9131,
+      "channel": 34,
+      "start": 1661.531685
+    },
+    {
+      "amplitude": 619.4154,
+      "channel": 46,
+      "start": 1661.578685
+    },
+    {
+      "amplitude": 503.9655,
+      "channel": 45,
+      "start": 1661.783685
+    },
+    {
+      "amplitude": 551.9534,
+      "channel": 45,
+      "start": 1672.644716
+    },
+    {
+      "amplitude": 541.0839,
+      "channel": 46,
+      "start": 1687.844759
+    },
+    {
+      "amplitude": 515.9196,
+      "channel": 46,
+      "start": 1690.801767
+    },
+    {
+      "amplitude": 669.8114,
+      "channel": 43,
+      "start": 1693.478775
+    },
+    {
+      "amplitude": 520.2213,
+      "channel": 46,
+      "start": 1693.777776
+    },
+    {
+      "amplitude": 478.1653,
+      "channel": 47,
+      "start": 1693.929776
+    },
+    {
+      "amplitude": 481.7865,
+      "channel": 47,
+      "start": 1695.947782
+    },
+    {
+      "amplitude": 596.2621,
+      "channel": 45,
+      "start": 1700.342794
+    },
+    {
+      "amplitude": 981.9542,
+      "channel": 34,
+      "start": 1716.74684
+    },
+    {
+      "amplitude": 580.3677,
+      "channel": 46,
+      "start": 1719.386848
+    },
+    {
+      "amplitude": 783.868,
+      "channel": 46,
+      "start": 1720.971852
+    },
+    {
+      "amplitude": 1014.1416,
+      "channel": 46,
+      "start": 1739.054903
+    },
+    {
+      "amplitude": 498.1216,
+      "channel": 46,
+      "start": 1745.239921
+    },
+    {
+      "amplitude": 752.2362,
+      "channel": 45,
+      "start": 1754.234946
+    },
+    {
+      "amplitude": 1277.6274,
+      "channel": 46,
+      "start": 1754.397947
+    },
+    {
+      "amplitude": 578.3531,
+      "channel": 46,
+      "start": 1754.540947
+    },
+    {
+      "amplitude": 549.2421,
+      "channel": 47,
+      "start": 1760.338963
+    },
+    {
+      "amplitude": 1163.9007,
+      "channel": 34,
+      "start": 1760.420964
+    },
+    {
+      "amplitude": 846.6422,
+      "channel": 46,
+      "start": 1764.105974
+    },
+    {
+      "amplitude": 567.8279,
+      "channel": 39,
+      "start": 1764.183974
+    },
+    {
+      "amplitude": 550.5846,
+      "channel": 47,
+      "start": 1764.241974
+    },
+    {
+      "amplitude": 516.4535,
+      "channel": 45,
+      "start": 1764.409975
+    },
+    {
+      "amplitude": 956.8117,
+      "channel": 46,
+      "start": 1764.570975
+    },
+    {
+      "amplitude": 618.5955,
+      "channel": 45,
+      "start": 1766.909982
+    },
+    {
+      "amplitude": 707.0659,
+      "channel": 46,
+      "start": 1768.424986
+    },
+    {
+      "amplitude": 726.7643,
+      "channel": 46,
+      "start": 1778.529015
+    },
+    {
+      "amplitude": 1823.2963,
+      "channel": 46,
+      "start": 1780.927021
+    },
+    {
+      "amplitude": 579.7636,
+      "channel": 46,
+      "start": 1786.203036
+    },
+    {
+      "amplitude": 495.8764,
+      "channel": 45,
+      "start": 1787.085039
+    },
+    {
+      "amplitude": 548.8238,
+      "channel": 46,
+      "start": 1802.143081
+    },
+    {
+      "amplitude": 549.9852,
+      "channel": 45,
+      "start": 1804.433088
+    },
+    {
+      "amplitude": 634.9906,
+      "channel": 45,
+      "start": 1809.911103
+    },
+    {
+      "amplitude": 1005.059,
+      "channel": 31,
+      "start": 1810.317104
+    },
+    {
+      "amplitude": 839.9128,
+      "channel": 46,
+      "start": 1810.357104
+    },
+    {
+      "amplitude": 583.3844,
+      "channel": 47,
+      "start": 1831.578273
+    },
+    {
+      "amplitude": 601.1851,
+      "channel": 45,
+      "start": 1838.279292
+    },
+    {
+      "amplitude": 777.3512,
+      "channel": 46,
+      "start": 1838.448292
+    },
+    {
+      "amplitude": 563.85,
+      "channel": 46,
+      "start": 1841.0253
+    },
+    {
+      "amplitude": 1203.3068,
+      "channel": 46,
+      "start": 1841.3293
+    },
+    {
+      "amplitude": 1244.5776,
+      "channel": 33,
+      "start": 1841.377301
+    },
+    {
+      "amplitude": 543.3488,
+      "channel": 46,
+      "start": 1841.619301
+    },
+    {
+      "amplitude": 1152.6801,
+      "channel": 46,
+      "start": 1843.490307
+    },
+    {
+      "amplitude": 441.3266,
+      "channel": 58,
+      "start": 1843.636307
+    },
+    {
+      "amplitude": 783.1157,
+      "channel": 36,
+      "start": 1843.768307
+    },
+    {
+      "amplitude": 624.0367,
+      "channel": 46,
+      "start": 1855.29734
+    },
+    {
+      "amplitude": 980.9274,
+      "channel": 46,
+      "start": 1855.45734
+    },
+    {
+      "amplitude": 1580.545,
+      "channel": 46,
+      "start": 1855.566341
+    },
+    {
+      "amplitude": 536.824,
+      "channel": 44,
+      "start": 1857.891347
+    },
+    {
+      "amplitude": 509.9333,
+      "channel": 46,
+      "start": 1860.621355
+    },
+    {
+      "amplitude": 646.0521,
+      "channel": 45,
+      "start": 1860.824355
+    },
+    {
+      "amplitude": 363.4851,
+      "channel": 53,
+      "start": 1866.334371
+    },
+    {
+      "amplitude": 495.2041,
+      "channel": 45,
+      "start": 1866.951373
+    },
+    {
+      "amplitude": 631.023,
+      "channel": 45,
+      "start": 1872.246388
+    },
+    {
+      "amplitude": 641.2027,
+      "channel": 44,
+      "start": 1872.604389
+    },
+    {
+      "amplitude": 494.0914,
+      "channel": 46,
+      "start": 1874.392394
+    },
+    {
+      "amplitude": 581.9744,
+      "channel": 46,
+      "start": 1889.310436
+    },
+    {
+      "amplitude": 524.0662,
+      "channel": 47,
+      "start": 1896.543456
+    },
+    {
+      "amplitude": 646.1031,
+      "channel": 45,
+      "start": 1916.223512
+    },
+    {
+      "amplitude": 521.7162,
+      "channel": 40,
+      "start": 1916.817513
+    },
+    {
+      "amplitude": 493.9831,
+      "channel": 46,
+      "start": 1920.374523
+    },
+    {
+      "amplitude": 802.2971,
+      "channel": 46,
+      "start": 1923.799533
+    },
+    {
+      "amplitude": 632.8574,
+      "channel": 45,
+      "start": 1927.342543
+    },
+    {
+      "amplitude": 534.074,
+      "channel": 46,
+      "start": 1932.911559
+    },
+    {
+      "amplitude": 698.0497,
+      "channel": 46,
+      "start": 1934.583564
+    },
+    {
+      "amplitude": 475.9467,
+      "channel": 47,
+      "start": 1937.228571
+    },
+    {
+      "amplitude": 527.1018,
+      "channel": 46,
+      "start": 1944.305591
+    },
+    {
+      "amplitude": 524.414,
+      "channel": 46,
+      "start": 1956.380625
+    },
+    {
+      "amplitude": 603.4356,
+      "channel": 45,
+      "start": 1998.331743
+    },
+    {
+      "amplitude": 554.801,
+      "channel": 44,
+      "start": 2015.528792
+    },
+    {
+      "amplitude": 773.7854,
+      "channel": 45,
+      "start": 2016.050793
+    },
+    {
+      "amplitude": 871.2657,
+      "channel": 46,
+      "start": 2016.288794
+    },
+    {
+      "amplitude": 814.1208,
+      "channel": 46,
+      "start": 2024.865818
+    },
+    {
+      "amplitude": 547.6223,
+      "channel": 46,
+      "start": 2025.937821
+    },
+    {
+      "amplitude": 780.3183,
+      "channel": 46,
+      "start": 2034.163845
+    },
+    {
+      "amplitude": 506.0907,
+      "channel": 46,
+      "start": 2037.791855
+    },
+    {
+      "amplitude": 685.6779,
+      "channel": 46,
+      "start": 2040.634863
+    },
+    {
+      "amplitude": 502.2631,
+      "channel": 46,
+      "start": 2052.129895
+    },
+    {
+      "amplitude": 673.2106,
+      "channel": 46,
+      "start": 2055.145904
+    },
+    {
+      "amplitude": 914.1968,
+      "channel": 35,
+      "start": 2063.189926
+    },
+    {
+      "amplitude": 1290.2718,
+      "channel": 46,
+      "start": 2064.180929
+    },
+    {
+      "amplitude": 518.4409,
+      "channel": 46,
+      "start": 2067.575939
+    },
+    {
+      "amplitude": 499.8537,
+      "channel": 41,
+      "start": 2070.607947
+    },
+    {
+      "amplitude": 580.4581,
+      "channel": 39,
+      "start": 2070.755948
+    },
+    {
+      "amplitude": 507.5219,
+      "channel": 46,
+      "start": 2073.416955
+    },
+    {
+      "amplitude": 681.5776,
+      "channel": 46,
+      "start": 2075.03796
+    },
+    {
+      "amplitude": 573.944,
+      "channel": 45,
+      "start": 2076.056963
+    },
+    {
+      "amplitude": 760.1601,
+      "channel": 46,
+      "start": 2080.334975
+    },
+    {
+      "amplitude": 507.1024,
+      "channel": 41,
+      "start": 2081.618978
+    },
+    {
+      "amplitude": 1112.4784,
+      "channel": 46,
+      "start": 2110.46106
+    },
+    {
+      "amplitude": 697.068,
+      "channel": 46,
+      "start": 2112.665066
+    },
+    {
+      "amplitude": 529.3209,
+      "channel": 46,
+      "start": 2115.984075
+    },
+    {
+      "amplitude": 737.9885,
+      "channel": 46,
+      "start": 2116.203076
+    },
+    {
+      "amplitude": 894.5188,
+      "channel": 47,
+      "start": 2122.145093
+    },
+    {
+      "amplitude": 672.2716,
+      "channel": 43,
+      "start": 2141.370147
+    },
+    {
+      "amplitude": 495.978,
+      "channel": 46,
+      "start": 2141.477147
+    },
+    {
+      "amplitude": 496.7947,
+      "channel": 45,
+      "start": 2141.510147
+    },
+    {
+      "amplitude": 1025.2924,
+      "channel": 26,
+      "start": 2147.739165
+    },
+    {
+      "amplitude": 535.2743,
+      "channel": 46,
+      "start": 2148.873168
+    },
+    {
+      "amplitude": 362.9055,
+      "channel": 53,
+      "start": 2149.179169
+    },
+    {
+      "amplitude": 494.0484,
+      "channel": 45,
+      "start": 2149.50417
+    },
+    {
+      "amplitude": 507.1632,
+      "channel": 44,
+      "start": 2153.677182
+    },
+    {
+      "amplitude": 513.7479,
+      "channel": 45,
+      "start": 2164.412212
+    },
+    {
+      "amplitude": 426.7226,
+      "channel": 50,
+      "start": 2164.781213
+    },
+    {
+      "amplitude": 544.0578,
+      "channel": 44,
+      "start": 2164.821213
+    },
+    {
+      "amplitude": 512.0603,
+      "channel": 46,
+      "start": 2165.405215
+    },
+    {
+      "amplitude": 497.6284,
+      "channel": 44,
+      "start": 2170.364229
+    },
+    {
+      "amplitude": 521.2821,
+      "channel": 43,
+      "start": 2171.173231
+    },
+    {
+      "amplitude": 359.2076,
+      "channel": 57,
+      "start": 2171.970233
+    },
+    {
+      "amplitude": 443.0724,
+      "channel": 49,
+      "start": 2174.045239
+    },
+    {
+      "amplitude": 582.1025,
+      "channel": 45,
+      "start": 2174.21624
+    },
+    {
+      "amplitude": 340.0577,
+      "channel": 58,
+      "start": 2176.861247
+    },
+    {
+      "amplitude": 544.9489,
+      "channel": 45,
+      "start": 2176.914247
+    },
+    {
+      "amplitude": 552.5816,
+      "channel": 43,
+      "start": 2181.55526
+    },
+    {
+      "amplitude": 460.8991,
+      "channel": 48,
+      "start": 2184.179268
+    },
+    {
+      "amplitude": 341.7761,
+      "channel": 57,
+      "start": 2184.220268
+    },
+    {
+      "amplitude": 336.6038,
+      "channel": 56,
+      "start": 2185.846273
+    },
+    {
+      "amplitude": 335.5082,
+      "channel": 58,
+      "start": 2191.318288
+    },
+    {
+      "amplitude": 620.063,
+      "channel": 46,
+      "start": 2191.432288
+    },
+    {
+      "amplitude": 601.7088,
+      "channel": 45,
+      "start": 2191.822289
+    },
+    {
+      "amplitude": 527.0803,
+      "channel": 45,
+      "start": 2192.10429
+    },
+    {
+      "amplitude": 501.1636,
+      "channel": 41,
+      "start": 2192.354291
+    },
+    {
+      "amplitude": 343.6103,
+      "channel": 58,
+      "start": 2192.504291
+    },
+    {
+      "amplitude": 581.7124,
+      "channel": 44,
+      "start": 2196.686303
+    },
+    {
+      "amplitude": 481.0043,
+      "channel": 47,
+      "start": 2199.600311
+    },
+    {
+      "amplitude": 380.0695,
+      "channel": 52,
+      "start": 2199.708312
+    },
+    {
+      "amplitude": 534.2959,
+      "channel": 44,
+      "start": 2203.664323
+    },
+    {
+      "amplitude": 494.6876,
+      "channel": 45,
+      "start": 2214.345353
+    },
+    {
+      "amplitude": 652.8834,
+      "channel": 46,
+      "start": 2216.509359
+    },
+    {
+      "amplitude": 605.5115,
+      "channel": 46,
+      "start": 2217.159361
+    },
+    {
+      "amplitude": 541.0211,
+      "channel": 46,
+      "start": 2238.860422
+    },
+    {
+      "amplitude": 501.4141,
+      "channel": 46,
+      "start": 2245.632441
+    },
+    {
+      "amplitude": 570.7508,
+      "channel": 47,
+      "start": 2258.226477
+    },
+    {
+      "amplitude": 809.7572,
+      "channel": 46,
+      "start": 2264.367494
+    },
+    {
+      "amplitude": 565.056,
+      "channel": 48,
+      "start": 2277.15553
+    },
+    {
+      "amplitude": 520.2623,
+      "channel": 45,
+      "start": 2292.336573
+    },
+    {
+      "amplitude": 570.1413,
+      "channel": 47,
+      "start": 2299.599594
+    },
+    {
+      "amplitude": 508.1766,
+      "channel": 44,
+      "start": 2304.469607
+    },
+    {
+      "amplitude": 526.5929,
+      "channel": 44,
+      "start": 2310.995626
+    },
+    {
+      "amplitude": 668.0555,
+      "channel": 47,
+      "start": 2318.953648
+    },
+    {
+      "amplitude": 594.912,
+      "channel": 45,
+      "start": 2324.658664
+    },
+    {
+      "amplitude": 515.3706,
+      "channel": 46,
+      "start": 2339.214705
+    },
+    {
+      "amplitude": 902.0724,
+      "channel": 46,
+      "start": 2357.700757
+    },
+    {
+      "amplitude": 576.3661,
+      "channel": 47,
+      "start": 2366.413782
+    },
+    {
+      "amplitude": 604.8722,
+      "channel": 46,
+      "start": 2372.390799
+    },
+    {
+      "amplitude": 503.0676,
+      "channel": 47,
+      "start": 2372.500799
+    },
+    {
+      "amplitude": 782.2205,
+      "channel": 36,
+      "start": 2392.354855
+    },
+    {
+      "amplitude": 746.2435,
+      "channel": 46,
+      "start": 2392.386855
+    },
+    {
+      "amplitude": 796.4075,
+      "channel": 46,
+      "start": 2392.697856
+    },
+    {
+      "amplitude": 803.3303,
+      "channel": 46,
+      "start": 2394.859862
+    },
+    {
+      "amplitude": 647.025,
+      "channel": 46,
+      "start": 2404.62489
+    },
+    {
+      "amplitude": 539.8917,
+      "channel": 45,
+      "start": 2406.932896
+    },
+    {
+      "amplitude": 570.7756,
+      "channel": 46,
+      "start": 2412.075911
+    },
+    {
+      "amplitude": 1188.935,
+      "channel": 46,
+      "start": 2427.775955
+    },
+    {
+      "amplitude": 492.2547,
+      "channel": 46,
+      "start": 2431.035964
+    },
+    {
+      "amplitude": 577.6874,
+      "channel": 45,
+      "start": 2434.585974
+    },
+    {
+      "amplitude": 1222.1796,
+      "channel": 46,
+      "start": 2434.797975
+    },
+    {
+      "amplitude": 1447.6025,
+      "channel": 46,
+      "start": 2441.333993
+    },
+    {
+      "amplitude": 517.2984,
+      "channel": 43,
+      "start": 2451.360022
+    },
+    {
+      "amplitude": 625.9242,
+      "channel": 46,
+      "start": 2451.450022
+    },
+    {
+      "amplitude": 965.2003,
+      "channel": 33,
+      "start": 2455.315033
+    },
+    {
+      "amplitude": 675.0363,
+      "channel": 45,
+      "start": 2462.061052
+    },
+    {
+      "amplitude": 628.9782,
+      "channel": 45,
+      "start": 2471.794079
+    },
+    {
+      "amplitude": 598.5323,
+      "channel": 47,
+      "start": 2476.670093
+    },
+    {
+      "amplitude": 742.7063,
+      "channel": 46,
+      "start": 2487.573124
+    },
+    {
+      "amplitude": 1277.7985,
+      "channel": 33,
+      "start": 2498.228154
+    },
+    {
+      "amplitude": 594.1075,
+      "channel": 46,
+      "start": 2509.067185
+    },
+    {
+      "amplitude": 1047.91,
+      "channel": 46,
+      "start": 2509.348185
+    },
+    {
+      "amplitude": 847.8184,
+      "channel": 46,
+      "start": 2509.504186
+    },
+    {
+      "amplitude": 997.4812,
+      "channel": 46,
+      "start": 2509.825187
+    },
+    {
+      "amplitude": 510.7342,
+      "channel": 44,
+      "start": 2512.124193
+    },
+    {
+      "amplitude": 629.4896,
+      "channel": 46,
+      "start": 2514.712201
+    },
+    {
+      "amplitude": 556.7437,
+      "channel": 46,
+      "start": 2518.04821
+    },
+    {
+      "amplitude": 664.9119,
+      "channel": 46,
+      "start": 2534.432256
+    },
+    {
+      "amplitude": 517.5584,
+      "channel": 45,
+      "start": 2540.278273
+    },
+    {
+      "amplitude": 400.7446,
+      "channel": 54,
+      "start": 2551.363304
+    },
+    {
+      "amplitude": 641.6101,
+      "channel": 45,
+      "start": 2551.443304
+    },
+    {
+      "amplitude": 412.9085,
+      "channel": 53,
+      "start": 2554.743313
+    },
+    {
+      "amplitude": 825.2454,
+      "channel": 46,
+      "start": 2557.03632
+    },
+    {
+      "amplitude": 775.189,
+      "channel": 47,
+      "start": 2573.106365
+    },
+    {
+      "amplitude": 829.133,
+      "channel": 46,
+      "start": 2580.298386
+    },
+    {
+      "amplitude": 1337.1397,
+      "channel": 33,
+      "start": 2586.413403
+    },
+    {
+      "amplitude": 550.7603,
+      "channel": 46,
+      "start": 2586.529403
+    },
+    {
+      "amplitude": 633.7184,
+      "channel": 47,
+      "start": 2586.676404
+    },
+    {
+      "amplitude": 580.2991,
+      "channel": 44,
+      "start": 2586.768404
+    },
+    {
+      "amplitude": 581.9906,
+      "channel": 46,
+      "start": 2588.110408
+    },
+    {
+      "amplitude": 770.2456,
+      "channel": 46,
+      "start": 2594.204425
+    },
+    {
+      "amplitude": 673.8186,
+      "channel": 46,
+      "start": 2602.870449
+    },
+    {
+      "amplitude": 1110.127,
+      "channel": 33,
+      "start": 2602.933449
+    },
+    {
+      "amplitude": 632.3758,
+      "channel": 46,
+      "start": 2603.06145
+    },
+    {
+      "amplitude": 778.3305,
+      "channel": 45,
+      "start": 2607.628463
+    },
+    {
+      "amplitude": 458.726,
+      "channel": 48,
+      "start": 2608.497465
+    },
+    {
+      "amplitude": 540.0666,
+      "channel": 46,
+      "start": 2620.637499
+    },
+    {
+      "amplitude": 561.2785,
+      "channel": 46,
+      "start": 2624.55151
+    },
+    {
+      "amplitude": 566.9342,
+      "channel": 46,
+      "start": 2625.741514
+    },
+    {
+      "amplitude": 591.0559,
+      "channel": 47,
+      "start": 2629.588525
+    },
+    {
+      "amplitude": 749.1652,
+      "channel": 45,
+      "start": 2633.803537
+    },
+    {
+      "amplitude": 440.3603,
+      "channel": 49,
+      "start": 2643.691564
+    },
+    {
+      "amplitude": 661.2339,
+      "channel": 47,
+      "start": 2646.229572
+    },
+    {
+      "amplitude": 1007.588,
+      "channel": 33,
+      "start": 2653.935593
+    },
+    {
+      "amplitude": 730.5481,
+      "channel": 46,
+      "start": 2653.962593
+    },
+    {
+      "amplitude": 571.314,
+      "channel": 45,
+      "start": 2657.965605
+    },
+    {
+      "amplitude": 590.3856,
+      "channel": 46,
+      "start": 2659.056608
+    },
+    {
+      "amplitude": 549.8251,
+      "channel": 47,
+      "start": 2665.794627
+    },
+    {
+      "amplitude": 595.093,
+      "channel": 45,
+      "start": 2687.480688
+    },
+    {
+      "amplitude": 756.1626,
+      "channel": 46,
+      "start": 2694.860709
+    },
+    {
+      "amplitude": 1056.7763,
+      "channel": 33,
+      "start": 2695.536711
+    },
+    {
+      "amplitude": 1077.9961,
+      "channel": 46,
+      "start": 2695.567711
+    },
+    {
+      "amplitude": 567.5803,
+      "channel": 39,
+      "start": 2700.758725
+    },
+    {
+      "amplitude": 497.7708,
+      "channel": 41,
+      "start": 2701.543728
+    },
+    {
+      "amplitude": 567.7691,
+      "channel": 45,
+      "start": 2702.845731
+    },
+    {
+      "amplitude": 601.4643,
+      "channel": 46,
+      "start": 2702.994732
+    },
+    {
+      "amplitude": 537.7522,
+      "channel": 46,
+      "start": 2705.259738
+    },
+    {
+      "amplitude": 701.3595,
+      "channel": 46,
+      "start": 2710.008752
+    },
+    {
+      "amplitude": 1014.3978,
+      "channel": 30,
+      "start": 2719.774779
+    },
+    {
+      "amplitude": 781.3787,
+      "channel": 36,
+      "start": 2722.323786
+    },
+    {
+      "amplitude": 1029.168,
+      "channel": 46,
+      "start": 2725.096794
+    },
+    {
+      "amplitude": 641.8443,
+      "channel": 43,
+      "start": 2732.884816
+    },
+    {
+      "amplitude": 704.9583,
+      "channel": 46,
+      "start": 2733.043817
+    },
+    {
+      "amplitude": 822.1289,
+      "channel": 47,
+      "start": 2734.13482
+    },
+    {
+      "amplitude": 552.8911,
+      "channel": 46,
+      "start": 2737.173828
+    },
+    {
+      "amplitude": 687.7453,
+      "channel": 46,
+      "start": 2737.275829
+    },
+    {
+      "amplitude": 473.0217,
+      "channel": 52,
+      "start": 2737.307829
+    },
+    {
+      "amplitude": 1271.3873,
+      "channel": 30,
+      "start": 2741.717841
+    },
+    {
+      "amplitude": 664.8285,
+      "channel": 46,
+      "start": 2741.747841
+    },
+    {
+      "amplitude": 692.1201,
+      "channel": 46,
+      "start": 2756.318882
+    },
+    {
+      "amplitude": 541.213,
+      "channel": 43,
+      "start": 2767.172913
+    },
+    {
+      "amplitude": 502.2646,
+      "channel": 46,
+      "start": 2769.59892
+    },
+    {
+      "amplitude": 573.6654,
+      "channel": 46,
+      "start": 2778.418945
+    },
+    {
+      "amplitude": 1130.0625,
+      "channel": 31,
+      "start": 2785.786965
+    },
+    {
+      "amplitude": 858.8041,
+      "channel": 46,
+      "start": 2785.804965
+    },
+    {
+      "amplitude": 1240.3931,
+      "channel": 33,
+      "start": 2794.65199
+    },
+    {
+      "amplitude": 565.6131,
+      "channel": 45,
+      "start": 2794.67899
+    },
+    {
+      "amplitude": 984.8405,
+      "channel": 46,
+      "start": 2794.915991
+    },
+    {
+      "amplitude": 505.663,
+      "channel": 46,
+      "start": 2795.744993
+    },
+    {
+      "amplitude": 503.3643,
+      "channel": 46,
+      "start": 2796.611996
+    },
+    {
+      "amplitude": 954.8542,
+      "channel": 46,
+      "start": 2798.676002
+    },
+    {
+      "amplitude": 670.934,
+      "channel": 46,
+      "start": 2807.263026
+    },
+    {
+      "amplitude": 935.5333,
+      "channel": 46,
+      "start": 2809.843033
+    },
+    {
+      "amplitude": 529.3797,
+      "channel": 45,
+      "start": 2810.025034
+    },
+    {
+      "amplitude": 697.0266,
+      "channel": 47,
+      "start": 2812.011039
+    },
+    {
+      "amplitude": 997.2071,
+      "channel": 33,
+      "start": 2821.091065
+    },
+    {
+      "amplitude": 1181.9675,
+      "channel": 46,
+      "start": 2821.118065
+    },
+    {
+      "amplitude": 660.7485,
+      "channel": 46,
+      "start": 2827.618083
+    },
+    {
+      "amplitude": 751.4378,
+      "channel": 46,
+      "start": 2832.938098
+    },
+    {
+      "amplitude": 1284.9381,
+      "channel": 46,
+      "start": 2835.676106
+    },
+    {
+      "amplitude": 905.2459,
+      "channel": 36,
+      "start": 2838.093113
+    },
+    {
+      "amplitude": 362.1164,
+      "channel": 53,
+      "start": 2839.677117
+    },
+    {
+      "amplitude": 749.009,
+      "channel": 46,
+      "start": 2840.843121
+    },
+    {
+      "amplitude": 509.5805,
+      "channel": 47,
+      "start": 2841.101121
+    },
+    {
+      "amplitude": 889.7403,
+      "channel": 46,
+      "start": 2849.379145
+    },
+    {
+      "amplitude": 535.8511,
+      "channel": 45,
+      "start": 2849.665146
+    },
+    {
+      "amplitude": 1499.2512,
+      "channel": 32,
+      "start": 2849.875146
+    },
+    {
+      "amplitude": 1273.6951,
+      "channel": 46,
+      "start": 2849.904146
+    },
+    {
+      "amplitude": 531.3142,
+      "channel": 43,
+      "start": 2852.723154
+    },
+    {
+      "amplitude": 621.4203,
+      "channel": 38,
+      "start": 2852.852155
+    },
+    {
+      "amplitude": 506.3807,
+      "channel": 46,
+      "start": 2854.944161
+    },
+    {
+      "amplitude": 1170.7817,
+      "channel": 33,
+      "start": 2856.026164
+    },
+    {
+      "amplitude": 1406.3641,
+      "channel": 47,
+      "start": 2856.600165
+    },
+    {
+      "amplitude": 805.9288,
+      "channel": 46,
+      "start": 2863.981186
+    },
+    {
+      "amplitude": 577.4117,
+      "channel": 39,
+      "start": 2869.0722
+    },
+    {
+      "amplitude": 1009.0342,
+      "channel": 32,
+      "start": 2871.502207
+    },
+    {
+      "amplitude": 647.5009,
+      "channel": 47,
+      "start": 2871.529207
+    },
+    {
+      "amplitude": 862.7616,
+      "channel": 46,
+      "start": 2876.803222
+    },
+    {
+      "amplitude": 499.3412,
+      "channel": 45,
+      "start": 2877.565224
+    },
+    {
+      "amplitude": 440.7713,
+      "channel": 49,
+      "start": 2885.189246
+    },
+    {
+      "amplitude": 1005.2942,
+      "channel": 47,
+      "start": 2897.073279
+    },
+    {
+      "amplitude": 807.0284,
+      "channel": 47,
+      "start": 2901.311291
+    },
+    {
+      "amplitude": 636.3029,
+      "channel": 46,
+      "start": 2903.813298
+    },
+    {
+      "amplitude": 897.4634,
+      "channel": 46,
+      "start": 2906.384306
+    },
+    {
+      "amplitude": 658.6405,
+      "channel": 46,
+      "start": 2908.582312
+    },
+    {
+      "amplitude": 493.5797,
+      "channel": 46,
+      "start": 2916.903335
+    },
+    {
+      "amplitude": 930.9639,
+      "channel": 34,
+      "start": 2918.367339
+    },
+    {
+      "amplitude": 999.4479,
+      "channel": 46,
+      "start": 2918.39834
+    },
+    {
+      "amplitude": 654.0234,
+      "channel": 45,
+      "start": 2928.216367
+    },
+    {
+      "amplitude": 982.3038,
+      "channel": 32,
+      "start": 2928.282367
+    },
+    {
+      "amplitude": 919.5149,
+      "channel": 46,
+      "start": 2928.421368
+    },
+    {
+      "amplitude": 490.8797,
+      "channel": 46,
+      "start": 2931.554377
+    },
+    {
+      "amplitude": 787.4101,
+      "channel": 47,
+      "start": 2931.702377
+    },
+    {
+      "amplitude": 563.1268,
+      "channel": 46,
+      "start": 2939.9654
+    },
+    {
+      "amplitude": 527.7302,
+      "channel": 46,
+      "start": 2942.729408
+    },
+    {
+      "amplitude": 765.618,
+      "channel": 46,
+      "start": 2946.77042
+    },
+    {
+      "amplitude": 657.1409,
+      "channel": 47,
+      "start": 2947.468422
+    },
+    {
+      "amplitude": 610.767,
+      "channel": 46,
+      "start": 2952.283435
+    },
+    {
+      "amplitude": 694.9737,
+      "channel": 46,
+      "start": 2952.809437
+    },
+    {
+      "amplitude": 1025.7969,
+      "channel": 46,
+      "start": 2961.23846
+    },
+    {
+      "amplitude": 550.5964,
+      "channel": 45,
+      "start": 2963.352466
+    },
+    {
+      "amplitude": 634.5987,
+      "channel": 38,
+      "start": 2969.256483
+    },
+    {
+      "amplitude": 607.1432,
+      "channel": 46,
+      "start": 2969.281483
+    },
+    {
+      "amplitude": 603.4251,
+      "channel": 46,
+      "start": 2975.928502
+    },
+    {
+      "amplitude": 518.1532,
+      "channel": 47,
+      "start": 2984.397526
+    },
+    {
+      "amplitude": 739.8922,
+      "channel": 46,
+      "start": 2988.888538
+    },
+    {
+      "amplitude": 617.5503,
+      "channel": 45,
+      "start": 2995.162556
+    },
+    {
+      "amplitude": 783.8085,
+      "channel": 46,
+      "start": 2999.564569
+    },
+    {
+      "amplitude": 659.3663,
+      "channel": 47,
+      "start": 2999.742569
+    },
+    {
+      "amplitude": 598.9027,
+      "channel": 39,
+      "start": 3005.909587
+    },
+    {
+      "amplitude": 1549.5863,
+      "channel": 46,
+      "start": 3013.491608
+    },
+    {
+      "amplitude": 1179.6183,
+      "channel": 32,
+      "start": 3013.689608
+    },
+    {
+      "amplitude": 1009.3247,
+      "channel": 46,
+      "start": 3013.716609
+    },
+    {
+      "amplitude": 498.8782,
+      "channel": 47,
+      "start": 3021.18063
+    },
+    {
+      "amplitude": 378.9658,
+      "channel": 52,
+      "start": 3029.158652
+    },
+    {
+      "amplitude": 559.5543,
+      "channel": 39,
+      "start": 3038.238678
+    },
+    {
+      "amplitude": 729.081,
+      "channel": 46,
+      "start": 3042.64569
+    },
+    {
+      "amplitude": 508.8994,
+      "channel": 46,
+      "start": 3043.693693
+    },
+    {
+      "amplitude": 533.6866,
+      "channel": 47,
+      "start": 3046.845702
+    },
+    {
+      "amplitude": 517.1343,
+      "channel": 46,
+      "start": 3049.60371
+    },
+    {
+      "amplitude": 356.4543,
+      "channel": 54,
+      "start": 3051.971716
+    },
+    {
+      "amplitude": 722.353,
+      "channel": 46,
+      "start": 3056.75373
+    },
+    {
+      "amplitude": 838.7934,
+      "channel": 47,
+      "start": 3073.001776
+    },
+    {
+      "amplitude": 727.3089,
+      "channel": 45,
+      "start": 3075.486783
+    },
+    {
+      "amplitude": 521.263,
+      "channel": 45,
+      "start": 3076.550786
+    },
+    {
+      "amplitude": 629.7218,
+      "channel": 47,
+      "start": 3084.530808
+    },
+    {
+      "amplitude": 563.1268,
+      "channel": 47,
+      "start": 3095.230839
+    },
+    {
+      "amplitude": 1013.8275,
+      "channel": 30,
+      "start": 3098.617848
+    },
+    {
+      "amplitude": 741.5839,
+      "channel": 46,
+      "start": 3098.648848
+    },
+    {
+      "amplitude": 814.0508,
+      "channel": 36,
+      "start": 3109.226878
+    },
+    {
+      "amplitude": 518.0178,
+      "channel": 45,
+      "start": 3111.993886
+    },
+    {
+      "amplitude": 611.3941,
+      "channel": 47,
+      "start": 3117.267901
+    },
+    {
+      "amplitude": 651.9399,
+      "channel": 46,
+      "start": 3123.169917
+    },
+    {
+      "amplitude": 483.201,
+      "channel": 47,
+      "start": 3123.518918
+    },
+    {
+      "amplitude": 439.8646,
+      "channel": 49,
+      "start": 3123.673919
+    },
+    {
+      "amplitude": 987.1588,
+      "channel": 32,
+      "start": 3127.975931
+    },
+    {
+      "amplitude": 665.1592,
+      "channel": 46,
+      "start": 3128.006931
+    },
+    {
+      "amplitude": 351.0787,
+      "channel": 55,
+      "start": 3135.566952
+    },
+    {
+      "amplitude": 700.6311,
+      "channel": 46,
+      "start": 3137.368957
+    },
+    {
+      "amplitude": 788.0483,
+      "channel": 36,
+      "start": 3139.731964
+    },
+    {
+      "amplitude": 499.4878,
+      "channel": 45,
+      "start": 3140.413966
+    },
+    {
+      "amplitude": 654.6788,
+      "channel": 46,
+      "start": 3140.843967
+    },
+    {
+      "amplitude": 363.0844,
+      "channel": 53,
+      "start": 3146.354983
+    },
+    {
+      "amplitude": 654.4492,
+      "channel": 46,
+      "start": 3148.440989
+    },
+    {
+      "amplitude": 690.9619,
+      "channel": 46,
+      "start": 3150.455994
+    },
+    {
+      "amplitude": 926.3358,
+      "channel": 47,
+      "start": 3152.780001
+    },
+    {
+      "amplitude": 736.7716,
+      "channel": 37,
+      "start": 3162.857029
+    },
+    {
+      "amplitude": 423.0067,
+      "channel": 50,
+      "start": 3162.96803
+    },
+    {
+      "amplitude": 554.4274,
+      "channel": 45,
+      "start": 3166.323039
+    },
+    {
+      "amplitude": 1086.5648,
+      "channel": 47,
+      "start": 3188.609102
+    },
+    {
+      "amplitude": 727.0872,
+      "channel": 46,
+      "start": 3190.294107
+    },
+    {
+      "amplitude": 495.7929,
+      "channel": 47,
+      "start": 3192.608113
+    },
+    {
+      "amplitude": 496.2858,
+      "channel": 46,
+      "start": 3193.135115
+    },
+    {
+      "amplitude": 586.6753,
+      "channel": 45,
+      "start": 3193.276115
+    },
+    {
+      "amplitude": 582.2484,
+      "channel": 40,
+      "start": 3194.301118
+    },
+    {
+      "amplitude": 540.927,
+      "channel": 45,
+      "start": 3195.776122
+    }
+  ],
+  "gid": "sd42a6992b76c",
+  "id": "49717a79e897",
+  "label_names": {},
+  "mouse": 59,
+  "n": 535,
+  "name": "PTEN m59 s4 2025-07-07  \u00b7  Incisor CSC26\u2013CSC58",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": null,
+  "schema": 1,
+  "session": 4,
+  "session_key": "m059_s004_2025-07-07_12-52-42",
+  "session_label": "PTEN m59 s4 2025-07-07",
+  "session_loose_key": null,
+  "session_path": "E:\\Data\\m59s4jul7\\2025-07-07_12-52-42",
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {
+      "abs_thr_uv": 300,
+      "bad_channels_excluded": [
+        59
+      ],
+      "band_hz": [
+        5,
+        100
+      ],
+      "channel": "union",
+      "channel_label": "CSC26\u2013CSC58",
+      "decimate": 30,
+      "detector": "Incisor",
+      "dist_ms": 100,
+      "estimator": "sd",
+      "filter_order": 3,
+      "height_sd": 4.5,
+      "hilus_channel": 46,
+      "invert": true,
+      "lfp_fs": 1000,
+      "n_channels_scanned": 63,
+      "notes": [
+        "Filtered per segment and pooled for the threshold, so the voltage step at each stitch is excluded; Toothy's np.std spans its concatenated trace and includes it.",
+        "Decimated with scipy.signal.decimate in stages; Toothy uses scipy.signal.resample, an FFT method. Measured against Toothy's own code on 300 s of CSC41: the same dentate spikes to within one sample, a 2% difference in the threshold (an FFT resample is a brick wall and decimate is not, so they leave different variance in band), and one event in 193.",
+        "Times are stamped through the record-level breakpoint map, not from a linear axis.",
+        "Channels marked bad on this session were not read at all, so they cannot win the hilus, theta or ripple pick. Toothy keeps them and nulls them out of the estimates afterwards (ephys.py noise_idx); the three answers are the same either way.",
+        "The hilus, theta and ripple channels are derived FROM the detection, not used to produce it. Every event time here is a sample index put through the record timestamps, so choosing a different channel shows a different set of events and moves none of them."
+      ],
+      "pool": [
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58
+      ],
+      "pool_labels": [
+        "CSC26",
+        "CSC27",
+        "CSC28",
+        "CSC29",
+        "CSC30",
+        "CSC31",
+        "CSC32",
+        "CSC33",
+        "CSC34",
+        "CSC35",
+        "CSC36",
+        "CSC37",
+        "CSC38",
+        "CSC39",
+        "CSC40",
+        "CSC41",
+        "CSC42",
+        "CSC43",
+        "CSC44",
+        "CSC45",
+        "CSC46",
+        "CSC47",
+        "CSC48",
+        "CSC49",
+        "CSC50",
+        "CSC51",
+        "CSC52",
+        "CSC53",
+        "CSC54",
+        "CSC55",
+        "CSC56",
+        "CSC57",
+        "CSC58"
+      ],
+      "ported_from": "Toothy ephys.get_ds_peaks",
+      "probe": "h3",
+      "prom_uv": 0,
+      "union": {
+        "by_seen_on": {
+          "1": 15,
+          "10": 52,
+          "11": 55,
+          "12": 37,
+          "13": 24,
+          "14": 13,
+          "15": 7,
+          "16": 3,
+          "17": 4,
+          "18": 10,
+          "19": 2,
+          "2": 37,
+          "20": 2,
+          "21": 1,
+          "22": 2,
+          "23": 3,
+          "26": 1,
+          "27": 1,
+          "28": 1,
+          "3": 33,
+          "31": 1,
+          "32": 2,
+          "4": 29,
+          "5": 23,
+          "6": 42,
+          "7": 46,
+          "8": 41,
+          "9": 48
+        },
+        "n": 535,
+        "n_detections": 4605,
+        "n_hilus": 414,
+        "only_off_hilus": 121,
+        "sole_by_channel": {
+          "38": 1,
+          "39": 1,
+          "40": 1,
+          "42": 1,
+          "44": 1,
+          "45": 3,
+          "46": 1,
+          "48": 1,
+          "52": 4,
+          "57": 1
+        }
+      },
+      "union_tol_ms": 25,
+      "wlen_ms": 125
+    },
+    "pipeline": "Incisor (dentate spike)",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "ds",
+  "type_name": "Dentate spike",
+  "units": "seconds relative to the start of the recording",
+  "version": 0,
+  "versions": [
+    {
+      "at": "2026-10-07T18:28:55-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "unspecified": 535
+      },
+      "changed": 0,
+      "from_id": null,
+      "from_v": null,
+      "gained": 0,
+      "id": "87a56f7d6d17",
+      "imported": true,
+      "lost": 0,
+      "machine": "DESKTOP-4H65AI7",
+      "moves": {},
+      "n": 535,
+      "note": "Imported from Incisor (dentate spike). 535 candidates, none decided yet.",
+      "snap": [
+        [
+          25.096071,
+          null
+        ],
+        [
+          36.913104,
+          null
+        ],
+        [
+          38.747109,
+          null
+        ],
+        [
+          40.380114,
+          null
+        ],
+        [
+          43.193122,
+          null
+        ],
+        [
+          65.497185,
+          null
+        ],
+        [
+          69.648197,
+          null
+        ],
+        [
+          70.569199,
+          null
+        ],
+        [
+          94.782267,
+          null
+        ],
+        [
+          94.942268,
+          null
+        ],
+        [
+          97.134274,
+          null
+        ],
+        [
+          117.693332,
+          null
+        ],
+        [
+          149.768423,
+          null
+        ],
+        [
+          152.631431,
+          null
+        ],
+        [
+          160.354452,
+          null
+        ],
+        [
+          199.944564,
+          null
+        ],
+        [
+          253.441715,
+          null
+        ],
+        [
+          253.673716,
+          null
+        ],
+        [
+          255.06272,
+          null
+        ],
+        [
+          283.700801,
+          null
+        ],
+        [
+          283.728801,
+          null
+        ],
+        [
+          289.553817,
+          null
+        ],
+        [
+          294.638831,
+          null
+        ],
+        [
+          307.503868,
+          null
+        ],
+        [
+          315.833891,
+          null
+        ],
+        [
+          316.118892,
+          null
+        ],
+        [
+          318.9399,
+          null
+        ],
+        [
+          319.1019,
+          null
+        ],
+        [
+          348.339983,
+          null
+        ],
+        [
+          360.213016,
+          null
+        ],
+        [
+          360.319017,
+          null
+        ],
+        [
+          364.139027,
+          null
+        ],
+        [
+          391.552105,
+          null
+        ],
+        [
+          426.239203,
+          null
+        ],
+        [
+          429.905213,
+          null
+        ],
+        [
+          435.284228,
+          null
+        ],
+        [
+          446.942261,
+          null
+        ],
+        [
+          468.666322,
+          null
+        ],
+        [
+          503.952422,
+          null
+        ],
+        [
+          509.865439,
+          null
+        ],
+        [
+          521.01847,
+          null
+        ],
+        [
+          537.409516,
+          null
+        ],
+        [
+          540.211524,
+          null
+        ],
+        [
+          544.673537,
+          null
+        ],
+        [
+          564.092592,
+          null
+        ],
+        [
+          566.046597,
+          null
+        ],
+        [
+          577.84063,
+          null
+        ],
+        [
+          587.868659,
+          null
+        ],
+        [
+          599.148691,
+          null
+        ],
+        [
+          624.678763,
+          null
+        ],
+        [
+          647.010826,
+          null
+        ],
+        [
+          648.49683,
+          null
+        ],
+        [
+          689.369945,
+          null
+        ],
+        [
+          690.308948,
+          null
+        ],
+        [
+          698.11897,
+          null
+        ],
+        [
+          703.241984,
+          null
+        ],
+        [
+          709.854003,
+          null
+        ],
+        [
+          728.553056,
+          null
+        ],
+        [
+          744.117438,
+          null
+        ],
+        [
+          775.312526,
+          null
+        ],
+        [
+          790.63857,
+          null
+        ],
+        [
+          803.128605,
+          null
+        ],
+        [
+          808.834621,
+          null
+        ],
+        [
+          809.548623,
+          null
+        ],
+        [
+          814.357637,
+          null
+        ],
+        [
+          818.208647,
+          null
+        ],
+        [
+          821.708657,
+          null
+        ],
+        [
+          821.872658,
+          null
+        ],
+        [
+          825.051667,
+          null
+        ],
+        [
+          826.19767,
+          null
+        ],
+        [
+          829.377679,
+          null
+        ],
+        [
+          831.545685,
+          null
+        ],
+        [
+          831.604685,
+          null
+        ],
+        [
+          843.367718,
+          null
+        ],
+        [
+          847.53973,
+          null
+        ],
+        [
+          849.377735,
+          null
+        ],
+        [
+          860.408767,
+          null
+        ],
+        [
+          863.328775,
+          null
+        ],
+        [
+          863.500775,
+          null
+        ],
+        [
+          869.303792,
+          null
+        ],
+        [
+          871.625798,
+          null
+        ],
+        [
+          873.429803,
+          null
+        ],
+        [
+          880.624824,
+          null
+        ],
+        [
+          904.858892,
+          null
+        ],
+        [
+          912.313913,
+          null
+        ],
+        [
+          918.40893,
+          null
+        ],
+        [
+          931.946968,
+          null
+        ],
+        [
+          936.509981,
+          null
+        ],
+        [
+          951.288023,
+          null
+        ],
+        [
+          964.27506,
+          null
+        ],
+        [
+          964.36806,
+          null
+        ],
+        [
+          967.716069,
+          null
+        ],
+        [
+          967.85107,
+          null
+        ],
+        [
+          977.827098,
+          null
+        ],
+        [
+          977.949098,
+          null
+        ],
+        [
+          1007.992183,
+          null
+        ],
+        [
+          1008.020183,
+          null
+        ],
+        [
+          1008.128183,
+          null
+        ],
+        [
+          1008.159183,
+          null
+        ],
+        [
+          1033.388255,
+          null
+        ],
+        [
+          1035.12726,
+          null
+        ],
+        [
+          1043.296283,
+          null
+        ],
+        [
+          1044.739287,
+          null
+        ],
+        [
+          1076.567376,
+          null
+        ],
+        [
+          1079.299384,
+          null
+        ],
+        [
+          1080.541388,
+          null
+        ],
+        [
+          1085.682402,
+          null
+        ],
+        [
+          1087.830408,
+          null
+        ],
+        [
+          1102.149449,
+          null
+        ],
+        [
+          1112.749479,
+          null
+        ],
+        [
+          1121.751504,
+          null
+        ],
+        [
+          1127.642521,
+          null
+        ],
+        [
+          1127.804521,
+          null
+        ],
+        [
+          1137.048547,
+          null
+        ],
+        [
+          1143.467565,
+          null
+        ],
+        [
+          1153.547594,
+          null
+        ],
+        [
+          1162.066618,
+          null
+        ],
+        [
+          1165.220627,
+          null
+        ],
+        [
+          1172.441647,
+          null
+        ],
+        [
+          1181.348672,
+          null
+        ],
+        [
+          1182.331675,
+          null
+        ],
+        [
+          1189.933696,
+          null
+        ],
+        [
+          1205.34474,
+          null
+        ],
+        [
+          1211.310757,
+          null
+        ],
+        [
+          1215.584769,
+          null
+        ],
+        [
+          1225.951798,
+          null
+        ],
+        [
+          1230.831812,
+          null
+        ],
+        [
+          1253.148875,
+          null
+        ],
+        [
+          1276.872942,
+          null
+        ],
+        [
+          1277.082942,
+          null
+        ],
+        [
+          1278.219945,
+          null
+        ],
+        [
+          1286.80397,
+          null
+        ],
+        [
+          1288.224974,
+          null
+        ],
+        [
+          1289.578977,
+          null
+        ],
+        [
+          1292.748986,
+          null
+        ],
+        [
+          1305.518022,
+          null
+        ],
+        [
+          1305.557023,
+          null
+        ],
+        [
+          1322.571071,
+          null
+        ],
+        [
+          1327.241084,
+          null
+        ],
+        [
+          1331.297095,
+          null
+        ],
+        [
+          1335.380107,
+          null
+        ],
+        [
+          1347.495141,
+          null
+        ],
+        [
+          1348.584144,
+          null
+        ],
+        [
+          1354.18616,
+          null
+        ],
+        [
+          1363.257185,
+          null
+        ],
+        [
+          1371.099208,
+          null
+        ],
+        [
+          1371.220208,
+          null
+        ],
+        [
+          1378.079227,
+          null
+        ],
+        [
+          1383.764243,
+          null
+        ],
+        [
+          1387.512254,
+          null
+        ],
+        [
+          1390.850263,
+          null
+        ],
+        [
+          1392.619268,
+          null
+        ],
+        [
+          1400.584291,
+          null
+        ],
+        [
+          1412.970326,
+          null
+        ],
+        [
+          1419.154343,
+          null
+        ],
+        [
+          1425.409361,
+          null
+        ],
+        [
+          1430.727376,
+          null
+        ],
+        [
+          1436.274391,
+          null
+        ],
+        [
+          1440.589404,
+          null
+        ],
+        [
+          1445.485417,
+          null
+        ],
+        [
+          1472.499151,
+          null
+        ],
+        [
+          1477.458165,
+          null
+        ],
+        [
+          1478.307168,
+          null
+        ],
+        [
+          1495.547216,
+          null
+        ],
+        [
+          1495.664217,
+          null
+        ],
+        [
+          1496.299218,
+          null
+        ],
+        [
+          1502.013234,
+          null
+        ],
+        [
+          1503.697239,
+          null
+        ],
+        [
+          1505.484244,
+          null
+        ],
+        [
+          1522.619293,
+          null
+        ],
+        [
+          1522.648293,
+          null
+        ],
+        [
+          1522.848293,
+          null
+        ],
+        [
+          1523.478295,
+          null
+        ],
+        [
+          1529.723313,
+          null
+        ],
+        [
+          1529.834313,
+          null
+        ],
+        [
+          1539.50334,
+          null
+        ],
+        [
+          1553.72638,
+          null
+        ],
+        [
+          1556.721389,
+          null
+        ],
+        [
+          1557.445391,
+          null
+        ],
+        [
+          1557.926392,
+          null
+        ],
+        [
+          1563.593408,
+          null
+        ],
+        [
+          1566.665417,
+          null
+        ],
+        [
+          1586.865474,
+          null
+        ],
+        [
+          1596.368501,
+          null
+        ],
+        [
+          1607.631532,
+          null
+        ],
+        [
+          1622.582575,
+          null
+        ],
+        [
+          1649.39565,
+          null
+        ],
+        [
+          1654.576665,
+          null
+        ],
+        [
+          1655.741668,
+          null
+        ],
+        [
+          1655.884669,
+          null
+        ],
+        [
+          1661.452684,
+          null
+        ],
+        [
+          1661.531685,
+          null
+        ],
+        [
+          1661.578685,
+          null
+        ],
+        [
+          1661.783685,
+          null
+        ],
+        [
+          1672.644716,
+          null
+        ],
+        [
+          1687.844759,
+          null
+        ],
+        [
+          1690.801767,
+          null
+        ],
+        [
+          1693.478775,
+          null
+        ],
+        [
+          1693.777776,
+          null
+        ],
+        [
+          1693.929776,
+          null
+        ],
+        [
+          1695.947782,
+          null
+        ],
+        [
+          1700.342794,
+          null
+        ],
+        [
+          1716.74684,
+          null
+        ],
+        [
+          1719.386848,
+          null
+        ],
+        [
+          1720.971852,
+          null
+        ],
+        [
+          1739.054903,
+          null
+        ],
+        [
+          1745.239921,
+          null
+        ],
+        [
+          1754.234946,
+          null
+        ],
+        [
+          1754.397947,
+          null
+        ],
+        [
+          1754.540947,
+          null
+        ],
+        [
+          1760.338963,
+          null
+        ],
+        [
+          1760.420964,
+          null
+        ],
+        [
+          1764.105974,
+          null
+        ],
+        [
+          1764.183974,
+          null
+        ],
+        [
+          1764.241974,
+          null
+        ],
+        [
+          1764.409975,
+          null
+        ],
+        [
+          1764.570975,
+          null
+        ],
+        [
+          1766.909982,
+          null
+        ],
+        [
+          1768.424986,
+          null
+        ],
+        [
+          1778.529015,
+          null
+        ],
+        [
+          1780.927021,
+          null
+        ],
+        [
+          1786.203036,
+          null
+        ],
+        [
+          1787.085039,
+          null
+        ],
+        [
+          1802.143081,
+          null
+        ],
+        [
+          1804.433088,
+          null
+        ],
+        [
+          1809.911103,
+          null
+        ],
+        [
+          1810.317104,
+          null
+        ],
+        [
+          1810.357104,
+          null
+        ],
+        [
+          1831.578273,
+          null
+        ],
+        [
+          1838.279292,
+          null
+        ],
+        [
+          1838.448292,
+          null
+        ],
+        [
+          1841.0253,
+          null
+        ],
+        [
+          1841.3293,
+          null
+        ],
+        [
+          1841.377301,
+          null
+        ],
+        [
+          1841.619301,
+          null
+        ],
+        [
+          1843.490307,
+          null
+        ],
+        [
+          1843.636307,
+          null
+        ],
+        [
+          1843.768307,
+          null
+        ],
+        [
+          1855.29734,
+          null
+        ],
+        [
+          1855.45734,
+          null
+        ],
+        [
+          1855.566341,
+          null
+        ],
+        [
+          1857.891347,
+          null
+        ],
+        [
+          1860.621355,
+          null
+        ],
+        [
+          1860.824355,
+          null
+        ],
+        [
+          1866.334371,
+          null
+        ],
+        [
+          1866.951373,
+          null
+        ],
+        [
+          1872.246388,
+          null
+        ],
+        [
+          1872.604389,
+          null
+        ],
+        [
+          1874.392394,
+          null
+        ],
+        [
+          1889.310436,
+          null
+        ],
+        [
+          1896.543456,
+          null
+        ],
+        [
+          1916.223512,
+          null
+        ],
+        [
+          1916.817513,
+          null
+        ],
+        [
+          1920.374523,
+          null
+        ],
+        [
+          1923.799533,
+          null
+        ],
+        [
+          1927.342543,
+          null
+        ],
+        [
+          1932.911559,
+          null
+        ],
+        [
+          1934.583564,
+          null
+        ],
+        [
+          1937.228571,
+          null
+        ],
+        [
+          1944.305591,
+          null
+        ],
+        [
+          1956.380625,
+          null
+        ],
+        [
+          1998.331743,
+          null
+        ],
+        [
+          2015.528792,
+          null
+        ],
+        [
+          2016.050793,
+          null
+        ],
+        [
+          2016.288794,
+          null
+        ],
+        [
+          2024.865818,
+          null
+        ],
+        [
+          2025.937821,
+          null
+        ],
+        [
+          2034.163845,
+          null
+        ],
+        [
+          2037.791855,
+          null
+        ],
+        [
+          2040.634863,
+          null
+        ],
+        [
+          2052.129895,
+          null
+        ],
+        [
+          2055.145904,
+          null
+        ],
+        [
+          2063.189926,
+          null
+        ],
+        [
+          2064.180929,
+          null
+        ],
+        [
+          2067.575939,
+          null
+        ],
+        [
+          2070.607947,
+          null
+        ],
+        [
+          2070.755948,
+          null
+        ],
+        [
+          2073.416955,
+          null
+        ],
+        [
+          2075.03796,
+          null
+        ],
+        [
+          2076.056963,
+          null
+        ],
+        [
+          2080.334975,
+          null
+        ],
+        [
+          2081.618978,
+          null
+        ],
+        [
+          2110.46106,
+          null
+        ],
+        [
+          2112.665066,
+          null
+        ],
+        [
+          2115.984075,
+          null
+        ],
+        [
+          2116.203076,
+          null
+        ],
+        [
+          2122.145093,
+          null
+        ],
+        [
+          2141.370147,
+          null
+        ],
+        [
+          2141.477147,
+          null
+        ],
+        [
+          2141.510147,
+          null
+        ],
+        [
+          2147.739165,
+          null
+        ],
+        [
+          2148.873168,
+          null
+        ],
+        [
+          2149.179169,
+          null
+        ],
+        [
+          2149.50417,
+          null
+        ],
+        [
+          2153.677182,
+          null
+        ],
+        [
+          2164.412212,
+          null
+        ],
+        [
+          2164.781213,
+          null
+        ],
+        [
+          2164.821213,
+          null
+        ],
+        [
+          2165.405215,
+          null
+        ],
+        [
+          2170.364229,
+          null
+        ],
+        [
+          2171.173231,
+          null
+        ],
+        [
+          2171.970233,
+          null
+        ],
+        [
+          2174.045239,
+          null
+        ],
+        [
+          2174.21624,
+          null
+        ],
+        [
+          2176.861247,
+          null
+        ],
+        [
+          2176.914247,
+          null
+        ],
+        [
+          2181.55526,
+          null
+        ],
+        [
+          2184.179268,
+          null
+        ],
+        [
+          2184.220268,
+          null
+        ],
+        [
+          2185.846273,
+          null
+        ],
+        [
+          2191.318288,
+          null
+        ],
+        [
+          2191.432288,
+          null
+        ],
+        [
+          2191.822289,
+          null
+        ],
+        [
+          2192.10429,
+          null
+        ],
+        [
+          2192.354291,
+          null
+        ],
+        [
+          2192.504291,
+          null
+        ],
+        [
+          2196.686303,
+          null
+        ],
+        [
+          2199.600311,
+          null
+        ],
+        [
+          2199.708312,
+          null
+        ],
+        [
+          2203.664323,
+          null
+        ],
+        [
+          2214.345353,
+          null
+        ],
+        [
+          2216.509359,
+          null
+        ],
+        [
+          2217.159361,
+          null
+        ],
+        [
+          2238.860422,
+          null
+        ],
+        [
+          2245.632441,
+          null
+        ],
+        [
+          2258.226477,
+          null
+        ],
+        [
+          2264.367494,
+          null
+        ],
+        [
+          2277.15553,
+          null
+        ],
+        [
+          2292.336573,
+          null
+        ],
+        [
+          2299.599594,
+          null
+        ],
+        [
+          2304.469607,
+          null
+        ],
+        [
+          2310.995626,
+          null
+        ],
+        [
+          2318.953648,
+          null
+        ],
+        [
+          2324.658664,
+          null
+        ],
+        [
+          2339.214705,
+          null
+        ],
+        [
+          2357.700757,
+          null
+        ],
+        [
+          2366.413782,
+          null
+        ],
+        [
+          2372.390799,
+          null
+        ],
+        [
+          2372.500799,
+          null
+        ],
+        [
+          2392.354855,
+          null
+        ],
+        [
+          2392.386855,
+          null
+        ],
+        [
+          2392.697856,
+          null
+        ],
+        [
+          2394.859862,
+          null
+        ],
+        [
+          2404.62489,
+          null
+        ],
+        [
+          2406.932896,
+          null
+        ],
+        [
+          2412.075911,
+          null
+        ],
+        [
+          2427.775955,
+          null
+        ],
+        [
+          2431.035964,
+          null
+        ],
+        [
+          2434.585974,
+          null
+        ],
+        [
+          2434.797975,
+          null
+        ],
+        [
+          2441.333993,
+          null
+        ],
+        [
+          2451.360022,
+          null
+        ],
+        [
+          2451.450022,
+          null
+        ],
+        [
+          2455.315033,
+          null
+        ],
+        [
+          2462.061052,
+          null
+        ],
+        [
+          2471.794079,
+          null
+        ],
+        [
+          2476.670093,
+          null
+        ],
+        [
+          2487.573124,
+          null
+        ],
+        [
+          2498.228154,
+          null
+        ],
+        [
+          2509.067185,
+          null
+        ],
+        [
+          2509.348185,
+          null
+        ],
+        [
+          2509.504186,
+          null
+        ],
+        [
+          2509.825187,
+          null
+        ],
+        [
+          2512.124193,
+          null
+        ],
+        [
+          2514.712201,
+          null
+        ],
+        [
+          2518.04821,
+          null
+        ],
+        [
+          2534.432256,
+          null
+        ],
+        [
+          2540.278273,
+          null
+        ],
+        [
+          2551.363304,
+          null
+        ],
+        [
+          2551.443304,
+          null
+        ],
+        [
+          2554.743313,
+          null
+        ],
+        [
+          2557.03632,
+          null
+        ],
+        [
+          2573.106365,
+          null
+        ],
+        [
+          2580.298386,
+          null
+        ],
+        [
+          2586.413403,
+          null
+        ],
+        [
+          2586.529403,
+          null
+        ],
+        [
+          2586.676404,
+          null
+        ],
+        [
+          2586.768404,
+          null
+        ],
+        [
+          2588.110408,
+          null
+        ],
+        [
+          2594.204425,
+          null
+        ],
+        [
+          2602.870449,
+          null
+        ],
+        [
+          2602.933449,
+          null
+        ],
+        [
+          2603.06145,
+          null
+        ],
+        [
+          2607.628463,
+          null
+        ],
+        [
+          2608.497465,
+          null
+        ],
+        [
+          2620.637499,
+          null
+        ],
+        [
+          2624.55151,
+          null
+        ],
+        [
+          2625.741514,
+          null
+        ],
+        [
+          2629.588525,
+          null
+        ],
+        [
+          2633.803537,
+          null
+        ],
+        [
+          2643.691564,
+          null
+        ],
+        [
+          2646.229572,
+          null
+        ],
+        [
+          2653.935593,
+          null
+        ],
+        [
+          2653.962593,
+          null
+        ],
+        [
+          2657.965605,
+          null
+        ],
+        [
+          2659.056608,
+          null
+        ],
+        [
+          2665.794627,
+          null
+        ],
+        [
+          2687.480688,
+          null
+        ],
+        [
+          2694.860709,
+          null
+        ],
+        [
+          2695.536711,
+          null
+        ],
+        [
+          2695.567711,
+          null
+        ],
+        [
+          2700.758725,
+          null
+        ],
+        [
+          2701.543728,
+          null
+        ],
+        [
+          2702.845731,
+          null
+        ],
+        [
+          2702.994732,
+          null
+        ],
+        [
+          2705.259738,
+          null
+        ],
+        [
+          2710.008752,
+          null
+        ],
+        [
+          2719.774779,
+          null
+        ],
+        [
+          2722.323786,
+          null
+        ],
+        [
+          2725.096794,
+          null
+        ],
+        [
+          2732.884816,
+          null
+        ],
+        [
+          2733.043817,
+          null
+        ],
+        [
+          2734.13482,
+          null
+        ],
+        [
+          2737.173828,
+          null
+        ],
+        [
+          2737.275829,
+          null
+        ],
+        [
+          2737.307829,
+          null
+        ],
+        [
+          2741.717841,
+          null
+        ],
+        [
+          2741.747841,
+          null
+        ],
+        [
+          2756.318882,
+          null
+        ],
+        [
+          2767.172913,
+          null
+        ],
+        [
+          2769.59892,
+          null
+        ],
+        [
+          2778.418945,
+          null
+        ],
+        [
+          2785.786965,
+          null
+        ],
+        [
+          2785.804965,
+          null
+        ],
+        [
+          2794.65199,
+          null
+        ],
+        [
+          2794.67899,
+          null
+        ],
+        [
+          2794.915991,
+          null
+        ],
+        [
+          2795.744993,
+          null
+        ],
+        [
+          2796.611996,
+          null
+        ],
+        [
+          2798.676002,
+          null
+        ],
+        [
+          2807.263026,
+          null
+        ],
+        [
+          2809.843033,
+          null
+        ],
+        [
+          2810.025034,
+          null
+        ],
+        [
+          2812.011039,
+          null
+        ],
+        [
+          2821.091065,
+          null
+        ],
+        [
+          2821.118065,
+          null
+        ],
+        [
+          2827.618083,
+          null
+        ],
+        [
+          2832.938098,
+          null
+        ],
+        [
+          2835.676106,
+          null
+        ],
+        [
+          2838.093113,
+          null
+        ],
+        [
+          2839.677117,
+          null
+        ],
+        [
+          2840.843121,
+          null
+        ],
+        [
+          2841.101121,
+          null
+        ],
+        [
+          2849.379145,
+          null
+        ],
+        [
+          2849.665146,
+          null
+        ],
+        [
+          2849.875146,
+          null
+        ],
+        [
+          2849.904146,
+          null
+        ],
+        [
+          2852.723154,
+          null
+        ],
+        [
+          2852.852155,
+          null
+        ],
+        [
+          2854.944161,
+          null
+        ],
+        [
+          2856.026164,
+          null
+        ],
+        [
+          2856.600165,
+          null
+        ],
+        [
+          2863.981186,
+          null
+        ],
+        [
+          2869.0722,
+          null
+        ],
+        [
+          2871.502207,
+          null
+        ],
+        [
+          2871.529207,
+          null
+        ],
+        [
+          2876.803222,
+          null
+        ],
+        [
+          2877.565224,
+          null
+        ],
+        [
+          2885.189246,
+          null
+        ],
+        [
+          2897.073279,
+          null
+        ],
+        [
+          2901.311291,
+          null
+        ],
+        [
+          2903.813298,
+          null
+        ],
+        [
+          2906.384306,
+          null
+        ],
+        [
+          2908.582312,
+          null
+        ],
+        [
+          2916.903335,
+          null
+        ],
+        [
+          2918.367339,
+          null
+        ],
+        [
+          2918.39834,
+          null
+        ],
+        [
+          2928.216367,
+          null
+        ],
+        [
+          2928.282367,
+          null
+        ],
+        [
+          2928.421368,
+          null
+        ],
+        [
+          2931.554377,
+          null
+        ],
+        [
+          2931.702377,
+          null
+        ],
+        [
+          2939.9654,
+          null
+        ],
+        [
+          2942.729408,
+          null
+        ],
+        [
+          2946.77042,
+          null
+        ],
+        [
+          2947.468422,
+          null
+        ],
+        [
+          2952.283435,
+          null
+        ],
+        [
+          2952.809437,
+          null
+        ],
+        [
+          2961.23846,
+          null
+        ],
+        [
+          2963.352466,
+          null
+        ],
+        [
+          2969.256483,
+          null
+        ],
+        [
+          2969.281483,
+          null
+        ],
+        [
+          2975.928502,
+          null
+        ],
+        [
+          2984.397526,
+          null
+        ],
+        [
+          2988.888538,
+          null
+        ],
+        [
+          2995.162556,
+          null
+        ],
+        [
+          2999.564569,
+          null
+        ],
+        [
+          2999.742569,
+          null
+        ],
+        [
+          3005.909587,
+          null
+        ],
+        [
+          3013.491608,
+          null
+        ],
+        [
+          3013.689608,
+          null
+        ],
+        [
+          3013.716609,
+          null
+        ],
+        [
+          3021.18063,
+          null
+        ],
+        [
+          3029.158652,
+          null
+        ],
+        [
+          3038.238678,
+          null
+        ],
+        [
+          3042.64569,
+          null
+        ],
+        [
+          3043.693693,
+          null
+        ],
+        [
+          3046.845702,
+          null
+        ],
+        [
+          3049.60371,
+          null
+        ],
+        [
+          3051.971716,
+          null
+        ],
+        [
+          3056.75373,
+          null
+        ],
+        [
+          3073.001776,
+          null
+        ],
+        [
+          3075.486783,
+          null
+        ],
+        [
+          3076.550786,
+          null
+        ],
+        [
+          3084.530808,
+          null
+        ],
+        [
+          3095.230839,
+          null
+        ],
+        [
+          3098.617848,
+          null
+        ],
+        [
+          3098.648848,
+          null
+        ],
+        [
+          3109.226878,
+          null
+        ],
+        [
+          3111.993886,
+          null
+        ],
+        [
+          3117.267901,
+          null
+        ],
+        [
+          3123.169917,
+          null
+        ],
+        [
+          3123.518918,
+          null
+        ],
+        [
+          3123.673919,
+          null
+        ],
+        [
+          3127.975931,
+          null
+        ],
+        [
+          3128.006931,
+          null
+        ],
+        [
+          3135.566952,
+          null
+        ],
+        [
+          3137.368957,
+          null
+        ],
+        [
+          3139.731964,
+          null
+        ],
+        [
+          3140.413966,
+          null
+        ],
+        [
+          3140.843967,
+          null
+        ],
+        [
+          3146.354983,
+          null
+        ],
+        [
+          3148.440989,
+          null
+        ],
+        [
+          3150.455994,
+          null
+        ],
+        [
+          3152.780001,
+          null
+        ],
+        [
+          3162.857029,
+          null
+        ],
+        [
+          3162.96803,
+          null
+        ],
+        [
+          3166.323039,
+          null
+        ],
+        [
+          3188.609102,
+          null
+        ],
+        [
+          3190.294107,
+          null
+        ],
+        [
+          3192.608113,
+          null
+        ],
+        [
+          3193.135115,
+          null
+        ],
+        [
+          3193.276115,
+          null
+        ],
+        [
+          3194.301118,
+          null
+        ],
+        [
+          3195.776122,
+          null
+        ]
+      ],
+      "v": 0
+    }
+  ]
+}

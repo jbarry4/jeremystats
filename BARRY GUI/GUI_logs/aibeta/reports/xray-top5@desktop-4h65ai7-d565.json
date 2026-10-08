@@ -1,0 +1,120 @@
+{
+  "_at": {
+    "at": "2026-10-08T03:14:57.828139+00:00",
+    "by": "2026-10-08T03:14:57.828139+00:00",
+    "how": "2026-10-08T03:14:57.828139+00:00",
+    "id": "2026-10-08T03:14:57.828139+00:00",
+    "order": "2026-10-08T03:14:57.828139+00:00",
+    "question": "2026-10-08T03:14:57.828139+00:00",
+    "tables": "2026-10-08T03:14:57.828139+00:00",
+    "title": "2026-10-08T03:14:57.828139+00:00",
+    "verdict": "2026-10-08T03:14:57.828139+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-08T03:14:57.828139+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "at": "2026-10-07T23:14:57-0400",
+  "by": "Claude (AI Beta comparisons)",
+  "how": "Whole-mouse cross-validation: every score comes from a mouse the model never trained on. \"At 20%\" means up to 20% of real spikes may be called Garbage -- the sweep dialog's tolerance; the DS bar stays where 99% of garbage is kept out. Flagged is the share of all candidates left for a person.",
+  "id": "xray-top5",
+  "order": 2,
+  "question": "X-ray's depth band (the contacts that move most in the recording's candidate-triggered average), its CSD, depth profile, CSD wave and sink gap (delta), through 10-40 Hz -- at the peak Braces assigned, and at each real peak within 100 ms of the stamp, up to five. A peak is real when it stands 3 robust SDs above the recording's level of Braces' trace and reaches a quarter of the tallest: 48% of candidates have one, 21% two, 12% three or more, 19% none.",
+  "tables": [
+    {
+      "columns": [
+        {
+          "better": "high",
+          "fmt": "auc",
+          "key": "auc",
+          "label": "AUC"
+        },
+        {
+          "better": "high",
+          "fmt": "pct",
+          "key": "clean20",
+          "label": "Garbage cleaned at 20%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag20",
+          "label": "Flagged at 20%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag30",
+          "label": "Flagged at 30%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag5",
+          "label": "Flagged at 5%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "into20",
+          "label": "Garbage into DS"
+        }
+      ],
+      "kind": "rows",
+      "row_head": "Inputs",
+      "rows": [
+        {
+          "label": "Tooth Fairy as it is: 5-100 Hz inputs + whole-shank CSD 10-40 Hz",
+          "ref": true,
+          "values": {
+            "auc": 0.936347392438698,
+            "clean20": 0.9354988399071926,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5897911832946636,
+            "flag20": 0.12713833157338966,
+            "flag30": 0.047377683914114746,
+            "flag5": 0.3067933826117564,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ X-ray at the real peaks (up to five), 10-40 Hz",
+          "ref": false,
+          "values": {
+            "auc": 0.9339766441066324,
+            "clean20": 0.9317865429234339,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5767981438515081,
+            "flag20": 0.12622316085885252,
+            "flag30": 0.04139387539598733,
+            "flag5": 0.307286166842661,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "X-ray at the real peaks instead of the whole-shank CSD",
+          "ref": false,
+          "values": {
+            "auc": 0.9294151399331864,
+            "clean20": 0.9252900232018562,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5535962877030163,
+            "flag20": 0.15163674762407603,
+            "flag30": 0.05857092573037663,
+            "flag5": 0.3352340725096797,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        }
+      ]
+    }
+  ],
+  "title": "X-ray's view, at the real peaks near the stamp",
+  "verdict": "No gain worth keeping. Added to Tooth Fairy, X-ray at the real peaks flags about the same at 20% (12.6% against 12.7%) and a little less at 30%, with a slightly lower AUC; instead of the whole-shank 10-40 Hz CSD it is clearly worse (15.2% flagged). The whole shank's CSD already carries what the depth profile, CSD wave and sink gap say."
+}

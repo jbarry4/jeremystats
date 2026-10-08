@@ -128,6 +128,11 @@ const RESULT = {
                 name: 'Avery Garbage Dystrophy+', run_id: 'aiGD',
                 garbage_into_ds: 0.011, garbage_called_garbage: 0.6,
                 ds_called_garbage: 0.05, flagged_share: 0.2,
+                tolerances: TOLS, default_tolerance: 0.2 }),
+              tooth_fairy: Object.assign({}, base, { slot: 'tooth_fairy',
+                name: 'Tooth Fairy', run_id: 'aiTF',
+                garbage_into_ds: 0.011, garbage_called_garbage: 0.6,
+                ds_called_garbage: 0.05, flagged_share: 0.2,
                 tolerances: TOLS, default_tolerance: 0.2 }) } }));
         }
         if (u === '/api/avery/sweep') {
@@ -181,12 +186,12 @@ const RESULT = {
           dlg.textContent.slice(0, 200));
     const segTxt = (q) => Array.from(dlg.querySelectorAll(q))
       .map((b) => b.textContent.trim());
-    check('it offers all three models',
+    check('it offers all four models',
           segTxt('.avery-models button').join('|')
-            === 'Avery|Avery+|Avery Garbage Dystrophy+',
+            === 'Avery|Avery+|Avery Garbage Dystrophy+|Tooth Fairy',
           segTxt('.avery-models button').join('|'));
-    check('with Avery Garbage Dystrophy+ chosen to start with',
-          segTxt('.avery-models .active').join() === 'Avery Garbage Dystrophy+',
+    check('with Tooth Fairy chosen to start with',
+          segTxt('.avery-models .active').join() === 'Tooth Fairy',
           segTxt('.avery-models .active').join());
     const tolSeg = dlg.querySelector('.avery-tols');
     check('it offers how many real spikes may be called Garbage',

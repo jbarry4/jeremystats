@@ -268,6 +268,47 @@ const KEY = 'barry.checkupPane';
             D().querySelector('#aiBeta .ai-runs tbody tr.ai-on') !== null);
     }
 
+    /* ---- the summary report ---- */
+    head('what has been tried');
+    const reps = state.reports || [];
+    if (!reps.length) {
+      say('note', 'no report filed on this machine; the card is not checked');
+      check('and no report card is drawn',
+            !D().querySelector('#aiBeta .ai-report'));
+    } else {
+      const card = D().querySelector('#aiBeta .ai-report');
+      check('the report card is drawn', !!card);
+      const secs = card ? card.querySelectorAll('.ai-rep') : [];
+      check('one section per question', secs.length === reps.length,
+            secs.length + ' of ' + reps.length);
+      check('folded, each still says its answer',
+            Array.from(secs).every((s) => !s.querySelector('table')
+              && (!reps.find((r) => r.id === s.querySelector('.ai-rep-head')
+                .dataset.id).verdict || s.querySelector('.ai-rep-verdict'))));
+      const first = reps[0];
+      const h0 = card && card.querySelector('.ai-rep-head[data-id="'
+                                             + first.id + '"]');
+      if (h0) h0.click();
+      const opened = await untilN(() => {
+        const s = D().querySelector('#aiBeta .ai-rep.open');
+        return s && s.querySelector('table') ? s : null;
+      }, 100);
+      check('unfolded, it shows its numbers', !!opened);
+      const t0 = (first.tables || [])[0];
+      if (opened && t0 && t0.kind !== 'matrix') {
+        const tr = opened.querySelectorAll('table')[0]
+          .querySelectorAll('tbody tr');
+        check('a row for every row filed', tr.length === (t0.rows || []).length,
+              tr.length + ' of ' + (t0.rows || []).length);
+      }
+      const h1 = D().querySelector('#aiBeta .ai-rep-head[data-id="'
+                                   + first.id + '"]');
+      if (h1) h1.click();
+      check('and folds again',
+            !!(await untilN(() => !D().querySelector('#aiBeta .ai-rep.open'),
+                            50)));
+    }
+
     /* ---- remembered, and back ---- */
     head('remembered, and back');
     W().setView('pipeline');

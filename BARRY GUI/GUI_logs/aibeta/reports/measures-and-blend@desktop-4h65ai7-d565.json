@@ -1,0 +1,225 @@
+{
+  "_at": {
+    "at": "2026-10-08T03:14:57.845931+00:00",
+    "by": "2026-10-08T03:14:57.845931+00:00",
+    "how": "2026-10-08T03:14:57.845931+00:00",
+    "id": "2026-10-08T03:14:57.845931+00:00",
+    "order": "2026-10-08T03:14:57.845931+00:00",
+    "question": "2026-10-08T03:14:57.845931+00:00",
+    "tables": "2026-10-08T03:14:57.845931+00:00",
+    "title": "2026-10-08T03:14:57.845931+00:00",
+    "verdict": "2026-10-08T03:14:57.845931+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-08T03:14:57.845931+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "at": "2026-10-07T23:14:57-0400",
+  "by": "Claude (AI Beta comparisons)",
+  "how": "Whole-mouse cross-validation: every score comes from a mouse the model never trained on. \"At 20%\" means up to 20% of real spikes may be called Garbage -- the sweep dialog's tolerance; the DS bar stays where 99% of garbage is kept out. Flagged is the share of all candidates left for a person. One seed against another moves the flagged share by about 2 points, which is why the blend helps.",
+  "id": "measures-and-blend",
+  "order": 7,
+  "question": "On Avery+'s data and inputs (all channels).",
+  "tables": [
+    {
+      "columns": [
+        {
+          "better": "high",
+          "fmt": "auc",
+          "key": "auc",
+          "label": "AUC"
+        },
+        {
+          "better": "high",
+          "fmt": "pct",
+          "key": "clean20",
+          "label": "Garbage cleaned at 20%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag20",
+          "label": "Flagged at 20%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag30",
+          "label": "Flagged at 30%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag5",
+          "label": "Flagged at 5%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "into20",
+          "label": "Garbage into DS"
+        }
+      ],
+      "kind": "rows",
+      "row_head": "Change",
+      "rows": [
+        {
+          "chosen": false,
+          "label": "Avery+ (one set of boosted trees)",
+          "ref": true,
+          "values": {
+            "auc": 0.9212859679475505,
+            "clean20": 0.8876404494382022,
+            "clean30": 0.9634831460674157,
+            "clean5": 0.550561797752809,
+            "flag20": 0.19821054328550702,
+            "flag30": 0.10099951636305014,
+            "flag5": 0.3696598420119297,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": false,
+          "label": "the same, another seed",
+          "ref": false,
+          "values": {
+            "auc": 0.9219680084264548,
+            "clean20": 0.8974719101123596,
+            "clean30": 0.9648876404494382,
+            "clean5": 0.5498595505617978,
+            "flag20": 0.22094147992906657,
+            "flag30": 0.12469772690633564,
+            "flag5": 0.3935998710301467,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": false,
+          "label": "+ 25 waveform measures",
+          "ref": false,
+          "values": {
+            "auc": 0.9177099554122272,
+            "clean20": 0.8848314606741573,
+            "clean30": 0.9571629213483146,
+            "clean5": 0.5421348314606742,
+            "flag20": 0.24480090278897307,
+            "flag30": 0.1479929066580687,
+            "flag5": 0.4168950507818797,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": false,
+          "label": "+ the measures against the recording's median",
+          "ref": false,
+          "values": {
+            "auc": 0.9199375535861543,
+            "clean20": 0.8925561797752809,
+            "clean30": 0.9634831460674157,
+            "clean5": 0.5435393258426966,
+            "flag20": 0.23053361276801548,
+            "flag30": 0.13388682895373208,
+            "flag5": 0.40335321618571657,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": false,
+          "label": "garbage weighted three times",
+          "ref": false,
+          "values": {
+            "auc": 0.9192148439018701,
+            "clean20": 0.889747191011236,
+            "clean30": 0.9592696629213483,
+            "clean5": 0.5414325842696629,
+            "flag20": 0.24367241657262614,
+            "flag30": 0.14718684507496374,
+            "flag5": 0.41641141383201674,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": false,
+          "label": "larger, slower trees (+ measures)",
+          "ref": false,
+          "values": {
+            "auc": 0.9214285659475465,
+            "clean20": 0.8918539325842697,
+            "clean30": 0.9620786516853933,
+            "clean5": 0.5428370786516854,
+            "flag20": 0.20844752539093986,
+            "flag30": 0.11188134773496695,
+            "flag5": 0.381267128808641,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": false,
+          "label": "a random forest instead",
+          "ref": false,
+          "values": {
+            "auc": 0.9144062219280171,
+            "clean20": 0.8792134831460674,
+            "clean30": 0.9550561797752809,
+            "clean5": 0.5007022471910112,
+            "flag20": 0.1969208447525391,
+            "flag30": 0.09970981783008222,
+            "flag5": 0.373125906819281,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": true,
+          "label": "a blend of five boosted trees",
+          "ref": false,
+          "values": {
+            "auc": 0.9234161134972652,
+            "clean20": 0.8960674157303371,
+            "clean30": 0.9676966292134831,
+            "clean5": 0.5519662921348315,
+            "flag20": 0.18918265355473157,
+            "flag30": 0.09245526358213768,
+            "flag5": 0.3614380138642592,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": false,
+          "label": "the blend + 25 waveform measures",
+          "ref": false,
+          "values": {
+            "auc": 0.9222683594605269,
+            "clean20": 0.8960674157303371,
+            "clean30": 0.9669943820224719,
+            "clean5": 0.550561797752809,
+            "flag20": 0.20095115266806385,
+            "flag30": 0.10430436885378043,
+            "flag5": 0.37336772529421247,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        }
+      ]
+    }
+  ],
+  "title": "Waveform measures, weighting, and the blend",
+  "verdict": "The blend of five boosted trees is the steady gain and became Garbage Dystrophy+; the 25 waveform measures, garbage weighting and bigger trees did not help."
+}

@@ -414,6 +414,10 @@ function sessionArray(name) {
    rats alone. The tone-first rats' change planted on its own: Cue 1, 10 Hz,
    coherence, Right ACC – Right PER (pair 3) in the order's array. */
 const PHYS_IDS = ['order', 'sound_noise', 'sound_tone', 'tone_noise', 'seat_abcd'];
+const SND4 = ['Click', 'Noise', 'High', 'Low'];
+const SND_PIDS = [];
+SND4.forEach((a, i) => SND4.slice(i + 1).forEach((b) => SND_PIDS.push(a + '-' + b)));
+const SND_PLANT = { b: 9, m: 0, p: 5 };      // the four differ: 10 Hz coherence, Right ACC – Left POR (pair 5)
 const PHYS_PLANT = { w: 1, b: 9, m: 0, p: 3 };
 let PHYS_MISSING = false, physPosted = [], physAsked = [];
 function physLeads(layer) {
@@ -425,7 +429,12 @@ function physLeads(layer) {
     return { w: t.w, wi: t.wi, band: t.band, bi: t.bi, hz: t.hz, m: t.m, mi: t.mi, pair: t.pair, a: t.a, b: t.b, est: t.est, p: t.p, k: t.k, same: t.same,
              tone, noise, diff: { est: d, se, df: 6, p: two ? 0.004 : 0.6 },
              both_ways: Math.sign(tone.est) === Math.sign(noise.est) && Math.sign(noise.est) === Math.sign(t.est),
-             equivalence: { lo: d - h, hi: d + h, margin: m, within: d - h > -m && d + h < m } };
+             equivalence: { lo: d - h, hi: d + h, margin: m, within: d - h > -m && d + h < m },
+             // Each sound: alike for the first lead; Noise far above the rest for the second.
+             sound: { sounds: SND4.map((x, j) => ({ sound: x, est: two ? (x === 'Noise' ? t.est * 2.5 : t.est * 0.5) : t.est * (0.95 + 0.03 * j),
+                                                    se: 0.02, k: 8, p: 0.01 })),
+                      omni: { F: two ? 9.1 : 0.4, p: two ? 0.001 : (i ? 0.5 : 0.62), k: 8 },
+                      pairs: Object.fromEntries(SND_PIDS.map((q) => [q, { est: 0.01, p: 0.5 }])) } };
   });
 }
 function physPerm(n, observed, extra) {
@@ -461,12 +470,25 @@ const PHYS = (() => {
   for (const L of ['raw', 'minus_fp']) {
     for (const cid of PHYS_IDS) files['phys_edges_' + L + '__' + cid + '.f32'] = { shape: SHAPES.edges };
     files['phys_groups_' + L + '.f32'] = { shape: SHAPES.edges };
+    for (const sid of SND4.concat(SND_PIDS, ['omni'])) files['phys_snd_' + L + '__' + sid + '.f32'] = { shape: [6, 1, N.B, N.M, N.P] };
+  }
+  const sound = { names: SND4, say: { Click: 'Click', Noise: 'Noise', High: 'High tone', Low: 'Low tone' }, pairs: SND_PIDS,
+                  counts: {}, perm: {}, rats: [3, 4, 6, 7, 8, 9, 10, 11] };
+  for (const L of ['raw', 'minus_fp']) {
+    sound.counts[L] = {};
+    for (const sid of SND4) sound.counts[L][sid] = c(50000, 3100);
+    for (const sid of SND_PIDS) sound.counts[L][sid] = c(50000, 2450 + 10 * SND_PIDS.indexOf(sid));
+    sound.counts[L].omni = c(50000, 2520);
+    sound.perm[L] = { pairs: {}, omni: null };
+    for (const sid of SND_PIDS) sound.perm[L].pairs[sid] = physPerm(128, sound.counts[L][sid].p05);
+    const om = physPerm(201, sound.counts[L].omni.p05);
+    sound.perm[L].omni = om;
   }
   const ct = SUMMARY.contrast.top.raw[0];
   return { ok: true, at: '2026-10-06T18:00:00', groups: { noise: [3, 6, 7, 8], tone: [4, 9, 10, 11] },
            group_say: { noise: 'open both pairs with Click or Noise', tone: 'open both pairs with a tone' }, left_out: [],
            comparisons: PHYS_IDS.map((id) => ({ id, label: id, by: id === 'seat_abcd' ? 'seat' : 'sound' })),
-           files, counts, perm,
+           files, counts, perm, sound,
            leads: { monolith: { raw: physLeads('raw'), minus_fp: physLeads('minus_fp') },
                     contrast: { raw: [Object.assign({}, physLeads('raw')[0], { w: ct.w, wi: ct.wi, band: ct.band, bi: ct.bi, hz: ct.hz, m: ct.m, mi: ct.mi,
                                                                                pair: ct.pair, a: ct.a, b: ct.b, est: ct.est, p: ct.p,
@@ -477,6 +499,25 @@ const PHYS = (() => {
            control_p05: 0.055, control_say: 'made-up data with no change at all' };
 })();
 SUMMARY.physical = { at: PHYS.at, files: PHYS.files, comparisons: PHYS.comparisons };
+function physSndArray(name) {
+  const m = /^phys_snd_(raw|minus_fp)__([\w-]+)$/.exec(name);
+  if (!m) return null;
+  physAsked.push(name);
+  const r = rng(700 + name.length * 3 + (m[1] === 'raw' ? 0 : 1));
+  const per = N.B * N.M * N.P;
+  const a = new Float32Array(6 * per);
+  for (let i = 0; i < per; i++) {
+    const grey = PAIRS[i % N.P].indexOf(GREY) >= 0;
+    a[i] = (r() - 0.5) * 0.04; a[per + i] = grey ? NaN : r(); a[2 * per + i] = grey ? 0 : 8;
+    a[3 * per + i] = 4; a[4 * per + i] = grey ? NaN : 0.01; a[5 * per + i] = grey ? 1 : 0;
+  }
+  if (m[2] === 'omni') {
+    const i = (SND_PLANT.b * N.M + SND_PLANT.m) * N.P + SND_PLANT.p;
+    a[i] = 0.2; a[per + i] = 1e-4;
+  }
+  ARR[name] = a;
+  return a;
+}
 function physArray(name) {
   const m = /^phys_edges_(raw|minus_fp)__(\w+)$/.exec(name);
   if (!m || PHYS_IDS.indexOf(m[2]) < 0) return null;
@@ -761,7 +802,7 @@ window.MONO_FIXTURE = {
     throw new Error('no fixture for POST ' + path);
   },
   async array(name, shape) {
-    const a = ARR[name] || splitArray(name) || sessionArray(name) || physArray(name);
+    const a = ARR[name] || splitArray(name) || sessionArray(name) || physArray(name) || physSndArray(name);
     if (!a) throw new Error('no fixture array ' + name);
     const want = shape.reduce((x, y) => x * y, 1);
     if (a.length !== want) throw new Error(name + ' has ' + a.length + ', shape says ' + want);
@@ -2244,11 +2285,11 @@ window.MONO_FIXTURE = {
   const ans6 = txt(D().getElementById('physanswer'));
   check('the answer first, in the intro: no sign the physical sound had an effect, with why and the leads, and its limit',
         D().getElementById('physanswer').classList.contains('ok') && /^The answer: no sign that the physical sound had an effect\./.test(ans6)
-        && /in all 7 comparisons by sound/.test(ans6) && /Of the Monolith’s 50 leads, 49 go the same way/.test(ans6) && /cannot be ruled out/.test(ans6)
+        && /in all 14 comparisons by sound/.test(ans6) && /and sound by sound/.test(ans6) && /Of the Monolith’s 50 leads, 49 go the same way/.test(ans6) && /cannot be ruled out/.test(ans6)
         && D().getElementById('physintro').contains(D().getElementById('physanswer')), ans6);
   check('the verdict line: every comparison by sound at chance', D().getElementById('physsay').classList.contains('ok')
-        && /every comparison sits at chance/.test(txt(D().getElementById('physsay'))), txt(D().getElementById('physsay')));
-  const hists = Array.from(D().querySelectorAll('.physhists > div')).map((x) => x.dataset.perm);
+        && /every comparison by sound here sits at chance/.test(txt(D().getElementById('physsay'))), txt(D().getElementById('physsay')));
+  const hists = Array.from(D().querySelectorAll('#physverdictcard .physhists > div')).map((x) => x.dataset.perm);
   check('every relabelling drawn: 35 splits, 8 + 8 signings, 128 signings', hists.join() === 'order,sound_noise,sound_tone,tone_noise', hists.join());
   const ordH = D().querySelector('.physhists > div[data-perm="order"] svg');
   const binN = Array.from(ordH.querySelectorAll('rect.hbin')).reduce((s0, x) => s0 + Number(x.dataset.n), 0);
@@ -2261,7 +2302,7 @@ window.MONO_FIXTURE = {
   // entries than every other split.
   PHYS.perm.order.raw.rank = 1;
   await PH.load();
-  check('and the answer at the top says possibly, naming it', /^The answer: possibly, in 1 of 7 comparisons by sound\./.test(txt(D().getElementById('physanswer')))
+  check('and the answer at the top says possibly, naming it', /^The answer: possibly, in 1 of 14 comparisons by sound\./.test(txt(D().getElementById('physanswer')))
         && D().getElementById('physanswer').classList.contains('warn'), txt(D().getElementById('physanswer')));
   check('a sorting by sound that beats every relabelling: the verdict says so, and names it',
         D().getElementById('physsay').classList.contains('warn') && /^Tone-first rats against noise-first rats passes/.test(txt(D().getElementById('physsay')))
@@ -2274,9 +2315,38 @@ window.MONO_FIXTURE = {
   D().querySelector('.physlayer button[data-id="raw"]').click();
   await until(() => tcells(vrow('order'))[3] === '17,100', 40);
 
+  // Each sound on its own.
+  const srow = (id) => D().querySelector('#physsound tbody tr[data-cmp="' + id + '"]');
+  check('each sound on its own: its own change, every pair of sounds, and the four together, from physical.json',
+        Array.from(D().querySelectorAll('#physsound tbody tr')).map((r) => r.dataset.cmp).join() ===
+          SND4.map((x) => 'own:' + x).concat(SND_PIDS.map((x) => 'snd:' + x), ['snd:omni']).join()
+        && tcells(srow('snd:Click-Noise'))[0] === 'Click − Noise' && tcells(srow('snd:omni'))[2] === '2,520',
+        Array.from(D().querySelectorAll('#physsound tbody tr')).map((r) => tcells(r).slice(0, 3).join('/')).join(' | '));
+  check('the pairs and the four ranked among their relabellings; each sound’s own change said not to be a test',
+        new RegExp('^ranks ' + PHYS.sound.perm.raw.omni.rank + ' of 201 labellings of the four within each rat · at chance$').test(tcells(srow('snd:omni'))[5])
+        && /^ranks \d+ of 128 ways of signing the rats · at chance$/.test(tcells(srow('snd:Noise-High'))[5])
+        && /^not a test of the sound/.test(tcells(srow('own:Noise'))[5])
+        && D().getElementById('physsndsay').classList.contains('ok'), tcells(srow('snd:omni'))[5]);
+  check('and the four relabelled drawn: 200 relabellings, the sounds as named marked',
+        Array.from(D().querySelectorAll('#physsoundcard .physhists rect.hbin')).reduce((s0, x) => s0 + Number(x.dataset.n), 0) === 200
+        && Number(D().querySelector('#physsoundcard line[data-mark="omni"]').dataset.v) === 2520);
   const leadRows = () => Array.from(D().querySelectorAll('#physleadtbl tbody tr.lead'));
   check('the leads: the top 10 of the Monolith’s 50 first', leadRows().length === 10 && /50 points of interest/.test(txt(D().getElementById('physleadsay'))),
         leadRows().length);
+  // The survey, sound by sound (the first view).
+  const sv1 = tcells(leadRows()[0]), sv2 = tcells(leadRows()[1]);
+  check('the leads, sound by sound first: each sound’s change at the lead’s own entry, and whether the four differ',
+        D().getElementById('physleadtbl').dataset.view === 'sound' && sv1.slice(3, 7).every((x) => / ± 0\.020$/.test(x))
+        && /^no \(p \.620/.test(sv1[8]) && /^yes \(p \.001, F 9\.10\)$/.test(sv2[8]) && /^−0\.500 ± 0\.020$/.test(sv2[4]),
+        sv1.join(' | ') + ' // ' + sv2.join(' | '));
+  check('a row a sound in its picture, the second lead’s Noise far from the others',
+        leadRows()[1].querySelectorAll('svg.physsndfig circle').length === 4
+        && Number(leadRows()[1].querySelector('svg.physsndfig circle.s-Noise').getAttribute('cx'))
+          < Number(leadRows()[1].querySelector('svg.physsndfig circle.s-Click').getAttribute('cx')) - 40);
+  check('and how many leads the sounds differ for, against chance', /the four sounds’ changes differ at p < \.05 .* for 1 of the 50 tested; chance alone would give about 2\.5/.test(txt(D().getElementById('physleadsay'))),
+        txt(D().getElementById('physleadsay')));
+  D().querySelector('#physleadview button[data-id="group"]').click();
+  await until(() => D().getElementById('physleadtbl').dataset.view === 'group', 40);
   const say6 = txt(D().getElementById('physleadsay'));
   const L6 = PHYS.leads.monolith.raw;
   check('and how many go the same way in both groups, are equivalent, and differ, said over all 50',
@@ -2289,6 +2359,8 @@ window.MONO_FIXTURE = {
         l1.join(' | ') + ' // ' + l2.join(' | '));
   check('and the narrowest margin they reach, said over the leads', /the median is equivalent within ±\d\.\d\d× its own change/.test(say6), say6);
   const fx = (tr, g) => Number(tr.querySelector('svg.physforest circle.g-' + g).getAttribute('cx'));
+  check('by group, the difference drawn under its own number, not among the groups', !leadRows()[0].querySelector('svg.physforest rect.g-diff')
+        && !!leadRows()[0].querySelector('td[data-label="difference"] svg.physdiff rect.g-diff'));
   check('drawn: the second lead’s tone-first rats far left of its noise-first rats, the first lead’s two close',
         fx(leadRows()[1], 'tone') < fx(leadRows()[1], 'noise') - 50 && Math.abs(fx(leadRows()[0], 'tone') - fx(leadRows()[0], 'noise')) < 20,
         [fx(leadRows()[1], 'tone'), fx(leadRows()[1], 'noise'), fx(leadRows()[0], 'tone'), fx(leadRows()[0], 'noise')].join(' '));
@@ -2343,11 +2415,23 @@ window.MONO_FIXTURE = {
         txt(D().getElementById('physcircsay')));
   D().querySelector('#physcmp button[data-id="tone_noise"]').click();
   await until(() => physAsked.indexOf('phys_edges_raw__tone_noise') >= 0 && !D().getElementById('physw') && D().querySelector('#physcircsvg svg'), 60);
+  D().querySelector('#physcmpsnd button[data-id="snd:omni"]').click();
+  await until(() => physAsked.indexOf('phys_snd_raw__omni') >= 0 && D().querySelector('#physcircsvg svg'), 60);
+  await sleep(40);
+  const OM = ARR.phys_snd_raw__omni;
+  const perS = N.B * N.M * N.P;
+  const want8 = PAIRS.map((_x, pp) => OM[perS + (9 * N.M + 0) * N.P + pp]).filter((v) => v < 0.05).length;
+  check('the four sounds as a circuit: each sound’s own window, no window to choose, what passes drawn',
+        !D().getElementById('physw') && D().querySelectorAll('#physcircsvg path.pedge').length === want8
+        && !!D().querySelector('#physcircsvg path.pedge[data-pair="' + SND_PLANT.p + '"]'), D().querySelectorAll('#physcircsvg path.pedge').length + ' vs ' + want8);
+  D().querySelector('#physcmp button[data-id="tone_noise"]').click();
+  await until(() => !!D().querySelector('#physcmp button[data-id="tone_noise"][aria-pressed="true"]'), 40);
+  await sleep(40);
   const TA = ARR.phys_edges_raw__tone_noise;
   const want7 = PAIRS.map((_x, p) => at(TA, 1, N.W - 1, 9, 0, p)).filter((v) => v < 0.05).length;
   check('tone − noise: the contrast’s slot, raw, no window to choose', !D().getElementById('physw') && !D().getElementById('physl')
         && D().querySelectorAll('#physcircsvg path.pedge').length === want7, D().querySelectorAll('#physcircsvg path.pedge').length + ' vs ' + want7);
-  check('every card has its ?', ['physintro', 'physverdictcard', 'physleads', 'physcirc'].every((id) => D().querySelector('#' + id + ' .hrow button, #' + id + ' .hrow .q')));
+  check('every card has its ?', ['physintro', 'physverdictcard', 'physsoundcard', 'physleads', 'physcirc'].every((id) => D().querySelector('#' + id + ' .hrow button, #' + id + ' .hrow .q')));
   // The second ?: the sheet and the two outcomes, in pictures.
   D().querySelector('#physhow .qmark').click();
   await until(() => pop() && pop().dataset.key === 'physical.how' && pop().querySelector('svg.physseatfig'), 80);

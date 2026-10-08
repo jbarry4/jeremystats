@@ -15,6 +15,94 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.07.7 - AI Beta's summary report; X-ray at the real peaks; filters together
+
+### Added
+
+- **What has been tried.** A summary report now sits at the top of AI
+  Beta, with one section per question. Folded, a section shows its answer.
+  Unfolded, it shows the numbers behind it, each cell tinted against the
+  reference row: green is better and red is worse, by that column's own
+  sense of better. The sections are:
+  - Tooth Fairy's lineage
+  - X-ray at the real peaks
+  - filters together
+  - filters one at a time
+  - even channels
+  - the waveform pictures
+  - the waveform measures and the blend
+
+  The report is filed in `GUI_logs/aibeta/reports` with every number in
+  it, so it travels like a run and is never recomputed on read.
+- **X-ray at the real peaks**, a new AI Beta input that is off by default.
+  It takes X-ray's way of looking:
+  - the contacts that move most in the recording's candidate-triggered
+    average
+  - the CSD within them
+  - the depth profile, the CSD wave (the band's mean CSD over ±25 ms) and
+    the sink gap ("delta")
+
+  It is taken at the peak Braces assigned and at each real peak within
+  100 ms of the stamp, up to five, through 10–40 Hz. A peak is real when
+  it stands 3 robust SDs above the recording's level of Braces' own trace
+  and reaches a quarter of the tallest. Across Tooth Fairy's 14,205
+  candidates:
+  - 48% have one real peak
+  - 21% have two
+  - 12% have three or more
+  - 19% have none
+
+  Peaks are found on Braces' 5–100 Hz trace, not the 10–40 Hz one,
+  because that band-pass rings after every spike and turns one event into
+  a train of peaks 25 ms apart.
+
+### Changed
+
+- **Tooth Fairy sees the whole shank's CSD through both 10–40 Hz and
+  5–100 Hz.** It is run `ai20261007-231323-671d`. On the 32 recordings
+  Garbage Dystrophy+ could also be tested on, at the 20% setting:
+  - it flags 10.2% of candidates against Garbage Dystrophy+'s 15.7%
+    (1,026 instead of 1,580)
+  - it cleans 91.5% of the garbage out automatically, against 87.5%
+  - it lets 1.7% of the garbage into DS, against 1.3%
+
+### Measured
+
+Every row below is added to the Tooth Fairy before this release, on its
+data (14,205 candidates, 2,155 garbage). Each score comes from mice the
+model never saw, as flagged at 20% / flagged at 30% of real spikes lost:
+
+| Added | Seed 1 | Seed 2 |
+|---|---|---|
+| nothing (Tooth Fairy before this release) | 12.7% / 4.7% | 12.6% / 4.3% |
+| **whole-shank CSD, 5–100 Hz** | **12.1% / 3.7%** | **11.6% / 2.8%** |
+| whole-shank CSD, 5–50 Hz | 12.1% / 3.9% | |
+| peak-channel trace, 10–40 Hz | 11.6% / 3.9% | 13.0% / 4.6% |
+| thin snapshot, 10–40 Hz | 12.8% / 4.8% | |
+| whole-shank CSD, 1–20, 1–100 Hz or notch only | 13.6–14.3% / 5.0–5.8% | |
+| whole-shank CSD through all six filters | 13.5% / 4.6% | |
+| X-ray at the real peaks | 12.6% / 4.1% | |
+| X-ray instead of the whole-shank CSD | 15.2% / 5.9% | |
+
+A second seed moves a row by about a point. The 5–100 Hz whole-shank CSD
+held up on both seeds, so it was added. The peak-channel trace did not
+hold up, so it was not.
+
+### Checked
+
+- `tools/check_aibeta.py`: 105 ok. New checks: real peaks only, largest
+  first, with ripples not counted; a quiet stretch has none; and X-ray's
+  slots fill for the real peaks and leave the rest empty, each with its
+  time and height.
+- `_dev/aibeta.html`: 43 ok. New checks: the report card draws one
+  section per filed question, folded sections still show their answer,
+  and a section unfolds to its numbers row for row and folds again.
+- `_dev/avery.html`: 44 ok.
+- A real sweep with the new Tooth Fairy on PTEN_DKO m56 s8 finished in
+  27 s.
+
+---
+
 ## 2026.10.07.6 - The Sync panel, cleaned up
 
 ### Fixed
@@ -55,6 +143,291 @@ This file is the only place the version is written. The app reads it.
   instead of printed whole, in red.
 
 Harness: `_dev/syncpanel.html` (22).
+
+## 2026.10.07.5 - Snapshots through other filters; Tooth Fairy adds the 10-40 Hz CSD
+
+### Added
+
+- **Filtered snapshots**, 18 new AI Beta inputs in the second read, all
+  off by default. There are six filters:
+  - the mains notch alone
+  - 1–20 Hz
+  - 1–100 Hz
+  - 5–50 Hz
+  - 10–40 Hz
+  - 5–100 Hz
+
+  Each filter feeds three snapshots taken at the peak Braces' rule aligned
+  the candidate to:
+  - **whole:** the whole shank's CSD, ±50 ms
+  - **thin:** the voltage 8 contacts either side of the peak channel,
+    ±25 ms
+  - **trace:** the peak channel's voltage, ±50 ms
+
+  Every filter runs over the whole stretch that was read, so a 1 Hz edge
+  has room. A read filters only the bands the run's inputs need, so a
+  sweep with Tooth Fairy filters one band, not six.
+
+### Changed
+
+- **Tooth Fairy now also sees the whole shank's CSD at 10–40 Hz.** It is
+  run `ai20261007-165612-2d1a` on the same data as before.
+
+### Measured
+
+Each snapshot was added on its own to Garbage Dystrophy+ (even channels,
+the same 45 recordings). The table shows the share of candidates flagged
+at 20% of real spikes lost. With no snapshot added it is **17.4%**, so
+lower is better:
+
+| Filter | Whole shank, CSD | Thin, voltage | Peak-channel trace |
+|---|---|---|---|
+| notch only | 18.6% | 18.1% | 18.3% |
+| 1–20 Hz | 19.2% | 18.3% | 19.4% |
+| 1–100 Hz | 18.4% | 19.0% | 18.6% |
+| 5–50 Hz | 16.7% | 19.4% | 18.6% |
+| **10–40 Hz** | **15.8%** | 19.0% | 17.7% |
+| 5–100 Hz | 18.0% | 19.4% | 19.1% |
+
+The whole-shank CSD at 10–40 Hz is the only clear gain. Its neighbour at
+5–50 Hz agrees, and it also has the best AUC (0.928 against 0.925) and the
+fewest flags at 30% lost (6.1% against 7.7%). Everything else flags more
+than adding nothing.
+
+The gain held up on Tooth Fairy's larger dataset, at every tolerance. The
+two runs had the same candidates and the same folds:
+
+| Real spikes allowed to be called Garbage | Tooth Fairy: cleaned, flagged | **with 10–40 Hz CSD: cleaned, flagged** |
+|---|---|---|
+| 5% | 56.2%, 33.0% | **59.0%, 30.7%** |
+| 10% | 77.5%, 25.6% | **78.0%, 23.5%** |
+| 20% | 93.3%, 14.7% | **93.5%, 12.7%** |
+| 30% | 97.9%, 5.5% | **98.0%, 4.7%** |
+
+AUC rose from 0.933 to 0.936.
+
+Two sets a person decided that neither model trained on, swept at 20%:
+- **PTEN m3 s7 (rejected whole):** Tooth Fairy called 68 Garbage and 12
+  Flag, and agreed with all 68 of its calls.
+- **PTEN_DKO m56 s8 (70 DS, 19 Garbage by the person):** all 19 garbage
+  were called Garbage, but so were 21 of the 70 spikes (30%). That is
+  more than the 20% the dialog promises on average, so a lower setting
+  suits this kind of recording.
+
+### Checked
+
+- `tools/check_aibeta.py`: 100 ok. New checks:
+  - six filters and three snapshots, listed with the pictures, off by
+    default
+  - each snapshot scaled to 1, with the notch-only offset removed and
+    5–100 Hz the band already held
+  - nothing taken unless asked for, and only the asked-for filters run
+- A real sweep with the new Tooth Fairy, PTEN_DKO m56 s8: done in 22 s.
+  That sweep found a bug the checks had missed: the alignment step could
+  not see which filters were wanted. It is fixed.
+
+---
+
+## 2026.10.07.4 - Tooth Fairy
+
+### Added
+
+- **Tooth Fairy**, a fifth model in the Avery Sweep and the one the dialog
+  now starts on. It takes everything that has worked best so far:
+  - Garbage Dystrophy+'s inputs and its blend of five sets of boosted
+    trees
+  - even channels only
+  - the tolerance for lost spikes, 20% to start with
+
+  It is retrained on everything curated in Jarvis as of today: 46
+  recordings from 26 mice, 14,205 candidates and 2,155 garbage. Garbage
+  Dystrophy+ had 12,406 candidates and 1,424 garbage.
+
+  Run `ai20261007-150147-2601`. AI Beta offers **Make this Tooth Fairy**
+  on any run with Avery+'s bars.
+- **The sweep is faster on a linear array:** PTEN_DKO m56 s8 took 27 s
+  with Tooth Fairy against 66 s with Garbage Dystrophy+, with the first
+  candidate on screen at 2.8 s. A recording whose probe is laid out in
+  columns, such as the H10-D, has no line of even channels. It is read
+  the way its probe is laid out, and the summary says so.
+
+### Changed
+
+- **Garbage a later version deleted is learned from.** Eleven sets go
+  from DS + Garbage to DS alone before Braces, because the garbage is
+  deleted to make the set Braces aligns. The DS-only version was the
+  answer, so 458 decided garbage were never used. A candidate an earlier
+  settled version called Garbage, and that the answer no longer holds at
+  all, now counts as garbage. A candidate the answer still holds keeps
+  the answer's call.
+- **Avery's own calls are not learned from.** Three sets were finished by
+  a person after an Avery sweep. A candidate that was undecided before the
+  sweep, that Avery called DS or Garbage, and that still holds that call
+  may never have been looked at. Learning from it would be the model
+  learning from itself, so those 75 candidates are left out. The following
+  are all kept:
+  - everything a person had decided before the sweep
+  - everything Avery flagged
+  - every call a person changed
+
+  An Avery version is now recognised by its author as well as its tag,
+  because the curation set's own version from an accept carries only the
+  author.
+
+### Measured
+
+These numbers are scored on the same 32 recordings (10,069 candidates,
+1,042 garbage) whose labels are identical in both datasets. Each model
+used its own bars, as a sweep would, and was scored only on mice it never
+saw:
+
+| | AUC | Garbage cleaned at 20% lost | Flagged at 20% | Flagged at 30% | Garbage let into DS |
+|---|---|---|---|---|---|
+| Garbage Dystrophy+, even channels | 0.928 | 87.5% | 15.7% | 7.4% | 1.3% |
+| **Tooth Fairy** | **0.935** | **91.9%** | **12.4%** | **4.9%** | 1.6% |
+
+Over all of its own data, Tooth Fairy's held-out numbers are:
+
+| Real spikes allowed to be called Garbage | Garbage cleaned | Left for a person | Flagged |
+|---|---|---|---|
+| 5% | 56% | 43% | 33% |
+| 20% | 93% | 6% | 15% |
+| 30% | 98% | 1% | 5.5% |
+
+Garbage let into DS is 1.0% at every setting.
+
+A real sweep agreed with the person on one set it never trained on.
+PTEN m3 s7 is an H10-D recording that a person rejected whole (80
+garbage). Tooth Fairy called it 72 Garbage, 8 Flag and no DS.
+
+### Checked
+
+- `tools/check_aibeta.py`: 98 ok. New checks:
+  - Avery's unchanged calls are left out whether the version was tagged
+    or not, and counted
+  - what a person decided, Avery's flags and changed calls are kept
+  - a set is left out, saying so, when Avery's version is not on this
+    machine
+  - a set Avery never swept is untouched
+  - deleted garbage comes back, while kept candidates keep their call
+  - a probe laid out in columns is read whole
+- `_dev/avery.html`: 44 ok, with four models offered and Tooth Fairy
+  first.
+- `_dev/aibeta.html`: 37 ok.
+
+---
+
+## 2026.10.07.3 - Each sound on its own; Precon2/3's fast transitions; clearer help
+
+From Shahriar's review of tab 6 and the Monolith page. **Restart Jarvis**:
+`monolith.py` and `app.py` changed.
+
+### Added
+
+- **Tab 6: each sound on its own.** For every rat and each of the four
+  sounds, the Precon4 − Precon1 change in the cue window while that sound
+  played. That is the window of its seat, which differs from rat to rat:
+  J3's Noise is its C, J4's its B. Every rat heard all four, so the tests
+  are paired within rat, all eight rats:
+  - each sound's own change;
+  - every pair of sounds (Noise's change less Click's, and so on);
+  - all four at once (repeated-measures ANOVA).
+
+  Each test has its relabelling null: 128 signings of the rats for a pair,
+  and 200 random relabellings of the four sounds within each rat. The tests
+  between sounds are raw only: the same rest comes off every cue window of
+  a rat's day, so it cancels from the difference.
+- **The leads, sound by sound** (the first view). For each lead, every
+  sound's change at the lead's frequency, measure and region pair, a
+  picture of the four, and whether they differ. The group view is still
+  there. Its picture is split in two: the groups beside their numbers, and
+  the difference under its own number. Before, the difference's square sat
+  near zero under the groups and read as an average that was "far off".
+- **The answer first.** Tab 6 opens with whether the physical sound had an
+  effect, worked out from the same rule as its cards. It also gives why,
+  and its limit.
+- **A second `?` in tab 6, in pictures:** the identity sheet drawn, and two
+  made-up outcomes, "the sound mattered" and "it did not".
+- **The fast transitions of a session checked since.** A build now records
+  which rat-days had their fast transitions (13–55 Hz, −1/+2 s) refused as
+  not banked. The Drift card offers to add exactly those. The run route
+  re-reads their exclusions from the bank first: the transitions are now
+  measured, and the state windows come back as they were.
+- **Node power, explained.** A ▸ under the legend in tabs 2 and 3: what it
+  is, how it is worked out (Welch, band mean, log10, then as every edge),
+  and how to read the number (+0.30 is twice the power).
+- **Granger, explained.** In the `?` help: A→B against B→A, which region
+  is A, and what an arrow on an edge means.
+- `monolith.html#tab=<id>` opens a tab, and the tour waits.
+
+### Changed
+
+- **Tab 3** keeps its controls and points of interest right of the
+  circuits, in their own columns, as tab 2 does.
+- **How Minus FP works** starts with an example: one rat's numbers, worked
+  both ways in a small table. Then four short steps.
+
+### Precon2 and Precon3: what had not run
+
+- **Not run:** the fast transitions of every Precon2 and Precon3 recording,
+  all 8 rats, 248 presentations. Their bank entries had never been
+  clipping-checked at −1/+2 s, so the run refused them.
+- **Lost to the data, not to the run:** every other refusal ("no region
+  has a signal in this window", channels invalidated). A rerun would not
+  change them.
+- **Done here:**
+  - Spark's transition check and a re-bank of the 16 recordings, through
+    Jarvis, as `tools/run_precon_drift.py` did for Precon1 and Precon4.
+    Circuit now reads all 16 as measured.
+  - The state-window exclusions came back identical in all 992 places, so
+    the Precon2 and Precon3 results already built stand.
+- **Still to do:**
+  1. Restart Jarvis.
+  2. Fetch the pair run (b744e079cf2f, finished on the cluster).
+  3. On the Drift card, press "Add the fast transitions (13–55 Hz, −1/+2 s)
+     of 16 recordings".
+
+### On the real build (512b673a2f9d)
+
+- **Each sound on its own, Raw:**
+
+  | Comparison | p < .05 against chance | Rank among relabellings |
+  |---|---|---|
+  | All four at once | 1,843 against 1,817 | 16 of 201: at chance |
+  | Noise − High tone | 2,547 against 1,817 | 3 of 128: above chance |
+  | Noise − Low tone | 2,400 against 1,817 | 5 of 128: above chance |
+  | The other four pairs | | 10 to 43 of 128: at chance |
+
+  Noise's own change also passes most often (2,705), so Noise stands a
+  little apart from the two tones.
+- **Tab 6's answer is "possibly, in 2 of 14 comparisons by sound"**, both
+  of them Noise against a tone. Chance alone puts about 0.7 of 14 in the
+  top 5%, and every p is uncorrected.
+- **The leads:** for 6 of the Monolith's 50 Raw leads the four sounds
+  differ at p < .05; chance gives 2.5. For Minus FP it is 1, and for Cue 2
+  − Cue 1 it is 1.
+
+### Checked
+
+- `web/_dev/monolith.html`: 439. New checks:
+  - each sound's card, its rows, ranks, verdict and histogram;
+  - the leads by sound, their picture, and the count against chance;
+  - the split group picture;
+  - the four-sounds circuit;
+  - the answer both ways;
+  - the pictures `?` and its figure words;
+  - node power's ▸ in both tabs, staying open across a redraw;
+  - tab 3's columns (measured);
+  - Minus FP's example table.
+- `web/_dev/driftmono.html`: 77. The fast-transition offer and what it
+  posts.
+- `tools/check_monolith.py` (section 6, 24 checks):
+  - a change planted only while Noise plays, in every rat, is found by
+    Noise's own change, by every pair with Noise in it (with its sign), and
+    by the four together, and by nothing else;
+  - the nulls are complete, and a rat's sound is its seat's window;
+  - the fast addition plans one task per day, every fast band, and nothing
+    else.
 
 ## 2026.10.07.2 - AI Beta: the waveform as a picture at the aligned peak
 

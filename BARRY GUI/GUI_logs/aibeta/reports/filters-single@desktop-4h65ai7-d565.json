@@ -1,0 +1,136 @@
+{
+  "_at": {
+    "at": "2026-10-08T03:14:57.810823+00:00",
+    "by": "2026-10-08T03:14:57.810823+00:00",
+    "how": "2026-10-08T03:14:57.810823+00:00",
+    "id": "2026-10-08T03:14:57.810823+00:00",
+    "order": "2026-10-08T03:14:57.810823+00:00",
+    "question": "2026-10-08T03:14:57.810823+00:00",
+    "tables": "2026-10-08T03:14:57.810823+00:00",
+    "title": "2026-10-08T03:14:57.810823+00:00",
+    "verdict": "2026-10-08T03:14:57.810823+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-08T03:14:57.810823+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "at": "2026-10-07T23:14:57-0400",
+  "by": "Claude (AI Beta comparisons)",
+  "how": "Whole-mouse cross-validation: every score comes from a mouse the model never trained on. \"At 20%\" means up to 20% of real spikes may be called Garbage -- the sweep dialog's tolerance; the DS bar stays where 99% of garbage is kept out. Flagged is the share of all candidates left for a person.",
+  "id": "filters-single",
+  "order": 4,
+  "question": "Six filters, each through three snapshots taken at the peak Braces' rule aligned to, added one at a time to Garbage Dystrophy+ on even channels.",
+  "tables": [
+    {
+      "better": "low",
+      "cells": [
+        [
+          0.1857971949056908,
+          0.1811220377236821,
+          0.18265355473158149
+        ],
+        [
+          0.19216508141221988,
+          0.18321779783975495,
+          0.19377720457842978
+        ],
+        [
+          0.18370143478961792,
+          0.1903111397710785,
+          0.1857165887473803
+        ],
+        [
+          0.1665323230694825,
+          0.1936159922618088,
+          0.1860390133806223
+        ],
+        [
+          0.15774625181363855,
+          0.18966629050459455,
+          0.17668869901660486
+        ],
+        [
+          0.18007415766564566,
+          0.19418023536998227,
+          0.19119780751249396
+        ]
+      ],
+      "col_labels": [
+        "Whole shank, CSD, \u00b150 ms",
+        "Thin: voltage, \u00b18 contacts, \u00b125 ms",
+        "Peak-channel trace, \u00b150 ms"
+      ],
+      "corner": "Filter",
+      "fmt": "pct",
+      "kind": "matrix",
+      "note": "Without any snapshot: 17.4%.",
+      "ref_value": 0.17370627115911655,
+      "row_labels": [
+        "notch only",
+        "1-20 Hz",
+        "1-100 Hz",
+        "5-50 Hz",
+        "10-40 Hz",
+        "5-100 Hz"
+      ],
+      "title": "Flagged at 20% spikes lost (lower is better)"
+    },
+    {
+      "better": "high",
+      "cells": [
+        [
+          0.9253930461285986,
+          0.9259085091232025,
+          0.9256365497985468
+        ],
+        [
+          0.9233157193896447,
+          0.9250997930218806,
+          0.9258294727429359
+        ],
+        [
+          0.9243524004550858,
+          0.9253740543770297,
+          0.9256818870102046
+        ],
+        [
+          0.9264365693402279,
+          0.9263050338756575,
+          0.9268940339554613
+        ],
+        [
+          0.9281983900110293,
+          0.9255788072003422,
+          0.9263623288568219
+        ],
+        [
+          0.9252457801223248,
+          0.9262853387258824,
+          0.9268073241402173
+        ]
+      ],
+      "col_labels": [
+        "Whole shank, CSD, \u00b150 ms",
+        "Thin: voltage, \u00b18 contacts, \u00b125 ms",
+        "Peak-channel trace, \u00b150 ms"
+      ],
+      "corner": "Filter",
+      "fmt": "auc",
+      "kind": "matrix",
+      "note": "Without any snapshot: 0.925.",
+      "ref_value": 0.9251852239312951,
+      "row_labels": [
+        "notch only",
+        "1-20 Hz",
+        "1-100 Hz",
+        "5-50 Hz",
+        "10-40 Hz",
+        "5-100 Hz"
+      ],
+      "title": "AUC (higher is better)"
+    }
+  ],
+  "title": "Filtered snapshots, one at a time",
+  "verdict": "Only the whole shank's CSD through 10-40 Hz helps (5-50 Hz beside it agrees). Every other filter and snapshot flags more than adding nothing."
+}

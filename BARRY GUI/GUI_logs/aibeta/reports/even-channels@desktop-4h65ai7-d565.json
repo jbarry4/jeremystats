@@ -1,0 +1,166 @@
+{
+  "_at": {
+    "at": "2026-10-08T03:14:57.801472+00:00",
+    "by": "2026-10-08T03:14:57.801472+00:00",
+    "how": "2026-10-08T03:14:57.801472+00:00",
+    "id": "2026-10-08T03:14:57.801472+00:00",
+    "order": "2026-10-08T03:14:57.801472+00:00",
+    "question": "2026-10-08T03:14:57.801472+00:00",
+    "tables": "2026-10-08T03:14:57.801472+00:00",
+    "title": "2026-10-08T03:14:57.801472+00:00",
+    "verdict": "2026-10-08T03:14:57.801472+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-08T03:14:57.801472+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "at": "2026-10-07T23:14:57-0400",
+  "by": "Claude (AI Beta comparisons)",
+  "how": "Whole-mouse cross-validation: every score comes from a mouse the model never trained on. \"At 20%\" means up to 20% of real spikes may be called Garbage -- the sweep dialog's tolerance; the DS bar stays where 99% of garbage is kept out. Flagged is the share of all candidates left for a person.",
+  "id": "even-channels",
+  "order": 5,
+  "question": "Even channels are every other contact on a linear array: read 100 um apart, with the windows counted in contacts halved to cover the same depth.",
+  "tables": [
+    {
+      "columns": [
+        {
+          "better": "high",
+          "fmt": "auc",
+          "key": "auc",
+          "label": "AUC"
+        },
+        {
+          "better": "high",
+          "fmt": "pct",
+          "key": "clean20",
+          "label": "Garbage cleaned at 20%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag20",
+          "label": "Flagged at 20%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag30",
+          "label": "Flagged at 30%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag5",
+          "label": "Flagged at 5%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "into20",
+          "label": "Garbage into DS"
+        }
+      ],
+      "kind": "rows",
+      "note": "Same 45 recordings, same inputs and bars; only the channels differ.",
+      "row_head": "Model and channels",
+      "rows": [
+        {
+          "label": "Avery, every channel",
+          "values": {
+            "auc": 0.9120411094047665,
+            "clean20": 0.8728932584269663,
+            "clean30": 0.949438202247191,
+            "clean5": 0.4978932584269663,
+            "flag20": 0.21231662098984364,
+            "flag30": 0.11526680638400774,
+            "flag5": 0.38811865226503306,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": false,
+          "label": "Avery, even channels only",
+          "values": {
+            "auc": 0.9161936207154096,
+            "clean20": 0.8721910112359551,
+            "clean30": 0.9550561797752809,
+            "clean5": 0.5182584269662921,
+            "flag20": 0.1857165887473803,
+            "flag30": 0.08778010640012897,
+            "flag5": 0.35910043527325486,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "label": "Avery+, every channel",
+          "values": {
+            "auc": 0.9212847210143666,
+            "clean20": 0.8876404494382022,
+            "clean30": 0.9627808988764045,
+            "clean5": 0.550561797752809,
+            "flag20": 0.19780751249395453,
+            "flag30": 0.10091891020473964,
+            "flag5": 0.36909559890375626,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": false,
+          "label": "Avery+, even channels only",
+          "values": {
+            "auc": 0.9237367671613815,
+            "clean20": 0.8883426966292135,
+            "clean30": 0.9599719101123596,
+            "clean5": 0.5610955056179775,
+            "flag20": 0.20070933419313236,
+            "flag30": 0.10398194422053846,
+            "flag5": 0.3711107528615186,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "label": "Avery Garbage Dystrophy+, every channel",
+          "values": {
+            "auc": 0.9234122767797764,
+            "clean20": 0.8960674157303371,
+            "clean30": 0.9676966292134831,
+            "clean5": 0.5519662921348315,
+            "flag20": 0.18942447202966306,
+            "flag30": 0.09277768821537966,
+            "flag5": 0.3616798323391907,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "chosen": true,
+          "label": "Avery Garbage Dystrophy+, even channels only",
+          "values": {
+            "auc": 0.9251912667613398,
+            "clean20": 0.8918539325842697,
+            "clean30": 0.9655898876404494,
+            "clean5": 0.5702247191011236,
+            "flag20": 0.17427051426729,
+            "flag30": 0.07722069966145413,
+            "flag5": 0.34386587135257135,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        }
+      ]
+    }
+  ],
+  "title": "Every channel, or even channels only",
+  "verdict": "Nothing is lost with only the even channels (CSC 2, 4 ... 64), and the reads take about a third of the time. Tooth Fairy uses even channels."
+}

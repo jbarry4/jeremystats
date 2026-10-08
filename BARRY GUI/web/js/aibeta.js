@@ -236,6 +236,7 @@ BARRY.aibeta = (function () {
                         + 'be read; nothing can be trained here.' })]));
     }
     root.appendChild(introCard());
+    if ((st.reports || []).length) root.appendChild(reportCard());
     root.appendChild(setupCard());
     root.appendChild(el('div', { id: 'aiJob' }));
     root.appendChild(el('div', { id: 'aiResults' }));
@@ -561,11 +562,14 @@ BARRY.aibeta = (function () {
        Avery+ or as Avery Garbage Dystrophy+; any other run with four
        bars, as Avery. */
     const SLOT_NAME = { avery: 'Avery', avery_plus: 'Avery+',
-                        avery_gd: 'Avery Garbage Dystrophy+' };
+                        avery_gd: 'Avery Garbage Dystrophy+',
+                        tooth_fairy: 'Tooth Fairy' };
     const slotOf = (k) => st && st[k] && st[k].ready && st[k].run_id === run.id;
-    const isNow = ['avery', 'avery_plus', 'avery_gd'].filter(slotOf);
+    const isNow = ['avery', 'avery_plus', 'avery_gd', 'tooth_fairy']
+      .filter(slotOf);
     const plusBars = !!(((res.policy || {}).targets || {}).garbage_ds_loss);
-    const offer = (plusBars ? ['avery_gd', 'avery_plus'] : ['avery'])
+    const offer = (plusBars ? ['tooth_fairy', 'avery_gd', 'avery_plus']
+                            : ['avery'])
       .filter((k) => !isNow.includes(k));
     card.appendChild(el('div', { class: 'ai-row ai-result-head' }, [
       el('strong', { text: 'How it did' }),
@@ -844,7 +848,8 @@ BARRY.aibeta = (function () {
       toast(e.message, 'err', 9000);
       return;
     }
-    toast(({ avery_plus: 'Avery+', avery_gd: 'Avery Garbage Dystrophy+' }[slot]
+    toast(({ avery_plus: 'Avery+', avery_gd: 'Avery Garbage Dystrophy+',
+             tooth_fairy: 'Tooth Fairy' }[slot]
            || 'Avery') + ' now sorts sets with this run.', 'ok', 5000);
     st = null;
     load();
@@ -857,6 +862,132 @@ BARRY.aibeta = (function () {
 
   function dl(term, def) {
     return el('div', {}, [el('dt', { text: term }), el('dd', { text: def })]);
+  }
+
+  /* ---------- what has been tried ---------- */
+
+  /* The summary report: one section per question, each with the answer
+     first and the numbers under it. Every number is what the comparison
+     measured on mice the model never saw, filed when it was run -- nothing
+     here is recomputed. A cell is tinted by how it compares with the
+     reference row (or the reference value of a matrix): green better,
+     red worse, by the column's own sense of better. */
+  const openReports = new Set();
+
+  function reportCard() {
+    const reps = st.reports || [];
+    const card = el('div', { class: 'card ai-report' }, [
+      el('div', { class: 'ai-row' }, [
+        el('strong', { text: 'What has been tried' }),
+        el('span', { class: 'hint', text: plural(reps.length, 'question')
+          + ' · every number is from mice the model never saw' }),
+      ]),
+    ]);
+    for (const r of reps) card.appendChild(reportSection(r));
+    return card;
+  }
+
+  function reportSection(r) {
+    const open = openReports.has(r.id);
+    const sec = el('div', { class: 'ai-rep' + (open ? ' open' : '') });
+    sec.appendChild(el('button', {
+      class: 'ai-rep-head', 'data-id': r.id,
+      onclick: () => {
+        if (openReports.has(r.id)) openReports.delete(r.id);
+        else openReports.add(r.id);
+        sec.replaceWith(reportSection(r));
+      },
+    }, [
+      el('span', { class: 'ai-rep-caret', text: open ? '▾' : '▸' }),
+      el('span', { class: 'ai-rep-title', text: r.title || r.id }),
+      el('span', { class: 'ai-rep-when', text: when(r.at) }),
+    ]));
+    if (r.verdict) sec.appendChild(el('p', { class: 'ai-rep-verdict',
+                                            text: r.verdict }));
+    if (!open) return sec;
+    if (r.question) sec.appendChild(el('p', { class: 'hint',
+                                             text: r.question }));
+    if (r.how) sec.appendChild(el('p', { class: 'hint', text: r.how }));
+    for (const t of (r.tables || [])) {
+      if (t.title) sec.appendChild(el('div', { class: 'ai-sub',
+                                              text: t.title }));
+      sec.appendChild(t.kind === 'matrix' ? reportMatrix(t) : reportRows(t));
+      if (t.note) sec.appendChild(el('p', { class: 'hint', text: t.note }));
+    }
+    return sec;
+  }
+
+  function fmtCell(v, fmt) {
+    if (v === null || v === undefined || !isFinite(v)) return '—';
+    if (fmt === 'pct') return (100 * v).toFixed(1) + '%';
+    if (fmt === 'auc') return v.toFixed(3);
+    if (fmt === 'int') return num(v);
+    return String(v);
+  }
+
+  /* How much better or worse than the reference, as a tint. Scaled so two
+     points of flagged share, or 0.005 of AUC, is a full tint. */
+  function tint(v, ref, fmt, better) {
+    if (ref === null || ref === undefined || v === null || v === undefined
+        || !isFinite(v) || !isFinite(ref) || !better) return null;
+    const scale = fmt === 'auc' ? 0.005 : 0.02;
+    let d = (v - ref) / scale;
+    if (better === 'low') d = -d;
+    const a = Math.max(0, Math.min(1, Math.abs(d)));
+    if (a < 0.1) return null;
+    const tok = d > 0 ? '--ok' : '--err';
+    return 'background: color-mix(in srgb, var(' + tok + ') '
+      + Math.round(8 + 24 * a) + '%, transparent)';
+  }
+
+  function reportRows(t) {
+    const cols = t.columns || [];
+    const ref = (t.rows || []).find((x) => x.ref);
+    const best = {};
+    for (const c of cols) {
+      if (!c.better) continue;
+      const vals = (t.rows || []).map((x) => (x.values || {})[c.key])
+        .filter((v) => v !== null && v !== undefined && isFinite(v));
+      // A best only where the rows differ: a column of ties has none.
+      if (vals.length > 1 && Math.min(...vals) !== Math.max(...vals)) {
+        best[c.key] = c.better === 'low' ? Math.min(...vals)
+                                         : Math.max(...vals);
+      }
+    }
+    return el('div', { class: 'br-scroll' }, [el('table', {
+      class: 'br-tbl ai-tbl ai-rep-tbl' }, [
+      el('thead', {}, [el('tr', {}, [el('th', { text: t.row_head || '' })]
+        .concat(cols.map((c) => el('th', { text: c.label }))))]),
+      el('tbody', {}, (t.rows || []).map((x) => el('tr', {
+        class: x.ref ? 'ai-rep-ref' : (x.chosen ? 'ai-rep-chosen' : ''),
+      }, [el('td', { class: 'ai-wrap', text: x.label
+          + (x.ref ? ' (reference)' : '') + (x.chosen ? ' ← chosen' : '') })]
+        .concat(cols.map((c) => {
+          const v = (x.values || {})[c.key];
+          const isBest = c.key in best && v === best[c.key];
+          return el('td', {
+            class: 'ai-num' + (isBest ? ' ai-best' : ''),
+            style: x.ref || !ref ? null
+              : tint(v, (ref.values || {})[c.key], c.fmt, c.better),
+            text: fmtCell(v, c.fmt),
+          });
+        }))))),
+    ])]);
+  }
+
+  function reportMatrix(t) {
+    return el('div', { class: 'br-scroll' }, [el('table', {
+      class: 'br-tbl ai-tbl ai-rep-tbl' }, [
+      el('thead', {}, [el('tr', {}, [el('th', { text: t.corner || '' })]
+        .concat((t.col_labels || []).map((c) => el('th', { text: c }))))]),
+      el('tbody', {}, (t.row_labels || []).map((rl, i) => el('tr', {}, [
+        el('td', { text: rl })].concat(((t.cells || [])[i] || []).map((v) =>
+          el('td', {
+            class: 'ai-num',
+            style: tint(v, t.ref_value, t.fmt, t.better),
+            text: fmtCell(v, t.fmt),
+          })))))),
+    ])]);
   }
 
   /* ---------- every run so far ---------- */
@@ -889,7 +1020,9 @@ BARRY.aibeta = (function () {
             + (st && st.avery_plus && st.avery_plus.run_id === r.id
                ? ' · Avery+' : '')
             + (st && st.avery_gd && st.avery_gd.run_id === r.id
-               ? ' · Garbage Dystrophy+' : '') }),
+               ? ' · Garbage Dystrophy+' : '')
+            + (st && st.tooth_fairy && st.tooth_fairy.run_id === r.id
+               ? ' · Tooth Fairy' : '') }),
           el('td', { class: 'ai-wrap', text: ((r.settings || {}).families
                                               || []).map(famName).join(', ')
             + ((r.settings || {}).channels === 'even'

@@ -1718,6 +1718,7 @@ def physical_check(work):
     e1 = (MO.WINDOWS.index("cue2"), 7, 0, 3)       # the tone-first rats only
     e2 = (MO.WINDOWS.index("cue1"), 5, 0, 2)       # each noise-first rat's Click-first pair
     e3 = (9, 0, 4)                                 # Cue 2 in every rat: Cue 2 − Cue 1
+    e4 = (11, 1, 6)                                # while Noise plays, in every rat
     sd = []
     for d in man["days"]:
         X = np.load(os.path.join(data, "days", "r%d_%s_edges.npy" % (d["rat"], d["day"])))
@@ -1738,6 +1739,11 @@ def physical_check(work):
             if kind == "noise" and pair_ == click_first:
                 X[i, e2[0], e2[1], e2[2], e2[3]] += delta
             X[i, MO.WINDOWS.index("cue2"), e3[0], e3[1], e3[2]] += delta
+            # The window Noise plays in: its seat's, by the identity sheet.
+            seat = [s_ for s_, x in MO.ratidentity.identity(rat).items() if x == "Noise"][0]
+            half, win = MO.SEAT_AT[seat]
+            if pair_ == half.upper():
+                X[i, MO.WINDOWS.index(win), e4[0], e4[1], e4[2]] += delta
         np.save(path, X)
     t0 = time.time()
     got = MO.physical_build(man, summ, data, roles)
@@ -1786,6 +1792,38 @@ def physical_check(work):
     check("tone − noise and the balanced contrast against every way of signing the rats (128)",
           pc["n"] == 128 and pc["observed"] in pc["counts"] and pc["balanced"] in pc["counts"]
           and pc["balanced"] == int((MO.pool(Y[:, W], V[:, W])["p"] < 0.05).sum()), (pc["n"], pc["observed"], pc["balanced"]))
+    sh1 = [len(MO.QUANTITIES), 1, len(sweep.BAND_IDS), len(MO.METHODS), 66]
+    SA = {c: np.fromfile(os.path.join(data, "phys_snd_raw__%s.f32" % c), dtype="<f4").reshape(sh1)
+          for c in MO.SOUND_IDS}
+    sat = lambda c, q, e: float(SA[c][(q, 0) + tuple(e)])            # noqa: E731
+    check("each sound on its own: a change only while Noise plays, in every rat, is Noise's own, the size planted",
+          sat("Noise", P, e4) < 0.01 and abs(sat("Noise", E_, e4) - delta) < 0.25 * delta
+          and all(sat(s_, P, e4) > 0.05 for s_ in ("Click", "High", "Low")),
+          [(s_, round(sat(s_, P, e4), 4), round(sat(s_, E_, e4), 4)) for s_ in MO.SOUNDS])
+    check("every pair with Noise in it finds it (with its sign), no pair without it does",
+          sat("Click-Noise", P, e4) < 0.01 and sat("Click-Noise", E_, e4) < 0 and sat("Noise-High", P, e4) < 0.01
+          and sat("Noise-High", E_, e4) > 0 and sat("Noise-Low", P, e4) < 0.01
+          and all(sat(c, P, e4) > 0.05 for c in ("Click-High", "Click-Low", "High-Low")),
+          [(c, round(sat(c, P, e4), 4)) for c in MO.SOUND_PAIR_IDS])
+    check("and the four together differ there (repeated-measures ANOVA, all eight rats)", sat("omni", P, e4) < 0.01
+          and sat("omni", 2, e4) == 8, (sat("omni", P, e4), sat("omni", 2, e4)))
+    sp = got["sound"]["perm"]["raw"]
+    check("their nulls: every signing of the rats for each pair (128), the four relabelled within rat (200 + itself)",
+          all(sp["pairs"][c]["n"] == 128 and sp["pairs"][c]["observed"] in sp["pairs"][c]["counts"] for c in MO.SOUND_PAIR_IDS)
+          and sp["omni"]["n"] == 201 and sp["omni"]["counts"][0] == sp["omni"]["observed"]
+          and sp["omni"]["observed"] == got["sound"]["counts"]["raw"]["omni"]["p05"], (sp["omni"]["n"], sp["omni"]["observed"]))
+    ls = (got["leads"]["monolith"]["raw"] or [{}])[0].get("sound") or {}
+    check("every lead carries the four sounds at its own frequency, measure and pair, and whether they differ",
+          [x["sound"] for x in ls.get("sounds") or []] == list(MO.SOUNDS) and "omni" in ls and set(ls.get("pairs") or {}) == set(MO.SOUND_PAIR_IDS),
+          list(ls)[:4])
+    # By hand, one sound of one rat: J4's Noise is its B, AB's Cue 2.
+    rs, Ys, Vs = MO.sound_changes(MO.rat_changes(data, man, keep=MO.split_keep("ab", roles))["raw"],
+                                  MO.rat_changes(data, man, keep=MO.split_keep("cd", roles))["raw"])
+    ra_, Ya_, _v = MO.rat_changes(data, man, keep=MO.split_keep("ab", roles))["raw"]
+    e9 = (20, 6, 10)
+    check("a rat's sound is its seat's window: J4's Noise is its B, the AB pair's Cue 2",
+          abs(Ys[rs.index(4), MO.SOUNDS.index("Noise")][e9] - Ya_[ra_.index(4), MO.WINDOWS.index("cue2")][e9]) < 1e-12,
+          (Ys[rs.index(4), MO.SOUNDS.index("Noise")][e9], Ya_[ra_.index(4), MO.WINDOWS.index("cue2")][e9]))
     rc = MO.rat_changes(data, man)
     check("the contrast is raw in Minus FP too, as the Monolith pools it (rest has already cancelled)",
           np.array_equal(rc["minus_fp"][1][:, W], rc["raw"][1][:, W], equal_nan=True)

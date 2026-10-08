@@ -164,7 +164,7 @@ def build_checks(work, port):
     check("the Monolith page reads the copy: the adapter first, before the page's own",
           page.index('<script src="js/static_adapter.js">') < page.index('<script src="js/monolith_figs.js">')
           < page.index('<script src="js/monolith.js">'))
-    phys = [n[:-4] for n in S["physical"]["files"] if n.startswith("phys_edges_")]
+    phys = [n[:-4] for n in S["physical"]["files"] if n.startswith("phys_edges_") or n.startswith("phys_snd_")]
     names = [n[:-4] for n in S["files"]] + [n[:-4] for n in S["splits"]["files"]] \
         + [n[:-4] for n in S["sessions"]["files"]] + phys
     bad = []
@@ -236,7 +236,8 @@ def build_checks(work, port):
         os.path.join(small, "data", n + ".f32z"))]
     check("a tighter budget: every pooled array and section 6's raw circuits still in, "
           "Progress's later files (and section 6's Minus FP) left to Jarvis and listed",
-          om and all(n.startswith("session_") or n.startswith("phys_edges_minus_fp__") for n in om)
+          om and all(n.startswith("session_") or n.startswith("phys_edges_minus_fp__") or n.startswith("phys_snd_minus_fp__")
+                     for n in om)
           and all(os.path.isfile(os.path.join(small, "data", n[:-4] + ".f32z"))
                   for n in list(S["files"]) + list(S["splits"]["files"]))
           and all(os.path.isfile(os.path.join(small, "data", n + ".f32z")) for n in phys if "_raw__" in n)

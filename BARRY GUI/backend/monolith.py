@@ -1908,6 +1908,119 @@ PHYS = (
 PHYS_IDS = tuple(c for c, _l, _k in PHYS)
 
 
+#: Each sound on its own (the lab, 2026-10-07): every rat heard all four,
+#: each in the cue window of its own seat -- A and C open their pairs (Cue
+#: 1), B and D close them (Cue 2) -- so a rat's change while a sound plays
+#: is that seat's window, and the four sounds are compared within rat.
+SOUNDS = ("Click", "Noise", "High", "Low")
+SOUND_PAIRS = tuple((a, b) for i, a in enumerate(SOUNDS) for b in SOUNDS[i + 1:])
+SOUND_PAIR_IDS = tuple("%s-%s" % p for p in SOUND_PAIRS)
+SOUND_IDS = SOUNDS + SOUND_PAIR_IDS + ("omni",)
+SEAT_AT = {"A": ("ab", "cue1"), "B": ("ab", "cue2"), "C": ("cd", "cue1"),
+           "D": ("cd", "cue2")}
+
+
+def sound_changes(ab_l, cd_l):
+    """(rats, Y, V): each rat's Precon4 − Precon1 change while each sound
+    plays, (rats, sounds, bands, measures, pairs), from its AB and its CD:
+    the cue window of the seat that sound has for that rat."""
+    ra, Ya, Va = ab_l
+    rc, Yc, Vc = cd_l
+    rats = [r for r in ra if r in rc and ratidentity.identity(r)]
+    wi = {w: WINDOWS.index(w) for w in ("cue1", "cue2")}
+    shape = Ya.shape[2:]
+    Y = np.full((len(rats), len(SOUNDS)) + shape, np.nan)
+    V = np.full((len(rats), len(SOUNDS)) + shape, np.nan)
+    for i, r in enumerate(rats):
+        for seat, snd in ratidentity.identity(r).items():
+            if snd not in SOUNDS or seat not in SEAT_AT:
+                continue
+            half, w = SEAT_AT[seat]
+            src, var, rr = (Ya, Va, ra) if half == "ab" else (Yc, Vc, rc)
+            j = rr.index(r)
+            Y[i, SOUNDS.index(snd)] = src[j, wi[w]]
+            V[i, SOUNDS.index(snd)] = var[j, wi[w]]
+    return rats, Y, V
+
+
+def rm_anova(X):
+    """One-way repeated-measures ANOVA over axis 1 (the sounds), the rats
+    as subjects, at every entry: {F, p, k, spread}. A rat counts at an entry
+    only with every sound there; `spread` is the largest sound mean less
+    the smallest."""
+    import warnings
+    from scipy.stats import f as _fd
+    S = X.shape[1]
+    ok = np.all(np.isfinite(X), axis=1)
+    k = ok.sum(axis=0)
+    Xm = np.where(ok[:, None], X, np.nan)
+    with warnings.catch_warnings(), np.errstate(invalid="ignore", divide="ignore"):
+        warnings.simplefilter("ignore", RuntimeWarning)
+        grand = np.nanmean(Xm, axis=(0, 1))
+        ms = np.nanmean(Xm, axis=0)
+        mr = np.nanmean(Xm, axis=1)
+        ss_tot = np.nansum((Xm - grand) ** 2, axis=(0, 1))
+        ss_snd = k * np.nansum((ms - grand) ** 2, axis=0)
+        ss_rat = S * np.nansum((mr - grand) ** 2, axis=0)
+        ss_err = ss_tot - ss_snd - ss_rat
+        df2 = (S - 1) * (k - 1)
+        F = (ss_snd / (S - 1)) / (ss_err / np.maximum(df2, 1))
+        spread = np.nanmax(ms, axis=0) - np.nanmin(ms, axis=0)
+    good = (k >= MIN_RATS) & np.isfinite(F) & (ss_err > 1e-30)
+    p = np.full(F.shape, np.nan)
+    if good.any():
+        p[good] = _fd.sf(F[good], S - 1, df2[good])
+    return {"F": np.where(good, F, np.nan), "p": p, "k": k,
+            "spread": np.where(good, spread, np.nan)}
+
+
+def sound_compare(ab_l, cd_l, check=None, n_perm=200, seed=6):
+    """Each sound's own change, every pair of sounds (within rat: the change
+    while one played less the change while the other did) and whether the
+    four differ at all, at every entry; with their nulls: every way of
+    signing the rats' differences (the pairs), and random relabellings of
+    the four sounds within each rat (the four)."""
+    rats, Y, V = sound_changes(ab_l, cd_l)
+    n = len(rats)
+    got = {}
+    for i, s in enumerate(SOUNDS):
+        got[s] = pool(Y[:, i], V[:, i])
+    perm = {"pairs": {}, "omni": None}
+    for (a, b), pid in zip(SOUND_PAIRS, SOUND_PAIR_IDS):
+        ia, ib = SOUNDS.index(a), SOUNDS.index(b)
+        D, DV = Y[:, ia] - Y[:, ib], V[:, ia] + V[:, ib]
+        got[pid] = pool(D, DV)
+        cs = []
+        if 2 <= n <= 10:
+            shp = (-1,) + (1,) * (D.ndim - 1)
+            for bits in range(2 ** (n - 1)):
+                if check and bits % 32 == 0:
+                    check()
+                sg = np.array([1.0] + [(-1.0 if (bits >> j) & 1 else 1.0) for j in range(n - 1)])
+                cs.append(int((np.asarray(pool(D * sg.reshape(shp), DV)["p"]) < 0.05).sum()))
+        obs = int((np.asarray(got[pid]["p"]) < 0.05).sum())
+        perm["pairs"][pid] = {"counts": cs, "observed": obs, "n": len(cs),
+                              "rank": _rank(cs, obs) if cs else None,
+                              "say": "every way of signing the rats' differences"}
+    om = rm_anova(Y)
+    got["omni"] = {"est": om["spread"], "p": om["p"], "k": om["k"].astype(np.float64),
+                   "same": np.zeros(om["p"].shape),
+                   "se": np.full(om["p"].shape, np.nan),
+                   "why": np.where(np.isfinite(om["p"]), 0, 1).astype(np.uint8)}
+    obs = int((om["p"] < 0.05).sum())
+    cs = [obs]
+    rng = np.random.default_rng(seed)
+    if n >= 2:
+        for k_ in range(n_perm):
+            if check and k_ % 20 == 0:
+                check()
+            Yp = np.stack([Y[i, rng.permutation(len(SOUNDS))] for i in range(n)])
+            cs.append(int((rm_anova(Yp)["p"] < 0.05).sum()))
+    perm["omni"] = {"counts": cs, "observed": obs, "n": len(cs), "rank": _rank(cs, obs),
+                    "say": "the sounds as named, and %d random relabellings of the four within each rat" % (len(cs) - 1)}
+    return {"rats": rats, "got": got, "omni": om, "perm": perm, "shape": tuple(Y.shape[2:])}
+
+
 def opener_kind(rat):
     """"noise" or "tone": what opens both of a rat's pairs (seats A and C),
     or None if the sheet does not have the rat or its two openers differ in
@@ -1989,6 +2102,21 @@ def pool_diff(a, b):
             "se": np.where(ok, se, np.nan), "why": why, "df": df}
 
 
+def sound_row(snd, t0):
+    """One lead, at its frequency, measure and region pair, while each sound
+    plays: each sound's change, whether the four differ, and every pair."""
+    if snd is None:
+        return None
+    a3 = (t0["bi"], t0["mi"], t0["pair"])
+    G = snd["got"]
+    return {"sounds": [{"sound": s, "est": _f(G[s]["est"][a3]), "se": _f(G[s]["se"][a3]),
+                        "k": _f(G[s]["k"][a3]), "p": _f(G[s]["p"][a3])} for s in SOUNDS],
+            "omni": {"F": _f(snd["omni"]["F"][a3]), "p": _f(G["omni"]["p"][a3]),
+                     "k": _f(G["omni"]["k"][a3])},
+            "pairs": {pid: {"est": _f(G[pid]["est"][a3]), "p": _f(G[pid]["p"][a3])}
+                      for pid in SOUND_PAIR_IDS}}
+
+
 def _count(got, sl=slice(None)):
     p = np.asarray(got["p"])[sl]
     tested = int(np.isfinite(p).sum())
@@ -2025,6 +2153,9 @@ def physical_build(man, summary, out_dir, roles, progress=None, check=None):
     say("physical", 2, 4, "each rat's change, CD alone")
     cd = rat_changes(out_dir, man, keep=split_keep("cd", roles)) if roles else {}
     files, counts, perm, groups_out = {}, {}, {}, {}
+    sound_out = {"names": list(SOUNDS), "say": dict(ratidentity.SOUND_SAY),
+                 "pairs": list(SOUND_PAIR_IDS), "counts": {}, "perm": {}, "rats": [],
+                 "seat_at": {k: list(v) for k, v in SEAT_AT.items()}}
     shape = None
     leads = {}
     for layer in LAYERS:
@@ -2137,6 +2268,21 @@ def physical_build(man, summary, out_dir, roles, progress=None, check=None):
             "rank": _rank(cs2, counts["tone_noise"][layer]["p05"]) if cs2 else None,
             "balanced": bal, "balanced_rank": _rank(cs2, bal) if cs2 else None,
             "say": "every way of signing the eight rats' Cue 2 − Cue 1"}
+        # Each sound on its own: all eight rats, each sound in its own
+        # seat's cue window, compared within rat.
+        snd = None
+        if layer in ab and layer in cd:
+            if check:
+                check()
+            say("physical", 3, 4, "%s · each sound on its own" % layer)
+            snd = sound_compare(ab[layer], cd[layer], check=check)
+            for sid, g in snd["got"].items():
+                fname = "phys_snd_%s__%s.f32" % (layer, sid)
+                write_layer(os.path.join(out_dir, fname), g, (1,) + snd["shape"])
+                files[fname] = {"shape": [len(QUANTITIES), 1] + list(snd["shape"])}
+            sound_out["counts"][layer] = {sid: _count(g) for sid, g in snd["got"].items()}
+            sound_out["perm"][layer] = snd["perm"]
+            sound_out["rats"] = snd["rats"]
         # The leads, split by group, each with an equivalence test at half
         # its own size.
         from scipy.stats import t as _t
@@ -2163,7 +2309,7 @@ def physical_build(man, summary, out_dir, roles, progress=None, check=None):
                              "diff": {"est": d, "se": dse, "df": ddf, "p": dp},
                              "both_ways": bool(te is not None and ne is not None and t0["est"] != 0
                                                and np.sign(te) == np.sign(ne) == np.sign(t0["est"])),
-                             "equivalence": eq})
+                             "equivalence": eq, "sound": sound_row(snd, t0)})
             if kind_ == "contrast" and layer != "raw":
                 continue
             leads.setdefault(kind_, {})[layer if kind_ == "monolith" else "raw"] = rows
@@ -2173,6 +2319,7 @@ def physical_build(man, summary, out_dir, roles, progress=None, check=None):
            "left_out": sorted(r for r in (whole.get("raw") or ([], None, None))[0] if opener_kind(r) is None),
            "comparisons": [{"id": c, "label": l, "by": k} for c, l, k in PHYS if c in counts],
            "files": files, "counts": counts, "perm": perm, "leads": leads,
+           "sound": sound_out,
            "seat_counts": {"monolith": summary.get("counts") or {},
                            "contrast": ((summary.get("contrast") or {}).get("counts") or {})},
            "control_p05": 0.055,

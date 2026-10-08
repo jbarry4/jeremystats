@@ -1,0 +1,280 @@
+{
+  "_at": {
+    "at": "2026-10-08T03:14:57.819576+00:00",
+    "by": "2026-10-08T03:14:57.819576+00:00",
+    "how": "2026-10-08T03:14:57.819576+00:00",
+    "id": "2026-10-08T03:14:57.819576+00:00",
+    "order": "2026-10-08T03:14:57.819576+00:00",
+    "question": "2026-10-08T03:14:57.819576+00:00",
+    "tables": "2026-10-08T03:14:57.819576+00:00",
+    "title": "2026-10-08T03:14:57.819576+00:00",
+    "verdict": "2026-10-08T03:14:57.819576+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-08T03:14:57.819576+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "at": "2026-10-07T23:14:57-0400",
+  "by": "Claude (AI Beta comparisons)",
+  "how": "Whole-mouse cross-validation: every score comes from a mouse the model never trained on. \"At 20%\" means up to 20% of real spikes may be called Garbage -- the sweep dialog's tolerance; the DS bar stays where 99% of garbage is kept out. Flagged is the share of all candidates left for a person.",
+  "id": "filters-combined",
+  "order": 3,
+  "question": "Each row adds to Tooth Fairy as it is -- which already has the 5-100 Hz inputs and the whole shank's CSD at 10-40 Hz -- on Tooth Fairy's data.",
+  "tables": [
+    {
+      "columns": [
+        {
+          "better": "high",
+          "fmt": "auc",
+          "key": "auc",
+          "label": "AUC"
+        },
+        {
+          "better": "high",
+          "fmt": "pct",
+          "key": "clean20",
+          "label": "Garbage cleaned at 20%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag20",
+          "label": "Flagged at 20%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag30",
+          "label": "Flagged at 30%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag5",
+          "label": "Flagged at 5%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "into20",
+          "label": "Garbage into DS"
+        }
+      ],
+      "kind": "rows",
+      "row_head": "Added to Tooth Fairy",
+      "rows": [
+        {
+          "label": "Tooth Fairy as it is: 5-100 Hz inputs + whole-shank CSD 10-40 Hz",
+          "ref": true,
+          "values": {
+            "auc": 0.936347392438698,
+            "clean20": 0.9354988399071926,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5897911832946636,
+            "flag20": 0.12713833157338966,
+            "flag30": 0.047377683914114746,
+            "flag5": 0.3067933826117564,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "Tooth Fairy as it is: 5-100 Hz inputs + whole-shank CSD 10-40 Hz, second seed",
+          "ref": false,
+          "values": {
+            "auc": 0.9371847772718083,
+            "clean20": 0.9406032482598607,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.6018561484918794,
+            "flag20": 0.12594156986976418,
+            "flag30": 0.0426610348468849,
+            "flag5": 0.3045406546990496,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ whole-shank CSD, notch only",
+          "ref": false,
+          "values": {
+            "auc": 0.9371161151813308,
+            "clean20": 0.9359628770301625,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5962877030162413,
+            "flag20": 0.14318901795142555,
+            "flag30": 0.058218936994016195,
+            "flag5": 0.32192889827525517,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ whole-shank CSD, 1-20 Hz",
+          "ref": false,
+          "values": {
+            "auc": 0.9361697875249109,
+            "clean20": 0.9387470997679814,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5837587006960557,
+            "flag20": 0.13593804998240056,
+            "flag30": 0.05146075325589581,
+            "flag5": 0.3170010559662091,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ whole-shank CSD, 1-100 Hz",
+          "ref": false,
+          "values": {
+            "auc": 0.9369570332431575,
+            "clean20": 0.9354988399071926,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.6037122969837587,
+            "flag20": 0.13551566349876804,
+            "flag30": 0.04956001407954946,
+            "flag5": 0.3130587821189722,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ whole-shank CSD, 5-50 Hz",
+          "ref": false,
+          "values": {
+            "auc": 0.9363717688286433,
+            "clean20": 0.934106728538283,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5888631090487239,
+            "flag20": 0.12052094332981345,
+            "flag30": 0.03900035198873636,
+            "flag5": 0.30010559662090813,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ whole-shank CSD, 5-100 Hz",
+          "ref": false,
+          "values": {
+            "auc": 0.935655649796382,
+            "clean20": 0.9336426914153132,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.580046403712297,
+            "flag20": 0.12108412530799015,
+            "flag30": 0.03688841957057374,
+            "flag5": 0.3019359380499824,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ whole-shank CSD, 5-100 Hz, second seed",
+          "ref": false,
+          "values": {
+            "auc": 0.9359011466145507,
+            "clean20": 0.9336426914153132,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5870069605568445,
+            "flag20": 0.11601548750439986,
+            "flag30": 0.028299894403379093,
+            "flag5": 0.2958113340373108,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ whole-shank CSD through all five other filters",
+          "ref": false,
+          "values": {
+            "auc": 0.9354425007942544,
+            "clean20": 0.928538283062645,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5851508120649652,
+            "flag20": 0.13537486800422385,
+            "flag30": 0.045969728968673004,
+            "flag5": 0.3146779303062302,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ thin voltage snapshot, 10-40 Hz",
+          "ref": false,
+          "values": {
+            "auc": 0.9363205514532449,
+            "clean20": 0.9350348027842227,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5874709976798144,
+            "flag20": 0.12784230904611052,
+            "flag30": 0.04787046814501936,
+            "flag5": 0.3077789510735656,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ peak-channel trace, 10-40 Hz",
+          "ref": false,
+          "values": {
+            "auc": 0.9370560791751307,
+            "clean20": 0.9378190255220418,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.6023201856148492,
+            "flag20": 0.1162970784934882,
+            "flag30": 0.03857796550510384,
+            "flag5": 0.29440337909186903,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ peak-channel trace, 10-40 Hz, second seed",
+          "ref": false,
+          "values": {
+            "auc": 0.9365848793214662,
+            "clean20": 0.9396751740139211,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.5874709976798144,
+            "flag20": 0.1296022527279127,
+            "flag30": 0.04632171770503344,
+            "flag5": 0.3102428722280887,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        },
+        {
+          "label": "+ thin snapshot and trace, 10-40 Hz",
+          "ref": false,
+          "values": {
+            "auc": 0.936939164925725,
+            "clean20": 0.9387470997679814,
+            "clean30": 0.9795823665893272,
+            "clean5": 0.6032482598607889,
+            "flag20": 0.13051742344244985,
+            "flag30": 0.04343541006687786,
+            "flag5": 0.3086237240408307,
+            "into20": 0.010208816705336427,
+            "into30": 0.010208816705336427,
+            "into5": 0.010208816705336427
+          }
+        }
+      ]
+    }
+  ],
+  "title": "Filters together",
+  "verdict": "One combination holds up: the whole shank's CSD through 10-40 Hz AND 5-100 Hz. On two seeds it flagged 12.1% and 11.6% at the 20% setting against Tooth Fairy's 12.7% and 12.6%, and 3.7% and 2.8% at 30% against 4.7% and 4.3% -- about 100 fewer candidates to look at -- with the same 1.0% of garbage let into DS. The peak-channel trace at 10-40 Hz looked as good on one seed and not on the other, so it is noise; everything else flags more. A second seed moves a row by about a point, which is the size of every difference here: read the table with that in mind."
+}

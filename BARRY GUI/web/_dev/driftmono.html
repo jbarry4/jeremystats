@@ -353,6 +353,20 @@ const iso = (dt) => new Date(Date.now() - (dt || 0) * 1000).toISOString();
                                        missing: { pac_trans: true }, additions_say: says }));
     const off2 = btn(/^Add phase–amplitude coupling at the transitions$/);
     check('  without a check of the VACC it is off, and says why', off2 && off2.disabled && /Check the VACC first/.test(step('view').textContent));
+    // Fast transitions refused as not banked when they ran: offered once
+    // their recordings have been clipping-checked (the run route re-reads them).
+    const fastMiss = [[3, 'Precon2'], [3, 'Precon3'], [4, 'Precon2']];
+    await show(Object.assign(base(), { check: checked, run, poll: { finished: true, answered: [0] }, built: builtS,
+                                       missing: { fast: fastMiss }, additions_say: Object.assign({ fast: 'the fast transitions (13–55 Hz, −1/+2 s)' }, says) }));
+    const fastBtn = btn(/^Add the fast transitions \(13–55 Hz, −1\/\+2 s\) of 3 recordings \(Precon2, Precon3\)$/);
+    check('fast transitions never measured: offered by their count and sessions', !!fastBtn && !fastBtn.disabled
+          && /built without the fast transitions \(13–55 Hz, −1\/\+2 s\) of 3 recordings/.test(step('view').textContent), step('view').textContent.slice(0, 300));
+    stub.calls.length = 0;
+    fastBtn.click();
+    await until(() => stub.calls.some((c) => c.path === '/api/arc/monolith/run'), 60);
+    const fastCall = stub.calls.find((c) => c.path === '/api/arc/monolith/run');
+    check('  pressed, it posts exactly those rat-days, confirmed', fastCall && fastCall.body.confirm === true
+          && JSON.stringify(fastCall.body.extra) === JSON.stringify({ fast: fastMiss }), fastCall && JSON.stringify(fastCall.body));
 
     head('histology v2: a build made under v1 is remade here');
     const H2 = { now: 'v2: y only, Left POR-SUB, no Right POR-SUB', say: 'Histology v2 (rescored 2026-10-05).' };

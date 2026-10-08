@@ -48,6 +48,18 @@ async function untilN(fn, tries = 400, gap = 100) {
       .find((b) => /each recording/.test(b.textContent));
     if (e) e.click();
   }
+  /* `?report=<id>,<id>` unfolds those sections of the summary report and
+     scrolls it to the top of the window. */
+  if (Q.get('report')) {
+    for (const id of Q.get('report').split(',')) {
+      const head = Array.from(D.querySelectorAll('#aiBeta .ai-rep-head'))
+        .find((h) => h.dataset.id === id);
+      if (head) head.click();
+      await sleep(100);
+    }
+    const card = D.querySelector('#aiBeta .ai-report');
+    if (card) card.scrollIntoView();
+  }
   document.title = 'posed';
 })();
 </script>

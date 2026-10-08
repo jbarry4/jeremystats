@@ -1,0 +1,178 @@
+{
+  "_at": {
+    "at": "2026-10-08T03:14:57.837142+00:00",
+    "by": "2026-10-08T03:14:57.837142+00:00",
+    "how": "2026-10-08T03:14:57.837142+00:00",
+    "id": "2026-10-08T03:14:57.837142+00:00",
+    "order": "2026-10-08T03:14:57.837142+00:00",
+    "question": "2026-10-08T03:14:57.837142+00:00",
+    "tables": "2026-10-08T03:14:57.837142+00:00",
+    "title": "2026-10-08T03:14:57.837142+00:00",
+    "verdict": "2026-10-08T03:14:57.837142+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-08T03:14:57.837142+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "at": "2026-10-07T23:14:57-0400",
+  "by": "Claude (AI Beta comparisons)",
+  "how": "Whole-mouse cross-validation: every score comes from a mouse the model never trained on. \"At 20%\" means up to 20% of real spikes may be called Garbage -- the sweep dialog's tolerance; the DS bar stays where 99% of garbage is kept out. Flagged is the share of all candidates left for a person.",
+  "id": "waveform-pictures",
+  "order": 6,
+  "question": "The 5-100 Hz voltage, 8 contacts either side of the peak channel, at the peak Braces' rule found, added to Garbage Dystrophy+ on even channels.",
+  "tables": [
+    {
+      "columns": [
+        {
+          "better": "high",
+          "fmt": "auc",
+          "key": "auc",
+          "label": "AUC"
+        },
+        {
+          "better": "high",
+          "fmt": "pct",
+          "key": "clean20",
+          "label": "Garbage cleaned at 20%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag20",
+          "label": "Flagged at 20%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag30",
+          "label": "Flagged at 30%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "flag5",
+          "label": "Flagged at 5%"
+        },
+        {
+          "better": "low",
+          "fmt": "pct",
+          "key": "into20",
+          "label": "Garbage into DS"
+        }
+      ],
+      "kind": "rows",
+      "row_head": "Added",
+      "rows": [
+        {
+          "label": "nothing added",
+          "ref": true,
+          "values": {
+            "auc": 0.9251852239312951,
+            "clean20": 0.8918539325842697,
+            "clean30": 0.9648876404494382,
+            "clean5": 0.5702247191011236,
+            "flag20": 0.17370627115911655,
+            "flag30": 0.07681766886990166,
+            "flag5": 0.3433822344027084,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "label": "voltage picture, \u00b13 ms",
+          "values": {
+            "auc": 0.9255801500514631,
+            "clean20": 0.8918539325842697,
+            "clean30": 0.9719101123595506,
+            "clean5": 0.5660112359550562,
+            "flag20": 0.18845719812993714,
+            "flag30": 0.09076253425761728,
+            "flag5": 0.3586167983233919,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "label": "voltage picture, \u00b15 ms",
+          "values": {
+            "auc": 0.9256235689043767,
+            "clean20": 0.8953651685393258,
+            "clean30": 0.9705056179775281,
+            "clean5": 0.5702247191011236,
+            "flag20": 0.18023536998226664,
+            "flag30": 0.08318555537643076,
+            "flag5": 0.35031436401741095,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "label": "voltage picture, \u00b110 ms",
+          "values": {
+            "auc": 0.9262182601151221,
+            "clean20": 0.8932584269662921,
+            "clean30": 0.9726123595505618,
+            "clean5": 0.5617977528089888,
+            "flag20": 0.1813638561986136,
+            "flag30": 0.08383040464291472,
+            "flag5": 0.35216830565855234,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "label": "voltage picture, \u00b115 ms",
+          "values": {
+            "auc": 0.9258341407492137,
+            "clean20": 0.8890449438202247,
+            "clean30": 0.9691011235955056,
+            "clean5": 0.5632022471910112,
+            "flag20": 0.198371755602128,
+            "flag30": 0.10067709172980815,
+            "flag5": 0.36853135579558277,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "label": "voltage picture, \u00b125 ms",
+          "values": {
+            "auc": 0.9276726957697887,
+            "clean20": 0.8960674157303371,
+            "clean30": 0.973314606741573,
+            "clean5": 0.5751404494382022,
+            "flag20": 0.1860390133806223,
+            "flag30": 0.08866677414154442,
+            "flag5": 0.35563437046590357,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        },
+        {
+          "label": "voltage picture, \u00b150 ms",
+          "values": {
+            "auc": 0.9272179168567973,
+            "clean20": 0.9023876404494382,
+            "clean30": 0.9705056179775281,
+            "clean5": 0.5814606741573034,
+            "flag20": 0.182572948573271,
+            "flag30": 0.08624858939222957,
+            "flag5": 0.35216830565855234,
+            "into20": 0.010533707865168539,
+            "into30": 0.010533707865168539,
+            "into5": 0.010533707865168539
+          }
+        }
+      ]
+    }
+  ],
+  "title": "The waveform as a picture, 3 to 50 ms",
+  "verdict": "No window leaves less to sift through; the wide ones rank a little better but flag more. Superseded by the filtered snapshots."
+}

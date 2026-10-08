@@ -14029,6 +14029,9 @@ def api_aibeta_state():
         "keep_ds": aibetamod.KEEP_DS,
         "folds": aibetamod.N_FOLDS,
         "runs": [aibetamod.brief(r) for r in AIBETA.all()],
+        # What has been tried, as the summary report the panel shows.
+        "reports": [{k: v for k, v in r.items() if not k.startswith("_")}
+                    for r in AIBETA.all_reports()],
         "running": job.snapshot() if job else None,
         "have_sklearn": aibetamod.HAVE_SKLEARN,
         # Which runs Avery, Avery+ and Avery Garbage Dystrophy+ sweep sets
@@ -14036,6 +14039,7 @@ def api_aibeta_state():
         "avery": averymod.status(AIBETA, "avery"),
         "avery_plus": averymod.status(AIBETA, "avery_plus"),
         "avery_gd": averymod.status(AIBETA, "avery_gd"),
+        "tooth_fairy": averymod.status(AIBETA, "tooth_fairy"),
     })
 
 
@@ -20493,7 +20497,9 @@ def api_arc_monolith_data(name):
         if name.startswith("phys_"):
             ok_names = {"phys_groups_%s" % l for l in monolithmod.LAYERS} | {
                 "phys_edges_%s__%s" % (l, c) for l in monolithmod.LAYERS
-                for c in monolithmod.PHYS_IDS}
+                for c in monolithmod.PHYS_IDS} | {
+                "phys_snd_%s__%s" % (l, c) for l in monolithmod.LAYERS
+                for c in monolithmod.SOUND_IDS}
             if name not in ok_names:
                 return jsonify({"ok": False, "error": "No such Monolith file: %s" % name}), 404
             path = os.path.join(d, name + ".f32")

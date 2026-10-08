@@ -177,6 +177,61 @@ ck("an Incisor set is on the recording's own clock",
    AI.dataset(FakeBank([inc]))["entries"][0]["basis"] == retime.TRUE)
 
 # --------------------------------------------------------------------------
+print("\nA set a person finished after an Avery sweep")
+t6 = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+pv0 = ver(0, {"unspecified": 6}, [[t] for t in t6])
+pv1 = ver(1, {"spike": 1, "garbage": 1, "unspecified": 4},
+          [[1.0, "spike"], [2.0, "garbage"], [3.0], [4.0], [5.0], [6.0]])
+pav = ver(2, {"spike": 3, "garbage": 2, "flag": 1},
+          [[1.0, "spike"], [2.0, "garbage"], [3.0, "spike"],
+           [4.0, "garbage"], [5.0, "flag"], [6.0, "spike"]])
+pfin = ver(3, {"spike": 3, "garbage": 3},
+           [[1.0, "spike"], [2.0, "garbage"], [3.0, "spike"],
+            [4.0, "spike"], [5.0, "garbage"], [6.0, "garbage"]])
+for how, mark in (("tagged", {"tag": "avery", "by": "Avery (AI)"}),
+                  ("by Avery alone", {"by": "Avery (AI)"})):
+    e_av = entry("S", "gS", 9, [pv0, pv1, dict(pav, **mark), pfin])
+    got_s = AI.dataset(FakeBank([e_av]))["entries"]
+    kept = [e["t_bank"] for e in got_s[0]["events"]] if got_s else None
+    ck("a call Avery made and nobody changed is left out (%s)" % how,
+       kept == [1.0, 2.0, 4.0, 5.0, 6.0], kept)
+ck("and counted", got_s and got_s[0]["n_avery_left_out"] == 1,
+   got_s and got_s[0].get("n_avery_left_out"))
+ck("kept: what a person decided before, what Avery flagged, what was changed",
+   got_s and [e["y"] for e in got_s[0]["events"]] == [1, 0, 1, 0, 0],
+   got_s and [e["y"] for e in got_s[0]["events"]])
+e_nos = entry("S2", "gS2", 10,
+              [pv0, pv1, dict(pav, by="Avery (AI)", snap=None), pfin])
+ds_nos = AI.dataset(FakeBank([e_nos]))
+ck("without Avery's version on this machine, the set is left out, saying so",
+   not ds_nos["entries"] and any("Avery swept it" in s["why"]
+                                 for s in ds_nos["skipped"]),
+   ds_nos["skipped"])
+ck("a set Avery never swept is untouched",
+   [e["t_bank"] for e in AI.dataset(FakeBank([entry(
+       "S3", "gS3", 11, [pv0, pv1, pfin])]))["entries"][0]["events"]] == t6)
+gv0 = ver(0, {"unspecified": 5}, [[t] for t in t6[:5]])
+gv1 = ver(1, {"spike": 2, "garbage": 3},
+          [[1.0, "spike"], [2.0, "garbage"], [3.0, "garbage"],
+           [4.0, "spike"], [5.0, "garbage"]])
+# The set made ready for Braces: garbage deleted, and one call changed.
+gv2 = ver(2, {"spike": 3}, [[1.0, "spike"], [3.0005, "spike"],
+                            [4.0, "spike"]])
+got_g = AI.dataset(FakeBank([entry("R", "gR", 12, [gv0, gv1, gv2])]))
+eg = got_g["entries"][0] if got_g["entries"] else {}
+ck("the DS-only version is still the answer", eg.get("version_v") == 2,
+   eg.get("version_v"))
+ck("the garbage it deleted comes back as garbage",
+   [(e["t_bank"], e["y"]) for e in eg.get("events", [])]
+   == [(1.0, 1), (2.0, 0), (3.0005, 1), (4.0, 1), (5.0, 0)],
+   [(e["t_bank"], e["y"]) for e in eg.get("events", [])])
+ck("a candidate it kept keeps its call, and the count says what came back",
+   eg.get("n_garbage_restored") == 2 and eg.get("n_garbage") == 2,
+   (eg.get("n_garbage_restored"), eg.get("n_garbage")))
+ck("Tooth Fairy is a model a sweep can use",
+   "tooth_fairy" in AI.SLOTS and AI.SLOT_NAMES["tooth_fairy"] == "Tooth Fairy")
+
+# --------------------------------------------------------------------------
 print("\nThe clock")
 report = {"ok": True, "segments": [
     {"concat_t0_s": 0.0, "duration_s": 25.0, "error_ms": 0.0,
@@ -330,12 +385,11 @@ ck("read as twice the pitch apart",
    ev_["spacing"] == 2 * AI.dspca.spacing_for("h3"), ev_["spacing"])
 ck("all channels is the recording as it was",
    AI.subset_channels(lin, "all") is lin and AI.subset_channels(lin, None) is lin)
-try:
-    AI.subset_channels(dict(lin, probe="h10d"), "even")
-    refused = False
-except AI.AiBetaError:
-    refused = True
-ck("refused on a probe laid out in columns", refused)
+col_ = AI.subset_channels(dict(lin, probe="h10d"), "even")
+ck("a probe laid out in columns is read whole, and says so",
+   len(col_["channels"]) == 64 and not col_.get("subset")
+   and "laid out in columns" in (col_.get("subset_note") or ""),
+   (len(col_["channels"]), col_.get("subset"), col_.get("subset_note")))
 e_k = {"entry_id": "E", "version": 1, "basis": None,
        "events": [{"t_bank": 1.0, "y": 1}]}
 ck("a full read keeps the key it always had",
@@ -440,6 +494,54 @@ PH._filtered_snapshots({"filt": {}}, slow_, 16, 150, 1000.0, spec_,
                        PH._row_windows(0.5), fam_n, 0)
 ck("nothing is taken when the filters were not asked for",
    all(np.isnan(fam_n[k]).all() for k in PH.FILT_IDS))
+ck("a model's inputs name the filters to run, and only those",
+   PH.filters_for(["mua", "fwhole_10_40", "ftrace_10_40"]) == {"10_40"}
+   and PH.filters_for(["mua"]) == set())
+fam_o = {k: np.full((1, len(AI._NAMES[k])), np.nan) for k in PH.FILT_IDS}
+PH._filtered_snapshots(st_f, slow_, 16, 150, 1000.0, spec_,
+                       PH._row_windows(0.5), fam_o, 0, {"10_40"})
+ck("and only theirs are taken",
+   all(np.isfinite(fam_o[k]).all() == k.endswith("_10_40")
+       for k in PH.FILT_IDS))
+
+# --------------------------------------------------------------------------
+print("\nX-ray at the real peaks near the stamp")
+tq = np.arange(301)
+rng_x = np.random.default_rng(8)
+bt_ = (np.exp(-0.5 * ((tq - 150) / 4.0) ** 2) * 10
+       + np.exp(-0.5 * ((tq - 190) / 4.0) ** 2) * 4
+       + 0.3 * np.abs(np.sin(tq / 3.0)) + 0.05 * rng_x.standard_normal(301))
+base_, sd_ = float(np.median(bt_)), float(np.median(np.abs(bt_ - np.median(bt_)))) * 1.4826
+got_pk = PH._peaks(bt_, 50, 251, 12, base_, sd_)
+ck("the real peaks only, largest first: ripples are not peaks",
+   [abs(q - 150) <= 1 for q in got_pk[:1]] == [True]
+   and len(got_pk) == 2 and abs(got_pk[1] - 190) <= 1, got_pk)
+ck("a quiet stretch has none",
+   PH._peaks(0.3 * np.abs(np.sin(tq / 3.0)), 50, 251, 12, base_, sd_) == [])
+store_x, have_x, bts = {}, [], []
+for k in range(12):
+    vb = 0.5 * rng_x.standard_normal((32, 301))
+    prof_x = np.exp(-0.5 * ((np.arange(32) - 14) / 2.0) ** 2)
+    for q, amp in ((150, 100.0), (190, 40.0)):
+        vb += amp * prof_x[:, None] * np.exp(-0.5 * ((tq - q) / 6.0) ** 2)[None, :]
+    store_x[k] = {"filt": {"10_40": vb.astype(np.float32)}}
+    have_x.append(k)
+    bts.append(bt_)
+fam_x = {"xray5": np.full((12, len(AI._NAMES["xray5"])), np.nan)}
+PH._xray(store_x, have_x, np.zeros(12), [150] * 12, bts, 1000.0, 150,
+         {"band": (5.0, 100.0)}, PH._row_windows(0.5), fam_x, 100.0)
+row_x, per_x = fam_x["xray5"][0], len(AI._NAMES["xray5"]) // len(PH.XR_SLOTS)
+ck("the assigned peak, then the two real ones, then nothing",
+   np.isfinite(row_x[:3 * per_x]).all() and np.isnan(row_x[3 * per_x:]).all(),
+   [bool(np.isfinite(row_x[k * per_x])) for k in range(len(PH.XR_SLOTS))])
+ck("each says when it is and how tall",
+   row_x[per_x] == 0.0 and abs(row_x[2 * per_x] - 40.0) < 1.5
+   and abs(row_x[2 * per_x + 1] - 0.4) < 0.05,
+   (row_x[per_x], row_x[2 * per_x], row_x[2 * per_x + 1]))
+ck("X-ray at the top five peaks is an input, off by default, through 10-40 Hz",
+   "xray5" in AI.FAMILY_IDS and len(AI._NAMES["xray5"]) == 168
+   and PH.filters_for(["xray5"]) == {"10_40"}
+   and not next(f for f in AI.FAMILIES if f["id"] == "xray5")["default"])
 
 # --------------------------------------------------------------------------
 print("\nThe blend")

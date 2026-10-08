@@ -246,7 +246,8 @@ def build(args):
     try:
         P6 = J.json("/data/physical")
         write(os.path.join(data, "physical.json"), json.dumps(P6))
-        phys = sorted([n[:-4] for n in (P6.get("files") or {}) if n.startswith("phys_edges_")],
+        phys = sorted([n[:-4] for n in (P6.get("files") or {})
+                       if n.startswith("phys_edges_") or n.startswith("phys_snd_")],
                       key=lambda n: ("minus_fp" in n, n))
     except Exception as exc:                             # noqa: BLE001
         say("  section 6 not copied (compare it in Jarvis first): %s" % exc)

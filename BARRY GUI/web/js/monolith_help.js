@@ -316,6 +316,12 @@ window.MONO_HELP = (function () {
       look: 'Comparisons by sound that rank among the ordinary sortings (“at chance”), while the Monolith by seat passes more than chance. The histograms show the whole spread of the relabellings, with the sound’s sorting marked on it.',
       traps: 'The entries are not independent — neighbouring frequencies, measures and windows move together — so a count can stray well away from 5% by luck, and the relabellings are the fair test, not the 5%. With only 8 ways of signing four rats, a rank among them says little on its own.',
     },
+    'physical.sound': {
+      title: 'Each sound on its own',
+      plain: 'The most direct test of the sounds. For every rat and each of the four sounds, the Precon4 − Precon1 change of the measure in the cue window while that sound played. The identity sheet gives each sound a different seat for different rats (J3’s Noise is its C, so its CD pair’s Cue 1; J4’s Noise is its B, so its AB pair’s Cue 2), so the same sound is gathered from whichever window it was in. Every rat heard all four, so two sounds are compared within each rat: Noise’s change less Click’s, rat by rat, pooled over all eight. And all four at once: a repeated-measures ANOVA asks whether the four changes differ more than the rats’ own scatter.',
+      look: 'Pairs of sounds, and the four together, at chance: the rats’ changes did not depend on which sound was playing. Each sound’s own change (the first four rows) is the Monolith’s kind of result, kept for reference.',
+      traps: 'Uncorrected. Two sounds in the same pair (A and B) come from the same presentations, and that covariance is not taken off, so those tests are a little conservative. The cue windows only: nothing else holds one sound.',
+    },
     'physical.leads': {
       title: 'The leads, in each group of four',
       plain: 'The Monolith’s 50 points of interest (or Cue 2 − Cue 1’s), each with its change pooled over the tone-first rats and over the noise-first rats, as the Monolith pools all eight. Same way in both: both groups changed the way all eight did. Difference: the tone-first change less the noise-first (Welch’s t, uncorrected). Equivalent within ±½: the 90% interval of that difference lies inside ± half the lead’s own change (two one-sided tests at α = .05) — the two groups are the same within that margin.',

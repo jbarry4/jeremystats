@@ -134,6 +134,64 @@ TRACE_STEP_MS = 2
 IMG_VERSION = 3
 
 
+# X-RAY'S WAY OF LOOKING, AT EVERY PEAK NEAR THE STAMP (the user,
+# 2026-10-07: "see the logic that X-ray uses ... the average CSD wave ...
+# get the CSD snippet from the top 5 peaks if there are that many peaks,
+# usually there is just 1 or 2 ... plus anything else that helped make
+# snippets more powerful"). What helped was the 10-40 Hz band, so all of
+# this is on the 10-40 Hz signal:
+#   the depth band   X-ray's rule (`dspca.depth_band`): the contacts that
+#                    MOVE most in this recording's candidate-triggered
+#                    average, against its own edges -- label-free, no layer
+#                    sheet. 16 contacts deep, the same depth on every other.
+#   the CSD          Toothy's, computed within that band (`toothy_csd`).
+#   the peaks        |CSD| averaged over the band, local maxima at least
+#                    Braces' 12 ms apart within Braces' +-100 ms of the
+#                    clock-corrected stamp; the five largest, largest first.
+# At each peak, and first at the peak Braces' rule assigned:
+#   when it is, from the stamp (ms), and how tall against the tallest;
+#   the depth profile over +-5 ms, min-max scaled as X-ray scales it, at 12
+#   depths; the CSD wave -- the band's mean CSD over +-25 ms -- at 13
+#   times, scaled to 1; and X-ray's delta, how far apart its two largest
+#   sinks are (`dspca.two_sinks`), 0 to 1 across the band.
+# A peak that is not there leaves its numbers empty.
+XR_SLOTS = ("al", "p1", "p2", "p3", "p4", "p5")
+XR_PROFILE_ROWS = 12
+XR_WAVE_COLS = 13
+XR_BOX_MS = 5
+XR_WAVE_MS = 25
+XR_SINK_SEP_UM = 150.0       # X-ray's 5 contacts at the H10-D's 30 um
+XR_FILTER = "10_40"
+XR_IDS = ("xray5",)
+# Which peaks are real (`_peaks`): found on Braces' own trace -- the 5-100
+# Hz |CSD| over Braces' band, the trace it aligns on -- not on the 10-40 Hz
+# one, whose band-pass rings after every spike and turns one event into a
+# train of peaks 25 ms apart.
+XR_PEAK_Z = 3.0
+XR_PEAK_REL = 0.25
+# Bumped when the X-ray snippets change, as IMG_VERSION is for the
+# pictures. 2: peaks on Braces' trace, with the rule for which are real.
+XR_VERSION = 2
+
+
+def _xr_names():
+    out = []
+    for s in XR_SLOTS:
+        out += ["xr_%s_dt_ms" % s, "xr_%s_height" % s]
+        out += ["xr_%s_prof%02d" % (s, k) for k in range(XR_PROFILE_ROWS)]
+        out += ["xr_%s_wave%02d" % (s, k) for k in range(XR_WAVE_COLS)]
+        out += ["xr_%s_delta" % s]
+    return out
+
+
+def filters_for(fams):
+    """Which filters the snapshot inputs among `fams` need."""
+    out = {f.split("_", 1)[1] for f in fams if f in FILT_IDS}
+    if any(f in XR_IDS for f in fams):
+        out.add(XR_FILTER)
+    return out
+
+
 def _filter_label(fid):
     band = dict(FILTERS)[fid]
     return "notch only" if band is None else "%g-%g Hz" % band
@@ -197,6 +255,12 @@ FAMILIES = [
      "blurb": "%s at the peak Braces' rule found, through %s." % (
          n, _filter_label(f))}
     for s, n in SNAPS for f, _b in FILTERS
+] + [
+    {"id": "xray5", "name": "X-ray at the top five peaks, 10-40 Hz",
+     "group": "pictures",
+     "blurb": "X-ray's depth band, CSD, depth profile, CSD wave and sink "
+              "gap, at the peak Braces' rule assigned and at each of the "
+              "five largest CSD peaks within 100 ms of the stamp."}
 ]
 
 NAMES = {
@@ -239,6 +303,7 @@ NAMES.update({
     "wimg%d" % w: ["wi%02d_r%+d_t%02d" % (w, r - IMG_ROWS // 2, t)
                    for r in range(IMG_ROWS) for t in range(IMG_COLS)]
     for w in IMG_WINDOWS_MS})
+NAMES["xray5"] = _xr_names()
 for _f, _b in FILTERS:
     NAMES["fwhole_" + _f] = ["fw_%s_d%02d_t%02d" % (_f, r, t)
                              for r in range(IMG_ROWS) for t in range(IMG_COLS)]
@@ -349,14 +414,21 @@ def _picture(sub, a, half):
 
 def read_physio(session, channels, probe, bad, times,
                 report=None, folder=None, job=None, on_span=None,
-                aibeta=None, workers=1, spacing=None, want_filt=False):
+                aibeta=None, workers=1, spacing=None, want_filt=(),
+                want_xray=False):
     """The second read. Returns {"fam": {id: array}, "ok": bool array}.
 
     `spacing` is the distance between neighbouring rows of `channels` when
     that is not the probe's own pitch -- every other contact, say. The
     windows counted in rows are scaled by it (`_row_windows`), so they
     cover the same depth whichever contacts are read.
+
+    `want_filt` is which filters' snapshots to take (`filters_for`), or
+    True for all of them. Only those are filtered, and only their inputs
+    are returned: a sweep with Tooth Fairy needs one filter, not six.
     """
+    want_filt = ({f for f, _b in FILTERS} if want_filt is True
+                 else set(want_filt or ()))
     AI = aibeta
     p = dspca.Params(probe=probe, invert=True, bad=sorted(int(b)
                                                          for b in bad or []))
@@ -462,7 +534,7 @@ def read_physio(session, channels, probe, bad, times,
         filt = {}
         if want_filt:
             for fid, fb in FILTERS:
-                if fid == "5_100":
+                if fid == "5_100" or fid not in want_filt:
                     continue
                 y = clean if fb is None else incisor._filtered(clean, fs, fb)
                 filt[fid] = braces.repair(y, channels, badd)[rows]
@@ -748,7 +820,11 @@ def read_physio(session, channels, probe, bad, times,
             float(bw[ex].max()) / amp if ex.any() else 0.0]
         ok[i] = True
 
-    _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam, RW)
+    aligned, btraces = _align(store, have, first, shift, times, fs, Bk, P,
+                              nr, spec, fam, RW, want_filt) or (None, None)
+    if want_xray and aligned:
+        _xray(store, have, shift, aligned, btraces, fs, Bk, spec, RW, fam,
+              p.spacing)
 
     sp_arr = np.array(speeds, float)
     fin = sp_arr[np.isfinite(sp_arr)]
@@ -757,10 +833,13 @@ def read_physio(session, channels, probe, bad, times,
             fam["motion"][i, 3] = float((fin < sp_arr[j]).mean())
     for k in fam:
         fam[k][~np.isfinite(fam[k])] = np.nan
-    if not want_filt:
-        # Left out rather than left empty: a cached read that holds them
-        # all-NaN would be taken by a later run as having read them.
-        for k in FILT_IDS:
+    # The snapshots not taken are left out rather than left empty: a cached
+    # read holding them all-NaN would be taken by a later run as read.
+    for k in FILT_IDS:
+        if k.split("_", 1)[1] not in want_filt:
+            fam.pop(k, None)
+    if not want_xray:
+        for k in XR_IDS:
             fam.pop(k, None)
     return {"fam": fam, "ok": ok, "missed": int(n_all - ok.sum()),
             "has_video": bool(nvt[0] is not None),
@@ -768,7 +847,7 @@ def read_physio(session, channels, probe, bad, times,
 
 
 def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam,
-           RW=None):
+           RW=None, want_filt=()):
     """Braces' rule over every candidate, then +-15 ms at where it landed.
 
     The measure is Braces': the mains-free 5-100 Hz CSD, |CSD| averaged
@@ -911,7 +990,8 @@ def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam,
         ct = traces[j][a - A + 1:a + A + 1:step]
         ct = ct / (float(ct.max()) + 1e-9)
         sharp = (2 * tr[a] - tr[a - 2] - tr[a + 2]) / abs(amp)
-        _filtered_snapshots(st, blk, r, a, fs, spec, RW, fam, i)
+        _filtered_snapshots(st, blk, r, a, fs, spec, RW, fam, i,
+                            want_filt)
         for w_ms in IMG_WINDOWS_MS:
             half = int(round(w_ms / 1000.0 * fs))
             fam["wimg%d" % w_ms][i] = (
@@ -976,6 +1056,106 @@ def _align(store, have, first, shift, times, fs, Bk, P, nr, spec, fam,
                 corr2(patches[j], typical_patch),
                 corr2(blk[usual_r, a - A:a + A + 1], typical_trace),
                 conc]])
+    return aligned, traces
+
+
+def _bin(v, a, half, n):
+    """v[a-half .. a+half] as `n` means of equal spans, edges clipped."""
+    edges = np.clip(np.round(np.linspace(a - half, a + half + 1, n + 1))
+                    .astype(int), 0, v.size)
+    return np.array([v[e0:max(e1, e0 + 1)].mean() if e0 < v.size else np.nan
+                     for e0, e1 in zip(edges[:-1], edges[1:])])
+
+
+def _peaks(bt, lo, hi, dist, base, sd):
+    """The real peaks of Braces' trace in [lo, hi), largest first.
+
+    A peak counts when it stands XR_PEAK_Z robust SDs above this
+    recording's level of that trace AND reaches XR_PEAK_REL of the tallest
+    one there. Without the rule every ripple of the trace is a peak and
+    every candidate has five; with it most have one or two, which is what
+    a person sees.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        pk, _ = _sig.find_peaks(bt[lo:hi], distance=dist)
+    pk = [int(lo + q) for q in pk]
+    pk = [q for q in pk if (bt[q] - base) / sd >= XR_PEAK_Z]
+    if not pk:
+        return []
+    top = max(bt[q] for q in pk)
+    pk = [q for q in pk if bt[q] >= XR_PEAK_REL * top]
+    pk.sort(key=lambda q: -bt[q])
+    return pk
+
+
+def _xray(store, have, shift, aligned, btraces, fs, Bk, spec, RW, fam,
+          spacing):
+    """X-ray's snippets at the assigned peak and the five largest."""
+    have_f = [(j, i) for j, i in enumerate(have)
+              if XR_FILTER in (store[i].get("filt") or {})]
+    if not have_f:
+        return
+    xp = dspca.Params(spacing=spacing)
+    W = int(round(50 / 1000.0 * fs))
+    S = int(round(ALIGN_WINDOW_MS / 1000.0 * fs))
+    T = int(round(XR_BOX_MS / 1000.0 * fs))
+    V = int(round(XR_WAVE_MS / 1000.0 * fs))
+    dist = max(1, int(round(ALIGN_DIST_MS / 1000.0 * fs)))
+    blocks = {i: store[i]["filt"][XR_FILTER].astype(np.float64)
+              for _j, i in have_f}
+    n_t = next(iter(blocks.values())).shape[1]
+
+    # X-ray's depth band, from the candidate-triggered average at the
+    # aligned peaks: how much each contact moves at the event against the
+    # window's own edges. Searched over contiguous runs of the band's depth.
+    tmpl = np.mean([blocks[i][:, np.clip(np.arange(aligned[j] - W,
+                                                   aligned[j] + W + 1),
+                                         0, n_t - 1)]
+                    for j, i in have_f], axis=0)
+    filt = dspca.toothy_csd(tmpl, spacing, xp)[1]
+    edge = np.abs(np.arange(-W, W + 1)) > 0.7 * W
+    score = np.clip(np.abs(filt[:, W]) - np.abs(filt[:, edge]).mean(axis=1),
+                    0.0, None)
+    span = max(3, min(score.size, RW["depth"]))
+    tot = np.convolve(score, np.ones(span), "valid")
+    lo_r = int(np.argmax(tot))
+    rows = list(range(lo_r, lo_r + span))
+    sep = max(1, int(round(XR_SINK_SEP_UM / float(spacing))))
+    per = len(NAMES["xray5"]) // len(XR_SLOTS)
+    # The level of Braces' trace across this recording, for the peak rule.
+    allb = np.concatenate([np.asarray(btraces[j], float) for j, _i in have_f])
+    base = float(np.median(allb))
+    sd = float(np.median(np.abs(allb - base))) * 1.4826 or 1.0
+
+    for j, i in have_f:
+        b = blocks[i]
+        cs = dspca.toothy_csd(b[rows], spacing, xp)[1]
+        c = Bk + int(shift[j])
+        lo, hi = max(0, c - S), min(n_t, c + S + 1)
+        bt = np.asarray(btraces[j], float)
+        tops = _peaks(bt, lo, hi, dist, base, sd)[:len(XR_SLOTS) - 1]
+        hmax = max([bt[q] for q in tops] + [bt[aligned[j]], 1e-12])
+        mean_wave = cs.mean(axis=0)
+        row = np.full(len(NAMES["xray5"]), np.nan)
+        for k, q in enumerate([aligned[j]] + tops):
+            seg = cs[:, max(0, q - T):min(n_t, q + T + 1)]
+            if seg.shape[1] == 0:
+                continue
+            prof = seg.mean(axis=1)
+            r1, r2 = dspca.two_sinks(prof, sep)
+            gap = abs(r2 - r1)
+            delta = (min(max((gap - 1.0) / max(len(rows) - 2.0, 1.0), 0.0),
+                         1.0) if gap >= 1 else 0.0)
+            lo_p, hi_p = float(prof.min()), float(prof.max())
+            pn = (prof - lo_p) / (hi_p - lo_p) if hi_p > lo_p \
+                else np.zeros_like(prof)
+            pn = np.interp(np.linspace(0, len(pn) - 1, XR_PROFILE_ROWS),
+                           np.arange(len(pn)), pn)
+            wave = _unit(_bin(mean_wave, q, V, XR_WAVE_COLS))
+            row[k * per:(k + 1) * per] = np.concatenate([
+                [(q - c) / fs * 1000.0, bt[q] / hmax], pn, wave, [delta]])
+        fam["xray5"][i] = row
 
 
 def save(path, got):
@@ -983,7 +1163,7 @@ def save(path, got):
     tmp = path + ".part.npz"
     np.savez_compressed(
         tmp, ok=got["ok"], pv=np.array([PHYS_VERSION]),
-        iv=np.array([IMG_VERSION]),
+        iv=np.array([IMG_VERSION]), xv=np.array([XR_VERSION]),
         meta=np.array([str({k: got[k] for k in ("missed", "has_video",
                                                 "n_markers")})]),
         **{"fam_" + k: v for k, v in got["fam"].items()})
@@ -1009,9 +1189,13 @@ def _unit(x):
     return x / m if m > 0 else x
 
 
-def _filtered_snapshots(st, blk, r, a, fs, spec, RW, fam, i):
-    """The three snapshots through every filter, at aligned peak `a`."""
-    if not st.get("filt"):
+def _filtered_snapshots(st, blk, r, a, fs, spec, RW, fam, i, want=None):
+    """The three snapshots through each filter in `want` (every one the
+    store holds, and 5-100 Hz, when None), at aligned peak `a`."""
+    if want is None:
+        want = set(st.get("filt") or ()) | ({"5_100"} if st.get("filt")
+                                            else set())
+    if not want:
         return              # not asked for: see the end of read_physio
     w = blk.shape[1]
     full_half = int(round(50 / 1000.0 * fs))
@@ -1021,6 +1205,8 @@ def _filtered_snapshots(st, blk, r, a, fs, spec, RW, fam, i):
                            max(1, int(round(TRACE_STEP_MS / 1000.0 * fs)))),
                  0, w - 1)
     for fid, _fb in FILTERS:
+        if fid not in want:
+            continue
         if fid == "5_100":
             b = blk
         elif fid in (st.get("filt") or {}):
@@ -1050,6 +1236,9 @@ def has(path, fams):
                 return False
             if any(f in IMG_IDS or f in FILT_IDS for f in fams) and (
                     "iv" not in z.files or int(z["iv"][0]) != IMG_VERSION):
+                return False
+            if any(f in XR_IDS for f in fams) and (
+                    "xv" not in z.files or int(z["xv"][0]) != XR_VERSION):
                 return False
             return all("fam_" + f in z.files for f in fams)
     except Exception:                                    # noqa: BLE001

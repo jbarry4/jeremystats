@@ -226,6 +226,8 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
     which = (run_rec.get("settings") or {}).get("channels") \
         or bundle.get("channels") or "all"
     rec = AI.subset_channels(open_recording(gid), which)
+    # What was actually read: a probe laid out in columns is read whole.
+    which = rec.get("subset") or "all"
     sess = rec["session"]
     report = None
     try:
@@ -326,8 +328,9 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
                                     on_span=tick2, aibeta=AI,
                                     workers=READ_WORKERS,
                                     spacing=rec.get("spacing"),
-                                    want_filt=bool(set(fams)
-                                                   & set(phys.FILT_IDS)))
+                                    want_filt=phys.filters_for(fams),
+                                    want_xray=bool(set(fams)
+                                                   & set(phys.XR_IDS)))
             fam.update(got2["fam"])
             ok = ok & got2["ok"].astype(bool)
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -387,6 +390,7 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
         "session_label": cur.get("session_label"),
         "run_id": st["run_id"], "model": st["model"], "families": fams,
         "slot": slot, "model_name": st["name"],
+        "channels": which, "channels_note": rec.get("subset_note"),
         "ds_loss": ds_loss if st.get("tolerances") else None,
         "policy": {k: pol[k] for k in ("t_ds", "t_review", "t_garbage")},
         "held_out": pol.get("held_out"),
