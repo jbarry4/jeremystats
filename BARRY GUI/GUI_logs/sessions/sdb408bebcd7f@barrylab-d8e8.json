@@ -1,0 +1,82 @@
+{
+  "_at": {
+    "created": "2026-10-07T20:08:51.043658+00:00",
+    "first_seen_by": "2026-10-07T20:08:51.043658+00:00",
+    "gid": "2026-10-07T20:08:51.043658+00:00",
+    "group": "2026-10-07T20:08:51.043658+00:00",
+    "key": "2026-10-07T20:10:07.787452+00:00",
+    "label": "2026-10-07T20:08:51.043658+00:00",
+    "loose_key": "2026-10-07T20:08:51.043658+00:00",
+    "mouse": "2026-10-07T20:08:51.043658+00:00",
+    "project": "2026-10-07T20:08:51.043658+00:00",
+    "project_source": "2026-10-07T20:08:51.043658+00:00",
+    "retired": "2026-10-07T20:10:07.787452+00:00",
+    "schema": "2026-10-07T20:08:51.043658+00:00",
+    "session": "2026-10-07T20:08:51.043658+00:00",
+    "start": "2026-10-07T20:08:51.043658+00:00",
+    "updated": "2026-10-07T20:10:07.787452+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1604\\2026-06-29_13-38-08": [
+        "set",
+        "2026-10-07T20:08:51.043658+00:00"
+      ]
+    },
+    "seen": {
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-07T20:08:51.043658+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-07T20:10:07.787452+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.07.2",
+    "at": "2026-10-07T16:08:51-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "first_seen_by": "opened",
+  "gid": "sdb408bebcd7f",
+  "group": "KCNT1",
+  "key": null,
+  "label": "KCNT1 m1604 2026-06-29",
+  "loose_key": null,
+  "mouse": 1604,
+  "paths": [
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1604\\2026-06-29_13-38-08"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 2,
+  "seen": {
+    "barrylab-d8e8": {
+      "at": "2026-10-07T16:08:50-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m1604\\2026-06-29_13-38-08",
+      "root": null,
+      "scan": null
+    }
+  },
+  "session": null,
+  "start": "2026-06-29T13:38:08",
+  "updated": {
+    "app_version": "2026.10.07.2",
+    "at": "2026-10-07T16:10:07-04:00",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}
