@@ -1,16 +1,16 @@
 {
   "_at": {
     "braces_curve": "2026-09-22T19:14:33.231377+00:00",
-    "curate_at": "2026-10-05T21:46:29.990754+00:00",
-    "curate_span": "2026-10-05T21:45:33.908976+00:00",
+    "curate_at": "2026-10-07T19:23:49.937849+00:00",
+    "curate_span": "2026-10-07T19:23:49.937849+00:00",
     "digest_seen": "2026-09-09T02:30:43.953785+00:00",
     "pipeline_folders": "2026-09-23T13:26:19.592745+00:00",
     "radio": "2026-09-28T16:42:12.462673+00:00",
-    "recent_scripts": "2026-09-09T20:11:56.915206+00:00",
+    "recent_scripts": "2026-10-06T21:01:09.048786+00:00",
     "result_group": "2026-09-28T20:50:31.306822+00:00",
     "spotter_at": "2026-09-29T18:09:12.028303+00:00",
     "spotter_light": "2026-09-25T22:03:51.166243+00:00",
-    "updated": "2026-10-07T19:12:33.442790+00:00"
+    "updated": "2026-10-07T19:23:55.178027+00:00"
   },
   "_keys": {
     "themes": {
@@ -20,7 +20,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-01T17:13:50.163448+00:00"
+        "2026-10-06T21:04:41.842988+00:00"
       ],
       "Home": [
         "set",
@@ -38,7 +38,7 @@
       ],
       "DESKTOP-4H65AI7": [
         "set",
-        "2026-10-03T00:09:11.998556+00:00"
+        "2026-10-06T21:04:20.348602+00:00"
       ],
       "Home": [
         "set",
@@ -51,7 +51,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-07T19:12:33.442790+00:00",
+    "at": "2026-10-07T19:23:55.178027+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -120,6 +120,13 @@
       "review": "all",
       "t": 2190.625307
     },
+    "s500a5aec223e:ds": {
+      "at": 1791401029458,
+      "id": "effe5903744",
+      "n": 76,
+      "review": "left",
+      "t": 35.437986
+    },
     "s503339c95a67:ds": {
       "at": 1790862905681,
       "id": "e0b92f33b78",
@@ -135,9 +142,9 @@
       "t": 18.3
     },
     "s72df5edc7210:ds": {
-      "at": 1790974350703,
+      "at": 1791401028704,
       "id": "e834e2be1b0",
-      "n": 91,
+      "n": 84,
       "review": "all",
       "t": 1899.485238
     },
@@ -212,7 +219,7 @@
       "t": 1815.381454
     }
   },
-  "curate_span": 10,
+  "curate_span": 0.8,
   "digest_seen": "2026-09-08T02:30:43.952468+00:00",
   "fav_scripts": [],
   "pipeline_folders": {
@@ -225,29 +232,29 @@
     "volume": 55
   },
   "recent_scripts": [
+    "Kilosort/Kilosort-4_additional_code/Config files/AD_channel_mapping_figures.py",
+    "Kilosort/Kilosort-4_additional_code/H3_channel_journey_flowchart.py",
+    "Kilosort/Kilosort-4_additional_code/automate_kilosort/kilosort_automation.py",
+    "IED/VoltageRaster_EventsAvg.m",
+    "IED/vacc_ied_detect1.m",
+    "IED/vacc_ied_detect.m",
+    "IED/spreadsheet_to_gui.m",
+    "IED/Python helpers/Solid or Sputter Web.py",
     "IED/03_IED_Detection/vacc_ied_detect.m",
     "IED/07_Grand_Average/CSDRaster_GrandAverage_Spatial_Norm.m",
     "IED/08_Anatomical_Labeling/blank_png_gen.py",
-    "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m",
-    "IED/05_Session_Pipeline/components/Scalogram_Waveform_Stacked_ThirdEvent_RandomControl_Pipeline.m",
-    "IED/06_IPP_Take4/Run_Take4_IPP_v2.m",
-    "IED/05_Session_Pipeline/components/VoltageRaster_Events.m",
-    "IED/05_Session_Pipeline/components/SpikeAmpWidthScatter.m",
-    "IED/05_Session_Pipeline/components/SolidSputterAvgStack.m",
-    "IED/02_CSC_Conversion/CSC2microVoltPatchCode.m",
-    "IED/03_IED_Detection/Analyze_MatFile_Start.m",
-    "IED/02_CSC_Conversion/CSC2LL_uV_mex_disk.m"
+    "IED/05_Session_Pipeline/stages/EventStacks_ampWidth_Avg_Pipeline.m"
   ],
   "result_group": "",
   "spotter_at": "{\"s45965a6b13d3:ied\":{\"review\":\"left\",\"index\":9,\"id\":\"e65f937a512\",\"t\":1842.3047,\"at\":1790705349768},\"sddf3e5010ff2:ied\":{\"review\":\"left\",\"index\":7,\"id\":\"eb9bd781841\",\"t\":17.209561,\"at\":1790372908151}}",
   "spotter_light": "lit",
   "themes": {
     "BarryLab": "horizon-night",
-    "DESKTOP-4H65AI7": "slate",
+    "DESKTOP-4H65AI7": "jirai-yami",
     "Home": "dark",
     "LCOM549913": "light"
   },
-  "updated": "2026-10-07T15:12:33-04:00",
+  "updated": "2026-10-07T15:23:55-04:00",
   "vacc": {
     "BarryLab": true,
     "DESKTOP-4H65AI7": false,
