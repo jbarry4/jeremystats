@@ -159,17 +159,18 @@ BARRY.doppler = (function () {
      has nothing to run. */
   const rows = () => (BARRY.views.toolkit.registryRows &&
                       BARRY.views.toolkit.registryRows()) || [];
-  const usable = (r) => ((r.here || []).length ? true
-    : 'None of this recording’s paths are reachable from this computer, so '
-      + 'its channel list cannot be read and there is nothing to send.');
+  /* The one predicate every picker uses (BARRY.vacc.usableFor). Doppler is
+     'here' in toolkit.js's READS until its channel list is read on the
+     cluster: a recording that is only VACC loaded is listed on request
+     with that reason, rather than offered and then failing. */
+  const usable = (r) => BARRY.vacc.usableFor('doppler')(r);
 
   function choose(r) {
     q.gid = r ? r.gid : null;
     q.row = r || null;
-    /* `here[0]`, not `path`. A registry row carries the paths reachable
-       from THIS machine and the field is called `here`; asking for
-       `path` returns undefined for every recording. */
-    q.path = r ? ((r.here || [])[0] || null) : null;
+    /* Through `reach`, never `path` (a registry row has `here`, not
+       `path`, and asking for `path` returns undefined for every one). */
+    q.path = r ? BARRY.vacc.reachFor(r, 'doppler').path : null;
     // Left-out channels belong to the recording they were chosen on.
     // CSC12 on the next one is a different wire.
     q.exclude = []; q.preset = 'all';

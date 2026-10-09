@@ -119,24 +119,31 @@ BARRY.vacc = (function () {
      `short` is for anywhere with a name competing for the room -- an
      Xplorefinder tab is 230px. `word` is the full one, for a card that has
      a row to itself. */
+  /* One word for both, because to somebody choosing a recording they are
+     one fact: the cluster can read this now, so a VACC tool can run on it
+     and it can be opened off the cluster. The user named it (2026-10-08):
+     "label it as VACC loaded". HOW it is there -- read in place on the
+     lab's share, or a copy in scratch that can be purged -- is the second
+     fact, and it is in the title and the note rather than in two words
+     that look like two different promises. */
   const STATES = {
     native: {
-      word: 'VACC', short: 'VACC',
+      word: 'VACC loaded', short: 'VACC',
       note: 'read in place, on a share VACC mounts',
       why: (remote) =>
-        'The cluster reads this one where it already is'
+        'VACC loaded: the cluster reads this one where it already is'
         + (remote ? ' — ' + remote : '')
-        + '\n\nNothing to upload: it is on a share VACC mounts.',
+        + '\n\nNothing was copied: it is on a share VACC mounts.',
     },
     /* `staged` is the internal name and stays so; what a person reads is
        "uploaded" (constitution §6d). "Staged" said Jarvis had put it there,
        and it had not -- this is a copy found on the cluster, in scratch or
        in a folder a scan was pointed at. */
     staged: {
-      word: 'Uploaded to VACC', short: 'VACC',
+      word: 'VACC loaded', short: 'VACC',
       note: 'a copy uploaded to the cluster',
       why: (remote) =>
-        'A copy of this recording is on the cluster'
+        'VACC loaded: a copy of this recording is on the cluster'
         + (remote ? ' — ' + remote : '') + '.\n\n'
         + 'Scratch is not storage — VACC may clear it without notice, so '
         + 'this is a working copy and never the only one. If it goes, '
@@ -162,7 +169,9 @@ BARRY.vacc = (function () {
     opts = opts || {};
     const got = opts.from || of(sess);
     const w = words(got && got.state);
-    if (!w) return null;
+    // A share this account is refused is not loaded FOR THIS PERSON, so it
+    // gets no mark -- the same rule `canRead` reads, from the same field.
+    if (!w || (got && got.readable === false)) return null;
     return el('span', {
       class: 'flagchip vacc ' + got.state,
       text: opts.compact ? w.short : w.word,
@@ -183,8 +192,85 @@ BARRY.vacc = (function () {
   function canRead(sess) {
     const got = of(sess);
     // `words` is the same table the chip draws from, so a state that can be
-    // read and a state that gets a mark can never come apart.
-    return !!words(got && got.state);
+    // read and a state that gets a mark can never come apart. `readable` is
+    // the probe's verdict on the share for THIS account: false only when it
+    // was asked and refused, so an unanswered question still reads as yes.
+    return !!words(got && got.state) && !(got && got.readable === false);
+  }
+
+  /* ---- reaching a recording, from any module ---------------------------
+     Every tool used to pick its path as `(row.here || [])[0]`, so a
+     recording the cluster reads perfectly well and this computer cannot
+     see was, to every picker, a recording that did not exist -- and
+     Checkup refused one with "none of its paths are reachable" right after
+     Incisor had banked it off the cluster.
+
+     One rule now, lifted from `housekeeping.openIt`: this computer first,
+     because a local file answers in microseconds; the cluster second,
+     rather than an error. What a tool can DO with a recording that is only
+     on the cluster is the tool's own fact (`reads`, declared in toolkit.js
+     beside VACC_TOOLS):
+
+       'link'     it views it through the live link -- windows, the
+                  overview, the band, the .nev. Xplorefinder and the modes.
+       'cluster'  it runs on the cluster. Incisor, Doppler, Circuit.
+       'here'     it reads the files on this computer, so a VACC-only
+                  recording is shown to it and disabled, with the reason.
+
+     Returns { path, where: 'here' | 'vacc' | null, why }. `path` is a
+     drive path or `vacc:<gid>`; null with a sentence when there is none. */
+  function reach(row, reads) {
+    const here = ((row && row.here) || [])[0];
+    if (here) return { path: here, where: 'here', why: '' };
+    const got = of(row);
+    const loaded = !!words(got && got.state);
+    if (loaded && got.readable === false) {
+      return { path: null, where: null,
+        why: 'VACC mounts the share this recording is on, and this account '
+           + 'cannot read it — ask Shahriar to have it added to '
+           + 'jarvis_writes.' };
+    }
+    if (!loaded) {
+      return { path: null, where: null,
+        why: 'None of this recording’s paths are reachable from this '
+           + 'computer, and VACC cannot read it either.' };
+    }
+    if ((reads || 'here') === 'here') {
+      return { path: null, where: null,
+        why: 'VACC loaded, but this tool reads the files on this computer, '
+           + 'and this computer has no copy.' };
+    }
+    if (!(last && last.configured)) {
+      return { path: null, where: null,
+        why: 'VACC loaded, but no VACC account is set up on this computer.' };
+    }
+    const p = pathFor(row);
+    return p ? { path: p, where: 'vacc', why: '' }
+      : { path: null, where: null,
+          why: 'This recording has no permanent id yet, so there is nothing '
+             + 'to ask the cluster for.' };
+  }
+
+  /* `reach` for a tool by its id, reading what it declared in toolkit.js.
+     A page without ToolKit loaded gets 'here' -- the answer that never
+     claims a recording the tool cannot read. */
+  function readsOf(tool) {
+    const tk = BARRY.views && BARRY.views.toolkit;
+    return (tk && typeof tk.readsOf === 'function') ? tk.readsOf(tool) : 'here';
+  }
+
+  function reachFor(row, tool) {
+    return reach(row, readsOf(tool));
+  }
+
+  /* The picker's `usable` for a tool (ui.pickRecording, §6e): true, or the
+     sentence `reach` gave. One predicate, so a picker that lists a
+     recording and the tool that then opens it can never disagree. */
+  function usableFor(tool) {
+    return (row) => {
+      const r = reachFor(row, tool);
+      return r.path ? true : r.why;
+    };
   }
 
   /* The id a cluster read is opened by.
@@ -1240,6 +1326,7 @@ BARRY.vacc = (function () {
   }
 
   return { init, status, showVacc, loadKnows, of, canRead, words, mark,
+           reach, reachFor, usableFor,
            uploadsBox, onUploads, uploadMissing,
            get nUploads() { return uploads.size; },
 

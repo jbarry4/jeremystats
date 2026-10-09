@@ -95,11 +95,22 @@ BARRY.curate = (function () {
     kind = { id: set_.kind, labels: set_.labels || [] };
 
     const known = (data.session || {});
-    const path = (known.here || [])[0];
+    /* This computer first, the cluster second (BARRY.vacc.reach). A set
+       banked off the cluster by Incisor used to open onto "none of its
+       paths are reachable" -- right after the recording had been read
+       there. Off the cluster each window is a round trip, about a second,
+       and the toast says so rather than leaving the wait unexplained. */
+    const got = BARRY.vacc.reachFor(Object.assign({ gid: gid }, known),
+                                    'curate');
+    const path = got.path;
     if (!path) {
-      toast('None of this recording’s paths are reachable from this '
-            + 'machine, so there is nothing to look at.', 'err', 9000);
+      toast(got.why || ('None of this recording’s paths are reachable from '
+            + 'this machine, so there is nothing to look at.'), 'err', 9000);
       return false;
+    }
+    if (got.where === 'vacc') {
+      toast('Opening it off the cluster — each window is a round trip, '
+            + 'about a second.', 'ok', 6000);
     }
 
     setView('xplore');

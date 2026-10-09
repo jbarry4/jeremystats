@@ -1105,8 +1105,7 @@ BARRY.braces = (function () {
      `path` returns nothing at all. */
   function pathOf(c) {
     const row = regRowOf(c) || {};
-    const here = row.here || [];
-    return here.length ? here[0] : null;
+    return BARRY.vacc.reachFor(row, 'braces').path;
   }
 
   /* Editing them from the bulk table.

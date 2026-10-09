@@ -58,7 +58,7 @@ LAYERS = ("raw", "minus_fp")
 WEB_FILES = ("monolith.html", "monolith-guide.html", "monolith_guide.json",
              "js/monolith_figs.js", "js/monolith_help.js", "js/monolith.js",
              "js/monolith_events.js", "js/monolith_progress.js",
-             "js/monolith_physical.js", "js/monolith_tour.js", "js/tour.js")
+             "js/monolith_explain.js", "js/monolith_physical.js", "js/monolith_narrow.js", "js/monolith_tour.js", "js/tour.js")
 # The windows in the lab's words, as the page says them (js/monolith.js).
 WLABEL = {"pre": "Pre-baseline", "cue1": "Cue 1", "cue2": "Cue 2",
           "post": "Post-baseline", "pair": "Cue 1 + Cue 2", "onset": "Onset",
@@ -251,6 +251,13 @@ def build(args):
                       key=lambda n: ("minus_fp" in n, n))
     except Exception as exc:                             # noqa: BLE001
         say("  section 6 not copied (compare it in Jarvis first): %s" % exc)
+    # Section 7, narrowing down: its numbers, and its circuit's arrays.
+    try:
+        N7 = J.json("/data/narrow")
+        write(os.path.join(data, "narrow.json"), json.dumps(N7))
+        phys += sorted(n[:-4] for n in (N7.get("files") or {}))
+    except Exception as exc:                             # noqa: BLE001
+        say("  section 7 not copied (work it out in Jarvis first): %s" % exc)
     # The arrays: every pooled one, then Progress's while they fit.
     budget = int(args.budget_mb * 1e6)
     core = [n[:-4] for n in (S.get("files") or {})] + \
@@ -338,10 +345,10 @@ def build(args):
     # Then Progress's session files, the pooled ones first, while they fit
     # (a megabyte kept back for the write-up's numbers).
     say("  section 6's circuits (raw) …")
-    arrays([n for n in phys if "_raw__" in n], room=budget - 1e6)
+    arrays([n for n in phys if "_raw__" in n or n == "narrow_raw"], room=budget - 1e6)
     say("  Progress's session files, while they fit …")
     arrays(sessions, room=budget - 1e6)
-    arrays([n for n in phys if "_raw__" not in n], room=budget - 1e6)
+    arrays([n for n in phys if "_raw__" not in n and n != "narrow_raw"], room=budget - 1e6)
     # The write-up's numbers.
     leads, con, groups = leads_of(S)
     counts, ccounts = counts_of(S, groups)

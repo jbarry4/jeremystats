@@ -62,7 +62,8 @@ from . import (aibeta as aibetamod,
                probes as probebook, rebuild,
                registry, results, runner, sessreg, shards, spikesort, recipe as recipemod, store, thumbs, toolresults,
                storyboard, sysinfo, toolfeed, toolkit, vacc as vaccmod, vaccio as vacciomod, vaccrun as vaccrunmod,
-               vaccupload as vaccuploadmod, video,
+               vaccupload as vaccuploadmod, vaccfind as vaccfindmod, video,
+               incisorvacc as incisorvaccmod,
                warmcache)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -821,6 +822,28 @@ def _find_nev(folder):
     return out
 
 
+def _identity_of(sess):
+    """Who an opened recording is, whichever way it was opened.
+
+    A `vacc:<gid>` session was opened BY its permanent id, so the record
+    that id names answers (`_vacc_identity`); parsing its path -- a gid
+    with a prefix -- identifies nobody, which is how bad channels on a
+    recording read off the cluster would have been filed on no record at
+    all. Everything else is the folder and its header, as it always was.
+    """
+    if sess.get("source") == "vacc" or vacciomod.is_vacc(sess.get("path")):
+        if not sess.get("gid"):
+            sess = dict(sess, gid=vacciomod.gid_of(sess.get("path")))
+        ident = dict(_vacc_identity(sess))
+        # No path on it. A write through this identity (bad channels) would
+        # otherwise append `vacc:<gid>` to the record's `paths`, and an id
+        # filed as a place reads back as one this machine cannot open.
+        ident.pop("path", None)
+        ident.pop("remote", None)
+        return ident
+    return ids.identify(sess.get("path"), header_time=_header_time(sess))
+
+
 def _header_time(sess):
     try:
         from . import nlx
@@ -927,7 +950,7 @@ def api_session_bad_for_path():
     sess, err = _body_session(body)
     if err:
         return jsonify(err), 400
-    identity = ids.identify(sess["path"], header_time=_header_time(sess))
+    identity = _identity_of(sess)
     if not identity or identity.get("mouse") is None:
         return jsonify({
             "ok": False,
@@ -2307,8 +2330,14 @@ INCISOR_VAULT = toolresults.ToolResults(LOGS_DIR, "incisor", STORE)
 DOPPLER_VAULT = toolresults.ToolResults(LOGS_DIR, "doppler", STORE)
 
 
-def _incisor_remember(sess, spec, key, out):
-    """File a finished scan: the numbers durably, the events as cache."""
+def _incisor_remember(sess, spec, key, out, extra=None):
+    """File a finished scan: the numbers durably, the events as cache.
+
+    `extra` is merged into the vault record: a scan of a recording only the
+    cluster can read carries its `request_hash`, which is how a batch knows
+    the question was already answered before the answer's own key -- which
+    needs the cluster's channel list and segmentation -- can be computed.
+    """
     gid = (sess or {}).get("gid")
     if not gid:
         return False
@@ -2329,6 +2358,8 @@ def _incisor_remember(sess, spec, key, out):
             "n_channels": len((spec or {}).get("channels") or []),
             "computed": STORE.provenance(),
         })
+        if extra:
+            rec.update(extra)
         INCISOR_VAULT.put(rec)
         return True
     except Exception as exc:                             # noqa: BLE001
@@ -2365,6 +2396,77 @@ def _incisor_recall(sess, key):
     # Back into memory, so the next channel change does not read disk again.
     incisormod.cache_put(key, out)
     return out
+
+
+# --------------------------------------------------------------------------
+# Incisor on a recording only the cluster can read (backend/incisorvacc.py)
+# --------------------------------------------------------------------------
+def _incisor_full(gid, key):
+    """The whole scan -- every channel's events -- by recording and key.
+
+    Memory, then this machine's cache, then the cluster: a scan filed on a
+    colleague's machine, or here before the cache was cleared, still has
+    its full answer in the run directory it was computed in, and the vault
+    record says where (`computed_on`). Fetched once and cached. Raises
+    LookupError with the sentence the panel shows when none of the three
+    has it -- never a silent re-run.
+    """
+    hit = incisormod.cache_get(key) or _incisor_recall({"gid": gid}, key)
+    if hit is not None:
+        return hit
+    rec = INCISOR_VAULT.get(gid, key) or {}
+    if not rec:
+        raise LookupError("That scan is not on record. Run it again.")
+    cfg = vaccmod.load_config(LOGS_DIR)
+    out = incisorvaccmod.fetch_full(cfg, rec.get("computed_on"))
+    # The run directory holds the answer as the node wrote it; where it was
+    # computed is the vault's to say, as it was when first filed.
+    out["computed_on"] = rec.get("computed_on")
+    try:
+        with open(INCISOR_VAULT.cached_path(gid, key, ".json"),
+                  "w", encoding="utf-8") as fh:
+            json.dump(out, fh)
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("incisor.cache", exc, None, {"gid": gid})
+    incisormod.cache_put(key, out)
+    return out
+
+
+def _incisor_file_vacc(gid, label, spec_local, out):
+    """File an answer computed for a recording the desk did not open.
+
+    The key comes from the answer (`incisorvacc.key_for`), the spec is the
+    one the node resolved, and the vault record carries the request's hash
+    so the next batch knows this question is answered. Returns the key.
+    """
+    key = incisorvaccmod.key_for(spec_local, out)
+    spec = incisorvaccmod.filed_spec(spec_local, out)
+    incisormod.cache_put(key, out)
+    _incisor_remember(
+        {"gid": gid, "path": spec_local.get("path"),
+         "identity": {"label": label}},
+        spec, key, out,
+        extra={"request_hash": incisorvaccmod.request_hash(gid, spec_local)})
+    return key
+
+
+def _incisor_registry_index():
+    """gid -> registry record, built once per request.
+
+    `REG.all()` once and a dict, never `REG.by_gid` in a loop: that re-stats
+    every shard per call, about 0.7 s each.
+    """
+    return {r.get("gid"): r for r in (REG.all() or []) if r.get("gid")}
+
+
+def _local_path_of(rec):
+    """The first of a record's paths this computer can open, or None.
+    Through `sessreg.is_here`, which caches the answer for thirty seconds:
+    a share that is not there is asked once, not once per path."""
+    for p in ((rec or {}).get("paths") or []):
+        if isinstance(p, str) and sessreg.is_here(p):
+            return p
+    return None
 
 
 def _pn_opener(member):
@@ -3044,8 +3146,7 @@ def _stored_for(sess):
         if sess.get("source") == "demo":
             spec = demomod.get(sess.get("path")) or {}
             return {"bad_channels": list(spec.get("bad") or [])}
-        identity = ids.identify(sess.get("path"),
-                                header_time=_header_time(sess))
+        identity = _identity_of(sess)
         rec, _how = STORE.get_session(identity)
         return rec or {}
     except Exception:                                    # noqa: BLE001
@@ -3084,14 +3185,10 @@ def _incisor_spec(body, sess):
     else:
         bad = {int(b) for b in body["bad_channels"]}
 
-    all_ch = sess.get("channels") or []
-    by_index = {int(c["index"]): c for c in all_ch}
-    chans = body.get("channels")
-    if not chans:
-        chans = [c["index"] for c in all_ch]
-    chans = [int(c) for c in chans if int(c) in by_index]
-    kept = [i for i in chans if int(by_index[i]["number"]) not in bad]
-    dropped = [i for i in chans if int(by_index[i]["number"]) in bad]
+    # The rule itself is `incisor.resolve_channels`, which a compute node
+    # runs too when the recording is only on the cluster.
+    kept, excluded = incisormod.resolve_channels(sess, bad,
+                                                 body.get("channels"))
     if not kept:
         raise ValueError(
             "Every channel in this recording is marked bad, so there is "
@@ -3111,8 +3208,7 @@ def _incisor_spec(body, sess):
         # quietly returning a shorter list than it was asked for. `channels`
         # is in the cache key, so changing the bad set re-scans by itself.
         "bad_channels": sorted(bad),
-        "excluded": [{"index": i, "number": int(by_index[i]["number"]),
-                      "label": by_index[i].get("label")} for i in dropped],
+        "excluded": excluded,
         # The detector does not use this -- only a CSD cares which contacts
         # are neighbours -- but it decides how the traces window lays the
         # recording out, and a scan that does not say which probe it was
@@ -3120,6 +3216,17 @@ def _incisor_spec(body, sess):
         "probe": probe_id,
         "probe_name": probe.get("name") or probe_id,
     }
+    return _incisor_params(spec, body)
+
+
+def _incisor_params(spec, body):
+    """The detection parameters onto a spec, Toothy's defaults where unsaid.
+
+    Its own function because two specs are built: one from a recording open
+    here (`_incisor_spec`) and one for a recording only the cluster can read
+    (`incisorvacc.spec_for`), and the defaults must be the same in both or
+    "the same settings" would mean two things.
+    """
     for key, default in (("height_sd", incisormod.DS_HEIGHT_SD),
                          ("abs_uv", incisormod.DS_ABS_THR_UV),
                          ("dist_ms", incisormod.DS_DIST_MS),
@@ -3150,6 +3257,8 @@ def api_incisor_estimate():
     sess, err = _body_session(body)
     if err:
         return jsonify(err), 400
+    if vacciomod.is_vacc(sess.get("path")):
+        return _incisor_estimate_vacc(body, sess)
     try:
         rep = _incisor_report(sess["path"])
         spec = _incisor_spec(body, sess)
@@ -3195,6 +3304,64 @@ def api_incisor_estimate():
     })
 
 
+def _incisor_estimate_vacc(body, sess):
+    """`/api/incisor/estimate` for a recording opened off the cluster.
+
+    The session came over the link (vaccio.py): its channel list and timing
+    are real, read from the cluster's copy, so the channel editor works as it
+    does for a local recording. What there is not, here, is a segmentation --
+    that is made on the compute node as part of the scan, because measuring
+    it means reading the files through, and the login node is not where
+    whole recordings get read. The panel is told so rather than shown a
+    plausible-looking zero.
+    """
+    gid = vacciomod.gid_of(sess.get("path"))
+    try:
+        spec = _incisor_spec(body, sess)
+        plan = incisormod.plan_for(sess, spec, None)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/estimate-vacc", exc, 400, {"gid": gid})
+    rh = incisorvaccmod.request_hash(gid, spec)
+    answered = incisorvaccmod.answered(INCISOR_VAULT.for_gid(gid), gid, rh)
+    vest = {"can": False, "reason": "", "seconds": None, "queued": None}
+    try:
+        st = vaccmod.status()
+        place = _vacc_place_for_gid(gid)
+        where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
+                 else "vacc:scratch")
+        nch = len(spec.get("channels") or [])
+        vest.update(
+            can=bool(st.get("configured")), state=place.get("state"),
+            remote=place.get("remote"), queued=st.get("queued"),
+            seconds=round(max(1.0, cfcmod.rate_for("ds read", where)
+                              * float(plan.get("span_s") or 0) * nch
+                              + cfcmod.rate_for("ds detect", where) * nch), 1),
+            measured=cfcmod.rate_for("ds read", where)
+            != cfcmod.rate_for("ds read"))
+        if not st.get("configured"):
+            vest["reason"] = "No VACC account is set up on this computer."
+    except Exception as exc:                             # noqa: BLE001
+        vest["reason"] = str(exc)[:300]
+    plan["seconds"] = vest.get("seconds")
+    rec = _incisor_registry_index().get(gid) or {}
+    return jsonify({
+        "ok": True, "plan": plan, "spec": spec, "vacc_only": True,
+        "gid": gid, "cached": bool(answered), "key": answered,
+        "vacc": vest,
+        "continuity": {"pending": True,
+                       "note": "Gaps are measured on the cluster, as part "
+                               "of the scan; this computer has no copy to "
+                               "measure them on."},
+        "known": {k: rec.get(k) for k in
+                  ("hilus_channel", "fissure_channel", "ripple_channel")
+                  if rec.get(k) is not None},
+        "channels": [{"index": int(c["index"]), "number": int(c["number"]),
+                      "label": c.get("label"),
+                      "bad": int(c["number"]) in set(spec["bad_channels"])}
+                     for c in (sess.get("channels") or [])],
+    })
+
+
 def _known_channels(path):
     """Ripple, fissure and hilus as the registry already holds them.
 
@@ -3232,6 +3399,38 @@ def _incisor_public(out):
     return {k: v for k, v in (out or {}).items() if not k.startswith("_")}
 
 
+def _incisor_hit(body, where):
+    """The finished scan a request is about: (hit, None) or (None, error).
+
+    Two ways to name one. By `gid` and `key` -- what a scan made on the
+    cluster is known by, and what a review opens -- which needs no copy of
+    the recording here. Or the old way, by the recording's path and the
+    parameters, which rebuilds the key from this machine's own read of it.
+    """
+    if body.get("gid") and body.get("key"):
+        try:
+            return _incisor_full(str(body["gid"]), str(body["key"])), None
+        except LookupError as exc:
+            return None, (jsonify({"ok": False, "error": str(exc)}), 409)
+        except Exception as exc:                         # noqa: BLE001
+            return None, fail(where, exc, 400, {"gid": body.get("gid")})
+    sess, err = _body_session(body)
+    if err:
+        return None, (jsonify(err), 400)
+    try:
+        rep = _incisor_report(sess["path"])
+        spec = _incisor_spec(body, sess)
+    except Exception as exc:                             # noqa: BLE001
+        return None, fail(where, exc, 400, {"path": body.get("path")})
+    ekey = incisormod.cache_key(spec, rep)
+    hit = incisormod.cache_get(ekey) or _incisor_recall(sess, ekey)
+    if hit is None:
+        return None, (jsonify({"ok": False,
+                               "error": "That scan is not on this machine. "
+                                        "Run it again."}), 409)
+    return hit, None
+
+
 @app.route("/api/incisor/events", methods=["POST"])
 def api_incisor_events():
     """One channel's events from the scan already run.
@@ -3242,20 +3441,9 @@ def api_incisor_events():
     looks like an answer.
     """
     body = request.get_json(force=True) or {}
-    sess, err = _body_session(body)
+    hit, err = _incisor_hit(body, "incisor/events")
     if err:
-        return jsonify(err), 400
-    try:
-        rep = _incisor_report(sess["path"])
-        spec = _incisor_spec(body, sess)
-    except Exception as exc:                             # noqa: BLE001
-        return fail("incisor/events", exc, 400, {"path": body.get("path")})
-    ekey = incisormod.cache_key(spec, rep)
-    hit = incisormod.cache_get(ekey) or _incisor_recall(sess, ekey)
-    if hit is None:
-        return jsonify({"ok": False,
-                        "error": "That scan is not on this machine. "
-                                 "Run it again."}), 409
+        return err
     try:
         index = int(body.get("channel"))
     except (TypeError, ValueError):
@@ -3275,26 +3463,18 @@ def api_incisor_union():
     of the pool, and the events only when somebody extracts them.
     """
     body = request.get_json(force=True) or {}
-    sess, err = _body_session(body)
+    hit, err = _incisor_hit(body, "incisor/union")
     if err:
-        return jsonify(err), 400
-    try:
-        rep = _incisor_report(sess["path"])
-        spec = _incisor_spec(body, sess)
-    except Exception as exc:                             # noqa: BLE001
-        return fail("incisor/union", exc, 400, {"path": body.get("path")})
-    ekey = incisormod.cache_key(spec, rep)
-    hit = incisormod.cache_get(ekey) or _incisor_recall(sess, ekey)
-    if hit is None:
-        return jsonify({"ok": False,
-                        "error": "That scan is not on this machine. "
-                                 "Run it again."}), 409
+        return err
     try:
         evs, summary = incisormod.union(
             hit, body.get("pool") or [],
             tol_ms=float(body.get("tol_ms") or incisormod.UNION_TOL_MS),
             hilus=body.get("hilus"),
-            dist_ms=spec.get("dist_ms"))
+            # The spacing the scan itself was made with, from the scan --
+            # not from whatever the panel's field says now.
+            dist_ms=((hit.get("params") or {}).get("dist_ms")
+                     or body.get("dist_ms")))
     except (TypeError, ValueError) as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     out = dict(summary, ok=True)
@@ -3316,6 +3496,8 @@ def api_incisor_scan():
     sess, err = _body_session(body)
     if err:
         return jsonify(err), 400
+    if vacciomod.is_vacc(sess.get("path")):
+        return _incisor_scan_vacc(body, sess)
     try:
         rep = _incisor_report(sess["path"])
         spec = _incisor_spec(body, sess)
@@ -3387,6 +3569,71 @@ def api_incisor_scan():
                     "plan": plan})
 
 
+def _incisor_scan_vacc(body, sess):
+    """One scan, on the cluster, of a recording opened off the cluster.
+
+    The channels are resolved here -- the session came over the link with
+    its real channel list -- and the segmentation is made on the node. The
+    key is known only when the answer lands (`incisorvacc.key_for`), so
+    "already answered" is asked of the vault by the request's hash, and the
+    public answer carries its `key` so the panel can ask for one channel's
+    events, or a range, by it.
+    """
+    gid = vacciomod.gid_of(sess.get("path"))
+    try:
+        spec = _incisor_spec(body, sess)
+        plan = incisormod.plan_for(sess, spec, None)
+        place = _vacc_place_for_gid(gid)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/scan-vacc", exc, 400, {"gid": gid})
+    rh = incisorvaccmod.request_hash(gid, spec)
+    done = incisorvaccmod.answered(INCISOR_VAULT.for_gid(gid), gid, rh)
+    if done and not body.get("force"):
+        try:
+            hit = _incisor_full(gid, done)
+            return jsonify({"ok": True, "cached": True,
+                            "result": dict(_incisor_public(hit), key=done)})
+        except LookupError:
+            pass                    # on record but gone: run it again
+    cfg = vaccmod.load_config(LOGS_DIR)
+    steps = [("ds read", int(plan["span_s"] * plan["n_channels"])),
+             ("ds detect", plan["n_channels"])]
+    try:
+        vaccmod.push_code(cfg, APP_DIR)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/scan-vacc", exc, 400, {"gid": gid})
+    where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
+             else "vacc:scratch")
+    nch = max(1, plan["n_channels"])
+    seconds = (cfcmod.rate_for("ds read", where) * plan["span_s"] * nch
+               + cfcmod.rate_for("ds detect", where) * nch)
+    # Memory for what a node holds -- one channel at a time -- not for every
+    # channel together (see `incisorvacc.plan_for`).
+    run = vaccrunmod.VaccRun(
+        cfg, "incisor", spec, place["remote"],
+        plan={"seconds": seconds},
+        megasamples=max(0.001, float(plan.get("span_s") or 0)
+                        * float(plan.get("fs") or 30000.0) * 2 / 1e6),
+        tool_steps=list(steps), report=None)
+    label = ((REG.by_gid(gid) or {}).get("label")) or gid
+
+    def work(job):
+        out = run.work(job)
+        key = _incisor_file_vacc(gid, label, spec, out)
+        return dict(_incisor_public(out), key=key)
+
+    job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
+                       max(0.001, plan["megasamples"]), where)
+    STORE.record_activity([{
+        "action": "incisor.scan",
+        "detail": {"channels": len(spec["channels"]), "where": where,
+                   "remote": place.get("remote"), "vacc_only": True},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": plan, "where": where,
+                    "remote": place.get("remote")})
+
+
 @app.route("/api/incisor/batch/plan", methods=["GET", "POST"])
 def api_incisor_batch_plan():
     """Which recordings a batch would do, and why the rest are left out.
@@ -3403,46 +3650,119 @@ def api_incisor_batch_plan():
     there in the file, and the app correctly reported it as the server being
     older than the code, which was the one explanation that was not true.
     """
+    body = request.get_json(silent=True) or {}
     try:
-        staged, _unknown = _vacc_staged()
-        cfg = vaccmod.load_config(LOGS_DIR)
-        todo, blocked, done = [], [], []
-        for rec in (REG.all() or []):
-            gid = rec.get("gid")
-            if not gid:
-                continue
-            label = rec.get("label") or rec.get("key") or gid
-            if gid not in staged:
-                # Named, not dropped. Most of the catalogue is not on the
-                # cluster, and a list that silently omits it reads as
-                # though those recordings do not exist.
-                blocked.append(_vacc_missing(rec, label))
-                continue
-            row = staged[gid] or {}
-            if row.get("conflict"):
-                # `can_upload` false, and not because there is nothing to
-                # send -- there is. Sending a second copy to a cluster that
-                # already has two it cannot tell apart makes the ambiguity
-                # worse, and the thing to fix is which folder is which.
-                blocked.append({"gid": gid, "label": label,
-                                "can_upload": False,
-                                "why": "two folders on the cluster both "
-                                       "claim to be this recording"})
-                continue
-            todo.append({"gid": gid, "label": label, "remote": row.get("path"),
-                         "n_channels": row.get("n_channels"),
-                         "project": rec.get("project"),
-                         "mouse": rec.get("mouse"),
-                         "session": rec.get("session")})
-        todo.sort(key=lambda r: (str(r.get("project") or ""),
-                                 str(r.get("mouse") or ""),
-                                 str(r.get("session") or "")))
+        todo, blocked, cfg = _incisor_vacc_rows(body)
     except Exception as exc:                             # noqa: BLE001
         return fail("incisor/batch-plan", exc, 400)
-    out = {"ok": True, "todo": todo, "done": done, "n": len(todo),
-           "partition": cfg.get("partition")}
+    st = vaccmod.status()
+    out = {"ok": True, "todo": todo, "n": len(todo),
+           "partition": cfg.get("partition"), "queued": st.get("queued"),
+           "cap": INCISOR_NETFILES_CAP}
     out.update(_vacc_blocked_payload(blocked))
     return jsonify(out)
+
+
+#: How many of a batch's tasks run at once when they read the netfiles
+#: share. The VACC's own documentation warns that netfiles slows when many
+#: programs touch many files at once, and the share is everybody's.
+INCISOR_NETFILES_CAP = 8
+
+
+def _incisor_vacc_rows(body=None):
+    """Every recording, as a VACC batch of Incisor sees it.
+
+    Returns (todo, blocked, cfg). A recording is runnable when the cluster
+    can read it now, with this account: on a mapped share it can open
+    (`native`), or as a copy in scratch (`staged`). Whether THIS computer
+    also has it no longer matters -- the node resolves the channel list and
+    the segmentation itself (incisorvacc.py) -- though a row says so, and a
+    recording that is here is prepared here, as it always was.
+
+    With `body` carrying the panel's parameters, each row says whether this
+    exact question is already answered (`answered`: the key), by the
+    request's hash, which the vault records carry.
+    """
+    body = body or {}
+    staged, _unknown = _vacc_staged()
+    cfg = vaccmod.load_config(LOGS_DIR)
+    drives = vaccmod.drive_map()
+    verdicts = {str(k).rstrip("/"): v for k, v in
+                ((vaccmod.status().get("roots") or {}).items())}
+    asked = {(r.get("gid"), r.get("request_hash")): r.get("params_hash")
+             for r in (INCISOR_VAULT.all() or []) if r.get("request_hash")}
+    read_rate = {w: cfcmod.rate_for("ds read", w)
+                 for w in ("vacc:netfiles", "vacc:scratch")}
+    detect_rate = {w: cfcmod.rate_for("ds detect", w)
+                   for w in ("vacc:netfiles", "vacc:scratch")}
+    todo, blocked = [], []
+    for rec in (REG.all() or []):
+        gid = rec.get("gid")
+        if not gid or rec.get("retired"):
+            continue
+        label = rec.get("label") or rec.get("key") or gid
+        got = vaccmod.resolve_gid(gid, rec.get("paths") or [], cfg,
+                                  drives=drives, staged=staged)
+        state = got.get("state")
+        if got.get("conflict"):
+            # `can_upload` false, and not because there is nothing to send
+            # -- there is. A second copy on a cluster that already has two
+            # it cannot tell apart makes the ambiguity worse.
+            blocked.append({"gid": gid, "label": label, "can_upload": False,
+                            "why": "two folders on the cluster both claim "
+                                   "to be this recording"})
+            continue
+        if state == vaccmod.NATIVE:
+            rule = vaccmod.native_rule_of(cfg, got.get("remote")) or {}
+            if verdicts.get(str(rule.get("vacc") or "").rstrip("/")) \
+                    == "denied":
+                blocked.append({"gid": gid, "label": label,
+                                "can_upload": False,
+                                "why": "on %s, which this account (%s) "
+                                       "cannot read -- ask Shahriar to have "
+                                       "it added to jarvis_writes"
+                                       % (rule.get("vacc"),
+                                          cfg.get("netid") or "?")})
+                continue
+        elif state != vaccmod.STAGED:
+            # Named, not dropped. A list that silently omits a recording
+            # reads as though it does not exist.
+            blocked.append(_vacc_missing(rec, label))
+            continue
+        where = "vacc:netfiles" if state == vaccmod.NATIVE else "vacc:scratch"
+        probe_id = _probe_for(rec)
+        spec = incisorvaccmod.spec_for(
+            gid, body, rec, probe_id,
+            (probebook.get(probe_id) or {}).get("name"), _incisor_params)
+        # The cluster's own listing of the folder, when it has one, says how
+        # many channel files and how long better than the registry can.
+        listed = staged.get(gid) or {}
+        if listed.get("conflict") or listed.get("path") != got.get("remote"):
+            listed = None
+        plan = incisorvaccmod.plan_for(rec, spec, read_rate[where],
+                                       detect_rate[where], found=listed)
+        todo.append({
+            "gid": gid, "label": label, "remote": got.get("remote"),
+            "state": state, "where": where,
+            "here": _local_path_of(rec),
+            "project": rec.get("project"), "mouse": rec.get("mouse"),
+            "session": rec.get("session"), "start": rec.get("start"),
+            "n_channels": plan.get("n_all") or rec.get("n_channels"),
+            "duration_s": plan.get("span_s") or rec.get("duration_s"),
+            "bad_channels": spec["bad_channels"],
+            "plan": plan,
+            "answered": asked.get((gid, incisorvaccmod.request_hash(gid,
+                                                                    spec))),
+            # What banking reads off the row -- see `bankSet` in incisor.js.
+            "row": {k: rec.get(k) for k in
+                    ("project", "mouse", "session", "key", "loose_key",
+                     "label", "duration_s", "cohort")},
+        })
+    todo.sort(key=lambda r: (str(r.get("project") or ""),
+                             str(r.get("mouse") or ""),
+                             str(r.get("session") or ""),
+                             str(r.get("start") or "")))
+    return todo, blocked, cfg
 
 
 @app.route("/api/incisor/reviews")
@@ -3460,6 +3780,9 @@ def api_incisor_reviews():
     """
     try:
         rows = []
+        # One index, not a walk of the registry per scan: the vault grows
+        # with every batch, and this list is drawn every time it opens.
+        index = _incisor_registry_index()
         for rec in (INCISOR_VAULT.all() or []):
             gid = rec.get("gid")
             if not gid:
@@ -3480,9 +3803,8 @@ def api_incisor_reviews():
             # to render a scan. The answer is already in the vault, so that
             # re-entry costs a cache hit and nothing else.
             local, label, row = None, None, None
-            for r2 in (REG.all() or []):
-                if r2.get("gid") != gid:
-                    continue
+            r2 = index.get(gid)
+            if r2:
                 # The whole registry row, because banking needs it. An entry
                 # without project/mouse/session files itself under "Unfiled"
                 # and cannot be found by the animal it came from -- which is
@@ -3495,17 +3817,18 @@ def api_incisor_reviews():
                 # never filled in and every row in the queue read as a bare
                 # gid -- which is not a name anybody can pick a recording by.
                 label = r2.get("label") or r2.get("key")
-                for p in (r2.get("paths") or []):
-                    if isinstance(p, str) and os.path.isdir(p):
-                        local = p
-                        break
-                break
+                local = _local_path_of(r2)
             ran = rec.get("computed_on") or {}
             rows.append({
                 "gid": gid,
                 "local": local,
+                # What a review opens by when this computer has no copy:
+                # the scan itself, by key, and the traces off the cluster.
+                "path": local or incisorvaccmod.path_of(gid),
                 "row": row,
                 "params_hash": rec.get("params_hash"),
+                "request_hash": rec.get("request_hash"),
+                "spec": rec.get("spec") or {},
                 "label": label or rec.get("session_label") or gid,
                 # NOT the per-channel summaries. Sixty-four of them per
                 # recording across thirty-one recordings is about two
@@ -3531,6 +3854,45 @@ def api_incisor_reviews():
     return jsonify({"ok": True, "reviews": rows, "n": len(rows)})
 
 
+@app.route("/api/incisor/result")
+def api_incisor_result():
+    """One finished scan, by recording and key -- what a review opens.
+
+    No copy of the recording needed: the summary is the vault's and the
+    events come out of the cache, or off the cluster once (`_incisor_full`).
+    Replaces the old way into a review, which pointed the panel at the
+    recording's local path and re-ran the scan with whatever parameters the
+    panel happened to show -- a cache hit when they matched, and a fresh
+    scan of the whole recording when somebody had touched a field.
+    """
+    gid = str(request.args.get("gid") or "")
+    key = str(request.args.get("key") or "")
+    if not gid or not key:
+        return jsonify({"ok": False, "error": "Which scan?"}), 400
+    rec = INCISOR_VAULT.get(gid, key) or {}
+    try:
+        hit = _incisor_full(gid, key)
+    except LookupError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 409
+    except Exception as exc:                             # noqa: BLE001
+        return fail("incisor/result", exc, 400, {"gid": gid})
+    reg = _incisor_registry_index().get(gid) or {}
+    local = _local_path_of(reg)
+    return jsonify({
+        "ok": True, "gid": gid, "key": key,
+        "result": dict(_incisor_public(hit), key=key),
+        "spec": rec.get("spec") or {},
+        "local": local,
+        "path": local or incisorvaccmod.path_of(gid),
+        "known": {k: reg.get(k) for k in
+                  ("hilus_channel", "fissure_channel", "ripple_channel")
+                  if reg.get(k) is not None},
+        "row": {k: reg.get(k) for k in
+                ("project", "mouse", "session", "key", "loose_key",
+                 "label", "duration_s", "cohort")},
+    })
+
+
 @app.route("/api/incisor/batch", methods=["POST"])
 def api_incisor_batch():
     """Run Incisor on every reachable recording, on the cluster.
@@ -3548,49 +3910,64 @@ def api_incisor_batch():
     body = request.get_json(force=True) or {}
     force = bool(body.get("force"))
     try:
-        staged, _unknown = _vacc_staged()
-        cfg = vaccmod.load_config(LOGS_DIR)
+        rows, _blocked, cfg = _incisor_vacc_rows(body)
         vaccmod.push_code(cfg, APP_DIR)
     except Exception as exc:                             # noqa: BLE001
         return fail("incisor/batch", exc, 400)
 
-    wanted = body.get("gids")
-    members = []
-    for rec in (REG.all() or []):
-        gid = rec.get("gid")
-        row = staged.get(gid) if gid else None
-        if not row or row.get("conflict"):
-            continue
-        if wanted and gid not in wanted:
-            continue
-        local = None
-        for p in (rec.get("paths") or []):
-            if isinstance(p, str) and os.path.isdir(p):
-                local = p
-                break
-        members.append({"gid": gid,
-                        "label": rec.get("label") or rec.get("key") or gid,
-                        "remote": row.get("path"), "local": local})
+    wanted = set(body.get("gids") or [])
+    members = [dict(r, local=r.get("here")) for r in rows
+               if not wanted or r["gid"] in wanted]
     if not members:
         return jsonify({"ok": False,
                         "error": "Nothing on the cluster to run."}), 400
 
+    # One cap for the batch: netfiles slows under many readers, so a batch
+    # that reads it runs at most INCISOR_NETFILES_CAP tasks at once unless
+    # the caller says otherwise.
     concurrency = body.get("concurrency")
+    if concurrency is None and any(m.get("state") == vaccmod.NATIVE
+                                   for m in members):
+        concurrency = INCISOR_NETFILES_CAP
+
+    def adopt(t, out):
+        """File one answer, whichever way its member was prepared."""
+        if (t.get("resume") or {}).get("vacc_only"):
+            _incisor_file_vacc(t["gid"], t.get("label"), t["spec_local"], out)
+            return
+        incisormod.cache_put(t["key"], out)
+        _incisor_remember(t["sess"], t["spec_local"], t["key"], out,
+                          extra={"request_hash":
+                                 (t.get("resume") or {}).get("request")})
 
     def work(job):
         job.members_init([{"id": m["gid"], "label": m["label"]}
                           for m in members])
 
-        # Everything knowable locally, before anything is submitted: the
-        # channel list, the continuity report and the cache key all come
-        # from this machine, and a recording already answered under this
-        # question's hash never reaches the cluster at all.
+        # Everything knowable before anything is submitted. A recording
+        # this computer has is opened here, as it always was: its channel
+        # list, continuity and key come from this machine. One it does not
+        # have is prepared from the registry alone, and the node works out
+        # the rest (incisorvacc.py). Either way a question already answered
+        # -- by its key, or by its request's hash -- never reaches the
+        # cluster.
         tasks, skipped, failed = [], 0, 0
         for m in members:
             job.check()
             gid = m["gid"]
+            if m.get("answered") and not force:
+                skipped += 1
+                job.member(gid, status="done", cached=True,
+                           step="already answered")
+                continue
             try:
-                prep = _incisor_prepare(m, body, force)
+                if m.get("local"):
+                    prep = _incisor_prepare(m, body, force)
+                    if prep is not None:
+                        prep["resume"]["request"] = \
+                            incisorvaccmod.request_hash(gid, prep["spec_local"])
+                else:
+                    prep = _incisor_prepare_vacc(m, body)
             except Exception as exc:                     # noqa: BLE001
                 failed += 1
                 job.member(gid, status="failed", step=None,
@@ -3607,6 +3984,7 @@ def api_incisor_batch():
         done = 0
         if tasks:
             done, failed = _vacc_run_array(job, tasks, failed, concurrency,
+                                           adopt=adopt,
                                            runlog=VACC_RUNLOG,
                                            record={"tool": "incisor"})
         return {"n": len(members), "done": done, "failed": failed,
@@ -3665,6 +4043,24 @@ def _incisor_prepare(member, body, force):
     }
 
 
+def _incisor_prepare_vacc(member, body):
+    """One member this computer cannot open, prepared from the registry.
+
+    No session, no report, no key: the node resolves the channels and the
+    segmentation, and the key is computed when the answer lands. What the
+    desk does know -- which recording, which settings, which channels are
+    marked bad, roughly how long -- is all a task needs.
+    """
+    gid = member["gid"]
+    rec = _incisor_registry_index().get(gid) or {}
+    probe_id = _probe_for(rec)
+    spec = incisorvaccmod.spec_for(
+        gid, body, rec, probe_id,
+        (probebook.get(probe_id) or {}).get("name"), _incisor_params)
+    return incisorvaccmod.task_for(gid, member["label"], member["remote"],
+                                   spec, member.get("plan") or {})
+
+
 def _vacc_run_array(job, tasks, failed, concurrency=None,
                     tool="incisor", adopt=None, runlog=None, record=None,
                     deadline_s=None):
@@ -3703,9 +4099,13 @@ def _vacc_run_array(job, tasks, failed, concurrency=None,
     worst = max([t["seconds"] for t in tasks] or [60.0])
     msamp = max([t["megasamples"] for t in tasks] or [1.0])
     arr.submit(seconds=worst, megasamples=msamp)
-    for t in tasks:
+    for i, t in enumerate(tasks):
+        # The Slurm id on the row itself (constitution section 6d: the job's
+        # own id visible), because the step text moves on to "pending" and
+        # "running" and takes the array id with it.
         job.member(t.get("member") or t["gid"],
-                   step="queued on " + str(arr.array_id))
+                   step="queued on " + str(arr.array_id),
+                   slurm_id="%s_%d" % (arr.array_id, i))
 
     def on_result(i, t, out):
         if adopt:
@@ -3738,6 +4138,12 @@ _VACC_RESUMED = {"done": False, "jobs": []}
 
 def _file_batch_answer(tool, t, out):
     """File one answer of a resumed batch the way the live batch does."""
+    if tool == "incisor" and (t.get("resume") or {}).get("vacc_only"):
+        # Prepared without a copy here, so filed without one: the key comes
+        # from the answer, exactly as the live batch files it.
+        _incisor_file_vacc(t.get("gid"), t.get("label"),
+                           t.get("spec_local") or {}, out)
+        return
     key = (t.get("resume") or {}).get("key") or t.get("key")
     spec = t.get("spec_local") or {}
     sess, err = _session_for(spec.get("path"), True)
@@ -3751,7 +4157,9 @@ def _file_batch_answer(tool, t, out):
         _doppler_remember(sess, spec, key, out)
     else:
         incisormod.cache_put(key, out)
-        _incisor_remember(sess, spec, key, out)
+        rh = (t.get("resume") or {}).get("request")
+        _incisor_remember(sess, spec, key, out,
+                          extra={"request_hash": rh} if rh else None)
 
 
 def _resume_vacc_batches(ssh=None):
@@ -20476,7 +20884,8 @@ def api_arc_monolith_forget():
 
 
 _MONO_DATA = {"summary": ("summary.json", "application/json"),
-              "physical": ("physical.json", "application/json")}
+              "physical": ("physical.json", "application/json"),
+              "narrow": ("narrow.json", "application/json")}
 
 
 @app.route("/api/arc/monolith/data/<name>")
@@ -20494,6 +20903,11 @@ def api_arc_monolith_data(name):
         # <what>_<layer>, or <what>_<layer>__<split> for one cue-pair split;
         # session_<what>_<layer>[__<split>]_<window> for Monolith Progress;
         # phys_edges_<layer>__<comparison>, phys_groups_<layer> for section 6.
+        if name in ("narrow_raw", "narrow_minus_fp"):
+            path = os.path.join(d, name + ".f32")
+            if not os.path.isfile(path):
+                return jsonify({"ok": False, "error": "No such Monolith file: %s" % name}), 404
+            return send_file(path, mimetype="application/octet-stream")
         if name.startswith("phys_"):
             ok_names = {"phys_groups_%s" % l for l in monolithmod.LAYERS} | {
                 "phys_edges_%s__%s" % (l, c) for l in monolithmod.LAYERS
@@ -20805,6 +21219,24 @@ def api_arc_monolith_split():
     except Exception as exc:                                 # noqa: BLE001
         return fail("arc/monolith/split", exc, 500)
     STORE.record_activity([{"action": "arc.monolith.split", "detail": {}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/narrow", methods=["POST"])
+def api_arc_monolith_narrow():
+    """Section 7, narrowing down, for the built Monolith, here, from the day
+    arrays already fetched. Refused without `confirm`."""
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    try:
+        from . import narrow as narrowmod
+        w = monolithmod.start_work("narrow", narrowmod.narrow_work)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/narrow", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.narrow", "detail": {}}])
     return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
 
 
@@ -22367,7 +22799,25 @@ def _match_index():
     return by_key, by_loose
 
 
-def _cluster_match(path, by_key, by_loose):
+def _found_time(row):
+    """When a recording found on the cluster was opened, from its header.
+
+    The inventory carries the time lines of CSC1's header back raw; this is
+    the same `nlx.header_start_time` every local open reads them with, so a
+    folder found on the cluster gets the same exact key it would get here.
+    None when the walk could not read one -- the folder name then decides,
+    as it always did.
+    """
+    raw = (row or {}).get("header") or ""
+    if not raw:
+        return None
+    try:
+        return nlx.header_start_time(raw)
+    except Exception:                                    # noqa: BLE001
+        return None
+
+
+def _cluster_match(path, by_key, by_loose, header_time=None):
     """Which known recording a cluster folder is, or why it is nobody.
 
     Returns `(rec, how, why)`. `rec` is None when nothing matched or when a
@@ -22388,8 +22838,11 @@ def _cluster_match(path, by_key, by_loose):
     the other. Both are checked because either alone lets a pair through:
     two projects can record on the same day, and one project can hold the
     same mouse-and-session twice across years.
+
+    `header_time` is the recording's own start, read off the cluster
+    (`_found_time`); with it the key is exact rather than a folder name's.
     """
-    ident = ids.identify(path)
+    ident = ids.identify(path, header_time=header_time)
     key = str(ident.get("key") or "").lower()
     loose = str(ident.get("loose_key") or "").lower()
 
@@ -22398,11 +22851,16 @@ def _cluster_match(path, by_key, by_loose):
     if not (loose and loose in by_loose):
         return None, None, None
 
+    # A refusal says which kind in the `how` slot ("other-day" or
+    # "other-project"), which every caller ignores when `rec` is None. The
+    # difference matters to `vaccfind.survey`: a folder recorded on another
+    # day is a different recording and can be registered as one, while one
+    # from the same day under another project is a question for a person.
     cand = by_loose[loose]
     mine_day = str(ident.get("start") or "")[:10]
     their_day = str(cand.get("start") or "")[:10]
     if mine_day and their_day and mine_day != their_day:
-        return (None, None,
+        return (None, "other-day",
                 "same mouse and session as %s, but recorded on %s rather "
                 "than %s" % (cand.get("gid"), mine_day, their_day))
 
@@ -22410,7 +22868,7 @@ def _cluster_match(path, by_key, by_loose):
     their_proj = (cand.get("project") or "").strip()
     if (mine_proj and their_proj and mine_proj != sessreg.UNFILED
             and their_proj != sessreg.UNFILED and mine_proj != their_proj):
-        return (None, None,
+        return (None, "other-project",
                 "same mouse and session as %s, but this path is %s work and "
                 "that recording is %s" % (cand.get("gid"), mine_proj,
                                           their_proj))
@@ -22474,17 +22932,63 @@ def _vacc_missing(rec, label=None):
     """
     gid = rec.get("gid")
     label = label or rec.get("label") or rec.get("key") or gid
-    local = None
-    for path in (rec.get("paths") or []):
-        if os.path.isdir(path):
-            local = path
-            break
+    # Cached reachability (`sessreg.is_here`): a VACC plan asks this of
+    # every recording the cluster cannot read, which is hundreds.
+    local = _local_path_of(rec)
     if local:
         return {"gid": gid, "label": label, "can_upload": True,
                 "why": "the cluster has no copy of this recording yet"}
     return {"gid": gid, "label": label, "can_upload": False,
             "why": "the cluster has no copy, and this computer cannot open "
                    "it either, so there is nothing to send"}
+
+
+def _vacc_walk(force=False, wait=True):
+    """Every recording folder the cluster's listings hold, one row each.
+
+    Scratch, every folder a scan was pointed at, and every mapped share this
+    account can read. A row from a mapped share carries `native: True`: it
+    is the lab's own copy, read in place, and `vacc.resolve_gid` says so.
+
+    A mapped share is never waited on, whoever is asking. Walking one is
+    minutes (`vacc.INV_TIMEOUT_NATIVE_S`), and every recording on it that the
+    registry already spells by UNC is answered by the path map without it --
+    so the walk only ever adds to an answer that is already useful. Its last
+    listing is used while a new one is fetched in the background; `force`
+    (somebody pressing Look again) starts that fetch, it does not block on it.
+    """
+    cfg = vaccmod.load_config(LOGS_DIR)
+    roots = vaccmod.places(cfg)
+    if not roots:
+        root = os.path.dirname(cfg.get("scratch") or "")
+        roots = [root] if root else []
+    found, seen_paths = [], set()
+    for root in roots:
+        native = vaccmod.is_native_root(cfg, root)
+        if native:
+            age = vaccmod.inventory_age(cfg, root)
+            if force or age is None or age > vaccmod.INV_TTL_NATIVE_S:
+                vaccmod.inventory_soon(cfg, root)
+            rows = vaccmod.inventory_held(root)
+        elif not wait and not vaccmod.inventory_ready(cfg, root):
+            # Nothing in hand and the caller cannot afford to wait for a walk
+            # of the cluster's filesystem. Start one and answer with what is
+            # known now -- nothing renders as `unknown`, which is the honest
+            # state for a question that has not been asked yet.
+            vaccmod.inventory_soon(cfg, root)
+            continue
+        else:
+            try:
+                rows = vaccmod.inventory_cached(cfg, root, force=force)
+            except Exception:                            # noqa: BLE001
+                if root == roots[0]:
+                    raise
+                continue        # a scanned place that is gone is not fatal
+        for r in rows:
+            if r["path"] not in seen_paths:
+                seen_paths.add(r["path"])
+                found.append(dict(r, native=True) if native else r)
+    return found
 
 
 def _vacc_staged(force=False, wait=True):
@@ -22502,33 +23006,24 @@ def _vacc_staged(force=False, wait=True):
     reported separately rather than silently dropped, because "the cluster
     has 84 recordings you have never opened" is worth knowing.
     """
-    cfg = vaccmod.load_config(LOGS_DIR)
-    roots = vaccmod.places(cfg)
-    if not roots:
-        root = os.path.dirname(cfg.get("scratch") or "")
-        roots = [root] if root else []
-    if not roots:
+    found = _vacc_walk(force=force, wait=wait)
+    if not found:
         return {}, []
-    # Scratch, and every other cluster folder a scan was pointed at.
-    found, seen_paths = [], set()
-    for root in roots:
-        if not wait and not vaccmod.inventory_ready(cfg, root):
-            # Nothing in hand and the caller cannot afford to wait for a walk
-            # of the cluster's filesystem. Start one and answer with what is
-            # known now -- nothing renders as `unknown`, which is the honest
-            # state for a question that has not been asked yet.
-            vaccmod.inventory_soon(cfg, root)
-            continue
-        try:
-            rows = vaccmod.inventory_cached(cfg, root, force=force)
-        except Exception:                                # noqa: BLE001
-            if root == roots[0]:
-                raise
-            continue            # a scanned place that is gone is not fatal
-        for r in rows:
-            if r["path"] not in seen_paths:
-                seen_paths.add(r["path"])
-                found.append(r)
+
+    # The same listings against the same registry give the same answer, and
+    # with the netfiles share walked there are 1,500-odd folders to identify
+    # -- about two seconds, on `/api/vacc/knows`, the batch plan and every
+    # open off the cluster. Asked again only when a listing or a session
+    # record changes.
+    try:
+        reg_sig = STORE.sessions.signature()
+    except Exception:                                    # noqa: BLE001
+        reg_sig = None
+    sig = None if reg_sig is None else (
+        len(found), hash(tuple(r["path"] for r in found)), reg_sig)
+    if sig is not None and _STAGED_MEMO.get("sig") == sig:
+        staged, unknown = _STAGED_MEMO["out"]
+        return dict(staged), list(unknown)
 
     by_key, by_loose = _match_index()
 
@@ -22540,7 +23035,8 @@ def _vacc_staged(force=False, wait=True):
     # both answer to one recording.
     staged, unknown, by_gid = {}, [], {}
     for row in found:
-        rec, how, why = _cluster_match(row["path"], by_key, by_loose)
+        rec, how, why = _cluster_match(row["path"], by_key, by_loose,
+                                       header_time=_found_time(row))
         if rec is None:
             unknown.append(dict(row, why=why) if why else row)
             continue
@@ -22551,8 +23047,14 @@ def _vacc_staged(force=False, wait=True):
         by_gid.setdefault(gid, []).append(dict(row, how=how))
 
     for gid, rows in by_gid.items():
-        exact = [r for r in rows if r["how"] == "exact"]
-        best = exact or rows
+        # The lab's own copy beats a copy of it. A recording on netfiles that
+        # somebody also uploaded to scratch is two folders answering to one
+        # recording, and that is not an ambiguity: the scratch one is a cache
+        # of the other. Only two folders of the SAME kind are a conflict.
+        native = [r for r in rows if r.get("native")]
+        pool = native or rows
+        exact = [r for r in pool if r["how"] == "exact"]
+        best = exact or pool
         if len(best) > 1:
             # Two folders on the cluster both claiming to be this recording.
             # Nothing here can tell which, and picking one silently is how
@@ -22564,7 +23066,12 @@ def _vacc_staged(force=False, wait=True):
         for r in rows:
             if r is not best[0]:
                 unknown.append(r)
-    return staged, unknown
+    if sig is not None:
+        _STAGED_MEMO.update(sig=sig, out=(staged, unknown))
+    return dict(staged), list(unknown)
+
+
+_STAGED_MEMO = {"sig": None, "out": None}
 
 
 def _vacc_estimate(sess, spec, plan):
@@ -22931,11 +23438,23 @@ def api_vacc_scan():
 
     by_key, by_loose = _match_index()
     if body.get("register"):
-        return jsonify({"ok": False, "error":
-            "Registering a recording from its cluster copy would write a "
-            "cluster path into the registry, which reads back as a place "
-            "this machine can open. Scan the drive it lives on here instead; "
-            "the cluster copy is then found by identity."}), 400
+        # Through the one deliberate path (vaccfind.py): a netfiles find goes
+        # in by its UNC spelling and a scratch find by identity alone, so no
+        # cluster path is ever written. Not with `dry`, and only what this
+        # folder holds.
+        if dry:
+            return jsonify({"ok": False, "error": "A dry run registers "
+                            "nothing."}), 400
+        native = vaccmod.is_native_root(cfg, root or "") or bool(
+            vaccmod.native_rule_of(cfg, root or ""))
+        rows = [dict(r, native=True) if native else r for r in found]
+        got = vaccfindmod.survey(
+            rows, cfg,
+            lambda path, start: _cluster_match(path, by_key, by_loose,
+                                               header_time=start))
+        added, joined = vaccfindmod.register(REG, got["_new"])
+        return jsonify({"ok": True, "registered": added, "joined": joined,
+                        "root": root})
     # Which recordings the cluster was already known to hold, before this.
     try:
         known_before = set((_vacc_staged(wait=False)[0] or {}).keys())
@@ -22944,9 +23463,10 @@ def api_vacc_scan():
 
     added, already, unmatched, ambiguous = [], [], [], []
     for row in found:
-        ident = ids.identify(row["path"])
+        ident = ids.identify(row["path"], header_time=_found_time(row))
         # One rule, shared with the batch matcher -- see `_cluster_match`.
-        rec, how, why = _cluster_match(row["path"], by_key, by_loose)
+        rec, how, why = _cluster_match(row["path"], by_key, by_loose,
+                                       header_time=_found_time(row))
         if rec is None and why:
             ambiguous.append({"path": row["path"], "why": why})
             continue
@@ -23007,6 +23527,113 @@ def api_vacc_scan():
                     "unmatched": unmatched, "ambiguous": ambiguous,
                     "registered": registered,
                     "can_register": len(to_register)})
+
+
+# --------------------------------------------------------------------------
+# Every recording on the cluster, and adding the ones Jarvis has not met
+# (backend/vaccfind.py)
+# --------------------------------------------------------------------------
+_FOUND_LOCK = threading.Lock()
+
+
+def _vacc_found_body():
+    """What the cluster's listings hold, sorted against the registry.
+
+    Never waits on a walk: it answers from the listings in hand and says
+    which roots are still being walked, so the page can say "looking" rather
+    than hang for the two minutes a netfiles walk takes.
+    """
+    cfg = vaccmod.load_config(LOGS_DIR)
+    found = _vacc_walk(wait=False)
+    by_key, by_loose = _match_index()
+    got = vaccfindmod.survey(
+        found, cfg,
+        lambda path, start: _cluster_match(path, by_key, by_loose,
+                                           header_time=start))
+    new_rows = got.pop("_new")
+    roots = []
+    for root in vaccmod.places(cfg):
+        native = vaccmod.is_native_root(cfg, root)
+        roots.append({
+            "root": root,
+            "kind": "netfiles" if native else "scratch",
+            "age_s": vaccmod.inventory_age(cfg, root),
+            "busy": vaccmod.inventory_busy(root),
+            "n": len(vaccmod.inventory_held(root)),
+        })
+    st = vaccmod.status()
+    got.update(ok=True, roots=roots,
+               walking=any(r["busy"] for r in roots),
+               netid=cfg.get("netid"),
+               denied_roots=st.get("denied_roots") or [])
+    return got, new_rows
+
+
+@app.route("/api/vacc/found")
+def api_vacc_found():
+    """Every recording the cluster holds, and which of them are new to
+    Jarvis. Writes nothing; `/api/vacc/found/add` is the write."""
+    try:
+        got, _new = _vacc_found_body()
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/found", exc, 400)
+    return jsonify(got)
+
+
+@app.route("/api/vacc/found/look", methods=["POST"])
+def api_vacc_found_look():
+    """Walk every root again, in the background, and answer at once.
+
+    A walk of netfiles is minutes; this starts it and returns what is in
+    hand, with `walking` set, so the page can poll `/api/vacc/found` until
+    it clears. One walk per root at a time (`vacc.inventory_soon`).
+    """
+    try:
+        cfg = vaccmod.load_config(LOGS_DIR)
+        for root in vaccmod.places(cfg):
+            vaccmod.inventory_soon(cfg, root)
+        got, _new = _vacc_found_body()
+    except Exception as exc:                             # noqa: BLE001
+        return fail("vacc/found/look", exc, 400)
+    return jsonify(got)
+
+
+@app.route("/api/vacc/found/add", methods=["POST"])
+def api_vacc_found_add():
+    """Register every recording found on the cluster that Jarvis has not met.
+
+    The one deliberate write (vaccfind.py says why it is never a side effect
+    of a walk). Refused without `confirm`, and refused when `digest` no
+    longer names the list the page showed: a walk that finished between
+    the plan and the press must not add recordings nobody was given a count
+    for. Netfiles finds go in by their UNC spelling, scratch finds by
+    identity alone; no cluster path is written.
+    """
+    body = request.get_json(force=True) or {}
+    if not body.get("confirm"):
+        return jsonify({"ok": False, "error": "Nothing added: the request "
+                        "did not confirm it."}), 400
+    with _FOUND_LOCK:
+        try:
+            got, new_rows = _vacc_found_body()
+        except Exception as exc:                         # noqa: BLE001
+            return fail("vacc/found/add", exc, 400)
+        if body.get("digest") != got.get("digest"):
+            return jsonify({
+                "ok": False, "changed": True, "n_new": got.get("n_new"),
+                "error": "The list changed since it was shown -- %d new now. "
+                         "Look at it again before adding."
+                         % (got.get("n_new") or 0)}), 409
+        try:
+            added, joined = vaccfindmod.register(REG, new_rows)
+        except Exception as exc:                         # noqa: BLE001
+            return fail("vacc/found/add", exc, 400, {"n": len(new_rows)})
+    STORE.record_activity([{
+        "action": "vacc.found.add",
+        "detail": {"added": added, "joined": joined,
+                   "by_project": got.get("new_by_project")},
+    }])
+    return jsonify({"ok": True, "added": added, "joined": joined})
 
 
 # --------------------------------------------------------------------------
@@ -23258,8 +23885,31 @@ def _vacc_knows_body():
     except Exception:                                    # noqa: BLE001
         staged = {}
     got = vaccmod.resolve_many(rows, cfg, staged=staged)
+    # Whether THIS account can read it, beside whether the cluster mounts it.
+    # The two came apart once already (`vacc.readable_roots`) and still do
+    # for every netid outside `jarvis_writes`, so a native recording carries
+    # the probe's verdict on its share: True, False, or None when no probe
+    # has answered yet -- absent is not negative (constitution section 6c).
+    verdicts = {str(k).rstrip("/"): v for k, v in
+                ((vaccmod.status().get("roots") or {}).items())}
+    for one in got.values():
+        if one.get("state") != vaccmod.NATIVE:
+            continue
+        rule = vaccmod.native_rule_of(cfg, one.get("remote")) or {}
+        v = verdicts.get(str(rule.get("vacc") or "").rstrip("/"))
+        one["readable"] = None if v is None else (v == "ok")
+        if v == "denied":
+            one["why"] = ("on %s, which the cluster mounts and this account "
+                          "(%s) cannot read" % (rule.get("vacc"),
+                                                cfg.get("netid") or "?"))
+    counts = vaccmod.histogram(got)
+    # "Reads in place" counts what this account can read. A share it is
+    # refused gets its own line rather than being folded into a yes.
+    counts["refused"] = sum(1 for one in got.values()
+                            if one.get("readable") is False)
+    counts[vaccmod.NATIVE] -= counts["refused"]
     return {"ok": True, "knows": got,
-            "counts": vaccmod.histogram(got),
+            "counts": counts,
             "n_rules": len(cfg.get("path_map") or []),
             "drives": vaccmod.drive_map()}
 

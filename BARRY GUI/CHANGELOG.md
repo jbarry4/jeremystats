@@ -15,6 +15,302 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.09.2 - Checkup, Spotter and StrataScope draw their aid windows off the cluster
+
+### Fixed
+
+- **The aid windows now work for a recording only the VACC has.**
+  - Checkup, Spotter and StrataScope opened such a recording off the
+    cluster. The traces worked, but every aid window beside them (CSD,
+    theta, voltage, spectrogram) failed with "cannot find the file
+    'vacc:...'". Incisor's "Show them on the traces" window failed the same
+    way.
+  - These panels are now drawn on the cluster by the same code, and only the
+    finished picture comes back.
+  - Measured on PTEN m7 s7: the first CSD takes 16 s while the cluster
+    loads, and after that a CSD takes 0.6 s, theta 2.5 s, voltage 0.5 s and
+    traces 1.2 s.
+  - Nothing is drawn ahead of time off the cluster, so each window is drawn
+    when you open it.
+- The cluster's analysis environment was missing matplotlib, which
+  `requirements.txt` asks for. It is installed now (3.11.2).
+
+## 2026.10.09.1 - The Monolith, less of a chore: the lab's words, one line each, and things to play with
+
+From Shahriar: "the Monolith is super wordy, and you've kinda created your
+own nomenclature… FP is NOT REST… if you can turn anything to be interactive
+instead of reading… do it." **Restart Jarvis**: `monolith.py` and
+`narrow.py` changed their words.
+
+### Changed
+
+- **The page's words are the lab's** (`monolith-plain-words` in memory):
+  - FP is FP1/FP2, never "rest";
+  - a presentation is a **trial**;
+  - a seat is just **A/B/C/D**;
+  - a lead or point of interest is a **top result**;
+  - a relabelling or signing is a **shuffle**;
+  - an entry is a **stat test**;
+  - Raw and Minus FP have no label of their own.
+
+  This covers every tab, the ? help, the Guide, the tour, the review site,
+  and the backend's own sentences. "Lead" stays only where Granger means one
+  region leading another.
+- **One line, then ▸ More.** Each card says its point in one line. The rest
+  is behind a ▸ that remembers being opened, and most ▸ hold something to
+  play with instead of more words. Words a reader meets without opening
+  anything, on the real build:
+
+  | Tab | 2 | 3 | 6 | 7 |
+  |---|---|---|---|---|
+  | Shown | 819 | 1,142 | 351 | 470 |
+  | With every ▸ open | 1,636 | 1,978 | 1,016 | 1,113 |
+
+- **Tab 1:** one line for what was kept. The tables are bars, with their
+  words on hover. The histology rule and why some stat tests were not run
+  sit behind ▸.
+
+### Added (`web/js/monolith_explain.js`)
+
+Motion is playful: it overshoots, and a result beyond chance lands with a
+burst. Each animation plays once, when it scrolls into view, and is still
+for anyone who asks for reduced motion. On a phone the pictures' words grow,
+so none drops below about 9 px.
+
+- **Tab 4 is "How a number is made":** one stat test played from every
+  trial to its p.
+  - The steps: the trials, each day's mean, (the FP coming off), each rat's
+    change, the changes side by side and weighted, the pooled change, and
+    the t test drawn on its own distribution.
+  - It has Back, Play and Next buttons, and a chip for each step.
+  - Tab 3's ▸ plays it for the line in view, and tab 7 plays it on the
+    first top result.
+- **Shuffles, played:** the rats are shuffled one way after another, each
+  shuffle's count dropping into a histogram, and the real count lands last.
+  - This replaces the still histograms on tabs 6 and 7, and sits behind
+    tab 2's "is that more than chance?".
+  - Splits, signs and the four sounds' random deals are each drawn as the
+    backend made them, in the same order. The real sorting by sound is
+    painted on the rats.
+- **Found against chance, as bars:** tab 2's verdict for Raw and Minus FP
+  (click one to switch), tab 3's for both pairs, AB and CD, and all eight
+  rats the same way.
+- **The Minus FP slider** (tab 1): drag a day's FP and watch Raw stay put
+  while Minus FP moves. It uses the top result's real rat.
+- **The identity sheet, sorted** (tab 6): the rats' four sounds by letter.
+  Then A and C, then the two groups, then each sound gathered from wherever
+  it sat.
+- **PAC to play with** (tab 2): slide how strongly a fast wave follows a
+  slow one, and watch the 18 phase bins lean and the MI grow.
+
+### Checked
+
+- `web/_dev/monolith.html`: 497. New and rewritten checks:
+  - every one-liner;
+  - the bars to scale, and a bar clicked switching Raw and Minus FP;
+  - the slider moving Minus FP but not Raw;
+  - the sheet's chips gathered by sound and split into the groups
+    (measured);
+  - each shuffle's block count and its rank;
+  - the real split painted on its rats;
+  - the player's last step agreeing with its own t;
+  - the PAC toy flat at none and leaning at strong;
+  - every picture redrawn at 390 px with its words grown, none cut or on
+    another.
+
+  The figure-word check now follows groups that are moved, and skips words
+  not drawn.
+- `driftmono` 77, `monolithrank` 5, `tools/check_monolith.py` 249, and
+  `tools/check_review.py` 53. The copy now carries
+  `js/monolith_explain.js`.
+- On the real build, at 1400 px and inside a 390 px frame: tabs 1 to 4, 6
+  and 7 do not scroll sideways. (Headless Edge will not make a window that narrow,
+  so a phone is measured in an iframe.)
+
+## 2026.10.08.2 - The Monolith's tab 7: narrowing down
+
+From Shahriar: how the page's p were made, ways to narrow them down, what
+"correcting" would do, and tests that are more valid. Every other card stays
+uncorrected; this tab shows what correcting would keep. **Restart Jarvis**:
+`monolith.py`, `app.py` and the new `narrow.py`.
+
+### Added
+
+- **Tab 7 · Narrowing down** (`web/js/monolith_narrow.js`, made by
+  `backend/narrow.py`), the answer first.
+  - **How every p was made**, worked through on the first lead's own
+    numbers: DerSimonian–Laird pooling, a Hartung–Knapp t on rats − 1
+    degrees of freedom, one test per entry.
+  - **Is there anything at all?** Every way of flipping the eight rats'
+    signs (128) is pooled exactly as the Monolith pools, keeping every
+    correlation between entries. The real count of p < .05 is set among
+    them, for the whole Monolith and for Cue 2 − Cue 1.
+  - **What correcting does,** for Raw, Minus FP and Cue 2 − Cue 1:
+    - Bonferroni, Holm, Benjamini–Hochberg and Benjamini–Yekutieli;
+    - the permutation max-t (Westfall–Young);
+    - runs of neighbouring 1 Hz bands, weighed against the heaviest run
+      in each relabelling (Maris & Oostenveld);
+    - the exact permutation test, alone and with BH;
+    - the exact sign test.
+
+    Each row says what it controls.
+  - **Ways to narrow it down:**
+    - families chosen before looking (the named bands; the state windows;
+      Cue 1 and Cue 2 × the named bands × four measures), each corrected
+      on its own;
+    - a funnel: p < .05, then both pairs the same way, then both layers,
+      then a surviving run of frequencies, or BH instead;
+    - replication across the pairs, against the same relabelling of both;
+    - the surviving runs of frequencies, listed.
+  - **Every test on each lead:** exact permutation p, sign test, BH q,
+    Holm, max-t, its run of frequencies, AB and CD, the other layer, and
+    what it survives.
+  - **What survives, as a circuit,** under any of the methods.
+  - Help on every card, and a Guide section. A build without it offers
+    "Work it out now"; new builds make it themselves.
+- **Tab 6, group view:** a group that is one rat short at a lead now gets
+  its interval, and the group difference, from three rats, marked "3 rats".
+  With two left it says why there is none. Every one of the 50 real leads
+  now has both.
+- **Tab 6, sound view:** the line in each lead's picture is now the four
+  sounds' mean. Before, it was the lead's own window (a Switch window, say),
+  which can sit far from the four sounds' cue windows. Both views now have
+  a legend over the table.
+
+### On the real build (512b673a2f9d)
+
+- **The whole Monolith, against the 128 relabellings of the rats:**
+
+  | | p < .05 (chance) | Rank of 128 |
+  |---|---|---|
+  | Raw | 15,017 (12,720) | 8: borderline, about 6% do as well |
+  | Minus FP | 17,896 (12,720) | 2: beyond chance |
+  | Core family, Raw (1,408 tests) | 112 (70) | 2: beyond chance |
+  | Core family, Minus FP | 142 (70) | 1: beyond chance |
+  | Cue 2 − Cue 1 | 2,026 (1,817) | 61: an ordinary count |
+
+- **No single entry survives any correction, in any family.** That covers
+  Bonferroni, Holm, BH, BY, the max-t and runs of frequencies, even in the
+  1,408 core tests. In the relabelled data the largest |t| anywhere reaches
+  about 96: a t-test on a few rats strays that far whenever they happen to
+  agree closely.
+- **Replication is the clearest sign of something real.** 2,951 entries
+  pass in both pairs the same way, where independent pairs would give about
+  318. That ranks 4 of 128.
+- **The funnel (Raw):** 254,408 tested; 15,017 at p < .05; 2,925 in both
+  pairs; 1,571 in both layers; 0 in a surviving run of frequencies, and 0
+  by BH.
+- **The 50 Raw leads:** every one has an exact permutation p of .008 and a
+  sign test of .008 (8 of 8 rats), the strongest eight rats can give. None
+  survives BH, Holm or max-t. 17 pass in both pairs.
+
+### Checked
+
+- `web/_dev/monolith.html`: 467. New checks:
+  - the answer both ways, and with nothing surviving;
+  - the worked example;
+  - the relabelling histograms;
+  - the corrections table;
+  - the families, the funnel, replication and runs;
+  - every test on each lead, and its "survives" chips;
+  - the circuit against the array for five methods;
+  - the "Work it out now" button, figure words and 390 px;
+  - tab 6's 3-rat groups and its legends.
+- `tools/check_monolith.py` (section 7, 15 checks): eight made-up rats
+  with three planted changes, each found only where it should be:
+  - one strong entry survives Bonferroni, Holm, BH and max-t, its exact
+    tests at their floor (1/128, 2/256);
+  - a broad change over twelve bands survives only as a run of
+    frequencies;
+  - an AB-only change does not replicate.
+
+  The relabelling pools exactly as the Monolith does (the same t and p),
+  and Holm, BH and BY match by hand. 249 in all.
+- `tools/check_review.py`: 53. The copy carries tab 7, which draws from
+  it.
+
+## 2026.10.08.1 - VACC loaded, everywhere; Incisor's VACC mode needs no copy here
+
+### What changed on the cluster
+
+- **The lab's netfiles share reads from the VACC now.** It is mounted at
+  `/netfiles/bigdata_jbarry` (NFS from `netfiles03.uvm.edu`). Since
+  2026-10-01 the share is grouped to `jarvis_writes`, whose members are
+  sakhava1 and jbarry4. Those two accounts can read it; every other netid is
+  still refused, and Jarvis says who to ask.
+  - Measured 2026-10-07: a compute node reads it too, at 173 MB/s.
+  - Walking the share finds 1,461 recordings in about two and a half
+    minutes.
+- **The group can also write the share. Jarvis never does.** Runs write only
+  under `workspace/runs/<rid>`.
+
+### Added
+
+- **Every recording found on the VACC, in the catalogue.**
+  - Sessions ▸ Everything VACC knows has a new *Found on VACC* card. It walks
+    scratch, the uploads and the netfiles share, and sorts what it finds
+    against the catalogue.
+  - Its button, **Add N recordings found on VACC**, says how many it will
+    add, and adds them in one click.
+  - On the real share: 660 were already known, 353 are new, 37 need a person
+    to say which recording they are, and 411 have folders that name no mouse
+    and session.
+  - A netfiles find is filed by its `\\netfiles03` path. A copy in scratch
+    is filed by identity alone, with no path. No cluster path enters the
+    registry.
+- **VACC loaded.** One mark now goes on every recording the cluster can read
+  with your account. Hover over it to see how the cluster reaches it: read in
+  place, or an uploaded copy. It appears on cards, rows, tabs and pickers.
+- **One way for every module to reach a recording** (`BARRY.vacc.reach`).
+  - The rule is this computer first, then the cluster.
+  - Checkup, Spotter and StrataScope open a recording that is only on the
+    VACC off the cluster.
+  - A tool that needs the files on this computer still lists a VACC-only
+    recording, but disabled, with the reason.
+- **Incisor's VACC mode.**
+  - Pick any recordings the cluster can read, including ones this computer
+    has never had.
+  - Set each recording's channels, and set the detection parameters once for
+    the whole batch.
+  - Submit them as one job array. A batch that reads netfiles runs at most
+    8 tasks at once.
+  - Each answer comes back into the queue. Opening one gives the usual
+    panel: the three plots, the picks, the hilus range, Extract all and the
+    bank. None of it needs a copy of the recording here.
+  - Nothing is ticked for you. The cost is stated before you submit, and
+    nothing is banked by the batch.
+
+### Fixed
+
+- Opening a review no longer re-runs the scan with whatever the parameter
+  fields say. It loads that exact scan by its key.
+- The VACC batch no longer sends the last single run's parameters without
+  showing them.
+- A cluster stage of a single scan no longer reads "Detect and rank the
+  channels" while the scan is waiting in the queue.
+- The inventory now also finds recordings whose channel files are all named
+  `CSC*_0001.ncs`.
+- A VACC scan's time and memory are now worked out from the cluster's own
+  listing of the folder, not from the registry.
+  - The registry can describe a different copy of the recording. PTEN m7 s3
+    is on record as 64 channels and 601 s; on the share it is 128-plus
+    channel files and 2136 s.
+  - In the first real batch, sizing from the record gave a 10-minute
+    walltime that one scan beat by nine seconds, and asked for 96 GB of
+    memory for a job that holds one channel at a time.
+
+### Tried for real
+
+- Array 5656058 scanned two PTEN recordings this computer has no copy of,
+  reading them from netfiles on the compute nodes. Both are in the queue,
+  open by key, and count a hilus range:
+  - m7 s3: hilus CSC34, margin 5%, 535 on the hilus, 593 across ±3
+    channels.
+  - m7 s7: hilus CSC35, margin 0.3%, 1,097 on the hilus, 1,259 across ±3
+    channels. A margin that close means you should look at the plots.
+- With this computer's event cache removed, the full answer comes back off
+  the cluster in 2.2 s.
+
 ## 2026.10.07.7 - AI Beta's summary report; X-ray at the real peaks; filters together
 
 ### Added

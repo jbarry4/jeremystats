@@ -4813,7 +4813,7 @@ BARRY.rootcanal = (function () {
     const want = gid || q.gid;
     const row = (tk.registryRows ? tk.registryRows() : [])
       .find((r) => r.gid === want);
-    return (row && (row.here || [])[0]) || null;
+    return row ? BARRY.vacc.reachFor(row, 'rootcanal').path : null;
   }
 
   /* Which recording the window is about, its events, and the one being

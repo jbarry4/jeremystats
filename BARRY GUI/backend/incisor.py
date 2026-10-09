@@ -119,13 +119,44 @@ CACHE_MAX = 8
 _CACHE_LOCK = threading.Lock()
 
 
-def cache_key(spec, report=None):
+def resolve_channels(session, bad=(), chans=None):
+    """Which of a recording's channels a scan reads: (indices, excluded).
+
+    Every channel, or the ones asked for, less the ones marked bad -- bad by
+    CSC NUMBER, never by row index, because an index shifts the moment a
+    channel file goes missing. One rule in one place, because it runs in
+    two: on the desk (`app._incisor_spec`) and on a compute node
+    (`vacc_run.py`), when a recording this computer cannot open is scanned
+    on the cluster and the channel list only exists there. Two copies would
+    be two answers to "which channels were scanned", and the hilus pick is
+    an argmax over exactly that set.
+    """
+    all_ch = session.get("channels") or []
+    by_index = {int(c["index"]): c for c in all_ch}
+    bad = {int(b) for b in (bad or [])}
+    if not chans:
+        chans = [c["index"] for c in all_ch]
+    chans = [int(c) for c in chans if int(c) in by_index]
+    kept = [i for i in chans if int(by_index[i]["number"]) not in bad]
+    excluded = [{"index": i, "number": int(by_index[i]["number"]),
+                 "label": by_index[i].get("label")}
+                for i in chans if int(by_index[i]["number"]) in bad]
+    return kept, excluded
+
+
+def cache_key(spec, report=None, breaks_sha=None):
     """Everything that changes the answer, and nothing that does not.
 
     `breaks_sha` is in here rather than `gap_map_sha`: the times this
     produces come from the breakpoint map, so a recording whose short records
     have been re-read must not serve a cached answer built from the old one.
+
+    It can be given directly, for a scan whose segmentation was made on the
+    cluster: the answer carries it in `time_basis.breaks_sha`, so the key is
+    the same one a report in hand would have produced.
     """
+    if breaks_sha is None and report:
+        breaks_sha = continuity.breaks_sha(report)
     body = {
         "path": spec.get("path"),
         "channels": sorted(int(c) for c in (spec.get("channels") or [])),
@@ -142,7 +173,7 @@ def cache_key(spec, report=None):
                  (spec.get("band") or DS_BAND)],
         "lfp_fs": round(float(spec.get("lfp_fs", LFP_FS)), 6),
         "estimator": spec.get("estimator") or "sd",
-        "breaks_sha": (continuity.breaks_sha(report) if report else None),
+        "breaks_sha": breaks_sha,
     }
     raw = json.dumps(body, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]

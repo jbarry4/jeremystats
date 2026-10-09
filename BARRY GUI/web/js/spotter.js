@@ -142,12 +142,15 @@ BARRY.spotter = (function () {
     set_ = data.set;
     kind = { id: set_.kind, labels: set_.labels || [] };
 
-    /* `here[0]`, not `path`: a registry row carries the paths reachable
-       from THIS machine, and asking for `path` returns undefined. */
-    const path = ((data.session || {}).here || [])[0];
+    /* Through `BARRY.vacc.reach`, not `here[0]` on its own: a drive path
+       when this computer has one, else the cluster's copy over the link.
+       (`here`, never `path` -- a registry row has no `path`.) */
+    const got = BARRY.vacc.reachFor(
+      Object.assign({ gid: gid }, data.session || {}), 'spotter');
+    const path = got.path;
     if (!path) {
-      toast('None of this recording’s paths are reachable from this '
-            + 'machine, so there is nothing to look at.', 'err', 9000);
+      toast(got.why || ('None of this recording’s paths are reachable from '
+            + 'this machine, so there is nothing to look at.'), 'err', 9000);
       set_ = null;
       return false;
     }

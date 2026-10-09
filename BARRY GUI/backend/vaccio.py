@@ -91,7 +91,11 @@ IDLE_S = 600.0
 # network is minutes, and timing it out at ninety seconds would report a
 # working cluster as a broken one.
 CALL_TIMEOUT = 90.0
-OP_TIMEOUT = {"overview": 240.0, "band": 600.0}
+OP_TIMEOUT = {"overview": 240.0, "band": 600.0,
+              # A raster reads every selected channel at full rate; a
+              # spectrogram of many channels can take a minute on a busy
+              # login node.
+              "panel": 180.0}
 START_TIMEOUT = 120.0
 
 _LOGS_DIR = None
@@ -549,6 +553,19 @@ def nev(session, nev_path, t_start_us=None):
 def overview(session, **kw):
     return call("overview", args={k: v for k, v in kw.items() if v is not None},
                 **_remote_args(session))
+
+
+def panel(session, spec):
+    """`analysis.render_panel`, run where the samples are.
+
+    The spec travels whole, less the two fields that name the recording --
+    the cluster opens its own copy from `remote`, and a `vacc:` path means
+    nothing there. What comes back is the panel the page draws, the same
+    payload a local render returns.
+    """
+    args = {k: v for k, v in (spec or {}).items()
+            if k not in ("path", "invert") and v is not None}
+    return call("panel", args=args, **_remote_args(session))
 
 
 def band_profile(session, **kw):

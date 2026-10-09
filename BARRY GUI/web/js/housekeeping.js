@@ -1420,20 +1420,23 @@ BARRY.views.housekeeping = (function () {
      perfectly well that sentence was a dead end with the answer sitting one
      function away. */
   function openIt(s) {
-    const p = (s.here || [])[0];
-    if (p) {
+    /* The rule itself lives in `BARRY.vacc.reach` now, so every module
+       resolves a recording the way this did first. */
+    const got = BARRY.vacc ? BARRY.vacc.reachFor(s, 'xplore')
+      : { path: (s.here || [])[0] || null, where: 'here', why: '' };
+    if (got.where === 'here') {
       setView('xplore');
-      BARRY.views.xplore.open(p);
+      BARRY.views.xplore.open(got.path);
       return;
     }
-    if (BARRY.vacc && BARRY.vacc.canRead(s)) {
+    if (got.where === 'vacc') {
       BARRY.vacc.open(s, {
         host: document.getElementById(SCOPES[scope].detail),
       });
       return;
     }
-    toast('None of this recording’s paths are reachable from this '
-          + 'machine, and VACC has no copy of it either.', 'err', 7000);
+    toast(got.why || ('None of this recording’s paths are reachable from '
+          + 'this machine, and VACC has no copy of it either.'), 'err', 7000);
   }
 
   /* ==================================================================

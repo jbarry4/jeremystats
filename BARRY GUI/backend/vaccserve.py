@@ -178,6 +178,21 @@ def op_window(req):
     return csc.get_window(sess, t0, t1, **args)
 
 
+def op_panel(req):
+    """`analysis.render_panel`: the CSD, theta, voltage and spectrogram
+    rasters. Read and drawn here, and only the finished panel crosses the
+    wire -- the same split `op_window` makes for the traces."""
+    from backend import analysis
+
+    sess, err = _session(req)
+    if err:
+        return err
+    try:
+        return analysis.render_panel(sess, dict(req.get("args") or {}))
+    except analysis.PanelError as exc:
+        return {"ok": False, "error": str(exc)}
+
+
 def op_overview(req):
     from backend import extras
 
@@ -253,6 +268,7 @@ OPS = {
     "hello": op_hello,
     "open": op_open,
     "window": op_window,
+    "panel": op_panel,
     "overview": op_overview,
     "band": op_band,
     "nev": op_nev,

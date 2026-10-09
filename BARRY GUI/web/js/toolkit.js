@@ -662,6 +662,28 @@ BARRY.views.toolkit = (function () {
      cluster run has come back yet, so it is not listed. */
   const VACC_TOOLS = ['incisor', 'doppler', 'circuit'];
 
+  /* What each tool can do with a recording that is VACC loaded and not on
+     this computer -- the input to `BARRY.vacc.reach` (vacc.js says what the
+     three words mean). Declared, never guessed, for the reason VACC_TOOLS
+     is: a tool that claims a recording it then cannot read is worse than
+     one that says plainly it needs the files here.
+
+       'cluster'  runs there with no copy here: Incisor. Doppler and
+                  Circuit run on the cluster too, but both still read the
+                  channel list or the cue folder on this computer before they
+                  send anything, so they are 'here' until that moves.
+       'link'     views it through the live link: Checkup, Spotter and
+                  StrataScope take over Xplorefinder, and Xplorefinder reads
+                  windows, the overview and the band off the cluster.
+       'here'     everything else, until somebody checks that every read it
+                  makes goes through the link or the cluster. Panorama's VACC
+                  run is in the constitution's table and not built yet. */
+  const READS = {
+    incisor: 'cluster',
+    curate: 'link', spotter: 'link', strata: 'link', xplore: 'link',
+  };
+  function readsOf(id) { return READS[id] || 'here'; }
+
   function vaccMark(id) {
     if (VACC_TOOLS.indexOf(id) < 0) return null;
     if (!(BARRY.state.vacc && BARRY.vacc
@@ -1455,14 +1477,15 @@ BARRY.views.toolkit = (function () {
                          + encodeURIComponent(r.kind));
       } catch (e) { info = null; }
     }
-    const here = ((info && (info.session || {})).here) || [];
-    if (!here.length) {
-      toast('That recording is not reachable from this machine: ' + label,
-            'warn', 7000);
+    const row = Object.assign({ gid: r.gid }, (info && info.session) || {});
+    const got = BARRY.vacc.reachFor(row, 'xplore');
+    if (!got.path) {
+      toast((got.why || 'That recording is not reachable from this machine.')
+            + ' (' + label + ')', 'warn', 8000);
       return;
     }
     setView('xplore');
-    const sess = await BARRY.views.xplore.open(here[0]);
+    const sess = await BARRY.views.xplore.open(got.path);
     if (!sess) return;
     /* A second either side, the same window curation uses -- enough to tell
        a deflection from an artifact on one wire, which is the whole point of
@@ -3468,6 +3491,7 @@ BARRY.views.toolkit = (function () {
     // that can -- a tool marked as offloadable that is not is worse than
     // one with no mark at all.
     _vaccTools: () => VACC_TOOLS.slice(),
+    readsOf,
     /* The step chip, for any tool that is in a bundle. See `stepOf`. */
     stepOf,
     bundles: () => BUNDLES.map((b) => ({

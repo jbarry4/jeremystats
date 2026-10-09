@@ -108,13 +108,31 @@ def main():
               rec["gid"] in [a.get("gid") for a in again.get("already") or []]
               and not again.get("added"), again)
 
-        print("\nregistering from the cluster is refused, with why")
-        r = c.post("/api/vacc/scan", json={"path": elsewhere, "register": True})
-        body = r.get_json() or {}
-        check("refused", r.status_code == 400 and not body.get("ok"), body)
-        check("saying it would put a cluster path in the registry",
-              "cluster path into the registry" in (body.get("error") or ""), body)
-        check("and still nothing written", not calls["add_path"] and not calls["ingest"])
+        print("\nregistering from the cluster goes through vaccfind, and "
+              "writes no cluster path")
+        # It used to be refused outright. Now it is the one deliberate path
+        # (backend/vaccfind.py): a scratch find goes in by identity alone.
+        # This folder holds only a recording already known, so nothing new.
+        found_rows = []
+        real_found = appmod.REG.ingest_found
+        appmod.REG.ingest_found = lambda rows, via="vacc": (
+            found_rows.extend(rows) or (len(rows), 0))
+        try:
+            r = c.post("/api/vacc/scan", json={"path": elsewhere,
+                                               "register": True})
+            body = r.get_json() or {}
+            check("answers", r.status_code == 200 and body.get("ok"), body)
+            check("the known recording is not registered again",
+                  not found_rows, found_rows)
+            check("a dry run never registers",
+                  c.post("/api/vacc/scan", json={"path": elsewhere,
+                                                 "register": True,
+                                                 "dry": True}).status_code
+                  == 400)
+        finally:
+            appmod.REG.ingest_found = real_found
+        check("and no drive-scan write either",
+              not calls["add_path"] and not calls["ingest"])
 
         print("\na folder under scratch is not a second place")
         check("scratch covers it",

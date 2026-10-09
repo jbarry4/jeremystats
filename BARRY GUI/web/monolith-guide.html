@@ -81,8 +81,8 @@ svg.mfig { display: block; width: 100%; height: auto; }
   <p class="lede">Every <b>?</b> on the Monolith page, in one place. For each: what it is in plain words, what to look
     for, what fools it, and where to read more. The measures and the statistics each have two made-up examples
     side by side: a strong effect and no effect at all.</p>
-  <p class="lede small" id="madeby">The examples are made-up signals shaped like the real data (8 rats, about 15 cue
-    pairs a day, 10 s windows at 1 kHz), run once through the Monolith’s own engine. The number under each picture is
+  <p class="lede small" id="madeby">The examples are made-up signals shaped like the real data (8 rats, about 15
+    trials a day, 10 s windows at 1 kHz), run once through the Monolith’s own engine. The number under each picture is
     what the real analysis says about those signals; nothing is drawn by hand.</p>
   <nav class="toc" id="toc" aria-label="Contents"></nav>
   <div id="entries"><p class="loading">Drawing the examples…</p></div>
@@ -99,6 +99,7 @@ svg.mfig { display: block; width: 100%; height: auto; }
     ['Across the four sessions', ['trajectory', 'progress', 'progress.circuits', 'progress.series']],
     ['Events first', ['events']],
     ['Physical cue against balanced cue', ['physical', 'physical.verdict', 'physical.leads', 'physical.circuit']],
+    ['Narrowing down', ['narrow', 'narrow.how', 'narrow.global', 'narrow.correct', 'narrow.families', 'narrow.leads', 'narrow.circuit']],
     ['Reading the page', ['verdict', 'layer', 'trail', 'circuit', 'sig', 'arrows', 'points', 'rank', 'filter', 'broadband', 'spectrum', 'coverage']],
     ['Choosing what to look at', ['windows', 'window', 'contrast', 'frequency', 'range', 'bands', 'split', 'measure']],
     ['The measures: phase together, at zero lag', ['coherence', 'plv', 'ppc']],
@@ -140,7 +141,7 @@ svg.mfig { display: block; width: 100%; height: auto; }
         ul.appendChild(li);
         const sec = mk('section', { class: 'entry', id: key });
         const h = mk('h3', {}, t.title);
-        h.appendChild(mk('a', { class: 'self', href: '#' + key, 'aria-label': 'Link to this entry' }, '#'));
+        h.appendChild(mk('a', { class: 'self', href: '#' + key, 'aria-label': 'Link to this section' }, '#'));
         sec.appendChild(h);
         sec.appendChild(H.block(key, { big: true, noGuide: true }));
         host.appendChild(sec);

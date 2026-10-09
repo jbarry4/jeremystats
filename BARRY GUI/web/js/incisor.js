@@ -152,6 +152,10 @@ BARRY.incisor = (function () {
 
   let estSeq = 0;
   async function refreshEstimate() {
+    // VACC mode asks its plan, not one recording's estimate; `q.path` there
+    // is whichever review is open, and re-estimating it would open a link
+    // to the cluster for nothing.
+    if (q.tab === 'vacc') return;
     if (!q.path) { est = null; return; }
     const mine = ++estSeq;
     try {
@@ -368,6 +372,15 @@ BARRY.incisor = (function () {
     q.where = bar.where;
     q.count = bar.count;
     q.tab = (q.where === 'vacc' && q.count === 'many') ? 'vacc' : 'local';
+    /* A recording only the cluster can read cannot be scanned on this
+       computer, so switching to "This computer" with one chosen lets it go
+       rather than offering a Scan that cannot read it (§6e: changing what
+       is on offer resets everything downstream). */
+    if (q.where === 'local' && /^vacc:/.test(q.path || '')) {
+      q.path = null; q.gid = null; q.row = null;
+      openKey = null;
+      reset();
+    }
     if (bar.childNodes.length) host.appendChild(bar);
 
     if (q.tab === 'vacc') {
@@ -378,8 +391,13 @@ BARRY.incisor = (function () {
          Separate from the local half rather than mixed into it, because
          "run this one here" and "run these thirty over there" are different
          acts with different answers to "what will this cost", and a single
-         panel that tried to be both kept having to say which one it meant. */
+         panel that tried to be both kept having to say which one it meant.
+
+         In step order: which recordings (and their channels), the
+         detection settings with the cost and the one primary, the cluster's
+         progress, and the queue of answers to look at and bank. */
       host.appendChild(vaccPickCard());
+      host.appendChild(vaccRunCard());
       if (batchJob) host.appendChild(batchCard());
       host.appendChild(reviewCard());
     } else {
@@ -408,59 +426,152 @@ BARRY.incisor = (function () {
   }
 
   /* ==================================================================
-     The batch, and the queue it leaves behind
+     VACC mode: many recordings on the cluster, then one at a time
      ==================================================================
-     Sending thirty recordings to the cluster is easy. The part that needed
-     thinking about is what comes back, because a batch that banks its own
-     answers is a batch nobody looks at -- and banking has a person's name
-     on it.
+     Pick any recordings the cluster can read -- including the ones this
+     computer has no copy of at all, which is most of the lab's netfiles
+     share from a desk without `Y:` -- set the channels per recording and
+     the detection parameters once, and send them as one job array. Each
+     answer comes back into the queue below, and opening one gives the
+     ordinary panel: the three plots, the picks, the hilus range, the bank.
 
-     So a finished scan is a row here, and reviewing one does not need a
-     second way to render a scan: selecting it points the panel at that
-     recording and re-runs, which comes straight back out of the vault as a
-     cache hit. The three plots, the hilus pick and the bank button are then
-     the ordinary ones, on the ordinary path, which is why they behave the
-     same whether the numbers were computed here or on a compute node.
+     A batch banks nothing. Banking has a person's name on it, so a finished
+     scan is a row here until somebody opens it, reads it and sends it.
+
+     Opening a row loads THAT scan, by its recording and its key
+     (`/api/incisor/result`), with no copy of the recording needed. It used
+     to point the panel at the recording's local path and re-run the scan
+     with whatever parameters the panel showed: a cache hit when they
+     matched, a fresh scan of the whole recording when they did not, and a
+     refusal for every recording this computer could not open.
      ================================================================== */
   let reviews = null;        // null until asked for
   let batchJob = null;
   let batchPoll = null;
-  let openGid = null;        // which review row is expanded, if any
-  let vaccList = null;       // what the cluster can reach, per recording
+  let batchGids = null;      // what the last batch here was about
+  let openKey = null;        // the review that is open: gid + '/' + key
+  let vaccList = null;       // the plan: what the cluster can run
+  let vaccListSeq = 0;
+  let vaccFilter = '';
+  let showAllScans = false;
   const picked = new Set();  // gids ticked for a run
+  /* The per-recording channel editor, by gid: { est, busy, error }. The
+     channel list of a recording only the cluster has comes over the link
+     (a header read, a few seconds), so it is asked for when somebody opens
+     the editor, never for every row. */
+  const chanOpen = {};
 
-  /* The two halves were tabs -- "This computer: one recording at a time"
-     and "VACC: many at once" -- which made VACC mean "many" and left no way
-     to say "this one, on the cluster" except a second button inside the
-     local half. Where and how many are two questions now, in the run bar
-     at the top of paint(). What the tabs got right is kept: the cluster
-     half is its own panel, because "run this one" and "run these thirty"
-     have different answers to "what will this cost". */
+  /* The detection parameters, as the plan and the batch are asked them --
+     one set for the whole batch (constitution §6d). */
+  function paramsBody() {
+    return {
+      height_sd: q.height_sd, abs_uv: q.abs_uv, dist_ms: q.dist_ms,
+      wlen_ms: q.wlen_ms, estimator: q.estimator,
+    };
+  }
 
-  /* ---------------- which recordings, on the cluster ----------------
-
-     The recordings this lab already knows about, marked with what the
-     cluster makes of each -- not a separate list of cluster things. A
-     recording is the same recording whichever machine can read it, and a
-     second inventory to keep in step with the registry would be a second
-     thing to be wrong.
-
-     "Scan all on VACC" was the first version of this and it was a bad
-     control: it did not say what it was about to do, there was no way to
-     leave one out, and the answer to "which thirty?" was buried in a
-     route. Picking is the point. */
+  /* Asked again whenever the parameters change, because "already scanned"
+     is a fact about a question and the question just changed. */
   async function loadVaccList() {
+    const mine = ++vaccListSeq;
     try {
-      const got = await api('/api/incisor/batch/plan');
+      const got = await apiPost('/api/incisor/batch/plan', paramsBody());
+      if (mine !== vaccListSeq) return;
       vaccList = got;
-      // Everything runnable, ticked. The common case is "do the lot", and
-      // un-ticking three is less work than ticking twenty-five.
-      picked.clear();
-      for (const r of (got.todo || [])) picked.add(r.gid);
+      /* Nothing is ticked for you. It used to tick everything runnable,
+         when that was a few dozen scratch copies; now it is every
+         recording on the lab's share, and one click submitting a thousand
+         scans is not a default. What stays ticked is what is still
+         runnable. */
+      const runnable = new Set((got.todo || []).map((r) => r.gid));
+      for (const g of Array.from(picked)) {
+        if (!runnable.has(g)) picked.delete(g);
+      }
     } catch (e) {
+      if (mine !== vaccListSeq) return;
       vaccList = { todo: [], blocked: [], error: e.message };
     }
     paint();
+  }
+
+  function rowMatches(r) {
+    if (!vaccFilter) return true;
+    const hay = [r.label, r.project, r.mouse != null ? 'm' + r.mouse : '',
+                 r.session != null ? 's' + r.session : '', r.start,
+                 r.remote].join(' ').toLowerCase();
+    return vaccFilter.toLowerCase().split(/\s+/).filter(Boolean)
+      .every((w) => hay.includes(w));
+  }
+
+  function badLabel(r) {
+    const bad = r.bad_channels || [];
+    return (r.n_channels ? r.n_channels + ' channels' : 'channels read on the '
+            + 'cluster')
+      + (bad.length ? ' · ' + bad.length + ' marked bad ('
+         + bad.map((n) => 'CSC' + n).join(', ') + ')' : ' · none marked bad');
+  }
+
+  /* The editor for one recording's channels. The same record as the single
+     panel's (`/api/session/bad-for-path`, by CSC number), reached by the
+     recording's own path here or by `vacc:<gid>` -- so a channel ticked off
+     here is off in the trace view, in a single run and in the next batch. */
+  async function toggleChans(r) {
+    if (chanOpen[r.gid]) { delete chanOpen[r.gid]; paint(); return; }
+    chanOpen[r.gid] = { busy: true };
+    paint();
+    const path = r.here || ('vacc:' + r.gid);
+    try {
+      const got = await apiPost('/api/incisor/estimate',
+                                Object.assign({ path }, paramsBody()));
+      chanOpen[r.gid] = { est: got, path };
+    } catch (e) {
+      chanOpen[r.gid] = { error: e.message, path };
+    }
+    paint();
+  }
+
+  async function setRowBad(r, numbers) {
+    const st = chanOpen[r.gid];
+    if (!st || st.busy) return;
+    st.busy = true; paint();
+    try {
+      await apiPost('/api/session/bad-for-path', {
+        path: st.path,
+        bad_channels: numbers.map(Number).sort((a, b) => a - b),
+      });
+      const got = await apiPost('/api/incisor/estimate',
+                                Object.assign({ path: st.path }, paramsBody()));
+      chanOpen[r.gid] = { est: got, path: st.path };
+    } catch (e) {
+      st.busy = false;
+      toast(e.message, 'err', 9000);
+    }
+    // The plan reads the new bad set, and with it the request's hash.
+    loadVaccList();
+  }
+
+  function rowChanEditor(r) {
+    const st = chanOpen[r.gid] || {};
+    if (st.error) {
+      return el('p', { class: 'warn-line inc-row-chans', text: st.error });
+    }
+    if (!st.est) {
+      return el('p', { class: 'hint quiet inc-row-chans',
+        text: r.here ? 'Reading its channel list…'
+          : 'Reading its channel list off the cluster — the header only, a '
+            + 'few seconds…' });
+    }
+    const all = st.est.channels || [];
+    const bad = all.filter((c) => c.bad);
+    const box = el('div', { class: 'inc-row-chans' });
+    box.appendChild(chanGrid(all, bad, !!st.busy,
+      (number, isBad) => {
+        const now = new Set(bad.map((c) => Number(c.number)));
+        if (isBad) now.add(Number(number)); else now.delete(Number(number));
+        setRowBad(r, Array.from(now));
+      },
+      () => setRowBad(r, [])));
+    return box;
   }
 
   function vaccPickCard() {
@@ -469,7 +580,8 @@ BARRY.incisor = (function () {
                                 text: 'Recordings' }));
     if (!vaccList) {
       box.appendChild(el('p', { class: 'hint quiet',
-                                text: 'Asking the cluster what it can read…' }));
+        text: 'Asking what the cluster can read — the registry, the lab’s '
+            + 'netfiles share and scratch…' }));
       loadVaccList();
       return box;
     }
@@ -479,41 +591,95 @@ BARRY.incisor = (function () {
     }
     const todo = vaccList.todo || [];
     const blocked = vaccList.blocked || [];
-    const doneGids = new Set((reviews || []).map((r) => r.gid));
+    const shown = todo.filter(rowMatches);
+    const nHere = todo.filter((r) => r.here).length;
 
     box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
-      text: todo.length + ' of the recordings Jarvis knows about are readable '
-          + 'from the cluster. Ones already scanned with these settings are '
-          + 'marked — running them again costs nothing, because the answer '
-          + 'comes back out of the store rather than being recomputed.' }));
+      text: todo.length.toLocaleString() + ' recordings are VACC loaded — '
+          + 'the cluster can read them now — and '
+          + (todo.length - nHere).toLocaleString() + ' of those are not on '
+          + 'this computer at all. That does not matter: the scan runs '
+          + 'where the data is, and comes back here to be looked at. Ones '
+          + 'already scanned with these settings are marked, and are '
+          + 'skipped.' }));
 
-    const head = el('div', { class: 'tk-actions' }, [
-      el('button', { class: 'btn ghost sm', text: 'All',
-        onclick: () => { todo.forEach((r) => picked.add(r.gid)); paint(); } }),
-      el('button', { class: 'btn ghost sm', text: 'None',
+    const search = el('input', {
+      type: 'search', class: 'inc-search', value: vaccFilter,
+      placeholder: 'Type a mouse, session, date or project…',
+      'aria-label': 'Search…',
+    });
+    /* Repaint on a pause, not per keystroke, and give the box its focus
+       back: a repaint replaces it, and a search box that loses the cursor
+       after every letter is not a search box. */
+    let t = null;
+    search.addEventListener('input', () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        vaccFilter = search.value;
+        const at = search.selectionStart;
+        paint();
+        const again = document.querySelector('#tkResult .inc-search');
+        if (again) { again.focus(); try { again.setSelectionRange(at, at); } catch (e) {} }
+      }, 220);
+    });
+    box.appendChild(search);
+
+    box.appendChild(el('div', { class: 'tk-actions inc-pick-tools' }, [
+      el('button', { class: 'btn ghost sm',
+        text: 'Tick the ' + shown.length.toLocaleString() + ' shown',
+        onclick: () => { shown.forEach((r) => picked.add(r.gid)); paint(); } }),
+      el('button', { class: 'btn ghost sm', text: 'Only the unscanned shown',
+        onclick: () => {
+          shown.forEach((r) => { if (r.answered) picked.delete(r.gid);
+                                 else picked.add(r.gid); });
+          paint();
+        } }),
+      el('button', { class: 'btn ghost sm', text: 'Clear',
+        disabled: picked.size ? null : 'disabled',
         onclick: () => { picked.clear(); paint(); } }),
-      el('button', { class: 'btn ghost sm', text: 'Only the unscanned',
-        onclick: () => { picked.clear();
-                         todo.forEach((r) => { if (!doneGids.has(r.gid)) picked.add(r.gid); });
-                         paint(); } }),
-      el('span', { class: 'hint quiet', text: picked.size + ' selected' }),
-    ]);
-    box.appendChild(head);
+      el('span', { class: 'hint quiet',
+        text: picked.size.toLocaleString() + ' ticked · '
+            + shown.length.toLocaleString() + ' of '
+            + todo.length.toLocaleString() + ' shown' }),
+    ]));
 
     const list = el('div', { class: 'inc-pick-list' });
-    for (const r of todo) {
-      const done = doneGids.has(r.gid);
-      list.appendChild(el('label', { class: 'inc-pick' + (done ? ' done' : '') }, [
+    if (!shown.length) {
+      list.appendChild(el('div', { class: 'empty-state',
+        text: todo.length ? 'Nothing matches that. Clear the search to see '
+                            + 'all ' + todo.length + '.'
+          : 'Nothing is VACC loaded yet. In Sessions ▸ Everything VACC '
+            + 'knows, add the recordings found on VACC, or upload some.' }));
+    }
+    for (const r of shown) {
+      const on = picked.has(r.gid);
+      const open = !!chanOpen[r.gid];
+      list.appendChild(el('div', { class: 'inc-pick' + (r.answered ? ' done' : '')
+                                         + (on ? ' on' : '') }, [
         el('input', {
-          type: 'checkbox', checked: picked.has(r.gid) ? 'checked' : null,
+          type: 'checkbox', checked: on ? 'checked' : null,
+          'aria-label': 'Send ' + r.label,
           onchange: (e) => { if (e.target.checked) picked.add(r.gid);
                              else picked.delete(r.gid); paint(); },
         }),
-        el('span', { class: 'ip-name', text: r.label }),
-        el('span', { class: 'ip-where', text: 'on VACC',
-                     title: r.remote || '' }),
-        el('span', { class: 'ip-done', text: done ? 'scanned' : '' }),
+        el('div', { class: 'ip-main' }, [
+          el('span', { class: 'ip-name', text: r.label }),
+          el('span', { class: 'ip-sub', text: badLabel(r)
+            + (r.here ? ' · also on this computer' : '') }),
+        ]),
+        // THE cluster mark (§6c): one renderer, never a chip of its own.
+        BARRY.vacc.mark({ gid: r.gid }, { compact: true })
+          || el('span', {}),
+        el('span', { class: 'ip-done',
+                     text: r.answered ? 'already scanned' : '' }),
+        el('button', {
+          class: 'mini', text: open ? 'Done' : 'Channels…',
+          title: 'Which of this recording’s channels are read. Unticking one '
+               + 'marks it bad for this recording everywhere.',
+          onclick: () => toggleChans(r),
+        }),
       ]));
+      if (open) list.appendChild(rowChanEditor(r));
     }
     box.appendChild(list);
 
@@ -521,11 +687,10 @@ BARRY.incisor = (function () {
       ? vaccList.blocked_total : blocked.length;
     if (nBlocked) {
       /* The sample, not the catalogue. The server explains forty and
-         counts the rest: a thousand sentences saying the same thing is
-         not more informative than one and a number, and it is a thousand
-         nodes built into a panel nobody opens. */
+         counts the rest. */
       box.appendChild(el('details', { class: 'inc-blocked' }, [
-        el('summary', { text: nBlocked + ' left out' }),
+        el('summary', { text: nBlocked.toLocaleString()
+                              + ' not VACC loaded, so left out' }),
         el('div', {}, blocked.map((b) => el('div', { class: 'hint quiet',
           text: b.label + ' — ' + b.why }))
           .concat(nBlocked > blocked.length
@@ -533,10 +698,8 @@ BARRY.incisor = (function () {
                 text: 'and ' + (nBlocked - blocked.length) + ' more.' })]
             : [])),
       ]));
-      /* The ones that are only missing from the cluster can be sent, and
-         this is the same upload Sessions runs -- see `uploadMissing`. The
-         plan is re-read afterwards, so a recording that has just gone up
-         stops being listed as left out. */
+      /* The ones only missing from the cluster can be sent -- the same
+         upload Sessions runs (`uploadMissing`), re-planned afterwards. */
       if (BARRY.vacc && BARRY.vacc.uploadMissing) {
         const offer = BARRY.vacc.uploadMissing(blocked, () => {
           vaccList = null;
@@ -545,21 +708,59 @@ BARRY.incisor = (function () {
         if (offer) box.appendChild(offer);
       }
     }
+    return box;
+  }
 
+  /* The parameters, once for the batch, and the cost before the primary
+     (constitution §6d: say the cost before it is spent; the primary is last
+     and names what it does). */
+  function vaccRunCard() {
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'Detection, for every recording sent' }));
+    box.appendChild(params());
+    const todo = (vaccList && vaccList.todo) || [];
+    const chosen = todo.filter((r) => picked.has(r.gid));
+    const fresh = chosen.filter((r) => !r.answered);
+    const secs = fresh.reduce((a, r) => a + ((r.plan || {}).seconds || 0), 0);
+    const native = fresh.some((r) => r.state === 'native');
+    const cap = (vaccList && vaccList.cap) || 8;
+    const queued = vaccList && vaccList.queued;
+    box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+      text: chosen.length
+        ? (fresh.length.toLocaleString() + ' to scan'
+           + (chosen.length > fresh.length
+             ? ', ' + (chosen.length - fresh.length) + ' already scanned and '
+               + 'skipped' : '')
+           + ' · about ' + human(secs) + ' of cluster time in all, '
+           + (fresh.length ? 'about ' + human(secs / fresh.length)
+             + ' each' : '')
+           + ' · ' + ((vaccList && vaccList.partition) || 'general')
+           + ' partition'
+           + (queued ? ' · ' + queued + ' ahead in the queue' : '')
+           + (native ? ' · at most ' + cap + ' at once, because the netfiles '
+                       + 'share slows under many readers' : '')
+           + '. The times are estimates from what the cluster has run '
+           + 'before.')
+        : 'Tick the recordings to send, above.' }));
     box.appendChild(el('div', { class: 'tk-actions' }, [
-      el('button', {
-        class: 'btn',
-        text: batchJob ? 'Running…'
-            : ('Scan ' + picked.size + ' on VACC'),
-        disabled: (batchJob || !picked.size) ? 'disabled' : null,
-        onclick: startBatch,
-      }),
       batchJob ? el('button', { class: 'btn ghost', text: 'Stop',
         onclick: () => apiPost('/api/cfc/job/' + batchJob.id + '/cancel', {}) })
         : null,
-      el('span', { class: 'hint quiet',
-        text: 'They go as one job array, so the cluster runs them side by '
-            + 'side rather than one after another.' }),
+      chosen.length > fresh.length && !batchJob ? el('button', {
+        class: 'btn ghost sm', text: 'Run the scanned ones again too',
+        title: 'Send every ticked recording, including the ones already '
+             + 'scanned with these settings',
+        onclick: () => startBatch(true),
+      }) : null,
+      el('button', {
+        class: 'btn',
+        text: batchJob ? 'On the cluster…'
+          : (fresh.length ? 'Submit ' + fresh.length.toLocaleString()
+                            + ' to VACC' : 'Nothing new to submit'),
+        disabled: (batchJob || !fresh.length) ? 'disabled' : null,
+        onclick: () => startBatch(false),
+      }),
     ].filter(Boolean)));
     return box;
   }
@@ -570,29 +771,41 @@ BARRY.incisor = (function () {
       reviews = got.reviews || [];
     } catch (e) {
       reviews = [];
+      reportClientError('incisor.reviews', e.message, e.stack);
     }
     paint();
   }
 
-  async function startBatch() {
+  async function startBatch(force) {
     if (batchJob) return;
+    const gids = Array.from(picked);
     let started;
     try {
       started = await apiPost('/api/incisor/batch',
-                              body({ gids: Array.from(picked) }));
+                              Object.assign({ gids, force: !!force },
+                                            paramsBody()));
     } catch (e) {
       toast(e.message, 'err', 9000);
       return;
     }
     batchJob = started.job;
+    batchGids = new Set(gids);
     if (BARRY.vaccBusy) BARRY.vaccBusy.start();
     paint();
     clearInterval(batchPoll);
+    /* A local route, every 1.5 s, while a batch runs -- it reads the job's
+       state in this process and asks the cluster nothing itself (the
+       batch's own thread polls slurm once per round, for every task). */
     batchPoll = setInterval(async () => {
       if (!batchJob) { clearInterval(batchPoll); return; }
+      if (document.hidden) return;        // caught up when seen again
       let got;
       try { got = await api('/api/cfc/job/' + batchJob.id); } catch (e) { return; }
+      const had = (batchJob.members || []).filter((m) => m.status === 'done').length;
       batchJob = got.job;
+      const now = (batchJob.members || []).filter((m) => m.status === 'done').length;
+      // A new answer is a new row in the queue below.
+      if (now > had) loadReviews();
       paint();
       if (batchJob.status === 'running') return;
       clearInterval(batchPoll);
@@ -601,41 +814,48 @@ BARRY.incisor = (function () {
       if (done.status === 'failed') toast(done.error || 'The batch failed.',
                                           'err', 10000);
       loadReviews();
-    }, 900);
+      loadVaccList();
+    }, 1500);
   }
 
   async function toggleReview(r) {
-    if (openGid === r.gid) { openGid = null; res = null; paint(); return; }
-    openGid = r.gid;
+    const k = r.gid + '/' + r.params_hash;
+    if (openKey === k) { openKey = null; res = null; paint(); return; }
+    openKey = k;
+    res = null;
+    paint();
     await openReview(r);
   }
 
+  /* One scan, by its recording and its key. The result, the anatomy on
+     record and the registry row come together, and the row is not
+     decoration: `bank` reads project, mouse and session off it, and an
+     entry without them files itself under "Unfiled" and can never be found
+     by the animal it came from. */
   async function openReview(r) {
-    if (!r.local) {
-      toast('That recording was scanned on the cluster, and this computer '
-            + 'has no path to it — so its plots cannot be drawn here.',
-            'err', 9000);
+    let got;
+    try {
+      got = await api('/api/incisor/result?gid=' + encodeURIComponent(r.gid)
+                      + '&key=' + encodeURIComponent(r.params_hash));
+    } catch (e) {
+      toast(e.message, 'err', 10000);
+      openKey = null;
+      paint();
       return;
     }
-    q.path = r.local;
+    if (openKey !== r.gid + '/' + r.params_hash) return;   // moved on
     q.gid = r.gid;
-    /* The registry row travels with the review, and it is not decoration:
-       `bank` reads project, mouse and session off it, and an entry without
-       them files itself under "Unfiled" and can never be found by the
-       animal it came from. Opening a review is the only way into banking
-       that does not go through the session picker, so this is the only
-       place that row can come from. */
-    q.row = r.row || null;
-    res = null;
-    await refreshEstimate();
-    // Comes back cached, out of the vault, on either machine's answer.
-    await scan();
+    q.row = got.row || r.row || null;
+    q.path = got.path;
+    est = { known: got.known || {} };
+    adopt(got.result);
+    paint();
   }
 
   function batchCard() {
     const box = el('div', { class: 'card' });
     box.appendChild(el('div', { class: 'section-label',
-                                text: '2. On the cluster' }));
+                                text: 'On the cluster' }));
     box.appendChild(batchRows());
     return box;
   }
@@ -643,34 +863,100 @@ BARRY.incisor = (function () {
   function reviewCard() {
     const box = el('div', { class: 'card' });
     box.appendChild(el('div', { class: 'section-label',
-                                text: '3. Look at them, then bank' }));
+                                text: 'Look at them, then bank' }));
     box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
       text: 'Nothing is banked on its own. Open one, read the three plots, '
-          + 'take the pick or move it, and send it — a set goes to the bank '
-          + 'under your name or not at all.' }));
+          + 'take the pick or move it, choose the hilus range, and send it '
+          + '— a set goes to the bank under your name or not at all. A '
+          + 'recording that is only on the cluster opens off the cluster.' }));
     if (!reviews) { loadReviews(); }
     box.appendChild(reviewRows());
     return box;
   }
 
+  /* §6d's states, one row per recording, the Slurm id on it. Queued is
+     not an error and is not drawn like one. */
   function batchRows() {
     const ms = (batchJob && batchJob.members) || [];
     const wrap = el('div', { class: 'inc-batch' });
     const n = ms.length;
     const done = ms.filter((m) => m.status === 'done').length;
-    wrap.appendChild(el('div', { class: 'hint quiet',
-      text: done + ' of ' + n + ' done' }));
+    const failed = ms.filter((m) => m.status === 'failed').length;
+    const pct = n ? Math.round(100 * (done + failed) / n) : 0;
+    wrap.appendChild(el('div', { class: 'comod-total' }, [
+      el('div', { class: 'comod-bar' }, [
+        el('div', { class: 'comod-bar-fill', style: 'width:' + pct + '%' }),
+      ]),
+      el('span', { class: 'comod-eta',
+        text: done + ' of ' + n + ' done' + (failed ? ', ' + failed
+                                             + ' failed' : '') }),
+    ]));
     for (const m of ms) {
       if (m.status === 'waiting') continue;
+      const word = m.error ? m.error
+        : m.cached ? 'already answered'
+          : m.status === 'done' ? 'done — in the queue below'
+            : m.status === 'running' ? 'running'
+              : m.status === 'queued' ? ('queued' + (m.step && m.step !== 'waiting'
+                                         && !/^queued on/.test(m.step)
+                                         ? ' · ' + m.step : ''))
+                : (m.step || m.status || '');
       wrap.appendChild(el('div', { class: 'inc-batch-row ' + (m.status || '') }, [
         el('span', { class: 'ib-name', text: m.label || m.id }),
-        el('span', { class: 'ib-state',
-          text: m.error ? m.error
-              : m.cached ? 'already answered'
-              : (m.step || m.status || '') }),
+        el('span', { class: 'ib-state', text: word
+          + (m.slurm_id ? '  ·  slurm ' + m.slurm_id : '') }),
       ]));
     }
     return wrap;
+  }
+
+  function reviewRow(r) {
+    const hil = (r.picked || {}).hilus || {};
+    const k = r.gid + '/' + r.params_hash;
+    const on = openKey === k;
+    const out = [el('button', {
+      class: 'inc-review' + (on ? ' on' : '') + (r.banked ? ' banked' : ''),
+      onclick: () => toggleReview(r),
+    }, [
+      el('span', { class: 'ir-name', text: r.label || r.gid }),
+      el('span', { class: 'ir-pick',
+        text: hil.label ? ('hilus ' + hil.label) : 'no hilus pick' }),
+      /* A small margin is the interesting case, not a defect: the two top
+         channels scored almost the same and the argmax could have gone
+         either way, so the plots ARE the answer. Flagged, not buried. */
+      el('span', {
+        class: 'ir-margin' + (hil.margin != null && hil.margin < 0.1
+                              ? ' close' : ''),
+        title: hil.margin != null && hil.margin < 0.1
+          ? 'The winning channel barely beat the runner-up — worth looking '
+            + 'at the plots rather than taking the pick'
+          : 'How far the winning channel stood above the runner-up',
+        text: hil.margin != null
+          ? ('margin ' + Math.round(hil.margin * 100) + '%') : '' }),
+      el('span', { class: 'ir-where',
+        title: (r.slurm_id ? 'slurm job ' + r.slurm_id + '. ' : '')
+             + (r.local ? 'Also on this computer.'
+                        : 'Only on the cluster: it opens off the cluster.'),
+        text: r.ran_on === 'vacc' ? ('VACC' + (r.local ? '' : ' only')) : '' }),
+      el('span', { class: 'ir-banked',
+        text: r.banked ? ('banked · ' + (r.banked.n || 0)) : 'not banked' }),
+    ])];
+    /* The plots for the row you opened, directly under that row -- one at
+       a time, because a hilus is a judgement about one recording. */
+    if (on) {
+      const drop = el('div', { class: 'inc-drop' });
+      if (!res) {
+        drop.appendChild(loader('Fetching the scan',
+          r.local ? 'Out of this computer’s store.'
+            : 'Out of the store, or once off the cluster if this computer '
+              + 'has not seen its events yet.'));
+      } else {
+        drop.appendChild(channelCard());
+        drop.appendChild(resultCard());
+      }
+      out.push(drop);
+    }
+    return out;
   }
 
   function reviewRows() {
@@ -680,65 +966,33 @@ BARRY.incisor = (function () {
       return wrap;
     }
     if (!reviews.length) {
-      wrap.appendChild(el('p', { class: 'hint quiet',
-        text: 'Nothing scanned yet.' }));
+      wrap.appendChild(el('div', { class: 'empty-state',
+        text: 'Nothing scanned yet. Tick recordings above and submit them.' }));
       return wrap;
     }
-    for (const r of reviews) {
-      const hil = (r.picked || {}).hilus || {};
-      const on = openGid === r.gid;
-      wrap.appendChild(el('button', {
-        class: 'inc-review' + (on ? ' on' : '') + (r.banked ? ' banked' : ''),
-        onclick: () => toggleReview(r),
-      }, [
-        el('span', { class: 'ir-name', text: r.label || r.gid }),
-        el('span', { class: 'ir-pick',
-          text: hil.label ? ('hilus ' + hil.label) : 'no hilus pick' }),
-        // How clear-cut the argmax was. A margin near zero means the plots
-        // are the answer and the number is a coin toss.
-        /* A small margin is the interesting case, not a defect: it means
-           the two top channels scored almost the same and the argmax could
-           have gone either way. Measured on this lab's first batch, the
-           margins were 1%, 2% and 3% -- so the plots ARE the answer here
-           and the number is a formality. Flagged rather than buried. */
-        el('span', {
-          class: 'ir-margin' + (hil.margin != null && hil.margin < 0.1
-                                ? ' close' : ''),
-          title: hil.margin != null && hil.margin < 0.1
-            ? 'The winning channel barely beat the runner-up — worth looking '
-              + 'at the plots rather than taking the pick'
-            : 'How far the winning channel stood above the runner-up',
-          text: hil.margin != null
-            ? ('margin ' + Math.round(hil.margin * 100) + '%') : '' }),
-        el('span', { class: 'ir-where',
-          title: r.slurm_id ? ('slurm job ' + r.slurm_id) : '',
-          text: r.ran_on === 'vacc' ? 'VACC' : '' }),
-        el('span', { class: 'ir-banked',
-          text: r.banked ? ('banked · ' + (r.banked.n || 0)) : 'not banked' }),
-      ]));
-
-      /* The plots for the row you opened, directly under that row.
-
-         They used to be appended after the whole list, so on a queue of
-         thirty the thing you had just clicked was thirty rows above what it
-         had produced, and deciding a hilus meant scrolling between the
-         picture and the name of the recording it belonged to.
-
-         One at a time, deliberately: the three canvases have fixed ids, and
-         -- more to the point -- a hilus is a judgement about one recording
-         and looking at four sets of plots at once is not how anybody makes
-         it. */
-      if (on) {
-        const drop = el('div', { class: 'inc-drop' });
-        if (!res) {
-          drop.appendChild(el('p', { class: 'hint quiet',
-                                     text: 'Fetching the scan…' }));
-        } else {
-          drop.appendChild(channelCard());
-          drop.appendChild(resultCard());
-        }
-        wrap.appendChild(drop);
+    /* This batch first: it is what somebody came back for. Everything else
+       on request, the way a picker lists the usable first (§6e). */
+    const mine = batchGids
+      ? reviews.filter((r) => batchGids.has(r.gid)) : [];
+    const rest = batchGids
+      ? reviews.filter((r) => !batchGids.has(r.gid)) : reviews;
+    if (mine.length) {
+      wrap.appendChild(el('div', { class: 'hint quiet',
+                                   text: 'From this batch' }));
+      mine.forEach((r) => reviewRow(r).forEach((n) => wrap.appendChild(n)));
+    }
+    if (!mine.length || showAllScans) {
+      if (mine.length) {
+        wrap.appendChild(el('div', { class: 'hint quiet',
+                                     text: 'Every other scan' }));
       }
+      rest.forEach((r) => reviewRow(r).forEach((n) => wrap.appendChild(n)));
+    }
+    if (mine.length && rest.length) {
+      wrap.appendChild(el('button', { class: 'linkish',
+        text: showAllScans ? 'Only this batch'
+                           : 'Every other scan (' + rest.length + ')',
+        onclick: () => { showAllScans = !showAllScans; paint(); } }));
     }
     return wrap;
   }
@@ -767,20 +1021,32 @@ BARRY.incisor = (function () {
                                 text: 'Recording' }));
     const rows = BARRY.views.toolkit.registryRows
       ? BARRY.views.toolkit.registryRows() : [];
-    box.appendChild(BARRY.pickSession({
+    /* This computer first, the cluster second (BARRY.vacc.reach). Run here,
+       a recording needs its files here; run on VACC, any recording the
+       cluster can read will do -- one this computer has never had a copy of
+       opens over the link and scans where it is. */
+    const reads = q.where === 'vacc' && BARRY.views.toolkit.readsOf
+      ? BARRY.views.toolkit.readsOf('incisor') : 'here';
+    const reachOf = (r) => BARRY.vacc.reach(r, reads);
+    box.appendChild(BARRY.ui.pickRecording({
       rows, value: q.gid,
-      placeholder: 'Which recording? Type a mouse, session or date…',
+      usable: (r) => { const g = reachOf(r); return g.path ? true : g.why; },
       onpick: (r) => {
+        const g = reachOf(r);
         q.gid = r.gid;
         q.row = r;
-        q.path = (r.here || [])[0] || null;
+        q.path = g.path;
         reset();
         refreshEstimate();
         paint();
       },
     }));
     if (q.path) {
-      box.appendChild(el('p', { class: 'hint quiet', text: q.path }));
+      box.appendChild(el('p', { class: 'hint quiet',
+        text: /^vacc:/.test(q.path)
+          ? 'Not on this computer — it is read off the cluster, and scanned '
+            + 'there.'
+          : q.path }));
     }
     return box;
   }
@@ -799,18 +1065,25 @@ BARRY.incisor = (function () {
       text: dur(p.span_s) + ' × ' + p.n_channels + ' channel'
           + (p.n_channels === 1 ? '' : 's') + '  ·  '
           + Math.round(p.megasamples).toLocaleString() + ' million samples'
-          + '  ·  about ' + human(p.seconds)
-          + (p.network ? '  ·  over the network' : '') }));
+          + (p.seconds != null ? '  ·  about ' + human(p.seconds) : '')
+          + (p.network ? '  ·  over the network' : '')
+          + (est.vacc_only ? '  ·  on VACC' : '') }));
     /* The recording's own condition, because it decides whether the times
-       this produces mean anything. */
-    box.appendChild(el('p', { class: 'hint quiet',
-      text: c.n_segments + ' segment' + (c.n_segments === 1 ? '' : 's')
-          + (c.seconds_lost ? ', ' + c.seconds_lost.toFixed(2)
-                              + ' s lost to gaps' : ', no gaps')
-          + (c.n_short_inside ? ', ' + c.n_short_inside
-                                + ' short record(s) inside a segment' : '')
-          + '  ·  clock good to '
-          + Math.round(c.residual_sd_us || 0) + ' µs' }));
+       this produces mean anything. For a recording only the cluster has,
+       that is measured on the compute node as part of the scan -- said, not
+       drawn as a plausible "0 segments". */
+    if (c.pending) {
+      box.appendChild(el('p', { class: 'hint quiet', text: c.note || '' }));
+    } else {
+      box.appendChild(el('p', { class: 'hint quiet',
+        text: c.n_segments + ' segment' + (c.n_segments === 1 ? '' : 's')
+            + (c.seconds_lost ? ', ' + c.seconds_lost.toFixed(2)
+                                + ' s lost to gaps' : ', no gaps')
+            + (c.n_short_inside ? ', ' + c.n_short_inside
+                                  + ' short record(s) inside a segment' : '')
+            + '  ·  clock good to '
+            + Math.round(c.residual_sd_us || 0) + ' µs' }));
+    }
     if ((c.mismatches || []).length) {
       box.appendChild(el('p', { class: 'warn-line',
         text: 'The channels checked for gaps disagree with one another, so '
@@ -885,8 +1158,11 @@ BARRY.incisor = (function () {
     // from a different computer is not a measurement of this one.
     const how = v.measured ? '' : ' (estimated from this machine until the '
                                 + 'cluster has run one)';
+    // A recording only the cluster has has no "here" to compare with.
     return el('div', { class: 'hint quiet vacc-why',
-      text: 'About ' + here + ' s here · about ' + there + ' s on VACC'
+      text: (est.vacc_only ? 'About ' + human(there) + ' on VACC'
+                           : 'About ' + here + ' s here · about ' + there
+                             + ' s on VACC')
             + q + how + '.' });
   }
 
@@ -957,6 +1233,18 @@ BARRY.incisor = (function () {
             + 'longer matches is the kind of thing that gets banked by '
             + 'mistake. Press Scan to generate them again.' }),
     ]);
+    d.appendChild(chanGrid(all, bad, savingBad,
+                           (number, isBad) => setBad(number, isBad),
+                           () => setBadSet([])));
+    return d;
+  }
+
+  /* The grid of channels and its "put them all back", for the single panel
+     and for each recording in VACC mode -- one control, so a channel looks
+     and behaves the same wherever it is ticked off. `onToggle(number, bad)`
+     is by CSC number, never by row index. */
+  function chanGrid(all, bad, busy, onToggle, onReset) {
+    const wrap = el('div', {});
     const grid = el('div', { class: 'inc-chan-grid' });
     for (const c of all) {
       grid.appendChild(el('label', {
@@ -966,21 +1254,20 @@ BARRY.incisor = (function () {
       }, [
         el('input', {
           type: 'checkbox', checked: c.bad ? null : 'checked',
-          disabled: savingBad ? 'disabled' : null,
-          onchange: (e) => setBad(c.number, !e.target.checked),
+          disabled: busy ? 'disabled' : null,
+          onchange: (e) => onToggle(c.number, !e.target.checked),
         }),
         el('span', { text: c.label }),
       ]));
     }
-    d.appendChild(grid);
-    d.appendChild(el('div', { class: 'tk-actions' }, [
+    wrap.appendChild(grid);
+    wrap.appendChild(el('div', { class: 'tk-actions' }, [
       el('button', { class: 'btn ghost sm', text: 'Put them all back',
-        disabled: (savingBad || !bad.length) ? 'disabled' : null,
-        onclick: () => setBadSet([]) }),
-      savingBad ? el('span', { class: 'hint quiet', text: 'Saving…' })
-                : null,
+        disabled: (busy || !bad.length) ? 'disabled' : null,
+        onclick: onReset }),
+      busy ? el('span', { class: 'hint quiet', text: 'Saving…' }) : null,
     ].filter(Boolean)));
-    return d;
+    return wrap;
   }
 
   function setBad(number, bad) {
@@ -1007,6 +1294,20 @@ BARRY.incisor = (function () {
     reset();            // the scan was made from a different set of channels
     editorOpen = true;  // survives the repaint, so you can untick two
     await refreshEstimate();
+    paint();
+  }
+
+  /* A detection parameter changed. One recording: estimate it again. VACC
+     mode: ask the plan again, because "already scanned" is a fact about the
+     question, and the question just changed. */
+  let planTimer = null;
+  function paramsChanged() {
+    if (q.tab === 'vacc') {
+      clearTimeout(planTimer);
+      planTimer = setTimeout(loadVaccList, 300);
+    } else {
+      refreshEstimate();
+    }
     paint();
   }
 
@@ -1046,7 +1347,7 @@ BARRY.incisor = (function () {
             onchange: (e) => {
               const v = parseFloat(e.target.value);
               if (!isFinite(v)) { e.target.value = q[f.key]; return; }
-              q[f.key] = v; refreshEstimate(); paint();
+              q[f.key] = v; paramsChanged();
             },
           }),
           el('span', { class: 'inc-param-unit', text: f.unit }),
@@ -1080,7 +1381,7 @@ BARRY.incisor = (function () {
               checked: q.estimator === 'mad' ? 'checked' : null,
               onchange: (e) => {
                 q.estimator = e.target.checked ? 'mad' : 'sd';
-                refreshEstimate(); paint();
+                paramsChanged();
               },
             }),
             el('span', { text: 'Measure the noise with the median absolute '
@@ -1101,7 +1402,7 @@ BARRY.incisor = (function () {
             onclick: () => {
               Object.assign(q, DEFAULTS);
               q.estimator = 'sd';
-              refreshEstimate(); paint();
+              paramsChanged();
             },
           }),
         ]) : null,
@@ -1145,6 +1446,17 @@ BARRY.incisor = (function () {
     'ds read': 40, 'ds detect': 1,
     'vacc stage': 4, 'vacc queue': 30, 'vacc fetch': 2,
   };
+  /* What each stage is called on screen. The cluster's three used to fall
+     through to "Detect and rank the channels", so a scan waiting in the
+     queue said it was detecting. Queued is not an error, and is not drawn
+     like one (§6d). */
+  const STAGE_WORDS = {
+    'ds read': 'Read and decimate to 1 kHz',
+    'ds detect': 'Detect and rank the channels',
+    'vacc stage': 'Send it to the cluster',
+    'vacc queue': 'Wait for VACC, then run there',
+    'vacc fetch': 'Bring the answer back',
+  };
 
   function paintStages() {
     const host = document.getElementById('incStages');
@@ -1167,9 +1479,7 @@ BARRY.incisor = (function () {
           text: s.status === 'done' ? '✓' : running ? '▸'
             : s.status === 'failed' ? '✗' : '' }),
         el('span', { class: 'comod-stage-name',
-          text: s.name === 'ds read'
-            ? 'Read and decimate to 1 kHz'
-            : 'Detect and rank the channels' }),
+          text: STAGE_WORDS[s.name] || s.name }),
         el('span', { class: 'comod-stage-count',
           text: s.of > 1 ? ((s.status === 'waiting' ? '–'
             : s.done.toLocaleString()) + ' / ' + s.of.toLocaleString()
@@ -1810,16 +2120,22 @@ BARRY.incisor = (function () {
        draw one of them made a response large enough to be cut off in
        transit, which arrives as a 200 that will not parse. */
     const n = Number((res.n_by_channel || {})[String(row.index)] || 0);
+    /* The numbers the scan was MADE with, from the scan. In VACC mode the
+       fields above are the next batch's settings, and a review opened from
+       the queue was made with whatever its own batch used. */
+    const made = res.params || {};
+    const hsd = made.height_sd != null ? made.height_sd : q.height_sd;
+    const floor = made.abs_thr_uv != null ? made.abs_thr_uv : q.abs_uv;
 
     box.appendChild(el('p', { class: 'hint',
       text: n + ' candidate' + (n === 1 ? '' : 's')
           + ' on ' + row.label + '  ·  threshold '
           + (row.thr_uv || 0).toFixed(1) + ' µV ('
           + (row.thr_source === 'sd'
-              ? (q.height_sd + ' × ' + (row.sd_uv || 0).toFixed(1)
+              ? (hsd + ' × ' + (row.sd_uv || 0).toFixed(1)
                  + ' µV S.D.')
               : row.thr_source === 'override' ? 'set by hand'
-                : 'the ' + q.abs_uv + ' µV floor, which is higher here')
+                : 'the ' + floor + ' µV floor, which is higher here')
           + ')' }));
     if (row.n_near_stitch) {
       box.appendChild(el('p', { class: 'hint warn',
@@ -1917,12 +2233,21 @@ BARRY.incisor = (function () {
 
   function unionBody(withEvents) {
     const h = hilusRow();
-    return body({
+    return body(Object.assign({
       pool: poolRange().map((c) => c.index),
       tol_ms: tolMs,
       hilus: h ? h.index : null,
       with_events: !!withEvents,
-    });
+    }, byKey()));
+  }
+
+  /* How to name the scan on screen to the server. A scan made on the
+     cluster -- or opened from the queue -- carries its `key`, and is asked
+     for by recording and key: no copy of the recording needed, and the
+     answer is the scan on screen even if a field above has changed since.
+     A scan made here is asked for the old way, by path and parameters. */
+  function byKey() {
+    return (res && res.key && q.gid) ? { gid: q.gid, key: res.key } : {};
   }
 
   /* Asked once per distinct question: paint() runs often, and the key is
@@ -1932,7 +2257,7 @@ BARRY.incisor = (function () {
     const b = unionBody(false);
     const key = JSON.stringify([q.path, b.pool, b.tol_ms, b.hilus,
                                 b.channels, b.height_sd, b.abs_uv,
-                                b.dist_ms, b.wlen_ms, b.estimator]);
+                                b.dist_ms, b.wlen_ms, b.estimator, b.key]);
     if (key === unionKey) return;
     unionKey = key;
     unionRes = null;
@@ -2133,7 +2458,8 @@ BARRY.incisor = (function () {
     banking = true; paint();
     try {
       const got = await apiPost('/api/incisor/events',
-                                body({ channel: row.index }));
+                                body(Object.assign({ channel: row.index },
+                                                   byKey())));
       evs = got.events || [];
     } catch (e) {
       toast('Those candidates are no longer cached — run the scan again. ('
@@ -2303,5 +2629,15 @@ BARRY.incisor = (function () {
       chosen[key] = number == null ? null : Number(number);
       pushLines(); paint();
     },
+    /* VACC mode, for web/_dev/vaccbatch.html: the plan as the panel holds
+       it, what is ticked, the batch in flight and the queue -- and ways to
+       tick and to open a review without a mouse. */
+    _vacc: () => ({ vaccList, picked: Array.from(picked), batchJob,
+                    reviews, openKey, batchGids: batchGids
+                      ? Array.from(batchGids) : null }),
+    _pick: (gids) => { picked.clear(); (gids || []).forEach((g) => picked.add(g));
+                       paint(); },
+    _openReview: (r) => toggleReview(r),
+    _reloadPlan: loadVaccList,
   };
 }());

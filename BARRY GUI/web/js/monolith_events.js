@@ -248,7 +248,7 @@ window.MONO_EVENTS = (function () {
 
     // 1. When they happen.
     const sec1 = el('div', { class: 'evsec', id: 'evtiming' }, [el('h3', { text: 'When they happen' })]);
-    sec1.appendChild(el('p', { class: 'small muted', text: 'Events a minute, from 10 s before cue 1 to 30 s after it, every presentation '
+    sec1.appendChild(el('p', { class: 'small muted', text: 'Events a minute, from 10 s before cue 1 to 30 s after it, every trial '
       + 'stacked; each session the mean over rats, its standard error shaded. Precon1 grey, Precon4 red.' }));
     sec1.appendChild(psthFig(rep));
     const days = Object.keys(rep.pooled || {});
@@ -320,7 +320,7 @@ window.MONO_EVENTS = (function () {
     }
     rt.appendChild(rb);
     sec3.appendChild(el('div', { class: 'dtwrap' }, [rt]));
-    sec3.appendChild(el('p', { class: 'small muted', text: 'Rates are events a minute in each window over the session’s presentations, and '
+    sec3.appendChild(el('p', { class: 'small muted', text: 'Rates are events a minute in each window over the session’s trials, and '
       + 'between them. Usable: the session time away from the rail.' }));
     card.appendChild(sec3);
 

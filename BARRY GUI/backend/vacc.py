@@ -855,9 +855,10 @@ def readable_roots(cfg, timeout=40):
     The two are different, and finding out which cost an afternoon.
     `/netfiles/bigdata_jbarry` is mounted exactly where the path map says --
     `ls -d` finds it, the rule is right, and 357 of this lab's recordings
-    resolve onto it. It is also `drwxrws--- jbarry4 root`, so the only
-    account that can read it is the PI's: every lab member's primary group is
-    `pi-jbarry4`, and the share is grouped to `root`, which nobody is in.
+    resolve onto it. It was also `drwxrws--- jbarry4 root`, so the only
+    account that could read it was the PI's. Since 2026-10-01 it is grouped
+    to `jarvis_writes`, whose members are sakhava1 and jbarry4: those two read
+    it (and can write it -- Jarvis never does), everybody else is refused.
 
     A path map is a lab-wide fact and stays one. Whether the person sitting
     here can read what it points at is a different question with a different
@@ -890,14 +891,27 @@ def readable_roots(cfg, timeout=40):
 
 
 _INVENTORY = r"""
-find %s -maxdepth 7 -name 'CSC1.ncs' -print0 2>/dev/null | while IFS= read -r -d '' f; do
+find %s -maxdepth 7 \( -name 'CSC1.ncs' -o -name 'CSC1_0001.ncs' \) -print0 2>/dev/null | while IFS= read -r -d '' f; do
   d=$(dirname "$f")
   n=$(ls "$d"/CSC*.ncs 2>/dev/null | wc -l)
   sz=$(stat -c %%s "$f" 2>/dev/null)
-  printf 'rec\t%%s\t%%s\t%%s\n' "$n" "$sz" "$d"
+  h=$(head -c 16384 "$f" 2>/dev/null | tr -cd '[:print:]\n' | grep -a -m3 -E 'TimeCreated|Time Opened|SamplingFrequency' | tr '\t\n' '  ')
+  printf 'rec\t%%s\t%%s\t%%s\t%%s\n' "$n" "$sz" "$h" "$d"
 done
 echo "end=1"
 """
+# What the walk looks for, and why it is two names.
+#
+# `CSC1.ncs` alone missed every recording whose files all carry the `_0001`
+# suffix -- five KCNT1 sessions on scratch are exactly that shape, and there
+# the suffix is a naming artifact, not a continuation file. A folder holding
+# both is printed twice and kept once (`inventory`).
+#
+# The first 16 KB of CSC1 is the Neuralynx header, and three of its lines come
+# back raw: when the recording was opened, which makes the identity exact
+# rather than whatever the folder name says, and the sampling rate, which
+# turns the file size into a duration. They are parsed on the desk by the same
+# `nlx.header_start_time` every local open uses; this module only carries them.
 
 
 def inventory(cfg, root=None, timeout=180):
@@ -920,12 +934,14 @@ def inventory(cfg, root=None, timeout=180):
     if not root:
         return []
     raw = _ssh(cfg, "bash -s", stdin=_INVENTORY % q(root), timeout=timeout)
-    out, done = [], False
+    out, done, seen = [], False, set()
     for line in (raw or "").splitlines():
         if line.strip() == "end=1":
             done = True
             continue
-        bits = line.split("\t")
+        # Five fields, or four from an older script. The path is last either
+        # way, and the split stops at four so a path is never cut.
+        bits = line.split("\t", 4)
         if len(bits) < 4 or bits[0] != "rec":
             continue
         try:
@@ -936,8 +952,12 @@ def inventory(cfg, root=None, timeout=180):
             first = int(bits[2])
         except ValueError:
             first = 0
-        out.append({"path": bits[3], "n_channels": n_ch,
-                    "first_ncs_bytes": first})
+        header, path = ("", bits[3]) if len(bits) == 4 else (bits[3], bits[4])
+        if path in seen:
+            continue                     # CSC1.ncs and CSC1_0001.ncs, one folder
+        seen.add(path)
+        out.append({"path": path, "n_channels": n_ch,
+                    "first_ncs_bytes": first, "header": header.strip()})
     if not done:
         raise SSHError("The listing was cut short.", "garbled", raw)
     return out
@@ -949,9 +969,146 @@ def inventory(cfg, root=None, timeout=180):
 _INVS = {}                       # root -> {"at", "list", "busy"}
 INV_TTL_S = 300.0
 
+# A share the cluster mounts is walked once a day, not every five minutes.
+#
+# Measured 2026-10-07: walking `/netfiles/bigdata_jbarry` for recordings takes
+# 141 s and finds 1,462 of them, against about ten seconds for scratch. It is
+# the lab's primary store, read by everybody's jobs, and the VACC's own
+# documentation warns that netfiles slows when many programs touch many files
+# at once. And unlike scratch it is not purged, so a listing of it stays true
+# for far longer -- which is also why this one is written to disk and
+# survives a restart, where scratch's deliberately does not.
+INV_TTL_NATIVE_S = 24 * 3600.0
+# How long a walk of one may take. The 141 s above plus a header read per
+# folder; the default 180 s would cut it off and report a broken cluster.
+INV_TIMEOUT_NATIVE_S = 900
+
 
 def _inv(root):
     return _INVS.setdefault(root, {"at": 0.0, "list": [], "busy": False})
+
+
+def native_roots(cfg):
+    """The cluster's end of every path-map rule: `/netfiles/<share>`."""
+    out = []
+    for rule in (cfg.get("path_map") or []):
+        v = _norm(rule.get("vacc")).rstrip("/")
+        if v and v not in out:
+            out.append(v)
+    return out
+
+
+def native_rule_of(cfg, remote):
+    """The path-map rule a cluster path sits under, or None.
+
+    The same prefix test `resolve_path` makes from the other side. A folder
+    found under one of these is read in place -- it IS the lab's copy, not a
+    cache of it -- so it is `native`, never `staged`.
+    """
+    p = _norm(remote)
+    for rule in (cfg.get("path_map") or []):
+        v = _norm(rule.get("vacc")).rstrip("/")
+        if v and (p == v or p.startswith(v + "/")):
+            return rule
+    return None
+
+
+def unc_for(cfg, remote):
+    """A cluster path under a mapped share, spelled the way Windows reaches it.
+
+    The reverse of `resolve_path`: `/netfiles/bigdata_jbarry/Jeremy3/x` is
+    `\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\x`. That spelling is a
+    real place in the lab, the one a scan of the share from a lab computer
+    writes, so it may go into the registry; the cluster spelling may not
+    (constitution section 6d). Backslashes, because that is how the paths
+    already on record are written, and a second spelling of one folder would
+    be a second entry in its `paths`. None for anything not under a rule.
+    """
+    rule = native_rule_of(cfg, remote)
+    if not rule:
+        return None
+    v = _norm(rule.get("vacc")).rstrip("/")
+    tail = _norm(remote)[len(v):].strip("/")
+    unc = _norm(rule.get("unc")).rstrip("/")
+    full = unc + ("/" + tail if tail else "")
+    return full.replace("/", "\\")
+
+
+def readable_native_roots(cfg=None):
+    """The mapped shares THIS account can open, from the last probe.
+
+    Empty until a probe has answered: a share nobody has checked is not one
+    to walk for two minutes on the off chance.
+    """
+    with _LOCK:
+        got = (_STATE.get("probe") or {}).get("roots") or {}
+    mapped = set(native_roots(cfg or {})) if cfg is not None else None
+    return sorted(k.rstrip("/") for k, v in got.items()
+                  if v == "ok" and (mapped is None or k.rstrip("/") in mapped))
+
+
+def is_native_root(cfg, root):
+    return _norm(root).rstrip("/") in native_roots(cfg)
+
+
+def _inv_file(root):
+    """Where a mapped share's listing is kept between runs, or None."""
+    if not LOGS_DIR:
+        return None
+    import hashlib
+    name = hashlib.sha1(_norm(root).encode("utf-8")).hexdigest()[:12]
+    return os.path.join(LOGS_DIR, ".cache", "vacc", "inventory_%s.json" % name)
+
+
+def _inv_load(root):
+    path = _inv_file(root)
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            got = json.load(fh) or {}
+    except (OSError, ValueError):
+        return None
+    if _norm(got.get("root")) != _norm(root):
+        return None
+    return got
+
+
+def _inv_save(root, at, rows):
+    path = _inv_file(root)
+    if not path:
+        return
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump({"root": root, "at": at, "list": rows}, fh)
+        os.replace(tmp, path)
+    except OSError:
+        pass                            # a listing not kept is walked again
+
+
+def inventory_age(cfg, root):
+    """Seconds since this root was last walked, or None if it never was."""
+    slot = _inv(root)
+    if not slot["at"] and is_native_root(cfg, root):
+        got = _inv_load(root)
+        if got:
+            slot.update(at=float(got.get("at") or 0), list=got.get("list") or [])
+    return (time.time() - slot["at"]) if slot["at"] else None
+
+
+def inventory_busy(root):
+    return bool(_inv(root).get("busy"))
+
+
+def inventory_held(root):
+    """The listing in hand for a root, however old, without walking.
+
+    For a mapped share, whose walk is never waited on: last time's answer
+    is a far better reply than none while the next one is fetched.
+    """
+    return list(_inv(root).get("list") or [])
 
 
 def places(cfg):
@@ -969,7 +1126,12 @@ def places(cfg):
     data = ((cfg.get("shared") or {}).get("data_path") or "").rstrip("/")
     # Temp too: a recording uploaded there is found the same way.
     temp = ((cfg.get("temp") or {}).get("data_path") or "").rstrip("/")
-    for p in ([data] if data else []) + ([temp] if temp else [])             + list(cfg.get("places") or []):
+    # And every mapped share this account can open: the lab's own recordings,
+    # read in place. Walked so a recording is found there by identity even
+    # when nobody's registry holds its UNC spelling -- on a computer with no
+    # `Y:` mapped, the spelling alone found 116 of the 1,462 that are there.
+    for p in ([data] if data else []) + ([temp] if temp else []) \
+            + list(cfg.get("places") or []) + readable_native_roots(cfg):
         p = str(p or "").rstrip("/")
         if not p or p in out:
             continue
@@ -982,6 +1144,8 @@ def places(cfg):
 def inventory_ready(cfg, root=None):
     """Is there a listing in hand, without going and getting one?"""
     root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
+    if not _inv(root)["at"] and is_native_root(cfg, root):
+        inventory_age(cfg, root)        # last run's, from disk
     return bool(_inv(root)["at"])
 
 
@@ -1025,14 +1189,25 @@ def inventory_cached(cfg, root=None, force=False):
     The cache is in memory and dies with the process on purpose. It is a
     listing of a filesystem that gets purged without notice; writing it down
     anywhere durable would be recording a claim that expires.
+
+    A mapped share is the exception, and for the opposite reason: it is the
+    lab's own store, not purged, and walking it takes minutes. Its listing is
+    kept on disk for a day (`INV_TTL_NATIVE_S`) and asked again on a button.
     """
     root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
     now = time.time()
     slot = _inv(root)
-    if not force and slot["at"] and (now - slot["at"]) < INV_TTL_S:
+    native = is_native_root(cfg, root)
+    if native and not slot["at"]:
+        inventory_age(cfg, root)        # last run's, from disk
+    ttl = INV_TTL_NATIVE_S if native else INV_TTL_S
+    if not force and slot["at"] and (now - slot["at"]) < ttl:
         return list(slot["list"])
-    got = inventory(cfg, root)
+    got = inventory(cfg, root,
+                    timeout=INV_TIMEOUT_NATIVE_S if native else 180)
     slot.update(at=now, list=got)
+    if native:
+        _inv_save(root, now, got)
     return list(got)
 
 
@@ -1040,7 +1215,10 @@ def inventory_put(cfg, root, found):
     """Keep a listing just made, so the scan that made it is not repeated
     by the next page that asks."""
     root = root or cfg.get("scratch_root") or cfg.get("scratch") or ""
-    _inv(root).update(at=time.time(), list=list(found or []))
+    now = time.time()
+    _inv(root).update(at=now, list=list(found or []))
+    if is_native_root(cfg, root):
+        _inv_save(root, now, list(found or []))
 
 
 def env_path(cfg):
@@ -1701,12 +1879,15 @@ def status():
         # enough to be on the status payload rather than inferred, because
         # "VACC mounts your data" and "you can read it" came apart the first
         # time this was pointed at the real cluster: /netfiles/bigdata_jbarry
-        # is there, 357 recordings resolve onto it, and it is mode
-        # drwxrws--- owned by jbarry4:root -- so every lab member's account
-        # is refused by a share their own primary group was made for.
+        # was there and grouped to `root`, so every lab account was refused.
+        # Since 2026-10-01 it is grouped to `jarvis_writes` (sakhava1 and
+        # jbarry4), so it reads for those two and is still refused for
+        # everybody else -- which is exactly why this is per account.
         "roots": got.get("roots") or {},
         "denied_roots": sorted(k for k, v in (got.get("roots") or {}).items()
                                if v == "denied"),
+        "readable_roots": sorted(k for k, v in (got.get("roots") or {}).items()
+                                 if v == "ok"),
         # Every job this account has on the cluster, from `squeue --me`, and
         # what failed in the last day. app.py marks which ones Jarvis here
         # is following (a run record in GUI_logs/vacc_runs).
@@ -1912,6 +2093,12 @@ def resolve_gid(gid, paths, cfg, drives=None, staged=None):
 
     if staged and gid in staged:
         got = staged[gid] or {}
+        if got.get("native") and got.get("path"):
+            # Found by walking a mapped share rather than by a spelling on
+            # record. It is the lab's own copy, read in place -- the same
+            # answer the path map gives above, reached by looking.
+            return {"gid": gid, "state": NATIVE, "remote": got.get("path"),
+                    "why": "found on a share the cluster mounts", "via": None}
         if got.get("conflict"):
             # More than one folder on the cluster answers to this recording,
             # and nothing here can tell which is meant. Reported rather than

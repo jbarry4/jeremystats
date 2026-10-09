@@ -206,11 +206,28 @@ def run_tool(tool, spec, bundle, job, csc):
         # recomputed. It is in the cache key, and a segmentation that came
         # out even slightly differently here would give the answer a
         # different name -- a permanent cache miss that nothing reports.
+        #
+        # Except for a recording the desk could not open: then it is made
+        # here, and the answer carries `time_basis.breaks_sha`, from which
+        # the desk computes the same key (`incisor.cache_key(breaks_sha=)`).
         report = bundle.get("report")
         if report is None:
             from backend import continuity
             report = continuity.check(path)
-        return incisor.run(session, spec, report, job)
+        if spec.get("channels") is None:
+            # The channel list only exists here, so the one rule for which
+            # channels a scan reads runs here too -- every channel less the
+            # bad ones, by CSC number. The answer echoes what it chose.
+            kept, excluded = incisor.resolve_channels(
+                session, spec.get("bad_channels") or [])
+            if not kept:
+                raise ValueError("Every channel in this recording is marked "
+                                 "bad, so there is nothing to scan.")
+            spec = dict(spec, channels=kept, excluded=excluded)
+        out = incisor.run(session, spec, report, job)
+        out["spec_channels"] = list(spec.get("channels") or [])
+        out["spec_excluded"] = list(spec.get("excluded") or [])
+        return out
 
     if tool == "doppler":
         from backend import doppler

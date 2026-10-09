@@ -200,7 +200,7 @@ window.MONO_TOUR = (function () {
           const d = M().damage;
           const W = d && d.whole;
           const enough = d && d.pairs ? d.pairs.filter((x) => x.enough).length : null;
-          this.body = (W ? 'Of ' + num(W.cue.total) + ' presentations (cue pairs), ' + num(W.cue.kept) + ' kept every region, '
+          this.body = (W ? 'Of ' + num(W.cue.total) + ' trials, ' + num(W.cue.kept) + ' kept every region, '
             + num(W.cue.partial) + ' lost a region somewhere and ' + num(W.cue.lost) + ' were lost entirely. ' : '')
             + 'Losses are split by cause: clipping (the signal at the rail) against probe placement (histology). '
             + (enough != null ? enough + ' of ' + d.pairs.length + ' region pairs have enough rats to be compared at all; the '
@@ -219,7 +219,7 @@ window.MONO_TOUR = (function () {
             + 'finding what holds up.';
         },
         body: '',
-        note: 'Every p on this page is uncorrected, on purpose: the Monolith is for finding leads, not for proving them.',
+        note: 'Every p on this page is uncorrected, on purpose: the Monolith is for finding things to follow up, not for proving them.',
       },
       {
         id: 'circuit', target: '#circsvg', title: 'One line is one pair of regions',
@@ -247,20 +247,20 @@ window.MONO_TOUR = (function () {
     if (!t) {
       return head.concat([{
         id: 'end', target: '#monoTour', title: 'That is the page',
-        body: 'This Monolith has no points of interest to walk through yet. When it does, this tour follows the '
+        body: 'This Monolith has no top results to walk through yet. When it does, this tour follows the '
           + 'first one down to its recording.',
       }]);
     }
     return head.concat([
       {
-        id: 'leads', target: '#toplist > li', action: 'click', title: 'The leads, best first',
+        id: 'leads', target: '#toplist > li', action: 'click', title: 'The top results, best first',
         before: async function () {
           closeAll();
-          this.body = 'Of everything tested, these are the entries most worth a look: most rats changing the same '
+          this.body = 'Of everything tested, these are the stat tests most worth a look: most rats changing the same '
             + 'way first, then the smallest p. The first is ' + leadSay(t) + ', with ' + t.same + ' of ' + t.k
             + ' rats the same way.';
         },
-        body: '', doText: 'Click the first lead to bring it into view.',
+        body: '', doText: 'Click the first top result to bring it into view.',
       },
       {
         id: 'edge', target: '#circsvg path.edge.sel', action: 'click', title: 'Open it up',
@@ -270,7 +270,7 @@ window.MONO_TOUR = (function () {
           onLead();
           await until(() => q('#circsvg path.edge.sel'), 3000);
         },
-        body: 'The lead is now the highlighted line. Clicking any line lifts it out of the circuit, so you can see '
+        body: 'The top result is now the highlighted line. Clicking any line lifts it out of the circuit, so you can see '
           + 'what it is made of.',
         doText: 'Click the highlighted line.',
       },
@@ -310,22 +310,22 @@ window.MONO_TOUR = (function () {
         before: async function () {
           await ghostAt(3);
           T.day = 'Precon4';
-          this.body = 'r' + T.rat + '’s two days. Each day’s number is the mean over that day’s cue pairs, both '
-            + 'pairings. Under the circuit, each cue pair is a dot, with the mean and its standard error: a '
+          this.body = 'r' + T.rat + '’s two days. Each day’s number is the mean over that day’s trials, both '
+            + 'pairs. Under the circuit, each trial is a dot, with the mean and its standard error: a '
             + 'spread-out day is a less certain day.';
           this.doText = 'Click ' + T.day + '.';
         },
         body: '', afterClick: 700,
       },
       {
-        id: 'unit', action: 'click', title: 'Every cue pair',
+        id: 'unit', action: 'click', title: 'Every trial',
         target: () => q('#ghostsvg path.garc[data-key="' + T.unit + '"]'),
         before: async function () {
           await ghostAt(4);
           T.unit = pickUnit();
-          this.body = 'One line per cue pair of r' + T.rat + ' on ' + T.day + '. A dashed line had no value: hover '
+          this.body = 'One line per trial of r' + T.rat + ' on ' + T.day + '. A dashed line had no value: hover '
             + 'it and it says why (usually a clipped or missing wire).';
-          this.doText = 'Click ' + (T.unit || 'a cue pair') + ' to see the recording.';
+          this.doText = 'Click ' + (T.unit || 'a trial') + ' to see the recording.';
         },
         body: '', afterClick: 500,
       },
@@ -337,11 +337,11 @@ window.MONO_TOUR = (function () {
           await until(leafReady, 90000);
           const L = M().leaf;
           this.body = !L.open
-            ? 'No cue pair of this rat and day could be opened, so there is no recording to show here.'
+            ? 'No trial of this rat and day could be opened, so there is no recording to show here.'
             : L.err
               ? 'This recording is no longer on the VACC (Temp is cleared from time to time), so its traces cannot '
                 + 'be shown here. Uploading it again brings them back; the numbers on the page are unaffected.'
-              : 'This is r' + L.rat + '’s cue pair ' + L.unit + ' on ' + L.day + ' as recorded, read from the VACC '
+              : 'This is r' + L.rat + '’s trial ' + L.unit + ' on ' + L.day + ' as recorded, read from the VACC '
                 + 'copy: both regions, 10 s either side, its windows marked. The shaded stretch is the one this '
                 + 'number came from. Below it, the same stretch four ways: raw, filtered to the band, its envelope '
                 + '(how loud), and the phase difference between the two regions.';
@@ -367,7 +367,7 @@ window.MONO_TOUR = (function () {
       {
         id: 'end', target: '#monoTour', title: 'That is the whole loop',
         before: async function () { if (M().leaf.open) M().closeLeaf(); if (window.MONO_HELP) window.MONO_HELP.close(); },
-        body: 'Circuit → a lead → its rats → a rat’s days → a day’s cue pairs → the recording. Any line, at any '
+        body: 'Circuit → a top result → its rats → a rat’s days → a day’s trials → the recording. Any line, at any '
           + 'level, opens the same way. The ? marks explain everything on the page, the Guide (linked under the '
           + 'counts) has them all in one place, and this button runs the tour again.',
       },
@@ -380,7 +380,7 @@ window.MONO_TOUR = (function () {
     try { localStorage.setItem(SEEN, new Date().toISOString()); } catch (e) { /* this browser forgets */ }
     T.rat = null; T.day = 'Precon4'; T.unit = null;
     STEPS = steps();
-    BARRY.tour.register({ id: 'monolith', name: 'The Monolith', blurb: 'One lead, from the circuit to the recording.',
+    BARRY.tour.register({ id: 'monolith', name: 'The Monolith', blurb: 'One top result, from the circuit to the recording.',
                           steps: STEPS, onFinish: () => {} });
     BARRY.tour.start('monolith');
     return true;

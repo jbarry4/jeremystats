@@ -842,17 +842,37 @@
 .inc-tab.locked { opacity: .55; cursor: not-allowed; }
 /* ---- picking which recordings go ---- */
 .inc-pick-list {
-  margin: 10px 0; max-height: 320px; overflow: auto;
+  margin: 10px 0; max-height: 420px; overflow: auto;
   border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
 }
+/* One recording a VACC batch can take: the tick, its name with what it
+   holds under it, the cluster mark, whether it is already answered, and
+   its channels. A row, not a label, because the Channels button inside it
+   must not also toggle the tick. Rows off screen are not laid out -- the
+   list can be every recording on the lab's share. */
 .inc-pick {
-  display: grid; grid-template-columns: auto minmax(0,1fr) auto auto;
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto auto auto;
   gap: var(--sp-10); align-items: center; padding: 5px 10px;
-  font-size: var(--fs-12); cursor: pointer; border-bottom: 1px solid var(--line-soft);
+  font-size: var(--fs-12); border-bottom: 1px solid var(--line-soft);
+  content-visibility: auto; contain-intrinsic-size: auto 40px;
 }
 .inc-pick:last-child { border-bottom: 0; }
 .inc-pick:hover { background: var(--bg-3); }
-.ip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inc-pick.on { background: var(--accent-soft); }
+.ip-main { display: flex; flex-direction: column; min-width: 0; }
+/* Wrapped, never cut (an ellipsis takes exactly the part that tells two
+   recordings of one session apart). */
+.ip-name { white-space: normal; overflow-wrap: anywhere; }
+.ip-sub { font-size: var(--fs-105); color: var(--text-3);
+          white-space: normal; overflow-wrap: anywhere; }
+.inc-search { width: 100%; max-width: 480px; margin: 2px 0 6px; }
+.inc-pick-tools { flex-wrap: wrap; justify-content: flex-start; }
+/* One recording's channels, opened under its row. */
+.inc-row-chans {
+  padding: 8px 12px 4px 34px; border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-2);
+}
 .ip-where { font-size: var(--fs-9); font-weight: 700; letter-spacing: .06em;
             color: var(--accent); font-family: var(--mono); }
 .ip-done { font-size: var(--fs-105); color: var(--ok); white-space: nowrap; }
@@ -884,10 +904,10 @@
 }
 .inc-batch-row.running { background: var(--accent-soft); }
 .inc-batch-row.failed .ib-state { color: var(--err); }
-.ib-name { font-weight: 550; overflow: hidden; text-overflow: ellipsis;
-           white-space: nowrap; }
+.ib-name { font-weight: 550; white-space: normal; overflow-wrap: anywhere;
+           min-width: 0; }
 .ib-state { color: var(--text-3); font-family: var(--mono); font-size: var(--fs-105);
-            white-space: nowrap; }
+            white-space: normal; overflow-wrap: anywhere; text-align: right; }
 .inc-reviews { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
 .inc-review {
   display: grid;
@@ -899,8 +919,7 @@
 }
 .inc-review:hover { background: var(--bg-3); }
 .inc-review.on { border-color: var(--accent-line); background: var(--accent-soft); }
-.ir-name { font-weight: 550; overflow: hidden; text-overflow: ellipsis;
-           white-space: nowrap; }
+.ir-name { font-weight: 550; white-space: normal; overflow-wrap: anywhere; }
 .ir-pick { color: var(--text-2); font-family: var(--mono); font-size: var(--fs-11); }
 .ir-margin { color: var(--text-3); font-size: var(--fs-105); white-space: nowrap; }
 /* A near-tie is the row worth opening, so it is the row that is coloured. */

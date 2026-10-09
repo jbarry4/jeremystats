@@ -21,7 +21,7 @@
     onset: 'Around cue 1 starting: −3/+3 s for bands up to 12 Hz, −1/+2 s above.',
     switch: 'Around cue 1 giving way to cue 2, with the same lengths.',
     offset: 'Around cue 2 ending, with the same lengths.',
-    c21: 'Within each presentation, Cue 2 minus Cue 1 (B − A, D − C), then Precon4 against Precon1. Raw only: the rest Minus FP takes away is the same for both cues, so it cancels exactly.',
+    c21: 'Within each trial, Cue 2 minus Cue 1 (B − A, D − C), then Precon4 against Precon1. Raw only: the FP that Minus FP takes away is the same for both cues, so it cancels exactly.',
   };
   const GROUP_SAY = { pooled: 'AB and CD pooled', ab: 'AB only', cd: 'CD only' };
   const LAYER_SAY = { raw: 'Raw', minus_fp: 'Minus FP' };
@@ -70,9 +70,9 @@
       el('h1', { text: 'The DEWEY Monolith: Precon1 → Precon4, every coupling measure, 1–55 Hz' }),
       el('p', { class: 'lede', text: 'For review. Built ' + date(R.built_at) + ' under histology v' + ((R.histology || {}).version || '?')
         + ', from run ' + (R.rid || '—') + '. This page says what was asked and how; the Monolith itself is the explorer, '
-        + 'down to any rat, presentation and trace.' }),
+        + 'down to any rat, trial and trace.' }),
       el('div', { class: 'uncorrected' }, [el('strong', { text: 'Every p on this site is uncorrected. ' }),
-        'No correction for multiple comparisons was applied, on purpose: the Monolith is for finding leads, not for proving them. '
+        'No correction for multiple comparisons was applied, on purpose: the Monolith is for finding things to follow up, not for proving them. '
         + 'Each count of p < .05 below is shown beside how many would pass by chance alone.']),
       el('nav', { class: 'nav' }, [
         el('a', { class: 'btn primary', href: 'monolith.html', text: 'Open the Monolith' }),
@@ -93,17 +93,17 @@
     return section('scope', 'What was asked', [
       el('p', { text: 'Did the coupling between brain regions change from the first pre-conditioning session (Precon1) to the last (Precon4)? '
         + 'Each rat is compared with itself, Precon4 minus Precon1, and the changes are pooled over rats (DerSimonian–Laird random effects, '
-        + 'Hartung–Knapp t on k − 1 degrees of freedom). An entry is tested only where at least ' + R.min_rats + ' rats have it on both days.' }),
+        + 'Hartung–Knapp t on k − 1 degrees of freedom). A stat test is tested only where at least ' + R.min_rats + ' rats have it on both days.' }),
       el('div', { class: 'facts' }, [
         [R.rats.length, 'rats (' + R.rats.map((r) => 'J' + r).join(', ') + ')'],
         [R.regions.length, 'regions; ' + R.n_pairs + ' region pairs'],
         [R.methods.length, 'coupling measures'],
         [R.bands.n_hz + ' + ' + R.bands.named.length, '1 Hz bands from ' + R.bands.lo + ' to ' + R.bands.hi + ' Hz, and ' + R.bands.named.join(', ')],
-        [R.windows.length, 'windows around each cue pair, and the Cue 2 − Cue 1 contrast'],
-        [fmt(c.tested), 'entries tested (raw, AB and CD pooled), of ' + fmt(c.entries)],
+        [R.windows.length, 'windows around each trial, and the Cue 2 − Cue 1 contrast'],
+        [fmt(c.tested), 'stat tests tested (raw, AB and CD pooled), of ' + fmt(c.entries)],
       ].map(([b, s]) => el('div', { class: 'fact' }, [el('b', { text: String(b) }), el('span', { text: s })]))),
-      el('p', { class: 'small muted', text: 'Two layers: Raw, the cue windows as measured, and Minus FP, each session less its flower-pot rest. '
-        + 'Three ways of taking the cue pairs: AB and CD pooled, AB only, CD only. The measures: ' + R.methods.map((m) => m.label).join(', ') + '. '
+      el('p', { class: 'small muted', text: 'Raw, the cue windows as measured, and Minus FP, each session less its FP1/FP2. '
+        + 'Three ways of taking the pairs: AB and CD pooled, AB only, CD only. The measures: ' + R.methods.map((m) => m.label).join(', ') + '. '
         + 'Precon2 and Precon3 are measured the same way for the trajectory and Monolith Progress, and never enter the test.' }),
     ]);
   }
@@ -120,14 +120,14 @@
         + 'identity sheet (' + (I.sheet || 'the identity sheet') + '): AB is the pair heard as A then B, CD as C then D. Cue 1 is always A or C '
         + '(the opener), Cue 2 always B or D. Nothing is read from the conditioning sessions.' }),
       table(['Rat', 'A', 'B', 'C', 'D'], rows),
-      el('p', { class: 'small muted', text: 'In the Monolith, opening a line and then a rat shows a physical-cue check: each rat’s value by seat and '
-        + 'by sound, and whether a change follows the seat (the role) or the sound.' }),
+      el('p', { class: 'small muted', text: 'In the Monolith, opening a line and then a rat shows a physical-cue check: each rat’s value by A/B/C/D and '
+        + 'by sound, and whether a change follows A/B/C/D (the role) or the sound.' }),
     ]);
   }
 
   function windows(R) {
     return section('windows', 'The windows', [
-      el('p', { text: 'Every presentation is measured in these windows. The states and the whole pair are cut the same length in every band; '
+      el('p', { text: 'Every trial is measured in these windows. The states and the whole pair are cut the same length in every band; '
         + 'the transitions are cut longer for slow bands so that a few cycles fit.' }),
       el('dl', { class: 'windows' }, [].concat(...R.windows.concat(R.contrast_window ? [R.contrast_window] : [])
         .map((w) => [el('dt', { text: w.label }), el('dd', { text: WTITLE[w.id] || '' })]))),
@@ -136,13 +136,13 @@
 
   function minusfp() {
     return section('minusfp', 'How Minus FP works', [
-      el('p', { text: 'Every session has two flower-pot recordings, one before the cue session (FP1) and one after (FP2): the same rat, the same '
-        + 'wires, no cues. They are cut into rest epochs as long as the window they stand against (10 s for every window, 20 s for the whole pair) '
+      el('p', { text: 'Every session has two FP recordings, one before the cue session (FP1) and one after (FP2): the same rat, the same '
+        + 'wires, no cues. They are cut into FP epochs as long as the window they stand against (10 s for every window, 20 s for the whole pair) '
         + 'and measured exactly as the cue windows are.' }),
-      el('p', { text: 'A session’s Minus FP value is the mean over its presentations less the mean over its own rest epochs. The change is then '
-        + 'taken as for Raw: Precon4 minus Precon1, rat by rat, and pooled. What is shared by the cue and the rest of that day — the wires, the '
+      el('p', { text: 'A session’s Minus FP value is the mean over its trials less the mean over its own FP epochs. The change is then '
+        + 'taken as for Raw: Precon4 minus Precon1, rat by rat, and pooled. What is shared by the trials and FP of that day — the wires, the '
         + 'reference, the day’s state — is taken away; what is left is what the cues add.' }),
-      el('p', { class: 'small muted', text: 'The Cue 2 − Cue 1 contrast is Raw only: the rest taken away from each cue window is the same number, '
+      el('p', { class: 'small muted', text: 'The Cue 2 − Cue 1 contrast is Raw only: the FP taken away from each cue window is the same number, '
         + 'so it cancels exactly, and Minus FP would show the same values. The Monolith’s first tab draws each step.' }),
     ]);
   }
@@ -171,9 +171,9 @@
     const c = K.cue || {}, r = K.rest || {};
     const causes = Object.entries(K.causes || {}).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
     return section('kept', 'What was kept', [
-      el('p', { text: 'A presentation is one cue pair. Of ' + fmt(c.total) + ' presentations over ' + R.rats.length + ' rats and the sessions built, '
+      el('p', { text: 'A trial is one cue pair heard, cue 1 then cue 2. Of ' + fmt(c.total) + ' trials over ' + R.rats.length + ' rats and the sessions built, '
         + fmt(c.kept) + ' kept every region histology allows in every window, ' + fmt(c.partial) + ' lost a region somewhere, and '
-        + fmt(c.lost) + ' were lost entirely. Rest epochs (flower-pot): ' + fmt(r.kept) + ' of ' + fmt(r.total) + ' usable.' }),
+        + fmt(c.lost) + ' were lost entirely. FP epochs (flower-pot): ' + fmt(r.kept) + ' of ' + fmt(r.total) + ' usable.' }),
       causes.length ? el('p', { class: 'small', text: 'Region-windows lost, by cause: ' + causes.map(([k, n]) => k + ' ' + fmt(n)).join(' · ') + '.' }) : null,
       el('p', { class: 'small muted' }, ['Rat by rat, region by region, with each loss’s reason: ', el('a', { href: 'monolith.html', text: 'the Monolith' }),
         ', tab 1 · What was kept.']),
@@ -220,14 +220,14 @@
           el('td', { class: 'num', text: pSay(t.p) }), el('td', { class: 'num', text: t.same + ' of ' + t.k }),
           el('td', {}, [el('a', { href: link, text: 'Open' })])]);
       })));
-      leadHost.appendChild(el('p', { class: 'small muted', text: 'The first ten points of interest: p < .05 (uncorrected), most rats the same way first, '
-        + 'then p, at most three per region pair. Open takes you to that line in the Monolith, where it opens into its rats, presentations and traces.' }));
+      leadHost.appendChild(el('p', { class: 'small muted', text: 'The first ten top results: p < .05 (uncorrected), most rats the same way first, '
+        + 'then p, at most three per region pair. Open takes you to that line in the Monolith, where it opens into its rats, trials and traces.' }));
     }
     draw();
-    box.appendChild(el('p', { text: 'How many entries passed, against how many would by chance. A lead is something to look at, not a finding.' }));
+    box.appendChild(el('p', { text: 'How many stat tests passed, against how many would by chance. A top result is something to look at, not a finding.' }));
     box.appendChild(table(['Comparison', { text: 'Tested', num: true }, { text: 'p < .05', num: true }, { text: 'By chance', num: true },
       { text: 'p < .01', num: true }, { text: 'p < .001', num: true }], countRows));
-    box.appendChild(el('h3', { text: 'The leads' }));
+    box.appendChild(el('h3', { text: 'The top results' }));
     box.appendChild(leadHost);
     return section('results', 'What came out', [box]);
   }
@@ -298,8 +298,8 @@
     return box;
   }
   function questions() {
-    const text = el('textarea', { id: 'qtext', placeholder: 'A question about the analysis, a lead, a choice made…', 'aria-label': 'Your question' });
-    const about = el('input', { type: 'text', id: 'qabout', placeholder: 'About (optional): a section, a lead, a link', 'aria-label': 'What it is about' });
+    const text = el('textarea', { id: 'qtext', placeholder: 'A question about the analysis, a result, a choice made', 'aria-label': 'Your question' });
+    const about = el('input', { type: 'text', id: 'qabout', placeholder: 'About (optional): a section, a result, a link', 'aria-label': 'What it is about' });
     const by = el('input', { type: 'text', id: 'qwho', class: 'who', placeholder: 'Your name', 'aria-label': 'Your name' });
     by.value = who();
     const say = el('span', { class: 'small', role: 'status' });
@@ -329,8 +329,8 @@
     const A = C.ahead || {};
     return section('site', 'About this site', [
       el('p', { text: 'The Monolith here is the one in Jarvis, read only, on the numbers it was built with. Every line opens to its '
-        + 'pooled numbers; the review’s leads open further, down to each rat and presentation (' + fmt(A.entry) + ' entries), and '
-        + fmt(A.leaf) + ' presentations open down to their traces, all copied when the site was made. Anything else opens that far '
+        + 'pooled numbers; the review’s top results open further, down to each rat and trial (' + fmt(A.entry) + ' stat tests), and '
+        + fmt(A.leaf) + ' trials open down to their traces, all copied when the site was made. Anything else opens that far '
         + 'in Jarvis, which reads the recordings on the university’s cluster.' }),
       C.omitted && C.omitted.length ? el('p', { class: 'small muted', text: C.omitted.length + ' of Progress’s files did not fit in the '
         + 'upload: those views say so, and open in Jarvis.' }) : null,

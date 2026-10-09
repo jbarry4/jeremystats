@@ -687,6 +687,62 @@ class Registry:
             seen += 1
         return new, seen
 
+    def ingest_found(self, found, via="vacc"):
+        """Register recordings whose first sighting is the cluster.
+
+        `ingest`'s twin for a walk of the cluster rather than of a drive, and
+        different from it in the one way that matters: no cluster path is
+        ever written (constitution section 6d). Each row's `identity` carries
+        either the UNC spelling of a folder on a mapped share -- a real lab
+        path, the same one a scan of that share from a lab computer would
+        write -- or no path at all, for a copy in scratch, whose location
+        stays in the cluster inventory where it belongs.
+
+        No sighting is filed either. A sighting says THIS computer met the
+        recording, and *Scan a drive* reads it that way; a folder seen from
+        the cluster was not met by any computer's disk. `found_on` records
+        how it arrived instead.
+
+        Matching is the store's own -- exact key, then mouse and session with
+        the clock agreeing -- so a find that is a recording already on record
+        under another spelling joins it rather than minting a second gid,
+        exactly as a drive scan's would.
+
+        Returns (new, joined).
+        """
+        new = joined = 0
+        prov = self.store.provenance() if self.store else {}
+        for s in (found or []):
+            ident = dict(s.get("identity") or {})
+            if not ident.get("path"):
+                ident.pop("path", None)
+            rec, _how = self.resolve(ident)
+            facts = {
+                "n_channels": s.get("channels") or None,
+                "fs": s.get("fs") or None,
+                "duration_s": s.get("duration_s") or None,
+            }
+            if rec:
+                # Already somebody. A new UNC spelling is worth adding --
+                # it is how the next machine on the network opens it --
+                # and nothing else about the record is touched.
+                path = ident.get("path")
+                if path and path not in (rec.get("paths") or []):
+                    self.store.upsert_session(ident, {})
+                    joined += 1
+                continue
+            patch = self._durable_patch(None, ident, facts,
+                                        first_seen_by=via) or {}
+            if s.get("project"):
+                patch["project"] = s["project"]
+            patch["channel_banks"] = banks_for(s.get("channels"))
+            patch["found_on"] = {"via": via, "at": prov.get("at"),
+                                 "by": prov.get("user"),
+                                 "where": s.get("kind") or None}
+            self.store.upsert_session(ident, patch)
+            new += 1
+        return new, joined
+
     def backfill(self):
         """Give every record already on disk a gid and a project.
 

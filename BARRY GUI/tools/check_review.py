@@ -132,6 +132,8 @@ def fake_monolith(work):
     MO.split_build(man, summ, data, roles, notes)
     MO.session_build(man, summ, data, roles=roles)
     MO.physical_build(man, summ, data, roles)
+    from backend import narrow as NR
+    NR.narrow_build(man, summ, data, roles)
     MO.save_manifest(man)
     MO.save_state(run=t, built={"rid": t["rid"], "at": MO.now_iso(),
                                 "artifact_id": "zz", "version": 1,
@@ -152,7 +154,8 @@ def build_checks(work, port):
             "lib/gate.js", "api/login.js", "api/logout.js", "api/questions.js",
             "js/static_adapter.js", "js/report.js",
             "js/monolith.js", "js/monolith_progress.js", "js/monolith_physical.js", "css/site.css",
-            "data/summary.json", "data/damage.json", "data/review.json", "data/physical.json"]
+            "data/summary.json", "data/damage.json", "data/review.json", "data/physical.json",
+            "data/narrow.json", "js/monolith_narrow.js", "js/monolith_explain.js"]
     missing = [f for f in must if not os.path.isfile(os.path.join(out, f))]
     check("every file the site needs (%d)" % len(must), not missing, missing)
     pk = json.load(open(os.path.join(out, "package.json"), encoding="utf-8"))
@@ -166,7 +169,7 @@ def build_checks(work, port):
           < page.index('<script src="js/monolith.js">'))
     phys = [n[:-4] for n in S["physical"]["files"] if n.startswith("phys_edges_") or n.startswith("phys_snd_")]
     names = [n[:-4] for n in S["files"]] + [n[:-4] for n in S["splits"]["files"]] \
-        + [n[:-4] for n in S["sessions"]["files"]] + phys
+        + [n[:-4] for n in S["sessions"]["files"]] + phys + [n[:-4] for n in S["narrow"]["files"]]
     bad = []
     for n in names:
         p = os.path.join(out, "data", n + ".f32z")
@@ -237,13 +240,13 @@ def build_checks(work, port):
     check("a tighter budget: every pooled array and section 6's raw circuits still in, "
           "Progress's later files (and section 6's Minus FP) left to Jarvis and listed",
           om and all(n.startswith("session_") or n.startswith("phys_edges_minus_fp__") or n.startswith("phys_snd_minus_fp__")
-                     for n in om)
+                     or n == "narrow_minus_fp" for n in om)
           and all(os.path.isfile(os.path.join(small, "data", n[:-4] + ".f32z"))
                   for n in list(S["files"]) + list(S["splits"]["files"]))
           and all(os.path.isfile(os.path.join(small, "data", n + ".f32z")) for n in phys if "_raw__" in n)
           and kept and not set(kept) & set(om), (len(om), len(kept)))
     check("and the pooled sessions go in before AB and CD's",
-          all("__" not in n for n in kept) or all("__" in n for n in om), om[:3])
+          all("__" not in n for n in kept) or all("__" in n for n in om if n.startswith("session_")), om[:3])
     return out, S
 
 
@@ -311,6 +314,11 @@ def page_checks(work, site, S):
           re.search(r'id="tab-phys"[^>]*aria-selected="true"', ph) is not None and 'id="physverdict"' in ph
           and 'id="physleadtbl"' in ph and 'class="mfig physcircuit"' in ph and 'id="physmake"' not in ph,
           re.findall(r"(?:Could not read|not in this copy)[^<]*", ph)[:2])
+    nr = dom("monolith.html#tab=narrow")
+    check("section 7 opens by its link, from the copy: the answer, the corrections and a circuit",
+          re.search(r'id="tab-narrow"[^>]*aria-selected="true"', nr) is not None and 'id="naranswer"' in nr
+          and 'id="narcorrecttbl"' in nr and 'class="mfig narcircuit"' in nr and 'id="narrowmake"' not in nr,
+          re.findall(r"(?:Could not read|not in this copy)[^<]*", nr)[:2])
     srv.shutdown()
 
 

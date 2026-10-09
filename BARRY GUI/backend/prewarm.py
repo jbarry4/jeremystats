@@ -190,6 +190,12 @@ def request(session, specs, supersede=True):
     useful -- moving to a different recording, or changing the filters,
     invalidates every window that was waiting.
     """
+    # Nothing is drawn ahead off the cluster. Each render there is a full-rate
+    # read on a login node somebody else is also using, and a speculative one
+    # would also sit in front of the window actually asked for on the one
+    # link. A recording read off the cluster draws each window when shown.
+    if (session or {}).get("source") == "vacc":
+        return 0
     _ensure_worker()
     queued = 0
     with _QUEUE_CV:
