@@ -223,6 +223,10 @@ BARRY.braces = (function () {
     'ds profile': 'Reading channel',
     'ds detect': 'Finding the peaks',
     'ds read': 'Reading',
+    // A recording only the cluster has is aligned there (`_braces_vacc_run`).
+    'vacc stage': 'Sending it to the cluster',
+    'vacc queue': 'Waiting for VACC, then aligning there',
+    'vacc fetch': 'Bringing the proposal back',
   };
 
   /* What each stage is doing, and why its count is not the number of
@@ -240,6 +244,10 @@ BARRY.braces = (function () {
       + 'spike. Stamps closer together than a second are read as one '
       + 'stretch, which is why this is minutes of an hour rather than the '
       + 'whole hour.',
+    'vacc queue':
+      'This recording is not on this computer, so it is aligned on the '
+      + 'cluster by the same rule. Waiting in the queue is not an error; '
+      + 'the depth and the stretches are counted once it starts there.',
   };
 
   function jobSays(j) {
@@ -773,6 +781,14 @@ BARRY.braces = (function () {
       dt('Band', s.band ? s.band[0] + '–' + s.band[1] + ' Hz, on the '
                           + 'magnitude' : '—'),
       dt('Stamps', plan.entry.n + ' in ' + vName(plan)),
+      /* Said before the button is pressed: a recording only the cluster has
+         is aligned THERE, as a job, by the same rule -- and a job can wait
+         in a queue, which is a different wait from a read off a drive. */
+      plan.where === 'vacc'
+        ? dt('Runs on', 'VACC — this computer has no copy, so it is read '
+             + 'and aligned on the cluster and the proposal comes back here '
+             + 'to review. Expect a few minutes, more if the queue is busy.')
+        : null,
     ].filter(Boolean)));
 
 
@@ -1105,8 +1121,7 @@ BARRY.braces = (function () {
      `path` returns nothing at all. */
   function pathOf(c) {
     const row = regRowOf(c) || {};
-    const here = row.here || [];
-    return here.length ? here[0] : null;
+    return BARRY.vacc.reachFor(row, 'braces').path;
   }
 
   /* Editing them from the bulk table.

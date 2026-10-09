@@ -165,8 +165,8 @@ def histology_now(man):
 LAYERS = ("raw", "minus_fp")
 LAYER_SAY = {
     "raw": "Each rat's own change, Precon4 − Precon1, of the cue-window value.",
-    "minus_fp": "The same, after taking away that day's rest (FP1 + FP2) "
-                "value: (cue − rest) on Precon4 minus (cue − rest) on "
+    "minus_fp": "The same, after taking away that day's FP1/FP2 "
+                "value: (trials − FP) on Precon4 minus (trials − FP) on "
                 "Precon1.",
 }
 FOLDER_ROLES = ("SPC", "FP1", "FP2")
@@ -319,7 +319,7 @@ QUANTITIES = ("est", "p", "k", "same", "se", "why")
 WHY = {0: None, 1: "fewer than %d rats have it on both days" % MIN_RATS,
        2: "a rat had a single usable value on a day, so there is no spread "
           "to put an error on",
-       3: "a rat gave the identical value in every cue pair",
+       3: "a rat gave the identical value in every trial",
        4: "every rat changed by exactly the same amount",
        5: "no rat has it on both days"}
 TOP_N = 50
@@ -598,8 +598,8 @@ def _rest_pair_units(host, gid, rat, day, notes):
         clip = circuitrun.rest_clipping(prep)
         circuitrun.apply_rest_clipping(prep, clip)
     except circuitrun.CircuitRunError as exc:
-        notes.append("r%d %s: no 20 s rest epochs (%s); the whole-pair "
-                     "window's minus-FP layer leaves this rat out"
+        notes.append("r%d %s: no 20 s FP epochs (%s); the whole-pair "
+                     "window's Minus FP leaves this rat out"
                      % (rat, day, exc))
         return None
     return [{"id": "f%02d" % p["pair_id"], "pair_id": p["pair_id"],
@@ -660,7 +660,7 @@ def _day_record(host, cfg, roots, rat, day, gid, notes):
         notes.extend("r%d %s: %s" % (rat, day, x)
                      for x in prep.get("fp_notes") or [])
     except circuitrun.CircuitRunError as exc:
-        notes.append("r%d %s: no rest epochs (%s); its minus-FP layer "
+        notes.append("r%d %s: no FP epochs (%s); its Minus FP "
                      "leaves this rat out" % (rat, day, exc))
     rest_pair = _rest_pair_units(host, gid, rat, day, notes)
     folders = [{"role": "SPC", "gid": gid, "local": spc}] + fps
@@ -1312,10 +1312,13 @@ def stdtr_p(t, df):
     return 2.0 * stdtr(df, -np.abs(t))
 
 
-def pool(Y, V):
+def pool(Y, V, min_rats=None):
     """Every entry at once. `Y` (rats, ...) each rat's change, NaN where the
     rat does not have the entry; `V` its variance, NaN where it has none.
-    Returns {est, p, k, same, se, why} -- see QUANTITIES and WHY."""
+    Returns {est, p, k, same, se, why} -- see QUANTITIES and WHY. Tested
+    with at least MIN_RATS rats, or `min_rats` where it is said (section 6's
+    groups of four, where one rat short is common)."""
+    min_rats = MIN_RATS if min_rats is None else min_rats
     Y = np.asarray(Y, dtype=np.float64)
     V = np.asarray(V, dtype=np.float64)
     present = np.isfinite(Y)
@@ -1342,7 +1345,7 @@ def pool(Y, V):
         var = ss / ((k - 1) * swr)
         se = np.sqrt(var)
         t = est / se
-    testable = dl_ok & (k >= MIN_RATS) & (k >= 2) & np.isfinite(var) & \
+    testable = dl_ok & (k >= min_rats) & (k >= 2) & np.isfinite(var) & \
         (var > 0)
     p = np.full(est.shape, np.nan)
     if testable.any():
@@ -1351,7 +1354,7 @@ def pool(Y, V):
     why[(k > 0) & ~testable] = 4
     why[(k > 0) & vzero] = 3
     why[(k > 0) & vnone] = 2
-    why[(k > 0) & (k < MIN_RATS)] = 1
+    why[(k > 0) & (k < min_rats)] = 1
     why[k == 0] = 5
     sgn = np.sign(est)
     same = (present & (Y != 0) & (np.sign(np.where(present, Y, 0)) == sgn)
@@ -1608,7 +1611,7 @@ SPLITS = (
 )
 SPLIT_IDS = tuple(g for g, _l, _f in SPLITS)
 SPLIT_FAMILY_SAY = {
-    "pair": "by each rat's own seats, from the lab's identity sheet: AB is "
+    "pair": "by each rat's own A/B/C/D, from the lab's identity sheet: AB is "
             "the pair heard A → B, CD the pair heard C → D; which sounds "
             "those are is counterbalanced across rats",
 }
@@ -2001,7 +2004,7 @@ def sound_compare(ab_l, cd_l, check=None, n_perm=200, seed=6):
         obs = int((np.asarray(got[pid]["p"]) < 0.05).sum())
         perm["pairs"][pid] = {"counts": cs, "observed": obs, "n": len(cs),
                               "rank": _rank(cs, obs) if cs else None,
-                              "say": "every way of signing the rats' differences"}
+                              "say": "every shuffle of the rats' differences"}
     om = rm_anova(Y)
     got["omni"] = {"est": om["spread"], "p": om["p"], "k": om["k"].astype(np.float64),
                    "same": np.zeros(om["p"].shape),
@@ -2017,7 +2020,7 @@ def sound_compare(ab_l, cd_l, check=None, n_perm=200, seed=6):
             Yp = np.stack([Y[i, rng.permutation(len(SOUNDS))] for i in range(n)])
             cs.append(int((rm_anova(Yp)["p"] < 0.05).sum()))
     perm["omni"] = {"counts": cs, "observed": obs, "n": len(cs), "rank": _rank(cs, obs),
-                    "say": "the sounds as named, and %d random relabellings of the four within each rat" % (len(cs) - 1)}
+                    "say": "the sounds as named, and %d random shuffles of the four within each rat" % (len(cs) - 1)}
     return {"rats": rats, "got": got, "omni": om, "perm": perm, "shape": tuple(Y.shape[2:])}
 
 
@@ -2212,7 +2215,7 @@ def physical_build(man, summary, out_dir, roles, progress=None, check=None):
                     "rank": _rank(cs3, obs3) if cs3 else None,
                     "seat": seat3, "seat_rank": _rank(cs3, seat3) if cs3 else None,
                     "rats": [both[i] for i in ix],
-                    "say": "every way of signing these rats' AB − CD"}
+                    "say": "every shuffle of these rats' AB − CD"}
         # Cue 2 − Cue 1 as tone − noise: the contrast's slot, the
         # tone-first rats' sign flipped.
         s_tn = np.array([1.0 if kind[r] == "noise" else -1.0 if kind[r] == "tone" else np.nan
@@ -2267,7 +2270,7 @@ def physical_build(man, summary, out_dir, roles, progress=None, check=None):
             "counts": cs2, "observed": counts["tone_noise"][layer]["p05"], "n": len(cs2),
             "rank": _rank(cs2, counts["tone_noise"][layer]["p05"]) if cs2 else None,
             "balanced": bal, "balanced_rank": _rank(cs2, bal) if cs2 else None,
-            "say": "every way of signing the eight rats' Cue 2 − Cue 1"}
+            "say": "every shuffle of the eight rats' Cue 2 − Cue 1"}
         # Each sound on its own: all eight rats, each sound in its own
         # seat's cue window, compared within rat.
         snd = None
@@ -2284,7 +2287,10 @@ def physical_build(man, summary, out_dir, roles, progress=None, check=None):
             sound_out["perm"][layer] = snd["perm"]
             sound_out["rats"] = snd["rats"]
         # The leads, split by group, each with an equivalence test at half
-        # its own size.
+        # its own size. A group of four is often a rat short at a lead, so
+        # the groups are pooled here from three rats up (said with k).
+        pt, pn = pool(Y[gi["tone"]], V[gi["tone"]], min_rats=3), pool(Y[gi["noise"]], V[gi["noise"]], min_rats=3)
+        got_lead = pool_diff(pt, pn)
         from scipy.stats import t as _t
         tops = [("monolith", (summary.get("top") or {}).get(layer) or []),
                 ("contrast", ((summary.get("contrast") or {}).get("top") or {}).get("raw") or [])]
@@ -2292,7 +2298,7 @@ def physical_build(man, summary, out_dir, roles, progress=None, check=None):
             rows = []
             for t0 in lst[:50]:
                 at = (t0["wi"], t0["bi"], t0["mi"], t0["pair"])
-                g = got["order"]
+                g = got_lead
                 q = lambda a: _f(np.asarray(a)[at])   # noqa: E731
                 te, tse, tk = q(pt["est"]), q(pt["se"]), q(pt["k"])
                 ne, nse, nk = q(pn["est"]), q(pn["se"]), q(pn["k"])
@@ -2643,9 +2649,9 @@ def build(man, run, raw_dir, out_dir, progress=None):
         "windows": [{"id": w, "label": WINDOW_SAY[w],
                      "kind": window_kind(w)} for w in window_ids()],
         "contrast": {"id": CONTRAST, "label": CONTRAST_SAY,
-                     "say": "Within each presentation, Cue 2 minus Cue 1 -- "
+                     "say": "Within each trial, Cue 2 minus Cue 1 -- "
                             "B - A in AB, D - C in CD -- then Precon4 "
-                            "against Precon1. Raw only: the rest minus FP "
+                            "against Precon1. Raw only: the FP that Minus FP "
                             "takes away is the same for both cue windows, "
                             "so it cancels exactly.",
                      "top": ctop, "counts": ccnt, "pac_top": cpac},
@@ -2781,7 +2787,7 @@ def entry_detail(out_dir, man, summary, what, layer, at, group=None,
                                 names[b], u["wires"])
             units = [units[i] for i in pick]
             if not units:
-                gone = "%s: no cue pair of this kind" % day
+                gone = "%s: no trial of this kind" % day
                 break
             m, s2, n = day_stats(vals[pick][:, None])
             slot = {"cue": _f(m[0]), "cue_se2": _f(s2[0]), "n": int(n[0]),
@@ -3118,7 +3124,7 @@ DAMAGE_SAY = {
     "bad": "every wire it has is marked bad for the recording",
     "clipped": "every wire it has was clipped (or excluded in the bank) "
                "in that window",
-    "unread": "it was not measured there (the cue pair or window was "
+    "unread": "it was not measured there (the trial or window was "
               "refused on the cluster, or nothing could be read)",
 }
 _DAMAGE_CACHE = {}
@@ -3586,7 +3592,7 @@ def leaf(cfg, man, summary, out_dir, run, layer, at, rat, day, unit_id,
     if rest:
         span = [max(0.0, float(pair["t0"]) - LEAF_SPAN_PAD_S),
                 float(pair["t1"]) + LEAF_SPAN_PAD_S]
-        marks = [{"name": "rest epoch", "t0": float(pair["t0"]),
+        marks = [{"name": "FP epoch", "t0": float(pair["t0"]),
                   "t1": float(pair["t1"])}]
         folder = next((f for f in d["folders"] if f["gid"] == unit["fp_gid"]),
                       None)
@@ -3764,12 +3770,15 @@ class Worker(object):
 
 _WORK = {"now": None}
 _WORK_SAY = {"upload": "uploading", "fetch": "fetching and building the "
-             "Monolith", "split": "splitting the Monolith by cue pair",
+             "Monolith", "split": "splitting the Monolith into AB and CD",
              "events": "finding hippocampal events",
              "extend": "adding Precon2 and Precon3 to what goes",
              "rebuild": "rebuilding the Monolith under the histology",
              "sessions": "making Monolith Progress's session files",
-             "physical": "comparing the physical cues with the balanced ones"}
+             "physical": "comparing the physical cues with the balanced ones",
+             "narrow": "narrowing down: corrections and the permutation tests",
+             "joe": "working out tab 8 (Joe's data) from the recordings",
+             "joescript": "running tab 8's standalone script"}
 
 
 def work_now():
@@ -4210,6 +4219,19 @@ def _build_and_file(worker, man, run, raw, data, artifacts, by,
         except Exception as exc:                         # noqa: BLE001
             summary["physical_error"] = "%s: %s" % (type(exc).__name__, exc)
             _write_json(os.path.join(data, "summary.json"), summary)
+    # Section 7: narrowing down.
+    try:
+        from . import narrow as narrowmod
+        worker.note(phase="narrow")
+        narrowmod.narrow_build(man, summary, data, roles,
+                               progress=lambda what, i, of, item: worker.note(
+                                   phase="narrow", i=i, of=of, item=item),
+                               check=worker.check)
+    except Stopped:
+        raise
+    except Exception as exc:                             # noqa: BLE001
+        summary["narrow_error"] = "%s: %s" % (type(exc).__name__, exc)
+        _write_json(os.path.join(data, "summary.json"), summary)
     worker.note(phase="filing")
     rec = file_artifact(artifacts, summary, man, by=by)
     built = {"rid": run["rid"], "at": now_iso(),

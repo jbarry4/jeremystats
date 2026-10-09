@@ -458,7 +458,19 @@ class VaccArray:
                        j["spec_remote"].get("path"), ssh=self._ssh)
         shim.array_id = self.array_id
         shim.slurm_id = "%s_%d" % (self.array_id, index)
-        return shim.relocalize(out)
+        out = shim.relocalize(out)
+        # Where the full answer still sits, so any machine can fetch it
+        # again (constitution section 6d). The shim's own rid is not this
+        # array's, and the run directory is in the workspace, which is
+        # backed up and not purged -- the per-channel events are megabytes
+        # and are only cached on the machine that filed them.
+        on = dict(out.get("computed_on") or {"kind": "vacc",
+                                              "host": self.cfg.get("host"),
+                                              "netid": self.cfg.get("netid")})
+        on.update(slurm_id=shim.slurm_id, rid=self.rid, workspace=self.ws,
+                  file="result_%d.json" % int(index))
+        out["computed_on"] = on
+        return out
 
     def cancel(self):
         if self.array_id:
@@ -1139,5 +1151,8 @@ class VaccRun:
             # is right for "who filed it" and wrong for "who computed it".
             # This is the only place the difference is recorded.
             "max_rss": getattr(self, "max_rss", None),
+            # Where the whole answer still is, for a machine that has the
+            # summary from the vault and not the per-channel events.
+            "workspace": self.ws, "file": "result.json",
         }
         return out

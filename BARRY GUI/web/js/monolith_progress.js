@@ -238,7 +238,7 @@ window.MONO_PROGRESS = (function () {
       cell.day === ALL[0] ? (within ? 'Precon1: the change on the right is measured from here' : 'Precon1: where the change is measured from')
         : 'change from Precon1 ' + f3(g(SQ.chg)) + (isFinite(g(SQ.chg_se)) ? ' ± ' + sig(g(SQ.chg_se)) : ''),
       c.pass && !c.pass.has(p) ? 'Precon4 − Precon1 does not pass the Monolith’s slider here' : '',
-      within ? 'Click to open it on the change: its rats, presentations and signals. Drag it onto the panels above to follow it.'
+      within ? 'Click to open it on the change: its rats, trials and signals. Drag it onto the panels above to follow it.'
         : 'Drag it onto the panels above, or click it, to follow it across the sessions.']);
   }
   function nodeTip(C, r) {
@@ -313,8 +313,8 @@ window.MONO_PROGRESS = (function () {
   function legendOf(mode, sc, within) {
     if (!sc || !isFinite(sc.amax) || !(sc.amax > 0)) return 'Nothing measured in this view.';
     if (within) {
-      return 'Red: Cue 2 higher than Cue 1; blue: lower. The widest line is a difference of ' + sig(sc.amax)
-        + ', on one scale for every session. Descriptive: the change on the right is the one that is tested.';
+      return 'Red: Cue 2 higher than Cue 1; blue: lower. One scale for every session (the widest: ' + sig(sc.amax)
+        + '). Descriptive: only the change is tested.';
     }
     if (mode === 'chg') {
       return 'Red: higher than on Precon1; blue: lower. The widest line is a change of ' + sig(sc.amax)
@@ -473,9 +473,9 @@ window.MONO_PROGRESS = (function () {
       const drawn = e.filter((x) => x.o > 0).length;
       C.say.textContent = s < 0 ? 'Precon2 and Precon3 come from one run on the VACC: Drift → Monolith → “Run Precon2/3 and the pair window”.'
         : mode === 'chg' && s === 0 ? 'Every change is measured from here, so nothing is drawn.'
-          : drawn + ' of the ' + measured + ' region pairs measured drawn'
-            + (P.top && drawn === Math.min(P.top, live.length) && live.length > P.top ? ': the ' + P.top + (mode === 'chg' ? ' that changed most' : ' strongest') : '')
-            + (pass ? ', of those that pass' : '') + '.';
+          : (P.top && drawn === Math.min(P.top, live.length) && live.length > P.top
+            ? 'The ' + P.top + (mode === 'chg' ? ' that changed most' : ' strongest') + ' of ' + measured + ' region pairs'
+            : drawn + ' of ' + measured + ' region pairs') + (pass ? ', of those that pass' : '') + '.';
     }
     if (o.legendHost && $(o.legendHost)) {
       const shown = Array.from(new Set(flat.map((c) => c.mode)));
@@ -754,7 +754,7 @@ window.MONO_PROGRESS = (function () {
         const c = sv('circle', { cx: X(i).toFixed(1), cy: Y(y).toFixed(1), r: 2.8, fill: ratColor(ri, n), class: 'pratpt',
                                  'data-rat': String(rr.rat), 'data-day': day });
         M().hover(c, ['r' + rr.rat + ' · ' + day, (mode === 'chg' ? 'change from Precon1 ' + f3(y) : 'value ' + sig(y)),
-                      'Click for its presentations.']);
+                      'Click for its trials.']);
         c.addEventListener('click', () => openDrill(s, day, rr.rat));
         g.appendChild(c);
       }
@@ -777,7 +777,7 @@ window.MONO_PROGRESS = (function () {
       g.appendChild(sv('circle', { cx: X(i).toFixed(1), cy: Y(x[q]).toFixed(1), r: 5, fill: css('--ink'), stroke: css('--surface'), 'stroke-width': 1.5,
                                    class: 'pmeanpt', 'data-y': String(x[q]) }));
       M().hover(g, [day + ' · ' + MODE_SAY[mode].toLowerCase(), sig(x[q]) + (isFinite(x[qs]) ? ' ± ' + sig(x[qs]) + ' SE' : '') + ' over ' + x.n + ' rats',
-        day === ALL[0] ? 'Where every change starts' : 'change from Precon1 ' + f3(x.chg), 'Click for this session’s rats, then a rat’s presentations.']);
+        day === ALL[0] ? 'Where every change starts' : 'change from Precon1 ' + f3(x.chg), 'Click for this session’s rats, then a rat’s trials.']);
       g.addEventListener('click', () => openDrill(s, day, null));
       g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDrill(s, day, null); } });
       svg.appendChild(g);
@@ -807,8 +807,8 @@ window.MONO_PROGRESS = (function () {
     }
     if (!d.det) { dbox.appendChild(el('p', { class: 'warn', text: 'Could not read the rats: ' + (d.detErr || 'no answer') })); return; }
     const minus = s.layer === 'minus_fp';
-    dbox.appendChild(el('p', { class: 'small muted', text: 'Each rat’s ' + day + ' value: the mean over its presentations'
-      + (minus ? ', less the mean over its flower-pot rest epochs' : '') + '. Click a rat for its presentations.' }));
+    dbox.appendChild(el('p', { class: 'small muted', text: 'Each rat’s ' + day + ' value: the mean over its trials'
+      + (minus ? ', less the mean over its FP1/FP2 epochs' : '') + '. Click a rat for its trials.' }));
     const n = d.det.rats.length;
     dbox.appendChild(el('div', { class: 'prograts' }, d.det.rats.map((r, ri) => {
       const slot = (r.days || {})[day] || (r.traj || {})[day];
@@ -826,10 +826,10 @@ window.MONO_PROGRESS = (function () {
     const rest = minus && slot.rest != null ? slot.rest : 0;
     const units = (slot.units || []).map((u) => ({ id: u.id, label: u.label, pair: u.pair, seat_say: u.seat_say,
                                                    v: u.v == null ? null : u.v - rest, why: u.why }));
-    dbox.appendChild(el('p', { class: 'small', text: 'r' + rat + ' · ' + day + ': ' + units.length + ' presentations, in order'
-      + (minus && slot.rest != null ? ', each less the session’s rest (' + sig(slot.rest) + ')' : '')
+    dbox.appendChild(el('p', { class: 'small', text: 'r' + rat + ' · ' + day + ': ' + units.length + ' trials, in order'
+      + (minus && slot.rest != null ? ', each less the session’s FP (' + sig(slot.rest) + ')' : '')
       + '. ' + (s.what === 'edges' ? 'Click one to see its traces and how its number was made.'
-        : 'Power has no trace view of its own: follow one of this region’s edges to open a presentation.') }));
+        : 'Power has no trace view of its own: follow one of this region’s edges to open a trial.') }));
     // A strip: each presentation's value, in order.
     const Wd = Math.max(280, Math.min(720, host.clientWidth || 560)), H = 120, l = 52, rr = 10, t = 10, bo = 22;
     const ys = units.map((u) => u.v).filter((v) => v != null);
@@ -838,12 +838,12 @@ window.MONO_PROGRESS = (function () {
     const X = (i) => l + (Wd - l - rr) * (units.length === 1 ? 0.5 : i / (units.length - 1));
     const Y = (v) => t + (H - t - bo) * (1 - (v - lo) / (hi - lo));
     const svg = sv('svg', { viewBox: '0 0 ' + Wd + ' ' + H, width: '100%', class: 'mfig progstrip', role: 'img',
-                            'aria-label': 'r' + rat + ' ' + day + ': every presentation' });
+                            'aria-label': 'r' + rat + ' ' + day + ': every trial' });
     [lo, hi].forEach((v) => svg.appendChild(sv('text', { x: l - 5, y: (Y(v) + 3.5).toFixed(1), 'text-anchor': 'end', 'font-size': 10, fill: css('--ink-3') }, sig(v))));
     svg.appendChild(sv('line', { x1: l, x2: Wd - rr, y1: Y(slot.x != null ? slot.x : (lo + hi) / 2).toFixed(1), y2: Y(slot.x != null ? slot.x : (lo + hi) / 2).toFixed(1),
                                  stroke: css('--ink-3'), 'stroke-dasharray': '4 3' }));
     svg.appendChild(sv('text', { x: l, y: H - 6, 'font-size': 10, fill: css('--ink-3') }, 'first'));
-    svg.appendChild(sv('text', { x: Wd - rr, y: H - 6, 'font-size': 10, 'text-anchor': 'end', fill: css('--ink-3') }, 'last presentation'));
+    svg.appendChild(sv('text', { x: Wd - rr, y: H - 6, 'font-size': 10, 'text-anchor': 'end', fill: css('--ink-3') }, 'last trial'));
     const ids = units.map((u) => u.id);
     units.forEach((u, i) => {
       const g = sv('g', { class: 'progunit', 'data-unit': u.id, tabindex: u.v == null || s.what !== 'edges' ? null : '0' });
@@ -948,7 +948,7 @@ window.MONO_PROGRESS = (function () {
     }
     kids.push(pick('Frequency', 'pbf', D.bands.map((b) => [b.id, b.named ? b.label : b.hz + ' Hz']), v.band, (x) => { v.band = x; }));
     kids.push(pick('Window', 'pbw', D.windows.map((w) => [w.id, w.label]), v.w, (x) => { v.w = x; }));
-    kids.push(pick('Layer', 'pbl', [['raw', 'Raw'], ['minus_fp', 'Minus FP']], v.layer, (x) => { v.layer = x; }));
+    kids.push(pick('', 'pbl', [['raw', 'Raw'], ['minus_fp', 'Minus FP']], v.layer, (x) => { v.layer = x; }));
     kids.push(pick('Cue pairs', 'pbs', splits, v.split, (x) => { v.split = x; }));
     kids.push(el('button', { type: 'button', class: 'more-btn', id: 'pbadd', text: 'Follow it', onclick: () => addSeries(built(), true) }));
     host.appendChild(el('div', { class: 'progbuild' }, kids));
@@ -1037,8 +1037,7 @@ window.MONO_PROGRESS = (function () {
       host.appendChild(el('div', { class: 'hrow' }, [el('h2', { text: 'Follow a line across the sessions' }), qh('progress.series'),
         el('span', { class: 'small muted', id: 'progcount' })]));
       host.appendChild(el('div', { class: 'progdrop', id: 'progdrop' }, [
-        el('p', { class: 'small', text: 'Drag an edge or a node from any circuit below and drop it here, or build one. '
-          + 'Each line gets a panel of its own, Precon1 to Precon4, in its own units.' }),
+        el('p', { class: 'small', text: 'Drag a line or a node here from any circuit, or build one.' }),
         el('div', { id: 'progbuild' }),
       ]));
       host.appendChild(el('div', { class: 'hrow progexp' }, [

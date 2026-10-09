@@ -58,7 +58,7 @@ window.MONO_PHYS = (function () {
     tone_noise: { name: 'Cue 2 − Cue 1 signed as tone − noise', by: 'sound',
                   what: 'Cue 2 − Cue 1 is tone − noise for the noise-first rats and noise − tone for the tone-first ones: their sign flipped, it is the same change sorted by sound.' },
     seat_abcd: { name: 'AB against CD', by: 'seat',
-                 what: 'In every rat, the change in its AB less the change in its CD: the same pair-against-pair differences, sorted by seat.' },
+                 what: 'In every rat, the change in its AB less the change in its CD: the same pair-against-pair differences, sorted by A/B/C/D.' },
   };
 
   // Each sound on its own: its name, its colour, and the comparisons.
@@ -71,7 +71,7 @@ window.MONO_PHYS = (function () {
   for (const pid of SND_PAIRS) {
     SAY['snd:' + pid] = { name: pairSay(pid), by: 'sound',
       what: 'In every rat, the change while ' + SND_SAY[pid.split('-')[0]] + ' played less the change while ' + SND_SAY[pid.split('-')[1]]
-        + ' played, each in its own seat’s cue window, pooled over all eight rats.' };
+        + ' played, each in the cue window it had (A, B, C or D), pooled over all eight rats.' };
   }
   SAY['snd:omni'] = { name: 'Do the four sounds differ?', by: 'sound',
     what: 'A repeated-measures ANOVA over each rat’s four sound changes, all eight rats: drawn where the four differ; thicker, the bigger the '
@@ -149,23 +149,25 @@ window.MONO_PHYS = (function () {
         .concat(['A', 'B', 'C', 'D'].map((x) => el('td', { class: 'snd ' + (s[x] === 'High' || s[x] === 'Low' ? 'tone' : 'noisy'), text: say(s[x] || '—') }))));
     });
     const ans = P.data ? answer() : null;
-    const card = section('physintro', 'Physical cue against balanced cue', 'physical', [
-      ans ? el('div', { class: 'physanswer ' + (ans.effect === false ? 'ok' : ans.effect ? 'warn' : ''), id: 'physanswer' }, [
-        el('p', { class: 'head', text: ans.head }), el('p', { text: ans.say })]) : null,
-      el('p', { text: 'Every rat heard four sounds: Click, Noise, a high tone and a low tone. The Monolith never uses their names. It calls them '
-        + 'A, B, C and D, from the lab’s identity sheet, and which sound is A changes from rat to rat. So a change the Monolith finds could be '
-        + 'about the cue’s place in the task, or about the sound itself. This tab checks the sound.' }),
-      el('p', { text: 'It can, because of how the sheet seats the sounds: four rats start both their pairs with Click or Noise (noise-first), '
-        + 'the other four start both with a tone (tone-first). Splitting the rats that way, and each rat’s two pairs by which sound starts '
-        + 'them, tests the sounds with the Monolith’s own numbers. If the sounds did not matter, those splits look like any other split of '
-        + 'the same rats.' }),
-      el('div', { class: 'dtwrap' }, [el('table', { class: 'linetable physseats', id: 'physseats' }, [
+    const X = window.MONO_EXPLAIN;
+    const sheet = [el('div', { class: 'dtwrap' }, [el('table', { class: 'linetable physseats', id: 'physseats' }, [
         el('thead', {}, [el('tr', {}, ['Rat', 'Group', 'A', 'B', 'C', 'D'].map((h) => el('th', { text: h })))]),
         el('tbody', {}, rows)])]),
-      el('p', { class: 'small muted', text: 'A opens the AB pair and C the CD pair; B and D close them. Noise-first rats open both their pairs with '
-        + 'Click or Noise, so they hear Click or Noise in Cue 1 and a tone in Cue 2; tone-first rats the other way round. Red: a tone; blue: '
-        + 'Click or Noise.' }),
+      el('p', { class: 'small muted', text: 'A opens the AB pair and C the CD pair; B and D close them. Noise-first rats hear Click or Noise in '
+        + 'Cue 1 and a tone in Cue 2; tone-first rats the other way round. Red: a tone; blue: Click or Noise.' })];
+    const sortHost = el('div', { id: 'physsort' });
+    const card = section('physintro', 'Physical cue against balanced cue', 'physical', [
+      ans ? el('div', { class: 'physanswer ' + (ans.effect === false ? 'ok' : ans.effect ? 'warn' : ''), id: 'physanswer' }, [
+        el('p', { class: 'head', text: ans.head }),
+        X ? X.more('the details', (body) => { body.appendChild(el('p', { id: 'physanswersay', text: ans.say })); return null; }, { key: 'phys-answer', eager: true })
+          : el('p', { id: 'physanswersay', text: ans.say })]) : null,
+      el('p', { class: 'takeaway', id: 'physwhat', text: 'The Monolith calls the cues A, B, C and D, and which sound is which changes from rat to rat. '
+        + 'This tab sorts the rats by sound instead.' }),
+      sortHost,
+      X ? X.more('the identity sheet, as a table', (body) => { sheet.forEach((x) => body.appendChild(x)); return null; }, { key: 'phys-sheet', eager: true })
+        : el('div', {}, sheet),
     ]);
+    if (X) X.playOnce('phys-sort', sortHost, X.soundSort(sortHost, I));
     // A second ?, with pictures: the sheet, and what each outcome looks like.
     card.querySelector('.hrow').appendChild(el('span', { class: 'qpics small muted', id: 'physhow' }, ['how it works, in pictures', M().qh('physical.how')]));
     return card;
@@ -181,16 +183,16 @@ window.MONO_PHYS = (function () {
     const perm = D.perm || {};
     add('The Monolith: Precon4 − Precon1', 'seat', (sc.monolith || {})[L], null, 'monolith');
     const pt = (perm.tone_noise || {}).raw || {};
-    add('Cue 2 − Cue 1', 'seat', (sc.contrast || {}).raw, pt.n ? { rank: pt.balanced_rank, n: pt.n, of: 'ways of signing the rats' } : null, 'contrast');
+    add('Cue 2 − Cue 1', 'seat', (sc.contrast || {}).raw, pt.n ? { rank: pt.balanced_rank, n: pt.n, of: 'shuffles of the rats' } : null, 'contrast');
     add(SAY.seat_abcd.name, 'seat', ((D.counts || {}).seat_abcd || {})[L], null, 'seat_abcd');
     const po = ((perm.order || {})[L]) || {};
     add(SAY.order.name, 'sound', ((D.counts || {}).order || {})[L], po.n ? { rank: po.rank, n: po.n, of: 'splits of the rats into two fours' } : null, 'order');
     for (const cid of ['sound_noise', 'sound_tone']) {
       const ps = ((perm[cid] || {})[L]) || {};
-      add(SAY[cid].name, 'sound', ((D.counts || {})[cid] || {})[L], ps.n ? { rank: ps.rank, n: ps.n, of: 'ways of signing its four rats',
+      add(SAY[cid].name, 'sound', ((D.counts || {})[cid] || {})[L], ps.n ? { rank: ps.rank, n: ps.n, of: 'shuffles of its four rats',
         seat: ps.seat_rank } : null, cid);
     }
-    add(SAY.tone_noise.name, 'sound', ((D.counts || {}).tone_noise || {}).raw, pt.n ? { rank: pt.rank, n: pt.n, of: 'ways of signing the rats' } : null, 'tone_noise');
+    add(SAY.tone_noise.name, 'sound', ((D.counts || {}).tone_noise || {}).raw, pt.n ? { rank: pt.rank, n: pt.n, of: 'shuffles of the rats' } : null, 'tone_noise');
     return rows;
   }
   const ratio = (c) => (c && c.chance_p05 ? c.p05 / c.chance_p05 : null);
@@ -215,16 +217,16 @@ window.MONO_PHYS = (function () {
     }
     const omr = soundRows('raw').find((x) => x.id === 'snd:omni');
     const omSay = omr && omr.c && omr.extra ? ' The four sounds taken together are ' + (atChance(omr) ? 'at chance' : 'above chance')
-      + ' (ranking ' + omr.extra.rank + ' of ' + omr.extra.n + ' labellings).' : '';
+      + ' (ranking ' + omr.extra.rank + ' of ' + omr.extra.n + ' shuffles).' : '';
     const lead = ((D.leads || {}).monolith || {}).raw || [];
     const same = lead.filter((t) => t.both_ways).length;
     const dif = lead.filter((t) => t.diff && t.diff.p != null && t.diff.p < 0.05).length;
-    const leadSay = lead.length ? ' Of the Monolith’s ' + lead.length + ' leads, ' + same + ' go the same way in the tone-first and the noise-first '
+    const leadSay = lead.length ? ' Of the Monolith’s ' + lead.length + ' top results, ' + same + ' go the same way in the tone-first and the noise-first '
       + 'rats, and ' + dif + ' differ between them at p < .05, about what chance alone gives (' + (0.05 * lead.length).toFixed(1) + ').' : '';
     if (!n) return { effect: null, head: 'Not answered yet', say: 'Nothing was compared by sound.' };
     if (!above.length) {
       return { effect: false, head: 'The answer: no sign that the physical sound had an effect.',
-               say: 'Sorted by sound instead of by seat, and sound by sound (each sound’s own change against every other’s, within each '
+               say: 'Sorted by sound instead of by A/B/C/D, and sound by sound (each sound’s own change against every other’s, within each '
                  + 'rat), the rats pass no more tests than any other way of sorting the same eight rats, in all ' + n
                  + ' comparisons by sound (Raw and Minus FP).' + leadSay
                  + ' So the Monolith’s results are about the cue’s place in the task (A, B, C, D), not about which sound it was. '
@@ -234,7 +236,7 @@ window.MONO_PHYS = (function () {
              say: above.join('; ') + (above.length === 1 ? ' sorts' : ' sort') + ' the rats by sound better than nearly every other way of '
                + 'sorting them (the top 5%): there the sound may have left a mark.' + omSay + ' The other ' + (n - above.length)
                + ' comparisons by sound sit at chance. Every p is uncorrected: with ' + n + ' comparisons looked at, chance alone puts about '
-               + (0.05 * n).toFixed(1) + ' of them in the top 5%. Check a lead against ' + (above.length === 1 ? 'it' : 'them')
+               + (0.05 * n).toFixed(1) + ' of them in the top 5%. Check a top result against ' + (above.length === 1 ? 'it' : 'them')
                + ' before reading it as about the cue.' + leadSay };
   }
   function verdict() {
@@ -255,39 +257,43 @@ window.MONO_PHYS = (function () {
       return g;
     };
     const tbl = el('table', { class: 'linetable physverdict', id: 'physverdict' }, [
-      el('thead', {}, [el('tr', {}, ['Comparison', 'Sorted by', 'Tested', 'p < .05', 'By chance', '× chance', '', 'Against relabelling']
+      el('thead', {}, [el('tr', {}, ['Comparison', 'Sorted by', 'Tested', 'p < .05', 'By chance', '× chance', '', 'Against shuffle']
         .map((h) => el('th', { text: h })))]),
       el('tbody', {}, rows.map((r) => el('tr', { 'data-cmp': r.id, class: r.by }, [
-        el('th', { text: r.name }), el('td', { class: 'by', 'data-label': 'sorted by', text: r.by }),
+        el('th', { text: r.name }), el('td', { class: 'by', 'data-label': 'sorted by', text: r.by === 'seat' ? 'A/B/C/D' : r.by }),
         el('td', { class: 'num', 'data-label': 'tested', text: fmt((r.c || {}).tested) }),
         el('td', { class: 'num', 'data-label': 'p < .05', text: fmt((r.c || {}).p05) }),
         el('td', { class: 'num', 'data-label': 'by chance', text: fmt((r.c || {}).chance_p05) }),
         el('td', { class: 'num', 'data-label': '× chance', text: ratio(r.c) == null ? '—' : ratio(r.c).toFixed(2) }), el('td', { class: 'bar' }, [bar(r)]),
         el('td', { class: 'small rel', text: r.extra && r.extra.rank ? 'ranks ' + r.extra.rank + ' of ' + r.extra.n + ' ' + r.extra.of
-          + (r.extra.seat ? ' (by seat: ' + r.extra.seat + ')' : '') + (r.by === 'sound' ? (atChance(r) ? ' · at chance' : ' · above chance') : '') : '—' }),
+          + (r.extra.seat ? ' (by A/B/C/D: ' + r.extra.seat + ')' : '') + (r.by === 'sound' ? (atChance(r) ? ' · at chance' : ' · above chance') : '') : '—' }),
       ]))),
     ]);
     const bySound = rows.filter((r) => r.by === 'sound' && r.c);
     const flat = bySound.filter(atChance);
     const above = bySound.filter((r) => !atChance(r));
-    const lead = !bySound.length ? 'Nothing was compared by sound in this layer.'
+    const lead = !bySound.length ? 'Nothing was compared by sound in Minus FP: the tests between sounds are Raw only.'
       : above.length === 0
-        ? 'Sorted by group and by pair, every comparison by sound here sits at chance: the rats pass no more entries than an ordinary relabelling '
+        ? 'Sorted by group and by pair, every comparison by sound here sits at chance: the rats pass no more stat tests than an ordinary shuffle '
           + 'of the same rats does. (Each sound on its own, below, is the other half of the test.)'
-        : above.map((r) => r.name).join('; ') + (above.length === 1 ? ' passes' : ' pass') + ' more entries than '
-          + (above.length === 1 ? 'nearly every relabelling of its rats: look at it' : 'nearly every relabelling of their rats: look at them')
-          + ' before reading a lead as about the cue rather than the sound. '
+        : above.map((r) => r.name).join('; ') + (above.length === 1 ? ' passes' : ' pass') + ' more stat tests than '
+          + (above.length === 1 ? 'nearly every shuffle of its rats: look at it' : 'nearly every shuffle of their rats: look at them')
+          + ' before reading a top result as about the cue rather than the sound. '
           + (flat.length ? flat.length + ' of the ' + bySound.length + ' comparisons by sound sit at chance.' : '');
-    return section('physverdictcard', 'Across the whole Monolith: by seat and by sound, against chance', 'physical.verdict', [
+    const X = window.MONO_EXPLAIN;
+    const readIt = 'Tested over every window, frequency, measure and region pair the Monolith tests (tone − noise and Cue 2 − Cue 1: '
+      + 'the contrast’s own stat tests, raw only). The solid line on each bar is chance; the dashed one is what made-up data with no change at all '
+      + 'gave (' + (100 * (D.control_p05 || 0.055)).toFixed(1) + '%, ' + (D.control_say || '') + '). Neighbouring frequencies and measures move '
+      + 'together, so a count can stray from chance by luck: the shuffles are the fair yardstick, the same rats sorted every other way. '
+      + 'Every p is uncorrected. With four rats a group, “no effect” can only mean none large enough to see.';
+    return section('physverdictcard', 'Across the whole Monolith: by A/B/C/D and by sound, against chance', 'physical.verdict', [
       seg([['raw', 'Raw'], ['minus_fp', 'Minus FP']], L, (id) => { P.layer = id; render(); }, 'physlayer'),
       el('p', { class: 'physsay ' + (above.length ? 'warn' : 'ok'), id: 'physsay', text: lead }),
       el('div', { class: 'dtwrap' }, [tbl]),
-      el('p', { class: 'small muted', text: 'Tested over every window, frequency, measure and region pair the Monolith tests (tone − noise and Cue 2 − Cue 1: '
-        + 'the contrast’s own entries, raw only). The solid line on each bar is chance; the dashed one is what made-up data with no change at all '
-        + 'gave (' + (100 * (D.control_p05 || 0.055)).toFixed(1) + '%, ' + (D.control_say || '') + '). Entries are not independent — neighbouring '
-        + 'frequencies and measures move together — so a count can stray from chance by luck; the relabellings are the fair yardstick: '
-        + 'the same rats, sorted every other way. Every p is uncorrected. With four rats a group, “no effect” can only mean none large enough to see.' }),
-      relabelFigures(),
+      X ? X.more('how to read it', (body) => { body.appendChild(el('p', { class: 'small', id: 'physreadit', text: readIt })); return null; },
+        { key: 'phys-readit', eager: true }) : el('p', { class: 'small muted', text: readIt }),
+      X ? X.more('every shuffle of the same rats, played', (body) => { body.appendChild(relabelFigures()); return null; }, { key: 'phys-shuffles' })
+        : relabelFigures(),
     ]);
   }
   // Each sound on its own, one layer: its own change, every pair of sounds,
@@ -305,11 +311,11 @@ window.MONO_PHYS = (function () {
     for (const pid of SND_PAIRS) {
       const pm = (Pm.pairs || {})[pid] || {};
       rows.push({ id: 'snd:' + pid, name: pairSay(pid), by: 'sound', test: true, c: C[pid],
-                  extra: pm.n ? { rank: pm.rank, n: pm.n, of: 'ways of signing the rats' } : null });
+                  extra: pm.n ? { rank: pm.rank, n: pm.n, of: 'shuffles of the rats' } : null });
     }
     const om = Pm.omni || {};
     rows.push({ id: 'snd:omni', name: 'All four at once (repeated-measures ANOVA)', by: 'sound', test: true, c: C.omni,
-                extra: om.n ? { rank: om.rank, n: om.n, of: 'labellings of the four within each rat' } : null });
+                extra: om.n ? { rank: om.rank, n: om.n, of: 'shuffles of the four within each rat' } : null });
     return rows;
   }
   function soundCard() {
@@ -320,13 +326,13 @@ window.MONO_PHYS = (function () {
     const rows = soundRows(L);
     const tests = rows.filter((r) => r.test && r.c);
     const above = tests.filter((r) => !atChance(r));
-    const say = !tests.length ? 'Not compared in this layer.'
-      : !above.length ? 'Sound by sound, nothing stands out: no pair of sounds, and not the four together, passes more entries than an ordinary '
-          + 'relabelling of the same rats. The rats’ changes while each sound played are alike.'
-        : above.map((r) => r.name).join('; ') + (above.length === 1 ? ' passes' : ' pass') + ' more entries than nearly every relabelling of '
+    const say = !tests.length ? 'Not compared in Minus FP: Raw only.'
+      : !above.length ? 'Sound by sound, nothing stands out: no pair of sounds, and not the four together, passes more stat tests than an ordinary '
+          + 'shuffle of the same rats. The rats’ changes while each sound played are alike.'
+        : above.map((r) => r.name).join('; ') + (above.length === 1 ? ' passes' : ' pass') + ' more stat tests than nearly every shuffle of '
           + 'the rats: there the sounds may differ.';
     const tbl = el('table', { class: 'linetable physverdict physsound', id: 'physsound' }, [
-      el('thead', {}, [el('tr', {}, ['Comparison', 'Tested', 'p < .05', 'By chance', '× chance', 'Against relabelling'].map((h) => el('th', { text: h })))]),
+      el('thead', {}, [el('tr', {}, ['Comparison', 'Tested', 'p < .05', 'By chance', '× chance', 'Against shuffle'].map((h) => el('th', { text: h })))]),
       el('tbody', {}, rows.map((r) => el('tr', { 'data-cmp': r.id, class: r.test ? 'sound' : 'seat' }, [
         el('th', {}, [el('span', { class: 'nm' }, [r.id.indexOf('own:') === 0 ? el('b', { class: 'sw', style: 'background:' + sndCol(r.id.slice(4)) }) : null,
           r.name])]),
@@ -340,27 +346,40 @@ window.MONO_PHYS = (function () {
     ]);
     const om = (((Sd.perm || {})[L] || {}).omni) || {};
     const figs = el('div', { class: 'physhists' });
-    if (om.counts && om.counts.length > 1) {
+    const X = window.MONO_EXPLAIN;
+    if (X && om.counts && om.counts.length > 1) {
+      const h = el('div', { 'data-perm': 'omni' });
+      figs.appendChild(h);
+      const G = (P.data || {}).groups || { noise: [], tone: [] };
+      const p = X.shuffle(h, { counts: om.counts, realIndex: 0, observed: om.observed, rank: om.rank, expected: (((Sd.counts || {})[L] || {}).omni || {}).chance_p05,
+                               kind: 'random', rats: (Sd.rats || (G.noise || []).concat(G.tone || [])).map((r) => 'J' + r), realLabel: 'the sounds as named',
+                               title: 'The four sounds shuffled within each rat (' + (om.n - 1) + ')',
+                               say: 'Each shuffle deals each rat’s four sound changes out again, at random, and counts again.',
+                               rankSay: 'The sounds as named rank ' + om.rank + ' of ' + om.n + ': '
+                                 + (om.rank > cut(om.n) ? 'an ordinary shuffle.' : 'among the very few shuffles that pass the most stat tests.') });
+      X.playOnce('phys-shuf-omni-' + L, h, p);
+    } else if (om.counts && om.counts.length > 1) {
       figs.appendChild(el('div', { 'data-perm': 'omni' }, [hist(om.counts.slice(1), [
         { id: 'chance', v: (((Sd.counts || {})[L] || {}).omni || {}).chance_p05, label: 'chance (5%)', color: css('--ink-3'), dash: true },
-        { id: 'omni', v: om.observed, label: 'the sounds as named', color: css('--up') }], 'The four sounds relabelled within each rat (' + (om.n - 1) + ')'),
+        { id: 'omni', v: om.observed, label: 'the sounds as named', color: css('--up') }], 'The four sounds shuffled within each rat (' + (om.n - 1) + ')'),
         el('p', { class: 'small muted', text: 'The sounds as named rank ' + om.rank + ' of ' + om.n + ': '
-          + (om.rank > cut(om.n) ? 'an ordinary labelling.' : 'among the very few labellings that pass the most entries.') })]));
+          + (om.rank > cut(om.n) ? 'an ordinary labelling.' : 'among the very few labellings that pass the most stat tests.') })]));
     }
+    const how = 'For every rat, the change from Precon1 to Precon4 while each sound played, in the cue window that sound had (A, B, C or D): '
+      + 'a different one for different rats (J3’s Noise is its C, J4’s its B). Every rat heard all four, so each pair of sounds is '
+      + 'compared within each rat, all eight rats, and the four together by a repeated-measures ANOVA. Uncorrected. Raw or Minus FP chooses '
+      + 'each sound’s own change; the comparisons between sounds are raw in both, as Cue 2 − Cue 1 is: the same FP comes off every '
+      + 'window of a rat’s day, so it cancels from the difference. Cue windows only: the baselines, the transitions and the whole pair '
+      + 'hold no one sound. When two sounds share a pair (A and B, say) their windows come from the same trials, and that covariance is not '
+      + 'taken off, which makes those tests a little conservative.';
     return section('physsoundcard', 'Each sound on its own: Precon1 → Precon4 while it plays', 'physical.sound', [
       seg([['raw', 'Raw'], ['minus_fp', 'Minus FP']], L, (id) => { P.layer = id; render(); }, 'physsndlayer'),
-      el('p', { text: 'For every rat, the change from Precon1 to Precon4 while each sound played: the cue window of that sound’s seat, which '
-        + 'is a different seat for different rats (J3’s Noise is its C, J4’s its B). Every rat heard all four, so each pair of sounds is '
-        + 'compared within each rat, all eight rats, and the four together by a repeated-measures ANOVA. Uncorrected. The layer chooses '
-        + 'each sound’s own change; the comparisons between sounds are raw in both, as Cue 2 − Cue 1 is: the same rest comes off every '
-        + 'window of a rat’s day, so it cancels from the difference.' }),
-      el('div', { class: 'swkey' }, SOUNDS.map((x) => el('span', {}, [el('b', { class: 'sw', style: 'background:' + sndCol(x) }), SND_SAY[x]]))),
       el('p', { class: 'physsay ' + (above.length ? 'warn' : 'ok'), id: 'physsndsay', text: say }),
+      el('div', { class: 'swkey' }, SOUNDS.map((x) => el('span', {}, [el('b', { class: 'sw', style: 'background:' + sndCol(x) }), SND_SAY[x]]))),
       el('div', { class: 'dtwrap' }, [tbl]),
-      figs,
-      el('p', { class: 'small muted', text: 'Measured in the cue windows only, Cue 1 and Cue 2: the baselines, the transitions and the whole pair '
-        + 'hold no one sound. A pair’s two windows come from the same presentations when the sounds share a pair (A and B, say), and their '
-        + 'covariance is not taken off, which makes those tests a little conservative.' }),
+      X ? X.more('how each sound is measured', (body) => { body.appendChild(el('p', { class: 'small', id: 'physsndhow', text: how })); return null; },
+        { key: 'phys-sndhow', eager: true }) : el('p', { class: 'small muted', text: how }),
+      X && figs.childElementCount ? X.more('the four sounds shuffled, played', (body) => { body.appendChild(figs); return null; }, { key: 'phys-omni' }) : figs,
     ]);
   }
   // Where one sorting falls among every relabelling of the same rats: a
@@ -391,7 +410,7 @@ window.MONO_PHYS = (function () {
     svg.appendChild(sv('line', { x1: l, x2: W - r, y1: H - bo, y2: H - bo, stroke: css('--line-2') }));
     [[lo, 'start'], [hi, 'end']].forEach(([v, anchor]) => svg.appendChild(sv('text', { x: X(v).toFixed(1), y: H - bo + 13, 'text-anchor': anchor,
       'font-size': 10, fill: css('--ink-3') }, fmt(Math.round(v)))));
-    svg.appendChild(sv('text', { x: W / 2, y: H - 3, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-3') }, 'entries with p < .05'));
+    svg.appendChild(sv('text', { x: W / 2, y: H - 3, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-3') }, 'stat tests with p < .05'));
     for (const m of marks) {
       if (m.v == null || !isFinite(m.v)) continue;
       const x = X(m.v);
@@ -402,9 +421,22 @@ window.MONO_PHYS = (function () {
       el('span', { 'data-mark': m.id }, [el('i', { class: m.dash ? 'dash' : null, style: 'border-color:' + m.color }), m.label + ' ' + fmt(m.v)])));
     return el('div', { class: 'hfig' }, [svg, key]);
   }
+  // The rats as the shuffles list them, and where each sorting by sound
+  // sits among them: the split into tone-first and noise-first among every
+  // split into two fours; a sorting by sound among every way of signing
+  // the same rats (the first rat's sign fixed, as backend/monolith.py does).
+  function soundSigns(rats, signOf) {
+    const s = rats.map(signOf);
+    if (!s.length || s.some((x) => !x)) return null;
+    let i = 0;
+    for (let j = 1; j < s.length; j++) if (s[j] * s[0] < 0) i |= 1 << (j - 1);
+    return i;
+  }
   function relabelFigures() {
     const D = P.data;
     const L = P.layer;
+    const X = window.MONO_EXPLAIN;
+    if (X) return shuffleFigures(D, L, X);
     const chance = (cid, layer) => ({ id: 'chance', v: (((D.counts || {})[cid] || {})[layer] || {}).chance_p05, label: 'chance (5%)',
                                       color: css('--ink-3'), dash: true });
     const po = ((D.perm || {}).order || {})[L] || {};
@@ -415,26 +447,73 @@ window.MONO_PHYS = (function () {
                                                                              { id: 'order', v: po.observed, label: 'tone-first vs noise-first', color: css('--up') }],
         'Every split of the rats into two fours (' + po.n + ')'),
         el('p', { class: 'small muted', text: 'Tone-first against noise-first ranks ' + po.rank + ' of ' + po.n + ': '
-          + (po.rank > cut(po.n) ? 'an ordinary split.' : 'among the very few splits that pass the most entries.') })]));
+          + (po.rank > cut(po.n) ? 'an ordinary split.' : 'among the very few splits that pass the most stat tests.') })]));
     }
     for (const cid of ['sound_noise', 'sound_tone']) {
       const ps = ((D.perm || {})[cid] || {})[L] || {};
       if (!ps.counts || !ps.counts.length) continue;
       const who = (ps.rats || []).map((r) => 'J' + r).join(', ');
       box.appendChild(el('div', { 'data-perm': cid }, [hist(ps.counts, [chance(cid, L),
-                                                                        { id: 'seat', v: ps.seat, label: 'AB − CD (by seat)', color: css('--arrow') },
+                                                                        { id: 'seat', v: ps.seat, label: 'AB − CD (by A/B/C/D)', color: css('--arrow') },
                                                                         { id: cid, v: ps.observed, label: 'by sound', color: css('--up') }],
-        'Every way of signing ' + who + '’s AB − CD (' + ps.n + ')'),
-        el('p', { class: 'small muted', text: SAY[cid].name + ' ranks ' + ps.rank + ' of ' + ps.n + '; the same rats by seat, ' + ps.seat_rank
+        'Every shuffle of ' + who + '’s AB − CD (' + ps.n + ')'),
+        el('p', { class: 'small muted', text: SAY[cid].name + ' ranks ' + ps.rank + ' of ' + ps.n + '; the same rats by A/B/C/D, ' + ps.seat_rank
           + ' of ' + ps.n + '. With four rats there are only eight ways, so a rank says little alone; it is one more look.' })]));
     }
     if (pt.counts && pt.counts.length) {
       box.appendChild(el('div', { 'data-perm': 'tone_noise' }, [hist(pt.counts, [chance('tone_noise', 'raw'),
                                                                                   { id: 'balanced', v: pt.balanced, label: 'Cue 2 − Cue 1', color: css('--arrow') },
                                                                                   { id: 'tone_noise', v: pt.observed, label: 'tone − noise', color: css('--up') }],
-        'Every way of signing the rats’ Cue 2 − Cue 1 (' + pt.n + ')'),
+        'Every shuffle of the rats’ Cue 2 − Cue 1 (' + pt.n + ')'),
         el('p', { class: 'small muted', text: 'Cue 2 − Cue 1 as it stands ranks ' + pt.balanced_rank + ' of ' + pt.n + '; signed as tone − noise, '
           + pt.rank + ' of ' + pt.n + '. Had the sounds driven Cue 2 − Cue 1, tone − noise would rank near the top.' })]));
+    }
+    return box;
+  }
+  // The same, played: each shuffle's count dropping in, the real sorting last.
+  function shuffleFigures(D, L, X) {
+    const ch = (cid, layer) => (((D.counts || {})[cid] || {})[layer] || {}).chance_p05;
+    const I = S().identity || { seats: {} };
+    const seat = (r) => ((I.seats || {})[r] || {});
+    const G = D.groups || { noise: [], tone: [] };
+    const all = (D.rats && D.rats.length ? D.rats : (G.noise || []).concat(G.tone || [])).slice().sort((a, b) => a - b);
+    const groupOf = (r) => ((G.noise || []).includes(r) ? 'noise' : (G.tone || []).includes(r) ? 'tone' : null);
+    const box = el('div', { class: 'physhists physshuffles' });
+    const piece = (id, o, say) => {
+      const h = el('div', { 'data-perm': id });
+      box.appendChild(h);
+      X.playOnce('phys-shuf-' + id + '-' + L, h, X.shuffle(h, Object.assign({ rankSay: say }, o)));
+    };
+    const po = ((D.perm || {}).order || {})[L] || {};
+    if (po.counts && po.counts.length) {
+      const first = all.map((_r, i) => i).filter((i) => groupOf(all[i]) === groupOf(all[0]));
+      const real = X.splits(all.length).findIndex((s) => s.join() === first.join());
+      piece('order', { counts: po.counts, realIndex: real >= 0 ? real : null, observed: po.observed, rank: po.rank, expected: ch('order', L),
+                       kind: 'split', rats: all.map((r) => 'J' + r), realLabel: 'tone-first vs noise-first',
+                       title: 'Every split of the rats into two fours (' + po.n + ')',
+                       say: 'Each split puts four rats on one side (red) and four on the other, and counts again.' },
+        'Tone-first against noise-first ranks ' + po.rank + ' of ' + po.n + ': ' + (po.rank > cut(po.n) ? 'an ordinary split.' : 'among the very few splits that pass the most stat tests.'));
+    }
+    for (const cid of ['sound_noise', 'sound_tone']) {
+      const ps = ((D.perm || {})[cid] || {})[L] || {};
+      if (!ps.counts || !ps.counts.length) continue;
+      const rats = ps.rats || [];
+      const real = soundSigns(rats, (r) => (['Click', 'High'].includes(seat(r).A) ? 1 : seat(r).A ? -1 : 0));
+      piece(cid, { counts: ps.counts, realIndex: real, observed: ps.observed, rank: ps.rank, expected: ch(cid, L), kind: 'sign',
+                   rats: rats.map((r) => 'J' + r), realLabel: 'by sound', title: 'Every shuffle of ' + rats.map((r) => 'J' + r).join(', ') + '’s AB − CD (' + ps.n + ')',
+                   marks: [{ id: 'seat', v: ps.seat, label: 'AB − CD (by A/B/C/D)', color: css('--arrow') }],
+                   say: 'Each shuffle flips some rats’ AB − CD, and counts again.' },
+        SAY[cid].name + ' ranks ' + ps.rank + ' of ' + ps.n + '; by A/B/C/D, ' + ps.seat_rank + ' of ' + ps.n + '. Eight ways only: one more look, no more.');
+    }
+    const pt = ((D.perm || {}).tone_noise || {}).raw || {};
+    if (pt.counts && pt.counts.length) {
+      const real = soundSigns(all, (r) => (groupOf(r) === 'noise' ? 1 : groupOf(r) === 'tone' ? -1 : 0));
+      piece('tone_noise', { counts: pt.counts, realIndex: real, observed: pt.observed, rank: pt.rank, expected: ch('tone_noise', 'raw'), kind: 'sign',
+                            rats: all.map((r) => 'J' + r), realLabel: 'tone − noise', title: 'Every shuffle of the rats’ Cue 2 − Cue 1 (' + pt.n + ')',
+                            marks: [{ id: 'balanced', v: pt.balanced, label: 'Cue 2 − Cue 1 as it stands', color: css('--arrow') }],
+                            say: 'Each shuffle flips some rats’ Cue 2 − Cue 1, and counts again.' },
+        'As it stands it ranks ' + pt.balanced_rank + ' of ' + pt.n + '; signed as tone − noise, ' + pt.rank + ' of ' + pt.n
+          + '. Had the sounds driven Cue 2 − Cue 1, tone − noise would rank near the top.');
     }
     return box;
   }
@@ -508,14 +587,17 @@ window.MONO_PHYS = (function () {
     const soundFig = (t) => {
       const sd = (t.sound || {}).sounds || [];
       const H = 8 + 10 * sd.length, Ws = 190;
-      const ext = [Math.abs(t.est || 0)];
+      const have = sd.filter((x) => x.est != null);
+      const mean4 = have.length ? have.reduce((a2, x) => a2 + x.est, 0) / have.length : null;
+      const ext = [Math.abs(mean4 || 0)];
       for (const x of sd) if (x.est != null) ext.push(Math.abs(x.est) + 1.96 * (x.se || 0));
       const span = Math.max(1e-9, ...ext);
       const X = (v) => Ws / 2 + (Ws / 2 - 8) * v / span;
       const g = sv('svg', { viewBox: '0 0 ' + Ws + ' ' + H, width: Ws, height: H, class: 'physsndfig', role: 'img',
                            'aria-label': sd.map((x) => SND_SAY[x.sound] + ' ' + sig(x.est)).join(', ') });
       g.appendChild(sv('line', { x1: X(0), x2: X(0), y1: 0, y2: H, stroke: css('--line-2') }));
-      if (t.est != null) g.appendChild(sv('line', { x1: X(t.est).toFixed(1), x2: X(t.est).toFixed(1), y1: 2, y2: H - 2, stroke: css('--ink'), 'stroke-width': 1.2 }));
+      if (mean4 != null) g.appendChild(sv('line', { x1: X(mean4).toFixed(1), x2: X(mean4).toFixed(1), y1: 2, y2: H - 2, stroke: css('--ink'),
+                                                    'stroke-width': 1.2, class: 's-mean' }));
       sd.forEach((x, i) => {
         if (x.est == null) return;
         const y = 6 + 10 * i, col = sndCol(x.sound);
@@ -525,6 +607,14 @@ window.MONO_PHYS = (function () {
       return g;
     };
     const view = P.leadView === 'group' || !list.some((t) => t.sound) ? 'group' : 'sound';
+    // A group's change, ± its standard error, and how many rats when it is
+    // fewer than four; nothing to say an interval needs at least three.
+    const grpSay = (x) => (x.est == null ? '—' : f3(x.est) + (x.se != null ? ' ± ' + sig(x.se) : ' (' + (x.k || 0) + ' rats: no interval)')
+      + (x.se != null && x.k != null && x.k < 4 ? ' · ' + x.k + ' rats' : ''));
+    // What the pictures draw, said above the table.
+    const keyRow = (items) => el('div', { class: 'swkey figkey' }, items.map(([mark, text]) => el('span', {}, [mark, text])));
+    const dot = (col) => el('b', { class: 'sw', style: 'background:' + col });
+    const bar = (cls) => el('i', { class: 'kmark ' + cls });
     const sdiff = list.filter((t) => t.sound && t.sound.omni && t.sound.omni.p != null && t.sound.omni.p < 0.05).length;
     const stested = list.filter((t) => t.sound && t.sound.omni && t.sound.omni.p != null).length;
     const top = {};
@@ -549,10 +639,11 @@ window.MONO_PHYS = (function () {
         [el('td', { class: 'fig' }, [soundFig(t)]),
          el('td', { class: 'num', 'data-label': 'the four differ', text: om.p == null ? '—'
            : (om.p < 0.05 ? 'yes' : 'no') + ' (p ' + fp(om.p) + ', F ' + sig(om.F) + ')' })]) : head.concat([
-        el('td', { class: 'num up', 'data-label': 'tone-first', text: t.tone.est == null ? '—' : f3(t.tone.est) + ' ± ' + sig(t.tone.se) }),
-        el('td', { class: 'num down', 'data-label': 'noise-first', text: t.noise.est == null ? '—' : f3(t.noise.est) + ' ± ' + sig(t.noise.se) }),
+        el('td', { class: 'num up', 'data-label': 'tone-first', text: grpSay(t.tone) }),
+        el('td', { class: 'num down', 'data-label': 'noise-first', text: grpSay(t.noise) }),
         el('td', { class: 'fig' }, [forest(t)]),
-        el('td', { class: 'num', 'data-label': 'difference' }, [el('div', { text: t.diff.p == null ? '—' : f3(t.diff.est) + ' (p ' + fp(t.diff.p) + ')' }),
+        el('td', { class: 'num', 'data-label': 'difference' }, [el('div', { class: t.diff.p == null ? 'muted' : null,
+          text: t.diff.p == null ? 'not tested: ' + Math.min(t.tone.k || 0, t.noise.k || 0) + ' rats in a group, 3 needed' : f3(t.diff.est) + ' (p ' + fp(t.diff.p) + ')' }),
           t.diff.p == null ? null : diffFig(t)]),
         el('td', { class: 'yn', 'data-label': 'same way in both', text: t.both_ways ? 'yes' : 'no' }),
         el('td', { class: 'yn', 'data-label': 'equivalent within ±½', text: t.equivalence ? (t.equivalence.within ? 'yes' : 'no')
@@ -566,20 +657,24 @@ window.MONO_PHYS = (function () {
       tr.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
       return tr;
     });
-    const sndSay = 'Of these ' + list.length + ' points of interest, the four sounds’ changes differ at p < .05 (uncorrected, repeated-measures '
+    const sndSay = 'Of these ' + list.length + ' top results, the four sounds’ changes differ at p < .05 (uncorrected, repeated-measures '
       + 'ANOVA, all eight rats) for ' + sdiff + ' of the ' + stested + ' tested; chance alone would give about ' + (0.05 * stested).toFixed(1) + '. '
       + 'The sound that changed most: ' + SOUNDS.filter((x) => top[x]).map((x) => SND_SAY[x] + ' in ' + top[x]).join(', ')
-      + (Object.keys(top).length ? '' : 'none') + '. Each is measured at the lead’s own frequency, measure and region pair, while that sound played.';
-    const headSnd = ['#', 'Lead', 'Change, all rats'].concat(SOUNDS.map((x) => SND_SAY[x]), ['', 'Do the four differ?']);
-    const headGrp = ['#', 'Lead', 'Change, all rats', 'Tone-first', 'Noise-first', '', 'Difference', 'Same way in both',
+      + (Object.keys(top).length ? '' : 'none') + '. Each is measured at the top result’s own frequency, measure and region pair, while that sound played.';
+    const headSnd = ['#', 'Top result', 'Change, all rats'].concat(SOUNDS.map((x) => SND_SAY[x]), ['', 'Do the four differ?']);
+    const headGrp = ['#', 'Top result', 'Change, all rats', 'Tone-first', 'Noise-first', '', 'Difference', 'Same way in both',
       'Equivalent within ±½ · narrowest margin'];
-    return section('physleads', 'The leads, sound by sound and in each group of four', 'physical.leads', [
+    return section('physleads', 'The top results, sound by sound and in each group of four', 'physical.leads', [
       seg([['monolith', 'The Monolith · Raw'], ['monolith_m', 'The Monolith · Minus FP'], ['contrast', 'Cue 2 − Cue 1']], kind,
         (id) => { P.leads = id; P.all = false; render(); }, 'physleadsel'),
       list.some((t) => t.sound) ? seg(LEADVIEWS, view, (id) => { P.leadView = id; render(); }, 'physleadview') : null,
-      view === 'sound' ? el('div', { class: 'swkey' }, SOUNDS.map((x) => el('span', {}, [el('b', { class: 'sw', style: 'background:' + sndCol(x) }), SND_SAY[x]])))
-        : null,
-      view === 'sound' ? el('p', { class: 'small', id: 'physleadsay', text: sndSay }) : el('p', { class: 'small', id: 'physleadsay', text: (list.length === 1 ? 'Of this 1 point of interest: ' : 'Of these ' + list.length + ' points of interest: ') + n1(both, 'goes', 'go')
+      view === 'sound'
+        ? keyRow(SOUNDS.map((x) => [dot(sndCol(x)), SND_SAY[x]]).concat([[bar('ci'), 'its 95% interval'], [bar('ink'), 'the four sounds’ mean'],
+                                                                         [bar('zero'), 'zero']]))
+        : keyRow([[dot(css('--up')), 'tone-first rats'], [dot(css('--down')), 'noise-first rats'], [bar('ci'), '95% interval'],
+                  [bar('ink'), 'all eight rats'], [bar('zero'), 'zero'], [el('i', { class: 'kmark sq' }), 'the difference (under its number), ± 90%'],
+                  [el('i', { class: 'kmark box' }), '±½ of all eight']]),
+      view === 'sound' ? el('p', { class: 'small', id: 'physleadsay', text: sndSay }) : el('p', { class: 'small', id: 'physleadsay', text: (list.length === 1 ? 'Of this 1 top result: ' : 'Of these ' + list.length + ' top results: ') + n1(both, 'goes', 'go')
         + ' the same way in the tone-first and the noise-first rats; ' + n1(eq, 'is', 'are') + ' the same in both groups within half its own size '
         + '(equivalence, 90% interval); ' + n1(diff, 'differs', 'differ') + ' between the groups at p < .05 (uncorrected; chance alone would give about '
         + (0.05 * list.length).toFixed(1) + ').'
@@ -591,17 +686,19 @@ window.MONO_PHYS = (function () {
         el('tbody', {}, rows)])]),
       list.length > 10 ? el('button', { type: 'button', class: 'more-btn', id: 'physall', text: P.all ? 'Show the top 10' : 'Show all ' + list.length,
                                         onclick: () => { P.all = !P.all; render(); } }) : null,
-      el('p', { class: 'small muted', text: view === 'sound'
-        ? 'Each sound’s change is pooled over all eight rats (± its standard error), each rat measured while that sound played. In the picture, '
-          + 'a row a sound with its 95% interval; the thin grey line is zero and the black line the change in all eight, in the lead’s own window. '
-          + 'The change in all eight is not the mean of the four: it is the lead’s own window, pooled with each rat weighted by how steady its '
-          + 'numbers are. Click a lead to open it on the Monolith.'
+      (window.MONO_EXPLAIN ? (txt) => window.MONO_EXPLAIN.more('reading the pictures', (body) => { body.appendChild(el('p', { class: 'small', id: 'physleadread', text: txt })); return null; },
+        { key: 'phys-leadread-' + view, eager: true }) : (txt) => el('p', { class: 'small muted', text: txt }))(view === 'sound'
+        ? 'Each sound’s change is pooled over all eight rats (± its standard error), each rat measured while that sound played: in its cue '
+          + 'window, whatever the top result’s own window. In the picture, a row a sound with its 95% interval, the line their mean, and the thin grey '
+          + 'line zero: everything drawn is the cue windows. “Change, all rats” is the top result’s own window (Switch, say, or the pre-baseline, '
+          + 'where no one sound plays), so it can sit apart from the four. Click one to open it on the Monolith.'
         : 'Each group’s change is pooled over its own four rats (± its standard error). The picture beside them, on one scale: the thin grey line '
           + 'is zero, red the tone-first rats and blue the noise-first, each with its 95% interval, and the black line the change in all eight. The '
           + 'change in all eight is not the midpoint of the two groups: pooling weights each rat by how steady its numbers are, so the steadier '
           + 'group pulls it. Under the difference, on the same scale: the black square is the difference itself (so it sits near zero, not near '
           + 'the changes), the line its 90% interval, and the grey box ±½ of the change in all eight; the interval must lie inside the box for '
-          + 'the two groups to count as the same. Click a lead to open it on the Monolith.' }),
+          + 'the two groups to count as the same. A group of four is often a rat short at a top result: its interval and the difference are then '
+          + 'worked out from three rats and said (“3 rats”), and with two left there is none. Click one to open it on the Monolith.'),
     ]);
   }
   // Any comparison as a circuit, for a view chosen here.
@@ -639,7 +736,7 @@ window.MONO_PHYS = (function () {
           : pick('Window', 'physw', S0.windows.filter((w) => w.kind !== 'contrast').map((w) => [w.id, w.label]), v.w, (x) => set({ w: x })),
         pick('Frequency', 'physb', S0.bands.map((b) => [b.id, b.named ? b.label : b.hz + ' Hz']), v.b, (x) => set({ b: x })),
         pick('Measure', 'physm', S0.methods.map((m) => [m.id, m.label]), v.m, (x) => set({ m: x })),
-        tn || sndc ? null : pick('Layer', 'physl', [['raw', 'Raw'], ['minus_fp', 'Minus FP']], v.layer, (x) => set({ layer: x })),
+        tn || sndc ? null : pick('', 'physl', [['raw', 'Raw'], ['minus_fp', 'Minus FP']], v.layer, (x) => set({ layer: x })),
         pick('Show edges', 'physlv', M().LEVELS.map((L0, i) => [i, L0[0]]), v.level, (x) => set({ level: Number(x) })),
       ]),
       el('div', { id: 'physcircsvg' }),
@@ -710,7 +807,7 @@ window.MONO_PHYS = (function () {
     if (!P.data) {
       pane.appendChild(section('physmissing', 'Not compared yet', null, [
         el('p', { text: 'This build of the Monolith has not been sorted by sound yet. It is worked out here, from the arrays already fetched, in a few '
-          + 'minutes: every entry, both layers, with every relabelling of the rats beside it.' }),
+          + 'minutes: every stat test, Raw and Minus FP, with every shuffle of the rats beside it.' }),
         window.MONO_STATIC ? el('p', { class: 'small muted', text: 'Not in this copy: it opens in Jarvis.' })
           : el('button', { type: 'button', class: 'more-btn', id: 'physmake', disabled: P.making ? 'disabled' : null,
                            text: P.making ? 'Comparing: ' + (P.makeNote || 'starting') : 'Compare them now', onclick: make }),

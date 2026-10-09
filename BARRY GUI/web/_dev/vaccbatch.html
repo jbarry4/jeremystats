@@ -208,8 +208,128 @@ async function until(fn, ms) {
   }
 
   say('');
+  say('=== VACC mode: any recording the cluster can read ===');
+  /* The point of the mode (2026-10-08): pick recordings this computer may
+     have no copy of at all, set channels per recording and the detection
+     parameters once, submit, then open each answer by its key and bank it.
+     Nothing here submits a real job: the batch POST is intercepted and
+     refused, so what is checked is what the panel would send. */
+  if (!configured) {
+    say('  note  no VACC account on this machine; VACC mode skipped', 'note');
+  } else {
+    await ev('applyVacc(true)');
+    await sleep(300);
+    const w = segBtns('Where').find((b) => b.textContent === 'VACC');
+    if (w) { w.click(); await sleep(300); }
+    const mb = segBtns('How many').find((b) => b.textContent === 'Many');
+    if (mb) { mb.click(); await sleep(300); }
+    await until(() => { const v = ev('BARRY.incisor._vacc().vaccList');
+                        return v && (v.todo || v.error); }, 120000);
+    const plan = JSON.parse(ev('JSON.stringify(BARRY.incisor._vacc().vaccList'
+                               + ' || {})'));
+    check('the plan answers', !plan.error && Array.isArray(plan.todo),
+          plan.error || '');
+    const todo = plan.todo || [];
+    const elsewhere = todo.filter((r) => !r.here);
+    check('it offers recordings this computer has no copy of',
+          elsewhere.length > 0,
+          elsewhere.length + ' of ' + todo.length + ' are not here');
+    check('every row says its channels, its cost and its bad channels',
+          todo.every((r) => r.plan && Array.isArray(r.bad_channels)),
+          JSON.stringify(todo.slice(0, 1)));
+    check('nothing is ticked for you',
+          ev('BARRY.incisor._vacc().picked.length') === 0);
+    const tk = () => D().getElementById('tkResult');
+    check('the detection parameters are on the panel, not inherited unseen',
+          !!(tk() && tk().querySelector('.incisor-params')));
+    check('the primary says it has nothing to submit yet',
+          !!Array.from(tk().querySelectorAll('button.btn'))
+            .find((b) => /^Nothing new to submit$/.test(b.textContent)));
+
+    // No name is cut off (never-truncate rule): measured, not eyeballed.
+    const cut = Array.from(tk().querySelectorAll('.ip-name, .ip-sub'))
+      .filter((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
+    check('no recording name in the list is cut off', cut.length === 0,
+          cut.slice(0, 2).map((n) => n.textContent).join(' | '));
+
+    const target = elsewhere.find((r) => !r.answered) || todo.find((r) => !r.answered);
+    if (target) {
+      ev('BARRY.incisor._pick(' + JSON.stringify([target.gid]) + ')');
+      await sleep(200);
+      const prim = Array.from(tk().querySelectorAll('button.btn'))
+        .find((b) => /^Submit \d+ to VACC$/.test(b.textContent));
+      check('ticking one names what the primary will do',
+            !!prim && /^Submit 1 to VACC$/.test(prim.textContent),
+            prim && prim.textContent);
+      check('and the cost is said before it is spent',
+            /cluster time/.test(tk().textContent));
+      // What would be sent -- intercepted at fetch, refused, never
+      // submitted. (`apiPost` is a const; every request goes through fetch.)
+      ev('window.__incSent = null; window.__realFetch = window.fetch;'
+         + 'window.fetch = function (u, o) {'
+         + ' if (String(u) === "/api/incisor/batch" && o && o.method === "POST") {'
+         + '  window.__incSent = JSON.parse(o.body || "{}");'
+         + '  return Promise.resolve(new Response(JSON.stringify({ ok: false,'
+         + '   error: "harness: not sent" }), { status: 400,'
+         + '   headers: { "Content-Type": "application/json" } })); }'
+         + ' return window.__realFetch(u, o); };');
+      ev('BARRY.incisor._state().q.height_sd = 5');
+      prim.click();
+      await until(() => ev('!!window.__incSent'), 4000);
+      const sent = JSON.parse(ev('JSON.stringify(window.__incSent)') || 'null');
+      ev('window.fetch = window.__realFetch; '
+         + 'BARRY.incisor._state().q.height_sd = 4.5');
+      check('the batch is sent the ticked recording and the parameters shown',
+            sent && JSON.stringify(sent.gids) === JSON.stringify([target.gid])
+            && sent.height_sd === 5, JSON.stringify(sent));
+      check('and with no batch in flight after a refusal',
+            !ev('BARRY.incisor._vacc().batchJob'));
+      ev('BARRY.incisor._pick([])');
+    } else {
+      say('  note  every runnable recording already answered', 'note');
+    }
+
+    /* A review opens by its key, with no copy here, and Extract all counts
+       by key -- which is what makes "only on the cluster" bankable. */
+    const rv2 = JSON.parse(await ev('fetch("/api/incisor/reviews")'
+                                    + '.then(r=>r.text())'));
+    const far = (rv2.reviews || []).find((r) => !r.local && r.ran_on === 'vacc')
+             || (rv2.reviews || []).find((r) => r.ran_on === 'vacc');
+    if (far) {
+      await ev('BARRY.incisor._openReview(' + JSON.stringify(far) + ')');
+      await until(() => ev('!!(BARRY.incisor._state().res || {}).channels'), 120000);
+      const st = JSON.parse(ev('JSON.stringify({ key: (BARRY.incisor._state()'
+        + '.res || {}).key, path: BARRY.incisor._state().q.path })'));
+      check('a review opens that scan, by its key', st.key === far.params_hash,
+            JSON.stringify(st));
+      check('and looks at it from wherever it can be read',
+            far.local ? st.path === far.local : /^vacc:/.test(st.path || ''),
+            st.path);
+      await until(() => tk().querySelectorAll('.inc-role').length >= 3, 8000);
+      check('the three picks and the plots are drawn under its row',
+            tk().querySelectorAll('.inc-drop .inc-role').length >= 3);
+      await until(() => { const u = ev('BARRY.incisor._union().unionRes');
+                          return u && (u.ok || u.error); }, 30000);
+      const u = JSON.parse(ev('JSON.stringify(BARRY.incisor._union().unionRes'
+                              + ' || {})'));
+      check('Extract all counts a hilus range by key', u.ok === true
+            && typeof u.n === 'number', JSON.stringify(u).slice(0, 160));
+      await ev('BARRY.incisor._openReview(' + JSON.stringify(far) + ')');
+    } else {
+      say('  note  no cluster-computed scan in the queue yet', 'note');
+    }
+    const here2 = segBtns('Where').find((b) => b.textContent === 'This computer');
+    if (here2) { here2.click(); await sleep(300); }
+  }
+  await ev('applyVacc(' + JSON.stringify(!!realVacc) + ')');
+
+  say('');
   say(fails ? fails + ' FAILED' : 'all passed', fails ? 'bad' : 'good');
   document.title = fails ? 'vaccbatch: ' + fails + ' FAILED' : 'vaccbatch: passed';
+  // The app polls while framed, which pins virtual time to the wall clock;
+  // blank it so the runner can take the dump.
+  frame.src = 'about:blank';
 })().catch((e) => { say('CRASH ' + e.message + '\n' + e.stack, 'bad');
-                    document.title = 'vaccbatch CRASH'; });
+                    document.title = 'vaccbatch CRASH';
+                    document.getElementById('app').src = 'about:blank'; });
 </script></body></html>

@@ -178,6 +178,43 @@ def op_window(req):
     return csc.get_window(sess, t0, t1, **args)
 
 
+def op_panel(req):
+    """`analysis.render_panel`: the CSD, theta, voltage and spectrogram
+    rasters. Read and drawn here, and only the finished panel crosses the
+    wire -- the same split `op_window` makes for the traces."""
+    from backend import analysis
+
+    sess, err = _session(req)
+    if err:
+        return err
+    try:
+        return analysis.render_panel(sess, dict(req.get("args") or {}))
+    except analysis.PanelError as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+def op_braces_profile(req):
+    """`braces.profile_window`: the curve Braces' bench draws for one short
+    window, read and measured here."""
+    from backend import braces
+
+    sess, err = _session(req)
+    if err:
+        return err
+    chans = braces.channels_by_number(sess, req.get("numbers"))
+    if not chans:
+        return {"ok": False, "error": "None of those contacts are in the "
+                                      "cluster's copy of this recording."}
+    spec = dict(req.get("args") or {})
+    try:
+        got = braces.profile_window(sess, chans, None, spec,
+                                    float(req.get("t0")), float(req.get("t1")),
+                                    bad=dict(req.get("bad") or {}))
+    except braces.BracesError as exc:
+        return {"ok": False, "error": str(exc)}
+    return dict(got, ok=True)
+
+
 def op_overview(req):
     from backend import extras
 
@@ -253,6 +290,8 @@ OPS = {
     "hello": op_hello,
     "open": op_open,
     "window": op_window,
+    "panel": op_panel,
+    "braces_profile": op_braces_profile,
     "overview": op_overview,
     "band": op_band,
     "nev": op_nev,

@@ -485,6 +485,131 @@ svg.progfig .progpt:focus, svg.progstrip .progunit:focus { outline: 2px solid va
 .prograts b.sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
 .progchip { position: fixed; z-index: 60; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 12px;
   padding: 4px 8px; border-radius: 6px; max-width: 300px; overflow-wrap: anywhere; box-shadow: 0 2px 8px rgba(0, 0, 0, .25); }
+/* Tab 1: kept, partly, lost as bars */
+.keptable td.keptcell, .seattable td.keptcell { white-space: nowrap; }
+td.keptcell svg.keptbar { display: inline-block; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+td.keptcell .kc { font-variant-numeric: tabular-nums; font-size: 12.5px; }
+td.keptcell .kfp { font-size: 11px; margin-left: 6px; }
+td.keptcell .knote { margin-left: 5px; color: var(--ink-3); cursor: help; font-size: 12px; }
+/* Things to play with instead of read (js/monolith_explain.js) */
+.takeaway { font-size: 14.5px; font-weight: 600; color: var(--ink); margin: 2px 0 6px; max-width: 80ch; overflow-wrap: anywhere; }
+details.xmore { margin: 6px 0 2px; border-top: 1px dashed var(--line); padding-top: 4px; }
+details.xmore > summary { list-style: none; cursor: pointer; color: var(--ink-2); font-size: 13px; display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border-radius: 12px; }
+details.xmore > summary::-webkit-details-marker { display: none; }
+details.xmore > summary:hover { background: var(--chip); color: var(--ink); }
+details.xmore .xchev { display: inline-block; transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
+details.xmore[open] .xchev { transform: rotate(90deg); }
+details.xmore[open] > .xbody { animation: xin .35s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes xin { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+.xplayer { margin: 6px 0; max-width: 760px; }
+.xplayer svg { display: block; overflow: visible; }
+.xplayer .xtitle { font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin-bottom: 2px; overflow-wrap: anywhere; }
+.xcap { font-size: 13.5px; color: var(--ink); min-height: 2.6em; margin: 4px 0; max-width: 72ch; overflow-wrap: anywhere; }
+.xctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.xbtn { font: inherit; font-size: 12.5px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); border-radius: 14px; padding: 3px 11px;
+  cursor: pointer; transition: transform .15s cubic-bezier(.34, 1.56, .64, 1); }
+.xbtn:hover { transform: translateY(-1px) scale(1.04); background: var(--chip); }
+.xbtn:active { transform: scale(.96); }
+.xsteps { display: flex; flex-wrap: wrap; gap: 3px; }
+.xstep { font: inherit; font-size: 11.5px; border: 0; background: var(--chip); color: var(--ink-2); border-radius: 10px; padding: 2px 8px; cursor: pointer; }
+.xstep[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.xfprow { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; }
+.xfprow svg { flex: 1 1 320px; max-width: 560px; }
+.xfpout { flex: 0 1 220px; display: flex; flex-direction: column; gap: 6px; }
+.xfpout .xbig { display: flex; align-items: baseline; gap: 10px; }
+.xfpout .xbig .lab { font-size: 12px; color: var(--ink-3); width: 5.5em; }
+.xfpout .xbig b { font-size: 26px; font-variant-numeric: tabular-nums; }
+.xwiggle { display: inline-block; animation: xwig .5s; }
+@keyframes xwig { 0%, 100% { transform: none; } 25% { transform: rotate(-8deg) scale(1.15); } 75% { transform: rotate(6deg) scale(1.1); } }
+svg .xhandle:focus { outline: 2px solid var(--focus); }
+.xbars { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 6px; max-width: 760px; }
+.xbarrow { font: inherit; display: grid; grid-template-columns: minmax(64px, 7.5em) 1fr auto; align-items: center; gap: 4px 10px; width: 100%;
+  border: 1px solid transparent; background: none; color: var(--ink); border-radius: 8px; padding: 4px 6px; text-align: left; }
+button.xbarrow { cursor: pointer; }
+button.xbarrow:hover { background: var(--chip); }
+.xbarrow[aria-pressed="true"] { border-color: var(--line-2); background: var(--surface-2); }
+.xbarrow .xbl { font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.xbarrow .xbt { position: relative; height: 16px; border-radius: 4px; background: var(--surface-2); }
+.xbarrow .xbf { position: absolute; left: 0; top: 2px; bottom: 2px; border-radius: 3px; background: var(--arrow); width: 0; }
+.xbarrow .xbc { position: absolute; top: -3px; bottom: -3px; width: 0; border-left: 2px dashed var(--ink-2); }
+.xbarrow .xbn { font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.xbarrow .xbn .xbx { color: var(--ink-3); }
+.xbarrow .xbn b.xpop { display: inline-block; animation: xpop .45s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes xpop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+.xkey { font-size: 11.5px; color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.xkey i { display: inline-block; width: 14px; height: 9px; border-radius: 2px; background: var(--arrow); vertical-align: -1px; margin-right: 4px; }
+.xkey i.dash { width: 0; height: 12px; border-left: 2px dashed var(--ink-2); background: none; border-radius: 0; margin-right: 6px; }
+.xfacts { font-size: 12.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin: 2px 0; }
+.xfacts > * + *::before { content: '·'; color: var(--ink-3); margin-right: 6px; }
+.xfacts .linkish { font-size: inherit; }
+.xpacrow { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: flex-start; }
+.xpacrow svg.xpacsig { flex: 1 1 300px; }
+.xpacrow svg.xpacbins { flex: 0 1 220px; }
+.xpactoy .xpacrange { width: 140px; vertical-align: middle; }
+.xpactoy .xpacmi { font-variant-numeric: tabular-nums; font-size: 14px; margin-left: 6px; }
+.physhists:has(.xshuffle) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); }
+.xshuffle .xkey i { height: 12px; }
+@media (max-width: 520px) {
+  .xbarrow { grid-template-columns: 1fr auto; }
+  .xbarrow .xbt { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xbarrow .xbn b.xpop { animation: none; }
+  details.xmore[open] > .xbody, .xwiggle { animation: none; }
+  details.xmore .xchev, .xbtn { transition: none; }
+}
+/* 8 · Joe's data (js/monolith_joe.js) */
+#joepane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
+#joepane[hidden] { display: none; }
+#joepane .card > p { max-width: 80ch; overflow-wrap: anywhere; }
+table.jans td.jcell { cursor: pointer; text-align: center; border-radius: 6px; }
+table.jans td.jcell:hover { background: var(--chip); }
+table.jans td.jcell .jp { font-variant-numeric: tabular-nums; font-weight: 600; }
+table.jans td.jcell.pass { background: color-mix(in srgb, var(--up) 12%, transparent); }
+table.jans td.jcell .jgate { font-size: 10.5px; margin-top: 2px; display: inline-block; }
+table.jans tr.jsep th { padding-top: 10px; text-align: left; }
+table.jans tr.check th { font-weight: 500; }
+.jmodel { border-top: 1px solid var(--line); padding: 10px 0 4px; }
+.jmodel .hrow h3 { margin: 0; font-size: 15px; }
+.jmodel.check .hrow h3 { color: var(--ink-2); }
+.jmodel .jline1 { font-size: 13px; overflow-wrap: anywhere; margin: 4px 0; }
+.jmodel .jline1 .chip { margin-left: 8px; }
+.jfigs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 8px 18px; align-items: start; }
+.jexp { gap: 6px; margin: 2px 0 4px; }
+h3.jgroup { margin: 14px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); }
+table.jpost tr.jkeep th, table.jpost tr.jkeep td { color: var(--up); font-weight: 600; }
+table.jterms tr.jkey th, table.jterms tr.jkey td { font-weight: 600; }
+.jfpout { flex: 0 1 220px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.jfiles { columns: 2 18em; }
+/* 7 · Narrowing down (js/monolith_narrow.js) */
+#narrowpane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
+#narrowpane[hidden] { display: none; }
+#narrowpane .card > p { max-width: 80ch; overflow-wrap: anywhere; }
+#narrowpane h3 { margin: 12px 0 4px; font-size: 14px; }
+.narcorrect tbody tr, .narfam tbody tr { cursor: default; }
+.narcorrect tbody tr:hover, .narfam tbody tr:hover { background: transparent; }
+.narcorrect tbody th { font-weight: 600; color: var(--ink); max-width: 18em; }
+.narcorrect td.num, .narfam td.num, .narleadtbl td.num { white-space: nowrap; }
+.narcorrect td.small { max-width: 22em; white-space: normal; }
+svg.narbar { display: block; }
+.narfunnel { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; max-width: 640px; }
+.narfunnel .fstep { display: grid; grid-template-columns: minmax(0, 1fr) 150px 5em; gap: 10px; align-items: center; font-size: 12.5px; }
+.narfunnel .fstep b { text-align: right; font-variant-numeric: tabular-nums; }
+.narruns { margin: 4px 0 0 18px; padding: 0; font-size: 12.5px; }
+.narleadtbl td.kept { white-space: normal; }
+.narleadtbl td.kept .chip { display: inline-block; margin: 1px 3px 1px 0; font-size: 11.5px; padding: 0 6px; border-radius: 9px; background: var(--chip); }
+@media (max-width: 640px) {
+  .narcorrect thead, .narfam thead, .narleadtbl thead { display: none; }
+  .narcorrect, .narcorrect tbody, .narcorrect tr, .narfam, .narfam tbody, .narfam tr, .narleadtbl, .narleadtbl tbody, .narleadtbl tr { display: block; width: 100%; }
+  .narcorrect tr, .narfam tr, .narleadtbl tr { border-top: 1px solid var(--line); padding: 6px 0; }
+  .narcorrect tbody th, .narcorrect td, .narfam tbody th, .narfam td, .narleadtbl td { display: block; border: 0; padding: 1px 0; }
+  .narcorrect td.num, .narfam td.num, .narleadtbl td.num { display: inline-block; margin-right: 12px; white-space: normal; }
+  .narcorrect td[data-label]::before, .narfam td[data-label]::before, .narleadtbl td[data-label]::before { content: attr(data-label) " "; color: var(--ink-3); font-size: 11.5px; }
+  .narleadtbl td.rank { display: none; }
+  .narfunnel .fstep { grid-template-columns: minmax(0, 1fr) 4em; }
+  .narfunnel .fstep svg { display: none; }
+}
 /* 6 · Physical vs balanced cue (js/monolith_physical.js) */
 #physpane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
 #physpane[hidden] { display: none; }
@@ -501,6 +626,12 @@ svg.progfig .progpt:focus, svg.progstrip .progunit:focus { outline: 2px solid va
 .swkey span, .physsound th .nm { display: inline-flex; align-items: center; gap: 6px; }
 .swkey b.sw, .physsound b.sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
 .physleadtbl svg.physdiff, .physleadtbl svg.physsndfig { display: block; margin-top: 3px; }
+.figkey i.kmark { display: inline-block; width: 16px; height: 10px; vertical-align: middle; }
+.figkey i.kmark.ci { border-top: 1.5px solid var(--ink-3); height: 0; }
+.figkey i.kmark.ink { width: 2px; height: 12px; background: var(--ink); }
+.figkey i.kmark.zero { width: 1px; height: 12px; background: var(--line-2); }
+.figkey i.kmark.sq { width: 7px; height: 7px; background: var(--ink); }
+.figkey i.kmark.box { width: 16px; height: 9px; background: var(--chip); border: 1px solid var(--line); }
 #physcmpsnd { margin-top: 4px; }
 .physanswer { border-left: 4px solid var(--line-2); background: var(--chip); border-radius: var(--r); padding: 8px 12px; margin: 4px 0 10px; max-width: 78ch; }
 .physanswer.ok { border-left-color: var(--ok); } .physanswer.warn { border-left-color: var(--up); }
@@ -549,9 +680,12 @@ svg.progfig .progpt:focus, svg.progstrip .progunit:focus { outline: 2px solid va
 <script src="js/monolith_figs.js"></script>
 <script src="js/monolith_help.js"></script>
 <script src="js/monolith.js"></script>
+<script src="js/monolith_explain.js"></script>
 <script src="js/monolith_events.js"></script>
 <script src="js/monolith_progress.js"></script>
 <script src="js/monolith_physical.js"></script>
+<script src="js/monolith_narrow.js"></script>
+<script src="js/monolith_joe.js"></script>
 <script src="js/monolith_tour.js"></script>
 <script src="js/tour.js"></script>
 </body>

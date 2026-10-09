@@ -443,10 +443,12 @@ BARRY.kilosort = (function () {
 
   async function replan() {
     if (!pick) return;
-    const path = (pick.here || [])[0];
+    const got = BARRY.vacc.reachFor(pick, 'kilosort');
+    const path = got.path;
     if (!path) {
       plan = null;
-      toast('None of that recording’s paths are reachable here.', 'err');
+      toast(got.why || 'None of that recording’s paths are reachable here.',
+            'err');
       render();
       return;
     }
@@ -522,7 +524,7 @@ BARRY.kilosort = (function () {
       onpick: async (r) => {
         pick = r;
         chosenRun = null;
-        const path = (r.here || [])[0];
+        const path = BARRY.vacc.reachFor(r, 'kilosort').path;
         try {
           const res = await api('/api/kilosort/runs?path='
                                 + encodeURIComponent(path || ''));

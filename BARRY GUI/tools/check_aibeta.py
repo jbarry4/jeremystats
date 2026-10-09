@@ -140,14 +140,14 @@ av = ver(5, {"spike": 2, "garbage": 2},
           [40.0, "spike"]])
 av["tag"] = "avery"
 ds_av = AI.dataset(FakeBank([entry("V", "gV", 7, [v0, v1, v2, av])]))
-ck("an Avery version is never the answer, however settled it looks",
+ck("a model's version is never the answer, however settled it looks",
    ds_av["entries"] and ds_av["entries"][0]["version_v"] == 2,
    [(e["label"], e["version_v"]) for e in ds_av["entries"]])
 pol_p = np.array([0.95, 0.9, 0.85, 0.5, 0.4, 0.2, 0.1, 0.05, 0.02, 0.01])
 pol_y = np.array([1, 1, 1, 1, 0, 1, 0, 0, 0, 0])
 pol = AI.label_policy(pol_p, pol_y)
 labs = list(AI.apply_policy(pol_p, pol))
-ck("Avery's bars sort high to DS and low to Garbage",
+ck("the sweep's bars sort high to DS and low to Garbage",
    labs[0] == "spike" and labs[-1] == "garbage", labs)
 ck("and nothing falls outside the four calls",
    set(labs) <= set(AI.POLICY_LABELS), labs)
@@ -177,7 +177,7 @@ ck("an Incisor set is on the recording's own clock",
    AI.dataset(FakeBank([inc]))["entries"][0]["basis"] == retime.TRUE)
 
 # --------------------------------------------------------------------------
-print("\nA set a person finished after an Avery sweep")
+print("\nA set a person finished after a model's sweep")
 t6 = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
 pv0 = ver(0, {"unspecified": 6}, [[t] for t in t6])
 pv1 = ver(1, {"spike": 1, "garbage": 1, "unspecified": 4},
@@ -188,26 +188,32 @@ pav = ver(2, {"spike": 3, "garbage": 2, "flag": 1},
 pfin = ver(3, {"spike": 3, "garbage": 3},
            [[1.0, "spike"], [2.0, "garbage"], [3.0, "spike"],
             [4.0, "spike"], [5.0, "garbage"], [6.0, "garbage"]])
-for how, mark in (("tagged", {"tag": "avery", "by": "Avery (AI)"}),
-                  ("by Avery alone", {"by": "Avery (AI)"})):
+for how, mark in (("Tooth Fairy's, tagged", {"tag": AI.MODEL_TAG,
+                                              "by": AI.MODEL_BY}),
+                  ("Tooth Fairy's, by its author alone", {"by": AI.MODEL_BY}),
+                  ("an older model's, tagged", {"tag": "avery",
+                                                "by": "Avery (AI)"}),
+                  ("an older model's, by its author alone",
+                   {"by": "Avery (AI)"})):
     e_av = entry("S", "gS", 9, [pv0, pv1, dict(pav, **mark), pfin])
     got_s = AI.dataset(FakeBank([e_av]))["entries"]
     kept = [e["t_bank"] for e in got_s[0]["events"]] if got_s else None
-    ck("a call Avery made and nobody changed is left out (%s)" % how,
+    ck("a call the model made and nobody changed is left out (%s)" % how,
        kept == [1.0, 2.0, 4.0, 5.0, 6.0], kept)
-ck("and counted", got_s and got_s[0]["n_avery_left_out"] == 1,
-   got_s and got_s[0].get("n_avery_left_out"))
-ck("kept: what a person decided before, what Avery flagged, what was changed",
+ck("and counted", got_s and got_s[0]["n_model_left_out"] == 1,
+   got_s and got_s[0].get("n_model_left_out"))
+ck("kept: what a person decided before, what it flagged, what was changed",
    got_s and [e["y"] for e in got_s[0]["events"]] == [1, 0, 1, 0, 0],
    got_s and [e["y"] for e in got_s[0]["events"]])
 e_nos = entry("S2", "gS2", 10,
-              [pv0, pv1, dict(pav, by="Avery (AI)", snap=None), pfin])
+              [pv0, pv1, dict(pav, by=AI.MODEL_BY, snap=None), pfin])
 ds_nos = AI.dataset(FakeBank([e_nos]))
-ck("without Avery's version on this machine, the set is left out, saying so",
-   not ds_nos["entries"] and any("Avery swept it" in s["why"]
+ck("without the model's version on this machine, the set is left out, "
+   "saying so",
+   not ds_nos["entries"] and any("a model swept it" in s["why"]
                                  for s in ds_nos["skipped"]),
    ds_nos["skipped"])
-ck("a set Avery never swept is untouched",
+ck("a set no model swept is untouched",
    [e["t_bank"] for e in AI.dataset(FakeBank([entry(
        "S3", "gS3", 11, [pv0, pv1, pfin])]))["entries"][0]["events"]] == t6)
 gv0 = ver(0, {"unspecified": 5}, [[t] for t in t6[:5]])
@@ -325,7 +331,7 @@ ck("off by default", not next(f for f in AI.FAMILIES
 
 # --------------------------------------------------------------------------
 print("\nHow many real spikes may be called Garbage")
-from backend import avery as AV                          # noqa: E402
+from backend import toothfairy as AV                     # noqa: E402
 
 
 class FakeRuns:
@@ -367,9 +373,9 @@ ck("no tolerance asked for is the run's own bars",
    AV.policy_for(t_runs, "r1", t_base, None) is t_base)
 ck("a run without held-out scores offers no tolerance",
    AV.tolerance_table(t_runs, "old", t_base) == [])
-ck("Avery Garbage Dystrophy+ is a model a sweep can use",
-   "avery_gd" in AI.SLOTS
-   and AI.SLOT_NAMES["avery_gd"] == "Avery Garbage Dystrophy+")
+ck("Tooth Fairy is the only model a sweep can use",
+   AI.SLOTS == ("tooth_fairy",)
+   and AI.SLOT_NAMES["tooth_fairy"] == "Tooth Fairy")
 
 # --------------------------------------------------------------------------
 print("\nEven channels only")

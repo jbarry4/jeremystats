@@ -1,0 +1,468 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — Tooth Fairy</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 56vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 44vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Tooth Fairy's sweep screen and its batch, start to finish, against a
+   server that is FAKED.
+
+   Every /api/toothfairy*, /api/curation and /api/cfc/* request the panel
+   makes is answered here, so the harness never reads a recording, never
+   trains, never writes a label or a bank version -- it checks the screen.
+
+   One set: the confirm dialog shows the icon, says what it will do and
+   offers the tolerance; starting shows the scanner, which keeps scanning
+   the early samples round and round until the calls are in; the finale
+   stamps each sample's verdict; the summary waits for the reel and the
+   feed, counts what it was told and lists every candidate; a tile filters
+   the list; Accept posts once and hands control back.
+
+   A batch: the chooser lists every DS set with candidates and starts on
+   the bench's undecided ones; the batch is posted with the sets and the
+   tolerance; the screen lists every set with how it is getting on; the end
+   has a row per set, the one that failed saying why; Accept keeps only the
+   ticked ones and lets the rest go. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+const wave = (k, sign) => Array.from({ length: 51 }, (_, i) =>
+  +(Math.exp(-((i - 25) ** 2) / (8 + k)) * sign
+    + 0.05 * Math.sin(i / 3)).toFixed(3));
+const LABS = ['spike', 'review', 'flag', 'garbage'];
+const CHANS = (k) => Array.from({ length: 32 }, (_, c) =>
+  wave(k, 1).map((v) => +(v * 300 * Math.exp(-((c - 20) ** 2) / 40)).toFixed(1)));
+const SAMPLES = Array.from({ length: 12 }, (_, k) => ({
+  i: k * 3, id: 'e' + k, t: 10 + k * 11.1, wave: wave(k, 1),
+  channels: CHANS(k), channel_numbers: Array.from({ length: 32 }, (_, c) => 2 * c + 2),
+  csd: wave(k + 3, -1).map((v) => Math.abs(v)), profile: [],
+  readouts: { amp_uv: 300 + k * 10, half_width_ms: 14.2, rise_ms: 12,
+              csd_peak: 2.1, common_mode: 0.31, mua: 0.2, likeness: 0.6 },
+  p: null, label: null }));
+const ROWS = Array.from({ length: 40 }, (_, k) => ({
+  id: 'e' + k, start: 5 + k * 3.3, p: +(1 - k / 40).toFixed(3),
+  label: k < 18 ? 'spike' : k < 21 ? 'review' : k < 37 ? 'flag' : 'garbage',
+  readable: true, human: k % 9 === 0 ? 'spike' : null,
+  human_by: k % 9 === 0 ? 'A person' : null }));
+const COUNTS = { spike: 18, review: 3, flag: 16, garbage: 3 };
+const RESULT = {
+  id: 'job1', gid: 'demo-ds-tutorial', kind: 'ds', set_name: 'Fake set',
+  run_id: 'aiFAKE', n: 40, n_readable: 40, counts: COUNTS,
+  already_decided: 5, agreement: { compared: 5, agree: 4 },
+  label_colors: {}, rows: ROWS,
+  samples: SAMPLES.map((s, k) => Object.assign({}, s,
+    { p: +(0.9 - k * 0.07).toFixed(2), label: LABS[k % 4] })),
+  ds_loss: 0.3, model_name: 'Tooth Fairy',
+  held_out: { spike: { n: 100, n_ds: 99, n_garbage: 1 },
+              garbage: { n: 10, n_ds: 1, n_garbage: 9 },
+              review: { n: 5, n_ds: 4, n_garbage: 1 },
+              flag: { n: 50, n_ds: 30, n_garbage: 20 } },
+};
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null;
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    W = () => f.contentWindow;
+    const D = () => f.contentDocument;
+    const ready = await untilN(() => typeof W().setView === 'function');
+    check('the application loads', !!ready);
+    if (!ready) { document.title = 'FAIL'; return; }
+    check('Tooth Fairy is loaded', W().eval('typeof BARRY.toothFairy === "object"'));
+
+    /* The fake server. */
+    const posts = [];
+    let polls = 0;
+    let lastBody = null;
+    let allowDone = false;
+    let bpolls = 0, batchBody = {}, acceptBody = null, discardBody = null;
+    const BATCH_SETS = [
+      { gid: 'ga', kind: 'ds', session_label: 'GA', open: true,
+        progress: { total: 50, left: 40 } },
+      { gid: 'gb', kind: 'ds', session_label: 'GB', open: true,
+        progress: { total: 50, left: 30 } },
+      { gid: 'gc', kind: 'ds', session_label: 'GC', open: true,
+        progress: { total: 50, left: 1 } },
+      { gid: 'gd', kind: 'ds', session_label: 'GD', open: false,
+        progress: { total: 80, left: 80 } },
+      { gid: 'ge', kind: 'ds', session_label: 'GE', open: true,
+        progress: { total: 20, left: 0 } },
+      { gid: 'gi', kind: 'ied', session_label: 'GI', open: true,
+        progress: { total: 20, left: 20 } },
+    ];
+    const TOLS = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30].map((L, k) => ({
+      ds_loss: L, garbage_cleaned: [0.55, 0.71, 0.82, 0.888, 0.94, 0.96][k],
+      garbage_left: [0.44, 0.28, 0.17, 0.10, 0.05, 0.03][k],
+      garbage_into_ds: 0.011, ds_called_garbage: L,
+      flagged: [0.37, 0.31, 0.25, 0.198, 0.15, 0.10][k] }));
+    const realFetch = W().fetch.bind(W());
+    const reply = (obj, status) => Promise.resolve(new (W().Response)(
+      JSON.stringify(obj), { status: status || 200,
+                             headers: { 'Content-Type': 'application/json' } }));
+    W().fetch = (url, opts) => {
+      const u = String(url);
+      const method = (opts && opts.method) || 'GET';
+      if (u.startsWith('/api/toothfairy') || u.startsWith('/api/cfc/')
+          || u === '/api/curation') {
+        if (method === 'POST') posts.push(u);
+        if (u === '/api/toothfairy') {
+          return reply({ ok: true, running: null, ready: true, slot: 'tooth_fairy',
+            name: 'Tooth Fairy', run_id: 'aiTF', model: 'blend',
+            families: ['a', 'b'], n_recordings: 46, garbage_into_ds: 0.011,
+            garbage_called_garbage: 0.6, ds_called_garbage: 0.05,
+            flagged_share: 0.2, tolerances: TOLS, default_tolerance: 0.2 });
+        }
+        if (u === '/api/curation') {
+          return reply({ ok: true, sets: BATCH_SETS });
+        }
+        if (u === '/api/toothfairy/batch') {
+          batchBody = JSON.parse((opts && opts.body) || '{}');
+          return reply({ ok: true, job: { id: 'job2', status: 'running',
+                                          stages: [], preview_rev: 0 } });
+        }
+        if (u.startsWith('/api/cfc/job/job2')) {
+          bpolls += 1;
+          const done = bpolls > 5;
+          const ms = (batchBody.gids || []).map((g, k) => ({
+            id: g, label: g.toUpperCase(),
+            status: done ? (k === 1 ? 'failed' : 'done')
+              : k < Math.floor(bpolls / 2) ? 'done'
+              : k === Math.floor(bpolls / 2) ? 'reading' : 'waiting' }));
+          return reply({ ok: true, job: { id: 'job2',
+            status: done ? 'done' : 'running', members: ms,
+            preview_rev: bpolls >= 2 ? 1 : 0, elapsed: bpolls,
+            stages: [{ name: 'tf read', of: 10, done: 10, status: 'done' },
+                     { name: 'tf physio', of: 20, done: 8, status: 'running' },
+                     { name: 'tf score', of: 1, done: 0, status: 'waiting' }] } });
+        }
+        if (u.startsWith('/api/toothfairy/sweep/job2/peek')) {
+          return reply({ ok: true, rev: 1,
+                         peek: { stage: 'read', samples: SAMPLES.slice(0, 3) } });
+        }
+        if (u.startsWith('/api/cfc/result/job2')) {
+          return reply({ ok: true, result: { ds_loss: 0.2, run_id: 'aiTF',
+            model_name: 'Tooth Fairy',
+            batch: (batchBody.gids || []).map((g, k) => k === 1
+              ? { gid: g, name: g.toUpperCase(), error: 'its recording is not here' }
+              : { gid: g, name: g.toUpperCase(), sid: 'job2-' + k, n: 50,
+                  counts: { spike: 20, review: 2, flag: 8, garbage: 20 },
+                  agreement: { compared: 10, agree: 9 }, already_decided: 10,
+                  undecided: k === 2 ? 0 : 40 }) } });
+        }
+        if (u === '/api/toothfairy/accept') {
+          acceptBody = JSON.parse((opts && opts.body) || '{}');
+          return reply({ ok: true, accepted: (acceptBody.sids || []).length,
+            results: (acceptBody.sids || []).map((sid) => ({ sid: sid,
+              status: 200, ok: true, applied: 40, version: 3 })) });
+        }
+        if (u === '/api/toothfairy/discard') {
+          discardBody = JSON.parse((opts && opts.body) || '{}');
+          return reply({ ok: true });
+        }
+        if (u === '/api/toothfairy/sweep') {
+          lastBody = JSON.parse((opts && opts.body) || '{}');
+          return reply({ ok: true, job: { id: 'job1', status: 'running',
+                                          stages: [], preview_rev: 0 } });
+        }
+        if (u.startsWith('/api/cfc/job/job1')) {
+          polls += 1;
+          const done = allowDone && polls > 4;
+          return reply({ ok: true, job: {
+            id: 'job1', status: done ? 'done' : 'running',
+            preview_rev: polls >= 2 ? 1 : 0, elapsed: polls,
+            stages: [{ name: 'tf read', of: 10, done: 10, status: 'done' },
+                     { name: 'tf physio', of: 20, done: done ? 20 : polls * 4,
+                       status: done ? 'done' : 'running', unit: 'stretches' },
+                     { name: 'tf score', of: 40, done: done ? 40 : 0,
+                       status: done ? 'done' : 'waiting' }] } });
+        }
+        if (u.startsWith('/api/toothfairy/sweep/job1/peek')) {
+          // The early read: three candidates, no calls yet.
+          return reply({ ok: true, rev: 1,
+                         peek: { stage: 'read', samples: SAMPLES.slice(0, 3) } });
+        }
+        if (u.startsWith('/api/cfc/result/job1')) {
+          return reply({ ok: true, result: RESULT });
+        }
+        if (u.startsWith('/api/toothfairy/sweep/job1/accept')) {
+          return reply({ ok: true, applied: 35, kept: 5, entry: 'x',
+                         version: 7 });
+        }
+        return reply({ ok: false, error: 'not faked: ' + u }, 404);
+      }
+      return realFetch(url, opts);
+    };
+
+    head('asking first');
+    W().eval(`window.__tfDone = null;
+      BARRY.toothFairy.open({ gid: 'demo-ds-tutorial', kind: 'ds', name: 'Fake set',
+        n: 40, decided: 5, onDone: (r) => { window.__tfDone = r; } });`);
+    const dlg = await untilN(() => {
+      const m = D().querySelector('#bigModal:not(.hidden) .tf-confirm');
+      return m && m.isConnected ? m : null;
+    });
+    check('a confirm dialog opens', !!dlg);
+    if (!dlg) throw new Error('no dialog');
+    check('it is titled Tooth Fairy',
+          /^Tooth Fairy$/.test(dlg.querySelector('h3').textContent));
+    check('it states the candidates and that decisions are kept',
+          /40/.test(dlg.textContent) && /never changes those/.test(dlg.textContent),
+          dlg.textContent.slice(0, 200));
+    check('it shows the icon', !!dlg.querySelector('.tf-icon svg'));
+    check('and no choice of model -- there is one',
+          !dlg.querySelector('.tf-models'));
+    const tolSeg = dlg.querySelector('.tf-tols');
+    check('it offers how many real spikes may be called Garbage',
+          !!tolSeg && tolSeg.querySelectorAll('button').length === 6,
+          tolSeg && tolSeg.textContent);
+    check('20% is the default',
+          !!tolSeg && tolSeg.querySelector('.active').textContent.trim() === '20%',
+          tolSeg && (tolSeg.querySelector('.active') || {}).textContent);
+    check('it says how much garbage that cleans and leaves on unseen mice',
+          /88\.8%/.test(dlg.textContent) && /10\.0% left for a person/
+            .test(dlg.textContent) && /19\.8%/.test(dlg.textContent),
+          dlg.textContent.slice(0, 600));
+    Array.from(tolSeg.querySelectorAll('button'))
+      .find((b) => b.textContent.trim() === '30%').click();
+    const dlgT = await untilN(() => {
+      const m = D().querySelector('#bigModal:not(.hidden) .tf-confirm');
+      return m && /96\.0%/.test(m.textContent) ? m : null;
+    });
+    check('choosing 30% shows 30%’s numbers', !!dlgT);
+    await sleep(150);
+    check('nothing has been posted yet', posts.length === 0, posts.join());
+    const go = Array.from(D().querySelectorAll('#bigModal .tf-confirm button'))
+      .find((b) => b.textContent.trim() === 'Start the sweep');
+    check('the primary says what it starts', !!go);
+    go.click();
+
+    head('the scanner');
+    const ov = await untilN(() => D().getElementById('tfOv'));
+    check('the sweep screen opens', !!ov);
+    check('the sweep was posted once',
+          posts.filter((p) => p === '/api/toothfairy/sweep').length === 1, posts.join());
+    check('with the tolerance chosen', lastBody && lastBody.ds_loss === 0.3
+          && !('model' in lastBody), JSON.stringify(lastBody));
+    check('the header names Tooth Fairy, with its icon',
+          /TOOTH FAIRY/.test((D().querySelector('#tfOv .tf-mark') || {}).textContent || '')
+          && !!D().querySelector('#tfOv .tf-icon.live svg'));
+    check('it carries a scope to draw on', !!D().getElementById('tfScope'));
+    const read = await untilN(() => {
+      const r = D().getElementById('tfRead');
+      return r && r.children.length >= 3 ? r : null;
+    }, 400);
+    check('a sample is scanned and read out', !!read,
+          'no readouts appeared');
+    const measured = await untilN(() => {
+      const s = D().getElementById('tfStamp');
+      return s && /measured|DS|Flag|Garbage/.test(s.textContent) ? s : null;
+    }, 400);
+    check('each scan ends in a stamp', !!measured);
+    /* Three early samples, and a read that has not finished: the scanner
+       has to go round them again rather than stop. */
+    let scans = 0;
+    const st0 = D().getElementById('tfStamp');
+    const mo = new (W().MutationObserver)(() => {
+      if (st0.classList.contains('dim')) scans += 1;
+    });
+    mo.observe(st0, { attributes: true, attributeFilter: ['class'] });
+    const looped = await untilN(() => scans >= 5, 600);
+    mo.disconnect();
+    check('while it reads, the scanner goes round the early samples again',
+          !!looped, scans + ' scans');
+    check('the scope draws every even channel of them',
+          SAMPLES[0].channels.length === 32);
+    allowDone = true;
+
+    head('the verdicts, then the summary');
+    const skip = await untilN(() => Array.from(D().querySelectorAll('#tfOv button'))
+      .find((b) => /Skip to the summary/.test(b.textContent)), 600);
+    check('the reel can be skipped', !!skip);
+    const landed = await untilN(() => {
+      const s = D().getElementById('tfStamp');
+      const sc = D().querySelector('#tfOv .tf-scope');
+      return s && s.classList.contains('hit') && sc
+        && sc.classList.contains('flash');
+    }, 600);
+    check('the verdict lands: a stamp and the scope flash in its colour',
+          !!landed);
+    check('the summary waits for the reel',
+          !D().querySelector('#tfSummary .tf-tile'));
+    const fed = await untilN(() => {
+      const l = D().querySelectorAll('#tfLog.stream .tf-logline');
+      return l.length >= 20 ? l : null;
+    }, 600);
+    check('the feed runs through the calls in order', !!fed
+          && Array.from(fed).every((x, k, a) => !k
+            || parseFloat(a[k - 1].firstChild.textContent)
+               <= parseFloat(x.firstChild.textContent)),
+          fed ? fed.length : 'no feed');
+    const fedAll = await untilN(() => D().querySelectorAll(
+      '#tfLog.stream .tf-logline').length === 40, 800);
+    check('every candidate is called out in the feed', !!fedAll,
+          D().querySelectorAll('#tfLog.stream .tf-logline').length);
+    const stampCall = await untilN(() => {
+      const s = D().getElementById('tfStamp');
+      return s && /^(DS|Flag|Garbage|Flag for Deep Review)/.test(s.textContent)
+        ? s : null;
+    }, 600);
+    check('the reel stamps a real verdict', !!stampCall,
+          (D().getElementById('tfStamp') || {}).textContent);
+    const tiles = await untilN(() => {
+      const t = D().querySelectorAll('#tfSummary .tf-tile');
+      return t.length === 4 ? t : null;
+    }, 900);
+    check('then comes on its own, without Skip', !!tiles);
+    check('saying the tolerance it was run at',
+          /up to 30% of real spikes/.test(
+            (D().getElementById('tfStageText') || {}).textContent || ''),
+          (D().getElementById('tfStageText') || {}).textContent);
+    check('four tiles: DS, Flag for Deep Review, Flag, Garbage', !!tiles);
+    if (tiles) {
+      const words = Array.from(tiles).map((t) => t.querySelector('span').textContent);
+      check('in that order',
+            words.join('|') === 'DS|Flag for Deep Review|Flag|Garbage', words.join('|'));
+      const nums = Array.from(tiles).map((t) => t.querySelector('b').textContent);
+      check('with the counts it was given', nums.join('|') === '18|3|16|3', nums.join('|'));
+    }
+    const rows = D().querySelectorAll('#tfSummary .tf-list tbody tr');
+    check('every candidate is listed', rows.length === 40, rows.length);
+    check('each with its call written out',
+          Array.from(rows).every((r) => /^(DS|Flag|Garbage|Flag for Deep Review)$/
+            .test(r.querySelector('.tf-pill').textContent.trim())));
+    check('the decisions a person made are shown beside',
+          Array.from(rows).some((r) => /A person/.test(r.textContent)));
+    D().querySelectorAll('#tfSummary .tf-tile')[3].click();
+    await sleep(200);
+    const garb = D().querySelectorAll('#tfSummary .tf-list tbody tr');
+    check('a tile filters the list to its call', garb.length === 3, garb.length);
+    check('it says how its calls held up on unseen mice',
+          /99\.0%/.test(D().getElementById('tfSummary').textContent));
+    check('nothing was accepted before the button',
+          !posts.some((p) => /accept/.test(p)), posts.join());
+
+    head('accept');
+    const acc = D().getElementById('tfAccept');
+    check('Accept and review is offered', !!acc && /Accept and review/.test(acc.textContent));
+    acc.click();
+    const done = await untilN(() => W().eval('window.__tfDone'), 200);
+    check('accepting posts once and hands back', !!done
+          && posts.filter((p) => /accept/.test(p)).length === 1, posts.join());
+    check('the screen closes', !D().getElementById('tfOv'));
+
+    head('a batch');
+    W().eval(`window.__tfBatchDone = null;
+      BARRY.toothFairy.openBatch({ onDone: (r) => { window.__tfBatchDone = r; } });`);
+    const bd = await untilN(() => {
+      const m = D().querySelector('#bigModal:not(.hidden) .tf-batch');
+      return m && m.isConnected ? m : null;
+    });
+    check('the batch dialog opens', !!bd);
+    if (!bd) throw new Error('no batch dialog');
+    check('it is titled Tooth Fairy batch, with the icon',
+          /Tooth Fairy batch/.test(bd.querySelector('h3').textContent)
+          && !!bd.querySelector('.tf-icon svg'));
+    const rowsB = () => Array.from(D().querySelectorAll(
+      '#bigModal .tf-batch .tf-pick-row'));
+    check('every DS set with candidates is listed, and only those',
+          rowsB().length === 5, rowsB().map((r) => r.textContent).join(' / '));
+    check('on the bench and undecided are chosen to start with',
+          rowsB().filter((r) => r.querySelector('input').checked)
+            .map((r) => r.querySelector('.tf-pick-name').textContent).join(',')
+            === 'GA,GB,GC',
+          rowsB().filter((r) => r.querySelector('input').checked)
+            .map((r) => r.textContent).join(' / '));
+    const goB = () => D().getElementById('tfBatchGo');
+    check('the primary says how many', /Sweep 3 sets/.test(goB().textContent),
+          goB().textContent);
+    Array.from(D().querySelectorAll('#bigModal .tf-batch button'))
+      .find((b) => b.textContent.trim() === 'Everything undecided').click();
+    await sleep(150);
+    check('everything undecided adds the one off the bench',
+          /Sweep 4 sets/.test(goB().textContent), goB().textContent);
+    check('nothing has been posted for the batch yet', !batchBody.gids);
+    goB().click();
+    const bov = await untilN(() => D().getElementById('tfOv'));
+    check('the batch screen opens', !!bov);
+    check('the batch was posted with the sets and the tolerance',
+          (batchBody.gids || []).join() === 'ga,gb,gc,gd'
+          && batchBody.ds_loss === 0.3, JSON.stringify(batchBody));
+    check('it says BATCH', /BATCH/.test((D().querySelector('#tfOv .tf-what')
+                                         || {}).textContent || ''));
+    const lines = await untilN(() => {
+      const l = D().querySelectorAll('#tfLog.tf-sets .tf-setline');
+      return l.length === 4 ? l : null;
+    }, 300);
+    check('every set is listed with how it is getting on', !!lines);
+    const reading = await untilN(() => D().querySelector(
+      '#tfLog.tf-sets .tf-setline.reading'), 300);
+    check('the one being swept is marked', !!reading);
+    const bt = await untilN(() => {
+      const t = D().querySelectorAll('#tfSummary .tf-batch-tbl tbody tr');
+      return t.length === 4 ? t : null;
+    }, 900);
+    check('at the end, a row for every set', !!bt);
+    if (bt) {
+      const failed = Array.from(bt).filter((r) => r.classList.contains('tf-failed'));
+      check('the one that could not be swept says why, and cannot be kept',
+            failed.length === 1 && /not here/.test(failed[0].textContent)
+            && !failed[0].querySelector('input'), failed.map((r) => r.textContent).join());
+      const boxes = Array.from(bt).map((r) => r.querySelector('input'))
+        .filter(Boolean);
+      check('the swept ones with something undecided are kept to start with',
+            boxes.map((b) => b.checked).join() === 'true,false,true',
+            boxes.map((b) => b.checked).join());
+      check('totals across the sets',
+            /60/.test((D().querySelector('#tfSummary .tf-tile b') || {}).textContent || ''));
+    }
+    check('nothing accepted before the button', acceptBody === null);
+    const accB = D().getElementById('tfBatchAccept');
+    check('the primary says how many sets it keeps',
+          !!accB && /Accept 2 sets/.test(accB.textContent), accB && accB.textContent);
+    accB.click();
+    const bdone = await untilN(() => W().eval('window.__tfBatchDone'), 200);
+    check('accepting posts the kept sweeps once and hands back', !!bdone
+          && (acceptBody.sids || []).join() === 'job2-0,job2-3',
+          JSON.stringify(acceptBody));
+    check('the one left unticked is let go',
+          !!discardBody && (discardBody.sids || []).join() === 'job2-2',
+          JSON.stringify(discardBody));
+    check('the batch screen closes', !D().getElementById('tfOv'));
+  } catch (e) {
+    say('bad', 'harness threw: ' + e.message);
+  } finally {
+    try { if (W) W().eval('closeAllModals && closeAllModals()'); } catch (e) {}
+    head(bad === 0 ? 'Tooth Fairy: all checks passed' : bad + ' failed');
+    document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+    f.src = 'about:blank';
+  }
+})();
+</script>

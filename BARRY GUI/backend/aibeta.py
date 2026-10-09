@@ -153,9 +153,9 @@ TRADEOFF = (0.99, 0.98, 0.95, 0.90, 0.80)
 # never saw it can still let one through, and the table says how often.
 CATCH = (1.0, 0.99, 0.98, 0.95, 0.90)
 
-# AVERY -- the model, named by the user (2026-10-02), that sweeps a Checkup
-# set and calls every candidate one of four things. Its bars come from the
-# held-out scores of the run it was trained in:
+# THE SWEEP'S FOUR CALLS. The model that sweeps a Checkup set (Tooth Fairy,
+# toothfairy.py) calls every candidate one of four things. Its bars come
+# from the held-out scores of the run it was trained in:
 #
 #   DS                    at or above the bar that caught 99% of garbage
 #   Flag for Deep Review  just under it: between the 98% and 99% bars, the
@@ -167,11 +167,20 @@ CATCH = (1.0, 0.99, 0.98, 0.95, 0.90)
 # So DS is the operating point the user chose -- 98.6% of garbage caught
 # and 41.5% of real spikes flagged on mice it never saw -- and the flags are
 # split by how close they came.
-AVERY_TAG = "avery"
-AVERY_BY = "Avery (AI)"
 POLICY = {"ds_catch": 0.99, "review_catch": 0.98, "garbage_purity": 0.90}
 
-# AVERY+ (the user, 2026-10-02): every garbage marked so, as few real
+# WHO A MODEL'S VERSION IS BY. An accepted sweep banks every call as a
+# version of its own, tagged and authored as the model's, so training can
+# tell a model's calls from a person's (`_is_model`) and never learns from
+# itself. Tooth Fairy writes the first pair; the second is what the models
+# before it wrote (until 2026-10-09), and is still recognised because those
+# versions are still in the bank.
+MODEL_TAG = "tooth_fairy"
+MODEL_BY = "Tooth Fairy (AI)"
+OLD_MODEL_TAGS = ("avery",)
+OLD_MODEL_BY = ("Avery (AI)",)
+
+# THE TOLERANT BARS (the user, 2026-10-02): every garbage marked so, as few real
 # spikes lost as that allows, and fewer flags -- "we'd prefer to lose spikes
 # than to get garbage in". So the Garbage bar is set by the spikes it may
 # cost, 5% of them, instead of by how pure its calls are; the DS bar stays
@@ -179,22 +188,18 @@ POLICY = {"ds_catch": 0.99, "review_catch": 0.98, "garbage_purity": 0.90}
 POLICY_PLUS = {"ds_catch": 0.99, "review_catch": 0.98,
                "garbage_ds_loss": 0.05}
 
-# Which model a sweep can use: Avery, and Avery+ once a run is made it.
-# AVERY GARBAGE DYSTROPHY+ (named by the user, 2026-10-03): the detector
-# built to leave people as little garbage to sift through as possible --
-# catch as much of it as it can, at a share of real spikes the person
-# sweeping chooses.
-# TOOTH FAIRY (named by the user, 2026-10-07): "use all the information you
-# have about what works the best", retrained on everything curated since.
-SLOTS = ("avery", "avery_plus", "avery_gd", "tooth_fairy")
-SLOT_NAMES = {"avery": "Avery", "avery_plus": "Avery+",
-              "avery_gd": "Avery Garbage Dystrophy+",
-              "tooth_fairy": "Tooth Fairy"}
+# Which model a sweep can use. TOOTH FAIRY (named by the user, 2026-10-07:
+# "use all the information you have about what works the best", retrained
+# on everything curated since). The models before it were taken out on
+# 2026-10-09 at the user's word -- "remove all the Avery stuff" -- and live
+# on only as runs in AI Beta and as the history in its report.
+SLOTS = ("tooth_fairy",)
+SLOT_NAMES = {"tooth_fairy": "Tooth Fairy"}
 POLICY_LABELS = ("spike", "review", "flag", "garbage")
 
 
 def label_policy(p, y, targets=None):
-    """Avery's four bars, from held-out scores and the labels behind them."""
+    """The sweep's four bars, from held-out scores and their labels."""
     t = dict(POLICY, **(targets or {}))
     p = np.asarray(p, float)
     y = np.asarray(y).astype(int)
@@ -304,7 +309,7 @@ MODELS = [
               "spike-like garbage, which is what sets how much is flagged."},
 ]
 MODEL_IDS = [m["id"] for m in MODELS]
-# What "blend" averages. Chosen 2026-10-03 on Avery+'s 45 recordings,
+# What "blend" averages. Chosen 2026-10-03 on the 45 recordings of the time,
 # whole-mouse CV, against one set of boosted trees on two seeds -- see the
 # CHANGELOG for the numbers.
 BLEND_MEMBERS = ("hgb_sub",) * 5
@@ -321,22 +326,23 @@ def _now():
 # --------------------------------------------------------------------------
 # Which entries, which version, which labels
 # --------------------------------------------------------------------------
-def _is_avery(ver):
+def _is_model(ver):
     """A version a model wrote. Tagged when banked by an accepted sweep;
     the curation set's own version from that accept carries only the author,
-    so both are asked."""
-    return ver.get("tag") == AVERY_TAG or ver.get("by") == AVERY_BY
+    so both are asked -- Tooth Fairy's and the older models'."""
+    return (ver.get("tag") in (MODEL_TAG,) + OLD_MODEL_TAGS
+            or ver.get("by") in (MODEL_BY,) + OLD_MODEL_BY)
 
 
-def _avery_unreviewed(bank, rec, named, target, events):
-    """Which of `events` hold a call Avery made that nobody changed.
+def _model_unreviewed(bank, rec, named, target, events):
+    """Which of `events` hold a call a model made that nobody changed.
 
-    An accepted sweep fills every undecided candidate with Avery's call, and
-    the person then works through the flags. A candidate Avery called DS or
+    An accepted sweep fills every undecided candidate with the model's call,
+    and the person then works through the flags. A candidate it called DS or
     Garbage that still holds that call afterwards may never have been looked
     at -- learning from it is the model learning from itself. So such a
     candidate is left out when it was undecided before the sweep. Kept: what
-    a person had decided before Avery came, everything Avery flagged, and
+    a person had decided before the sweep, everything it flagged, and
     every call a person changed. Returns a set of indices into `events`, or
     None when the versions needed to tell are not on this machine.
     """
@@ -345,10 +351,10 @@ def _avery_unreviewed(bank, rec, named, target, events):
         at = next(k for k, v in enumerate(order) if v is target)
     except StopIteration:
         return set()
-    av = [k for k in range(at) if _is_avery(order[k])]
+    av = [k for k in range(at) if _is_model(order[k])]
     if not av:
         return set()
-    pre = [k for k in range(av[0]) if not _is_avery(order[k])]
+    pre = [k for k in range(av[0]) if not _is_model(order[k])]
 
     def classes(ver):
         if not ver.get("snap"):
@@ -423,7 +429,7 @@ def _first_pass(bank, rec, named, target, target_events):
         if ver is target:
             break
         if (ver.get("v") or 0) == 0 or not ver.get("snap") \
-                or ver.get("tag") == AVERY_TAG:
+                or _is_model(ver):
             continue
         bl = ver.get("by_label") or {}
         if any(n and str(k).strip().lower() != "unspecified"
@@ -492,14 +498,14 @@ def dataset(bank, curate=None, pin=None):
         named = versionsmod.label_rows(rec.get("versions") or [])
         if not named:
             continue
-        # Everything before Braces first touched it -- and nothing Avery
-        # wrote. An Avery version is a model's calls, banked for the record;
+        # Everything before Braces first touched it -- and nothing a model
+        # wrote. A model's version is its calls, banked for the record;
         # learning from it would be the model learning from itself.
         before = []
         for ver, name in named:
             if ver.get("aligned"):
                 break
-            if _is_avery(ver):
+            if _is_model(ver):
                 continue
             before.append((ver, name))
         target = tname = None
@@ -574,7 +580,7 @@ def dataset(bank, curate=None, pin=None):
                 if v.get("aligned"):
                     break
                 st_ = _settled(v.get("by_label"))
-                if not _is_avery(v) and st_ and st_[1] > 0:
+                if not _is_model(v) and st_ and st_[1] > 0:
                     richer = v
             if richer is not None and richer.get("snap"):
                 try:
@@ -593,19 +599,19 @@ def dataset(bank, curate=None, pin=None):
                         events.append({"t_bank": t, "y": 0})
                         n_restored += 1
                 events.sort(key=lambda e: e["t_bank"])
-        # AVERY'S OWN CALLS, where a person finished a set Avery swept
-        # (2026-10-07: three entries did). See `_avery_unreviewed`.
-        n_avery = 0
-        if any(_is_avery(v) for v, _n in named):
-            drop = _avery_unreviewed(bank, rec, named, target, events)
+        # A MODEL'S OWN CALLS, where a person finished a set a model swept
+        # (2026-10-07: three entries did). See `_model_unreviewed`.
+        n_model = 0
+        if any(_is_model(v) for v, _n in named):
+            drop = _model_unreviewed(bank, rec, named, target, events)
             if drop is None:
                 skipped.append({"label": label, "entry_id": rec.get("id"),
                                 "gid": rec.get("gid"),
-                                "why": "Avery swept it, and the versions "
-                                       "that tell its calls from a person's "
-                                       "are not on this machine"})
+                                "why": "a model swept it, and the "
+                                       "versions that tell its calls from a "
+                                       "person's are not on this machine"})
                 continue
-            n_avery = len(drop)
+            n_model = len(drop)
             events = [e for j, e in enumerate(events) if j not in drop]
         if not events:
             continue
@@ -648,7 +654,7 @@ def dataset(bank, curate=None, pin=None):
             "n": len(events),
             "n_ds": sum(1 for e in events if e["y"] == 1),
             "n_garbage": sum(1 for e in events if e["y"] == 0),
-            "n_avery_left_out": n_avery,
+            "n_model_left_out": n_model,
             "n_garbage_restored": n_restored,
             "events": events,
             "first_pass": _first_pass(bank, rec, named, target, events),
@@ -1758,11 +1764,11 @@ def train_and_test(data, families, model_id="hgb", job=None,
 # its own); this machine's own rate replaces them after the first run.
 _STAGES = (("ai read", "recordings", 20.0),
            ("ai physio", "recordings", 60.0),
-           # Avery's sweep of one set (avery.py): the stretches of ONE
+           # Tooth Fairy's sweep of one set (toothfairy.py): the stretches of ONE
            # recording, read several at a time, then every candidate scored.
-           ("avery read", "stretches", 0.3),
-           ("avery physio", "stretches", 1.2),
-           ("avery score", "candidates", 0.001),
+           ("tf read", "stretches", 0.3),
+           ("tf physio", "stretches", 1.2),
+           ("tf score", "candidates", 0.001),
            ("ai train", "fits", 3.0))
 
 
@@ -2083,8 +2089,10 @@ class Runs:
                                    "aibeta", "runs")
         self.book = shards.Book(self.dir, {}, store,
                                 extra_dirs=[self.pulled])
-        # Which run Avery is: one record, the latest designation winning.
-        self.avery_book = shards.Book(os.path.join(self.root, "avery"), {},
+        # Which run each sweep model is: one record per model, the latest
+        # designation winning. Filed under "avery", the first model's name,
+        # because that is where the designations already are.
+        self.model_book = shards.Book(os.path.join(self.root, "avery"), {},
                                       store)
         # Every sweep somebody accepted: each candidate's score and call,
         # the bars, and the run -- the record the edge cases are mined from.
@@ -2144,26 +2152,26 @@ class Runs:
         out.sort(key=lambda r: r.get("at") or "", reverse=True)
         return out
 
-    def avery(self, slot="avery"):
-        """{run_id, at, by} for the run a slot (Avery, Avery+) is, or None."""
+    def model(self, slot="tooth_fairy"):
+        """{run_id, at, by} for the run a sweep model is, or None."""
         if slot not in SLOTS:
             raise AiBetaError("No such model %r." % slot)
-        rec = self.avery_book.read(slot) or {}
+        rec = self.model_book.read(slot) or {}
         return rec if rec.get("run_id") else None
 
-    def set_avery(self, run_id, prov=None, slot="avery"):
+    def set_model(self, run_id, prov=None, slot="tooth_fairy"):
         rec = self.get(run_id)
         if not rec:
             raise AiBetaError("No AI Beta run %s." % run_id)
         if not ((rec.get("results") or {}).get("policy")):
             raise AiBetaError(
-                "That run predates Avery's four bars, so it cannot sort a "
-                "set into DS, Flag, Flag for Deep Review and Garbage. Train "
-                "it again and use the new run.")
+                "That run predates the sweep's four bars, so it cannot sort "
+                "a set into DS, Flag, Flag for Deep Review and Garbage. "
+                "Train it again and use the new run.")
         if slot not in SLOTS:
             raise AiBetaError("No such model %r." % slot)
         prov = prov or {}
-        return self.avery_book.write(slot, {
+        return self.model_book.write(slot, {
             "run_id": run_id, "at": _now(), "by": prov.get("user"),
             "machine": prov.get("machine")})
 

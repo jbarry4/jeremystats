@@ -132,10 +132,13 @@ BARRY.strata = (function () {
         return false;
       }
     }
-    const path = (sessRow.here || [])[0];
+    // This computer first, the cluster second (BARRY.vacc.reach).
+    const got = BARRY.vacc.reachFor(Object.assign({ gid: gid }, sessRow),
+                                    'strata');
+    const path = got.path;
     if (!path) {
-      toast('None of this recording’s paths are reachable from this '
-            + 'machine, so there is nothing to look at.', 'err', 9000);
+      toast(got.why || ('None of this recording’s paths are reachable from '
+            + 'this machine, so there is nothing to look at.'), 'err', 9000);
       return false;
     }
 

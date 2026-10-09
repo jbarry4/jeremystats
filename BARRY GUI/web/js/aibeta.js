@@ -557,20 +557,12 @@ BARRY.aibeta = (function () {
     const s = run.settings || {};
     const card = el('div', { class: 'card ai-result' });
 
-    /* Which model this run is, if any. A run trained with Avery+'s bars
-       (a Garbage bar set by the real spikes it may cost) is offered as
-       Avery+ or as Avery Garbage Dystrophy+; any other run with four
-       bars, as Avery. */
-    const SLOT_NAME = { avery: 'Avery', avery_plus: 'Avery+',
-                        avery_gd: 'Avery Garbage Dystrophy+',
-                        tooth_fairy: 'Tooth Fairy' };
-    const slotOf = (k) => st && st[k] && st[k].ready && st[k].run_id === run.id;
-    const isNow = ['avery', 'avery_plus', 'avery_gd', 'tooth_fairy']
-      .filter(slotOf);
-    const plusBars = !!(((res.policy || {}).targets || {}).garbage_ds_loss);
-    const offer = (plusBars ? ['tooth_fairy', 'avery_gd', 'avery_plus']
-                            : ['avery'])
-      .filter((k) => !isNow.includes(k));
+    /* Whether this run is Tooth Fairy -- the model Checkup's Tooth Fairy
+       sweeps sets with -- and whether it could be. Any run with the four
+       bars and the held-out scores the tolerance is set from can. */
+    const tf = st && st.tooth_fairy;
+    const isTf = !!(tf && tf.ready && tf.run_id === run.id);
+    const canTf = !!(res.policy && res.oof);
     card.appendChild(el('div', { class: 'ai-row ai-result-head' }, [
       el('strong', { text: 'How it did' }),
       el('span', { class: 'hint', text:
@@ -579,16 +571,15 @@ BARRY.aibeta = (function () {
                                                           .join(', ')
         + (s.channels === 'even' ? ' · even channels only' : '') }),
       el('div', { class: 'spacer' }),
-      /* Avery is the run Checkup's "Avery sweep" sorts sets with. Only a
-         run trained with Avery's four bars can be it. */
-      ...isNow.map((k) => BARRY.ui.chip('This is ' + SLOT_NAME[k], {
-        kind: 'good',
-        title: 'Checkup’s Avery sweep sorts sets with this run.' })),
-      ...(res.policy ? offer.map((k) => BARRY.ui.button({ size: 'sm',
-          text: 'Make this ' + SLOT_NAME[k],
-          title: 'Sort sets with this run from Checkup’s Avery sweep as '
-               + SLOT_NAME[k] + ', using its bars.',
-          onclick: () => makeAvery(run.id, k) })) : []),
+      isTf ? el('span', { class: 'stat-chip ok tf-chip',
+        title: 'Checkup’s Tooth Fairy sorts sets with this run.' },
+        [BARRY.toothFairy ? BARRY.toothFairy.icon() : null,
+         'This is Tooth Fairy'].filter(Boolean)) : null,
+      (!isTf && canTf) ? BARRY.ui.button({ size: 'sm',
+          text: 'Make this Tooth Fairy',
+          title: 'Sort sets with this run from Checkup’s Tooth Fairy, '
+               + 'using its bars.',
+          onclick: () => makeToothFairy(run.id) }) : null,
     ].filter(Boolean)));
 
     card.appendChild(el('p', { class: 'ai-lede', text:
@@ -841,16 +832,14 @@ BARRY.aibeta = (function () {
     return card;
   }
 
-  async function makeAvery(id, slot) {
+  async function makeToothFairy(id) {
     try {
-      await apiPost('/api/aibeta/avery', { run_id: id, slot: slot || 'avery' });
+      await apiPost('/api/aibeta/tooth-fairy', { run_id: id });
     } catch (e) {
       toast(e.message, 'err', 9000);
       return;
     }
-    toast(({ avery_plus: 'Avery+', avery_gd: 'Avery Garbage Dystrophy+',
-             tooth_fairy: 'Tooth Fairy' }[slot]
-           || 'Avery') + ' now sorts sets with this run.', 'ok', 5000);
+    toast('Tooth Fairy now sorts sets with this run.', 'ok', 5000);
     st = null;
     load();
   }
@@ -1016,11 +1005,6 @@ BARRY.aibeta = (function () {
             BARRY.syncState ? BARRY.syncState.mark('aibeta', r.id) : null,
           ].filter(Boolean)),
           el('td', { text: modelName((r.settings || {}).model)
-            + (st && st.avery && st.avery.run_id === r.id ? ' · Avery' : '')
-            + (st && st.avery_plus && st.avery_plus.run_id === r.id
-               ? ' · Avery+' : '')
-            + (st && st.avery_gd && st.avery_gd.run_id === r.id
-               ? ' · Garbage Dystrophy+' : '')
             + (st && st.tooth_fairy && st.tooth_fairy.run_id === r.id
                ? ' · Tooth Fairy' : '') }),
           el('td', { class: 'ai-wrap', text: ((r.settings || {}).families

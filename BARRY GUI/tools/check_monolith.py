@@ -1849,6 +1849,114 @@ def physical_check(work):
           and [c["id"] for c in s2["physical"]["comparisons"]] == list(MO.PHYS_IDS))
 
 
+def narrow_check(work):
+    """Section 7 on eight made-up rats with three planted changes: one
+    strong entry, every rat (it survives every correction); a broad change
+    over twelve neighbouring 1 Hz bands, each band only modest (a frequency
+    cluster finds it, Bonferroni does not); and one only in each rat's AB
+    pair (it does not replicate in CD). The relabelling is MO.pool's own."""
+    print("\nSection 7: narrowing down")
+    from backend import narrow as NR
+    man = fake_manifest(n_rats=8, units=8)
+    for d in man["days"]:
+        for i, u in enumerate(d["units"]):
+            u["cue_type"] = "Click_LowTone" if i % 2 == 0 else "Noise_HighTone"
+            u["cue_label"] = u["label"] = ("Click → Low Tone" if i % 2 == 0 else "Noise → High tone")
+    man["digest"] = MO._digest(man)
+    every = {(d["rat"], d["day"], f["role"]) for d, f in MO.folders_of(man)}
+    tasks = MO.plan_tasks(man, MO.check_data(man, listing_for(man, whole=every)))
+    run = {"rid": "9c0000000001", "dest": "scratch", "arrays": [{"id": "1", "indices": None}],
+           "tasks": [{"i": i, "key": t["key"], "rat": t["rat"], "day": t["day"], "kind": t["kind"],
+                      "chunk": t["chunk"], "n_units": t["n_units"], "est_s": t["est_s"]}
+                     for i, t in enumerate(tasks)]}
+    raw = os.path.join(work, "nar_raw")
+    data = os.path.join(work, "nar_data")
+    fake_outputs(man, run, raw, seed=31)
+    summ = MO.build(man, run, raw, data)
+    roles, _notes = fake_roles(man)
+    hz = [i for i, b in enumerate(summ["bands"]) if not b.get("named")]
+    wi = MO.WINDOWS.index
+    eA = (wi("cue1"), hz[20], 0, 5)                   # strong, one entry, every rat
+    eB = [(wi("cue2"), hz[b], 3, 9) for b in range(30, 42)]   # broad, modest, twelve bands
+    eC = (wi("post"), hz[8], 6, 14)                   # strong, AB pair only
+    rats0, Y0, _V0 = MO.rat_changes(data, man)["raw"]
+    srat = lambda e: float(np.nanstd(Y0[(slice(None),) + e]))       # noqa: E731
+    for d in man["days"]:
+        if d["day"] != "Precon4":
+            continue
+        path = os.path.join(data, "days", "r%d_%s_edges.npy" % (d["rat"], d["day"]))
+        X = np.load(path)
+        for i, u in enumerate(d["units"]):
+            X[i][eA] += 12 * srat(eA) + 1e-3
+            for e in eB:
+                X[i][e] += 3.0 * srat(e) + 1e-4
+            if roles[d["rat"]][u["cue_type"]] == "AB":
+                X[i][eC] += 12 * srat(eC) + 1e-3
+        np.save(path, X)
+    rats, Y, V = MO.rat_changes(data, man)["raw"]
+    sp = NR.SignPool(Y, V)
+    g = MO.pool(Y, V)
+    from scipy.stats import t as tdist
+    tp = 2 * tdist.sf(np.abs(sp.t()), np.maximum(sp.k - 1, 1))
+    ok = np.isfinite(g["p"])
+    check("the relabelling pools exactly as the Monolith does: the same t, the same p",
+          np.allclose(tp[ok], g["p"][ok], rtol=1e-6, atol=1e-12) and np.array_equal(np.isfinite(sp.t()), ok),
+          float(np.nanmax(np.abs(tp[ok] - g["p"][ok]))))
+    check("every way of signing eight rats, the first fixed: 128, all different", NR.signings(8).shape == (128, 8)
+          and len({tuple(r) for r in NR.signings(8)}) == 128)
+    p0 = np.array([0.001, 0.01, 0.02, 0.04, 0.3])
+    h_, b_, y_ = NR.adjust(p0)
+    check("Holm, Benjamini–Hochberg and –Yekutieli by hand", np.allclose(h_, [0.005, 0.04, 0.06, 0.08, 0.3])
+          and np.allclose(b_, [0.005, 0.025, 0.0333333, 0.05, 0.3]) and np.allclose(y_, np.minimum(1, b_ * (1 + 1 / 2 + 1 / 3 + 1 / 4 + 1 / 5))),
+          (h_.round(4).tolist(), b_.round(4).tolist()))
+    t0 = time.time()
+    got = NR.narrow_build(man, summ, data, roles)
+    secs = time.time() - t0
+    sh = [len(NR.NQ)] + [len(MO.WINDOWS) + 1, len(summ["bands"]), len(MO.METHODS), 66]
+    A = np.fromfile(os.path.join(data, "narrow_raw.f32"), dtype="<f4").reshape(sh)
+    q = {name: A[i] for i, name in enumerate(NR.NQ)}
+    v = lambda name, e: float(q[name][e])            # noqa: E731
+    check("built (%.0f s): the strong entry survives Bonferroni, Holm, BH and the permutation max-t" % secs,
+          v("holm_p", eA) < 0.05 and v("bh_q", eA) < 0.05 and v("maxt_p", eA) <= 0.05 and v("hk_p", eA) < 0.05 / got["counts"]["all"]["raw"]["m"],
+          (v("hk_p", eA), v("holm_p", eA), v("bh_q", eA), v("maxt_p", eA)))
+    check("its exact tests at their floor with eight rats: permutation 1/128, sign test 2/256",
+          abs(v("perm_p", eA) - 1 / 128) < 1e-6 and abs(v("sign_p", eA) - 2 / 256) < 1e-6, (v("perm_p", eA), v("sign_p", eA)))
+    bandsB = [v("hk_p", e) for e in eB]
+    check("the broad change: each band only modest, none survives Holm, the run is a frequency cluster that survives",
+          all(x < 0.05 for x in bandsB) and all(v("holm_p", e) > 0.05 for e in eB) and all(v("cluster_p", e) <= 0.05 for e in eB),
+          ([round(x, 4) for x in bandsB[:4]], [round(v("cluster_p", e), 4) for e in eB[:3]]))
+    clt = [c for c in got["cluster"]["raw"]["top"] if c["w"] == "cue2" and c["pair"] == 9 and c["m"] == MO.METHODS[3]]
+    check("and the cluster is said as the run planted, 12 bands, its Hz from and to",
+          bool(clt) and clt[0]["n_bands"] >= 12 and clt[0]["from_hz"] <= summ["bands"][hz[30]]["hz"]
+          and clt[0]["to_hz"] >= summ["bands"][hz[41]]["hz"], clt[:1])
+    check("the AB-only change: strong in AB, and so not replicated in both pairs; the strong one is",
+          v("rep", eC) == 0 and v("rep", eA) == 1, (v("rep", eC), v("rep", eA)))
+    gl = got["global"]["all"]["raw"]
+    check("the whole Monolith against every signing: 128 counts, the real one first and ranked",
+          gl["n"] == 128 and gl["counts"][0] == gl["observed"] == got["counts"]["all"]["raw"]["uncorrected"] and 1 <= gl["rank"] <= 128,
+          (gl["n"], gl["observed"], gl["rank"]))
+    c = got["counts"]["all"]["raw"]
+    check("what survives each correction, fewer and fewer: uncorrected ≥ BH ≥ BY, Holm ≥ Bonferroni",
+          c["uncorrected"] >= c["bh"] >= c["by"] and c["holm"] >= c["bonferroni"] >= 1 and c["maxt"] >= 1, c)
+    fams = got["counts"]
+    check("the smaller families, chosen before looking, each with its own m",
+          [f["id"] for f in got["families"]] == ["all", "named", "states_named", "core"]
+          and fams["all"]["raw"]["m"] > fams["named"]["raw"]["m"] > fams["states_named"]["raw"]["m"] > fams["core"]["raw"]["m"] > 0,
+          {f: fams[f]["raw"]["m"] for f in fams})
+    fn = [s["n"] for s in got["funnel"]["raw"]]
+    check("the funnel narrows step by step (BH the alternative last step)", all(a >= b for a, b in zip(fn[:5], fn[1:5]))
+          and fn[5] <= fn[3] and fn[1] == c["uncorrected"] and [s["id"] for s in got["funnel"]["raw"]] ==
+          ["tested", "p05", "replicated", "layers", "cluster", "bh"], fn)
+    ld = (got["leads"]["monolith"]["raw"] or [{}])[0]
+    check("every lead carries every test", set(ld) >= {"perm_p", "sign_p", "bh_q", "holm_p", "maxt_p", "cluster", "rep", "other"},
+          sorted(ld)[:8])
+    rp = got["replication"]
+    check("replication against the same signings of both pairs (128)", rp["n"] == 128 and rp["counts"][0] == rp["observed"],
+          (rp.get("n"), rp.get("observed")))
+    s2 = json.load(open(os.path.join(data, "summary.json"), encoding="utf-8"))
+    check("the summary says it is there", s2.get("narrow", {}).get("at") == got["at"] and "narrow_raw.f32" in s2["narrow"]["files"])
+
+
 def main():
     code_list()
     files_rule()
@@ -1869,6 +1977,7 @@ def main():
         addition_place(man)
         split_check(man, summ, os.path.join(work, "data"))
         physical_check(work)
+        narrow_check(work)
         null_control(work)
         man2 = fake_manifest(root=os.path.join(work, "local"))
         every = {(d["rat"], d["day"], f["role"])

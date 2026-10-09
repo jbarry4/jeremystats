@@ -1562,6 +1562,18 @@ BARRY.views.sessions = (function () {
     ].filter(Boolean));
   }
 
+  /* Does a click on this card open a file on THIS computer?
+
+     A row a scan is walking right now has a path that is certainly here. A
+     remembered row has one only if the registry said so (`here`) -- its
+     `path` falls back to the first one on record, which may be a share this
+     computer cannot reach. */
+  function openHere(s) {
+    if (!s.path) return false;
+    if (!s._remembered) return true;
+    return (s.here || []).length > 0 || !!s._reachable;
+  }
+
   function sessionCard(s) {
     const i = s.identity;
     const badN = s.stored ? (s.stored.bad_channels || []).length : 0;
@@ -1575,19 +1587,27 @@ BARRY.views.sessions = (function () {
            + '\n\nKnown to Jarvis, but this scan has not found it.')
         : s.path,
       onclick: (e) => {
-        if (!s.path) {
+        if (!openHere(s)) {
           /* No path here does not mean nowhere.
              The cluster reads plenty of recordings this computer has never
              had a mount for, and the answer to a click on one of those is
              to open it off the cluster rather than to say that it cannot be
-             opened. `BARRY.vacc.open` is the same call the catalogue's
-             Open uses. */
-          if (BARRY.vacc && BARRY.vacc.canRead(s)) {
+             opened. `BARRY.vacc.reach` is the one rule for which; `open` is
+             the same call the catalogue's Open uses.
+
+             `s.path` alone was the wrong test. A remembered row falls back
+             to the first path on record when none is reachable here, so a
+             recording registered by its netfiles UNC -- reachable from the
+             lab network, not from this desk -- clicked through to an open
+             that could only fail. */
+          const got = BARRY.vacc ? BARRY.vacc.reachFor(s, 'xplore') : null;
+          if (got && got.where === 'vacc') {
             BARRY.vacc.open(s, { host: $('#sessTree') });
             return;
           }
-          toast('None of this recording\u2019s paths are on this machine.',
-                'err', 6000);
+          toast((got && got.why)
+                || 'None of this recording\u2019s paths are on this machine.',
+                'err', 7000);
           return;
         }
         // Ctrl/Cmd or shift adds to the selection; a plain click opens it.
@@ -1606,7 +1626,7 @@ BARRY.views.sessions = (function () {
          reached from it -- the health sweep, Compare, the bulk open -- reads
          files here. A checkbox that adds a row to a queue nothing in the
          queue can act on is worse than no checkbox. */
-      s.path ? el('button', {
+      openHere(s) ? el('button', {
         class: 'sc-pick' + (isPicked ? ' on' : ''),
         title: isPicked ? 'Remove from selection' : 'Add to selection',
         text: isPicked ? '\u2713' : '+',
@@ -3251,21 +3271,28 @@ BARRY.views.sessions = (function () {
              + 'them VACC can read, which is what decides whether a '
              + 'VACC-marked tool will offer to run one.')
           : (st.why || 'The cluster is not reachable right now.') }),
+      /* Since 2026-10-01 the lab's share is grouped to `jarvis_writes`
+         (sakhava1 and jbarry4), so a refusal now means this netid is not in
+         that group -- which Shahriar arranges, not vacchelp. */
       (st.denied_roots || []).length
         ? el('p', { class: 'warn-line',
             text: 'VACC mounts ' + st.denied_roots.join(', ') + ' and this '
-                + 'account cannot read it — ask vacchelp@uvm.edu to grant '
-                + 'your PI group read and execute on that share.' })
+                + 'account (' + (st.netid || '?') + ') cannot read it — ask '
+                + 'Shahriar to have it added to the jarvis_writes group.' })
         : null,
       vCounts ? el('div', { class: 'vacc-grid' }, [
         vRow('Reads in place', vCounts['native']),
         vRow('Uploaded to VACC', vCounts['staged']),
+        vCounts['refused'] ? vRow('On a share this account cannot read',
+                                  vCounts['refused']) : null,
         vRow('Not reachable from it', vCounts['local-only']),
         vRow('Not established', vCounts['unknown']),
-      ]) : el('p', { class: 'hint quiet', text: 'Counting…' }),
+      ].filter(Boolean)) : el('p', { class: 'hint quiet', text: 'Counting…' }),
     ].filter(Boolean)));
 
     if (!vCounts && !vCountsLoading) loadVaccCounts();
+
+    if (st.configured) host.appendChild(foundCard());
 
     /* What is being sent, right here.
 
@@ -3385,6 +3412,256 @@ BARRY.views.sessions = (function () {
           + 'walk.' }));
     box.appendChild(vaccBrowse());
     host.appendChild(box);
+  }
+
+  /* ==================================================================
+     Found on VACC -- every recording the cluster holds, and adding the ones
+     Jarvis has not met (backend/vaccfind.py)
+     ==================================================================
+     The registry is how a recording reaches every tool: a picker lists
+     registry rows and nothing else. So the lab's netfiles share, which this
+     desk cannot see and the cluster reads perfectly well, was 1,461
+     recordings no tool here could offer.
+
+     The walk describes; the button writes. A gid is permanent, so adding
+     is one deliberate click that says how many and what it will write --
+     never a side effect of looking. */
+  let vFound = null;
+  let vFoundLoading = false;
+  let vFoundTimer = null;
+  let vAdding = false;
+
+  /* `look`: false to read what is in hand, or which places to search again
+     -- 'vacc' (the cluster's own space), 'netfiles' (the lab's share), or
+     'all'. */
+  async function loadFound(look) {
+    if (vFoundLoading) return;
+    vFoundLoading = true;
+    try {
+      vFound = look ? await apiPost('/api/vacc/found/look',
+                                    { which: look === true ? 'all' : look })
+                    : await api('/api/vacc/found');
+      if (vFound && vFound.note) toast(vFound.note, 'warn', 10000);
+    } catch (e) {
+      vFound = { ok: false, error: e.message };
+    } finally {
+      vFoundLoading = false;
+    }
+    paintVacc();
+    /* While a root is being walked, ask again every ten seconds -- a local
+       route that reads listings in hand and never opens a connection of
+       its own. Only while this pad is on screen and the window is seen; a
+       walk nobody is watching is read when they come back. */
+    clearTimeout(vFoundTimer);
+    if (vFound && vFound.walking) {
+      vFoundTimer = setTimeout(() => {
+        if (mode === 'vacc' && !document.hidden
+            && BARRY.state && BARRY.state.view === 'sessions') {
+          loadFound(false);
+        }
+      }, 10000);
+    }
+  }
+
+  const ago = (s) => (s == null ? 'never'
+    : s < 90 ? 'just now' : s < 5400 ? Math.round(s / 60) + ' min ago'
+      : s < 129600 ? Math.round(s / 3600) + ' h ago'
+        : Math.round(s / 86400) + ' days ago');
+
+  function foundCard() {
+    const box = el('div', { class: 'card' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'Found on VACC' }));
+    if (!vFound) {
+      if (!vFoundLoading) loadFound(false);
+      box.appendChild(el('p', { class: 'hint quiet',
+                                text: 'Reading what the cluster holds…' }));
+      return box;
+    }
+    if (!vFound.ok) {
+      box.appendChild(el('p', { class: 'warn-line',
+        text: vFound.error || 'Could not read what the cluster holds.' }));
+      return box;
+    }
+    const f = vFound;
+    const roots = f.roots || [];
+    const busyKind = (k) => roots.some((r) => r.busy && r.kind === k);
+
+    /* A computer that has never looked. Each computer keeps its own
+       listing of the share (it is minutes to make and a day old at most),
+       so a new one -- or a fresh install -- starts with nothing found, and
+       a card full of zeros would read as "the cluster is empty". It says
+       what to do instead (§5: an empty state says what to do next). */
+    if (f.setup_needed && !f.walking) {
+      box.appendChild(el('div', { class: 'empty-state vacc-setup' }, [
+        el('p', { text: 'This computer has not looked on the VACC yet.' }),
+        el('p', { class: 'hint', style: 'max-width:78ch',
+          text: 'Set it up once: Jarvis looks through the cluster’s own '
+              + 'space (scratch, the uploads, temp — seconds) and through '
+              + 'the lab’s netfiles share (about two and a half minutes), '
+              + 'and matches every recording it finds to the catalogue. '
+              + 'After that the share is looked through again once a day, '
+              + 'or when you press one of the buttons below. Nothing is '
+              + 'copied and nothing is added until you say so.' }),
+      ]));
+      box.appendChild(el('div', { class: 'tk-actions' }, [
+        el('button', { class: 'btn ghost sm', text: 'Find everything on VACC',
+          title: 'Only the cluster’s own space: scratch, the uploads and '
+               + 'temp. Seconds.',
+          onclick: () => loadFound('vacc') }),
+        el('button', { class: 'btn ghost sm',
+          text: 'Find everything on netfiles',
+          title: 'Only the lab’s netfiles share, read from the cluster. '
+               + 'About two and a half minutes.',
+          onclick: () => loadFound('netfiles') }),
+        el('button', { class: 'btn', text: 'Set up this computer',
+          title: 'Both: the cluster’s own space and the netfiles share.',
+          onclick: () => loadFound('all') }),
+      ]));
+      return box;
+    }
+
+    box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
+      text: 'Every place on the cluster Jarvis looks — scratch, uploads and '
+          + 'the lab’s netfiles share — sorted against the catalogue. A '
+          + 'recording that is here and new to Jarvis can be added, and is '
+          + 'then offered by every tool, labelled VACC loaded.' }));
+
+    /* Where it looked, and how fresh each answer is. The share takes a
+       couple of minutes to walk and is walked once a day, so "walked 3 h
+       ago" is information, not an apology. */
+    for (const r of roots) {
+      box.appendChild(el('p', { class: 'hint quiet',
+        text: (r.kind === 'netfiles' ? 'netfiles  ' : 'VACC  ') + r.root
+            + '  ·  ' + (r.busy
+              ? 'looking through it now' + (r.kind === 'netfiles'
+                ? ' (about two and a half minutes)' : '')
+              : r.age_s == null ? 'not looked through on this computer yet'
+                : (r.n.toLocaleString() + ' recording'
+                   + (r.n === 1 ? '' : 's') + ', looked through '
+                   + ago(r.age_s))) }));
+    }
+    for (const d of (f.denied_roots || [])) {
+      box.appendChild(el('p', { class: 'warn-line',
+        text: d + ' is mounted, and this account (' + (f.netid || '?')
+            + ') cannot read it, so it is not walked — ask Shahriar to have '
+            + 'it added to the jarvis_writes group.' }));
+    }
+
+    box.appendChild(el('div', { class: 'vacc-grid' }, [
+      vRow('Already in Jarvis', (f.n_matched || 0).toLocaleString()),
+      vRow('New to Jarvis', (f.n_new || 0).toLocaleString()),
+      vRow('Need a person to say which', (f.n_refused || 0).toLocaleString()),
+      vRow('Folder names no mouse and session',
+           (f.n_unidentifiable || 0).toLocaleString()),
+    ]));
+
+    const part = (label, rows, line, cls) => (rows && rows.length)
+      ? el('details', { class: cls || '' }, [
+          el('summary', { text: label }),
+          el('div', {}, rows.map((r) => el('div', { class: 'hint quiet',
+                                                   text: line(r) }))),
+        ])
+      : null;
+    const byProj = Object.entries(f.new_by_project || {})
+      .sort((a, b) => b[1] - a[1])
+      .map(([p, n]) => n + ' ' + p).join(', ');
+    [
+      part((f.n_new || 0) + ' new' + (byProj ? ' — ' + byProj : '')
+           + (f.n_new > (f.new || []).length
+             ? ' (the first ' + f.new.length + ' listed)' : ''),
+           f.new,
+           (r) => (r.label || r.key) + ' — ' + r.where
+                  + (r.kind === 'netfiles' ? '' : '  (a copy in ' + r.kind + ')')
+                  + (r.copies > 1 ? '  · ' + r.copies + ' copies' : '')),
+      part((f.n_refused || 0) + ' need a person to say which', f.refused,
+           (r) => r.path + ' — ' + r.why),
+      part((f.n_unidentifiable || 0) + ' whose folder names no mouse and '
+           + 'session — left alone; rename the folder, then look again',
+           f.unidentifiable, (r) => r.path),
+    ].filter(Boolean).forEach((x) => box.appendChild(x));
+
+    const n = f.n_new || 0;
+    /* Two searches, because they are two different costs: the cluster's
+       own space is seconds, the lab's share is a couple of minutes of a
+       filesystem everybody's jobs read. Each says when it is running. */
+    box.appendChild(el('div', { class: 'tk-actions' }, [
+      el('button', {
+        class: 'btn ghost sm',
+        text: busyKind('scratch') ? 'Looking on VACC…'
+                                  : 'Find everything on VACC',
+        disabled: busyKind('scratch') ? 'disabled' : null,
+        title: 'Look through the cluster’s own space again — scratch, the '
+             + 'uploads in Jarvis Data, temp and every folder a scan was '
+             + 'pointed at. Seconds.',
+        onclick: () => loadFound('vacc'),
+      }),
+      el('button', {
+        class: 'btn ghost sm',
+        text: busyKind('netfiles') ? 'Looking on netfiles…'
+                                   : 'Find everything on netfiles',
+        disabled: busyKind('netfiles') ? 'disabled' : null,
+        title: 'Look through the lab’s netfiles share again, from the '
+             + 'cluster. About two and a half minutes; the list here '
+             + 'updates when it is done.',
+        onclick: () => loadFound('netfiles'),
+      }),
+      el('button', {
+        class: 'btn',
+        text: vAdding ? 'Adding…'
+          : n ? ('Add ' + n.toLocaleString() + ' recording'
+                 + (n === 1 ? '' : 's') + ' found on VACC')
+            : 'Nothing new to add',
+        disabled: (vAdding || !n) ? 'disabled' : null,
+        onclick: addFound,
+      }),
+    ]));
+    return box;
+  }
+
+  async function addFound() {
+    const f = vFound || {};
+    const n = f.n_new || 0;
+    if (!n || vAdding) return;
+    const byProj = Object.entries(f.new_by_project || {})
+      .sort((a, b) => b[1] - a[1]).map(([p, k]) => k + ' ' + p).join(', ');
+    const ok = await BARRY.confirm(
+      'Add ' + n.toLocaleString() + ' recording' + (n === 1 ? '' : 's')
+        + ' found on VACC?',
+      el('div', { class: 'fix-facts' }, [
+        el('p', { text: n.toLocaleString() + ' recording'
+            + (n === 1 ? ' goes' : 's go') + ' into the catalogue'
+            + (byProj ? ': ' + byProj : '') + '. Each gets a permanent id, '
+            + 'and every tool then offers it, labelled VACC loaded.' }),
+        el('p', { class: 'hint',
+          text: 'One on the netfiles share is filed by its \\\\netfiles03 '
+              + 'path — the same path a lab computer on the network opens. '
+              + 'A copy in scratch is filed by who it is alone; where it '
+              + 'sits on the cluster is never written down.' }),
+        el('p', { class: 'hint quiet',
+          text: 'Nothing is copied and nothing on the cluster changes. The '
+              + 'new records travel to the lab like any others.' }),
+      ]), 'Add them');
+    if (!ok) return;
+    vAdding = true; paintVacc();
+    try {
+      const got = await apiPost('/api/vacc/found/add',
+                                { confirm: true, digest: f.digest });
+      toast(got.added + ' recording' + (got.added === 1 ? '' : 's')
+            + ' added from VACC'
+            + (got.joined ? ', and ' + got.joined + ' already known learned '
+                            + 'their netfiles path' : '') + '.', 'ok', 9000);
+      vFound = null;
+      if (BARRY.vacc) await BARRY.vacc.loadKnows(true);
+      vCounts = null;
+      await loadKnown(true);
+    } catch (e) {
+      toast(e.message, 'err', 10000);
+      vFound = null;           // the list changed: read it again
+    } finally {
+      vAdding = false;
+      paintVacc();
+    }
   }
 
   function vRow(k, v) {

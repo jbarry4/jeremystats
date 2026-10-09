@@ -1,16 +1,16 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Pose — Avery sweep</title>
+<title>Pose — Tooth Fairy</title>
 <style>html,body{margin:0;height:100%}iframe{border:0;width:100vw;height:100vh;display:block}#out{display:none}</style>
 <div id="out"></div>
 <iframe id="app" src="/?linkhold=0"></iframe>
 <script>
-/* POSE, for screenshots: Avery's sweep screen with a faked server, left
+/* POSE, for screenshots: Tooth Fairy's sweep screen with a faked server, left
    open. `?at=scan` stops while it is scanning; anything else runs on to
    the summary. Never reads, trains or writes. */
-/* (The fake data below is the harness's, avery.html.)
+/* (The fake data below is the harness's, toothfairy.html.)
 
-   Every /api/avery* and /api/cfc/* request the panel makes is answered here,
+   Every /api/toothfairy* and /api/cfc/* request the panel makes is answered here,
    so the harness never reads a recording, never trains, never writes a
    label or a bank version -- it checks the screen: the confirm dialog says
    what it will do, starting shows the scanner, the scanner scans real
@@ -86,45 +86,58 @@ const TOLS = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30].map((L, k) => ({
     { status: 200, headers: { 'Content-Type': 'application/json' } }));
   W().fetch = (url, opts) => {
     const u = String(url);
-    if (u === '/api/avery') {
-      const b = { ready: true, model: 'forest', n_recordings: 45, garbage_caught: 0.9853, ds_flagged: 0.4285 };
-      return reply(Object.assign({ ok: true, running: null }, b, { run_id: 'ai20261002-190224-c618', models: {
-        avery: Object.assign({}, b, { name: 'Avery', run_id: 'ai20261002-190224-c618', families: new Array(14).fill('x'), garbage_into_ds: 0.011, garbage_called_garbage: 0.013, ds_called_garbage: 0.0002, flagged_share: 0.45 }),
-        avery_plus: Object.assign({}, b, { name: 'Avery+', run_id: 'aiPLUS', families: new Array(16).fill('x'), garbage_into_ds: 0.012, garbage_called_garbage: 0.61, ds_called_garbage: 0.05, flagged_share: 0.2, tolerances: TOLS, default_tolerance: 0.2 }),
-        avery_gd: Object.assign({}, b, { name: 'Avery Garbage Dystrophy+', model: 'hgb', run_id: 'aiGD', families: new Array(17).fill('x'), garbage_into_ds: 0.011, garbage_called_garbage: 0.6, ds_called_garbage: 0.05, flagged_share: 0.2, tolerances: TOLS, default_tolerance: 0.2 }) } }));
+    if (u === '/api/toothfairy') {
+      return reply({ ok: true, running: null, ready: true, name: 'Tooth Fairy',
+        model: 'blend', run_id: 'ai20261007-231323-671d', n_recordings: 46,
+        families: new Array(18).fill('x'), garbage_into_ds: 0.010,
+        garbage_called_garbage: 0.6, ds_called_garbage: 0.05, flagged_share: 0.15,
+        tolerances: TOLS, default_tolerance: 0.2 });
     }
-    if (u === '/api/avery/sweep') return reply({ ok: true, job: { id: 'job1', status: 'running', stages: [], preview_rev: 0 } });
+    if (u === '/api/curation') {
+      return reply({ ok: true, sets: [
+        { gid: 'ga', kind: 'ds', session_label: 'PTEN m22 s3 2024-07-15', open: true, progress: { total: 173, left: 160 } },
+        { gid: 'gb', kind: 'ds', session_label: 'PTEN_DKO m56 s8 2025-06-19', open: true, progress: { total: 89, left: 89 } },
+        { gid: 'gc', kind: 'ds', session_label: 'KCNT1 m1604 2026-06-29', open: false, progress: { total: 943, left: 940 } },
+        { gid: 'gd', kind: 'ds', session_label: 'PTEN m34 s5 2024-06-10', open: true, progress: { total: 186, left: 0 } }] });
+    }
+    if (u === '/api/toothfairy/sweep') return reply({ ok: true, job: { id: 'job1', status: 'running', stages: [], preview_rev: 0 } });
     if (u.startsWith('/api/cfc/job/job1')) {
       polls += 1;
       const done = Q.get('at') !== 'scan' && polls > 6;
       return reply({ ok: true, job: { id: 'job1', status: done ? 'done' : 'running',
         preview_rev: polls >= 2 ? 1 : 0, elapsed: 30 + polls, eta_s: 50,
-        stages: [{ name: 'avery read', of: 27, done: 27, status: 'done', unit: 'stretches' },
-                 { name: 'avery physio', of: 41, done: Math.min(41, 12 + polls * 2), status: done ? 'done' : 'running', unit: 'stretches' },
-                 { name: 'avery score', of: 40, done: done ? 40 : 0, status: done ? 'done' : 'waiting' }] } });
+        stages: [{ name: 'tf read', of: 27, done: 27, status: 'done', unit: 'stretches' },
+                 { name: 'tf physio', of: 41, done: Math.min(41, 12 + polls * 2), status: done ? 'done' : 'running', unit: 'stretches' },
+                 { name: 'tf score', of: 40, done: done ? 40 : 0, status: done ? 'done' : 'waiting' }] } });
     }
-    if (u.startsWith('/api/avery/sweep/job1/peek')) return reply({ ok: true, rev: 1, peek: { stage: 'physio', samples: SAMPLES } });
+    if (u.startsWith('/api/toothfairy/sweep/job1/peek')) return reply({ ok: true, rev: 1, peek: { stage: 'physio', samples: SAMPLES } });
     if (u.startsWith('/api/cfc/result/job1')) return reply({ ok: true, result: Object.assign({}, RESULT, { label_colors: { spike: '#2f9e6e', garbage: '#dc2626', flag: '#E5A823', review: '#8b5cf6' } }) });
     return realFetch(url, opts);
   };
-  W().eval(`BARRY.avery.open({ gid: 'demo-ds-tutorial', kind: 'ds', name: 'PTEN m22 s3 2024-07-15 (fake numbers)', n: 40, decided: 5, colors: { spike: '#2f9e6e', garbage: '#dc2626', flag: '#E5A823', review: '#8b5cf6' } });`);
+  if (Q.get('at') === 'batch') {
+    W().eval('BARRY.toothFairy.openBatch({})');
+    await untilN(() => f.contentDocument.querySelector('#bigModal:not(.hidden) .tf-batch'));
+    document.title = 'posed';
+    return;
+  }
+  W().eval(`BARRY.toothFairy.open({ gid: 'demo-ds-tutorial', kind: 'ds', name: 'PTEN m22 s3 2024-07-15 (fake numbers)', n: 40, decided: 5, colors: { spike: '#2f9e6e', garbage: '#dc2626', flag: '#E5A823', review: '#8b5cf6' } });`);
   const go = await untilN(() => Array.from(f.contentDocument.querySelectorAll('#bigModal button')).find((b) => b.textContent.trim() === 'Start the sweep'));
   if (Q.get('at') === 'confirm') { document.title = 'posed'; return; }
   go.click();
   if (Q.get('at') === 'stamp') {
-    await untilN(() => { const x = f.contentDocument.getElementById('averyStamp');
+    await untilN(() => { const x = f.contentDocument.getElementById('tfStamp');
                          return x && x.classList.contains('hit'); }, 900);
     await sleep(250);
     document.title = 'posed';
     return;
   }
   if (Q.get('at') === 'feed') {
-    await untilN(() => f.contentDocument.querySelectorAll('#averyLog.stream .avery-logline').length >= 25, 900);
+    await untilN(() => f.contentDocument.querySelectorAll('#tfLog.stream .tf-logline').length >= 25, 900);
     document.title = 'posed';
     return;
   }
   if (Q.get('at') !== 'scan') {
-    const skip = await untilN(() => Array.from(f.contentDocument.querySelectorAll('#averyOv button')).find((b) => /Skip/.test(b.textContent)), 900);
+    const skip = await untilN(() => Array.from(f.contentDocument.querySelectorAll('#tfOv button')).find((b) => /Skip/.test(b.textContent)), 900);
     if (skip) { await sleep(2500); skip.click(); }
   }
   document.title = 'posed';

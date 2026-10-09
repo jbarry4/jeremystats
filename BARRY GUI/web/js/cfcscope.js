@@ -53,14 +53,16 @@ BARRY.cfc = (function () {
       path = null;
       try {
         const r = await api('/api/registry/' + encodeURIComponent(gid));
-        path = ((r.session || {}).here || [])[0] || null;
+        var got = BARRY.vacc.reachFor(
+          Object.assign({ gid: gid }, r.session || {}), 'cfcscope');
+        path = got.path;
       } catch (e) {
         toast('No such recording: ' + e.message, 'err', 8000);
         return false;
       }
       if (!path) {
-        toast('None of that recording’s paths are reachable from this '
-              + 'machine, so there is nothing to look at.', 'err', 9000);
+        toast(got.why || ('None of that recording’s paths are reachable from '
+              + 'this machine, so there is nothing to look at.'), 'err', 9000);
         return false;
       }
     }

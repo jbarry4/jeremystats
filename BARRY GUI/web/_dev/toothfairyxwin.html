@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Harness — the aid window after an Avery sweep</title>
+<title>Harness — the aid window after a Tooth Fairy sweep</title>
 <style>
   body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
          color: #dfe6ee; }
@@ -115,7 +115,7 @@ async function untilN(fn, tries = 300, gap = 100) {
     A.fetch = (url, opts) => {
       const method = ((opts && opts.method) || 'GET').toUpperCase();
       const u = String(url);
-      if (method !== 'GET' && /label|bank|accept|avery|version/.test(u)) {
+      if (method !== 'GET' && /label|bank|accept|toothfairy|version/.test(u)) {
         posts.push(method + ' ' + u);
       }
       return realA(url, opts);
@@ -192,7 +192,7 @@ async function untilN(fn, tries = 300, gap = 100) {
     say('bad', 'the harness itself threw: ' + (e && e.stack || e));
   } finally {
     try { if (A && A.BARRY && A.BARRY.curate.active) A.BARRY.curate.exit(); } catch (e) {}
-    head(bad ? bad + ' failed' : 'The aid window after an Avery sweep: all checks passed');
+    head(bad ? bad + ' failed' : 'The aid window after a Tooth Fairy sweep: all checks passed');
     document.title = bad ? 'FAIL ' + bad : 'ok';
     fa.src = 'about:blank';
     fb.src = 'about:blank';

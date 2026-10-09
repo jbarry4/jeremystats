@@ -112,7 +112,7 @@
    ?stop=<step> leaves the frame at a step for a screenshot: lifted, rats,
    days, units, leaf, help, granger (add &dark=1 for the dark tokens), range, avg, tour<n> (the tour at step n,
    from 0; &phone=1 at 390 px, &dark=1 dark), prog (Monolith Progress; &mode=chg|both, &layout=step,
-   &phone=1, &scroll=<id>), phys (section 6; &phone=1, &scroll=<id>). Negative control: a planted edge moved out of the
+   &phone=1, &scroll=<id>), phys (section 6; &phone=1, &scroll=<id>), narrow (section 7, the same). Negative control: a planted edge moved out of the
    slider's reach is not drawn. */
 const out = document.getElementById('out');
 let bad = 0;
@@ -149,15 +149,32 @@ const STOP = new URLSearchParams(location.search).get('stop');
    top of another word. Measured from the drawn boxes, not judged by eye --
    a unit sat on the last tick's number, and a peak's label ran off the top,
    and both looked like "a figure" in a quick glance. */
-function figWords(root) {
+function figWords(root, sel) {
   const bad = [];
-  for (const g of root.querySelectorAll('svg.mfig')) {
+  // Words not drawn (opacity 0 on them or on a group around them) cannot
+  // collide with anything.
+  const shown = (t, g) => { for (let n = t; n && n !== g; n = n.parentNode) if (n.getAttribute && n.getAttribute('opacity') === '0') return false; return true; };
+  // A word's box in its picture's own units, through any group moved
+  // (translate) between them.
+  const boxIn = (t, g) => {
+    const b0 = t.getBBox();
+    if (!b0.width && !b0.height) return b0;           // not drawn (a hidden picture): nothing to place
+    let m = new DOMMatrix();
+    for (let n = t; n && n !== g; n = n.parentNode) {
+      const tl = n.transform && n.transform.baseVal;
+      if (tl && tl.numberOfItems) m = DOMMatrix.fromMatrix(tl.consolidate().matrix).multiply(m);
+    }
+    const ps = [[b0.x, b0.y], [b0.x + b0.width, b0.y], [b0.x, b0.y + b0.height], [b0.x + b0.width, b0.y + b0.height]].map(([x, y]) => m.transformPoint(new DOMPoint(x, y)));
+    const xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
+    return { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+  };
+  for (const g of root.querySelectorAll(sel || 'svg.mfig')) {
     const vb = g.viewBox.baseVal;
     const boxes = [];
     for (const t of g.querySelectorAll('text')) {
       const w = t.textContent.trim();
-      if (!w) continue;
-      const b = t.getBBox();
+      if (!w || !shown(t, g)) continue;
+      const b = boxIn(t, g);
       if (b.x < -1 || b.y < -1 || b.x + b.width > vb.width + 1 || b.y + b.height > vb.height + 1) {
         bad.push((g.getAttribute('aria-label') || 'figure') + ': “' + w + '” leaves the picture');
       }
@@ -423,13 +440,15 @@ let PHYS_MISSING = false, physPosted = [], physAsked = [];
 function physLeads(layer) {
   return topList(layer).slice(0, layer === 'raw' ? 50 : 30).map((t, i) => {
     const two = i === 1;
-    const tone = { est: two ? t.est * 1.9 : t.est * 1.05, se: 0.03, k: 4 };
-    const noise = { est: two ? 0.02 : t.est * 0.95, se: 0.03, k: 4 };
+    // The third lead: a tone-first rat short (3 rats); the fourth: two
+    // noise-first rats short, so no interval and no difference.
+    const tone = { est: two ? t.est * 1.9 : t.est * 1.05, se: 0.03, k: i === 2 ? 3 : 4 };
+    const noise = { est: two ? 0.02 : t.est * 0.95, se: i === 3 ? null : 0.03, k: i === 3 ? 2 : 4 };
     const d = tone.est - noise.est, se = Math.hypot(tone.se, noise.se), h = 1.943 * se, m = Math.abs(t.est) / 2;
     return { w: t.w, wi: t.wi, band: t.band, bi: t.bi, hz: t.hz, m: t.m, mi: t.mi, pair: t.pair, a: t.a, b: t.b, est: t.est, p: t.p, k: t.k, same: t.same,
-             tone, noise, diff: { est: d, se, df: 6, p: two ? 0.004 : 0.6 },
+             tone, noise, diff: i === 3 ? { est: null, se: null, df: null, p: null } : { est: d, se, df: 6, p: two ? 0.004 : 0.6 },
              both_ways: Math.sign(tone.est) === Math.sign(noise.est) && Math.sign(noise.est) === Math.sign(t.est),
-             equivalence: { lo: d - h, hi: d + h, margin: m, within: d - h > -m && d + h < m },
+             equivalence: i === 3 ? null : { lo: d - h, hi: d + h, margin: m, within: d - h > -m && d + h < m },
              // Each sound: alike for the first lead; Noise far above the rest for the second.
              sound: { sounds: SND4.map((x, j) => ({ sound: x, est: two ? (x === 'Noise' ? t.est * 2.5 : t.est * 0.5) : t.est * (0.95 + 0.03 * j),
                                                     se: 0.02, k: 8, p: 0.01 })),
@@ -535,6 +554,75 @@ function physArray(name) {
     for (let q = 0; q < 6; q++) for (let w = 0; w < N.W - 1; w++) for (let b = 0; b < N.B; b++) for (let mm = 0; mm < N.M; mm++) for (let pp = 0; pp < N.P; pp++) {
       a[at(q, w, b, mm, pp)] = q === 5 ? 5 : q === 2 ? 0 : NaN;
     }
+  }
+  ARR[name] = a;
+  return a;
+}
+/* Section 7, narrowing down, made up: the whole Monolith ranks 3 of 128
+   relabellings (beyond chance); a little survives each correction; the
+   first lead survives everything, the rest nothing. The arrays: the
+   Monolith's own p, with each method a rule of it, so a test can count. */
+let NARROW_MISSING = false, narPosted = [], narAsked = [];
+// Tab 8: made-up numbers from tools/check_joe.py (planted changes, found
+// where planted), read once before the checks start.
+let JOE = null, JOE_MISSING = false, joePosted = [];
+const NARROW = (() => {
+  const cnt = (m, unc, extra) => Object.assign({ m, uncorrected: unc, chance: 0.05 * m, bonferroni: 3, bonferroni_p: 0.05 / m, holm: 4, bh: 120,
+                                                 by: 20, bh_p: 1.8e-5, maxt: 5, maxt_t: 9.8, perm: Math.round(unc * 0.97), perm_bh: 0, sign: Math.round(unc / 2) }, extra || {});
+  const glob = (obs, rank) => { const c = [obs]; for (let i = 1; i < 128; i++) c.push(Math.round(obs * (0.8 + 0.15 * ((i * 37) % 100) / 100))); return { counts: c, observed: obs, n: 128, rank, expected: 17000 }; };
+  const counts = { all: { raw: cnt(340000, 18000, { cluster_cells: 60, clusters: 6, replicated: 900 }), minus_fp: cnt(330000, 17000, { cluster_cells: 40, clusters: 4, replicated: 700 }) },
+                   named: { raw: cnt(23000, 1300), minus_fp: cnt(22000, 1200) }, states_named: { raw: cnt(11000, 650), minus_fp: cnt(10500, 600) },
+                   core: { raw: cnt(2100, 140, { bh: 9, holm: 2, maxt: 3 }), minus_fp: cnt(2000, 120) } };
+  const g0 = glob(18000, 3);
+  g0.counts[1] = 17100;
+  const global = { all: { raw: g0, minus_fp: glob(17000, 40) }, named: { raw: glob(1300, 20), minus_fp: glob(1200, 30) },
+                   states_named: { raw: glob(650, 22), minus_fp: glob(600, 33) }, core: { raw: glob(140, 9), minus_fp: glob(120, 50) } };
+  const leads = (layer) => topList(layer).slice(0, 50).map((t, i) => Object.assign({}, t, {
+    perm_p: i ? 0.03 : 1 / 128, sign_p: i ? 0.07 : 0.0078125, bh_q: i ? 0.5 : 0.001, by_q: i ? 1 : 0.01, holm_p: i ? 1 : 0.02, maxt_p: i ? 0.6 : 0.03125,
+    cluster: i ? null : { p: 0.0078125, from_hz: 9, to_hz: 12, n_bands: 4 },
+    rep: { ab_p: i ? 0.2 : 0.001, cd_p: i ? 0.4 : 0.002, ab_est: t.est, cd_est: t.est, replicated: !i },
+    other: { layer: layer === 'raw' ? 'minus_fp' : 'raw', p: i ? 0.3 : 0.001, est: t.est } }));
+  const files = { 'narrow_raw.f32': { shape: [10, N.W, N.B, N.M, N.P] }, 'narrow_minus_fp.f32': { shape: [10, N.W, N.B, N.M, N.P] } };
+  const t0 = topList('raw')[0];
+  return { ok: true, at: '2026-10-08T12:00:00', alpha: 0.05, families: [
+             { id: 'all', label: 'Every entry the Monolith tests' }, { id: 'named', label: 'The named bands only' },
+             { id: 'states_named', label: 'The four state windows × the named bands' }, { id: 'core', label: 'Cue 1 and Cue 2 × the named bands × four measures' }],
+           counts, global,
+           cluster: { raw: { n: 900, n_sig: 6, cells_sig: 60, threshold_mass: 41.2, top: [
+             { w: 'cue1', wi: 1, m: 'coherence', mi: 0, pair: 0, a: REG[0], b: REG[1], from_hz: 9, to_hz: 12, n_bands: 4, mass: 60.1, p: 0.0078125, sign: 1 },
+             { w: 'cue2', wi: 2, m: 'plv', mi: 6, pair: 12, a: REG[1], b: REG[3], from_hz: 18, to_hz: 22, n_bands: 5, mass: 44.0, p: 0.03, sign: -1 },
+             { w: 'post', wi: 3, m: 'plv', mi: 6, pair: 20, a: REG[2], b: REG[4], from_hz: 30, to_hz: 31, n_bands: 2, mass: 12.0, p: 0.6, sign: 1 }] },
+             minus_fp: { n: 800, n_sig: 0, cells_sig: 0, threshold_mass: 40.0, top: [] } },
+           replication: { observed: 900, tested_both: 300000, expected_independent: 375, counts: [900].concat(Array.from({ length: 127 }, (_x, i) => 300 + i * 4)),
+                          n: 128, rank: 1 },
+           funnel: { raw: [{ id: 'tested', n: 340000 }, { id: 'p05', n: 18000 }, { id: 'replicated', n: 900 }, { id: 'layers', n: 400 }, { id: 'cluster', n: 22 }, { id: 'bh', n: 8 }],
+                     minus_fp: [{ id: 'tested', n: 330000 }, { id: 'p05', n: 17000 }, { id: 'replicated', n: 700 }, { id: 'layers', n: 300 }, { id: 'cluster', n: 0 }, { id: 'bh', n: 0 }] },
+           leads: { monolith: { raw: leads('raw'), minus_fp: leads('minus_fp').slice(0, 30) }, contrast: { raw: [Object.assign({}, leads('raw')[0], SUMMARY.contrast.top.raw[0])] } },
+           files, how: { lead: { w: t0.w, band: t0.band, hz: t0.hz, m: t0.m, pair: t0.pair, a: t0.a, b: t0.b, est: t0.est, se: t0.se, p: t0.p, k: t0.k, same: t0.same } },
+           contrast: { counts: cnt(40000, 2100, { cluster_cells: 0, clusters: 0, bh: 1, holm: 1, maxt: 1 }), global: glob(2100, 60), cluster: { n: 40, n_sig: 0, cells_sig: 0, top: [] } },
+           n_signings: 128, rats: [3, 4, 6, 7, 8, 9, 10, 11], entries: { monolith: 340000 } };
+})();
+SUMMARY.narrow = { at: NARROW.at, files: NARROW.files };
+function narrowArray(name) {
+  const m = /^narrow_(raw|minus_fp)$/.exec(name);
+  if (!m) return null;
+  narAsked.push(name);
+  const E = m[1] === 'raw' ? ARR.edges_raw : ARR.edges_minus_fp;
+  const per = N.W * N.B * N.M * N.P;
+  const a = new Float32Array(10 * per);
+  for (let i = 0; i < per; i++) {
+    const pv = E[per + i], est = E[i];
+    const t = isFinite(pv);
+    a[i] = pv;                                               // hk_p
+    a[per + i] = t ? Math.max(1 / 128, pv) : NaN;            // perm_p
+    a[2 * per + i] = t ? Math.min(1, pv * 2) : NaN;          // sign_p
+    a[3 * per + i] = t ? Math.min(1, pv * 20) : NaN;         // bh_q
+    a[4 * per + i] = t ? Math.min(1, pv * 200) : NaN;        // by_q
+    a[5 * per + i] = t ? Math.min(1, pv * 1000) : NaN;       // holm_p
+    a[6 * per + i] = t ? (pv < 1e-5 ? 0.01 : 0.5) : NaN;     // maxt_p
+    a[7 * per + i] = t && pv < 1e-4 ? 0.01 : NaN;            // cluster_p
+    a[8 * per + i] = t ? (pv < 0.01 ? 1 : 0) : NaN;          // rep
+    a[9 * per + i] = est;                                    // est
   }
   ARR[name] = a;
   return a;
@@ -775,6 +863,15 @@ window.MONO_FIXTURE = {
   async json(path) {
     if (path === '/data/summary') return JSON.parse(JSON.stringify(SUMMARY));
     if (path === '/damage') return JSON.parse(JSON.stringify(DAMAGE));
+    if (path === '/data/narrow') {
+      narAsked.push(path);
+      if (NARROW_MISSING) throw new Error('No such Monolith file: narrow');
+      return JSON.parse(JSON.stringify(NARROW));
+    }
+    if (path === '/data/joe') {
+      if (JOE_MISSING || !JOE) throw new Error('Tab 8 has not been worked out yet.');
+      return JSON.parse(JSON.stringify(JOE));
+    }
     if (path === '/data/physical') {
       physAsked.push(path);
       if (PHYS_MISSING) throw new Error('No such Monolith file: physical');
@@ -798,11 +895,13 @@ window.MONO_FIXTURE = {
     if (path === '/split') { splitAsked.push(body); splitDone = true; return { ok: true }; }
     if (path === '/sessions') { sessionsPosted.push(body); return { ok: true }; }
     if (path === '/physical') { physPosted.push(body); PHYS_MISSING = false; return { ok: true }; }
+    if (path === '/narrow') { narPosted.push(body); NARROW_MISSING = false; return { ok: true }; }
+    if (path === '/joe') { joePosted.push(body); JOE_MISSING = false; return { ok: true }; }
     if (path === '/events') { evPosted.push(body); evRunning = 2; return { ok: true, work: { what: 'events', status: 'running', progress: {} } }; }
     throw new Error('no fixture for POST ' + path);
   },
   async array(name, shape) {
-    const a = ARR[name] || splitArray(name) || sessionArray(name) || physArray(name) || physSndArray(name);
+    const a = ARR[name] || splitArray(name) || sessionArray(name) || physArray(name) || physSndArray(name) || narrowArray(name);
     if (!a) throw new Error('no fixture array ' + name);
     const want = shape.reduce((x, y) => x * y, 1);
     if (a.length !== want) throw new Error(name + ' has ' + a.length + ', shape says ' + want);
@@ -812,6 +911,7 @@ window.MONO_FIXTURE = {
 
 /* ---------------- the checks ---------------- */
 (async () => { try {
+  try { JOE = await (await fetch('joe_fixture.json', { cache: 'no-cache' })).json(); } catch (e) { JOE = null; }
   const f = document.getElementById('app');
   // A fresh view: what the page remembers is put back afterwards.
   let kept = null;
@@ -854,21 +954,21 @@ window.MONO_FIXTURE = {
 
   head('1 · what was kept, first');
   const tabs = () => Array.from(D().querySelectorAll('#tabs > button[role="tab"]'));
-  check('six tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · Cue 2 − Cue 1 | 4 · When we averaged | 5 · Events first | 6 · Physical vs balanced cue',
+  check('eight tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · Cue 2 − Cue 1 | 4 · How a number is made | 5 · Events first | 6 · Physical vs balanced cue | 7 · Narrowing down | 8 · Joe’s data',
         tabs().map((b) => txt(b)).join(' | '));
   check('a fresh page opens on what was kept, the Monolith behind it', M.state.tab === 'cov' && !D().getElementById('covpane').hidden
         && D().getElementById('mainpane').hidden && D().getElementById('tab-cov').getAttribute('aria-selected') === 'true', M.state.tab);
   const dmg = () => D().getElementById('damage');
   await until(() => M.damage && dmg().querySelector('svg.dmap'), 120);
   const dt = txt(dmg());
-  check('titled for what was kept, and said what a presentation is', /^What was kept, and what was lost/.test(txt(dmg().querySelector('h2')))
-        && /A presentation is one cue pair/.test(dt) && /not used in the analysis/.test(dt));
-  check('in all, in words: presentations kept, partly, lost; rest epochs', /In all: 192 presentations \(cue pairs\) over 8 rats and 2 sessions\. 144 kept every region histology allows, in every window; 32 lost a region somewhere; 16 were lost entirely .* Rest epochs \(flower-pot recordings\): 96 of 96 usable\./.test(dt), dt.slice(0, 400));
+  check('titled for what was kept, and said in one line: trials kept, partly, lost; FP epochs', /^What was kept, and what was lost/.test(txt(dmg().querySelector('h2')))
+        && txt(D().getElementById('dmgsay')) === '192 trials, 8 rats, 2 sessions: 144 kept whole, 32 lost a region somewhere, 16 lost entirely. FP epochs: 96 of 96.',
+        txt(D().getElementById('dmgsay')));
+  check('in the page’s own words: no “presentation”, no “rest”, no “entries”', !/presentation|\brest\b|\bentr(y|ies)\b|cue pairs? (kept|lost)/i.test(dt), (dt.match(/.{30}(presentation|\brest\b|\bentr(y|ies)\b).{30}/i) || [''])[0]);
   const lostBy = DAMAGE.whole.state.reduce((a, x) => ({ clipped: a.clipped + x.clipped, histology: a.histology + x.histology, of: a.of + x.of }), { clipped: 0, histology: 0, of: 0 });
-  const cz = txt(D().getElementById('causes'));
-  check('losses broken out by cause: clipping against probe placement', cz.indexOf('clipping (signal at the rail): ' + lostBy.clipped.toLocaleString()) >= 0
-        && cz.indexOf('probe placement (histology): ' + lostBy.histology.toLocaleString()) >= 0
-        && cz.indexOf('of ' + lostBy.of.toLocaleString()) >= 0, cz);
+  const cz = txt(dmg().querySelector('.legend'));
+  check('losses broken out by cause, under the bars: clipping against probe placement', cz.indexOf('clipping (signal at the rail) ' + lostBy.clipped.toLocaleString()) >= 0
+        && cz.indexOf('probe placement (histology) ' + lostBy.histology.toLocaleString()) >= 0, cz);
   const bars = dmg().querySelectorAll('svg.dbar');
   const keptRect = bars[0] && bars[0].querySelector('rect[data-reason="kept"]');
   const tS = DAMAGE.whole.state.reduce((a, x) => ({ of: a.of + x.of, kept: a.kept + x.kept }), { of: 0, kept: 0 });
@@ -887,20 +987,31 @@ window.MONO_FIXTURE = {
   dcell.dispatchEvent(new MouseEvent('mouseleave'));
   const drows = dmg().querySelector('table.dtable').querySelectorAll('tbody tr');
   check('a row per rat and a total', drows.length === 9 && txt(drows[8].querySelector('th')) === 'All');
-  check('the total is the sum of the rows: 144 kept, 32 partly, 16 lost of 192 · rest 96/96',
-        /144 kept, 32 partly, 16 lost of 192 cue pairs · rest 96\/96/.test(txt(drows[8])), txt(drows[8]));
-  check('each rat over both days: 18 kept, 4 partly, 2 lost of 24', /18 kept, 4 partly, 2 lost of 24 cue pairs · rest 12\/12/.test(txt(drows[0])), txt(drows[0]));
-  check('what was refused on the cluster and the passed-over FP recordings are said', /2 refused on the cluster/.test(txt(drows[0]))
-        && /aborted acquisition/.test(txt(dmg().querySelector('tr[data-rat="7"]'))));
-  check('the entries it cost, and the region with nothing', /Entries: 340,000 of 375,144 tested/.test(dt) && /Nothing at all with Right POR/.test(dt));
-  check('and the aliasing check', /Aliasing: worst leakage into 1–55 Hz −142 dB/.test(dt));
-  check('which histology, first: v2, and the channel sanity run under it', /^Histology v2: Histology v2 \(Joes multi site histo results\.xlsx, rescored 2026-10-05\)/.test(txt(D().getElementById('histosay')))
-        && /Channel sanity v2 was run over every banked recording on 2026-10-05 \(53 recordings\)/.test(txt(D().getElementById('histosay')))
+  const words = (tr) => Array.from(tr.querySelectorAll('[data-words]')).map((c) => c.dataset.words);
+  check('the total is the sum of the rows: 144 kept, 32 partly, 16 lost of 192 · FP 96/96, as a bar and in its words',
+        words(drows[8]).slice(-1)[0] === '144 kept whole, 32 partly, 16 lost of 192 trials · FP epochs 96 of 96'
+        && /144\/192 ?FP 96\/96$/.test(txt(drows[8])) && !!drows[8].lastElementChild.querySelector('svg.keptbar'), words(drows[8]).join(' | '));
+  const kb = drows[8].lastElementChild.querySelector('svg.keptbar');
+  const kbw = (k) => Number((kb.querySelector('rect[data-k="' + k + '"]') || { getAttribute: () => 0 }).getAttribute('width'));
+  check('its bar to scale: 144, 32 and 16 of 192 (measured)', Math.abs(kbw('kept') - 96 * 144 / 192) < 0.2 && Math.abs(kbw('partial') - 96 * 32 / 192) < 0.2
+        && Math.abs(kbw('lost') - 96 * 16 / 192) < 0.2, [kbw('kept'), kbw('partial'), kbw('lost')].join());
+  check('each rat over both days: 18 kept, 4 partly, 2 lost of 24', /^18 kept whole, 4 partly, 2 lost of 24 trials · FP epochs 12 of 12/.test(words(drows[0]).slice(-1)[0]), words(drows[0]).join(' | '));
+  check('what was refused on the cluster and the passed-over FP recordings are said, behind an ⓘ', words(drows[0]).some((w) => /2 refused on the cluster/.test(w))
+        && !!drows[0].querySelector('.knote') && words(dmg().querySelector('tr[data-rat="7"]')).some((w) => /aborted acquisition/.test(w)));
+  check('the stat tests it cost, in one line', /^340,000 of 375,144 stat tests run \(91%\)\./.test(txt(D().getElementById('dmgtests'))), txt(D().getElementById('dmgtests')));
+  const openMore = async (key) => { const d = D().querySelector('details.xmore[data-key="' + key + '"]'); if (!d) return null; if (!d.open) d.querySelector('summary').click(); await sleep(40); return d; };
+  const dwhy = await openMore('dmg-why');
+  check('and behind its ▸: why the others were not, the region with nothing, and the aliasing check', !!dwhy && /Nothing at all with Right POR/.test(txt(dwhy))
+        && /Aliasing: worst leakage into 1–55 Hz −142 dB/.test(txt(dwhy)), txt(dwhy).slice(0, 200));
+  check('which histology, first: v2, and the channel sanity run under it', /^Histology v2 · channel sanity v2 \(53 recordings\)/.test(txt(D().getElementById('histosay')))
         && !D().getElementById('histostale'), txt(D().getElementById('histosay')));
-  check('the counts say which histology the pooled numbers were made under', /^Histology v2: only probes scored “y”, plus Left POR-SUB/.test(txt(D().getElementById('histoverdict'))),
-        txt(D().getElementById('histoverdict')));
-  check('the counts say what was lost and link here', /Lost on the way: 16 of 192 cue pairs entirely, 32 partly/.test(txt(D().getElementById('verdict')))
-        && !!D().querySelector('#verdict button.linkish'));
+  const dhis = await openMore('dmg-histo');
+  check('and its rule behind a ▸', !!dhis && /Histology v2 \(Joes multi site histo results\.xlsx, rescored 2026-10-05\)/.test(txt(dhis))
+        && /Channel sanity v2 was run over every banked recording on 2026-10-05 \(53 recordings\)/.test(txt(dhis)), txt(dhis).slice(0, 200));
+  check('the counts say which histology the pooled numbers were made under, its rule on hover', txt(D().getElementById('histoverdict')) === 'Histology v2'
+        && /^Only probes scored “y”, plus Left POR-SUB/.test(D().getElementById('histoverdict').title), D().getElementById('histoverdict').title);
+  check('the counts say what was lost and link here', /16 of 192 trials lost, 32 in part \(what was kept\)/.test(txt(D().getElementById('verdictfacts')))
+        && !!D().querySelector('#verdict button.linkish'), txt(D().getElementById('verdictfacts')));
   const pm = D().getElementById('pairmat');
   const pcells = pm ? Array.from(pm.querySelectorAll('rect[data-pair]')) : [];
   check('which comparisons remain: a square per region pair (66)', pcells.length === PAIRS.length, pcells.length);
@@ -917,24 +1028,34 @@ window.MONO_FIXTURE = {
   okc.dispatchEvent(new MouseEvent('mouseenter', { clientX: 300, clientY: 300 }));
   await sleep(10);
   check('a pair with enough: how much of it was tested', /8 rats have both regions/.test(txt(D().getElementById('tip')))
-        && /800 of 1,000 of its entries were tested \(80%\)/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
+        && /800 of 1,000 of its stat tests were tested \(80%\)/.test(txt(D().getElementById('tip'))), txt(D().getElementById('tip')));
   okc.dispatchEvent(new MouseEvent('mouseleave'));
   const seatRow = (rat) => D().querySelector('#seattable tr[data-rat="' + rat + '"]');
-  check('presentations kept per cue, A/B/C/D, a row per rat and a total, each seat’s sound named',
-        D().querySelectorAll('#seattable tbody tr').length === 9 && /^10 of 12 kept, 2 partly/.test(txt(seatRow(3).children[1]))
+  check('trials kept per cue, A/B/C/D, a row per rat and a total, as bars, each letter’s sound named',
+        D().querySelectorAll('#seattable tbody tr').length === 9 && seatRow(3).children[1].dataset.words === '10 kept whole, 2 partly of 12'
+        && !!seatRow(3).children[1].querySelector('svg.keptbar') && /^10\/12/.test(txt(seatRow(3).children[1]))
         && /Click$/.test(txt(seatRow(3).children[1])) && /Low tone$/.test(txt(seatRow(3).children[2])) && /High tone$/.test(txt(seatRow(4).children[1])),
-        txt(seatRow(3)));
+        txt(seatRow(3)) + ' / ' + seatRow(3).children[1].dataset.words);
   const hc = D().querySelectorAll('#histochanges tbody tr');
   check('what histology v2 changed from v1, and whether the Monolith uses it now', hc.length === 2
         && /r3Right PERlateral entorhinalyused/.test(txt(hc[0])) && /left out/.test(txt(hc[1])), Array.from(hc).map(txt).join(' | '));
-  check('how Minus FP works, its steps and what it means for the pair window and the contrast',
-        D().querySelectorAll('#minusfp ol.qsteps li').length === W().MONO_HELP.T.layer.steps.length
-        && /rest pieces are 20 s too/.test(txt(D().getElementById('minusfp'))) && /raw only/.test(txt(D().getElementById('minusfp'))));
   const mfp = D().getElementById('minusfp');
-  const mrows = Array.from(D().querySelectorAll('#mfptable tbody tr')).map((r) => Array.from(r.children).map(txt).join(' | '));
-  check('it starts with an example, worked both ways in a table', mfp.querySelector('.qexample') === mfp.children[1]
-        && mrows.join(' / ') === 'Precon1 | 0.42 | 0.38 | 0.04 / Precon4 | 0.49 | 0.43 | 0.06 / Change | +0.07 Raw | +0.05 the whole day | +0.02 Minus FP',
-        mrows.join(' / '));
+  check('how Minus FP works: one line, then something to drag', /^Raw is the change in the trials alone\. Minus FP takes each day’s FP1\/FP2 value off first/.test(txt(mfp.querySelector('.takeaway')))
+        && !!mfp.querySelector('#fpslider .xfpslider') && mfp.querySelectorAll('#fpslider svg .xhandle').length === 2);
+  await until(() => /the top result/.test(txt(mfp.querySelector('#fpslider .xctl'))), 60);
+  const fpv = () => [txt(mfp.querySelector('.xraw')), txt(mfp.querySelector('.xmfp'))];
+  const fpBefore = fpv();
+  const fpH4 = mfp.querySelectorAll('#fpslider svg .xhandle')[1];
+  for (let i = 0; i < 6; i++) fpH4.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+  await sleep(20);
+  const fpAfter = fpv();
+  check('a real rat’s numbers, the top result’s; raising Precon4’s FP moves Minus FP down and leaves Raw alone',
+        /^r\d+ · .* \(the top result\)$/.test(txt(mfp.querySelector('#fpslider .xctl .small'))) && fpAfter[0] === fpBefore[0]
+        && Number(fpAfter[1].replace('−', '-')) < Number(fpBefore[1].replace('−', '-')), fpBefore.join(',') + ' → ' + fpAfter.join(','));
+  const msteps = await openMore('mfp-steps');
+  check('and behind its ▸: the steps, the whole pair’s 20 s FP epochs, and the contrast raw only',
+        !!msteps && msteps.querySelectorAll('ol.qsteps li').length === W().MONO_HELP.T.layer.steps.length
+        && /20 s FP epochs/.test(txt(msteps)) && /Raw only/.test(txt(msteps)), txt(msteps).slice(-160));
   const dw = figWords(dmg());
   check('no word in its pictures is cut off or on another', dw.length === 0, dw.slice(0, 4).join(' | '));
 
@@ -965,12 +1086,12 @@ window.MONO_FIXTURE = {
   const dmgT = txt(dmg());
   const dhead = Array.from(dmg().querySelector('table.dtable').querySelectorAll('thead th')).map(txt);
   check('sessions in what goes but not built: said, a placeholder each, a column each, in Precon order',
-        /^Precon2 and Precon3 are in what goes but not built yet: run them on the VACC and fetch/.test(txt(D().getElementById('dmgpending')))
+        /^Precon2 and Precon3: in what goes, not built yet\. Run and fetch/.test(txt(D().getElementById('dmgpending')))
         && Array.from(dmg().querySelectorAll('.dmap-pending')).map((x) => x.dataset.day).join() === 'Precon2,Precon3'
         && dhead.join('|') === 'Rat|Precon1|Precon2|Precon3|Precon4|All sessions'
-        && /in what goes, not built yet: run and fetch/.test(txt(dmg().querySelector('table.dtable tbody tr'))), dhead.join('|'));
+        && /not built yet/.test(txt(dmg().querySelector('table.dtable tbody tr'))), dhead.join('|') + ' / ' + txt(D().getElementById('dmgpending')));
   check('and the whole pair, before its run is fetched, says it is not measured yet',
-        /not measured yet: its run on the VACC/.test(txt(D().getElementById('pairpending'))));
+        /not measured yet: fetch its run/.test(txt(D().getElementById('pairpending'))));
   delete M.damage.pending_days;
   delete M.damage.pair_measured;
   M.renderDamage();
@@ -979,8 +1100,33 @@ window.MONO_FIXTURE = {
 
   head('what it says first');
   const v = D().getElementById('verdict');
-  check('the counts, and how many by chance', /340,000 entries tested; 18,000 have p < \.05, where about 17,000/.test(txt(v)), txt(v).slice(0, 160));
-  check('every p is said to be uncorrected', /uncorrected/.test(txt(v)) && /uncorrected/.test(txt(D().querySelector('.lede'))));
+  check('the counts, and how many by chance, in one line', txt(D().getElementById('verdictline')) === 'Raw: 18,000 of 340,000 stat tests pass p < .05. Chance alone gives about 17,000.',
+        txt(D().getElementById('verdictline')));
+  const vb = () => Array.from(D().querySelectorAll('#verdictbars .xbarrow'));
+  await sleep(1600);
+  const vbw = (r, c) => parseFloat(r.querySelector(c).style.width || r.querySelector(c).style.left);
+  check('as bars, Raw and Minus FP, found against chance, drawn to scale (measured, after they grow in)', vb().length === 2
+        && vb().map((r) => r.dataset.id).join() === 'raw,minus_fp' && Math.abs(vbw(vb()[0], '.xbf') / parseFloat(vb()[0].querySelector('.xbc').style.left) - 18000 / 17000) < 0.01
+        && vb()[0].getAttribute('aria-pressed') === 'true' && /^Minus FP17,000 · chance 16,500$/.test(txt(vb()[1])), vb().map((r) => txt(r) + ' ' + r.querySelector('.xbf').style.width).join(' | '));
+  check('every p is said to be uncorrected', /every p uncorrected/.test(txt(D().getElementById('verdictfacts'))) && /uncorrected/.test(txt(D().querySelector('.lede'))));
+  vb()[1].click();
+  await until(() => M.state.layer === 'minus_fp' && M.data.edges.minus_fp && /^Minus FP: /.test(txt(D().getElementById('verdictline'))), 80);
+  check('a bar clicked switches to it', M.state.layer === 'minus_fp' && vb()[1].getAttribute('aria-pressed') === 'true'
+        && /^Minus FP: 17,000 of 330,000 stat tests pass p < \.05\. Chance alone gives about 16,500\.$/.test(txt(D().getElementById('verdictline'))), txt(D().getElementById('verdictline')));
+  vb()[0].click();
+  await until(() => M.state.layer === 'raw' && /^Raw: /.test(txt(D().getElementById('verdictline'))), 80);
+  const vm = D().querySelector('#verdict details.xmore[data-key="verdict-more-main"]');
+  vm.querySelector('summary').click();
+  await until(() => vm.querySelectorAll('.xblocks rect').length === 127 && /^The real count ranks 3 of 128: beyond nearly every shuffle.$/.test(txt(vm.querySelector('.xshuffle .xcap'))), 200);
+  check('behind its ▸: the shuffles of the rats, played, the real count landing last', vm.querySelectorAll('.xblocks rect').length === 127
+        && txt(vm.querySelector('.xreal text')) === 'the real rats: 18,000' && txt(vm.querySelector('.xshuffle .xtitle')) === 'Raw: stat tests at p < .05, with the rats shuffled',
+        txt(vm).slice(0, 240));
+  check('and all eight rats the same way, against chance', vm.querySelectorAll('#verdictagree .xbarrow').length === 1
+        && /^Raw2,400 · chance 2,344$/.test(txt(vm.querySelector('#verdictagree .xbarrow'))) && /All 8 rats the same way, against chance/.test(txt(vm)), txt(vm.querySelector('#verdictagree')));
+  const vw7 = figWords(vm, 'svg');
+  check('none of its words cut off or overlapping', vw7.length === 0, vw7.slice(0, 4).join(' | '));
+  vm.querySelector('summary').click();
+  await sleep(20);
   const items = () => D().querySelectorAll('#toplist > li');
   check('ten points of interest', items().length === 10, items().length);
   check('the first is the planted change, all eight rats', /Right ACC – Right OFC/.test(txt(items()[0])) && /8\/8 rats/.test(txt(items()[0])));
@@ -1080,7 +1226,7 @@ window.MONO_FIXTURE = {
   await sleep(30);
   let L = listed(), B = brute({ measure: 'plv' });
   check('by measure: everything listed is PLV', L.length > 0 && L.every((t) => t.m === 'plv'), L.map((t) => t.m).join(','));
-  check('the count is every PLV entry with p < .05 (' + B.length + ')', M.filtN === B.length && new RegExp(B.length.toLocaleString() + ' entries pass').test(txt(D().getElementById('filtsay'))), M.filtN);
+  check('the count is every PLV stat test with p < .05 (' + B.length + ')', M.filtN === B.length && new RegExp(B.length.toLocaleString() + ' stat tests pass').test(txt(D().getElementById('filtsay'))), M.filtN);
   check('and the first is the best of them: most rats the same way, then p', L[0].same === B[0].same && Math.abs(L[0].p - B[0].pv) < 1e-12
         && L[0].pair === B[0].p, JSON.stringify([L[0].same, L[0].p, B[0].same, B[0].pv]));
   check('the list says it is filtered', /Filtered: PLV/.test(txt(D().querySelector('#poi details.fwrap > summary'))) && items().length === Math.min(10, L.length));
@@ -1169,7 +1315,7 @@ window.MONO_FIXTURE = {
         && !D().getElementById('mainpane').hidden && D().getElementById('tab-c21').getAttribute('aria-selected') === 'true');
   check('no layer and no window to choose: the comparison and why it is raw only, with its ?',
         !D().querySelector('#controls .seg button[data-id="minus_fp"]') && !D().getElementById('winctl')
-        && /^Raw only: the rest Minus FP takes away is the same for both cue windows/.test(txt(D().getElementById('contrastsay')))
+        && /^Raw only: the FP that Minus FP takes away is the same for both cue windows/.test(txt(D().getElementById('contrastsay')))
         && !!D().querySelector('#contrastctl .qmark[data-help="contrast"]'));
   const sp21 = Array.from(D().querySelectorAll('#splitctl .seg button')).map(txt);
   check('the cue pairs read as the comparison: A+C vs B+D, AB: B − A, CD: D − C', sp21.join(' | ') === 'A+C vs B+D (both pairs) | AB: B − A | CD: D − C', sp21.join(' | '));
@@ -1198,8 +1344,23 @@ window.MONO_FIXTURE = {
   check('and Precon2 and Precon3 between them, underneath', Array.from(D().querySelectorAll('#between .progcell')).map((c) => c.dataset.day).join() === 'Precon2,Precon3');
   check('the change circuit draws what passes at the contrast (the planted one)', !!D().querySelector('#circsvg path.edge[data-pair="1"]'));
   check('its own points of interest: the planted contrast first', /Right ACC – Right DHC/.test(txt(items()[0])) && /8\/8 rats/.test(txt(items()[0])), txt(items()[0]));
-  check('the counts are the contrast’s own, with what chance would give', /^Cue 2 − Cue 1, A\+C vs B\+D \(both pairs\): 40,000 entries tested; 2,100 have p < \.05 for Precon4 against Precon1, where about 2,000/.test(txt(D().getElementById('c21verdict'))),
+  check('the counts are the contrast’s own, with what chance would give, in one line', txt(D().getElementById('c21verdict'))
+        === 'A+C vs B+D (both pairs): 2,100 of 40,000 stat tests changed at p < .05, Precon1 → Precon4. Chance alone gives about 2,000.',
         txt(D().getElementById('c21verdict')));
+  const vb21 = Array.from(D().querySelectorAll('#verdictbars .xbarrow'));
+  check('and as a bar, found against chance (both pairs: the split’s own counts are not in this fixture)', vb21.map((r) => r.dataset.id).join() === 'all'
+        && vb21[0].getAttribute('aria-pressed') === 'true' && /^Both pairs2,100 · chance 2,000$/.test(txt(vb21[0])),
+        vb21.map((r) => r.dataset.id + ':' + r.getAttribute('aria-pressed') + ':' + txt(r)).join());
+  check('the circuits said in one line, the number behind a ▸', txt(D().getElementById('c21say')) === 'Within Precon1, within Precon4, and the change between them: the one tested.'
+        && !!D().querySelector('#circmode details.xmore[data-key="c21-more"]'));
+  const c21m = D().querySelector('#circmode details.xmore[data-key="c21-more"]');
+  c21m.querySelector('summary').click();
+  await until(() => D().querySelector('#c21player .xnumplayer'), 120);
+  check('opened, it plays how one of these numbers is made, on the line in view', !!D().querySelector('#c21player .xnumplayer svg.xnum')
+        && /^[RL] [A-Z-]+ – [RL] [A-Z-]+ · .+ · .+\. Each trial’s value is its Cue 2 window less its own Cue 1 window/.test(txt(D().getElementById('c21how'))),
+        txt(D().getElementById('c21how')));
+  c21m.querySelector('summary').click();
+  await sleep(20);
   // Its controls and its own ranking where the Monolith's are: their own
   // columns, right of the circuits on a wide screen.
   const where3 = () => ['circcard', 'controls', 'poi'].map((id) => D().getElementById(id).getBoundingClientRect());
@@ -1215,8 +1376,9 @@ window.MONO_FIXTURE = {
   f.style.width = wide0;
   await sleep(60);
   check('its own top points of interest, ranked on their own; no ranking within windows here',
-        /^Cue 2 − Cue 1: its own top 1 points of interest/.test(txt(D().querySelector('#poi h2'))) && !D().querySelector('#poi .rankrow')
-        && /over Cue 2 − Cue 1 alone/.test(txt(D().getElementById('poi'))), txt(D().querySelector('#poi h2')));
+        /^Cue 2 − Cue 1: its top 1$/.test(txt(D().querySelector('#poi h2'))) && !D().querySelector('#poi .rankrow')
+        && /over Cue 2 − Cue 1 alone/.test(D().getElementById('poirule').title) && txt(D().getElementById('poirule')) === 'Best first. Click one to go to it.',
+        txt(D().querySelector('#poi h2')));
   check('and how they compare with the Monolith’s ranking', /^Against 2 · The Monolith: 0 of these 1 are also among the Monolith’s top 50/.test(txt(D().getElementById('c21vs')))
         && !!D().getElementById('tomain'), txt(D().getElementById('c21vs')));
   const vs0 = txt(D().querySelector('#toplist li .vsm'));
@@ -1239,7 +1401,7 @@ window.MONO_FIXTURE = {
   check('and the Monolith’s own filter is left as it was', JSON.stringify(M.state.filt || null) === mFilt, JSON.stringify(M.state.filt));
   D().getElementById('f-clear').click();
   await sleep(20);
-  check('Clear brings its own top points back', !M.state.filtC && /^Cue 2 − Cue 1: its own top 1 points/.test(txt(D().querySelector('#poi h2'))));
+  check('Clear brings its own top results back', !M.state.filtC && /^Cue 2 − Cue 1: its top 1$/.test(txt(D().querySelector('#poi h2'))));
   check('the trail says what its numbers are', /^Cue 2 − Cue 1/.test(txt(D().querySelector('#trail .crumb')))
         && /of Cue 2 − Cue 1, pooled over rats \(raw only\)/.test(txt(D().getElementById('trailsay'))), txt(D().getElementById('trailsay')));
   entryAsked = [];
@@ -1261,7 +1423,7 @@ window.MONO_FIXTURE = {
         && D().getElementById('within').hidden && !D().getElementById('changebox').hidden, M.state.win);
   check('and its controls and ranking back in their own columns', D().getElementById('controls').parentNode.classList.contains('col-ctl')
         && D().getElementById('poi').parentNode.classList.contains('col-poi') && !D().getElementById('c21bar')
-        && /points of interest · Raw$/.test(txt(D().querySelector('#poi h2'))), txt(D().querySelector('#poi h2')));
+        && /^Top 10 results · Raw$/.test(txt(D().querySelector('#poi h2'))), txt(D().querySelector('#poi h2')));
   M.set({ kind: vw0.kind, win: vw0.win, band: vw0.band, method: vw0.method, level: vw0.level, sel: vw0.sel, hi: null });
   await sleep(20);
 
@@ -1282,7 +1444,8 @@ window.MONO_FIXTURE = {
   check('CONTROL: its change is not in the whole', at(ARR.edges_raw, 1, 0, 29, 3, PLANT3.p) >= 0.05 || !isFinite(at(ARR.edges_raw, 1, 0, 29, 3, PLANT3.p)));
   check('the view says which half', /Pre-baseline · 30 Hz · Envelope cc · Raw · AB pair/.test(txt(D().getElementById('ctitle'))), txt(D().getElementById('ctitle')));
   check('its own points of interest, its change first', /Right ACC – Left OFC/.test(txt(items()[0])) && /Envelope cc/.test(txt(items()[0])), txt(items()[0]));
-  check('the counts say only that half is shown', /Showing the AB pair only: 8 rats, 96 presentations/.test(txt(D().getElementById('verdict'))), txt(D().getElementById('verdict')).slice(0, 300));
+  check('the counts say only that half is shown', /^AB pair only, Raw: 15,000 of 300,000 stat tests pass p < \.05\./.test(txt(D().querySelector('#verdict .splitsay'))),
+        txt(D().getElementById('verdict')).slice(0, 300));
   entryAsked = [];
   D().querySelector('#circsvg path.edge[data-pair="' + PLANT3.p + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await until(() => entryAsked.length, 80);
@@ -1358,7 +1521,7 @@ window.MONO_FIXTURE = {
   const p2m = p2.reduce((a, b) => a + b, 0) / p2.length;
   check('a matrix, rats by sessions, and the mean over rats', trows.length === 9 && trows[0].querySelectorAll('td').length === 4
         && txt(trows[8].children[2]).indexOf(W().MONO_FIGS.sig(p2m)) === 0 && /\(7\)$/.test(txt(trows[8].children[2])), txt(trows[8]));
-  check('and nothing is tested', /nothing here is tested/.test(txt(TJn())) && !/p [<=.]/.test(txt(TJn().querySelector('#trajmat'))));
+  check('and nothing is tested', /Descriptive: not tested/.test(txt(TJn())) && !/p [<=.]/.test(txt(TJn().querySelector('#trajmat'))));
   const tjw = figWords(TJn());
   check('no word in its picture cut off or overlapping', tjw.length === 0, tjw.slice(0, 4).join(' | '));
   const keepTraj = M.data.S.trajectory;
@@ -1370,7 +1533,7 @@ window.MONO_FIXTURE = {
   M.renderTraj();
 
   head('every line drawn, with its p');
-  check('the legend says thickness is the size of the change, not p', /Line thickness = how big the change is, not its p/.test(txt(D().getElementById('legend'))));
+  check('the legend says thickness is the size of the change, not p', /Thicker: a bigger change, not a smaller p/.test(txt(D().getElementById('legend'))));
   const lrows = () => Array.from(D().querySelectorAll('#lines table.linetable tbody tr'));
   check('a row for every line drawn (' + drawn() + ')', lrows().length === drawn() && drawn() > 0, lrows().length);
   const lpv = lrows().map((r) => at(ARR.edges_raw, 1, PLANT.w, PLANT.b, PLANT.m, Number(r.dataset.pair)));
@@ -1576,7 +1739,7 @@ window.MONO_FIXTURE = {
   check('each cell is that rat’s change in that pair, from its own presentations', txt(prow(3).querySelector('td[data-pair="AB"] .num'))
         === W().MONO_FIGS.sig(Math.abs(m3('Precon4') - m3('Precon1'))).replace(/^/, m3('Precon4') - m3('Precon1') >= 0 ? '+' : '−'),
         txt(prow(3).querySelector('td[data-pair="AB"] .num')));
-  check('grouped by seat and by sound, and said which it follows', /^By seat: AB .* · CD /.test(txt(D().getElementById('physseat')))
+  check('grouped by A/B/C/D and by sound, and said which it follows', /^By A\/B\/C\/D: AB .* · CD /.test(txt(D().getElementById('physseat')))
         && (txt(D().getElementById('physsound')).match(/(Click|Noise|High tone|Low tone) /g) || []).length === 4
         && !!D().getElementById('physsay'), txt(D().getElementById('physsound')));
   const p2name = sh(REG[PAIRS[PLANT2.p][0]]) + ' – ' + sh(REG[PAIRS[PLANT2.p][1]]);
@@ -1615,7 +1778,7 @@ window.MONO_FIXTURE = {
   await until(() => gs().querySelectorAll('circle[data-i]').length === 12, 40);
   check('its pictures’ words neither cut off nor overlapping', sw().length === 0, sw().slice(0, 4).join(' | '));
   check('the trail: pooled › each rat › r3 › Precon4, values not changes', crumbsT().join('|') === 'The Monolith|' + p2name + '|each rat|r3|Precon4'
-        && /one session’s presentations, one value each — not a change/.test(trailSay()), crumbsT().join('|') + ' / ' + trailSay());
+        && /one session’s trials, one value each — not a change/.test(trailSay()), crumbsT().join('|') + ' / ' + trailSay());
   check('under it, this day’s cue pairs (12), the one with no value hollow', gs().querySelectorAll('circle[data-i]').length === 12
         && gs().querySelectorAll('circle[data-i][fill="none"]').length === 1);
   const nod = arcs().find((a) => a.dataset.key === 'p04');
@@ -1637,7 +1800,7 @@ window.MONO_FIXTURE = {
   leaf.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await leafReady('p01');
   check('clicking a cue pair opens it', !!LP() && !!LP().querySelector('.lcard'));
-  check('the trail ends at its signals', crumbsT()[crumbsT().length - 1] === 'p01 · signals' && /one presentation: its signals/.test(trailSay()), crumbsT().join('|'));
+  check('the trail ends at its signals', crumbsT()[crumbsT().length - 1] === 'p01 · signals' && /one trial: its signals/.test(trailSay()), crumbsT().join('|'));
   const c6 = CELLS.findIndex((c) => c.fp === 6 && c.fa === 40);
   check('one request: the entry, the rat, the day, the cue pair, the PAC cell',
         leafAsked.length === 1 && leafAsked[0] === 'layer=raw&at=2,19,6,12&rat=3&day=Precon4&unit=p01&cell=' + c6, leafAsked.join(' '));
@@ -1645,7 +1808,7 @@ window.MONO_FIXTURE = {
   check('it says which', txt(LP().querySelector('h2')) === 'r3 · Precon4 · p01 (Noise → High tone) · cue2 window, 10 s · 20 Hz · ' + pairName, txt(LP().querySelector('h2')));
   const secs = () => Array.from(LP().querySelectorAll('.lsec'));
   const s0 = secs()[0];
-  check('the whole cue pair, both regions, its windows marked', /The whole cue pair/.test(txt(s0)) && ['pre', 'cue1', 'cue2', 'post'].every((n) => txt(s0.querySelector('svg')).indexOf(n) >= 0)
+  check('the whole trial, both regions, its windows marked', /The whole trial/.test(txt(s0)) && ['pre', 'cue1', 'cue2', 'post'].every((n) => txt(s0.querySelector('svg')).indexOf(n) >= 0)
         && s0.querySelectorAll('svg path').length === 2);
   check('the analysed window shaded on it', !!s0.querySelector('svg rect') && /cue2 window this number was computed on \(120–130 s into/.test(txt(s0)), txt(s0).slice(-160));
   const s1 = secs()[1];
@@ -1655,7 +1818,7 @@ window.MONO_FIXTURE = {
   check('the one in view first, marked', cards()[0].classList.contains('sel') && txt(cards()[0].querySelector('h4')) === 'PLV');
   check('each drawn its own way', cards().every((c) => c.querySelector('svg.mfig')), cards().filter((c) => !c.querySelector('svg.mfig')).map((c) => txt(c.querySelector('h4'))).join(','));
   check('each with its ?', cards().every((c) => c.querySelector('.qmark')));
-  check('the stored number beside the recomputed one, matched', new RegExp('this cue pair: ' + G.sig(GUIDE.scenarios.zero_lag.strong.values.plv).replace('.', '\\.') + ' · stored .* · matches').test(txt(cards()[0])), txt(cards()[0]));
+  check('the stored number beside the recomputed one, matched', new RegExp('this trial: ' + G.sig(GUIDE.scenarios.zero_lag.strong.values.plv).replace('.', '\\.') + ' · stored .* · matches').test(txt(cards()[0])), txt(cards()[0]));
   const s3 = secs()[3];
   check('PAC: the phase-binned amplitude, each way (4)', s3 && /6 Hz phase × 40 Hz amplitude/.test(txt(s3)) && s3.querySelectorAll('.lcard svg.mfig').length === 4);
   const lw = figWords(LP());
@@ -1758,8 +1921,8 @@ window.MONO_FIXTURE = {
   D().querySelector('#controls .seg button[data-id="minus_fp"]').click();
   await until(() => M.state.layer === 'minus_fp' && M.data.edges.minus_fp, 80);
   check('the flip loads the other layer', M.state.layer === 'minus_fp' && !!M.data.edges.minus_fp);
-  check('and says so in words, and on the trail', txt(D().getElementById('layersay')) === 'Minus FP: each session’s flower-pot rest taken off first.'
-        && /\(each session less its flower-pot rest\)/.test(trailSay()), trailSay());
+  check('and says so in words, and on the trail', txt(D().getElementById('layersay')) === 'Minus FP: each session’s FP1/FP2 taken off first.'
+        && /\(each session less its FP1\/FP2\)/.test(trailSay()), trailSay());
   check('its own points of interest', /Minus FP/.test(txt(D().querySelector('#poi h2'))) && items().length === 10);
   M.set({ kind: 'state', win: 'cue2', band: 'f20', method: 'plv', level: 0 });
   await sleep(20);
@@ -1785,7 +1948,8 @@ window.MONO_FIXTURE = {
   await sleep(30);
   const grids = D().querySelectorAll('#paccard .pacgrid svg');
   check('across regions: two grids for the selected pair, each way', grids.length === 2, grids.length);
-  check('and said to be exploratory, interpretation under validation', /^Exploratory — interpretation under validation\./.test(txt(D().getElementById('pacxwarn')))
+  check('and said to be exploratory, in one line, what is measured behind a ▸', /^Exploratory\. A shared reference can couple two regions/.test(txt(D().getElementById('pacxwarn')))
+        && !!D().querySelector('#paccard details.xmore[data-key="pacx-more"]')
         && /across regions/.test(txt(D().querySelector('#paccard h2'))));
   check('cells that cannot carry their sidebands are left empty', D().querySelectorAll('#paccard .pacgrid rect[fill="none"]').length === 2 * CELLS.filter((c) => !c.amp_band).length);
   const cell = D().querySelector('#paccard .pacgrid rect[data-cell="5"]');
@@ -1814,6 +1978,24 @@ window.MONO_FIXTURE = {
   check('three comodulograms: Precon1, Precon4, and the change', kinds === 'Precon1,Precon4,change', kinds);
   check('for the selected pair’s first region (Right ACC)', D().getElementById('pacself-region').value === '0');
   check('one request, for this layer, window and cell', /^\/pacself\?layer=raw&window=1&cell=\d+$/.test(pacAsked[pacAsked.length - 1] || ''), pacAsked.join(' '));
+  check('what it asks, in one line', txt(D().getElementById('pacselfsay')) === 'Does a slow rhythm’s phase set how loud a faster one is, on one region’s wire?');
+  const pacm = PSn().querySelector('details.xmore[data-key="pacself-more"]');
+  pacm.querySelector('summary').click();
+  await until(() => D().querySelector('#pactoy .xpactoy'), 40);
+  const prange = D().querySelector('#pactoy input.xpacrange');
+  const miOf = () => Number(txt(D().querySelector('#pactoy .xpacmi')).replace('MI = ', ''));
+  const binsH = () => Array.from(D().querySelectorAll('#pactoy rect.xpacbin')).map((r) => Number(r.getAttribute('height')));
+  prange.value = '0'; prange.dispatchEvent(new Event('input'));
+  const mi0 = miOf(), b0 = binsH();
+  prange.value = '100'; prange.dispatchEvent(new Event('input'));
+  const mi1 = miOf(), b1 = binsH();
+  check('behind its ▸, PAC to play with: slid to none, 18 flat bins and MI 0; slid to strong, they lean and the MI grows',
+        b0.length === 18 && Math.abs(mi0) < 1e-9 && Math.max(...b0) - Math.min(...b0) < 0.05 && mi1 > 0.05 && Math.max(...b1) > 5 * Math.min(...b1),
+        mi0 + ' / ' + mi1 + ' · ' + Math.min(...b1).toFixed(1) + '–' + Math.max(...b1).toFixed(1));
+  const pw8 = figWords(PSn(), 'svg.xpac');
+  check('none of its words cut off or overlapping', pw8.length === 0, pw8.slice(0, 4).join(' | '));
+  pacm.querySelector('summary').click();
+  await sleep(20);
   const selReg = D().getElementById('pacself-region');
   selReg.value = '2'; selReg.dispatchEvent(new Event('change'));
   await sleep(30);
@@ -1848,7 +2030,7 @@ window.MONO_FIXTURE = {
   D().getElementById('pacself-region').value = '2'; D().getElementById('pacself-region').dispatchEvent(new Event('change'));
   await sleep(20);
   const exCards = Array.from(PSn().querySelectorAll('#pacex .lcard'));
-  check('a typical presentation of each session, to open', exCards.length === 2 && /r3 · p02: MI 0\.0011 at this cell, the presentation nearest the median of 96/.test(txt(exCards[0]))
+  check('a typical trial of each session, to open', exCards.length === 2 && /r3 · p02: MI 0\.0011 at this cell, the trial nearest the median of 96/.test(txt(exCards[0]))
         && !!exCards[1].querySelector('button'), exCards.map(txt).join(' | '));
   leafAsked = [];
   exCards[1].querySelector('button').click();
@@ -1877,37 +2059,70 @@ window.MONO_FIXTURE = {
   check('the planted edge moved to p = .5 is not drawn at p < .05', !D().querySelector('#circsvg path.edge[data-pair="0"]'));
   ARR.edges_raw[(((1 * N.W + PLANT.w) * N.B + PLANT.b) * N.M + PLANT.m) * N.P + PLANT.p] = 1e-6;
 
-  head('when we averaged');
+  head('4 · how a number is made');
   M.closeLeaf(); M.closeGhost(true);
   M.set({ kind: 'state', win: 'cue1', band: 'f10', hi: null, method: 'coherence', level: 1, sel: PLANT.p, layer: 'raw' });
   await sleep(20);
   D().getElementById('tab-avg').click();
-  await until(() => M.avg.detail && M.avg.leaf && D().querySelectorAll('#avgflow li.avgstep').length === 9, 160);
-  if (STOP === 'avg') { restore(); document.title = 'stopped at avg'; return; }
-  const steps = () => Array.from(D().querySelectorAll('#avgflow li.avgstep'));
-  const stepTxt = (n) => txt(steps()[n - 1]);
-  check('the second tab shows the walk-through and hides the circuit', D().getElementById('mainpane').hidden && !D().getElementById('avgpane').hidden
-        && D().getElementById('tab-avg').getAttribute('aria-selected') === 'true');
-  check('nine steps, from the recording to the Monolith', steps().length === 9
-        && /^1The recording/.test(stepTxt(1)) && /^9The Monolith/.test(stepTxt(9)), steps().map((x) => txt(x.querySelector('h3'))).join(' | '));
-  const ops = Array.from(D().querySelectorAll('#avgflow li.avgop.avg')).map((x) => txt(x));
-  check('the two averagings are marked between the steps', ops.length === 2 && /FIRST AVERAGING/.test(ops[0]) && /SECOND AVERAGING/.test(ops[1]), ops.join(' | '));
+  await until(() => M.avg.detail && M.avg.player && D().querySelector('#avgplayer svg.xnum'), 160);
+  if (STOP === 'avg') {
+    const sa = new URLSearchParams(location.search);
+    if (sa.get('minus')) { D().querySelector('#controls .seg button[data-id="minus_fp"]').click(); await until(() => M.avg.player && M.avg.player.stages.indexOf('fp') >= 0, 160); }
+    if (sa.get('stage')) { M.avg.player.play = () => {}; await M.avg.player.jump(sa.get('stage')); }
+    if (sa.get('phone')) f.style.width = '390px';
+    await sleep(400);
+    restore(); document.title = 'stopped at avg'; return;
+  }
+  const PL = () => M.avg.player;
+  const det4 = M.avg.detail;
+  const ok4 = det4.rats.filter((x) => x.days && x.days.Precon1 && x.days.Precon4 && x.delta != null);
+  const nTr4 = ok4.reduce((s0, x) => s0 + ['Precon1', 'Precon4'].reduce((q, d) => q + x.days[d].units.filter((u) => u.v != null).length, 0), 0);
+  check('tab 4 is one stat test, played: the line selected, every step named', /^One stat test, every trial to its p: R ACC – R OFC · Cue 1 · 10 Hz · Coherence · Raw\.$/.test(txt(D().getElementById('avgwhat')))
+        && PL().stages.join() === 'trials,days,change,side,pooled,test', txt(D().getElementById('avgwhat')) + ' / ' + PL().stages.join());
+  const vis = (q) => Array.from(D().querySelectorAll('#avgplayer ' + q)).filter((x) => Number(x.getAttribute('opacity')) > 0.05);
+  await PL().jump('trials');
+  check('every trial a dot: one per trial with a value, both days, every rat with both', vis('circle.xtrial').length === nTr4
+        && /^\d+ trials from 7 rats/.test(txt(D().getElementById('avgcap'))), vis('circle.xtrial').length + ' vs ' + nTr4);
+  await PL().jump('days');
+  check('each rat’s day: a mean and its spread, two a rat, the dots gone into them', vis('line.xday').length === 14 && vis('circle.xtrial').length === 0
+        && /mean of its trials/.test(txt(D().getElementById('avgcap'))), vis('line.xday').length);
+  await PL().jump('change');
+  const ch4 = vis('line.xchange');
+  check('each rat’s change, an arrow Precon1 → Precon4, red up and blue down', ch4.length === 7
+        && ch4.every((x) => { const r0 = det4.rats.find((y) => String(y.rat) === x.dataset.rat); return x.getAttribute('stroke') === W().MONO_FIGS.css(r0.delta >= 0 ? '--up' : '--down'); })
+        && /of 7 up/.test(txt(D().getElementById('avgcap'))), ch4.length);
+  await PL().jump('pooled');
+  check('pooled: the diamond at the pooled change, with its interval', vis('polygon.xpooled').length === 1 && vis('line.xpci').length === 1
+        && /^Pooled over the rats: \+0\.050 \(95% interval \+0\.030 to \+0\.070\)\.$/.test(txt(D().getElementById('avgcap'))), txt(D().getElementById('avgcap')));
+  await PL().jump('test');
+  check('the test: t from the pooled change and its error, its p, and whether it passes', vis('path.xtcurve').length === 1 && vis('line.xtmark').length === 1
+        && /^t = \+0\.050 ÷ 0\.010 = 5\.0 on 6 df → p = \.002: passes p < \.05 \(uncorrected\)\.$/.test(txt(D().getElementById('avgcap'))), txt(D().getElementById('avgcap')));
+  D().querySelector('#avgplayer .xctl button[title="Back a step"]').click();
+  await until(() => PL().stage === 'pooled', 60);
+  check('Back steps back', PL().stage === 'pooled');
+  PL().play();
+  await until(() => PL().stage === 'test', 400, 50);
+  check('Play runs every step to the test', PL().stage === 'test', PL().stage);
+  // One trial, from the recording: behind its ▸.
+  leafAsked = [];
+  const more4 = D().querySelector('#avgcard details.xmore');
+  more4.open = true;
+  await until(() => M.avg.leaf && D().querySelectorAll('#avgflow li.avgstep').length === 4, 160);
+  const st4 = Array.from(D().querySelectorAll('#avgflow li.avgstep')).map((x) => txt(x.querySelector('h3')));
   const exv = GUIDE.scenarios.zero_lag.strong.values.coherence;
-  check('step 4: this cue pair’s number is the measure’s own', new RegExp('Coherence in this window: ' + W().MONO_FIGS.sig(exv).replace('.', '\\.')).test(stepTxt(4)), stepTxt(4).slice(0, 120));
-  const det = M.avg.detail, r0 = det.rats.find((x) => x.rat === M.avg.rat);
-  check('step 5: each day’s mean, over its cue pairs', /Precon1: the mean of 11 cue pairs is 0\.420/.test(stepTxt(5)) && steps()[4].querySelectorAll('svg circle').length >= 20, stepTxt(5).slice(0, 160));
-  check('step 6: the rat’s change, Precon4 − Precon1', stepTxt(6).indexOf('= +' + (r0.delta).toFixed(3)) >= 0, stepTxt(6));
-  check('step 7: pooled over rats, with each rat’s weight and the test', /The pooled change is \+0\.050/.test(stepTxt(7)) && /r3 14%/.test(stepTxt(7)) && /p = \.002/.test(stepTxt(7)), stepTxt(7).slice(0, 220));
-  check('step 8: whether it is drawn, and the circuit it is drawn on', /passes “p < \.05”, so it is drawn/.test(stepTxt(8)) && !!steps()[7].querySelector('svg.mfig'));
-  const aw = figWords(D().getElementById('avgpane'));
-  check('no word in its pictures cut off or overlapping', aw.length === 0, aw.slice(0, 4).join(' | '));
+  check('▸ one trial, from the recording to its number: read only when opened, its four steps', leafAsked.length === 1 && st4.join() === 'The recording,The window,The band,Its number'
+        && new RegExp('Coherence: ' + W().MONO_FIGS.sig(exv).replace('.', '\\.')).test(txt(D().querySelectorAll('#avgflow li.avgstep')[3])), st4.join() + ' ' + leafAsked.length);
   const sr = D().getElementById('avg-rat');
   sr.value = '6'; sr.dispatchEvent(new Event('change'));
-  await until(() => M.avg.rat === 6 && /^6One change for the rat r6:/.test(stepTxt(6)), 80);
-  check('another rat: the steps follow it', M.avg.rat === 6 && /r6/.test(stepTxt(5)), stepTxt(6));
+  await until(() => M.avg.rat === 6 && /r6, /.test(txt(D().querySelector('#avgflow li.avgstep'))), 80);
+  check('another rat’s trial: the steps follow it', M.avg.rat === 6, M.avg.rat);
   D().querySelector('#controls .seg button[data-id="minus_fp"]').click();
-  await until(() => M.state.layer === 'minus_fp' && M.avg.detail && /rest/.test(stepTxt(5)), 160);
-  check('minus FP: each day’s rest is taken off in step 5', /so the day is 0\.420 − 0\.380 = /.test(stepTxt(5)), stepTxt(5).slice(0, 220));
+  await until(() => M.state.layer === 'minus_fp' && M.avg.player && M.avg.player.stages.indexOf('fp') >= 0, 160);
+  await M.avg.player.jump('fp');
+  const nFp4 = ok4.reduce((s0, x) => s0 + 6 * 2, 0);
+  check('Minus FP: two more steps, each day’s FP1/FP2 values beside it, then taken off', M.avg.player.stages.join() === 'trials,days,fp,sub,change,side,pooled,test'
+        && vis('circle.xfp').length === nFp4 && /FP1 and FP2/.test(txt(D().getElementById('avgcap'))) && !/rest/i.test(txt(D().getElementById('avgcard'))),
+        M.avg.player.stages.join() + ' ' + vis('circle.xfp').length);
   D().querySelector('#controls .seg button[data-id="raw"]').click();
   await until(() => M.state.layer === 'raw', 80);
   D().getElementById('tab-main').click();
@@ -2042,7 +2257,7 @@ window.MONO_FIXTURE = {
   PGn().querySelector('.progtop button[data-id="10"]').click();
   await until(() => DAYS4.every((d) => drawnIn(d).split(',').length === 10), 80);
   check('“Strongest 10”: each session draws its own ten strongest lines', DAYS4.every((d, s) => drawnIn(d) === top10(s)), DAYS4.map(drawnIn).join(' | '));
-  check('and says so', txt(PGn().querySelector('.progcell[data-day="Precon2"] .plegend')) === '10 of the 55 region pairs measured drawn: the 10 strongest.',
+  check('and says so', txt(PGn().querySelector('.progcell[data-day="Precon2"] .plegend')) === 'The 10 strongest of 55 region pairs.',
         txt(PGn().querySelector('.progcell[data-day="Precon2"] .plegend')));
   PGn().querySelector('.progtop button[data-id="0"]').click();
   await until(() => drawnIn('Precon2').split(',').length === 55, 80);
@@ -2163,8 +2378,8 @@ window.MONO_FIXTURE = {
         rbtn.map(txt).join(' | '));
   rbtn[0].click();
   await until(() => pan(kP).querySelectorAll('svg.progstrip .progunit').length === 9, 80);
-  check('a rat opens its presentations in that session, in order', pan(kP).querySelectorAll('svg.progstrip .progunit').length === 9
-        && /r3 · Precon2: 9 presentations, in order/.test(txt(pan(kP).querySelector('#progdrill'))));
+  check('a rat opens its trials in that session, in order', pan(kP).querySelectorAll('svg.progstrip .progunit').length === 9
+        && /r3 · Precon2: 9 trials, in order/.test(txt(pan(kP).querySelector('#progdrill'))));
   leafAsked = [];
   pan(kP).querySelector('svg.progstrip .progunit[data-unit="p01"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await until(() => M.leaf.open && M.leaf.data, 120);
@@ -2281,23 +2496,63 @@ window.MONO_FIXTURE = {
         && tcells(vrow('monolith'))[3] === '18,000' && tcells(vrow('tone_noise'))[2] === '40,000', oc6.join(' | '));
   check('and where it ranks among the relabellings of the same rats, at chance',
         new RegExp('^ranks ' + PHYS.perm.order.raw.rank + ' of 35 splits of the rats into two fours · at chance$').test(oc6[7])
-        && /^ranks \d of 8 ways of signing its four rats \(by seat: \d\) · at chance$/.test(tcells(vrow('sound_noise'))[7]), oc6[7] + ' | ' + tcells(vrow('sound_noise'))[7]);
+        && /^ranks \d of 8 shuffles of its four rats \(by A\/B\/C\/D: \d\) · at chance$/.test(tcells(vrow('sound_noise'))[7]), oc6[7] + ' | ' + tcells(vrow('sound_noise'))[7]);
   const ans6 = txt(D().getElementById('physanswer'));
-  check('the answer first, in the intro: no sign the physical sound had an effect, with why and the leads, and its limit',
-        D().getElementById('physanswer').classList.contains('ok') && /^The answer: no sign that the physical sound had an effect\./.test(ans6)
-        && /in all 14 comparisons by sound/.test(ans6) && /and sound by sound/.test(ans6) && /Of the Monolith’s 50 leads, 49 go the same way/.test(ans6) && /cannot be ruled out/.test(ans6)
+  const why6 = txt(D().getElementById('physanswersay'));
+  check('the answer first, in the intro, in one line; why, the top results and its limit behind a ▸',
+        D().getElementById('physanswer').classList.contains('ok') && txt(D().querySelector('#physanswer .head')) === 'The answer: no sign that the physical sound had an effect.'
+        && !!D().querySelector('#physanswer details.xmore[data-key="phys-answer"]') && !D().querySelector('#physanswer details.xmore').open
+        && /in all 14 comparisons by sound/.test(why6) && /and sound by sound/.test(why6) && /Of the Monolith’s 50 top results, 49 go the same way/.test(why6) && /cannot be ruled out/.test(why6)
         && D().getElementById('physintro').contains(D().getElementById('physanswer')), ans6);
+  // The identity sheet, sorted, in place of the words that said it.
+  const sortH = D().getElementById('physsort');
+  check('the identity sheet as something to watch: 32 chips, a rat a row, A/B/C/D across', sortH.querySelectorAll('svg.xsort g.xchip').length === 32
+        && /^Every rat heard all four sounds/.test(txt(sortH.querySelector('.xcap'))) && txt(D().getElementById('physwhat')).length < 140, txt(D().getElementById('physwhat')));
+  const chipAt = (r, x) => sortH.querySelector('g.xchip[data-rat="' + r + '"][data-letter="' + x + '"]');
+  const chipXY = (g) => { const m = /translate\(([-\d.]+),([-\d.]+)\)/.exec(g.getAttribute('transform') || ''); return m ? [Number(m[1]), Number(m[2])] : [NaN, NaN]; };
+  Array.from(sortH.querySelectorAll('.xstep')).find((b) => txt(b) === 'By sound').click();
+  await until(() => sortH.dataset.step === '3', 40);
+  await sleep(1300);
+  const bySnd = {};
+  for (const g of sortH.querySelectorAll('g.xchip')) (bySnd[g.dataset.sound] = bySnd[g.dataset.sound] || new Set()).add(Math.round(chipXY(g)[0]));
+  check('By sound: every chip of one sound in one column, gathered from wherever it sat (measured)', Object.keys(bySnd).length === 4
+        && Object.values(bySnd).every((s) => s.size === 1) && new Set(Object.values(bySnd).map((s) => [...s][0])).size === 4
+        && /^Gathered by sound/.test(txt(sortH.querySelector('.xcap'))), JSON.stringify(Object.fromEntries(Object.entries(bySnd).map(([k, v]) => [k, [...v]]))));
+  Array.from(sortH.querySelectorAll('.xstep')).find((b) => txt(b) === 'Two groups').click();
+  await sleep(1300);
+  const ysX = (rats) => rats.map((r) => chipXY(chipAt(r, 'A'))[1]);
+  check('Two groups: the noise-first rats above the tone-first, each tagged', Math.max(...ysX(PHYS.groups.noise)) < Math.min(...ysX(PHYS.groups.tone))
+        && /noise-first/.test(txt(sortH.querySelector('svg'))), ysX(PHYS.groups.noise).join() + ' / ' + ysX(PHYS.groups.tone).join());
+  const sheet6 = D().querySelector('#physintro details.xmore[data-key="phys-sheet"]');
+  check('and the sheet as a table, still there behind a ▸', !!sheet6 && !sheet6.open && sheet6.querySelectorAll('#physseats tbody tr').length === 8);
+  const sw6 = figWords(sortH, 'svg');
+  check('none of the sheet’s words cut off or overlapping, at its last step', sw6.length === 0, sw6.slice(0, 4).join(' | '));
   check('the verdict line: every comparison by sound at chance', D().getElementById('physsay').classList.contains('ok')
         && /every comparison by sound here sits at chance/.test(txt(D().getElementById('physsay'))), txt(D().getElementById('physsay')));
-  const hists = Array.from(D().querySelectorAll('#physverdictcard .physhists > div')).map((x) => x.dataset.perm);
-  check('every relabelling drawn: 35 splits, 8 + 8 signings, 128 signings', hists.join() === 'order,sound_noise,sound_tone,tone_noise', hists.join());
-  const ordH = D().querySelector('.physhists > div[data-perm="order"] svg');
-  const binN = Array.from(ordH.querySelectorAll('rect.hbin')).reduce((s0, x) => s0 + Number(x.dataset.n), 0);
-  const ordK = Array.from(D().querySelectorAll('.physhists > div[data-perm="order"] .hlegend span')).map(txt);
-  check('the splits’ histogram holds all 35, with the observed and chance marked, and named under it',
-        binN === 35 && Number(ordH.querySelector('line[data-mark="order"]').dataset.v) === 17100
-        && Number(ordH.querySelector('line[data-mark="chance"]').dataset.v) === 17000
-        && ordK.join(' | ') === 'chance (5%) 17,000 | tone-first vs noise-first 17,100', binN + ' ' + ordK.join(' | '));
+  check('how to read it, behind a ▸', !!D().querySelector('#physverdictcard details.xmore[data-key="phys-readit"]') && /the shuffles are the fair yardstick/.test(txt(D().getElementById('physreadit'))));
+  const shufD = D().querySelector('#physverdictcard details.xmore[data-key="phys-shuffles"]');
+  check('the shuffles folded until asked for', !!shufD && !shufD.open && !shufD.querySelector('.xshuffle'));
+  shufD.querySelector('summary').click();
+  await until(() => shufD.querySelectorAll('.xshuffle').length === 4, 60);
+  const hists = Array.from(shufD.querySelectorAll('.physhists > div')).map((x) => x.dataset.perm);
+  check('every shuffle played: 35 splits, 8 + 8 signings, 128 signings', hists.join() === 'order,sound_noise,sound_tone,tone_noise', hists.join());
+  const blocksOf = (id) => shufD.querySelectorAll('div[data-perm="' + id + '"] .xblocks rect').length;
+  await until(() => blocksOf('order') === 34 && /ranks \d+ of 35/.test(txt(shufD.querySelector('div[data-perm="order"] .xcap'))), 200);
+  const ordS = shufD.querySelector('div[data-perm="order"]');
+  check('the splits: the other 34 dropped in, the real split landing last, ranked', blocksOf('order') === 34
+        && txt(ordS.querySelector('.xreal text')) === 'tone-first vs noise-first: 17,100' && !!ordS.querySelector('line.xexp')
+        && new RegExp('^Tone-first against noise-first ranks ' + PHYS.perm.order.raw.rank + ' of 35: an ordinary split\\.$').test(txt(ordS.querySelector('.xcap'))),
+        blocksOf('order') + ' · ' + txt(ordS.querySelector('.xreal text')) + ' · ' + txt(ordS.querySelector('.xcap')));
+  const tokFill = (r) => (Array.from(ordS.querySelectorAll('g.xtok')).find((g) => txt(g.querySelector('text')) === 'J' + r) || { querySelector: () => ({ getAttribute: () => '' }) })
+    .querySelector('circle').getAttribute('fill');
+  check('and its tokens show the real split: the noise-first rats one colour, the tone-first the other',
+        PHYS.groups.noise.every((r) => tokFill(r) === tokFill(PHYS.groups.noise[0])) && PHYS.groups.tone.every((r) => tokFill(r) !== tokFill(PHYS.groups.noise[0])),
+        PHYS.groups.noise.concat(PHYS.groups.tone).map((r) => r + ':' + tokFill(r)).join(' '));
+  const snS = shufD.querySelector('div[data-perm="sound_noise"]');
+  check('the four noise-first rats signed 8 ways: 7 dropped in, by A/B/C/D marked beside by sound', blocksOf('sound_noise') === 7
+        && /^AB − CD \(by A\/B\/C\/D\): /.test(txt(snS.querySelector('.xkey'))) && !!snS.querySelector('line.xmark[data-mark="seat"]'), txt(snS.querySelector('.xkey')));
+  const sw6s = figWords(shufD, 'svg');
+  check('none of the shuffles’ words cut off or overlapping', sw6s.length === 0, sw6s.slice(0, 4).join(' | '));
   // The rule, the other way: tone-first against noise-first passing more
   // entries than every other split.
   PHYS.perm.order.raw.rank = 1;
@@ -2323,15 +2578,18 @@ window.MONO_FIXTURE = {
         && tcells(srow('snd:Click-Noise'))[0] === 'Click − Noise' && tcells(srow('snd:omni'))[2] === '2,520',
         Array.from(D().querySelectorAll('#physsound tbody tr')).map((r) => tcells(r).slice(0, 3).join('/')).join(' | '));
   check('the pairs and the four ranked among their relabellings; each sound’s own change said not to be a test',
-        new RegExp('^ranks ' + PHYS.sound.perm.raw.omni.rank + ' of 201 labellings of the four within each rat · at chance$').test(tcells(srow('snd:omni'))[5])
-        && /^ranks \d+ of 128 ways of signing the rats · at chance$/.test(tcells(srow('snd:Noise-High'))[5])
+        new RegExp('^ranks ' + PHYS.sound.perm.raw.omni.rank + ' of 201 shuffles of the four within each rat · at chance$').test(tcells(srow('snd:omni'))[5])
+        && /^ranks \d+ of 128 shuffles of the rats · at chance$/.test(tcells(srow('snd:Noise-High'))[5])
         && /^not a test of the sound/.test(tcells(srow('own:Noise'))[5])
         && D().getElementById('physsndsay').classList.contains('ok'), tcells(srow('snd:omni'))[5]);
-  check('and the four relabelled drawn: 200 relabellings, the sounds as named marked',
-        Array.from(D().querySelectorAll('#physsoundcard .physhists rect.hbin')).reduce((s0, x) => s0 + Number(x.dataset.n), 0) === 200
-        && Number(D().querySelector('#physsoundcard line[data-mark="omni"]').dataset.v) === 2520);
+  const omD = D().querySelector('#physsoundcard details.xmore[data-key="phys-omni"]');
+  omD.querySelector('summary').click();
+  await until(() => omD.querySelectorAll('.xblocks rect').length === 200, 300);
+  check('and the four shuffled within each rat, played: 200 shuffles dropped in, the sounds as named landing last',
+        omD.querySelectorAll('.xblocks rect').length === 200 && txt(omD.querySelector('.xreal text')) === 'the sounds as named: 2,520',
+        omD.querySelectorAll('.xblocks rect').length + ' · ' + txt(omD.querySelector('.xreal text')));
   const leadRows = () => Array.from(D().querySelectorAll('#physleadtbl tbody tr.lead'));
-  check('the leads: the top 10 of the Monolith’s 50 first', leadRows().length === 10 && /50 points of interest/.test(txt(D().getElementById('physleadsay'))),
+  check('the top results: the top 10 of the Monolith’s 50 first', leadRows().length === 10 && /50 top results/.test(txt(D().getElementById('physleadsay'))),
         leadRows().length);
   // The survey, sound by sound (the first view).
   const sv1 = tcells(leadRows()[0]), sv2 = tcells(leadRows()[1]);
@@ -2339,6 +2597,11 @@ window.MONO_FIXTURE = {
         D().getElementById('physleadtbl').dataset.view === 'sound' && sv1.slice(3, 7).every((x) => / ± 0\.020$/.test(x))
         && /^no \(p \.620/.test(sv1[8]) && /^yes \(p \.001, F 9\.10\)$/.test(sv2[8]) && /^−0\.500 ± 0\.020$/.test(sv2[4]),
         sv1.join(' | ') + ' // ' + sv2.join(' | '));
+  const mline = Number(leadRows()[0].querySelector('svg.physsndfig line.s-mean').getAttribute('x1'));
+  const cxs = Array.from(leadRows()[0].querySelectorAll('svg.physsndfig circle')).map((c) => Number(c.getAttribute('cx')));
+  check('the sounds’ line is their own mean, among the dots, with a legend', mline > Math.min(...cxs) - 1 && mline < Math.max(...cxs) + 1
+        && /Click.*Noise.*High tone.*Low tone.*95% interval.*the four sounds’ mean.*zero/.test(txt(D().querySelector('#physleads .figkey'))),
+        mline + ' in ' + cxs.join(','));
   check('a row a sound in its picture, the second lead’s Noise far from the others',
         leadRows()[1].querySelectorAll('svg.physsndfig circle').length === 4
         && Number(leadRows()[1].querySelector('svg.physsndfig circle.s-Noise').getAttribute('cx'))
@@ -2351,7 +2614,7 @@ window.MONO_FIXTURE = {
   const L6 = PHYS.leads.monolith.raw;
   check('and how many go the same way in both groups, are equivalent, and differ, said over all 50',
         say6.indexOf(L6.filter((x) => x.both_ways).length + ' go the same way') >= 0
-        && say6.indexOf(L6.filter((x) => x.equivalence.within).length + ' is the same in both groups') >= 0
+        && say6.indexOf(L6.filter((x) => x.equivalence && x.equivalence.within).length + ' is the same in both groups') >= 0
         && /1 differs between the groups at p < \.05 \(uncorrected; chance alone would give about 2\.5\)/.test(say6), say6);
   const l1 = tcells(leadRows()[0]), l2 = tcells(leadRows()[1]);
   check('the first lead the same in both groups, the second carried by the tone-first rats alone',
@@ -2359,6 +2622,11 @@ window.MONO_FIXTURE = {
         l1.join(' | ') + ' // ' + l2.join(' | '));
   check('and the narrowest margin they reach, said over the leads', /the median is equivalent within ±\d\.\d\d× its own change/.test(say6), say6);
   const fx = (tr, g) => Number(tr.querySelector('svg.physforest circle.g-' + g).getAttribute('cx'));
+  const g3 = tcells(leadRows()[2]), g4 = tcells(leadRows()[3]);
+  check('a group a rat short: its interval from three rats, said; two short: no interval, and why there is no difference',
+        / ± 0\.030 · 3 rats$/.test(g3[3]) && /\(2 rats: no interval\)$/.test(g4[4]) && /^not tested: 2 rats in a group, 3 needed$/.test(g4[6]),
+        g3[3] + ' | ' + g4[4] + ' | ' + g4[6]);
+  check('and a legend for the picture above the table', /tone-first rats.*noise-first rats.*95% interval.*all eight rats.*zero/.test(txt(D().querySelector('#physleads .figkey'))));
   check('by group, the difference drawn under its own number, not among the groups', !leadRows()[0].querySelector('svg.physforest rect.g-diff')
         && !!leadRows()[0].querySelector('td[data-label="difference"] svg.physdiff rect.g-diff'));
   check('drawn: the second lead’s tone-first rats far left of its noise-first rats, the first lead’s two close',
@@ -2382,7 +2650,7 @@ window.MONO_FIXTURE = {
   M.showTab('phys');
   await until(() => D().getElementById('physleadsel'), 40);
   D().querySelector('#physleadsel button[data-id="monolith_m"]').click();
-  await until(() => leadRows().length === 10 && /30 points of interest/.test(txt(D().getElementById('physleadsay'))), 40);
+  await until(() => leadRows().length === 10 && /30 top results/.test(txt(D().getElementById('physleadsay'))), 40);
   leadRows()[1].click();
   await until(() => M.state.tab === 'main' && M.state.layer === 'minus_fp' && M.state.sel === PLANT2.p, 80);
   check('a Minus FP lead opens on Minus FP', M.state.layer === 'minus_fp' && M.state.sel === PLANT2.p && M.state.win === 'cue2',
@@ -2452,6 +2720,14 @@ window.MONO_FIXTURE = {
   check('at 390 px nothing scrolls sideways', se6.scrollWidth <= se6.clientWidth + 1, se6.scrollWidth + ' > ' + se6.clientWidth);
   const pw6p = figWords(D().getElementById('physpane'));
   check('and no figure word cut there either', pw6p.length === 0, pw6p.slice(0, 4).join(' | '));
+  // Drawn again at 390 px, the pictures to play with grow their words: none
+  // may then leave its picture or land on another.
+  PH.render();
+  await sleep(1500);
+  const kit6 = figWords(D().getElementById('physpane'), 'svg.xsort, svg.xshuf');
+  check('drawn at 390 px, the sheet and the shuffles grow their words, and none is cut or on another', kit6.length === 0
+        && D().querySelectorAll('#physpane svg.xshuf').length >= 4
+        && Number(D().querySelector('#physsort svg.xsort g.xchip text').getAttribute('font-size')) > 15, kit6.slice(0, 4).join(' | '));
   if (STOP === 'phys') {
     const sa = new URLSearchParams(location.search);
     if (!sa.get('phone')) f.style.width = '';
@@ -2472,6 +2748,247 @@ window.MONO_FIXTURE = {
   M.showTab('c21');
   await until(() => M.state.tab === 'c21' && D().querySelector('#legend #powmore'), 40);
   check('tab 3 has the same node power ▸ under its legend', !!D().querySelector('#legend #powmore'));
+  M.showTab('main');
+  await sleep(30);
+
+  head('7 · narrowing down');
+  M.closeLeaf(); M.closeGhost(true);
+  const NR7 = W().MONO_NARROW;
+  M.showTab('narrow');
+  await until(() => D().getElementById('narcorrecttbl') && D().querySelector('#narcircsvg svg'), 120);
+  check('the tab shows its own pane, and only that', !D().getElementById('narrowpane').hidden && D().getElementById('mainpane').hidden
+        && D().getElementById('physpane').hidden);
+  const nans = txt(D().getElementById('naranswersay'));
+  check('the answer first, in one line: more than chance, a few survive a correction; the why behind a ▸, the rest of the page uncorrected',
+        txt(D().querySelector('#naranswer .head')) === 'The answer: there is more here than chance, and a few stat tests survive a correction.'
+        && !!D().querySelector('#naranswer details.xmore[data-key="nar-answer"]')
+        && /18,000 of 340,000 Raw tests pass p < \.05/.test(nans) && /the Raw count ranks 3 of 128 \(beyond nearly every shuffle\)/.test(nans)
+        && /Minus FP ranks 40 of 128 \(an ordinary count among them\)/.test(nans) && /Raw ranks 9 of 128 \(borderline: about 7% of shuffles do as well\)/.test(nans)
+        && /900 stat tests pass in both pairs/.test(nans) && /stays uncorrected/.test(nans), nans);
+  check('what the tab is for, in one line', /^Every p on the page is uncorrected\. Here: /.test(txt(D().getElementById('narwhat'))));
+  // And with nothing surviving anywhere: said so.
+  const keepN = JSON.stringify(NARROW.counts);
+  for (const f of Object.values(NARROW.counts)) for (const c of Object.values(f)) Object.assign(c, { bonferroni: 0, holm: 0, bh: 0, maxt: 0, cluster_cells: 0 });
+  await NR7.load();
+  check('nothing surviving any correction: the answer says so, family by family', /^The answer: as a whole, the Monolith holds a little more than chance; no single stat test survives a correction\./
+        .test(txt(D().getElementById('naranswer'))) && /in any family, even the 2,100 core tests/.test(txt(D().getElementById('naranswersay'))),
+        txt(D().getElementById('naranswer')).slice(0, 200));
+  NARROW.counts = JSON.parse(keepN);
+  await NR7.load();
+  const t07 = topList('raw')[0];
+  check('how the p were made, worked through on the first top result’s own numbers', new RegExp('t = \\+0\\.300 ÷ 0\\.020 = 15\\.0 on 7 degrees of freedom, so p = 1\\.0e-6')
+        .test(txt(D().getElementById('narexample'))) && D().querySelectorAll('#narhow ol.qsteps li').length === 6
+        && !D().querySelector('#narhow details.xmore[data-key="nar-steps"]').open, txt(D().getElementById('narexample')));
+  await until(() => D().querySelector('#narplayer .xnumplayer'), 120);
+  const np7 = D().getElementById('narplayer');
+  check('and played on it, from every trial to its p', !!np7.querySelector('svg.xnum') && np7.querySelectorAll('.xstep').length === 6
+        && /^Played on the Monolith’s first top result, R ACC – R OFC/.test(txt(D().getElementById('narhowsay'))), txt(D().getElementById('narhowsay')));
+  Array.from(np7.querySelectorAll('.xstep')).find((b) => txt(b) === 'The test').click();
+  await until(() => np7.dataset.stage === 'test', 40);
+  await sleep(1100);
+  const cap7 = /^t = ([+−][\d.]+) ÷ ([\d.]+) = ([\d.]+) on (\d+) df → p = (\S+): passes p < \.05 \(uncorrected\)\.$/.exec(txt(D().getElementById('narcap')));
+  check('its last step: t = the change ÷ its standard error, its df, and the p drawn under the curve',
+        !!cap7 && Math.abs(Number(cap7[1].replace('−', '-')) / Number(cap7[2]) - Number(cap7[3])) < 0.06 && txt(np7.querySelector('.xtp')) === 'p = ' + cap7[5],
+        txt(D().getElementById('narcap')));
+  const gh7 = D().querySelector('#narglobal .physhists > div[data-perm="all"]');
+  await until(() => gh7.querySelectorAll('.xblocks rect').length === 127 && /^The real count ranks 3 of 128/.test(txt(gh7.querySelector('.xcap'))), 200);
+  check('the whole Monolith in every shuffle, played: 127 others dropped in, the real count and chance marked, its rank said',
+        gh7.querySelectorAll('.xblocks rect').length === 127 && txt(gh7.querySelector('.xreal text')) === 'the real rats: 18,000' && !!gh7.querySelector('line.xexp')
+        && /ranks 3 of 128: beyond nearly every shuffle/.test(txt(gh7)) && !!D().querySelector('#narglobal .physhists > div[data-perm="contrast"] .xshuffle'), txt(gh7).slice(0, 200));
+  const tok7 = Array.from(gh7.querySelectorAll('g.xtok')).map((g) => txt(g.querySelector('text')) + txt(g.querySelectorAll('text')[1]));
+  check('the real rats as they are: every one signed +, once the shuffles are done', tok7.length === 8 && tok7.every((x7) => /\+$/.test(x7)), tok7.join(' '));
+  const crow = (id) => D().querySelector('#narcorrecttbl tbody tr[data-method="' + id + '"]');
+  check('what each correction keeps, a row a method, Raw / Minus FP / Cue 2 − Cue 1',
+        Array.from(D().querySelectorAll('#narcorrecttbl tbody tr')).map((r) => r.dataset.method).join() ===
+          'uncorrected,bonferroni,holm,bh,by,maxt,clusters,perm,perm_bh,sign'
+        && /^120/.test(txt(crow('bh').querySelector('td[data-col="raw"]'))) && /^60 \(6 runs\)/.test(txt(crow('clusters').querySelector('td[data-col="raw"]')))
+        && /^1/.test(txt(crow('maxt').querySelector('td[data-col="contrast"]'))), txt(crow('bh')));
+  const frow = (id) => tcells(D().querySelector('#narfamtbl tbody tr[data-family="' + id + '"]'));
+  check('smaller families chosen before looking, each with its own tests and survivors', D().querySelectorAll('#narfamtbl tbody tr').length === 4
+        && frow('core')[1] === '2,100' && frow('core')[5] === '9' && frow('all')[5] === '120', frow('core').join(' | '));
+  const fsteps = Array.from(D().querySelectorAll('#narfunnel .fstep')).map((x7) => x7.dataset.step + ':' + txt(x7.querySelector('b')));
+  check('the funnel: tested, p < .05, both pairs, both layers, in a run, or BH', fsteps.join() === 'tested:340,000,p05:18,000,replicated:900,layers:400,cluster:22,bh:8',
+        fsteps.join());
+  check('replication against shuffles of both pairs, with what independence would give, played', /900 stat tests pass in AB and in CD the same way/.test(txt(D().getElementById('narfamilies')))
+        && /ranks 1 of 128/.test(txt(D().getElementById('narfamilies'))) && !!D().querySelector('#narfamilies div[data-perm="replication"] .xshuffle'));
+  check('the runs of frequencies that survive, the failing ones left out', D().querySelectorAll('#narruns li').length === 2
+        && /9–12 Hz \(4 bands, up\)/.test(txt(D().querySelector('#narruns li'))));
+  const nlr = () => Array.from(D().querySelectorAll('#narleadtbl tbody tr.lead'));
+  const nl1 = tcells(nlr()[0]), nl2 = tcells(nlr()[1]);
+  check('every test on each top result: the first survives all six, the second none', nl1[3] === '.008' && nl1[4] === '.008 (8/8)'
+        && Array.from(nlr()[0].querySelectorAll('td.kept .chip')).map(txt).join() === 'BH,Holm,max-t,cluster,both pairs,Raw and Minus FP'
+        && nl1[8] === '9–12 Hz, p .008' && nl2[11] === 'none', nl1.join(' | ') + ' // ' + nl2.join(' | '));
+  check('and the tally over the top results', /: 1 BH, 1 Holm, 1 max-t, 1 cluster, 1 both pairs, 1 Raw and Minus FP\./.test(txt(D().getElementById('narleadsay'))),
+        txt(D().getElementById('narleadsay')));
+  nlr()[0].click();
+  await until(() => M.state.tab === 'main' && M.state.sel === PLANT.p, 60);
+  check('a lead clicked opens on the Monolith', M.state.tab === 'main' && M.state.sel === PLANT.p && M.state.win === 'cue1');
+  M.showTab('narrow');
+  await until(() => D().getElementById('narmethod'), 40);
+  const setN = (id, v) => { const x7 = D().getElementById(id); x7.value = String(v); x7.dispatchEvent(new Event('change')); };
+  setN('narw', 'cue1'); setN('narb', 'f10'); setN('narm', 'coherence'); setN('narl', 'raw');
+  await until(() => D().querySelector('#narcircsvg svg'), 40);
+  const NA = ARR.narrow_raw;
+  const perN = N.W * N.B * N.M * N.P;
+  const nedge = (q, rule) => PAIRS.map((_x, pp) => NA[q * perN + ((1 * N.B + 9) * N.M + 0) * N.P + pp]).filter(rule).length;
+  const drawn7 = () => D().querySelectorAll('#narcircsvg path.nedge').length;
+  for (const [mid, q, rule] of [['bh', 3, (x7) => x7 < 0.05], ['holm', 5, (x7) => x7 < 0.05], ['maxt', 6, (x7) => x7 <= 0.05],
+                                ['uncorrected', 0, (x7) => x7 < 0.05], ['rep', 8, (x7) => x7 === 1]]) {
+    D().querySelector('#narmethod button[data-id="' + mid + '"]').click();
+    await until(() => D().querySelector('#narmethod button[data-id="' + mid + '"][aria-pressed="true"]'), 40);
+    await sleep(40);
+    check('the circuit, ' + mid + ': exactly the region pairs that survive it', drawn7() === nedge(q, rule), drawn7() + ' vs ' + nedge(q, rule));
+  }
+  check('and how many passed uncorrected, said under it', /pass p < \.05 \(about /.test(txt(D().getElementById('narcircsay'))));
+  check('every card has its ?', ['narintro', 'narhow', 'narglobal', 'narcorrect', 'narfamilies', 'narleads', 'narcirc'].every((id) => D().querySelector('#' + id + ' .hrow .qmark')));
+  const nw7 = figWords(D().getElementById('narrowpane')).concat(figWords(D().getElementById('narrowpane'), 'svg.xshuf, svg.xnum'));
+  check('no word in a figure here cut off or overlapping', nw7.length === 0, nw7.slice(0, 4).join(' | '));
+  check('no text here ends in an ellipsis', txt(D().getElementById('narrowpane')).indexOf('…') < 0);
+  f.style.width = '390px';
+  await sleep(150);
+  check('at 390 px nothing scrolls sideways', D().scrollingElement.scrollWidth <= D().scrollingElement.clientWidth + 1, D().scrollingElement.scrollWidth);
+  NR7.render();
+  await until(() => D().querySelector('#narplayer .xnumplayer'), 120);
+  await sleep(1500);
+  const kit7a = figWords(D().getElementById('narrowpane'), 'svg.xshuf, svg.xnum');
+  Array.from(D().querySelectorAll('#narplayer .xstep')).find((b7) => txt(b7) === 'The test').click();
+  await sleep(1300);
+  const kit7 = kit7a.concat(figWords(D().getElementById('narplayer'), 'svg.xnum'));
+  check('drawn at 390 px, the shuffles and the player grow their words, and none is cut or on another', kit7.length === 0
+        && Number(D().querySelector('#narplayer svg.xnum text.xtp').getAttribute('font-size')) > 25, kit7.slice(0, 4).join(' | '));
+  if (STOP === 'narrow') {
+    const sa7 = new URLSearchParams(location.search);
+    if (!sa7.get('phone')) f.style.width = '';
+    await sleep(600);
+    if (sa7.get('scroll')) D().getElementById(sa7.get('scroll')).scrollIntoView();
+    restore(); document.title = 'stopped at narrow'; return;
+  }
+  f.style.width = '';
+  NARROW_MISSING = true; narPosted = [];
+  await NR7.load();
+  check('a build not narrowed down yet says so and offers to do it here', !!D().getElementById('narrowmake') && !D().getElementById('narcorrecttbl'));
+  D().getElementById('narrowmake').click();
+  await until(() => narPosted.length && D().getElementById('narcorrecttbl'), 120);
+  check('pressed: asked of Jarvis, confirmed, and read again', narPosted.length === 1 && narPosted[0].confirm === true && !!D().getElementById('narcorrecttbl'));
+  M.showTab('main');
+  await sleep(30);
+
+  head('8 · Joe’s data');
+  check('its fixture is there (tools/check_joe.py --fixture)', !!JOE && Array.isArray(JOE.results), typeof JOE);
+  M.closeLeaf(); M.closeGhost(true);
+  const JO = W().MONO_JOE;
+  M.showTab('joe');
+  await until(() => D().getElementById('joeanswer'), 120);
+  const r8 = (mid, b, me) => JOE.results.find((r) => r.model === mid && r.band === b && (r.method === me || mid === 'm7'));
+  check('its own pane, the answer first: a row a model, theta and gamma × Welch and Dickson', !D().getElementById('joepane').hidden
+        && D().getElementById('narrowpane').hidden && D().querySelectorAll('#joeanswer tbody tr[data-model]').length === JOE.models.length
+        && D().querySelectorAll('#joeanswer thead th').length === 5, D().querySelectorAll('#joeanswer tbody tr[data-model]').length);
+  const cell8 = (mid, b, me) => D().querySelector('#joeanswer tr[data-model="' + mid + '"] td.jcell[data-band="' + b + '"][data-method="' + me + '"]');
+  const m2t = r8('m2', 'theta', 'welch');
+  check('a cell: the test of interest’s p from joe.json, and marked when its model opens follow-ups',
+        txt(cell8('m2', 'theta', 'welch').querySelector('.jp')) === 'p ' + M.fp(m2t.mixed.terms['Day × Phase × Pair'].p)
+        && cell8('m2', 'theta', 'welch').classList.contains('pass') === !!m2t.gate.passed && m2t.gate.passed,
+        txt(cell8('m2', 'theta', 'welch')));
+  const passFirst = JOE.results.filter((r) => JOE.models.find((m) => m.id === r.model).kind === 'first' && r.mixed && r.mixed.ok && r.gate.passed).length;
+  check('one line counts the first-pass fits that open, and the checks', new RegExp('^' + passFirst + ' of \\d+ first-pass model fits change from Precon1 to Precon4').test(txt(D().getElementById('joesay'))),
+        txt(D().getElementById('joesay')));
+  check('a check (Noise vs Click) is said to be expected null', /expected null/.test(txt(D().querySelector('#joeanswer tr[data-model="c1"] th'))));
+  cell8('m4', 'gamma', 'dickson').click();
+  await until(() => JO.state.band === 'gamma' && JO.state.method === 'dickson' && D().getElementById('jm-m4'), 40);
+  const c4 = () => D().getElementById('jm-m4');
+  const m4g = r8('m4', 'gamma', 'dickson');
+  check('a cell clicked shows its band and method, and its model: the plot with F, df and p in its legend',
+        JO.state.band === 'gamma' && JO.state.method === 'dickson' && !!c4().querySelector('svg.jplot')
+        && txt(c4().querySelector('svg.jplot')).indexOf('F(' + m4g.mixed.terms['Day × Phase × Pair'].df1 + ', ' + m4g.mixed.terms['Day × Phase × Pair'].df2 + ')') >= 0,
+        txt(c4().querySelector('svg.jplot')).slice(-160));
+  check('a point a level for Precon1 and Precon4, Precon2 and 3 too when measured', c4().querySelectorAll('svg.jplot circle.jpt[data-day="Precon4"]').length === 2
+        && c4().querySelectorAll('svg.jplot circle.jpt[data-day="Precon1"]').length === 2);
+  const holm8 = m4g.post.filter((p) => p.p_holm != null && p.p_holm < 0.05).length;
+  check('the strip: every pair’s own change, those Holm keeps marked (from joe.json)',
+        c4().querySelectorAll('svg.jstrip rect.jbar').length === m4g.post.filter((p) => p.p != null).length
+        && c4().querySelectorAll('svg.jstrip rect.jbar.holm').length === holm8 && holm8 >= 1, holm8);
+  const pt8 = c4().querySelector('details.xmore[data-key="jp-m4"]');
+  pt8.querySelector('summary').click();
+  await sleep(40);
+  check('which pairs drive it, behind a ▸: sorted by p, the planted pair first and kept by Holm',
+        txt(pt8.querySelector('table.jpost tbody tr th')) === 'R DHC – R RSC' && pt8.querySelector('table.jpost tbody tr').classList.contains('jkeep'),
+        txt(pt8.querySelector('table.jpost tbody tr')));
+  const tt8 = c4().querySelector('details.xmore[data-key="jt-m4"]');
+  tt8.querySelector('summary').click();
+  await sleep(40);
+  check('every term, both models, the RM-ANOVA saying how many rats it kept', tt8.querySelectorAll('table.jterms tbody tr').length === 7
+        && /RM-ANOVA \(\d of 8 rats\)/.test(txt(tt8.querySelector('table.jterms thead'))), txt(tt8.querySelector('table.jterms thead')));
+  JO.band = 'theta'; JO.method = 'welch';
+  await sleep(40);
+  const fol8 = D().querySelector('#jm-m2 details.xmore[data-key="jf-m2"]');
+  check('a model its gate opened carries its follow-ups; one it kept shut, none', !!fol8 && !D().querySelector('#jm-m3 details.xmore[data-key="jf-m3"]'));
+  fol8.querySelector('summary').click();
+  await sleep(40);
+  check('the follow-ups: the planted pair, PLI, direction (Granger both ways, the xcorr lag) and PAC, named by its regions',
+        txt(fol8.querySelector('h4')) === 'R ACC – R OFC' && fol8.querySelectorAll('table.jfollow tbody tr').length === 9
+        && /PAC: R ACC theta phase → R OFC gamma amplitude/.test(txt(fol8)), txt(fol8).slice(0, 200));
+  // The windows, to play with.
+  const tl8 = D().getElementById('joetimeline');
+  tl8.querySelector('.xstep[data-model="m4"]').click();
+  await sleep(600);
+  check('the timeline: a model chosen lights its two windows and dims the rest',
+        tl8.dataset.model === 'm4' && Number(tl8.querySelector('[data-w="swa"]').getAttribute('opacity')) > 0.9
+        && Number(tl8.querySelector('[data-w="swb"]').getAttribute('opacity')) > 0.9 && Number(tl8.querySelector('[data-w="base20"]').getAttribute('opacity')) < 0.3,
+        ['swa', 'swb', 'base20'].map((w) => tl8.querySelector('[data-w="' + w + '"]').getAttribute('opacity')).join());
+  const hm8 = D().querySelector('#joedefs details.xmore[data-key="joe-harm"]');
+  hm8.querySelector('summary').click();
+  await until(() => D().querySelector('#joeharm .jharmonics'), 40);
+  const hstep = (t) => Array.from(D().querySelectorAll('#joeharm .xstep')).find((b) => txt(b) === t).click();
+  hstep('Its harmonics');
+  await sleep(30);
+  const tags8 = () => Array.from(D().querySelectorAll('#joeharm text.jhtag')).filter((t) => t.getAttribute('opacity') === '1').map(txt);
+  check('mains and its harmonics: 60 and its whole multiples up to 480 Hz', tags8().join() === '60,×2,×3,×4,×5,×6,×7,×8', tags8().join());
+  hstep('The bands');
+  await sleep(30);
+  check('the bands: only 60 Hz falls in gamma, and the caption says its bins are left out', tags8().join() === '60'
+        && /59–61 Hz/.test(txt(D().querySelector('#joeharm .xcap'))), txt(D().querySelector('#joeharm .xcap')));
+  const fp8 = D().querySelector('#joedefs details.xmore[data-key="joe-fp"]');
+  fp8.querySelector('summary').click();
+  await until(() => D().querySelector('#joefp .jfpcompare'), 40);
+  Array.from(D().querySelectorAll('#joefp .xstep')).find((b) => txt(b) === 'Their difference').click();
+  await sleep(40);
+  check('the old Minus FP and this: the trials’ change less FP’s is the same number as the old one, on joe.json’s own means',
+        /· the same$/.test(txt(D().querySelector('#joefp .jfpout'))) && /theta coherence, the mean over rats and pairs/.test(txt(D().getElementById('joefp'))),
+        txt(D().querySelector('#joefp .jfpout')));
+  // Take it away.
+  check('the SPSS zip and the script to download, every file listed', /\/api\/arc\/monolith\/joe\/file\/joe_tab8_spss\.zip$/.test(D().getElementById('joezip').getAttribute('href'))
+        && D().querySelectorAll('#joeexports .jfiles li a').length === JOE.exports.length && JOE.exports.some((x) => /\.sps$/.test(x)), D().querySelectorAll('#joeexports .jfiles li a').length);
+  check('the script’s agreement said', /^Yes: \d+ files, every cell within 1e-6/.test(txt(D().querySelector('#joeagree .head'))), txt(D().getElementById('joeagree')));
+  joePosted = [];
+  D().getElementById('joescriptrun').click();
+  await until(() => joePosted.length, 80);
+  check('running the script here is asked of Jarvis, confirmed', joePosted.length === 1 && joePosted[0].confirm === true && joePosted[0].what === 'script', JSON.stringify(joePosted));
+  await until(() => D().getElementById('joeanswer') && !JO.state.scripting, 120);
+  const jw8 = figWords(D().getElementById('joepane'));
+  check('no word in its pictures cut off or on another', jw8.length === 0, jw8.slice(0, 4).join(' | '));
+  check('no text here ends in an ellipsis', txt(D().getElementById('joepane')).indexOf('…') < 0);
+  f.style.width = '390px';
+  await sleep(150);
+  check('at 390 px nothing scrolls sideways', D().scrollingElement.scrollWidth <= D().scrollingElement.clientWidth + 1, D().scrollingElement.scrollWidth);
+  JO.render();
+  await sleep(300);
+  const jw8p = figWords(D().getElementById('joepane'));
+  check('and drawn again there, no figure word cut or on another', jw8p.length === 0, jw8p.slice(0, 4).join(' | '));
+  if (STOP === 'joe') {
+    const sa8 = new URLSearchParams(location.search);
+    if (!sa8.get('phone')) f.style.width = '';
+    await sleep(600);
+    if (sa8.get('scroll')) D().getElementById(sa8.get('scroll')).scrollIntoView();
+    restore(); document.title = 'stopped at joe'; return;
+  }
+  f.style.width = '';
+  JOE_MISSING = true; joePosted = [];
+  await JO.load();
+  check('not worked out yet: said, with a button to do it here', !!D().getElementById('joemake') && !D().getElementById('joeanswer'));
+  D().getElementById('joemake').click();
+  await until(() => joePosted.length && D().getElementById('joeanswer'), 120);
+  check('pressed: asked of Jarvis, confirmed, and read again', joePosted.length === 1 && joePosted[0].confirm === true && joePosted[0].what === 'joe'
+        && !!D().getElementById('joeanswer'), JSON.stringify(joePosted));
   M.showTab('main');
   await sleep(30);
 
@@ -2528,7 +3045,7 @@ window.MONO_FIXTURE = {
   check('1, welcome: nothing lit, the box in the middle', hole().classList.contains('hidden') && /two minutes/.test(h4()), h4());
   await press(); await atStep(1);
   check('2, what was kept, first: on its tab, with this Monolith’s own numbers', M2.state.tab === 'cov' && !D().getElementById('covpane').hidden
-        && /Of 192 presentations \(cue pairs\), 144 kept every region, 32 lost a region somewhere and 16 were lost entirely/.test(body())
+        && /Of 192 trials, 144 kept every region, 32 lost a region somewhere and 16 were lost entirely/.test(body())
         && /54 of 66 region pairs have enough rats/.test(body()), body());
   await press(); await atStep(2);
   check('3, the counts: back on the Monolith, lit, with its own numbers', M2.state.tab === 'main' && covers(D().getElementById('verdict'))
@@ -2577,8 +3094,8 @@ window.MONO_FIXTURE = {
   check('12, every cue pair of that day, the first with a value lit', M2.ghost.stack.length === 4 && covers(garc('p01'))
         && /Next will click p01/.test(txt(TB())), txt(TB()).slice(0, 200));
   await press(); await atStep(12);
-  check('13, the recording itself: that cue pair opened and its traces lit', M2.leaf.open && M2.leaf.unit === 'p01'
-        && covers(D().querySelector('#leaf .lsec')) && /r3’s cue pair p01 on Precon4 as recorded/.test(body()), body().slice(0, 120));
+  check('13, the recording itself: that trial opened and its traces lit', M2.leaf.open && M2.leaf.unit === 'p01'
+        && covers(D().querySelector('#leaf .lsec')) && /r3’s trial p01 on Precon4 as recorded/.test(body()), body().slice(0, 120));
   await press(); await atStep(13);
   check('14, how the number was made: the measure in view lit', covers(D().querySelector('#leaf .lcard.sel')) && /should match/.test(body()));
   await press(); await atStep(14);

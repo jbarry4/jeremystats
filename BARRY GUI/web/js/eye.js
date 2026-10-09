@@ -415,6 +415,10 @@ BARRY.eye = (function () {
     'ds profile': 'reading the channels',
     'ds depth': 'finding where on the probe it is',
     'ds windows': 'reading the window around each stamp',
+    // Not on this computer: lined up on the cluster, by Braces' same rule.
+    'vacc stage': 'sending it to the cluster',
+    'vacc queue': 'waiting for VACC, then lining them up there',
+    'vacc fetch': 'bringing the proposal back',
   };
 
   function waitCard() {

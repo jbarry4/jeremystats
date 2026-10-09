@@ -477,7 +477,11 @@ BARRY.panorama = (function () {
       placeholder: 'Type a mouse, session or date…',
       onpick: (r) => {
         q.gid = r.gid;
-        q.path = (r.here || [])[0] || null;
+        // One rule for every tool (BARRY.vacc.reach). Panorama reads the
+        // files here, so a recording only on VACC gives no path and a why.
+        const got = BARRY.vacc.reachFor(r, 'panorama');
+        q.path = got.path;
+        q.why = got.why;
         q.label = r.label || r.key || null;
         q.channels = [];
         q.t0 = null; q.t1 = null;
@@ -488,6 +492,9 @@ BARRY.panorama = (function () {
     }));
     if (q.path) box.appendChild(el('p', { class: 'hint quiet', text: q.path }));
     if (!q.path) {
+      if (q.gid && q.why) {
+        box.appendChild(el('p', { class: 'warn-line', text: q.why }));
+      }
       box.appendChild(el('p', { class: 'hint', text:
         'Panorama reads the whole recording: the spectrogram end to end, '
         + 'which frequency was dominant and how often, and the power '

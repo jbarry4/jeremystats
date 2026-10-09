@@ -612,7 +612,23 @@ def render_panel(session, spec):
     NOT the caller's dict: `/api/panel` uses the request body as the prewarm
     cache key both before and after this call, so a key added here would
     mean the cache never hit again.
+
+    A recording read off the cluster is rendered ON the cluster, by this
+    same function, and the picture comes back (vaccio.py). The rasters read
+    every selected channel at full rate -- five seconds of 64 channels is
+    tens of megabytes -- and only the finished panel is worth sending. Before
+    this branch the traces pane worked off the cluster and every aid window
+    beside it (CSD, theta, voltage, spectrogram) failed with "cannot find
+    the file 'vacc:...'", which is what Checkup, Spotter and StrataScope
+    open on.
     """
+    if (session or {}).get("source") == "vacc":
+        from . import vaccio
+        got = vaccio.panel(session, spec)
+        if not (got or {}).get("ok"):
+            raise PanelError((got or {}).get("error")
+                             or "The cluster could not draw that panel.")
+        return got
     spec = dict(spec, _report=[])
     kind = spec.get("panel", "voltage")
     if kind == "traces":

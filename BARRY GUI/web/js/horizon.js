@@ -156,7 +156,7 @@ BARRY.horizon = (function () {
         placeholder: 'Which recording? Type a mouse, session or date…',
         onpick: (r) => {
           q.gid = r.gid;
-          q.path = (r.here || [])[0] || null;
+          q.path = BARRY.vacc.reachFor(r, 'horizon').path;
           q.label = r.label || r.key || null;
           q.channels = [];
           q.t0 = null; q.t1 = null;
@@ -784,7 +784,7 @@ BARRY.horizon = (function () {
         ? BARRY.views.toolkit.registryRows() : [];
       const r = rows.find((x) => x.gid === gid);
       if (r) {
-        q.path = (r.here || [])[0] || null;
+        q.path = BARRY.vacc.reachFor(r, 'horizon').path;
         q.label = r.label || r.key || null;
       }
       reset();

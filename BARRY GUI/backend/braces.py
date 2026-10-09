@@ -1491,3 +1491,103 @@ def params_of(spec, peaks):
         "lfp_fs": round(float(peaks.get("lfp_fs") or incisor.LFP_FS), 4),
         "invert": bool(spec.get("invert", True)),
     }
+
+
+def align(session, use_chans, spec, events, stamp_times, align_ids,
+          left_out, depth_n=DEPTH_BAND, job=None):
+    """One whole alignment: screen, find the depth, read the windows, propose.
+
+    Everything `/api/braces/run` does between choosing the channels and
+    filing the set, in one function, because it now runs in two places: on
+    this computer, and on a compute node for a recording only the cluster can
+    read (`vacc_run.py`, tool "braces"). Two copies would be two answers to
+    where a stamp goes. Returns {"out", "rows", "params", "n_channels"};
+    filing it as a set is the caller's, because the set store is the desk's.
+    """
+    # The probe is screened FIRST, over one clean stretch.
+    #
+    # A CSD does not merely include a bad contact, it amplifies it: a dead
+    # wire between two live ones is the largest deflection anywhere on the
+    # shank. Every magnitude question after this -- which depth, which peak
+    # -- would otherwise be answered with it. Screened contacts join the ones
+    # nobody ticked: interpolated, and reported rather than silently dropped.
+    screened = screen(session, use_chans, spec, stamp_times)
+    bad_nums = dict(screened)
+    for n in left_out:
+        bad_nums.setdefault(int(n), "not ticked")
+
+    # Where on the shank these events actually are, worked out from the
+    # events themselves: the CSD averaged over a sample of the stamps at
+    # their curated times, so what is time-locked to them adds and what is
+    # not falls away. The band and the depth profile both come out of it.
+    band_nums, depth_rows, at, prof = depth_band(
+        session, use_chans, spec, stamp_times, want=depth_n, job=job,
+        bad=bad_nums)
+    # One more contact either side of the band.
+    #
+    # A CSD has no value at the ends of the list it is given, so reading
+    # exactly the band would lose its top and bottom rows -- the two the
+    # band was chosen for. The extra pair is read and then thrown away by
+    # `compute_csd` itself.
+    #
+    # CSD ONLY. Voltage and slope keep every row they are given, so the extra
+    # pair was not thrown away for them -- it went into the trace, and a band
+    # chosen as sixteen contacts was measured on eighteen.
+    want_set = set(band_nums)
+    pad_rows = spec.get("measure", "csd") == "csd"
+    on = []
+    for i, c in enumerate(use_chans):
+        if int(c["number"]) in want_set:
+            on.append(c)
+        elif pad_rows and ((i + 1 < len(use_chans)
+                            and int(use_chans[i + 1]["number"]) in want_set)
+                           or (i and int(use_chans[i - 1]["number"])
+                               in want_set)):
+            on.append(c)
+    if job:
+        job.check()
+    # Then only the windows the stamps can reach, on only those channels.
+    # Neither half is a shortcut -- reading a channel that cannot see the
+    # event, or a stretch no stamp can reach, cannot change where a stamp
+    # goes.
+    peaks = windowed_peaks(session, on, None, spec, stamp_times, job,
+                           bad=bad_nums)
+    # Recorded, not used: see `params_of`. The profile says the band is
+    # sitting on a dipole, which is worth keeping even though nothing is
+    # projected onto it.
+    peaks["profile"] = {str(k): v for k, v in prof.items()}
+    peaks["depth"] = {"channels": band_nums, "profile": depth_rows,
+                      "from": at, "of": len(use_chans),
+                      "weights": {str(k): v for k, v in prof.items()},
+                      "screened": {str(k): v for k, v in screened.items()}}
+    if job:
+        job.check()
+    out = propose(events, peaks,
+                  window_ms=spec["window_ms"],
+                  edge_frac=spec["edge_frac"],
+                  same_ms=spec["same_ms"],
+                  align_ids=set(align_ids or ()))
+    params = params_of(spec, peaks)
+    params["left_out"] = list(left_out)
+    rows = out.pop("rows")
+    # Into the set, not only into the job's result: the job is gone by
+    # tomorrow, and somebody opening this proposal then still has to be able
+    # to ask which channels it was measured from -- and which contacts were
+    # interpolated rather than believed.
+    out["left_out"] = list(left_out)
+    out["screened"] = peaks.get("screened") or {}
+    out["depth"] = peaks.get("depth")
+    out["n_windows"] = peaks.get("n_windows")
+    out["read_s"] = peaks.get("read_s")
+    return {"out": out, "rows": rows, "params": params,
+            "n_channels": peaks.get("n_channels")}
+
+
+def channels_by_number(session, numbers):
+    """The session's channels whose CSC numbers are listed, in the session's
+    own order -- how a compute node rebuilds the desk's choice of contacts
+    from numbers, never from row indices, which shift when a file is
+    missing."""
+    want = {int(n) for n in (numbers or [])}
+    return [c for c in (session.get("channels") or [])
+            if int(c["number"]) in want]

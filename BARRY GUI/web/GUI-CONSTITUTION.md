@@ -318,6 +318,12 @@ toolButton('panorama', 'Panorama', 'The whole recording at once: …')
 - Dispatch a `q.tool === 'yours'` branch to your paint function.
 - If it can run on the cluster, add its id to `VACC_TOOLS` — and only then.
   A tool marked as offloadable that is not is worse than no mark.
+- Give it a row in `VACC_INFO` (toolkit.js) when it is VACC enabled in any
+  way — runs there, or reads over the link. The mark's hover says, in three
+  parts, **why it is VACC enabled**, **what is processed on the cluster**,
+  and **what it would be like without VACC**. One table, so the mark on a
+  bundle step and on the flat list say the same thing (`vaccWords(id)`;
+  `_dev/vaccreach.html` checks every row has all three).
 
 ### A bundle
 
@@ -440,11 +446,28 @@ modes by name -- each mode used to, none listed them all, and entering
 Checkup with Spotter open left both live.
 
 **Resolve the recording, do not assume a path.** Registry rows carry `here`,
-a list of paths reachable from *this* machine — not `path`. Ask for `here[0]`
-and say so plainly when it is empty:
+a list of paths reachable from *this* machine — not `path`. Never read
+`here[0]` yourself: ask `BARRY.vacc.reachFor(row, toolId)` (vacc.js). It is
+the one rule — this computer first, the cluster second — and it returns
+`{ path, where: 'here' | 'vacc' | null, why }`, where `path` is a drive path
+or `vacc:<gid>`. Say `why` plainly when there is no path.
 
-> None of this recording's paths are reachable from this machine, so there is
-> nothing to look at.
+What a tool can do with a recording that is VACC loaded and not on this
+computer is the tool's own fact, declared in `READS` beside `VACC_TOOLS`
+(toolkit.js), never guessed:
+
+| reads | means | tools today |
+|---|---|---|
+| `cluster` | runs there, no copy here needed | Incisor, Doppler (the node resolves the channels and measures the gaps), Braces and Eye (the stamps go up with the job; only when this computer has no copy) |
+| `link` | views it through the live link: windows, every panel (CSD, theta, voltage, spectrogram -- drawn on the cluster by `analysis.render_panel`, only the picture crosses), overview, band, .nev. Nothing is prewarmed off the cluster | Xplorefinder, Checkup, Spotter, StrataScope |
+| `here` | needs the files on this computer — the default | everything not yet checked |
+
+A picker uses `BARRY.vacc.usableFor(toolId)` as `ui.pickRecording`'s
+`usable`, so a VACC-loaded recording a tool cannot use is shown and disabled
+with the reason rather than offered and then failing. `_dev/vaccreach.html`
+fails a module that reads `here[0]` on its own. Before reach existed, every
+tool did, and Checkup refused a recording ("none of its paths are
+reachable") right after Incisor had banked it off the cluster.
 
 **`rebind` exists because reopening a recording replaces the session object.**
 A mode holding the old one keeps painting into a detached tree.
@@ -632,6 +655,44 @@ The same rule made `probeChip` shared: three places drew it, and three copies
 of "is this confirmed" would have ended up disagreeing about what green
 means.
 
+### VACC loaded: one word, and how a recording gets it
+
+A recording the cluster can read **with this account, now** carries one
+mark, **VACC loaded** (`BARRY.vacc.words` — the user's word, 2026-10-08).
+How it is there is the title, not a second word: *read in place* on a share
+VACC mounts (`native`), or *an uploaded copy* in scratch that can be purged
+(`staged`). Two different words read as two different promises; to somebody
+choosing a recording they are one fact.
+
+- **Per account.** `/api/vacc/knows` carries `readable` on a native
+  recording from the status probe's verdict on its share — false only when
+  the share was asked and refused. `canRead` and `mark` both read it, so a
+  share this netid is refused gets neither an Open nor a mark, and its
+  detail says who to ask (the `jarvis_writes` group; Shahriar).
+- **Found by looking, including on netfiles.** Every mapped share this
+  account can read is walked like scratch (`vacc.places`), its listing kept
+  on disk for a day because the walk takes minutes (`INV_TTL_NATIVE_S`). A
+  folder found there is `native`, never `staged`, and beats a scratch copy
+  of the same recording instead of conflicting with it.
+- **Two finds, and a first look that is asked for.** The card has **Find
+  everything on VACC** (the cluster's own space: scratch, the uploads,
+  temp, scanned places — seconds) and **Find everything on netfiles** (the
+  lab's share — minutes), because they are two different costs. Each
+  computer keeps its own listing of the share, so a new computer starts
+  with none, and its first look is **Set up this computer** on the card,
+  never a walk started behind somebody's back. After that the share is
+  looked through again when its listing is a day old.
+- **Added on purpose.** Sessions ▸ Everything VACC knows ▸ *Found on VACC*
+  sorts every find against the catalogue (`backend/vaccfind.py`) and offers
+  **Add N recordings found on VACC** — one click that says how many, refused
+  if the list changed since it was shown (`digest`). A netfiles find is
+  registered by its **UNC spelling** (`vacc.unc_for`), which is a real lab
+  path, not a cluster path; a scratch find by identity alone, with no path.
+  No sighting is filed for this computer, so *Scan a drive* does not count
+  them as met here. A folder that names no mouse and session is never
+  minted, and one that half-matches a known recording on the same day is
+  left to a person.
+
 ### Absent is not negative, in every view at once
 
 The cluster has four states and only two are affirmative. `BARRY.vacc.of`
@@ -721,11 +782,20 @@ rule above: one recording's circuit is about a minute here, so Circuit runs
 here and on the VACC, one or many; Drift combines numbers already computed,
 so it runs here in seconds and can run on the VACC, never as a batch.
 
+Braces and Eye were given the cluster by the user (2026-10-09) for one
+reason: a set whose recording only the cluster has. There the job runs
+on the VACC, by the same `braces.align`; a set whose recording is here is
+still aligned here. There is no choice to make between the two, so the run
+bar does not offer one (an axis with one option is hidden); the plan says
+"Runs on VACC" before the button is pressed. Spotter and Checkup read such
+a recording over the link and run nothing there.
+
 | tool | here · one | here · many | VACC · one | VACC · many |
 |---|---|---|---|---|
 | Incisor | ✓ | ✓ | ✓ | ✓ |
 | Circuit | ✓ | ✓ | ✓ | ✓ |
-| Checkup, Braces, Root Canal, X-ray, Eye | ✓ | ✓ | | |
+| Checkup, Root Canal, X-ray | ✓ | ✓ | | |
+| Braces, Eye | ✓ | ✓ | ✓ | |
 | Doppler | | | ✓ | ✓ |
 | Panorama | ✓ | ✓ | ✓ | |
 | Spotter, Kilosort, StrataScope | ✓ | | | |
@@ -734,6 +804,19 @@ so it runs here in seconds and can run on the VACC, never as a batch.
 Panorama's local batch was missing from the first draft of this table. It
 already had one — *Many at once*, a set and where each recording got to — so
 the table was wrong, not the tool.
+
+**Incisor on the VACC needs no copy here** (2026-10-08). A recording only
+the cluster can read — most of the netfiles share, from a desk without `Y:`
+— is prepared from the registry alone; the compute node resolves the channel
+list by the one rule (`incisor.resolve_channels`) and measures the gaps, and
+the answer's key is computed when it lands, from the `breaks_sha` it carries
+(`backend/incisorvacc.py`). A review opens that scan by `(gid, key)`
+(`/api/incisor/result`), and `/events` and `/union` answer by it, so the
+hilus range and the bank work with nothing open here. When this machine has
+the summary and not the events, they are fetched once from the run directory
+in the workspace (`computed_on.workspace` / `.file`). VACC mode ticks nothing
+for you, shows the parameters once for the batch, states the cost, and caps a
+netfiles batch at 8 tasks at once.
 
 **On the run bar so far:** Incisor, Doppler, Braces, X-ray, Root Canal and
 Panorama. **Cells in the table not built yet**, which the bar therefore does
@@ -870,7 +953,11 @@ reach the shared space.
   `Jarvis Data` (or create it). When it cannot, the panel says *what* was
   refused, links the folder in OnDemand, and says **ask Shahriar**
   (`vacc.shared_words`). Never a bare "permission denied". The netfiles share
-  is not Shahriar's to open; its refusal still points at vacchelp.
+  (`/netfiles/bigdata_jbarry`, nfs from `netfiles03.uvm.edu`) is grouped to
+  `jarvis_writes` since 2026-10-01 — sakhava1 and jbarry4 — so a refusal
+  there now means this netid is not in that group, and says to ask Shahriar.
+  The group can WRITE the share, and it is the lab's primary data: Jarvis
+  never writes there. Every run writes only under `workspace/runs/<rid>`.
 - **Jobs outlive the window.** The probe — still one connection — runs
   `squeue --me` (falling back to `-u $USER`) and the last day's `sacct`
   failures. Every batch Incisor, Doppler and Circuit submit writes a run
@@ -1124,6 +1211,7 @@ per object.
 | **the cluster** | remote, the server | the VACC as a place work runs |
 | **VACC** | the cluster | where it is the proper noun — *VACC account*, *VACC mounts*, a path |
 | **uploaded** | staged | a recording Jarvis has copied to `Jarvis Data`. "Staged" implied a copy that had never been made |
+| **VACC loaded** | on VACC, VACC can read it, Uploaded to VACC (as a mark) | the mark on a recording the cluster can read with this account now, whether in place on netfiles or as an uploaded copy; *how* goes in the title. "Uploaded" stays the word for the act |
 | **Recording** | Session, 1. Which recording | the label over the recording picker, in every tool |
 | **v4.1** | 4.1, version 4.1, v7 | a version, always by its derived name through `versionLabel` — never the stored integer |
 
@@ -1147,6 +1235,7 @@ rather than merely published.
 | `python tools/harness_run.py` | the ~60 behaviour harnesses in `_dev/` |
 | `_dev/vaccopen.html` | that the cluster's meaning is single-sourced (§6c): that `words` and `canRead` cannot come apart, and that every mark drawn on screen is a word the module actually keeps — a view that built its own chip fails here |
 | `_dev/vacccat.html` | that two views of one list are one list (§6c): one `#sessTree` and one `#sessFilters`, not two, and that leaving a view hands them back rather than destroying them |
+| `_dev/vaccreach.html` | that every module reaches a recording through `BARRY.vacc.reach` (§6b): none reads `here[0]` on its own, and a VACC-loaded recording a tool cannot use is disabled with the reason |
 | `_dev/uiaudit.html` | the same measurements live, plus the claims that need two classes on a real element — which is how `.btn.small` is caught, since `small` resolves on its own and the pair matches nothing |
 
 Run all of them from **PowerShell**, never bash: under bash Edge's
