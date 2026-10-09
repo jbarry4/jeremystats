@@ -23,8 +23,8 @@
     "schema": "2026-09-04T15:57:01.904977+00:00",
     "session": "2026-09-04T15:57:01.904977+00:00",
     "start": "2026-09-04T15:57:01.904977+00:00",
-    "updated": "2026-09-21T17:19:54.044330+00:00",
-    "view_state": "2026-09-21T17:19:54.044330+00:00"
+    "updated": "2026-10-09T15:46:59.972148+00:00",
+    "view_state": "2026-10-09T15:46:59.972148+00:00"
   },
   "_keys": {
     "paths": {
@@ -48,12 +48,16 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-09-21T17:12:10.670210+00:00"
+        "2026-10-09T15:44:25.938938+00:00"
+      ],
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-24T13:43:00.963492+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-21T17:19:54.044330+00:00",
+    "at": "2026-10-09T15:46:59.972148+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -105,19 +109,28 @@
       "scan": "scan_765fa11e51"
     },
     "barrylab-d8e8": {
-      "at": "2026-09-21T13:12:00-04:00",
+      "at": "2026-10-09T11:44:25-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\PTENDKOM60\\m60s4jul10\\2025-07-10_13-51-27",
       "root": null,
       "scan": null
+    },
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-24T09:43:00-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "D:\\PTEN\\CTL\\PTENDKOM60\\m60s4jul10\\2025-07-10_13-51-27",
+      "root": "D:/PTEN/CTL",
+      "scan": "scan_febb6fcb03"
     }
   },
   "session": 4,
   "start": "2025-07-10T13:51:27",
   "updated": {
-    "app_version": "2026.09.21.5",
-    "at": "2026-09-21T13:19:54-04:00",
+    "app_version": "2026.10.07.7",
+    "at": "2026-10-09T11:46:59-04:00",
+    "commit": "07c4708b",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -160,7 +173,6 @@
       63
     ],
     "clim": null,
-    "even_only": false,
     "fdefault": null,
     "flock": true,
     "gain": 2.25,
@@ -174,7 +186,7 @@
     "spacing": 50,
     "span": 0.8,
     "stft_mode": null,
-    "t0": 1620.3399279999999,
+    "t0": 22.507831000000003,
     "ylim": null
   }
 }

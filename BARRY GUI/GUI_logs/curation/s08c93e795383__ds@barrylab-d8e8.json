@@ -17,7 +17,7 @@
     "schema": "2026-09-03T21:07:03.205703+00:00",
     "session_label": "2026-09-03T21:07:03.205703+00:00",
     "source": "2026-09-03T21:07:03.205703+00:00",
-    "updated": "2026-09-09T15:04:12.068869+00:00"
+    "updated": "2026-10-09T14:36:05.627531+00:00"
   },
   "_keys": {
     "events": {
@@ -1631,7 +1631,7 @@
       ],
       "ec5c4b39da5": [
         "set",
-        "2026-09-09T14:26:24.690279+00:00"
+        "2026-10-09T14:36:05.627531+00:00"
       ],
       "ec679e77d3f": [
         "set",
@@ -2008,7 +2008,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-09T15:04:12.068869+00:00",
+    "at": "2026-10-09T14:36:05.627531+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -2122,8 +2122,8 @@
       "start": 21.958
     },
     {
-      "at": "2026-09-09T10:26:24-0400",
-      "by": "Rain Younger",
+      "at": "2026-10-09T14:35:08+00:00",
+      "by": "Isabella Piatek",
       "id": "ec5c4b39da5",
       "label": "spike",
       "note": "Filed under flag and spike when sorted, so it needs deciding.",
@@ -11584,7 +11584,9 @@
     "kind": "snapshot folders"
   },
   "updated": {
-    "at": "2026-09-09T11:04:12-04:00",
+    "app_version": "2026.10.07.7",
+    "at": "2026-10-09T10:36:05-04:00",
+    "commit": "07c4708b",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
