@@ -1,21 +1,21 @@
 {
   "_at": {
-    "at": "2026-10-08T03:14:57.819576+00:00",
-    "by": "2026-10-08T03:14:57.819576+00:00",
-    "how": "2026-10-08T03:14:57.819576+00:00",
-    "id": "2026-10-08T03:14:57.819576+00:00",
-    "order": "2026-10-08T03:14:57.819576+00:00",
-    "question": "2026-10-08T03:14:57.819576+00:00",
-    "tables": "2026-10-08T03:14:57.819576+00:00",
-    "title": "2026-10-08T03:14:57.819576+00:00",
-    "verdict": "2026-10-08T03:14:57.819576+00:00"
+    "at": "2026-10-09T20:03:25.495452+00:00",
+    "by": "2026-10-09T20:03:25.495452+00:00",
+    "how": "2026-10-09T20:03:25.495452+00:00",
+    "id": "2026-10-09T20:03:25.495452+00:00",
+    "order": "2026-10-09T20:03:25.495452+00:00",
+    "question": "2026-10-09T20:03:25.495452+00:00",
+    "tables": "2026-10-09T20:03:25.495452+00:00",
+    "title": "2026-10-09T20:03:25.495452+00:00",
+    "verdict": "2026-10-09T20:03:25.495452+00:00"
   },
   "_shard": {
-    "at": "2026-10-08T03:14:57.819576+00:00",
+    "at": "2026-10-09T20:03:25.495452+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
-  "at": "2026-10-07T23:14:57-0400",
+  "at": "2026-10-09T16:03:25-0400",
   "by": "Claude (AI Beta comparisons)",
   "how": "Whole-mouse cross-validation: every score comes from a mouse the model never trained on. \"At 20%\" means up to 20% of real spikes may be called Garbage -- the sweep dialog's tolerance; the DS bar stays where 99% of garbage is kept out. Flagged is the share of all candidates left for a person.",
   "id": "filters-combined",

@@ -1,0 +1,183 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — All Garbage, Checkup's secret</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 56vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 44vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* The keyhole, the PIN, the heavens and the button -- against a real DS set,
+   with every write answered here, so no label reaches the server.
+
+   A wrong PIN is refused and the heavens stay shut; the right one opens
+   them and lowers the button; the first press asks, the second calls every
+   candidate Garbage in ONE write; `u` puts every one back in one write. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null;
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    W = f.contentWindow;
+    const D = () => f.contentDocument;
+    await untilN(() => typeof W.setView === 'function');
+    const errs = [];
+    W.addEventListener('error', (e) => errs.push(e.message));
+    check('the secret is loaded', W.eval('typeof BARRY.allGarbage === "object"'));
+
+    const sets = (await (await fetch('/api/curation')).json()).sets || [];
+    const reg = await (await fetch('/api/registry')).json();
+    const here = {};
+    for (const p of (reg.tree || [])) for (const m of p.mice) for (const s of m.sessions) {
+      if ((s.here || []).length) here[s.gid] = s.here[0];
+    }
+    const target = sets.filter((s) => s.kind === 'ds' && here[s.gid]
+      && ((s.progress || {}).total || 0) >= 20 && !/demo|harness/i.test(s.gid))
+      .sort((a, b) => (/^\\/.test(here[a.gid]) - /^\\/.test(here[b.gid]))
+                      || a.progress.total - b.progress.total)[0];
+    if (!target) { say('bad', 'no reachable DS set'); return; }
+    say('note', '  ' + target.session_label + ', ' + target.progress.total
+        + ' candidates');
+
+    const posts = [];
+    const real = W.fetch.bind(W);
+    const STUB = /^\/api\/curation\/[^/]+\/[^/]+\/open$|^\/api\/session\/state|^\/api\/activity|^\/api\/presence\//;
+    W.fetch = (url, opts) => {
+      const u = String(url);
+      const method = ((opts && opts.method) || 'GET').toUpperCase();
+      const ok = (o) => Promise.resolve(new W.Response(JSON.stringify(o),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      if (method !== 'GET' && /\/label$/.test(u)) {
+        posts.push(JSON.parse((opts && opts.body) || '{}'));
+        return ok({ ok: true, changed: 1, progress: { total: 1, left: 0 } });
+      }
+      if (method !== 'GET' && STUB.test(u)) return ok({ ok: true });
+      return real(url, opts);
+    };
+    const labelsNow = () => JSON.parse(W.eval(
+      'JSON.stringify((function(){var S=BARRY.views.xplore.state;'
+      + 'var s=S.sessions[S.active]; var m=s&&s.curationMarks;'
+      + 'return m ? m.events.map(function(e){return e.label||null;}) : null;})())'));
+
+    head('the keyhole');
+    await W.eval('BARRY.curate.enter(' + JSON.stringify(target.gid) + ', "ds")');
+    await untilN(() => W.eval('BARRY.curate.active'), 300);
+    const kh = await untilN(() => D().querySelector('#curBar .ag-keyhole'));
+    check('there is a keyhole in the curation bar', !!kh);
+    check('and it says nothing about itself',
+          kh && !kh.textContent.trim() && !kh.title);
+    const before = labelsNow();
+
+    head('the PIN');
+    kh.click();
+    const digits = () => Array.from(D().querySelectorAll('#bigModal .ag-digit'));
+    await untilN(() => digits().length === 6);
+    check('six boxes for six digits', digits().length === 6);
+    const type = (pin) => {
+      pin.split('').forEach((d, k) => {
+        const b = digits()[k];
+        b.focus();
+        b.value = d;
+        b.dispatchEvent(new W.Event('input', { bubbles: true }));
+      });
+    };
+    type('123456');
+    await sleep(300);
+    check('a wrong PIN is refused',
+          /Not that one/.test((D().querySelector('#bigModal .ag-pin-msg') || {})
+            .textContent || '') && !D().getElementById('agHeaven'));
+    check('and the boxes are cleared for another go',
+          digits().every((b) => b.value === ''));
+    type('696969');
+    const heaven = await untilN(() => D().getElementById('agHeaven'), 50);
+    check('the right one opens the heavens', !!heaven);
+    check('with rays, a halo, a pillar and the button',
+          !!(heaven && heaven.querySelector('.ag-rays')
+             && heaven.querySelector('.ag-halo')
+             && heaven.querySelector('.ag-pillar .ag-capital')
+             && heaven.querySelector('#agAllGarbage')));
+    check('the PIN dialog is gone',
+          !D().querySelector('#bigModal:not(.hidden) .ag-pin'));
+    check('nothing has been decided yet', posts.length === 0, posts.length);
+
+    head('All Garbage');
+    const btn = D().getElementById('agAllGarbage');
+    check('it says All Garbage', /All Garbage/.test(btn.textContent), btn.textContent);
+    btn.click();
+    await sleep(150);
+    check('the first press asks', /Truly/.test(btn.textContent)
+          && posts.length === 0, btn.textContent);
+    btn.click();
+    const sent = await untilN(() => posts.find((p) => p.labels), 50);
+    check('the second calls every candidate Garbage in one write',
+          !!sent && Object.keys(sent.labels).length === target.progress.total
+          && Object.values(sent.labels).every((v) => v === 'garbage'),
+          sent && Object.keys(sent.labels).length);
+    const allG = await untilN(() => (labelsNow() || []).every((l) => l === 'garbage'), 50);
+    check('and every mark turns Garbage', !!allG);
+    await untilN(() => !D().getElementById('agHeaven'), 50);
+    check('the heavens close', !D().getElementById('agHeaven'));
+
+    head('and back');
+    posts.length = 0;
+    W.document.dispatchEvent(new W.KeyboardEvent('keydown',
+      { key: 'u', bubbles: true, cancelable: true }));
+    const back = await untilN(() => posts.find((p) => p.labels), 50);
+    check('u puts every one back in one write', !!back
+          && Object.keys(back.labels).length === target.progress.total);
+    const restored = await untilN(() =>
+      JSON.stringify(labelsNow()) === JSON.stringify(before), 50);
+    check('to exactly what they were', !!restored);
+
+    head('Escape');
+    kh.isConnected || true;
+    const kh2 = D().querySelector('#curBar .ag-keyhole');
+    kh2.click();
+    await untilN(() => digits().length === 6);
+    type('696969');
+    await untilN(() => D().getElementById('agHeaven'), 50);
+    W.document.dispatchEvent(new W.KeyboardEvent('keydown',
+      { key: 'Escape', bubbles: true, cancelable: true }));
+    await sleep(150);
+    check('closes the heavens and nothing else',
+          !D().getElementById('agHeaven') && W.eval('BARRY.curate.active'));
+    W.eval('BARRY.curate.exit()');
+    check('no script errors', !errs.length, errs.join(' | '));
+  } catch (e) {
+    say('bad', 'harness threw: ' + e.message);
+  } finally {
+    try { W.eval('BARRY.allGarbage.close()'); } catch (e) {}
+    try { if (W && W.eval('BARRY.curate.active')) W.eval('BARRY.curate.exit()'); } catch (e) {}
+    head(bad === 0 ? 'All Garbage: all checks passed' : bad + ' failed');
+    document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+    f.src = 'about:blank';
+  }
+})();
+</script>

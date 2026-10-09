@@ -1,0 +1,167 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Harness — holding a key down in Checkup</title>
+<style>
+  body { font: 12px/1.55 ui-monospace, monospace; margin: 0; background: #0c0f14;
+         color: #dfe6ee; }
+  #out { padding: 12px 16px; width: 56vw; }
+  iframe { position: fixed; right: 0; top: 0; width: 44vw; height: 100vh;
+           border: 0; border-left: 1px solid #243; }
+  .ok::before { content: 'ok    '; color: #7fe3b0; }
+  .bad::before { content: 'FAIL  '; color: #ff8a7a; }
+  .bad { color: #ffb0a5; }
+  .note { color: #7593a2; }
+  h2 { font-size: 12px; margin: 14px 0 5px; color: #ffb81c; }
+</style>
+<div id="out"></div>
+<iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* "If you hold down a button it freaks out ... and if you try to save it in
+   that chaotic state" -- a column of "That did not save: can't access
+   property _progress, set_ is null" (the user, 2026-10-09).
+
+   A real DS set is opened in curation, but every write is answered here:
+   decisions, the workbench, presence, view state. Nothing reaches the
+   server but reads.
+
+     1  A held decision key decides ONCE.
+     2  A held n walks, but no faster than a window can be drawn.
+     3  Twelve quick decisions, then Escape while they are still saving:
+        every one is posted, and none is reported as a failure.
+     4  Five decisions that really fail say so ONCE, with the count. */
+const out = document.getElementById('out');
+let bad = 0;
+const say = (c, m) => { const d = document.createElement('div');
+                        d.className = c; d.textContent = m;
+                        out.appendChild(d); if (c === 'bad') bad += 1; };
+const check = (n, c, d) => say(c ? 'ok' : 'bad',
+                               n + (c || !d ? '' : '   [' + d + ']'));
+const head = (t) => { const h = document.createElement('h2');
+                      h.textContent = t; out.appendChild(h); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function untilN(fn, tries = 300, gap = 100) {
+  for (let i = 0; i < tries; i++) {
+    try { const v = fn(); if (v) return v; } catch (e) { /* not yet */ }
+    await sleep(gap);
+  }
+  return null;
+}
+
+(async () => {
+  const f = document.getElementById('app');
+  let W = null;
+  try {
+    await new Promise((r) => f.addEventListener('load', r, { once: true }));
+    W = f.contentWindow;
+    const D = () => f.contentDocument;
+    await untilN(() => typeof W.setView === 'function');
+    const errs = [];
+    W.addEventListener('error', (e) => errs.push(e.message));
+
+    /* Find a DS set this machine can open. */
+    const sets = (await (await fetch('/api/curation')).json()).sets || [];
+    const reg = await (await fetch('/api/registry')).json();
+    const here = {};
+    for (const p of (reg.tree || [])) for (const m of p.mice) for (const s of m.sessions) {
+      if ((s.here || []).length) here[s.gid] = s.here[0];
+    }
+    // The smallest that will do, on this computer's own disk: opening a
+    // recording is the slow part, and a network share makes it slower.
+    const target = sets.filter((s) => s.kind === 'ds' && here[s.gid]
+      && ((s.progress || {}).total || 0) >= 40 && !/demo|harness/i.test(s.gid))
+      .sort((a, b) => (/^\\/.test(here[a.gid]) - /^\\/.test(here[b.gid]))
+                      || a.progress.total - b.progress.total)[0];
+    if (!target) { say('bad', 'no reachable DS set of 40 or more'); return; }
+    say('note', '  ' + target.session_label + ', ' + target.progress.total
+        + ' candidates');
+
+    /* Every write answered here. */
+    const labels = [];
+    let saveDelay = 0, failSaves = false;
+    const real = W.fetch.bind(W);
+    const STUB = /^\/api\/curation\/[^/]+\/[^/]+\/open$|^\/api\/session\/state|^\/api\/activity|^\/api\/presence\//;
+    W.fetch = (url, opts) => {
+      const u = String(url);
+      const method = ((opts && opts.method) || 'GET').toUpperCase();
+      const ok = (o) => Promise.resolve(new W.Response(JSON.stringify(o),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      if (method !== 'GET' && /\/label$/.test(u)) {
+        const body = JSON.parse((opts && opts.body) || '{}');
+        labels.push(body);
+        return new Promise((r) => setTimeout(r, saveDelay)).then(() => failSaves
+          ? new W.Response(JSON.stringify({ ok: false, error: 'the disk said no' }),
+                           { status: 400, headers: { 'Content-Type': 'application/json' } })
+          : ok({ ok: true, progress: { total: 1, specified: 1, left: 0 } }));
+      }
+      if (method !== 'GET' && STUB.test(u)) return ok({ ok: true });
+      return real(url, opts);
+    };
+    const key = (k, repeat) => W.document.dispatchEvent(new W.KeyboardEvent(
+      'keydown', { key: k, repeat: !!repeat, bubbles: true, cancelable: true }));
+    const errToasts = () => Array.from(D().querySelectorAll('#toasts .toast.err'))
+      .map((t) => t.textContent);
+    const enter = async () => {
+      await W.eval('BARRY.curate.enter(' + JSON.stringify(target.gid) + ', "ds")');
+      return untilN(() => W.eval('BARRY.curate.active'), 300);
+    };
+    const state = () => JSON.parse(W.eval('JSON.stringify(BARRY.curate.state)'));
+
+    head('1  a held decision key decides once');
+    check('curation opens', !!(await enter()));
+    await sleep(500);
+    const before = state();
+    key('g');
+    for (let i = 0; i < 40; i++) { await sleep(30); key('g', true); }
+    await sleep(400);
+    check('one decision for one press, however long it is held',
+          labels.length === 1, labels.length + ' posted');
+    check('and it moved on by one', state().index !== before.index
+          && labels.length === 1, JSON.stringify([before.index, state().index]));
+
+    head('2  a held n walks, no faster than it can draw');
+    const i0 = state().index;
+    key('n');
+    for (let i = 0; i < 40; i++) { await sleep(30); key('n', true); }
+    await sleep(300);
+    const moved = state().index - i0;
+    check('it walks while held', moved >= 4, moved + ' steps');
+    check('but not thirty a second', moved <= 14, moved + ' steps in 1.2 s');
+
+    head('3  quick decisions, then leaving while they save');
+    labels.length = 0;
+    saveDelay = 900;
+    for (let i = 0; i < 12; i++) { key('g'); await sleep(30); }
+    key('Escape');
+    check('the mode is left at once', !W.eval('BARRY.curate.active'));
+    await sleep(1800);
+    check('every decision was posted', labels.length === 12, labels.length);
+    check('and none of them is reported as a failure',
+          !errToasts().some((t) => /did not save/.test(t)),
+          errToasts().join(' | '));
+
+    head('4  real failures, said once');
+    check('back in', !!(await enter()));
+    await sleep(400);
+    labels.length = 0;
+    saveDelay = 200;
+    failSaves = true;
+    for (let i = 0; i < 5; i++) { key('g'); await sleep(40); }
+    await untilN(() => errToasts().some((t) => /did not save/.test(t)), 60);
+    await sleep(600);
+    const fails = errToasts().filter((t) => /did not save/.test(t));
+    check('one toast for five failures', fails.length === 1, fails.join(' | '));
+    check('saying how many', /^5 decisions did not save/.test(fails[0] || ''),
+          fails[0]);
+    failSaves = false;
+    W.eval('BARRY.curate.exit()');
+    check('no script errors along the way', !errs.length, errs.join(' | '));
+  } catch (e) {
+    say('bad', 'harness threw: ' + e.message);
+  } finally {
+    try { if (W && W.eval('BARRY.curate.active')) W.eval('BARRY.curate.exit()'); } catch (e) {}
+    head(bad === 0 ? 'Holding a key in Checkup: all checks passed' : bad + ' failed');
+    document.title = bad === 0 ? 'ok' : 'FAIL ' + bad;
+    f.src = 'about:blank';
+  }
+})();
+</script>

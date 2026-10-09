@@ -15,6 +15,115 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.09.4 - Tooth Fairy batch; Avery is gone; Tooth Fairy has an icon
+
+### Added
+
+- **Tooth Fairy batch…** in Checkup's header sweeps several dentate spike
+  sets in one go.
+  - **Choosing:** it lists every DS set with candidates, starting with the
+    sets on the bench that still have something undecided. "Everything
+    undecided" and "None" change the choice in one click. The dialog takes
+    the same tolerance as a single sweep.
+  - **While it runs:** sets are swept one after another, with the scanning
+    screen showing the set being read and every set listed with how it is
+    getting on.
+  - **At the end:** a row for every set, with its DS, Flag for Deep Review,
+    Flag and Garbage counts and how often it agreed with what a person had
+    already decided. A set that could not be swept says why.
+  - **Keeping:** you tick the sets to keep; the ones with something
+    undecided start ticked. Accept puts each kept set's calls on its
+    undecided candidates and banks them, exactly as a single sweep does.
+    Unticked sets are let go and nothing is written to them.
+- **An icon for Tooth Fairy:** a molar with a fairy's wings and a star. It
+  appears in three places:
+  - on Checkup's Tooth Fairy buttons
+  - on the confirm and batch dialogs, where the star twinkles and the
+    wings beat
+  - on the scanning screen's header
+
+  It is drawn in the current colour with the accent for the star, so it
+  follows the theme. The motion stops under reduced-motion.
+
+### Changed
+
+- **Avery, Avery+ and Avery Garbage Dystrophy+ are gone.** Tooth Fairy is
+  the only model a sweep offers, so the dialog no longer asks which one.
+  In Checkup's curation bar, "Avery sweep…" is now **Tooth Fairy…**. AI
+  Beta offers **Make this Tooth Fairy** on any run with the sweep's bars
+  and held-out scores.
+  - The code moved with the name: `toothfairy.py`, `toothfairy.js`,
+    `/api/toothfairy*` and `/api/aibeta/tooth-fairy`, and the harnesses
+    `toothfairy.html`, `toothfairyshot.html` and `toothfairyxwin.html`.
+  - The older models' runs stay in AI Beta's list, and the report calls
+    them steps 1 to 4 rather than by name.
+  - Versions they banked are still recognised as a model's own, so
+    training never learns from them. New ones are banked as **Tooth Fairy
+    (AI)**, tagged `tooth_fairy`.
+- **A sweep is held until it is accepted or let go,** and up to 64 are
+  held where 8 were, so a whole batch waits for its summary.
+
+### Checked
+
+- `tools/check_aibeta.py`: 107 ok. New checks: Tooth Fairy's own versions
+  and the older models' are both left out of training whether tagged or
+  not, and Tooth Fairy is the only sweep model.
+- `_dev/toothfairy.html`: 63 ok. New checks:
+  - the icon and no choice of model
+  - the batch chooser's starting choice and its "how many" primary
+  - the posted sets and tolerance
+  - the per-set progress
+  - the failed set
+  - accept keeping only the ticked sets and letting the rest go
+- `_dev/toothfairyxwin.html`: 8 ok. `_dev/aibeta.html`: 43 ok.
+- A real batch through a live server on PTEN_DKO m56 s8 and PTEN m3 s7
+  took 52 s and was let go, not accepted. A missing set was refused, and
+  a second sweep while one ran was refused. The old `/api/avery` route
+  returns 404.
+
+---
+
+## 2026.10.09.3 - Braces, Eye, Doppler and Spotter work with recordings only on the VACC; the VACC mark explains itself; setting up a new computer
+
+### Added
+
+- **Braces and Eye align a set whose recording is only on the VACC.**
+  - The stamps, the contacts and the settings go to a job on the cluster,
+    which runs the same alignment code. The proposal comes back here for
+    review.
+  - A set whose recording is on this computer is still aligned here.
+  - The plan says "Runs on VACC" before you press Run.
+  - The bench's close-up of each window is drawn on the cluster too.
+  - Tested on KCNT1 m1606 s1 (326 curated spikes), aligned here and on the
+    VACC: all 326 proposals were identical, with the same depth band and
+    the same counts. It took 180 s on the VACC against 325 s here. The
+    bench window matched exactly. Both proposals were then thrown away.
+- **Doppler runs, reviews and batches recordings this computer has no copy
+  of.**
+  - The cluster works out the channels, measures the gaps and refuses a
+    recording that is in pieces, all by the same rules as before.
+  - Snippets and reviews are fetched by run, with no copy needed here.
+  - A batch now includes every recording the cluster can read: 247
+    runnable on the real catalogue, 30 of them not on this computer.
+  - Not tried on the cluster yet: a whole-recording Doppler run is hours,
+    and the estimate shown says so.
+- **Spotter lights the right channels for a Doppler run made elsewhere.**
+  Which channels each discharge reached is now fetched once from the
+  cluster when this computer never had the run's events. Before, it lit
+  the peak channel alone.
+- **The VACC mark on each tool explains itself.** Hover over it to see why
+  the tool is VACC enabled, what is processed on the cluster, and what the
+  tool would be like without VACC. This covers Incisor, Doppler, Braces,
+  Eye, Circuit, Checkup and Spotter.
+- **Setting up a new computer, and two separate finds.**
+  - Everything VACC knows ▸ *Found on VACC* now has **Find everything on
+    VACC** (the cluster's own space, seconds) and **Find everything on
+    netfiles** (the lab share, about two and a half minutes).
+  - A computer that has never searched the share offers **Set up this
+    computer** instead of a card full of zeros.
+  - The first search of the share is never started on its own. After that
+    it is refreshed when the saved list is a day old.
+
 ## 2026.10.09.2 - Checkup, Spotter and StrataScope draw their aid windows off the cluster
 
 ### Fixed

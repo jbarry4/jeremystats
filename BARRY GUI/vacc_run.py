@@ -229,6 +229,24 @@ def run_tool(tool, spec, bundle, job, csc):
         out["spec_excluded"] = list(spec.get("excluded") or [])
         return out
 
+    if tool == "braces":
+        # Braces (and Eye, which is Braces' engine pointed at IEDs) for a
+        # recording the desk could not open. The SAME `braces.align` a local
+        # run calls; the stamps, the contacts by CSC number and the settings
+        # came up in the spec, and the proposal goes back to be filed as a
+        # set on the machine that asked.
+        from backend import braces
+        use = braces.channels_by_number(session, spec.get("use_channels"))
+        if not use:
+            raise ValueError("None of the contacts asked for are in the "
+                             "cluster's copy of this recording.")
+        return braces.align(session, use, spec, spec.get("events") or [],
+                            spec.get("stamp_times") or [],
+                            spec.get("align_ids") or [],
+                            spec.get("left_out") or [],
+                            int(spec.get("depth_n") or braces.DEPTH_BAND),
+                            job)
+
     if tool == "doppler":
         from backend import doppler
         # Same reason as Incisor's: the report is in the cache key, so a
@@ -238,7 +256,21 @@ def run_tool(tool, spec, bundle, job, csc):
         if report is None:
             from backend import continuity
             report = continuity.check(path)
-        return doppler.run(session, spec, report, job)
+        if spec.get("channels") is None:
+            # A recording the desk could not open: the channel list only
+            # exists here, so the one rule (every channel less the bad ones,
+            # by CSC number) runs here -- the same one Incisor's node runs.
+            from backend import incisor
+            kept, excluded = incisor.resolve_channels(
+                session, spec.get("bad_channels") or [])
+            if not kept:
+                raise ValueError("Every channel in this recording is marked "
+                                 "bad, so there is nothing to read.")
+            spec = dict(spec, channels=kept, excluded=excluded)
+        out = doppler.run(session, spec, report, job)
+        out["spec_channels"] = list(spec.get("channels") or [])
+        out["spec_excluded"] = list(spec.get("excluded") or [])
+        return out
 
     if tool == "panorama":
         from backend import panorama

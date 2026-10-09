@@ -559,6 +559,29 @@ button.xbarrow:hover { background: var(--chip); }
   details.xmore[open] > .xbody, .xwiggle { animation: none; }
   details.xmore .xchev, .xbtn { transition: none; }
 }
+/* 8 · Joe's data (js/monolith_joe.js) */
+#joepane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
+#joepane[hidden] { display: none; }
+#joepane .card > p { max-width: 80ch; overflow-wrap: anywhere; }
+table.jans td.jcell { cursor: pointer; text-align: center; border-radius: 6px; }
+table.jans td.jcell:hover { background: var(--chip); }
+table.jans td.jcell .jp { font-variant-numeric: tabular-nums; font-weight: 600; }
+table.jans td.jcell.pass { background: color-mix(in srgb, var(--up) 12%, transparent); }
+table.jans td.jcell .jgate { font-size: 10.5px; margin-top: 2px; display: inline-block; }
+table.jans tr.jsep th { padding-top: 10px; text-align: left; }
+table.jans tr.check th { font-weight: 500; }
+.jmodel { border-top: 1px solid var(--line); padding: 10px 0 4px; }
+.jmodel .hrow h3 { margin: 0; font-size: 15px; }
+.jmodel.check .hrow h3 { color: var(--ink-2); }
+.jmodel .jline1 { font-size: 13px; overflow-wrap: anywhere; margin: 4px 0; }
+.jmodel .jline1 .chip { margin-left: 8px; }
+.jfigs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 8px 18px; align-items: start; }
+.jexp { gap: 6px; margin: 2px 0 4px; }
+h3.jgroup { margin: 14px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); }
+table.jpost tr.jkeep th, table.jpost tr.jkeep td { color: var(--up); font-weight: 600; }
+table.jterms tr.jkey th, table.jterms tr.jkey td { font-weight: 600; }
+.jfpout { flex: 0 1 220px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.jfiles { columns: 2 18em; }
 /* 7 · Narrowing down (js/monolith_narrow.js) */
 #narrowpane { display: flex; flex-direction: column; gap: 12px; max-width: 1180px; margin: 0 auto; }
 #narrowpane[hidden] { display: none; }
@@ -662,6 +685,7 @@ svg.narbar { display: block; }
 <script src="js/monolith_progress.js"></script>
 <script src="js/monolith_physical.js"></script>
 <script src="js/monolith_narrow.js"></script>
+<script src="js/monolith_joe.js"></script>
 <script src="js/monolith_tour.js"></script>
 <script src="js/tour.js"></script>
 </body>

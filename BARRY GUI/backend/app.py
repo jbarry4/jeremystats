@@ -24,7 +24,7 @@ import uuid
 from flask import Flask, jsonify, request, send_from_directory, Response, send_file
 
 from . import (aibeta as aibetamod,
-               avery as averymod,
+               toothfairy as tfmod,
                analysis, cfc as cfcmod, cloud as cloudmod, cloudsync,
                dspcahf,
                compose, continuity as continuitymod, csc,
@@ -2411,24 +2411,33 @@ def _incisor_full(gid, key):
     LookupError with the sentence the panel shows when none of the three
     has it -- never a silent re-run.
     """
-    hit = incisormod.cache_get(key) or _incisor_recall({"gid": gid}, key)
+    return _tool_full(INCISOR_VAULT, incisormod, _incisor_recall, gid, key,
+                      "incisor")
+
+
+def _tool_full(vault, mod, recall, gid, key, tool):
+    """A filed answer in full, by recording and key: memory, then this
+    machine's cache, then the run directory on the cluster the vault record
+    names. One function for every tool that files this way (Incisor,
+    Doppler), so "fetched once and cached" means the same thing in each."""
+    hit = mod.cache_get(key) or recall({"gid": gid}, key)
     if hit is not None:
         return hit
-    rec = INCISOR_VAULT.get(gid, key) or {}
+    rec = vault.get(gid, key) or {}
     if not rec:
-        raise LookupError("That scan is not on record. Run it again.")
+        raise LookupError("That run is not on record. Run it again.")
     cfg = vaccmod.load_config(LOGS_DIR)
     out = incisorvaccmod.fetch_full(cfg, rec.get("computed_on"))
     # The run directory holds the answer as the node wrote it; where it was
     # computed is the vault's to say, as it was when first filed.
     out["computed_on"] = rec.get("computed_on")
     try:
-        with open(INCISOR_VAULT.cached_path(gid, key, ".json"),
+        with open(vault.cached_path(gid, key, ".json"),
                   "w", encoding="utf-8") as fh:
             json.dump(out, fh)
     except Exception as exc:                             # noqa: BLE001
-        STORE.record_error("incisor.cache", exc, None, {"gid": gid})
-    incisormod.cache_put(key, out)
+        STORE.record_error(tool + ".cache", exc, None, {"gid": gid})
+    mod.cache_put(key, out)
     return out
 
 
@@ -4138,11 +4147,11 @@ _VACC_RESUMED = {"done": False, "jobs": []}
 
 def _file_batch_answer(tool, t, out):
     """File one answer of a resumed batch the way the live batch does."""
-    if tool == "incisor" and (t.get("resume") or {}).get("vacc_only"):
+    if (t.get("resume") or {}).get("vacc_only"):
         # Prepared without a copy here, so filed without one: the key comes
         # from the answer, exactly as the live batch files it.
-        _incisor_file_vacc(t.get("gid"), t.get("label"),
-                           t.get("spec_local") or {}, out)
+        filer = _doppler_file_vacc if tool == "doppler" else _incisor_file_vacc
+        filer(t.get("gid"), t.get("label"), t.get("spec_local") or {}, out)
         return
     key = (t.get("resume") or {}).get("key") or t.get("key")
     spec = t.get("spec_local") or {}
@@ -4300,7 +4309,23 @@ def _braces_session(rec):
     # recording in the archive, which reads as "no set can be aligned".
     # `curate.js` has taken `here[0]` since the workbench was written.
     here = (row or {}).get("here") or []
-    path = (here[0] if here else None) or rec.get("session_path")
+    path = here[0] if here else None
+    if not path and gid:
+        # Not on this computer -- the cluster second, the way every module
+        # reaches a recording (`BARRY.vacc.reach`). The session comes over
+        # the live link: its channel list and bad channels are real, and the
+        # run itself goes to a compute node (`_braces_vacc_run`).
+        try:
+            if _vacc_place_for_gid(gid).get("remote"):
+                path = incisorvaccmod.path_of(gid)
+        except Exception:                                # noqa: BLE001
+            path = None
+    if not path:
+        # The folder the set was banked against, if this machine has it.
+        # A `vacc:` id there is a recording Incisor banked off the cluster.
+        sp = rec.get("session_path")
+        if sp and (vacciomod.is_vacc(sp) or sessreg.is_here(sp)):
+            path = sp
     if not path and (row or {}).get("paths"):
         # Known, but not on this machine. A different sentence, because it
         # is a different problem: nobody has to re-bank anything, they have
@@ -4445,6 +4470,47 @@ def _braces_spec(body, sess, kind=None):
     return spec
 
 
+def _braces_vacc_run(rec, spec, use_chans, events, stamp_times, align_ids,
+                     left_out, depth_n, steps):
+    """A `VaccRun` of `braces.align` for one entry, and the `where` its rates
+    belong to.
+
+    Everything the node needs travels in the spec: the contacts by CSC
+    number (never by row index), the stamps and their labels, which labels
+    count as real events, and the settings. The node opens its own copy and
+    calls the same function the desk calls. The cost is sized from the
+    windows the stamps reach -- what is actually read -- not from the
+    length of the recording.
+    """
+    gid = rec.get("gid")
+    place = _vacc_place_for_gid(gid)          # raises with a sentence
+    cfg = vaccmod.load_config(LOGS_DIR)
+    vaccmod.push_code(cfg, APP_DIR)
+    where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
+             else "vacc:scratch")
+    spans = bracesmod.spans(stamp_times, spec["window_ms"])
+    read_s = sum(max(0.0, float(b) - float(a)) for a, b in spans)
+    # Screening and the depth pass read a sample of the same windows again.
+    seconds = (cfcmod.rate_for("ds read", where) * read_s * 3
+               * max(1, len(use_chans)) + 60.0)
+    job_spec = dict(
+        spec,
+        path=incisorvaccmod.path_of(gid),
+        use_channels=[int(c["number"]) for c in use_chans],
+        events=list(events),
+        stamp_times=[float(t) for t in stamp_times],
+        align_ids=sorted(str(a) for a in align_ids),
+        left_out=[int(n) for n in left_out],
+        depth_n=int(depth_n))
+    run = vaccrunmod.VaccRun(
+        cfg, "braces", job_spec, place["remote"],
+        plan={"seconds": seconds},
+        # What a node holds: a few seconds of the contacts around a stamp.
+        megasamples=max(1.0, 30000.0 * 10 * max(1, len(use_chans)) / 1e6),
+        tool_steps=list(steps), report=None)
+    return run, where
+
+
 # ==========================================================================
 # Doppler -- interictal discharges by line length. Step 1 of The Storm.
 #
@@ -4465,8 +4531,11 @@ def _doppler_public(out):
             if k != "snippets" and not k.startswith("_")}
 
 
-def _doppler_remember(sess, spec, key, out):
-    """File a finished run: the summary durably, the bulk as cache."""
+def _doppler_remember(sess, spec, key, out, extra=None):
+    """File a finished run: the summary durably, the bulk as cache.
+
+    `extra` is merged into the vault record -- the request's hash, for a run
+    of a recording only the cluster can read (see `_incisor_remember`)."""
     gid = (sess or {}).get("gid")
     if not gid:
         return False
@@ -4489,6 +4558,8 @@ def _doppler_remember(sess, spec, key, out):
             "n_channels": len((spec or {}).get("channels") or []),
             "computed": STORE.provenance(),
         })
+        if extra:
+            rec.update(extra)
         DOPPLER_VAULT.put(rec)
         return True
     except Exception as exc:                             # noqa: BLE001
@@ -4511,6 +4582,83 @@ def _doppler_recall(sess, key):
         return None
     dopplermod.cache_put(key, out)
     return out
+
+
+def _doppler_full(gid, key):
+    """A Doppler run in full -- events and snippets -- by recording and key,
+    fetched once from the cluster when this machine has only the summary."""
+    return _tool_full(DOPPLER_VAULT, dopplermod, _doppler_recall, gid, key,
+                      "doppler")
+
+
+def _doppler_file_vacc(gid, label, spec_local, out):
+    """File a run of a recording the desk did not open. The key comes from
+    the answer -- the channels the node read and the gap map it measured --
+    and the vault record carries the request's hash. Returns the key."""
+    spec = dict(spec_local,
+                channels=list(out.get("spec_channels") or []),
+                excluded=list(out.get("spec_excluded") or []))
+    key = dopplermod.cache_key(
+        spec, gap_map_sha=(out.get("time_basis") or {}).get("gap_map_sha"))
+    dopplermod.cache_put(key, out)
+    _doppler_remember(
+        {"gid": gid, "path": spec_local.get("path"),
+         "identity": {"label": label}},
+        spec, key, out,
+        extra={"request_hash": _doppler_request_hash(gid, spec_local)})
+    return key
+
+
+#: What a Doppler request is before the cluster has resolved channels or
+#: measured gaps -- the question, so a run already answered is recognised.
+DOPPLER_REQ_FIELDS = ("invert", "bad_channels", "llw_s", "prc", "notch_hz",
+                      "band")
+
+
+def _doppler_request_hash(gid, spec):
+    import hashlib
+    body = {"gid": str(gid)}
+    for k in DOPPLER_REQ_FIELDS:
+        v = (spec or {}).get(k)
+        if k == "bad_channels":
+            v = sorted(int(b) for b in (v or []))
+        body[k] = v
+    raw = json.dumps(body, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
+
+
+def _doppler_answered(gid, rhash):
+    for rec in (DOPPLER_VAULT.for_gid(gid) or []):
+        if rec.get("request_hash") == rhash:
+            return rec.get("params_hash")
+    return None
+
+
+def _doppler_spec_vacc(gid, body, rec):
+    """The spec for a recording the desk cannot open: channels resolved on
+    the node, bad channels from the request or the recording's own record,
+    and the same defaults `_doppler_spec` fills."""
+    if body.get("bad_channels") is None:
+        bad = sorted({int(b) for b in ((rec or {}).get("bad_channels") or [])})
+    else:
+        bad = sorted({int(b) for b in body["bad_channels"]})
+    probe_id = _probe_for(rec or {})
+    spec = {
+        "path": incisorvaccmod.path_of(gid), "channels": None,
+        "invert": bool(body.get("invert", True)), "bad_channels": bad,
+        "excluded": [], "left_out": [], "preset": None,
+        "probe": probe_id,
+        "probe_name": (probebook.get(probe_id) or {}).get("name") or probe_id,
+    }
+    for key, default in (("llw_s", dopplermod.LLW_S),
+                         ("prc", dopplermod.PRC)):
+        v = body.get(key)
+        spec[key] = float(default if v is None else v)
+    notch = body.get("notch_hz")
+    spec["notch_hz"] = float(notch) if notch else None
+    band = body.get("band")
+    spec["band"] = [float(band[0]), float(band[1])] if band else None
+    return spec
 
 
 def _doppler_spec(body, sess):
@@ -4595,6 +4743,8 @@ def api_doppler_estimate():
     sess, err = _body_session(body)
     if err:
         return jsonify(err), 400
+    if vacciomod.is_vacc(sess.get("path")):
+        return _doppler_estimate_vacc(body, sess)
     try:
         rep = _incisor_report(sess["path"])
         spec = _doppler_spec(body, sess)
@@ -4625,14 +4775,110 @@ def api_doppler_estimate():
     })
 
 
+def _doppler_estimate_vacc(body, sess):
+    """`/api/doppler/estimate` for a recording opened off the cluster.
+
+    The channel list came over the link; the segmentation and the split
+    check are made on the compute node, as part of the run, because both
+    read the files through. Said rather than shown as a plausible zero.
+    """
+    gid = vacciomod.gid_of(sess.get("path"))
+    try:
+        spec = _doppler_spec(body, sess)
+        plan = dopplermod.plan_for(sess, spec, None)
+        place = _vacc_place_for_gid(gid)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/estimate-vacc", exc, 400, {"gid": gid})
+    st = vaccmod.status()
+    done = _doppler_answered(gid, _doppler_request_hash(gid, spec))
+    return jsonify({
+        "ok": True, "plan": plan, "spec": spec, "split": None,
+        "vacc_only": True, "gid": gid, "cached": bool(done), "key": done,
+        "vacc": {"can": bool(st.get("configured")),
+                 "state": place.get("state"), "remote": place.get("remote"),
+                 "queued": st.get("queued"), "seconds": plan.get("seconds"),
+                 "reason": "" if st.get("configured")
+                 else "No VACC account is set up on this computer."},
+        "continuity": {"pending": True,
+                       "note": "Gaps, and whether the recording is in more "
+                               "than one piece, are checked on the cluster "
+                               "as part of the run; this computer has no "
+                               "copy to check them on."},
+        "channels": [{"index": int(c["index"]), "number": int(c["number"]),
+                      "label": c.get("label"),
+                      "bad": int(c["number"]) in set(spec["bad_channels"])}
+                     for c in (sess.get("channels") or [])],
+    })
+
+
+def _doppler_scan_vacc(body, sess):
+    """One Doppler run of a recording opened off the cluster. Channels
+    resolved here from the link's channel list; segmentation and the split
+    check on the node; the key from the answer (`_doppler_file_vacc`)."""
+    gid = vacciomod.gid_of(sess.get("path"))
+    try:
+        spec = _doppler_spec(body, sess)
+        plan = dopplermod.plan_for(sess, spec, None)
+        place = _vacc_place_for_gid(gid)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/scan-vacc", exc, 400, {"gid": gid})
+    done = _doppler_answered(gid, _doppler_request_hash(gid, spec))
+    if done and not body.get("force"):
+        try:
+            hit = _doppler_full(gid, done)
+            return jsonify({"ok": True, "cached": True,
+                            "result": dict(_doppler_public(hit), key=done)})
+        except LookupError:
+            pass                        # on record and gone: run it again
+    cfg = vaccmod.load_config(LOGS_DIR)
+    try:
+        vaccmod.push_code(cfg, APP_DIR)
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/scan-vacc", exc, 400, {"gid": gid})
+    steps = [("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
+             ("ied detect", plan["n_channels"])]
+    where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
+             else "vacc:scratch")
+    run = vaccrunmod.VaccRun(
+        cfg, "doppler", spec, place["remote"], plan=plan,
+        megasamples=max(0.001, plan["megasamples"]),
+        tool_steps=list(steps), report=None)
+    label = ((REG.by_gid(gid) or {}).get("label")) or gid
+
+    def work(job):
+        out = run.work(job)
+        key = _doppler_file_vacc(gid, label, spec, out)
+        return dict(_doppler_public(out), key=key)
+
+    job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
+                       max(0.001, plan["megasamples"]), where)
+    STORE.record_activity([{
+        "action": "doppler.scan",
+        "detail": {"channels": len(spec["channels"]), "where": where,
+                   "remote": place.get("remote"), "vacc_only": True},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "plan": plan, "where": where,
+                    "remote": place.get("remote")})
+
+
 @app.route("/api/doppler/snippets", methods=["POST"])
 def api_doppler_snippets():
     """The sample of raw event waveforms from the run already done.
 
     Out of the cache, separately from the summary, because the summary is
-    polled and these are asked for once.
+    polled and these are asked for once. By `gid` and `key` for a run made
+    on the cluster, which needs no copy of the recording here.
     """
     body = request.get_json(force=True) or {}
+    if body.get("gid") and body.get("key"):
+        try:
+            hit = _doppler_full(str(body["gid"]), str(body["key"]))
+        except LookupError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 409
+        except Exception as exc:                         # noqa: BLE001
+            return fail("doppler/snippets", exc, 400, {"gid": body.get("gid")})
+        return jsonify({"ok": True, "snippets": hit.get("snippets") or {}})
     sess, err = _body_session(body)
     if err:
         return jsonify(err), 400
@@ -4678,11 +4924,15 @@ def api_doppler_participation():
                   reverse=True)
         if not rows:
             return jsonify({"ok": True, "n": 0, "events": []})
-        path = DOPPLER_VAULT.cached_path(gid, rows[0]["params_hash"], ".json")
-        if not os.path.exists(path):
+        # This machine's copy, else the run directory on the cluster the
+        # vault record names -- a run made from another computer, or one
+        # whose cache was cleared, used to leave Spotter lighting the peak
+        # channel alone. Still best-effort: a run with nowhere to fetch from
+        # answers empty, as before.
+        try:
+            out = _doppler_full(gid, rows[0]["params_hash"])
+        except Exception:                                # noqa: BLE001
             return jsonify({"ok": True, "n": 0, "events": []})
-        with open(path, "r", encoding="utf-8") as fh:
-            out = json.load(fh)
         evs = [{"start": e.get("start"), "channels": e.get("channels") or [],
                 "peak_channel": e.get("peak_channel"),
                 "peak_uv": e.get("peak_uv")}
@@ -4713,6 +4963,8 @@ def api_doppler_scan():
     sess, err = _body_session(body)
     if err:
         return jsonify(err), 400
+    if vacciomod.is_vacc(sess.get("path")):
+        return _doppler_scan_vacc(body, sess)
     try:
         rep = _incisor_report(sess["path"])
         spec = _doppler_spec(body, sess)
@@ -4793,16 +5045,16 @@ def api_doppler_reviews():
             except Exception:                            # noqa: BLE001
                 pass
             row = by_gid.get(gid) or {}
-            local = None
-            for p in (row.get("paths") or []):
-                if os.path.isdir(p):
-                    local = p
-                    break
+            local = _local_path_of(row)
             rows.append({
                 "gid": gid,
                 "label": rec.get("session_label") or row.get("label"),
                 "n": rec.get("n_events"),
                 "params_hash": rec.get("params_hash"),
+                # What a review opens by when this computer has no copy:
+                # the run by its key, and the recording off the cluster.
+                "path": local or incisorvaccmod.path_of(gid),
+                "computed_on": rec.get("computed_on"),
                 "spec": rec.get("spec"),
                 "params": rec.get("params"),
                 "warnings": rec.get("warnings") or [],
@@ -4874,39 +5126,82 @@ def _doppler_members(wanted):
     as a task forty minutes in.
     """
     staged, _unknown = _vacc_staged()
+    cfg = vaccmod.load_config(LOGS_DIR)
+    drives = vaccmod.drive_map()
+    verdicts = {str(k).rstrip("/"): v for k, v in
+                ((vaccmod.status().get("roots") or {}).items())}
     members, blocked = [], []
     for rec in (REG.all() or []):
         gid = rec.get("gid")
-        row = staged.get(gid) if gid else None
+        if not gid or rec.get("retired"):
+            continue
         if wanted and gid not in wanted:
             continue
         label = rec.get("label") or gid
-        if not row:
-            blocked.append(_vacc_missing(rec, label))
-            continue
-        if row.get("conflict"):
+        # The same rule Incisor's batch reads (`vacc.resolve_gid`): on a
+        # share the cluster mounts and this account can open, or a copy in
+        # scratch. Whether THIS computer also has it decides only how it is
+        # prepared -- here, or from the registry for the node to finish.
+        got = vaccmod.resolve_gid(gid, rec.get("paths") or [], cfg,
+                                  drives=drives, staged=staged)
+        if got.get("conflict"):
             blocked.append({"gid": gid, "label": label,
                             "why": "more than one folder on the cluster "
                                    "claims to be this recording"})
             continue
-        local = None
-        for p in (rec.get("paths") or []):
-            if os.path.isdir(p):
-                local = p
-                break
-        if not local:
-            blocked.append({"gid": gid, "label": label,
-                            "why": "this computer cannot open it, so its "
-                                   "channel list cannot be read"})
+        if got.get("state") == vaccmod.NATIVE:
+            rule = vaccmod.native_rule_of(cfg, got.get("remote")) or {}
+            if verdicts.get(str(rule.get("vacc") or "").rstrip("/")) \
+                    == "denied":
+                blocked.append({"gid": gid, "label": label,
+                                "why": "on %s, which this account cannot "
+                                       "read -- ask Shahriar to have it "
+                                       "added to jarvis_writes"
+                                       % rule.get("vacc")})
+                continue
+        elif got.get("state") != vaccmod.STAGED:
+            blocked.append(_vacc_missing(rec, label))
             continue
-        # `path`, not `remote`: a staged row is a `vacc.inventory` row, and
-        # those carry the cluster folder as `path` (as Incisor's batch reads
-        # it). `row.get("remote")` was None for every member, so every
-        # Doppler batch task was sent `"path": null` and failed on the node
-        # with "the recording is not readable here: None".
-        members.append({"gid": gid, "label": label, "local": local,
-                        "remote": row.get("path")})
+        listed = staged.get(gid) or {}
+        if listed.get("conflict") or listed.get("path") != got.get("remote"):
+            listed = None
+        members.append({"gid": gid, "label": label,
+                        "local": _local_path_of(rec),
+                        "remote": got.get("remote"),
+                        "state": got.get("state"), "listed": listed})
     return members, blocked
+
+
+def _doppler_prepare_vacc(member, body, force):
+    """One member this computer cannot open, prepared from the registry and
+    the cluster's own listing of the folder; the node resolves the channels,
+    measures the gaps and refuses a recording in pieces. None if this exact
+    question is already answered."""
+    gid = member["gid"]
+    rec = _incisor_registry_index().get(gid) or {}
+    spec = _doppler_spec_vacc(gid, body, rec)
+    rh = _doppler_request_hash(gid, spec)
+    if not force and _doppler_answered(gid, rh):
+        return None
+    facts = incisorvaccmod.plan_for(rec, spec, 0.0, 0.0,
+                                    found=member.get("listed"))
+    span, fs, n = facts["span_s"], facts["fs"], max(1, facts["n_channels"])
+    plan = {"span_s": span, "fs": fs, "n_channels": n,
+            "megasamples": span * fs * n / 1e6,
+            # `doppler.plan_for`'s own seed: twenty channel-seconds read per
+            # second of wall, twice over. Same figure, so the panel and slurm
+            # cannot disagree.
+            "seconds": max(120.0, span * n * 2 / 20.0)}
+    return {
+        "gid": gid, "label": member["label"],
+        "sess": None, "report": None, "key": None,
+        "spec_local": spec, "plan": plan,
+        "spec_remote": dict(spec, path=member["remote"]),
+        "resume": {"vacc_only": True, "request": rh},
+        "tool_steps": [("ied read", int(span * n * 2)), ("ied detect", n)],
+        "seconds": plan["seconds"],
+        "megasamples": max(0.001, plan["megasamples"]),
+    }
 
 
 @app.route("/api/doppler/batch/plan", methods=["GET", "POST"])
@@ -4920,7 +5215,8 @@ def api_doppler_batch_plan():
         todo, done = [], []
         for m in members:
             try:
-                got = _doppler_prepare(m, body, force)
+                got = (_doppler_prepare(m, body, force) if m.get("local")
+                       else _doppler_prepare_vacc(m, body, force))
             except Exception as exc:                     # noqa: BLE001
                 blocked.append({"gid": m["gid"], "label": m["label"],
                                 "why": str(exc)[:200]})
@@ -4931,7 +5227,11 @@ def api_doppler_batch_plan():
             todo.append({"gid": m["gid"], "label": m["label"],
                          "seconds": got["seconds"],
                          "n_channels": got["plan"]["n_channels"],
-                         "span_s": got["plan"]["span_s"]})
+                         "span_s": got["plan"]["span_s"],
+                         # Not on this computer: prepared from the registry,
+                         # finished on the node. The panel says so.
+                         "here": bool(m.get("local")),
+                         "state": m.get("state")})
             got["sess"] = None
             got["report"] = None
     except Exception as exc:                             # noqa: BLE001
@@ -4974,7 +5274,8 @@ def api_doppler_batch():
             job.check()
             gid = m["gid"]
             try:
-                prep = _doppler_prepare(m, body, force)
+                prep = (_doppler_prepare(m, body, force) if m.get("local")
+                        else _doppler_prepare_vacc(m, body, force))
             except Exception as exc:                     # noqa: BLE001
                 failed += 1
                 job.member(gid, status="failed", step=None,
@@ -4989,6 +5290,10 @@ def api_doppler_batch():
             tasks.append(prep)
 
         def adopt(t, out):
+            if (t.get("resume") or {}).get("vacc_only"):
+                _doppler_file_vacc(t["gid"], t.get("label"),
+                                   t["spec_local"], out)
+                return
             dopplermod.cache_put(t["key"], out)
             _doppler_remember(t["sess"], t["spec_local"], t["key"], out)
 
@@ -5076,6 +5381,12 @@ def api_braces_plan():
         "session": {"path": sess.get("path"), "name": sess.get("name"),
                     "fs": sess.get("fs"),
                     "n_channels": len(sess.get("channels") or [])},
+        # Where a run would happen. "vacc" when this computer has no copy:
+        # the channel list above came over the live link, and the run goes
+        # to a compute node as a job -- the panel says so before it is
+        # pressed, because a queue is a different wait from a local read.
+        "where": "vacc" if vacciomod.is_vacc(sess.get("path")) else "here",
+        "remote": sess.get("remote"),
 
         # Every channel, with whether it is marked bad. ALL of them, not
         # only the good ones: a sweep that silently leaves eight channels
@@ -5116,7 +5427,17 @@ def api_braces_run():
         rec = _braces_entry(body.get("entry_id"))
         sess, row = _braces_session(rec)
         spec = _braces_spec(body, sess, kind=rec.get("type"))
-        report = _incisor_report(sess["path"])
+        # Where it runs. On the cluster when the recording is only there --
+        # the session then came over the link and there is nothing here to
+        # read -- or when the caller asks; here otherwise.
+        where = ("vacc" if (vacciomod.is_vacc(sess.get("path"))
+                            or str(body.get("where") or "") == "vacc")
+                 else "here")
+        # The segmentation only sizes the job's progress bar here: the
+        # alignment reads windows around the stamps, and no read needs it.
+        # A recording opened off the cluster has none on this side.
+        report = ({"segments": [{"duration_s": sess.get("duration_s")}]}
+                  if where == "vacc" else _incisor_report(sess["path"]))
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/run", exc, 400,
                     {"entry_id": body.get("entry_id")})
@@ -5220,108 +5541,63 @@ def api_braces_run():
                    if e.get("start") is not None]
     depth_n = int(body.get("depth_band") or bracesmod.DEPTH_BAND)
 
-    def work(job):
-        # The probe is screened FIRST, over one clean stretch.
-        #
-        # A CSD does not merely include a bad contact, it amplifies it: a
-        # dead wire between two live ones is the largest deflection
-        # anywhere on the shank. Every magnitude question after this --
-        # which depth, which peak -- would otherwise be answered with it.
-        # Screened contacts join the ones nobody ticked: interpolated, and
-        # reported rather than silently dropped.
-        screened = bracesmod.screen(sess, use_chans, spec, stamp_times)
-        bad_nums = dict(screened)
-        for n in left_out:
-            bad_nums.setdefault(int(n), "not ticked")
-
-        # Where on the shank these events actually are, worked out from the
-        # events themselves: the CSD averaged over a sample of the stamps
-        # at their curated times, so what is time-locked to them adds and
-        # what is not falls away. The band and the depth profile both come
-        # out of that average.
-        band_nums, depth_rows, at, prof = bracesmod.depth_band(
-            sess, use_chans, spec, stamp_times, want=depth_n, job=job,
-            bad=bad_nums)
-        # One more contact either side of the band.
-        #
-        # A CSD has no value at the ends of the list it is
-        # given, so reading exactly the band would lose its
-        # top and bottom rows -- the two the band was chosen
-        # for. The extra pair is read and then thrown away by
-        # `compute_csd` itself.
-        #
-        # CSD ONLY. Voltage and slope keep every row they are given, so the
-        # extra pair was not thrown away for them -- it went into the trace,
-        # and a band chosen as sixteen contacts was measured on eighteen.
-        want_set = set(band_nums)
-        pad_rows = spec.get("measure", "csd") == "csd"
-        on = []
-        for i, c in enumerate(use_chans):
-            if int(c["number"]) in want_set:
-                on.append(c)
-            elif pad_rows and ((i + 1 < len(use_chans)
-                   and int(use_chans[i + 1]["number"]) in want_set)
-                  or (i and int(use_chans[i - 1]["number"]) in want_set)):
-                on.append(c)
-        job.check()
-        # Then only the windows the stamps can reach, on only those
-        # channels. Neither half is a shortcut -- reading a channel that
-        # cannot see the event, or a stretch no stamp can reach, cannot
-        # change where a stamp goes.
-        peaks = bracesmod.windowed_peaks(sess, on, report, spec,
-                                         stamp_times, job, bad=bad_nums)
-        # Recorded, not used: see `params_of`. The profile says the band is
-        # sitting on a dipole, which is worth keeping even though nothing
-        # is projected onto it.
-        peaks["profile"] = {str(k): v for k, v in prof.items()}
-        peaks["depth"] = {"channels": band_nums, "profile": depth_rows,
-                          "from": at, "of": len(use_chans),
-                          "weights": {str(k): v for k, v in prof.items()},
-                          "screened": {str(k): v
-                                       for k, v in screened.items()}}
-        job.check()
-        out = bracesmod.propose(events, peaks,
-                               window_ms=spec["window_ms"],
-                               edge_frac=spec["edge_frac"],
-                               same_ms=spec["same_ms"],
-                               align_ids=align_ids)
-        params = bracesmod.params_of(spec, peaks)
-        params["left_out"] = left_out
-        rows = out.pop("rows")
-        # Into the set, not only into the job's result: the job is gone by
-        # tomorrow, and somebody opening this proposal then still has to be
-        # able to ask which channels it was measured from.
-        out["left_out"] = left_out
-        # Which contacts were interpolated rather than believed, on the
-        # summary as well as in the params: the panel says so in the line
-        # that explains what the measurement was made on, and a set read
-        # back tomorrow has to be able to say it too.
-        out["screened"] = peaks.get("screened") or {}
-        out["depth"] = peaks.get("depth")
-        out["n_windows"] = peaks.get("n_windows")
-        out["read_s"] = peaks.get("read_s")
+    def file_set(got, computed_on=None):
+        """File one alignment as a proposal, wherever it was computed."""
+        out, rows, params = got["out"], got["rows"], got["params"]
+        if computed_on:
+            # Where it was computed, on the set itself: a proposal made on a
+            # compute node is the same proposal, and says so.
+            out["computed_on"] = computed_on
+            params["computed_on"] = computed_on
         made = BRACES.create(rec["id"], rec.get("gid"), src_v, params, rows,
                              out, name=rec.get("name"), by=who)
         # The summary travels with the job's result so the panel can draw
         # the counts and the histogram without a second request.
         return {"set_id": made["set_id"], "summary": out, "params": params,
                 "n_rows": len(rows),
-                "n_channels": peaks.get("n_channels"),
-                "from_version": src_v}
+                "n_channels": got.get("n_channels"),
+                "from_version": src_v,
+                "where": "vacc" if computed_on else "here"}
 
     steps = [("ds depth", len(use_chans)),
              ("ds windows", max(1, len(bracesmod.spans(
                  stamp_times, spec["window_ms"]))))]
-    job = cfcmod.start(spec, steps, work, max(0.001, span / 60.0))
+
+    if where == "vacc":
+        # The same `braces.align`, on a compute node, reading the cluster's
+        # copy -- the recording is not on this computer, or somebody asked
+        # for the cluster. Stamps, channels and settings go up with the job;
+        # the proposal comes back and is filed here like any other.
+        try:
+            run, vwhere = _braces_vacc_run(rec, spec, use_chans, events,
+                                           stamp_times, align_ids, left_out,
+                                           depth_n, steps)
+        except Exception as exc:                         # noqa: BLE001
+            return fail("braces/run-vacc", exc, 400,
+                        {"entry_id": body.get("entry_id")})
+
+        def work(job, _run=run):
+            got = _run.work(job)
+            return file_set(got, got.get("computed_on") or {"kind": "vacc"})
+
+        job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
+                           max(0.001, span / 60.0), vwhere)
+    else:
+        def work(job):
+            return file_set(bracesmod.align(
+                sess, use_chans, spec, events, stamp_times, align_ids,
+                left_out, depth_n, job))
+
+        job = cfcmod.start(spec, steps, work, max(0.001, span / 60.0))
     STORE.record_activity([{
         "action": "braces.run",
         "detail": {"entry": rec["id"], "n_channels": len(use_chans),
                    "n": len(events), "from_version": src_v,
-                   "window_ms": spec["window_ms"]},
+                   "window_ms": spec["window_ms"], "where": where},
     }])
     return jsonify({"ok": True, "job": job.snapshot(),
                     "n_channels": len(use_chans), "left_out": left_out,
-                    "n": len(events)})
+                    "n": len(events), "where": where})
 
 
 @app.route("/api/braces/sets")
@@ -5546,7 +5822,10 @@ def api_braces_profile(set_id):
                         "error": "That set's bank entry is gone."}), 404
     try:
         sess, _row = _braces_session(entry)
-        report = _incisor_report(sess["path"])
+        # `profile_window` reads one short window and never the
+        # segmentation; a recording opened off the cluster has none here.
+        report = (None if vacciomod.is_vacc(sess.get("path"))
+                  else _incisor_report(sess["path"]))
         pr = rec.get("params") or {}
         # The set's own measure unless the caller names one: the bench
         # sends none, and a slope proposal drawn as a CSD trace is a bench
@@ -5568,9 +5847,22 @@ def api_braces_profile(set_id):
         # The set's own screening, so the bench draws the trace this
         # proposal was made on rather than a fresh measurement over
         # contacts the run did not believe.
-        got = bracesmod.profile_window(
-            sess, chans, report, spec, t0, t1,
-            bad=dict(pr.get("screened") or {}))
+        if vacciomod.is_vacc(sess.get("path")):
+            # Drawn where the samples are, by the same function: a second
+            # and a bit of every contact at full rate is megabytes, and the
+            # curve the bench draws is a few hundred numbers.
+            got = vacciomod.braces_profile(
+                sess, [int(c["number"]) for c in chans], spec, t0, t1,
+                dict(pr.get("screened") or {}))
+            if not got.get("ok", True):
+                raise ValueError(got.get("error") or "The cluster could "
+                                 "not draw that window.")
+            got.pop("ok", None)
+            got.pop("id", None)
+        else:
+            got = bracesmod.profile_window(
+                sess, chans, report, spec, t0, t1,
+                bad=dict(pr.get("screened") or {}))
     except Exception as exc:                             # noqa: BLE001
         return fail("braces/profile", exc, 400, {"set_id": set_id})
     return jsonify({"ok": True, **got})
@@ -14442,12 +14734,8 @@ def api_aibeta_state():
                     for r in AIBETA.all_reports()],
         "running": job.snapshot() if job else None,
         "have_sklearn": aibetamod.HAVE_SKLEARN,
-        # Which runs Avery, Avery+ and Avery Garbage Dystrophy+ sweep sets
-        # with, if any.
-        "avery": averymod.status(AIBETA, "avery"),
-        "avery_plus": averymod.status(AIBETA, "avery_plus"),
-        "avery_gd": averymod.status(AIBETA, "avery_gd"),
-        "tooth_fairy": averymod.status(AIBETA, "tooth_fairy"),
+        # Which run Tooth Fairy sweeps sets with, if any.
+        "tooth_fairy": tfmod.status(AIBETA, "tooth_fairy"),
     })
 
 
@@ -14542,33 +14830,35 @@ def api_aibeta_run(run_id):
     return jsonify({"ok": True, "run": rec})
 
 
-@app.route("/api/aibeta/avery", methods=["POST"])
-def api_aibeta_make_avery():
-    """Make one AI Beta run the model Avery sweeps sets with."""
+@app.route("/api/aibeta/tooth-fairy", methods=["POST"])
+def api_aibeta_make_tooth_fairy():
+    """Make one AI Beta run the model Tooth Fairy sweeps sets with."""
     body = request.get_json(force=True, silent=True) or {}
-    slot = body.get("slot") or "avery"
     try:
-        AIBETA.set_avery(body.get("run_id"), STORE.provenance(), slot=slot)
+        AIBETA.set_model(body.get("run_id"), STORE.provenance(),
+                         slot="tooth_fairy")
     except aibetamod.AiBetaError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
-    STORE.record_activity([{"action": "aibeta.avery",
-                            "detail": {"run": body.get("run_id"),
-                                       "slot": slot}}])
-    return jsonify({"ok": True, "avery": averymod.status(AIBETA, slot)})
+    STORE.record_activity([{"action": "aibeta.tooth_fairy",
+                            "detail": {"run": body.get("run_id")}}])
+    return jsonify({"ok": True,
+                    "tooth_fairy": tfmod.status(AIBETA, "tooth_fairy")})
 
 
 # ==========================================================================
-# Avery -- AI Beta's model, sweeping a set from Checkup's Xplorefinder mode
+# Tooth Fairy -- AI Beta's best model, sweeping Checkup sets
 #
-# A sweep writes nothing. Its calls reach the set, and the bank, only when a
+# A sweep writes nothing. Its calls reach a set, and the bank, only when a
 # person accepts them on the summary -- and then only onto candidates nobody
-# has decided, with every call also banked as an `avery` version so what the
-# model said and what people then said can be compared (backend/avery.py).
+# has decided, with every call also banked as a version of the model's own
+# so what it said and what people then said can be compared
+# (backend/toothfairy.py). A batch is the same, over several sets in one
+# job, each held and accepted on its own.
 # ==========================================================================
-_AVERY_JOB = {"id": None}
+_TF_JOB = {"id": None}
 
 
-def _avery_open(gid):
+def _tf_open(gid):
     """The recording a set belongs to, ready to read."""
     sess, _row = _braces_session({"gid": gid})
     stored = _stored_for(sess)
@@ -14579,72 +14869,148 @@ def _avery_open(gid):
             "spacing": None}
 
 
-@app.route("/api/avery")
-def api_avery_status():
-    """Whether Avery and Avery+ can sweep here, and what each was shown to
-    do. The top level is Avery, as it was before there were two."""
-    st = averymod.status(AIBETA, "avery")
-    jid = _AVERY_JOB.get("id")
+def _tf_busy():
+    jid = _TF_JOB.get("id")
     job = cfcmod.get(jid) if jid else None
-    st["running"] = (job.snapshot() if job and job.snapshot()["status"]
-                     == "running" else None)
-    st["models"] = {slot: averymod.status(AIBETA, slot)
-                    for slot in aibetamod.SLOTS}
+    return job if job and job.snapshot()["status"] == "running" else None
+
+
+def _tf_tolerance(body):
+    """The share of real spikes that may be called Garbage, or an error."""
+    if body.get("ds_loss") is None:
+        return None, None
+    try:
+        v = float(body["ds_loss"])
+    except (TypeError, ValueError):
+        return None, None
+    if not 0.0 < v < 0.5:
+        return None, ("The share of real spikes that may be called Garbage "
+                      "has to be under half.")
+    return v, None
+
+
+TF_STAGES = [("tf read", 1), ("tf physio", 1), ("tf score", 1)]
+
+
+@app.route("/api/toothfairy")
+def api_tooth_fairy_status():
+    """Whether Tooth Fairy can sweep here, and what it was shown to do."""
+    st = tfmod.status(AIBETA, "tooth_fairy")
+    busy = _tf_busy()
+    st["running"] = busy.snapshot() if busy else None
     return jsonify(dict(st, ok=True))
 
 
-@app.route("/api/avery/sweep", methods=["POST"])
-def api_avery_sweep():
+@app.route("/api/toothfairy/sweep", methods=["POST"])
+def api_tooth_fairy_sweep():
     """Start a sweep of one set. A job; poll /api/cfc/job/<id>."""
     body = request.get_json(force=True, silent=True) or {}
     gid, kind = body.get("gid"), body.get("kind") or "ds"
-    slot = body.get("model") or "avery"
-    try:
-        ds_loss = (float(body["ds_loss"]) if body.get("ds_loss") is not None
-                   else None)
-    except (TypeError, ValueError):
-        ds_loss = None
-    if ds_loss is not None and not 0.0 < ds_loss < 0.5:
-        return jsonify({"ok": False, "error": "The share of real spikes "
-                                              "that may be called Garbage "
-                                              "has to be under half."}), 400
-    if slot not in aibetamod.SLOTS:
-        return jsonify({"ok": False, "error": "No model %r." % slot}), 400
+    ds_loss, err = _tf_tolerance(body)
+    if err:
+        return jsonify({"ok": False, "error": err}), 400
     if kind != "ds":
-        return jsonify({"ok": False, "error": "Avery sorts dentate spike "
-                                              "sets only."}), 400
-    st = averymod.status(AIBETA, slot)
+        return jsonify({"ok": False, "error": "Tooth Fairy sorts dentate "
+                                              "spike sets only."}), 400
+    st = tfmod.status(AIBETA, "tooth_fairy")
     if not st["ready"]:
         return jsonify({"ok": False, "error": st["why"]}), 400
-    jid = _AVERY_JOB.get("id")
-    busy = cfcmod.get(jid) if jid else None
-    if busy and busy.snapshot()["status"] == "running":
-        return jsonify({"ok": False, "error": "Avery is already sweeping a "
-                                              "set.",
+    busy = _tf_busy()
+    if busy:
+        return jsonify({"ok": False, "error": "Tooth Fairy is already "
+                                              "sweeping.",
                         "job": busy.snapshot()}), 409
     if not CURATE.get(gid, kind):
         return jsonify({"ok": False, "error": "No such curation set."}), 404
 
     def work(job):
-        out = averymod.sweep(AIBETA, CURATE, BANK, _avery_open, gid, kind,
-                             job, slot=slot, ds_loss=ds_loss)
+        out = tfmod.sweep(AIBETA, CURATE, BANK, _tf_open, gid, kind, job,
+                          slot="tooth_fairy", ds_loss=ds_loss)
         out["id"] = job.id
-        averymod.remember(job.id, out)
+        tfmod.remember(job.id, out)
         STORE.record_activity([{
-            "action": "avery.sweep",
+            "action": "toothfairy.sweep",
             "detail": {"gid": gid, "kind": kind, "run": out["run_id"],
                        "n": out["n"], "counts": out["counts"]}}])
         return out
 
-    job = cfcmod.start({"tool": "avery", "gid": gid},
-                       [("avery read", 1), ("avery physio", 1),
-                        ("avery score", 1)], work, 1.0)
-    _AVERY_JOB["id"] = job.id
+    job = cfcmod.start({"tool": "toothfairy", "gid": gid}, TF_STAGES, work,
+                       1.0)
+    _TF_JOB["id"] = job.id
     return jsonify({"ok": True, "job": job.snapshot()})
 
 
-@app.route("/api/avery/sweep/<sid>/peek")
-def api_avery_peek(sid):
+@app.route("/api/toothfairy/batch", methods=["POST"])
+def api_tooth_fairy_batch():
+    """Sweep several sets in turn, in one job; each is held on its own.
+
+    The result lists every set -- its calls by count, how they compare with
+    what a person had already decided, and the id to accept it by -- or why
+    it could not be swept. One set failing does not stop the rest.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    gids = [g for g in (body.get("gids") or []) if g]
+    ds_loss, err = _tf_tolerance(body)
+    if err:
+        return jsonify({"ok": False, "error": err}), 400
+    if not gids:
+        return jsonify({"ok": False, "error": "Choose at least one set."}), 400
+    st = tfmod.status(AIBETA, "tooth_fairy")
+    if not st["ready"]:
+        return jsonify({"ok": False, "error": st["why"]}), 400
+    busy = _tf_busy()
+    if busy:
+        return jsonify({"ok": False, "error": "Tooth Fairy is already "
+                                              "sweeping.",
+                        "job": busy.snapshot()}), 409
+    missing = [g for g in gids if not CURATE.get(g, "ds")]
+    if missing:
+        return jsonify({"ok": False, "error": "No DS set for %d of those "
+                                              "recordings." % len(missing)}), 404
+    names = {g: (CURATE.get(g, "ds") or {}).get("session_label")
+             or (CURATE.get(g, "ds") or {}).get("name") or g for g in gids}
+
+    def work(job):
+        job.members_init([{"id": g, "label": names[g]} for g in gids])
+        out = []
+        for k, g in enumerate(gids):
+            job.check()
+            job.member(g, status="reading")
+            try:
+                sw = tfmod.sweep(AIBETA, CURATE, BANK, _tf_open, g, "ds", job,
+                                 slot="tooth_fairy", ds_loss=ds_loss)
+            except Exception as exc:                     # noqa: BLE001
+                if job._cancel:
+                    raise
+                job.member(g, status="failed", error=str(exc)[:200])
+                out.append({"gid": g, "name": names[g], "error": str(exc)[:300]})
+                continue
+            sid = "%s-%d" % (job.id, k)
+            sw["id"] = sid
+            tfmod.remember(sid, sw)
+            job.member(g, status="done")
+            out.append({
+                "gid": g, "name": names[g], "sid": sid, "n": sw["n"],
+                "counts": sw["counts"], "agreement": sw.get("agreement"),
+                "already_decided": sw.get("already_decided"),
+                "undecided": sum(1 for r in sw["rows"] if not r.get("human")),
+                "channels_note": sw.get("channels_note"), "cached": sw.get("cached"),
+            })
+        STORE.record_activity([{
+            "action": "toothfairy.batch",
+            "detail": {"sets": len(gids), "swept": sum(1 for o in out if o.get("sid")),
+                       "run": st["run_id"], "ds_loss": ds_loss}}])
+        return {"batch": out, "ds_loss": ds_loss, "run_id": st["run_id"],
+                "model_name": st["name"]}
+
+    job = cfcmod.start({"tool": "toothfairy", "batch": len(gids)}, TF_STAGES,
+                       work, 1.0)
+    _TF_JOB["id"] = job.id
+    return jsonify({"ok": True, "job": job.snapshot()})
+
+
+@app.route("/api/toothfairy/sweep/<sid>/peek")
+def api_tooth_fairy_peek(sid):
     """The candidates the scanning screen shows while the sweep reads."""
     job = cfcmod.get(sid)
     if not job:
@@ -14653,24 +15019,24 @@ def api_avery_peek(sid):
     return jsonify({"ok": True, "peek": data, "rev": rev})
 
 
-@app.route("/api/avery/sweep/<sid>/accept", methods=["POST"])
-def api_avery_accept(sid):
-    """Put Avery's calls on the undecided candidates and bank every call."""
-    sw = averymod.recall(sid)
+def _tf_accept(sid):
+    """Put one held sweep's calls on its set's undecided candidates and bank
+    every call. Returns (http status, body)."""
+    sw = tfmod.recall(sid)
     if not sw:
-        return jsonify({"ok": False, "error":
-                        "That sweep is no longer held -- they are kept until "
-                        "Jarvis restarts or eight newer ones replace them. "
-                        "Sweep the set again."}), 404
+        return 404, {"ok": False, "error":
+                     "That sweep is no longer held -- they are kept until "
+                     "Jarvis restarts or sixty-four newer ones replace them. "
+                     "Sweep the set again."}
     gid, kind = sw["gid"], sw["kind"]
     rec = CURATE.get(gid, kind)
     sess = _session_by_gid(gid)
     if not rec or not sess:
-        return jsonify({"ok": False, "error": "That set or its recording "
-                                              "is gone."}), 404
+        return 404, {"ok": False, "error": "That set or its recording "
+                                           "is gone."}
     names = {l["id"]: l.get("name") or l["id"] for l in (rec.get("labels") or [])}
     events = [{"start": r["start"], "label": names.get(r["label"], r["label"]),
-               "label_id": r["label"], "by": aibetamod.AVERY_BY}
+               "label_id": r["label"], "by": aibetamod.MODEL_BY}
               for r in sorted(sw["rows"], key=lambda r: r["start"])]
     by_label = {}
     for ev in events:
@@ -14679,7 +15045,7 @@ def api_avery_accept(sid):
     note = ("%s sweep, run %s%s: %d DS, %d Flag for Deep Review, %d Flag, "
             "%d Garbage. Calls by a model, banked for the record and for "
             "training on edge cases later -- not a person's pass."
-            % (sw.get("model_name") or "Avery", sw["run_id"],
+            % (sw.get("model_name") or "Tooth Fairy", sw["run_id"],
                (", up to %d%% of real spikes allowed to be called Garbage"
                 % round(100 * sw["ds_loss"])) if sw.get("ds_loss") else "",
                c.get("spike", 0), c.get("review", 0),
@@ -14702,27 +15068,27 @@ def api_avery_accept(sid):
             "name": rec.get("name"), "type": kind,
             "events": events, "by_label": by_label, "label_names": names,
             "pipeline": "Jarvis curation (" + kind + ")",
-            "added_by": aibetamod.AVERY_BY,
+            "added_by": aibetamod.MODEL_BY,
             "version_note": note,
-            "version_tag": aibetamod.AVERY_TAG,
+            "version_tag": aibetamod.MODEL_TAG,
             "based_on": rec.get("based_on"),
             "curated": True, "import_from": adopt,
             "curation_label": "*", "gid": gid,
         })
     except eventbank.BankError as exc:
-        return jsonify({"ok": False, "error": str(exc)}), 400
+        return 400, {"ok": False, "error": str(exc)}
 
     # Onto the candidates nobody has decided. A person's call stays.
     current = {e["id"]: e for e in (rec.get("events") or [])}
     pairs = {r["id"]: r["label"] for r in sw["rows"]
              if r["id"] in current and not current[r["id"]].get("label")}
     applied, prog = CURATE.label_many(gid, kind, pairs,
-                                      who=aibetamod.AVERY_BY)
+                                      who=aibetamod.MODEL_BY)
     prov = STORE.provenance()
     AIBETA.sweeps.write(sid, {
         "id": sid, "gid": gid, "kind": kind,
         "session_label": sw.get("session_label"), "run_id": sw["run_id"],
-        "model": sw.get("slot") or "avery",
+        "model": sw.get("slot") or "tooth_fairy",
         "policy": sw["policy"], "counts": sw["counts"],
         "ds_loss": sw.get("ds_loss"),
         "basis": sw.get("basis"), "at": sw.get("at"),
@@ -14731,21 +15097,54 @@ def api_avery_accept(sid):
         "applied": applied,
         "rows": [[r["id"], r["start"], r["p"], r["label"], r["human"],
                   r["human_by"]] for r in sw["rows"]],
-        "columns": ["id", "start", "p_ds", "avery", "person_before",
+        "columns": ["id", "start", "p_ds", "model", "person_before",
                     "person_by"],
     })
     STORE.record_activity([{
-        "action": "avery.accept",
+        "action": "toothfairy.accept",
         "detail": {"gid": gid, "kind": kind, "run": sw["run_id"],
                    "applied": applied, "entry": entry["id"],
                    "version": entry.get("version"), "counts": sw["counts"]},
         "session": {"key": sess.get("key"), "label": sess.get("label")}}])
-    mirror_bank_soon()
-    averymod.forget(sid)
-    return jsonify({"ok": True, "applied": applied,
-                    "kept": len(sw["rows"]) - applied,
-                    "entry": entry["id"], "version": entry.get("version"),
-                    "progress": prog})
+    tfmod.forget(sid)
+    return 200, {"ok": True, "gid": gid, "applied": applied,
+                 "kept": len(sw["rows"]) - applied,
+                 "entry": entry["id"], "version": entry.get("version"),
+                 "progress": prog}
+
+
+@app.route("/api/toothfairy/sweep/<sid>/accept", methods=["POST"])
+def api_tooth_fairy_accept(sid):
+    """Put one sweep's calls on the undecided candidates and bank them."""
+    code, body = _tf_accept(sid)
+    if code == 200:
+        mirror_bank_soon()
+    return jsonify(body), code
+
+
+@app.route("/api/toothfairy/accept", methods=["POST"])
+def api_tooth_fairy_accept_many():
+    """Accept several held sweeps -- a batch's -- each on its own set.
+
+    One that cannot be accepted is reported and the rest still go in."""
+    body = request.get_json(force=True, silent=True) or {}
+    out = []
+    for sid in (body.get("sids") or []):
+        code, res = _tf_accept(sid)
+        out.append(dict(res, sid=sid, status=code))
+    if any(o["status"] == 200 for o in out):
+        mirror_bank_soon()
+    return jsonify({"ok": True, "results": out,
+                    "accepted": sum(1 for o in out if o["status"] == 200)})
+
+
+@app.route("/api/toothfairy/discard", methods=["POST"])
+def api_tooth_fairy_discard():
+    """Let go of held sweeps nobody is going to accept."""
+    body = request.get_json(force=True, silent=True) or {}
+    for sid in (body.get("sids") or []):
+        tfmod.forget(sid)
+    return jsonify({"ok": True})
 
 
 @app.route("/api/curation/close-all", methods=["POST"])
@@ -20892,7 +21291,14 @@ _MONO_DATA = {"summary": ("summary.json", "application/json"),
 def api_arc_monolith_data(name):
     """The built Monolith's files: `summary`, or `<edges|power|pac>_<raw|
     minus_fp>` (float32, the stacked QUANTITIES, C order -- the shape is in
-    the summary)."""
+    the summary). `joe` is tab 8's numbers, which do not depend on the
+    Monolith's run (backend/joe.py)."""
+    if name == "joe":
+        from . import joe as joemod
+        got = joemod.result()
+        if got is None:
+            return jsonify({"ok": False, "error": "Tab 8 has not been worked out yet."}), 404
+        return jsonify(got)
     d = monolithmod.data_dir()
     if not d:
         return jsonify({"ok": False, "error": "The Monolith has not been "
@@ -21220,6 +21626,54 @@ def api_arc_monolith_split():
         return fail("arc/monolith/split", exc, 500)
     STORE.record_activity([{"action": "arc.monolith.split", "detail": {}}])
     return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/joe", methods=["POST"])
+def api_arc_monolith_joe():
+    """Tab 8, Joe's data, here, from the recordings: `what` "joe" (measure
+    every rat-day not measured yet, fit the models, write the SPSS files)
+    or "script" (run tools/joe_standalone.py on the same recordings and
+    compare its files with these). Refused without `confirm`."""
+    body = request.get_json(silent=True) or {}
+    if body.get("confirm") is not True:
+        return jsonify({"ok": False, "error": "Say confirm: true."}), 400
+    what = body.get("what") or "joe"
+    if what not in ("joe", "script"):
+        return jsonify({"ok": False, "error": "what is joe or script."}), 400
+    try:
+        from . import joe as joemod
+        w = monolithmod.start_work("joe" if what == "joe" else "joescript",
+                                   joemod.work_safe if what == "joe" else joemod.script_safe)
+    except monolithmod.MonolithError as exc:
+        return _mono_refused(exc)
+    except Exception as exc:                                 # noqa: BLE001
+        return fail("arc/monolith/joe", exc, 500)
+    STORE.record_activity([{"action": "arc.monolith.joe", "detail": {"what": what}}])
+    return jsonify({"ok": True, "work": w.snapshot(), "status": _mono_status()})
+
+
+@app.route("/api/arc/monolith/joe/file/<path:name>")
+def api_arc_monolith_joe_file(name):
+    """Tab 8's files to take away: each model's .csv and .sps, the zip of
+    them all, the standalone script and its inputs. Types said outright:
+    Windows' registry would call a .csv an Excel file."""
+    from . import joe as joemod
+    types = {".csv": "text/csv", ".sps": "text/plain", ".zip": "application/zip", ".py": "text/x-python",
+             ".json": "application/json", ".txt": "text/plain"}
+    base = os.path.basename(name)
+    if base != name or os.path.splitext(base)[1] not in types:
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    if base == "joe_standalone.py":
+        path = joemod.script_path()
+    elif base == "joe_inputs.json":
+        path = joemod.joe_dir("joe_inputs.json")
+    elif base.startswith("script_"):
+        path = joemod.joe_dir("script", base[len("script_"):])
+    else:
+        path = joemod.joe_dir("export", base)
+    if not os.path.isfile(path):
+        return jsonify({"ok": False, "error": "No such file."}), 404
+    return send_file(path, mimetype=types[os.path.splitext(base)[1]], as_attachment=True, download_name=base)
 
 
 @app.route("/api/arc/monolith/narrow", methods=["POST"])
@@ -22967,7 +23421,13 @@ def _vacc_walk(force=False, wait=True):
         native = vaccmod.is_native_root(cfg, root)
         if native:
             age = vaccmod.inventory_age(cfg, root)
-            if force or age is None or age > vaccmod.INV_TTL_NATIVE_S:
+            # The FIRST look at a share is somebody pressing "Set up this
+            # computer" or "Find everything on netfiles" in Sessions -- a
+            # couple of minutes on a filesystem everybody's jobs read is not
+            # started behind somebody's back on a new computer. After that
+            # it is refreshed once a day when it is next asked about.
+            if force or (age is not None
+                         and age > vaccmod.INV_TTL_NATIVE_S):
                 vaccmod.inventory_soon(cfg, root)
             rows = vaccmod.inventory_held(root)
         elif not wait and not vaccmod.inventory_ready(cfg, root):
@@ -23562,8 +24022,25 @@ def _vacc_found_body():
             "n": len(vaccmod.inventory_held(root)),
         })
     st = vaccmod.status()
+    # A mapped share this account can read but the probe has not said so
+    # yet -- a computer set up a minute ago -- is listed as not walked, so
+    # the setup can offer it rather than leave it out of the picture.
+    for share in vaccmod.native_roots(cfg):
+        if share not in [r["root"] for r in roots] \
+                and share not in (st.get("denied_roots") or []):
+            roots.append({"root": share, "kind": "netfiles", "age_s": None,
+                          "busy": vaccmod.inventory_busy(share), "n": 0,
+                          "unchecked": True})
+    # A computer that has never looked: every root unwalked and nothing
+    # being walked. The page offers the setup then, rather than a list of
+    # zeros that reads as "the cluster is empty".
+    setup = bool(roots) and all(r["age_s"] is None and not r["busy"]
+                                for r in roots if r["kind"] == "netfiles") \
+        and any(r["kind"] == "netfiles" for r in roots)
     got.update(ok=True, roots=roots,
                walking=any(r["busy"] for r in roots),
+               walking_kinds=sorted({r["kind"] for r in roots if r["busy"]}),
+               setup_needed=setup,
                netid=cfg.get("netid"),
                denied_roots=st.get("denied_roots") or [])
     return got, new_rows
@@ -23582,19 +24059,53 @@ def api_vacc_found():
 
 @app.route("/api/vacc/found/look", methods=["POST"])
 def api_vacc_found_look():
-    """Walk every root again, in the background, and answer at once.
+    """Find what is on the cluster, in the background, and answer at once.
 
-    A walk of netfiles is minutes; this starts it and returns what is in
-    hand, with `walking` set, so the page can poll `/api/vacc/found` until
-    it clears. One walk per root at a time (`vacc.inventory_soon`).
+    `which` says where to look: "vacc" for the cluster's own space --
+    scratch, the uploads in Jarvis Data, temp and every folder a scan was
+    pointed at -- "netfiles" for every mapped share this account can open,
+    or nothing for both. Two buttons on the page, because they are two
+    different costs: the cluster's space is seconds, the lab's share is a
+    couple of minutes of a filesystem everybody uses.
+
+    A walk is started and what is in hand is returned with `walking` set,
+    so the page polls `/api/vacc/found` until it clears. One walk per root
+    at a time (`vacc.inventory_soon`).
+
+    On a computer set up a minute ago the probe may not have said yet which
+    shares this account can read, so asking for netfiles asks the cluster
+    first (one connection) rather than finding nothing to walk.
     """
+    body = request.get_json(silent=True) or {}
+    which = str(body.get("which") or "all")
     try:
         cfg = vaccmod.load_config(LOGS_DIR)
+        if which in ("netfiles", "all") and \
+                not vaccmod.readable_native_roots(cfg):
+            vaccmod.refresh(force=True)
+        native = set(vaccmod.native_roots(cfg))
+        started = []
         for root in vaccmod.places(cfg):
+            is_native = root.rstrip("/") in native
+            if which == "vacc" and is_native:
+                continue
+            if which == "netfiles" and not is_native:
+                continue
             vaccmod.inventory_soon(cfg, root)
+            started.append(root)
         got, _new = _vacc_found_body()
     except Exception as exc:                             # noqa: BLE001
         return fail("vacc/found/look", exc, 400)
+    got["started"] = started
+    if which == "netfiles" and not started:
+        denied = got.get("denied_roots") or []
+        got["note"] = ("This account (%s) cannot read %s, so there is "
+                       "nothing on netfiles to look through -- ask "
+                       "Shahriar to have it added to jarvis_writes."
+                       % (cfg.get("netid") or "?", ", ".join(denied))
+                       if denied else
+                       "No netfiles share is set up for the cluster to "
+                       "read (vacc.json path_map).")
     return jsonify(got)
 
 

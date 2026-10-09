@@ -660,7 +660,9 @@ BARRY.views.toolkit = (function () {
   /* Circuit joined 2026-09-28, once real `tool=circuit` jobs had landed from
      the cluster (a single run and an array). Drift has a VACC branch but no
      cluster run has come back yet, so it is not listed. */
-  const VACC_TOOLS = ['incisor', 'doppler', 'circuit'];
+  /* Braces and Eye joined 2026-10-09: a set whose recording is only on the
+     cluster is aligned there by the same `braces.align` (vacc_run.py). */
+  const VACC_TOOLS = ['incisor', 'doppler', 'circuit', 'braces', 'eye'];
 
   /* What each tool can do with a recording that is VACC loaded and not on
      this computer -- the input to `BARRY.vacc.reach` (vacc.js says what the
@@ -668,33 +670,140 @@ BARRY.views.toolkit = (function () {
      is: a tool that claims a recording it then cannot read is worse than
      one that says plainly it needs the files here.
 
-       'cluster'  runs there with no copy here: Incisor. Doppler and
-                  Circuit run on the cluster too, but both still read the
-                  channel list or the cue folder on this computer before they
-                  send anything, so they are 'here' until that moves.
+       'cluster'  runs there with no copy here: Incisor and Doppler (the
+                  node resolves the channels and measures the gaps), Braces
+                  and Eye (the stamps go up with the job). Circuit runs on
+                  the cluster too, but still reads the cue folder on this
+                  computer first, so it is 'here' until that moves.
        'link'     views it through the live link: Checkup, Spotter and
-                  StrataScope take over Xplorefinder, and Xplorefinder reads
-                  windows, the overview and the band off the cluster.
+                  StrataScope take over Xplorefinder, which reads windows and
+                  every panel off the cluster.
        'here'     everything else, until somebody checks that every read it
                   makes goes through the link or the cluster. Panorama's VACC
                   run is in the constitution's table and not built yet. */
   const READS = {
-    incisor: 'cluster',
+    incisor: 'cluster', doppler: 'cluster', braces: 'cluster', eye: 'cluster',
     curate: 'link', spotter: 'link', strata: 'link', xplore: 'link',
   };
   function readsOf(id) { return READS[id] || 'here'; }
 
+  /* What the VACC mark on a tool means, said on the mark (asked for
+     2026-10-09): why this tool is VACC enabled, what is processed on the
+     cluster, and what using it would be like without. Per tool, because the
+     three answers are different for each -- Doppler cannot run anywhere
+     else at all, Braces only goes there for a recording this computer does
+     not have, and Checkup never runs anything there, it only reads. One
+     table, so the mark on a bundle step and on the flat list say the same
+     thing. */
+  const VACC_INFO = {
+    incisor: {
+      why: 'Finding dentate spikes means reading every channel of a whole '
+         + 'recording at full rate, which ties this computer up for minutes '
+         + 'per recording — and is only possible here when this computer '
+         + 'has the files.',
+      what: 'On the cluster, where the recording already is (the lab’s '
+          + 'netfiles share, or an uploaded copy): every channel is read, '
+          + 'filtered and decimated, spikes are detected on each, the gaps '
+          + 'are measured and the hilus is picked. Only the per-channel '
+          + 'summary and the events come back; you choose the hilus range '
+          + 'and bank here.',
+      without: 'Only recordings on this computer, one at a time, with this '
+             + 'computer busy for each scan. Recordings that live only on '
+             + 'netfiles could not be scanned from here at all.',
+    },
+    doppler: {
+      why: 'Finding interictal discharges takes the line-length transform '
+         + 'of every kept channel of a whole recording at its native rate, '
+         + 'twice — far more memory than a desk computer has. It has no run '
+         + 'here.',
+      what: 'On the cluster: every kept channel is read twice (the threshold '
+          + 'is a percentile over all of them), discharges are found, and '
+          + 'which channels each one reached is worked out. The events, '
+          + 'their participation and a sample of waveforms come back.',
+      without: 'Doppler could not run at all. With VACC, a recording this '
+             + 'computer has no copy of runs just as well — its channel list '
+             + 'comes over the link and the rest is done there.',
+    },
+    braces: {
+      why: 'Lining stamps up reads the signal around every curated spike on '
+         + 'many channels at full rate. For a recording this computer has, '
+         + 'that happens here; for one only on the cluster, it cannot.',
+      what: 'Only when this computer has no copy: the stamps, the contacts '
+          + 'and the settings go up with a job, and the cluster screens the '
+          + 'probe, finds the depth, reads the window round each stamp and '
+          + 'proposes where each one goes — by the same rule as here. The '
+          + 'proposal comes back to review and bank.',
+      without: 'Only sets whose recording is on this computer could be '
+             + 'aligned; the rest would be listed with the reason.',
+    },
+    eye: {
+      why: 'Eye is Braces’ engine pointed at interictal discharges, run '
+         + 'three times (CSD, voltage, slope) so the measures can be '
+         + 'compared — three full reads of the windows round every stamp.',
+      what: 'Only when this computer has no copy: each of the three runs is '
+          + 'a job on the cluster, reading the windows there; the three '
+          + 'proposals come back side by side.',
+      without: 'Only sets whose recording is on this computer could be '
+             + 'lined up.',
+    },
+    circuit: {
+      why: 'A circuit computes every coupling measure on every cue pair of '
+         + 'a recording; a cohort of them is hours.',
+      what: 'On the cluster: each cue pair’s coupling is computed by the '
+          + 'same code, many at once; the pairs come back and the circuit is '
+          + 'built and filed here.',
+      without: 'One recording’s circuit is about a minute here, so a single '
+             + 'one is fine; a batch over a cohort would tie this computer '
+             + 'up for the whole run.',
+    },
+    curate: {
+      why: 'Checkup shows each candidate on the traces. For a recording '
+         + 'only on the cluster, there is nothing here to draw them from.',
+      what: 'Nothing is run. Each window you step to — the traces and the '
+          + 'CSD beside them — is read and drawn on the cluster over a live '
+          + 'link, and only the picture comes back. About a second a window; '
+          + 'the first takes longer while the link opens. Your decisions '
+          + 'are saved here as always.',
+      without: 'Only recordings on this computer could be checked.',
+    },
+    spotter: {
+      why: 'Spotter confirms Doppler’s discharges on the traces, with the '
+         + 'channels each one reached lit. For a recording only on the '
+         + 'cluster, there is nothing here to draw them from.',
+      what: 'Nothing is run. Each window — traces, CSD, voltage and '
+          + 'spectrogram — is read and drawn on the cluster over a live '
+          + 'link; the participation comes from Doppler’s run, fetched once '
+          + 'if this computer has not seen it. Decisions are saved here.',
+      without: 'Only recordings on this computer could be confirmed, and a '
+             + 'Doppler run made from another computer would light the peak '
+             + 'channel alone.',
+    },
+  };
+
+  /* The words on the mark, for a harness and for any surface that wants to
+     say the same thing (one table, §6c). */
+  function vaccWords(id) {
+    const info = VACC_INFO[id];
+    if (!info) return null;
+    return 'Why it is VACC enabled: ' + info.why
+      + '\n\nWhat is processed on the cluster: ' + info.what
+      + '\n\nWithout VACC: ' + info.without;
+  }
+
   function vaccMark(id) {
-    if (VACC_TOOLS.indexOf(id) < 0) return null;
+    if (VACC_TOOLS.indexOf(id) < 0 && !VACC_INFO[id]) return null;
     if (!(BARRY.state.vacc && BARRY.vacc
           && (BARRY.vacc.last || {}).configured)) return null;
     const up = !!(BARRY.vacc.last || {}).available;
+    const words = vaccWords(id) || 'This one can run on the cluster.';
+    const state = up ? ''
+      : '\n\nRight now: ' + ((BARRY.vacc.last || {}).why
+                             || 'the cluster is not reachable.');
     return el('span', {
       class: 'tk-vacc' + (up ? ' up' : ''),
       text: 'VACC',
-      title: up ? 'This one can run on the cluster'
-                : ((BARRY.vacc.last || {}).why
-                   || 'The cluster is not reachable right now'),
+      title: words + state,
+      'aria-label': 'VACC enabled. ' + words.replace(/\n\n/g, ' ') + state,
     });
   }
 
@@ -1121,6 +1230,17 @@ BARRY.views.toolkit = (function () {
       /* Not a novelty. It is the only view of the decisions as a set
          rather than one at a time, which makes it the only place a
          detector producing mostly obvious garbage would show up. */
+      /* Tooth Fairy over several sets at once (toothfairy.js). It asks
+         which, and writes nothing until its summary is accepted. */
+      BARRY.toothFairy ? el('button', {
+        class: 'btn ghost sm tf-btn', id: 'tfBatchOpen',
+        title: 'Let Tooth Fairy sweep several dentate spike sets in turn -- '
+             + 'the ones on the bench, or any you choose -- and keep the '
+             + 'calls for the sets you want.',
+        onclick: () => BARRY.toothFairy.openBatch({
+          onDone: () => { curStale = true; loadCuration(); },
+        }),
+      }, [BARRY.toothFairy.icon(), 'Tooth Fairy batch\u2026']) : null,
       el('button', {
         class: 'btn ghost sm', text: 'Hall of garbage',
         title: 'The candidates nobody had to think about — rejected fast, '
@@ -3492,6 +3612,7 @@ BARRY.views.toolkit = (function () {
     // one with no mark at all.
     _vaccTools: () => VACC_TOOLS.slice(),
     readsOf,
+    vaccWords,
     /* The step chip, for any tool that is in a bundle. See `stepOf`. */
     stepOf,
     bundles: () => BUNDLES.map((b) => ({

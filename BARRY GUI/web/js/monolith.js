@@ -47,8 +47,10 @@ window.MONO = (function () {
   // The Monolith and Cue 2 − Cue 1 share one pane: two families of the
   // same circuit, points of interest and drill-down (the lab, 2026-10-06).
   const TABS = [['cov', '1 · What was kept'], ['main', '2 · The Monolith'], ['c21', '3 · Cue 2 − Cue 1'], ['avg', '4 · How a number is made'],
-                ['ev', '5 · Events first'], ['phys', '6 · Physical vs balanced cue'], ['narrow', '7 · Narrowing down']];
-  const PANES = { cov: 'covpane', main: 'mainpane', c21: 'mainpane', avg: 'avgpane', ev: 'evpane', phys: 'physpane', narrow: 'narrowpane' };
+                ['ev', '5 · Events first'], ['phys', '6 · Physical vs balanced cue'], ['narrow', '7 · Narrowing down'],
+                ['joe', '8 · Joe’s data']];
+  const PANES = { cov: 'covpane', main: 'mainpane', c21: 'mainpane', avg: 'avgpane', ev: 'evpane', phys: 'physpane', narrow: 'narrowpane',
+                  joe: 'joepane' };
   // The windows by their meeting names; the switch is cue 1 giving way to cue 2.
   const WLABEL = { pre: 'Pre-baseline', cue1: 'Cue 1', cue2: 'Cue 2', post: 'Post-baseline', pair: 'Cue 1 + Cue 2',
                    onset: 'Onset', switch: 'Switch', offset: 'Offset', c21: 'Cue 2 − Cue 1' };
@@ -477,6 +479,7 @@ window.MONO = (function () {
     app.appendChild(el('div', { id: 'evpane', role: 'tabpanel', hidden: st.tab === 'ev' ? null : 'hidden' }));
     app.appendChild(el('div', { id: 'physpane', role: 'tabpanel', hidden: st.tab === 'phys' ? null : 'hidden' }));
     app.appendChild(el('div', { id: 'narrowpane', role: 'tabpanel', hidden: st.tab === 'narrow' ? null : 'hidden' }));
+    app.appendChild(el('div', { id: 'joepane', role: 'tabpanel', hidden: st.tab === 'joe' ? null : 'hidden' }));
     // Where a value comes from, and the way back: the trail over the result.
     mp.appendChild(el('nav', { class: 'trail', id: 'trail', 'aria-label': 'Where this value comes from' }));
     mp.appendChild(el('div', { class: 'card', id: 'verdict' }));
@@ -547,6 +550,7 @@ window.MONO = (function () {
     if (st.tab === 'ev' && window.MONO_EVENTS) window.MONO_EVENTS.show();
     if (st.tab === 'phys' && window.MONO_PHYS) window.MONO_PHYS.show();
     if (st.tab === 'narrow' && window.MONO_NARROW) window.MONO_NARROW.show();
+    if (st.tab === 'joe' && window.MONO_JOE) window.MONO_JOE.show();
     if (st.tab === 'main' || st.tab === 'c21') renderTrail();
     try { scrollTo(0, 0); } catch (e) { /* none */ }
   }
@@ -3763,6 +3767,7 @@ window.MONO = (function () {
     if (st.tab === 'ev' && window.MONO_EVENTS) window.MONO_EVENTS.show();
     if (st.tab === 'phys' && window.MONO_PHYS) window.MONO_PHYS.show();
     if (st.tab === 'narrow' && window.MONO_NARROW) window.MONO_NARROW.show();
+    if (st.tab === 'joe' && window.MONO_JOE) window.MONO_JOE.show();
     document.dispatchEvent(new CustomEvent('monolith:ready'));
   }
 

@@ -8024,7 +8024,7 @@ BARRY.views.xplore = (function () {
     if (!sess) return;
     if (curSending) {
       /* Only the latest pointer matters -- but not at the price of the
-         marks. A pointer that carried every mark (an Avery sweep has just
+         marks. A pointer that carried every mark (a Tooth Fairy sweep has just
          relabelled the set) and was waiting here would be replaced by the
          plain move that followed it, and the other windows would never
          see the new colours. Keep them on the one that goes, as they are
@@ -8070,7 +8070,7 @@ BARRY.views.xplore = (function () {
       return false;
     }
     const have = sess.curationMarks;
-    /* A set re-read after a change made somewhere else -- an Avery sweep
+    /* A set re-read after a change made somewhere else -- a Tooth Fairy sweep
        relabelling hundreds of candidates -- carries a new `marks` stamp on
        every pointer after it. What we hold is then out of date however
        alike the two look, so it is read again below rather than followed.

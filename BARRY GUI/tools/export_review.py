@@ -47,6 +47,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,7 +59,8 @@ LAYERS = ("raw", "minus_fp")
 WEB_FILES = ("monolith.html", "monolith-guide.html", "monolith_guide.json",
              "js/monolith_figs.js", "js/monolith_help.js", "js/monolith.js",
              "js/monolith_events.js", "js/monolith_progress.js",
-             "js/monolith_explain.js", "js/monolith_physical.js", "js/monolith_narrow.js", "js/monolith_tour.js", "js/tour.js")
+             "js/monolith_explain.js", "js/monolith_physical.js", "js/monolith_narrow.js", "js/monolith_joe.js",
+             "js/monolith_tour.js", "js/tour.js")
 # The windows in the lab's words, as the page says them (js/monolith.js).
 WLABEL = {"pre": "Pre-baseline", "cue1": "Cue 1", "cue2": "Cue 2",
           "post": "Post-baseline", "pair": "Cue 1 + Cue 2", "onset": "Onset",
@@ -258,6 +260,17 @@ def build(args):
         phys += sorted(n[:-4] for n in (N7.get("files") or {}))
     except Exception as exc:                             # noqa: BLE001
         say("  section 7 not copied (work it out in Jarvis first): %s" % exc)
+    # Tab 8, Joe's data: its numbers, the SPSS files and the standalone
+    # script (its inputs stay home: they name this machine's folders).
+    try:
+        J8 = J.json("/data/joe")
+        write(os.path.join(data, "joe.json"), json.dumps(J8))
+        jd = os.path.join(data, "joe")
+        os.makedirs(jd, exist_ok=True)
+        for f in ["joe_tab8_spss.zip", "joe_standalone.py"] + list(J8.get("exports") or []):
+            write(os.path.join(jd, f), J.raw("/joe/file/" + urllib.parse.quote(f)))
+    except Exception as exc:                             # noqa: BLE001
+        say("  tab 8 not copied (work it out in Jarvis first): %s" % exc)
     # The arrays: every pooled one, then Progress's while they fit.
     budget = int(args.budget_mb * 1e6)
     core = [n[:-4] for n in (S.get("files") or {})] + \

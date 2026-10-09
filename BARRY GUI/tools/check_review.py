@@ -155,7 +155,7 @@ def build_checks(work, port):
             "js/static_adapter.js", "js/report.js",
             "js/monolith.js", "js/monolith_progress.js", "js/monolith_physical.js", "css/site.css",
             "data/summary.json", "data/damage.json", "data/review.json", "data/physical.json",
-            "data/narrow.json", "js/monolith_narrow.js", "js/monolith_explain.js"]
+            "data/narrow.json", "js/monolith_narrow.js", "js/monolith_explain.js", "js/monolith_joe.js"]
     missing = [f for f in must if not os.path.isfile(os.path.join(out, f))]
     check("every file the site needs (%d)" % len(must), not missing, missing)
     pk = json.load(open(os.path.join(out, "package.json"), encoding="utf-8"))

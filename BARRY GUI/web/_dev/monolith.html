@@ -563,6 +563,9 @@ function physArray(name) {
    first lead survives everything, the rest nothing. The arrays: the
    Monolith's own p, with each method a rule of it, so a test can count. */
 let NARROW_MISSING = false, narPosted = [], narAsked = [];
+// Tab 8: made-up numbers from tools/check_joe.py (planted changes, found
+// where planted), read once before the checks start.
+let JOE = null, JOE_MISSING = false, joePosted = [];
 const NARROW = (() => {
   const cnt = (m, unc, extra) => Object.assign({ m, uncorrected: unc, chance: 0.05 * m, bonferroni: 3, bonferroni_p: 0.05 / m, holm: 4, bh: 120,
                                                  by: 20, bh_p: 1.8e-5, maxt: 5, maxt_t: 9.8, perm: Math.round(unc * 0.97), perm_bh: 0, sign: Math.round(unc / 2) }, extra || {});
@@ -865,6 +868,10 @@ window.MONO_FIXTURE = {
       if (NARROW_MISSING) throw new Error('No such Monolith file: narrow');
       return JSON.parse(JSON.stringify(NARROW));
     }
+    if (path === '/data/joe') {
+      if (JOE_MISSING || !JOE) throw new Error('Tab 8 has not been worked out yet.');
+      return JSON.parse(JSON.stringify(JOE));
+    }
     if (path === '/data/physical') {
       physAsked.push(path);
       if (PHYS_MISSING) throw new Error('No such Monolith file: physical');
@@ -889,6 +896,7 @@ window.MONO_FIXTURE = {
     if (path === '/sessions') { sessionsPosted.push(body); return { ok: true }; }
     if (path === '/physical') { physPosted.push(body); PHYS_MISSING = false; return { ok: true }; }
     if (path === '/narrow') { narPosted.push(body); NARROW_MISSING = false; return { ok: true }; }
+    if (path === '/joe') { joePosted.push(body); JOE_MISSING = false; return { ok: true }; }
     if (path === '/events') { evPosted.push(body); evRunning = 2; return { ok: true, work: { what: 'events', status: 'running', progress: {} } }; }
     throw new Error('no fixture for POST ' + path);
   },
@@ -903,6 +911,7 @@ window.MONO_FIXTURE = {
 
 /* ---------------- the checks ---------------- */
 (async () => { try {
+  try { JOE = await (await fetch('joe_fixture.json', { cache: 'no-cache' })).json(); } catch (e) { JOE = null; }
   const f = document.getElementById('app');
   // A fresh view: what the page remembers is put back afterwards.
   let kept = null;
@@ -945,7 +954,7 @@ window.MONO_FIXTURE = {
 
   head('1 · what was kept, first');
   const tabs = () => Array.from(D().querySelectorAll('#tabs > button[role="tab"]'));
-  check('seven tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · Cue 2 − Cue 1 | 4 · How a number is made | 5 · Events first | 6 · Physical vs balanced cue | 7 · Narrowing down',
+  check('eight tabs, in the order they are read', tabs().map((b) => txt(b)).join(' | ') === '1 · What was kept | 2 · The Monolith | 3 · Cue 2 − Cue 1 | 4 · How a number is made | 5 · Events first | 6 · Physical vs balanced cue | 7 · Narrowing down | 8 · Joe’s data',
         tabs().map((b) => txt(b)).join(' | '));
   check('a fresh page opens on what was kept, the Monolith behind it', M.state.tab === 'cov' && !D().getElementById('covpane').hidden
         && D().getElementById('mainpane').hidden && D().getElementById('tab-cov').getAttribute('aria-selected') === 'true', M.state.tab);
@@ -2861,6 +2870,125 @@ window.MONO_FIXTURE = {
   D().getElementById('narrowmake').click();
   await until(() => narPosted.length && D().getElementById('narcorrecttbl'), 120);
   check('pressed: asked of Jarvis, confirmed, and read again', narPosted.length === 1 && narPosted[0].confirm === true && !!D().getElementById('narcorrecttbl'));
+  M.showTab('main');
+  await sleep(30);
+
+  head('8 · Joe’s data');
+  check('its fixture is there (tools/check_joe.py --fixture)', !!JOE && Array.isArray(JOE.results), typeof JOE);
+  M.closeLeaf(); M.closeGhost(true);
+  const JO = W().MONO_JOE;
+  M.showTab('joe');
+  await until(() => D().getElementById('joeanswer'), 120);
+  const r8 = (mid, b, me) => JOE.results.find((r) => r.model === mid && r.band === b && (r.method === me || mid === 'm7'));
+  check('its own pane, the answer first: a row a model, theta and gamma × Welch and Dickson', !D().getElementById('joepane').hidden
+        && D().getElementById('narrowpane').hidden && D().querySelectorAll('#joeanswer tbody tr[data-model]').length === JOE.models.length
+        && D().querySelectorAll('#joeanswer thead th').length === 5, D().querySelectorAll('#joeanswer tbody tr[data-model]').length);
+  const cell8 = (mid, b, me) => D().querySelector('#joeanswer tr[data-model="' + mid + '"] td.jcell[data-band="' + b + '"][data-method="' + me + '"]');
+  const m2t = r8('m2', 'theta', 'welch');
+  check('a cell: the test of interest’s p from joe.json, and marked when its model opens follow-ups',
+        txt(cell8('m2', 'theta', 'welch').querySelector('.jp')) === 'p ' + M.fp(m2t.mixed.terms['Day × Phase × Pair'].p)
+        && cell8('m2', 'theta', 'welch').classList.contains('pass') === !!m2t.gate.passed && m2t.gate.passed,
+        txt(cell8('m2', 'theta', 'welch')));
+  const passFirst = JOE.results.filter((r) => JOE.models.find((m) => m.id === r.model).kind === 'first' && r.mixed && r.mixed.ok && r.gate.passed).length;
+  check('one line counts the first-pass fits that open, and the checks', new RegExp('^' + passFirst + ' of \\d+ first-pass model fits change from Precon1 to Precon4').test(txt(D().getElementById('joesay'))),
+        txt(D().getElementById('joesay')));
+  check('a check (Noise vs Click) is said to be expected null', /expected null/.test(txt(D().querySelector('#joeanswer tr[data-model="c1"] th'))));
+  cell8('m4', 'gamma', 'dickson').click();
+  await until(() => JO.state.band === 'gamma' && JO.state.method === 'dickson' && D().getElementById('jm-m4'), 40);
+  const c4 = () => D().getElementById('jm-m4');
+  const m4g = r8('m4', 'gamma', 'dickson');
+  check('a cell clicked shows its band and method, and its model: the plot with F, df and p in its legend',
+        JO.state.band === 'gamma' && JO.state.method === 'dickson' && !!c4().querySelector('svg.jplot')
+        && txt(c4().querySelector('svg.jplot')).indexOf('F(' + m4g.mixed.terms['Day × Phase × Pair'].df1 + ', ' + m4g.mixed.terms['Day × Phase × Pair'].df2 + ')') >= 0,
+        txt(c4().querySelector('svg.jplot')).slice(-160));
+  check('a point a level for Precon1 and Precon4, Precon2 and 3 too when measured', c4().querySelectorAll('svg.jplot circle.jpt[data-day="Precon4"]').length === 2
+        && c4().querySelectorAll('svg.jplot circle.jpt[data-day="Precon1"]').length === 2);
+  const holm8 = m4g.post.filter((p) => p.p_holm != null && p.p_holm < 0.05).length;
+  check('the strip: every pair’s own change, those Holm keeps marked (from joe.json)',
+        c4().querySelectorAll('svg.jstrip rect.jbar').length === m4g.post.filter((p) => p.p != null).length
+        && c4().querySelectorAll('svg.jstrip rect.jbar.holm').length === holm8 && holm8 >= 1, holm8);
+  const pt8 = c4().querySelector('details.xmore[data-key="jp-m4"]');
+  pt8.querySelector('summary').click();
+  await sleep(40);
+  check('which pairs drive it, behind a ▸: sorted by p, the planted pair first and kept by Holm',
+        txt(pt8.querySelector('table.jpost tbody tr th')) === 'R DHC – R RSC' && pt8.querySelector('table.jpost tbody tr').classList.contains('jkeep'),
+        txt(pt8.querySelector('table.jpost tbody tr')));
+  const tt8 = c4().querySelector('details.xmore[data-key="jt-m4"]');
+  tt8.querySelector('summary').click();
+  await sleep(40);
+  check('every term, both models, the RM-ANOVA saying how many rats it kept', tt8.querySelectorAll('table.jterms tbody tr').length === 7
+        && /RM-ANOVA \(\d of 8 rats\)/.test(txt(tt8.querySelector('table.jterms thead'))), txt(tt8.querySelector('table.jterms thead')));
+  JO.band = 'theta'; JO.method = 'welch';
+  await sleep(40);
+  const fol8 = D().querySelector('#jm-m2 details.xmore[data-key="jf-m2"]');
+  check('a model its gate opened carries its follow-ups; one it kept shut, none', !!fol8 && !D().querySelector('#jm-m3 details.xmore[data-key="jf-m3"]'));
+  fol8.querySelector('summary').click();
+  await sleep(40);
+  check('the follow-ups: the planted pair, PLI, direction (Granger both ways, the xcorr lag) and PAC, named by its regions',
+        txt(fol8.querySelector('h4')) === 'R ACC – R OFC' && fol8.querySelectorAll('table.jfollow tbody tr').length === 9
+        && /PAC: R ACC theta phase → R OFC gamma amplitude/.test(txt(fol8)), txt(fol8).slice(0, 200));
+  // The windows, to play with.
+  const tl8 = D().getElementById('joetimeline');
+  tl8.querySelector('.xstep[data-model="m4"]').click();
+  await sleep(600);
+  check('the timeline: a model chosen lights its two windows and dims the rest',
+        tl8.dataset.model === 'm4' && Number(tl8.querySelector('[data-w="swa"]').getAttribute('opacity')) > 0.9
+        && Number(tl8.querySelector('[data-w="swb"]').getAttribute('opacity')) > 0.9 && Number(tl8.querySelector('[data-w="base20"]').getAttribute('opacity')) < 0.3,
+        ['swa', 'swb', 'base20'].map((w) => tl8.querySelector('[data-w="' + w + '"]').getAttribute('opacity')).join());
+  const hm8 = D().querySelector('#joedefs details.xmore[data-key="joe-harm"]');
+  hm8.querySelector('summary').click();
+  await until(() => D().querySelector('#joeharm .jharmonics'), 40);
+  const hstep = (t) => Array.from(D().querySelectorAll('#joeharm .xstep')).find((b) => txt(b) === t).click();
+  hstep('Its harmonics');
+  await sleep(30);
+  const tags8 = () => Array.from(D().querySelectorAll('#joeharm text.jhtag')).filter((t) => t.getAttribute('opacity') === '1').map(txt);
+  check('mains and its harmonics: 60 and its whole multiples up to 480 Hz', tags8().join() === '60,×2,×3,×4,×5,×6,×7,×8', tags8().join());
+  hstep('The bands');
+  await sleep(30);
+  check('the bands: only 60 Hz falls in gamma, and the caption says its bins are left out', tags8().join() === '60'
+        && /59–61 Hz/.test(txt(D().querySelector('#joeharm .xcap'))), txt(D().querySelector('#joeharm .xcap')));
+  const fp8 = D().querySelector('#joedefs details.xmore[data-key="joe-fp"]');
+  fp8.querySelector('summary').click();
+  await until(() => D().querySelector('#joefp .jfpcompare'), 40);
+  Array.from(D().querySelectorAll('#joefp .xstep')).find((b) => txt(b) === 'Their difference').click();
+  await sleep(40);
+  check('the old Minus FP and this: the trials’ change less FP’s is the same number as the old one, on joe.json’s own means',
+        /· the same$/.test(txt(D().querySelector('#joefp .jfpout'))) && /theta coherence, the mean over rats and pairs/.test(txt(D().getElementById('joefp'))),
+        txt(D().querySelector('#joefp .jfpout')));
+  // Take it away.
+  check('the SPSS zip and the script to download, every file listed', /\/api\/arc\/monolith\/joe\/file\/joe_tab8_spss\.zip$/.test(D().getElementById('joezip').getAttribute('href'))
+        && D().querySelectorAll('#joeexports .jfiles li a').length === JOE.exports.length && JOE.exports.some((x) => /\.sps$/.test(x)), D().querySelectorAll('#joeexports .jfiles li a').length);
+  check('the script’s agreement said', /^Yes: \d+ files, every cell within 1e-6/.test(txt(D().querySelector('#joeagree .head'))), txt(D().getElementById('joeagree')));
+  joePosted = [];
+  D().getElementById('joescriptrun').click();
+  await until(() => joePosted.length, 80);
+  check('running the script here is asked of Jarvis, confirmed', joePosted.length === 1 && joePosted[0].confirm === true && joePosted[0].what === 'script', JSON.stringify(joePosted));
+  await until(() => D().getElementById('joeanswer') && !JO.state.scripting, 120);
+  const jw8 = figWords(D().getElementById('joepane'));
+  check('no word in its pictures cut off or on another', jw8.length === 0, jw8.slice(0, 4).join(' | '));
+  check('no text here ends in an ellipsis', txt(D().getElementById('joepane')).indexOf('…') < 0);
+  f.style.width = '390px';
+  await sleep(150);
+  check('at 390 px nothing scrolls sideways', D().scrollingElement.scrollWidth <= D().scrollingElement.clientWidth + 1, D().scrollingElement.scrollWidth);
+  JO.render();
+  await sleep(300);
+  const jw8p = figWords(D().getElementById('joepane'));
+  check('and drawn again there, no figure word cut or on another', jw8p.length === 0, jw8p.slice(0, 4).join(' | '));
+  if (STOP === 'joe') {
+    const sa8 = new URLSearchParams(location.search);
+    if (!sa8.get('phone')) f.style.width = '';
+    await sleep(600);
+    if (sa8.get('scroll')) D().getElementById(sa8.get('scroll')).scrollIntoView();
+    restore(); document.title = 'stopped at joe'; return;
+  }
+  f.style.width = '';
+  JOE_MISSING = true; joePosted = [];
+  await JO.load();
+  check('not worked out yet: said, with a button to do it here', !!D().getElementById('joemake') && !D().getElementById('joeanswer'));
+  D().getElementById('joemake').click();
+  await until(() => joePosted.length && D().getElementById('joeanswer'), 120);
+  check('pressed: asked of Jarvis, confirmed, and read again', joePosted.length === 1 && joePosted[0].confirm === true && joePosted[0].what === 'joe'
+        && !!D().getElementById('joeanswer'), JSON.stringify(joePosted));
   M.showTab('main');
   await sleep(30);
 

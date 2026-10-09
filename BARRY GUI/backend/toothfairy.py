@@ -1,20 +1,27 @@
 """
-avery.py -- Avery sweeps a Checkup set.
+toothfairy.py -- Tooth Fairy sweeps Checkup sets.
 
-Avery is AI Beta's model, put to work (named by the user, 2026-10-02). A
-sweep reads one curation set's candidates the way training read them -- the
-first read for shape, the second for physiology -- scores every one with the
-run that was made Avery, and calls each of them one of four things:
+Tooth Fairy is AI Beta's best model, put to work (named by the user,
+2026-10-07; the models before it were taken out on 2026-10-09). A sweep
+reads one curation set's candidates the way training read them -- the
+first read for shape, the second for physiology -- scores every one with
+the run that was made Tooth Fairy, and calls each of them one of four
+things:
 
     DS, Flag for Deep Review, Flag, Garbage
 
-by the bars that run set on mice it never saw (see `aibeta.POLICY`). Nothing
-is written by a sweep. What happens to its calls is the person's choice,
-made on the summary: accepting puts Avery's calls on the candidates nobody
-has decided -- a person's decision is never overwritten -- and banks every
-call as a version of its own, tagged `avery` and made by "Avery (AI)", so
-the calls a model made and the calls people then made can be compared later.
-Training never learns from an Avery version (`aibeta.dataset`).
+by the bars that run set on mice it never saw (see `aibeta.POLICY`), with
+the Garbage bar where the person sweeping put it (`TOLERANCES`). Nothing is
+written by a sweep. What happens to its calls is the person's choice, made
+on the summary: accepting puts the calls on the candidates nobody has
+decided -- a person's decision is never overwritten -- and banks every
+call as a version of its own, tagged `aibeta.MODEL_TAG` and made by
+`aibeta.MODEL_BY`, so the calls a model made and the calls people then made
+can be compared later. Training never learns from a model's version
+(`aibeta.dataset`).
+
+A BATCH is the same sweep over several sets in turn, in one job; each set's
+result is held on its own, so each can be accepted or not.
 
 THE SAMPLES. A sweep also hands back a dozen candidates, one from each
 twelfth of the set in time order and picked at random within it, with their
@@ -52,7 +59,9 @@ DEFAULT_TOLERANCE = 0.20
 
 _SWEEPS = {}
 _LOCK = threading.Lock()
-MAX_SWEEPS = 8
+# Held until accepted or discarded: enough for a batch of every DS set on
+# the bench and a few single sweeps beside it.
+MAX_SWEEPS = 64
 
 
 def remember(sid, rec):
@@ -92,10 +101,10 @@ def set_basis(cur, bank, gid, kind):
     return None, "nothing recorded; taken as the recording's own clock"
 
 
-def status(runs, slot="avery"):
+def status(runs, slot="tooth_fairy"):
     """What a model is, in the terms the confirm dialog states."""
     name = AI.SLOT_NAMES.get(slot, slot)
-    av = runs.avery(slot)
+    av = runs.model(slot)
     if not av:
         return {"ready": False, "slot": slot, "name": name,
                 "why": "%s has not been chosen yet. In Checkup's AI Beta, "
@@ -103,8 +112,9 @@ def status(runs, slot="avery"):
                        "this %s." % (name, name)}
     rec = runs.get(av["run_id"])
     if not rec:
-        return {"ready": False, "why": "Avery is run %s, which is not on "
-                                       "this machine yet." % av["run_id"]}
+        return {"ready": False, "why": "%s is run %s, which is not on "
+                                       "this machine yet."
+                                       % (name, av["run_id"])}
     res = rec.get("results") or {}
     pol = res.get("policy") or {}
     c99 = next((c for c in (res.get("catch") or [])
@@ -189,6 +199,7 @@ def tolerance_table(runs, run_id, base):
 
 
 def _cache_path(runs, gid, key):
+    # "avery_": the first model's name, kept so sets read before stay read.
     return os.path.join(runs.cache, "avery_%s__%s.npz" % (gid, key))
 
 
@@ -202,7 +213,7 @@ def _samples(order_ok, n=N_SAMPLES, seed=None):
 
 
 def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
-          slot="avery", ds_loss=None):
+          slot="tooth_fairy", ds_loss=None):
     """Score every candidate in one set. Returns the sweep record."""
     st = status(runs, slot)
     if not st["ready"]:
@@ -212,7 +223,7 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
     if ds_loss is not None and st.get("tolerances"):
         pol = policy_for(runs, st["run_id"], pol, ds_loss)
     if not pol:
-        raise AI.AiBetaError("Avery's run has no bars to sort by.")
+        raise AI.AiBetaError("%s's run has no bars to sort by." % st["name"])
     fams = list(bundle["families"])
 
     cur = curate.get(gid, kind)
@@ -295,11 +306,11 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
         n1 = len(braces.spans(stamps, window_ms=AI.SEARCH_MS + AI.HALF_MS,
                               pad_s=AI.PAD_S))
         if job:
-            job.begin("avery read", of=n1, unit="stretches")
+            job.begin("tf read", of=n1, unit="stretches")
 
         def tick1(k, n):
             if job:
-                job.tick("avery read", k)
+                job.tick("tf read", k)
         got1 = AI.read_entry(sess, rec["channels"], rec["probe"], rec["bad"],
                              times, spacing=rec.get("spacing"),
                              report=report, job=job, on_span=tick1,
@@ -311,7 +322,7 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
         if want_phys:
             n2 = len(phys.spans(stamps, phys.REACH_MS / 1000.0, phys.PAD_S))
             if job:
-                job.begin("avery physio", of=n2, unit="stretches")
+                job.begin("tf physio", of=n2, unit="stretches")
                 # The first read already holds every waveform, so the
                 # scanning screen has something real to show while the
                 # longer read runs.
@@ -321,7 +332,7 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
 
             def tick2(k, n):
                 if job:
-                    job.tick("avery physio", k)
+                    job.tick("tf physio", k)
             got2 = phys.read_physio(sess, rec["channels"], rec["probe"],
                                     rec["bad"], times, report=report,
                                     folder=sess.get("path"), job=job,
@@ -346,7 +357,7 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
         os.replace(path + ".part.npz", path)
 
     if job:
-        job.begin("avery score", of=len(events), unit="candidates")
+        job.begin("tf score", of=len(events), unit="candidates")
     if "recording" in fams:
         fam["recording"] = AI.derive_recording(fam, ok)
     if "wavebits" in fams:
@@ -355,7 +366,7 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
     X[~np.isfinite(X)] = np.nan
     if X.shape[1] != len(bundle.get("feature_names") or []):
         raise AI.AiBetaError(
-            "Avery's model expects %d inputs and this read made %d -- the "
+            "The model expects %d inputs and this read made %d -- the "
             "inputs have changed since it was trained. Train it again."
             % (len(bundle.get("feature_names") or []), X.shape[1]))
     p = np.full(len(events), np.nan)
@@ -364,7 +375,7 @@ def sweep(runs, curate, bank, open_recording, gid, kind, job=None,
     labels = np.full(len(events), "flag", dtype=object)
     labels[ok] = AI.apply_policy(p[ok], pol)
     if job:
-        job.tick("avery score", len(events))
+        job.tick("tf score", len(events))
 
     names = {l["id"]: l.get("name") or l["id"]
              for l in (cur.get("labels") or [])}

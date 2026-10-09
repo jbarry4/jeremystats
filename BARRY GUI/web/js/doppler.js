@@ -154,15 +154,13 @@ BARRY.doppler = (function () {
 
   /* ------------------------------------------------------- 1. a recording */
 
-  /* A recording this computer can open: Doppler reads the channel list
-     here before it sends anything, so a recording with no reachable path
-     has nothing to run. */
+  /* A recording this computer can open, or one the cluster can read
+     (VACC loaded): the run happens on the cluster either way, and the
+     channel list of one this computer has no copy of comes over the link. */
   const rows = () => (BARRY.views.toolkit.registryRows &&
                       BARRY.views.toolkit.registryRows()) || [];
-  /* The one predicate every picker uses (BARRY.vacc.usableFor). Doppler is
-     'here' in toolkit.js's READS until its channel list is read on the
-     cluster: a recording that is only VACC loaded is listed on request
-     with that reason, rather than offered and then failing. */
+  /* The one predicate every picker uses (BARRY.vacc.usableFor); Doppler is
+     'cluster' in toolkit.js's READS. */
   const usable = (r) => BARRY.vacc.usableFor('doppler')(r);
 
   function choose(r) {
@@ -193,8 +191,9 @@ BARRY.doppler = (function () {
       rows: rows(),
       usable,
       value: q.gid,
-      emptyText: 'No recording Jarvis knows about can be opened from this '
-               + 'computer, so there is no channel list to send.',
+      emptyText: 'No recording Jarvis knows about is on this computer or '
+               + 'VACC loaded, so there is nothing to run. Add the ones '
+               + 'found on VACC in Sessions, or upload some.',
       onpick: (r) => {
         choose(r);
         refreshEstimate().then(paint);
@@ -224,7 +223,14 @@ BARRY.doppler = (function () {
     box.appendChild(params());
 
     const c = (est && est.continuity) || {};
-    if (c.n_segments > 1) {
+    if (c.pending) {
+      /* Only the cluster has this recording: the gaps, and whether it is
+         in more than one piece, are checked there as part of the run. */
+      box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+        text: 'Not on this computer — read off the cluster. ' + (c.note || '')
+            + ' A recording in pieces is refused there with the same '
+            + 'sentence it gets here.' }));
+    } else if (c.n_segments > 1) {
       box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
         text: 'This recording is in ' + c.n_segments + ' pieces with '
             + (Math.round((c.seconds_lost || 0) * 10) / 10) + ' s missing '
@@ -726,7 +732,11 @@ BARRY.doppler = (function () {
 
   async function fetchSnippets() {
     try {
-      const got = await apiPost('/api/doppler/snippets', body());
+      /* A run made for a recording only the cluster has carries its `key`,
+         and is asked for by recording and key -- no copy needed here, and
+         the snippets are the run's own even if a field above has moved. */
+      const got = await apiPost('/api/doppler/snippets',
+        (res && res.key && q.gid) ? { gid: q.gid, key: res.key } : body());
       snips = got.snippets || null;
     } catch (e) { snips = null; }
   }
@@ -1445,12 +1455,16 @@ BARRY.doppler = (function () {
   }
 
   async function openReview(r) {
-    if (!r.local) {
+    /* This computer's copy when it has one, else the cluster's: the run is
+       in the vault either way, and a recording only VACC has opens over the
+       link (`r.path` is then `vacc:<gid>`). It used to refuse those. */
+    const path = r.local || r.path;
+    if (!path) {
       toast('None of that recording’s paths are reachable from this '
-            + 'computer, so there is nothing to look at.', 'warn', 9000);
+            + 'computer, and VACC cannot read it either.', 'warn', 9000);
       return;
     }
-    q.gid = r.gid; q.path = r.local; q.row = r.row || null;
+    q.gid = r.gid; q.path = path; q.row = r.row || null;
     const sp = r.spec || {};
     if (sp.llw_s) q.llw_s = sp.llw_s;
     if (sp.prc) q.prc = sp.prc;

@@ -211,8 +211,9 @@ BARRY.vacc = (function () {
      on the cluster is the tool's own fact (`reads`, declared in toolkit.js
      beside VACC_TOOLS):
 
-       'link'     it views it through the live link -- windows, the
-                  overview, the band, the .nev. Xplorefinder and the modes.
+       'link'     it views it through the live link -- windows, every
+                  panel (drawn on the cluster), the overview, the band, the
+                  .nev. Xplorefinder and the modes.
        'cluster'  it runs on the cluster. Incisor, Doppler, Circuit.
        'here'     it reads the files on this computer, so a VACC-only
                   recording is shown to it and disabled, with the reason.

@@ -362,9 +362,14 @@ def _spec_fingerprint(spec):
     return out
 
 
-def cache_key(spec, report=None):
+def cache_key(spec, report=None, gap_map_sha=None):
+    """`gap_map_sha` may be given directly, for a run whose segmentation was
+    made on the cluster: the answer carries it in `time_basis`, so the key is
+    the one a report in hand would have produced."""
+    if gap_map_sha is None:
+        gap_map_sha = (report or {}).get("gap_map_sha")
     body = {"spec": _spec_fingerprint(spec),
-            "gap_map": (report or {}).get("gap_map_sha")}
+            "gap_map": gap_map_sha}
     raw = json.dumps(body, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()[:16]
 

@@ -318,6 +318,12 @@ toolButton('panorama', 'Panorama', 'The whole recording at once: …')
 - Dispatch a `q.tool === 'yours'` branch to your paint function.
 - If it can run on the cluster, add its id to `VACC_TOOLS` — and only then.
   A tool marked as offloadable that is not is worse than no mark.
+- Give it a row in `VACC_INFO` (toolkit.js) when it is VACC enabled in any
+  way — runs there, or reads over the link. The mark's hover says, in three
+  parts, **why it is VACC enabled**, **what is processed on the cluster**,
+  and **what it would be like without VACC**. One table, so the mark on a
+  bundle step and on the flat list say the same thing (`vaccWords(id)`;
+  `_dev/vaccreach.html` checks every row has all three).
 
 ### A bundle
 
@@ -452,7 +458,7 @@ computer is the tool's own fact, declared in `READS` beside `VACC_TOOLS`
 
 | reads | means | tools today |
 |---|---|---|
-| `cluster` | runs there, no copy here needed | Incisor |
+| `cluster` | runs there, no copy here needed | Incisor, Doppler (the node resolves the channels and measures the gaps), Braces and Eye (the stamps go up with the job; only when this computer has no copy) |
 | `link` | views it through the live link: windows, every panel (CSD, theta, voltage, spectrogram -- drawn on the cluster by `analysis.render_panel`, only the picture crosses), overview, band, .nev. Nothing is prewarmed off the cluster | Xplorefinder, Checkup, Spotter, StrataScope |
 | `here` | needs the files on this computer — the default | everything not yet checked |
 
@@ -668,6 +674,14 @@ choosing a recording they are one fact.
   on disk for a day because the walk takes minutes (`INV_TTL_NATIVE_S`). A
   folder found there is `native`, never `staged`, and beats a scratch copy
   of the same recording instead of conflicting with it.
+- **Two finds, and a first look that is asked for.** The card has **Find
+  everything on VACC** (the cluster's own space: scratch, the uploads,
+  temp, scanned places — seconds) and **Find everything on netfiles** (the
+  lab's share — minutes), because they are two different costs. Each
+  computer keeps its own listing of the share, so a new computer starts
+  with none, and its first look is **Set up this computer** on the card,
+  never a walk started behind somebody's back. After that the share is
+  looked through again when its listing is a day old.
 - **Added on purpose.** Sessions ▸ Everything VACC knows ▸ *Found on VACC*
   sorts every find against the catalogue (`backend/vaccfind.py`) and offers
   **Add N recordings found on VACC** — one click that says how many, refused
@@ -768,11 +782,20 @@ rule above: one recording's circuit is about a minute here, so Circuit runs
 here and on the VACC, one or many; Drift combines numbers already computed,
 so it runs here in seconds and can run on the VACC, never as a batch.
 
+Braces and Eye were given the cluster by the user (2026-10-09) for one
+reason: a set whose recording only the cluster has. There the job runs
+on the VACC, by the same `braces.align`; a set whose recording is here is
+still aligned here. There is no choice to make between the two, so the run
+bar does not offer one (an axis with one option is hidden); the plan says
+"Runs on VACC" before the button is pressed. Spotter and Checkup read such
+a recording over the link and run nothing there.
+
 | tool | here · one | here · many | VACC · one | VACC · many |
 |---|---|---|---|---|
 | Incisor | ✓ | ✓ | ✓ | ✓ |
 | Circuit | ✓ | ✓ | ✓ | ✓ |
-| Checkup, Braces, Root Canal, X-ray, Eye | ✓ | ✓ | | |
+| Checkup, Root Canal, X-ray | ✓ | ✓ | | |
+| Braces, Eye | ✓ | ✓ | ✓ | |
 | Doppler | | | ✓ | ✓ |
 | Panorama | ✓ | ✓ | ✓ | |
 | Spotter, Kilosort, StrataScope | ✓ | | | |

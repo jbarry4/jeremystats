@@ -555,6 +555,16 @@ def overview(session, **kw):
                 **_remote_args(session))
 
 
+def braces_profile(session, numbers, spec, t0, t1, bad):
+    """`braces.profile_window`, run where the samples are -- the bench's
+    curve for one short window, from the contacts named by CSC number."""
+    args = {k: v for k, v in (spec or {}).items()
+            if k not in ("path", "invert") and v is not None}
+    return call("braces_profile", args=args, numbers=list(numbers or []),
+                t0=float(t0), t1=float(t1), bad=dict(bad or {}),
+                **_remote_args(session))
+
+
 def panel(session, spec):
     """`analysis.render_panel`, run where the samples are.
 

@@ -67,6 +67,25 @@ async function until(fn, ms) {
         ev('BARRY.views.toolkit.readsOf("curate")') === 'link');
   check('a tool nobody has checked needs the files here',
         ev('BARRY.views.toolkit.readsOf("kilosort")') === 'here');
+  /* 2026-10-09: Doppler, Braces and Eye need no copy here either. */
+  for (const t of ['doppler', 'braces', 'eye']) {
+    check(t + ' runs on the cluster with no copy here',
+          ev('BARRY.views.toolkit.readsOf("' + t + '")') === 'cluster');
+  }
+  check('Spotter views through the link',
+        ev('BARRY.views.toolkit.readsOf("spotter")') === 'link');
+
+  /* The mark on each VACC tool says why it is VACC enabled, what runs on
+     the cluster, and what using it would be like without (asked for
+     2026-10-09). From one table, so a step and the flat list agree. */
+  for (const t of ['incisor', 'doppler', 'braces', 'eye', 'spotter',
+                   'curate', 'circuit']) {
+    const w = ev('BARRY.views.toolkit.vaccWords("' + t + '") || ""');
+    check(t + '’s VACC mark explains why, what and without',
+          /Why it is VACC enabled: \S/.test(w)
+          && /What is processed on the cluster: \S/.test(w)
+          && /Without VACC: \S/.test(w), w.slice(0, 80));
+  }
 
   const kn = await json('/api/vacc/knows');
   await ev('BARRY.vacc.loadKnows(true)');
@@ -174,12 +193,26 @@ async function until(fn, ms) {
       check('the Found on VACC card is drawn, with its counts',
             !!card() && /New to Jarvis/.test(card().textContent),
             card() ? card().textContent.slice(0, 120) : 'none');
-      const add = card() && Array.from(card().querySelectorAll('button.btn'))
-        .find((b) => /^Add [\d,]+ recordings? found on VACC$|^Nothing new to add$/
-                     .test(b.textContent));
-      check('its primary says how many it would add', !!add,
-            card() ? Array.from(card().querySelectorAll('button'))
-              .map((b) => b.textContent).join(' | ') : '');
+      const btns = () => card() ? Array.from(card().querySelectorAll('button'))
+        .map((b) => b.textContent) : [];
+      const f0 = await json('/api/vacc/found');
+      if (f0.setup_needed) {
+        // A computer that never looked: the setup, with both finds.
+        check('a computer that never looked is offered the setup',
+              btns().indexOf('Set up this computer') >= 0, btns().join(' | '));
+      } else {
+        const add = card() && Array.from(card().querySelectorAll('button.btn'))
+          .find((b) => /^Add [\d,]+ recordings? found on VACC$|^Nothing new to add$/
+                       .test(b.textContent));
+        check('its primary says how many it would add', !!add,
+              btns().join(' | '));
+      }
+      check('it can find everything on VACC, and separately on netfiles',
+            btns().some((t) => /^Find everything on VACC$|^Looking on VACC/
+                                 .test(t))
+            && btns().some((t) => /^Find everything on netfiles$|^Looking on netfiles/
+                                    .test(t)),
+            btns().join(' | '));
       const f = await json('/api/vacc/found');
       check('/api/vacc/found sends counts and a digest, never full rows',
             f.ok && typeof f.n_new === 'number' && !!f.digest && !('_new' in f),

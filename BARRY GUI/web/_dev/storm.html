@@ -90,15 +90,25 @@ const post = (u, b) => fetch(u, { method: 'POST',
     check(name + ' is a step of a bundle', stepTexts.indexOf(name) >= 0);
   }
 
-  /* Only Doppler is marked as offloadable. A tool marked as though it can
-     run on the cluster and cannot is worse than one with no mark at all. */
+  /* Doppler runs on the cluster always; Eye since 2026-10-09 for a set whose
+     recording is only there (Braces' engine, `braces.align` in
+     vacc_run.py). Spotter runs nothing there -- it reads windows over the
+     link -- so it is not offloadable, though its mark says how it reads. A
+     tool marked as though it can run on the cluster and cannot is worse
+     than one with no mark at all. */
   const vaccTools = ev('JSON.stringify(BARRY.views.toolkit._vaccTools '
                        + '? BARRY.views.toolkit._vaccTools() : null)');
   if (vaccTools && vaccTools !== 'null') {
     const vt = JSON.parse(vaccTools);
     check('doppler is in VACC_TOOLS', vt.indexOf('doppler') >= 0);
-    check('spotter and eye are NOT',
-          vt.indexOf('spotter') < 0 && vt.indexOf('eye') < 0);
+    check('eye is, for a recording only the cluster has',
+          vt.indexOf('eye') >= 0);
+    check('spotter is NOT -- it reads over the link, runs nothing there',
+          vt.indexOf('spotter') < 0);
+    const w = ev('BARRY.views.toolkit.vaccWords ? '
+                 + 'BARRY.views.toolkit.vaccWords("spotter") : ""') || '';
+    check('spotter\'s mark says what it reads and what it would be without',
+          /Why it is VACC enabled/.test(w) && /Without VACC/.test(w), w);
   } else {
     say('  note  toolkit does not export _vaccTools; skipped', 'note');
   }

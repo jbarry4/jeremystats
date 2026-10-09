@@ -3776,7 +3776,9 @@ _WORK_SAY = {"upload": "uploading", "fetch": "fetching and building the "
              "rebuild": "rebuilding the Monolith under the histology",
              "sessions": "making Monolith Progress's session files",
              "physical": "comparing the physical cues with the balanced ones",
-             "narrow": "narrowing down: corrections and the permutation tests"}
+             "narrow": "narrowing down: corrections and the permutation tests",
+             "joe": "working out tab 8 (Joe's data) from the recordings",
+             "joescript": "running tab 8's standalone script"}
 
 
 def work_now():

@@ -34,6 +34,18 @@ BARRY.curate = (function () {
   let span = 1.0;         // seconds of recording shown around it
   let history = [];       // {id, from} so undo means something
   let saving = 0;
+  /* HOLDING A KEY DOWN (2026-10-09). The keyboard repeats a held key about
+     thirty times a second, and every repeat was a decision: a held `g`
+     called thirty candidates Garbage a second, each with its own redraw and
+     its own save, the saves queued behind each other on the server, and
+     leaving in the middle of that left a dozen of them in flight. Each of
+     those then reported a failure -- it read the set back off `set_`, which
+     leaving had emptied -- although every one of them had saved. So a held
+     key decides once; holding n or p still walks, at most every NAV_MS; and
+     a failure is said once, however many there were. */
+  const NAV_MS = 110;
+  let lastNav = 0;
+  let failN = 0, failMsg = '', failT = null;
   /* Which candidates the arrows visit.
 
        left   the ones with no decision yet -- the first pass
@@ -410,7 +422,7 @@ BARRY.curate = (function () {
      is the only path by which any of them learn about a candidate. */
   let lastChange = null;
   /* Bumped whenever the set is re-read because something else changed it
-     (an Avery sweep), and sent on every pointer from then on: a window
+     (a Tooth Fairy sweep), and sent on every pointer from then on: a window
      that sees a stamp it does not hold reads the set again. */
   let marksStamp = 0;
 
@@ -441,7 +453,7 @@ BARRY.curate = (function () {
         changed: lastChange,
       }, marksStamp ? { marks: marksStamp } : {},
       (opts && opts.withMarks) ? {
-        /* Every mark, for a change made somewhere else -- an Avery sweep
+        /* Every mark, for a change made somewhere else -- a Tooth Fairy sweep
            relabelling a few hundred candidates at once. Without them the
            support panels kept their old colours: a jump in the revision is
            not a reason to re-read, and a single `changed` cannot say what
@@ -616,6 +628,9 @@ BARRY.curate = (function () {
     const ev = current();
     if (!ev) return;
     const was = ev.label || null;
+    // The set this decision belongs to, kept: by the time the save answers,
+    // the mode may have moved on to another set or left altogether.
+    const own = set_;
 
     // Optimistic: the key press has to feel instant. The write follows, and
     // a failure puts it back and says so rather than pretending.
@@ -639,14 +654,20 @@ BARRY.curate = (function () {
     updateSaving();
     try {
       const res = await apiPost(
-        '/api/curation/' + encodeURIComponent(set_.gid) + '/'
-        + encodeURIComponent(set_.kind) + '/label',
+        '/api/curation/' + encodeURIComponent(own.gid) + '/'
+        + encodeURIComponent(own.kind) + '/label',
         { event: ev.id, label: labelId });
-      if (res.progress) set_._progress = res.progress;
+      if (res.progress) own._progress = res.progress;
       if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
         BARRY.views.toolkit.curationChanged();
       }
     } catch (e) {
+      if (set_ !== own) {
+        // Left, or onto another set, before this one answered: nothing on
+        // screen is this set's any more, so only say it did not save.
+        saidFailure(e.message);
+        return;
+      }
       /* Put back everything the optimistic step did, not only the
          label. The history entry it pushed stayed behind, so `u`
          later "undid" a decision that had never saved and wrote the
@@ -670,7 +691,7 @@ BARRY.curate = (function () {
         exit();
         return;
       }
-      toast('That did not save: ' + e.message, 'err', 8000);
+      saidFailure(e.message);
       render();
     } finally {
       saving -= 1;
@@ -678,9 +699,118 @@ BARRY.curate = (function () {
     }
   }
 
+  /* ---------- All Garbage (the secret) ---------- */
+  function garbageId() {
+    const g = (kind && kind.labels || []).find((l) => l.id === 'garbage');
+    return g ? g.id : null;
+  }
+
+  /* Every candidate in the set, Garbage, in one write -- and one step of
+     undo that puts every one of them back the way it was. */
+  async function allGarbage() {
+    const own = set_;
+    const gid_ = garbageId();
+    if (!own || !gid_) return false;
+    await settled();
+    if (set_ !== own) return false;
+    const evs = events();
+    const step_ = { bulk: evs.map((e) => ({ id: e.id, from: e.label || null })) };
+    const pairs = {};
+    for (const e of evs) pairs[e.id] = gid_;
+    saving += 1;
+    updateSaving();
+    try {
+      const res = await apiPost(
+        '/api/curation/' + encodeURIComponent(own.gid) + '/'
+        + encodeURIComponent(own.kind) + '/label', { labels: pairs });
+      if (res.progress) own._progress = res.progress;
+    } catch (e) {
+      toast('All Garbage did not save: ' + e.message, 'err', 9000);
+      return false;
+    } finally {
+      saving -= 1;
+      updateSaving();
+    }
+    if (set_ !== own) return true;
+    for (const e of evs) e.label = gid_;
+    history.push(step_);
+    markRev += 1;
+    lastChange = null;
+    publishMarks({ withMarks: true });
+    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+    if (BARRY.views.toolkit && BARRY.views.toolkit.curationChanged) {
+      BARRY.views.toolkit.curationChanged();
+    }
+    render();
+    toast('All ' + evs.length + ' candidates are Garbage. u puts them back.',
+          'ok', 9000);
+    BARRY.activity.log('curation.all_garbage',
+                       { gid: own.gid, kind: own.kind, n: evs.length }, sess);
+    return true;
+  }
+
+  /* Undoing All Garbage: every candidate back to what it was, in one write. */
+  async function undoBulk(last) {
+    const own = set_;
+    const pairs = {};
+    for (const b of last.bulk) pairs[b.id] = b.from;
+    const now = {};
+    for (const e of events()) now[e.id] = e.label || null;
+    for (const e of events()) {
+      if (e.id in pairs) e.label = pairs[e.id];
+    }
+    markRev += 1;
+    lastChange = null;
+    publishMarks({ withMarks: true });
+    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+    render();
+    try {
+      await apiPost('/api/curation/' + encodeURIComponent(own.gid) + '/'
+                    + encodeURIComponent(own.kind) + '/label',
+                    { labels: pairs });
+      toast('Put back the way they were.', 'ok', 4000);
+    } catch (e) {
+      if (set_ === own) {
+        for (const e2 of events()) {
+          if (e2.id in now) e2.label = now[e2.id];
+        }
+        history.push(last);
+        markRev += 1;
+        publishMarks({ withMarks: true });
+        render();
+      }
+      toast('That undo did not save: ' + e.message, 'err', 8000);
+    }
+  }
+
+  /* One toast for a run of failures, not one each. */
+  function saidFailure(msg) {
+    failN += 1;
+    failMsg = msg || failMsg;
+    if (failT) clearTimeout(failT);
+    failT = setTimeout(() => {
+      toast((failN === 1 ? 'That did not save: '
+             : failN + ' decisions did not save: ') + failMsg, 'err', 9000);
+      failN = 0;
+      failT = null;
+    }, 400);
+  }
+
+  /* Until every decision made so far has reached the server. Banking reads
+     the set as the server holds it, so a version banked while saves were
+     still queued was missing the last few decisions. */
+  async function settled(maxMs) {
+    const until = Date.now() + (maxMs || 30000);
+    while (saving > 0 && Date.now() < until) {
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    return saving === 0;
+  }
+
   async function undo() {
     const last = history.pop();
     if (!last) { toast('Nothing to undo.', null, 2000); return; }
+    if (last.bulk) { await undoBulk(last); return; }
     const at = events().findIndex((e) => e.id === last.id);
     if (at < 0) return;
     const was = events()[at].label || null;
@@ -741,7 +871,15 @@ BARRY.curate = (function () {
     bar.appendChild(el('div', { class: 'cur-prog' }, [
       el('i', { style: 'width:' + (n ? (done / n * 100) : 0) + '%' }),
       el('span', { text: done + ' decided · ' + left() + ' left' }),
-    ]));
+      // The secret (allgarbage.js). Only where Garbage is a word.
+      (BARRY.allGarbage && garbageId()) ? BARRY.allGarbage.keyhole(() =>
+        BARRY.allGarbage.unlock({
+          count: n,
+          decided: events().filter((e) => e.label
+                                       && e.label !== garbageId()).length,
+          onAll: allGarbage,
+        })) : null,
+    ].filter(Boolean)));
 
     const cats = el('div', { class: 'cur-cats' });
     for (const lab of (kind.labels || [])) {
@@ -839,15 +977,16 @@ BARRY.curate = (function () {
       ]),
       el('span', { class: 'cur-saving', id: 'curSaving', text: '' }),
       el('div', { style: 'flex:1' }),
-      /* Avery, AI Beta's model: sorts the whole set, asks before it starts,
-         and writes nothing unless its summary is accepted (avery.js). */
-      (set_.kind === 'ds' && BARRY.avery) ? el('button', {
-        class: 'btn ghost sm', text: 'Avery sweep\u2026',
-        title: 'Let Avery read every candidate and call each one DS, Flag '
-             + 'for Deep Review, Flag or Garbage. It asks first, and nothing '
-             + 'changes unless you accept its summary.',
-        onclick: averySweep,
-      }) : null,
+      /* Tooth Fairy, AI Beta's best model: sorts the whole set, asks
+         before it starts, and writes nothing unless its summary is
+         accepted (toothfairy.js). */
+      (set_.kind === 'ds' && BARRY.toothFairy) ? el('button', {
+        class: 'btn ghost sm tf-btn',
+        title: 'Let Tooth Fairy read every candidate and call each one DS, '
+             + 'Flag for Deep Review, Flag or Garbage. It asks first, and '
+             + 'nothing changes unless you accept its summary.',
+        onclick: toothFairySweep,
+      }, [BARRY.toothFairy.icon(), 'Tooth Fairy\u2026']) : null,
       el('button', { class: 'btn ghost sm', text: 'List all\u2026',
                      title: 'Every candidate in this set, by time or by '
                           + 'category. Click one to go to it.',
@@ -919,17 +1058,17 @@ BARRY.curate = (function () {
     });
   }
 
-  /* ---------- Avery ---------- */
-  function averySweep() {
+  /* ---------- Tooth Fairy ---------- */
+  function toothFairySweep() {
     if (!set_) return;
-    BARRY.avery.open({
+    BARRY.toothFairy.open({
       gid: set_.gid, kind: set_.kind,
       name: set_.name || set_.session_label || '',
       n: events().length,
       decided: events().filter((e) => e.label).length,
       colors: Object.fromEntries((kind.labels || []).map((l) => [l.id, l.color])),
       // Accepted: its calls are on the set now, so read it again and go
-      // straight to the flags, which is the work Avery leaves.
+      // straight to the flags, which is the work Tooth Fairy leaves.
       onDone: () => refreshSet('flag'),
     });
   }
@@ -1102,18 +1241,32 @@ BARRY.curate = (function () {
     // Any other modified key belongs to the browser or the app, not here.
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-    const map = {
+    const nav = {
       n: () => step(1), arrowright: () => step(1),
       p: () => step(-1), arrowleft: () => step(-1),
-      u: undo, backspace: undo,
-      escape: exit,
     };
-    if (map[k]) { e.preventDefault(); e.stopPropagation(); map[k](); return; }
+    if (nav[k]) {
+      e.preventDefault(); e.stopPropagation();
+      // Held, it walks -- but no faster than a window can be drawn.
+      const now = Date.now();
+      if (e.repeat && now - lastNav < NAV_MS) return;
+      lastNav = now;
+      nav[k]();
+      return;
+    }
+    const once = { u: undo, backspace: undo, escape: exit };
+    if (once[k]) {
+      e.preventDefault(); e.stopPropagation();
+      // Held, undo would walk back through the afternoon. Once per press.
+      if (!e.repeat) once[k]();
+      return;
+    }
 
     for (const lab of (kind.labels || [])) {
       if ((lab.keys || []).includes(k)) {
         e.preventDefault(); e.stopPropagation();
-        assign(lab.id);
+        // A decision is a key press, not a key held down.
+        if (!e.repeat) assign(lab.id);
         return;
       }
     }
@@ -1588,6 +1741,15 @@ BARRY.curate = (function () {
         what: parts.what,
         extra: parts.extra,
         onBank: async ({ note, who }) => {
+          // Every decision on the server first, or the version is short.
+          if (set_ && set_.gid === at.gid && saving > 0) {
+            toast('Saving the last ' + saving + ' decision'
+                  + (saving === 1 ? '' : 's') + ' first\u2026', null, 3000);
+            if (!(await settled())) {
+              throw new Error('some decisions are still saving; try again '
+                              + 'in a moment');
+            }
+          }
           res = await apiPost(
             '/api/curation/' + encodeURIComponent(at.gid) + '/'
             + encodeURIComponent(at.kind) + '/bank',
@@ -1764,7 +1926,7 @@ BARRY.curate = (function () {
     get banked() { return vhist; },
     switchVersion: () => switchVersion(),
     /* Re-read the set after something else wrote to it -- what an
-       accepted Avery sweep does -- and tell every window. */
+       accepted Tooth Fairy sweep does -- and tell every window. */
     refresh: (pass) => refreshSet(pass),
     get state() {
       return set_ ? { gid: set_.gid, kind: set_.kind, index,

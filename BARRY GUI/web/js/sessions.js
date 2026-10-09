@@ -3431,12 +3431,17 @@ BARRY.views.sessions = (function () {
   let vFoundTimer = null;
   let vAdding = false;
 
+  /* `look`: false to read what is in hand, or which places to search again
+     -- 'vacc' (the cluster's own space), 'netfiles' (the lab's share), or
+     'all'. */
   async function loadFound(look) {
     if (vFoundLoading) return;
     vFoundLoading = true;
     try {
-      vFound = look ? await apiPost('/api/vacc/found/look', {})
+      vFound = look ? await apiPost('/api/vacc/found/look',
+                                    { which: look === true ? 'all' : look })
                     : await api('/api/vacc/found');
+      if (vFound && vFound.note) toast(vFound.note, 'warn', 10000);
     } catch (e) {
       vFound = { ok: false, error: e.message };
     } finally {
@@ -3479,6 +3484,43 @@ BARRY.views.sessions = (function () {
       return box;
     }
     const f = vFound;
+    const roots = f.roots || [];
+    const busyKind = (k) => roots.some((r) => r.busy && r.kind === k);
+
+    /* A computer that has never looked. Each computer keeps its own
+       listing of the share (it is minutes to make and a day old at most),
+       so a new one -- or a fresh install -- starts with nothing found, and
+       a card full of zeros would read as "the cluster is empty". It says
+       what to do instead (§5: an empty state says what to do next). */
+    if (f.setup_needed && !f.walking) {
+      box.appendChild(el('div', { class: 'empty-state vacc-setup' }, [
+        el('p', { text: 'This computer has not looked on the VACC yet.' }),
+        el('p', { class: 'hint', style: 'max-width:78ch',
+          text: 'Set it up once: Jarvis looks through the cluster’s own '
+              + 'space (scratch, the uploads, temp — seconds) and through '
+              + 'the lab’s netfiles share (about two and a half minutes), '
+              + 'and matches every recording it finds to the catalogue. '
+              + 'After that the share is looked through again once a day, '
+              + 'or when you press one of the buttons below. Nothing is '
+              + 'copied and nothing is added until you say so.' }),
+      ]));
+      box.appendChild(el('div', { class: 'tk-actions' }, [
+        el('button', { class: 'btn ghost sm', text: 'Find everything on VACC',
+          title: 'Only the cluster’s own space: scratch, the uploads and '
+               + 'temp. Seconds.',
+          onclick: () => loadFound('vacc') }),
+        el('button', { class: 'btn ghost sm',
+          text: 'Find everything on netfiles',
+          title: 'Only the lab’s netfiles share, read from the cluster. '
+               + 'About two and a half minutes.',
+          onclick: () => loadFound('netfiles') }),
+        el('button', { class: 'btn', text: 'Set up this computer',
+          title: 'Both: the cluster’s own space and the netfiles share.',
+          onclick: () => loadFound('all') }),
+      ]));
+      return box;
+    }
+
     box.appendChild(el('p', { class: 'hint', style: 'max-width:78ch',
       text: 'Every place on the cluster Jarvis looks — scratch, uploads and '
           + 'the lab’s netfiles share — sorted against the catalogue. A '
@@ -3488,14 +3530,16 @@ BARRY.views.sessions = (function () {
     /* Where it looked, and how fresh each answer is. The share takes a
        couple of minutes to walk and is walked once a day, so "walked 3 h
        ago" is information, not an apology. */
-    for (const r of (f.roots || [])) {
+    for (const r of roots) {
       box.appendChild(el('p', { class: 'hint quiet',
-        text: (r.kind === 'netfiles' ? 'netfiles  ' : 'scratch  ') + r.root
+        text: (r.kind === 'netfiles' ? 'netfiles  ' : 'VACC  ') + r.root
             + '  ·  ' + (r.busy
-              ? 'walking it now' + (r.kind === 'netfiles'
+              ? 'looking through it now' + (r.kind === 'netfiles'
                 ? ' (about two and a half minutes)' : '')
-              : (r.n.toLocaleString() + ' recording' + (r.n === 1 ? '' : 's')
-                 + ', walked ' + ago(r.age_s))) }));
+              : r.age_s == null ? 'not looked through on this computer yet'
+                : (r.n.toLocaleString() + ' recording'
+                   + (r.n === 1 ? '' : 's') + ', looked through '
+                   + ago(r.age_s))) }));
     }
     for (const d of (f.denied_roots || [])) {
       box.appendChild(el('p', { class: 'warn-line',
@@ -3538,14 +3582,29 @@ BARRY.views.sessions = (function () {
     ].filter(Boolean).forEach((x) => box.appendChild(x));
 
     const n = f.n_new || 0;
+    /* Two searches, because they are two different costs: the cluster's
+       own space is seconds, the lab's share is a couple of minutes of a
+       filesystem everybody's jobs read. Each says when it is running. */
     box.appendChild(el('div', { class: 'tk-actions' }, [
       el('button', {
         class: 'btn ghost sm',
-        text: f.walking ? 'Looking…' : 'Look again',
-        disabled: f.walking ? 'disabled' : null,
-        title: 'Walk every place again. The netfiles share takes a couple '
-             + 'of minutes; the list here updates when it is done.',
-        onclick: () => loadFound(true),
+        text: busyKind('scratch') ? 'Looking on VACC…'
+                                  : 'Find everything on VACC',
+        disabled: busyKind('scratch') ? 'disabled' : null,
+        title: 'Look through the cluster’s own space again — scratch, the '
+             + 'uploads in Jarvis Data, temp and every folder a scan was '
+             + 'pointed at. Seconds.',
+        onclick: () => loadFound('vacc'),
+      }),
+      el('button', {
+        class: 'btn ghost sm',
+        text: busyKind('netfiles') ? 'Looking on netfiles…'
+                                   : 'Find everything on netfiles',
+        disabled: busyKind('netfiles') ? 'disabled' : null,
+        title: 'Look through the lab’s netfiles share again, from the '
+             + 'cluster. About two and a half minutes; the list here '
+             + 'updates when it is done.',
+        onclick: () => loadFound('netfiles'),
       }),
       el('button', {
         class: 'btn',
