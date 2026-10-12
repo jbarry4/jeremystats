@@ -738,6 +738,9 @@ BARRY GUI/
     pipeline.py     the IED pipeline definition
     live.py         cross-window state sync
     eventbank.py    the shared record of detected events
+    layers.py       layer sheets: labels, versions, StrataScope's steps
+    stratasteps.py  StrataScope's evidence: the one read, depth curves,
+                    ripples, triggered averages, Methods A and B
     results.py      the results catalog and deck storage
     storyboard.py   deck rendering to PDF / PNG
     extras.py       session health, recording overview, error grouping,
@@ -751,6 +754,8 @@ BARRY GUI/
     js/toolkit.js      the tool menu, Event curation and StrataScope
     js/{incisor,curate,braces,dspca}.js      The Dentist, steps 1 to 4
     js/{comod,cfcguide,cfcscope,spectrum,panorama,strata}.js the analysis tools
+    js/stratasteps.js  StrataScope's steps; strata-aids.html + js/strataaids.js
+                       its aid window
     js/{vacc,vaccfx,kilosort,housekeeping,hk_views}.js
     js/{radio,tour,tourmodules,toolfeed}.js
     _dev/              159 harnesses that drive the real UI in an iframe

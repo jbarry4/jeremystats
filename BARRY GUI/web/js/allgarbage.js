@@ -60,6 +60,7 @@ BARRY.allGarbage = (function () {
         maxlength: '1', autocomplete: 'off', 'aria-label': 'Digit ' + (i + 1),
       });
       b.addEventListener('input', () => {
+        primeAudio();
         b.value = b.value.replace(/\D/g, '').slice(-1);
         if (b.value && i < DIGITS - 1) boxes[i + 1].focus();
         if (boxes.every((x) => x.value)) tryPin();
@@ -119,25 +120,38 @@ BARRY.allGarbage = (function () {
   }
 
   /* ---------- the choir ---------- */
-  /* "Aah": a vowel is a voice through a few resonances, so each note is
-     three slightly detuned saws -- a section, not a soloist -- through the
-     three formants of an open A, with a slow swell and a little vibrato,
-     into a hall made of decaying noise. Then bells when the button lands. */
-  function startAudio() {
-    stopAudio();
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    let ac;
-    try { ac = new AC(); } catch (e) { return; }
-    if (ac.state === 'suspended') ac.resume().catch(() => {});
-    const t0 = ac.currentTime + 0.05;
-    const master = ac.createGain();
-    master.gain.value = 0.0001;
-    master.gain.exponentialRampToValueAtTime(0.32, t0 + 1.2);
-    master.gain.setValueAtTime(0.32, t0 + 6.2);
-    master.gain.exponentialRampToValueAtTime(0.0001, t0 + 9.5);
+  /* WHY THERE WAS NO SOUND (2026-10-09). Two things, either enough on its
+     own. Opening the heavens first shut any heavens already open -- and
+     that meant stopping the choir it had started a line earlier. And the
+     choir was quiet to begin with: three saws through narrow vowel filters
+     keep a small share of their energy, and the levels were set as though
+     they kept all of it -- about -36 dB. Measured now, not guessed: see
+     `_measure` and the harness, which renders the whole score offline.
 
-    // The hall.
+     A third thing, for browsers stricter than Chrome: the audio context is
+     made on the first digit typed -- a key press, the gesture a browser
+     wants -- and not after the PIN is checked, which awaits a hash first.
+
+     "Aah": a vowel is a voice through a few resonances, so each note is a
+     section of three slightly detuned saws through the formants of an open
+     A, over a soft triangle for body, with a slow swell and a little
+     vibrato, into a hall made of decaying noise and a compressor that keeps
+     the chords from clipping. Then bells as the button lands. */
+  let shared = null;          // the AudioContext, made on the first digit
+
+  function primeAudio() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!shared || shared.state === 'closed') {
+      try { shared = new AC(); } catch (e) { shared = null; return null; }
+    }
+    if (shared.state === 'suspended') shared.resume().catch(() => {});
+    return shared;
+  }
+
+  /* The whole score, into `dest`, starting at `t0`. Separate from the
+     context so the harness can render it offline and measure it. */
+  function score(ac, dest, t0) {
     const len = Math.floor(ac.sampleRate * 3.2);
     const ir = ac.createBuffer(2, len, ac.sampleRate);
     for (let ch = 0; ch < 2; ch++) {
@@ -149,13 +163,12 @@ BARRY.allGarbage = (function () {
     const hall = ac.createConvolver();
     hall.buffer = ir;
     const wet = ac.createGain();
-    wet.gain.value = 0.55;
+    wet.gain.value = 0.5;
     const dry = ac.createGain();
-    dry.gain.value = 0.5;
+    dry.gain.value = 0.8;
     hall.connect(wet);
-    wet.connect(master);
-    dry.connect(master);
-    master.connect(ac.destination);
+    wet.connect(dest);
+    dry.connect(dest);
     const bus = ac.createGain();
     bus.connect(hall);
     bus.connect(dry);
@@ -169,7 +182,7 @@ BARRY.allGarbage = (function () {
     lfo.start(t0);
     lfo.stop(t0 + 10);
 
-    const formants = [[800, 1.0, 6], [1150, 0.5, 8], [2900, 0.25, 10]];
+    const formants = [[800, 2.2, 5], [1150, 1.4, 6], [2900, 0.7, 8]];
     const hz = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
     // C major, F over C, C major with the G on top.
     const chords = [
@@ -180,11 +193,11 @@ BARRY.allGarbage = (function () {
     for (const [at, dur, notes] of chords) {
       for (const m of notes) {
         const env = ac.createGain();
-        env.gain.value = 0.0001;
-        const s = t0 + at;
-        env.gain.exponentialRampToValueAtTime(0.06, s + 0.9);
-        env.gain.setValueAtTime(0.06, s + dur - 0.2);
-        env.gain.exponentialRampToValueAtTime(0.0001, s + dur + 1.4);
+        const s0 = t0 + at;
+        env.gain.setValueAtTime(0.0001, s0);
+        env.gain.exponentialRampToValueAtTime(0.16, s0 + 0.9);
+        env.gain.setValueAtTime(0.16, s0 + dur - 0.2);
+        env.gain.exponentialRampToValueAtTime(0.0001, s0 + dur + 1.4);
         for (const [f, g, q] of formants) {
           const bp = ac.createBiquadFilter();
           bp.type = 'bandpass';
@@ -201,22 +214,36 @@ BARRY.allGarbage = (function () {
             o.detune.value = det;
             lfoAmt.connect(o.detune);
             o.connect(bp);
-            o.start(s);
-            o.stop(s + dur + 1.6);
+            o.start(s0);
+            o.stop(s0 + dur + 1.6);
           }
         }
+        // Body under the vowel.
+        const body = ac.createOscillator();
+        body.type = 'triangle';
+        body.frequency.value = hz(m);
+        lfoAmt.connect(body.detune);
+        const lp = ac.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 1400;
+        const bg = ac.createGain();
+        bg.gain.value = 0.45;
+        body.connect(lp);
+        lp.connect(bg);
+        bg.connect(env);
+        body.start(s0);
+        body.stop(s0 + dur + 1.6);
         env.connect(bus);
       }
     }
 
     // Bells, as the button settles on the pillar.
-    const bells = [84, 88, 91, 96, 100];
-    bells.forEach((m, k) => {
-      const s = t0 + 2.7 + k * 0.11;
+    [84, 88, 91, 96, 100].forEach((m, k) => {
+      const s0 = t0 + 2.7 + k * 0.11;
       const g = ac.createGain();
-      g.gain.value = 0.0001;
-      g.gain.exponentialRampToValueAtTime(0.09, s + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, s + 2.4);
+      g.gain.setValueAtTime(0.0001, s0);
+      g.gain.exponentialRampToValueAtTime(0.2, s0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, s0 + 2.4);
       for (const [mul, amp] of [[1, 1], [2.76, 0.35], [5.4, 0.12]]) {
         const o = ac.createOscillator();
         o.type = 'sine';
@@ -225,13 +252,40 @@ BARRY.allGarbage = (function () {
         og.gain.value = amp;
         o.connect(og);
         og.connect(g);
-        o.start(s);
-        o.stop(s + 2.5);
+        o.start(s0);
+        o.stop(s0 + 2.5);
       }
       g.connect(bus);
     });
+  }
 
-    audio = { ac, master };
+  /* The master: a swell in, a long fade out, and a compressor so a seven-
+     note chord and five bells at once do not clip. */
+  function master(ac, t0) {
+    const m = ac.createGain();
+    m.gain.setValueAtTime(0.0001, t0);
+    m.gain.exponentialRampToValueAtTime(0.85, t0 + 1.0);
+    m.gain.setValueAtTime(0.85, t0 + 6.4);
+    m.gain.exponentialRampToValueAtTime(0.0001, t0 + 9.6);
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -16;
+    comp.knee.value = 12;
+    comp.ratio.value = 3.5;
+    comp.attack.value = 0.01;
+    comp.release.value = 0.25;
+    m.connect(comp);
+    comp.connect(ac.destination);
+    return m;
+  }
+
+  function startAudio() {
+    stopAudio();
+    const ac = primeAudio();
+    if (!ac) return;
+    const t0 = ac.currentTime + 0.05;
+    const m = master(ac, t0);
+    score(ac, m, t0);
+    audio = { ac, master: m };
   }
 
   function stopAudio() {
@@ -243,13 +297,45 @@ BARRY.allGarbage = (function () {
       a.master.gain.cancelScheduledValues(now);
       a.master.gain.setValueAtTime(Math.max(0.0001, a.master.gain.value), now);
       a.master.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
-      setTimeout(() => { try { a.ac.close(); } catch (e) { /* gone */ } }, 600);
+      // The context stays: closing it would make the next reveal ask for a
+      // gesture all over again.
+      setTimeout(() => { try { a.master.disconnect(); } catch (e) { /* gone */ } },
+                 600);
     } catch (e) { /* nothing to stop */ }
+  }
+
+  /* For the harness: the whole score rendered offline, and how loud it is. */
+  async function measure(seconds) {
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OAC) return null;
+    const sr = 22050;
+    const oac = new OAC(2, Math.floor(sr * (seconds || 10)), sr);
+    const m = master(oac, 0.05);
+    score(oac, m, 0.05);
+    const buf = await oac.startRendering();
+    let peak = 0, sum = 0, n = 0, loudest = 0;
+    const win = Math.floor(sr * 0.5);
+    for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+      const d = buf.getChannelData(ch);
+      let acc = 0;
+      for (let i = 0; i < d.length; i++) {
+        const v = d[i];
+        if (Math.abs(v) > peak) peak = Math.abs(v);
+        sum += v * v;
+        n += 1;
+        acc += v * v;
+        if ((i + 1) % win === 0) {
+          loudest = Math.max(loudest, Math.sqrt(acc / win));
+          acc = 0;
+        }
+      }
+    }
+    return { peak: peak, rms: Math.sqrt(sum / n), loudest: loudest };
   }
 
   /* ---------- the heavens ---------- */
   function reveal() {
-    close();
+    removeHeavens();
     const n = (ctx && ctx.count) || 0;
     const sparks = el('div', { class: 'ag-sparks' });
     for (let i = 0; i < 28; i++) {
@@ -306,7 +392,9 @@ BARRY.allGarbage = (function () {
     ]);
     ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
     document.body.appendChild(ov);
-    document.addEventListener('keydown', onKey, true);
+    // On the window, capturing: ahead of Checkup's own keys, which listen
+    // on the document -- or Escape left curation as well as the heavens.
+    window.addEventListener('keydown', onKey, true);
     // Focus lands on the button once it has landed, so Enter presses it.
     setTimeout(() => { if (btn.isConnected) btn.focus(); },
                reduced() ? 0 : 3000);
@@ -324,12 +412,17 @@ BARRY.allGarbage = (function () {
     }
   }
 
-  function close() {
-    stopAudio();
-    document.removeEventListener('keydown', onKey, true);
+  function removeHeavens() {
+    window.removeEventListener('keydown', onKey, true);
     const ov = document.getElementById('agHeaven');
     if (ov) ov.remove();
   }
 
-  return { keyhole: keyhole, unlock: unlock, close: close };
+  function close() {
+    stopAudio();
+    removeHeavens();
+  }
+
+  return { keyhole: keyhole, unlock: unlock, close: close,
+           playing: () => !!audio, _measure: measure };
 })();

@@ -92,6 +92,12 @@ window.MONO_JOE = (function () {
     load();
   }
 
+  // A first-pass model's gate opens its follow-ups; a check's only says it
+  // reached p < .05 (checks open nothing).
+  function gateSay(m, r) {
+    return m.kind === 'check' ? 'p < .05 (' + r.gate.by + '): a check, so nothing follows' : 'opens follow-ups (' + r.gate.by + ')';
+  }
+
   /* ---------------- the answer ---------------- */
   // Every model x band x method: the test of interest's p, and Day x factor's
   // beneath it; a cell that opens follow-ups is marked.
@@ -104,15 +110,15 @@ window.MONO_JOE = (function () {
     const row = (m) => el('tr', { 'data-model': m.id, class: m.kind }, [el('th', {}, [el('div', { text: m.label }),
       el('div', { class: 'small muted', text: m.kind === 'check' ? 'check · expected null' : (m.unit === 'region' ? 'power, per region' : 'coherence, per pair') })])]
       .concat(cols.map(([b, me]) => {
-        if (m.unit === 'region' && me.id !== 'welch') return el('td', { class: 'muted small', text: 'one way' });
+        if (m.unit === 'region' && me.id !== 'welch') return el('td', { class: 'muted small', text: 'power has one method' });
         const r = resOf(m.id, b.id, me.id);
         if (!r || !r.mixed || !r.mixed.ok) return el('td', { class: 'muted small', text: r && r.mixed ? (r.mixed.why || 'not fitted') : '—' });
         const t3 = (r.mixed.terms || {})[three(m)], t2 = (r.mixed.terms || {})[two(m)];
         const pass = r.gate && r.gate.passed;
         const td = el('td', { class: 'jcell' + (pass ? ' pass' : ''), tabindex: '0', 'data-band': b.id, 'data-method': me.id,
-                              title: three(m) + ': ' + fmtF(t3) + '\n' + two(m) + ': ' + fmtF(t2) + (pass ? '\nOpens follow-ups (' + r.gate.by + ')' : '') },
+                              title: three(m) + ': ' + fmtF(t3) + '\n' + two(m) + ': ' + fmtF(t2) + (pass ? '\n' + gateSay(m, r) : '') },
         [el('div', { class: 'jp', text: t3 ? 'p ' + fp(t3.p) : '—' }), el('div', { class: 'small muted', text: t2 ? two(m).replace('Day × ', 'Day×') + ' p ' + fp(t2.p) : '' }),
-          pass ? el('span', { class: 'chip jgate', text: 'follow-ups' }) : null]);
+          pass ? el('span', { class: 'chip jgate' + (m.kind === 'check' ? ' warn' : ''), text: m.kind === 'check' ? 'p < .05' : 'follow-ups' }) : null]);
         const go = () => { P.band = b.id; P.method = me.id; render(); const c = $('jm-' + m.id); if (c) c.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
         td.addEventListener('click', go);
         td.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
@@ -151,6 +157,13 @@ window.MONO_JOE = (function () {
     ]);
   }
 
+  // A phone: each picture is drawn about as wide as its box (narrower
+  // units, its parts rearranged), so its words stay their size rather than
+  // shrinking with a wide picture scaled down.
+  const phone = () => typeof innerWidth === 'number' && innerWidth < 600;
+  // And their words a tenth larger there.
+  let PF = 1;
+
   /* ---------------- what is measured: three things to play with ---------------- */
   // The windows on one trial's timeline; a model chosen lights its two.
   const WIN = { base20: [-20, 0, 'Baseline 20 s'], base10: [-10, 0, 'Baseline 10 s'], cue1: [0, 10, 'Cue 1'], cue2: [10, 20, 'Cue 2'],
@@ -160,31 +173,34 @@ window.MONO_JOE = (function () {
                        c3: ['cue1', 'cue2'], c4: ['cue1', 'cue2'] };
   function timeline(host) {
     host.innerHTML = '';
+    PF = phone() ? 1.1 : 1;
     const D = P.data;
-    const VW = 640, rows = ['base20', 'base10', 'cue1', 'cue2', 'pair', 'swa', 'swb', 'fp'], RH = 19, T = 26;
+    const narrow = phone();
+    const VW = narrow ? 360 : 640, rows = ['base20', 'base10', 'cue1', 'cue2', 'pair', 'swa', 'swb', 'fp'], RH = 19, T = 26;
     const VH = T + rows.length * RH + 30;
-    const L = 120, R = 560;
+    const L = narrow ? 86 : 120, R = narrow ? 346 : 560;
     const tx = (s) => L + (s + 20) / 40 * (R - L);
     const svg = sv('svg', { viewBox: '0 0 ' + VW + ' ' + VH, width: '100%', class: 'mfig jtime', role: 'img', style: 'max-width:' + VW + 'px',
                             'aria-label': 'The windows of one trial, from 20 s before cue 1 to the end of cue 2' });
     svg.appendChild(sv('rect', { x: tx(0), y: T - 18, width: tx(10) - tx(0), height: 12, rx: 3, fill: css('--arrow'), 'fill-opacity': 0.25 }));
     svg.appendChild(sv('rect', { x: tx(10), y: T - 18, width: tx(20) - tx(10), height: 12, rx: 3, fill: css('--up'), 'fill-opacity': 0.25 }));
-    svg.appendChild(sv('text', { x: tx(5), y: T - 9, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-2') }, 'cue 1'));
-    svg.appendChild(sv('text', { x: tx(15), y: T - 9, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-2') }, 'cue 2'));
+    svg.appendChild(sv('text', { x: tx(5), y: T - 9, 'text-anchor': 'middle', 'font-size': 10 * PF, fill: css('--ink-2') }, 'cue 1'));
+    svg.appendChild(sv('text', { x: tx(15), y: T - 9, 'text-anchor': 'middle', 'font-size': 10 * PF, fill: css('--ink-2') }, 'cue 2'));
     for (const s of [-20, -10, 0, 10, 20]) {
       svg.appendChild(sv('line', { x1: tx(s), x2: tx(s), y1: T - 4, y2: T + rows.length * RH, stroke: css('--line'), 'stroke-dasharray': '2 3' }));
-      svg.appendChild(sv('text', { x: tx(s), y: T + rows.length * RH + 14, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-3') }, (s > 0 ? '+' : '') + s + ' s'));
+      svg.appendChild(sv('text', { x: tx(s), y: T + rows.length * RH + 14, 'text-anchor': 'middle', 'font-size': 10 * PF, fill: css('--ink-3') }, (s > 0 ? '+' : '') + s + ' s'));
     }
     const bars = {};
     rows.forEach((w, i) => {
       const y = T + i * RH;
-      svg.appendChild(sv('text', { x: L - 8, y: y + 13, 'text-anchor': 'end', 'font-size': 10.5, fill: css('--ink-2') }, WIN[w][2]));
+      svg.appendChild(sv('text', { x: L - 8, y: y + 13, 'text-anchor': 'end', 'font-size': 10.5 * PF, fill: css('--ink-2') }, WIN[w][2]));
       const [a, b] = WIN[w];
       let r;
       if (w === 'fp') {
         r = sv('g', { class: 'jwin', 'data-w': w });
-        for (let k = 0; k < 4; k++) r.appendChild(sv('rect', { x: L + 18 + k * 84, y: y + 3, width: 30, height: 12, rx: 3, fill: css('--node-grey') }));
-        r.appendChild(sv('text', { x: R, y: y + 13, 'text-anchor': 'end', 'font-size': 9.5, fill: css('--ink-3') }, 'in FP1 and FP2, at random'));
+        const step = (R - L) * (narrow ? 0.42 : 0.78) / 4;
+        for (let k = 0; k < 4; k++) r.appendChild(sv('rect', { x: L + 18 + k * step, y: y + 3, width: Math.min(30, step - 8), height: 12, rx: 3, fill: css('--node-grey') }));
+        r.appendChild(sv('text', { x: R, y: y + 13, 'text-anchor': 'end', 'font-size': 9.5 * PF, fill: css('--ink-3') }, 'in FP1 and FP2, at random'));
       } else {
         r = sv('rect', { x: tx(a), y: y + 3, width: tx(b) - tx(a), height: 12, rx: 3, fill: css('--ink-2'), class: 'jwin', 'data-w': w });
       }
@@ -236,7 +252,9 @@ window.MONO_JOE = (function () {
   // The mains: 60 Hz and its whole multiples, notched; the bands lit.
   function harmonics(host) {
     host.innerHTML = '';
-    const VW = 640, VH = 230, L = 40, R = 620, T = 18, B = 180;
+    PF = phone() ? 1.1 : 1;
+    const narrow = phone();
+    const VW = narrow ? 360 : 640, VH = 230, L = narrow ? 22 : 40, R = narrow ? 346 : 620, T = 18, B = 180;
     const fx = (f) => L + f / 500 * (R - L);
     const base = (f) => 0.9 - 0.55 * Math.log10(1 + f / 4) / Math.log10(126);
     const fy = (v) => B - v * (B - T);
@@ -247,18 +265,18 @@ window.MONO_JOE = (function () {
     const th = sv('rect', { x: fx(5), y: T, width: Math.max(2, fx(12) - fx(5)), height: B - T, fill: css('--ok'), 'fill-opacity': 0.25 });
     const ga = sv('rect', { x: fx(30), y: T, width: fx(90) - fx(30), height: B - T, fill: css('--arrow'), 'fill-opacity': 0.18 });
     bandG.appendChild(th); bandG.appendChild(ga);
-    bandG.appendChild(sv('text', { x: fx(8.5), y: T + 12, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-2') }, 'theta'));
-    bandG.appendChild(sv('text', { x: fx(60), y: T + 12, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-2') }, 'gamma 30–90 Hz'));
+    bandG.appendChild(sv('text', { x: fx(8.5), y: T + 12, 'text-anchor': 'middle', 'font-size': 10 * PF, fill: css('--ink-2') }, 'theta'));
+    bandG.appendChild(sv('text', { x: narrow ? fx(30) + 3 : fx(60), y: narrow ? T + 26 : T + 12, 'text-anchor': narrow ? 'start' : 'middle', 'font-size': 10 * PF, fill: css('--ink-2') }, 'gamma 30–90 Hz'));
     svg.appendChild(sv('line', { x1: L, x2: R, y1: B, y2: B, stroke: css('--line-2') }));
     for (const f of [0, 60, 120, 180, 240, 300, 360, 420, 480]) {
-      svg.appendChild(sv('text', { x: fx(f), y: B + 14, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-3') }, String(f)));
+      svg.appendChild(sv('text', { x: fx(f), y: B + 14, 'text-anchor': 'middle', 'font-size': 10 * PF, fill: css('--ink-3') }, String(f)));
     }
-    svg.appendChild(sv('text', { x: (L + R) / 2, y: B + 30, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-3') }, 'Hz'));
+    svg.appendChild(sv('text', { x: (L + R) / 2, y: B + 30, 'text-anchor': 'middle', 'font-size': 10 * PF, fill: css('--ink-3') }, 'Hz'));
     const line = sv('path', { fill: 'none', stroke: css('--ink-2'), 'stroke-width': 1.6, class: 'jspec' });
     svg.appendChild(line);
     const tags = [];
     for (let k = 1; k <= 8; k++) {
-      const t = sv('text', { x: fx(60 * k), y: T + 28, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 700, fill: css('--up'), opacity: '0', class: 'jhtag' },
+      const t = sv('text', { x: fx(60 * k), y: narrow ? T + 42 : T + 28, 'text-anchor': 'middle', 'font-size': 10 * PF, 'font-weight': 700, fill: css('--up'), opacity: '0', class: 'jhtag' },
         k === 1 ? '60' : '×' + k);
       svg.appendChild(t);
       tags.push(t);
@@ -326,25 +344,32 @@ window.MONO_JOE = (function () {
   // differently.
   function fpCompare(host, ex) {
     host.innerHTML = '';
+    PF = phone() ? 1.1 : 1;
     const v = ex;
-    const VW = 620, VH = 262, B = 200, T = 30;
+    const k0 = phone() ? 0.58 : 1, sx = (x) => x * k0;
+    const VW = phone() ? 384 : 620, VH = 262, B = 200, T = 30;
+    // Where the arrows stand; on a phone the trials' and FP's further apart
+    // than the rest is squeezed, so the first one's label clears the second.
+    const AX = k0 < 1 ? { old: 236, trials: 196, fp: 308 } : { old: 420, trials: 380, fp: 500 };
+    // Coherence changes are small: plain decimals, never 6.8e-4.
+    const f3 = (x) => (x == null || !isFinite(x)) ? '—' : (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(Math.abs(x) < 0.01 ? 4 : 3);
     const all = [v.c1, v.c4, v.f1, v.f4];
     const hi = Math.max(...all) * 1.15, lo = 0;
     const Y = (x) => B - (x - lo) / (hi - lo) * (B - T);
     const svg = sv('svg', { viewBox: '0 0 ' + VW + ' ' + VH, width: '100%', class: 'mfig jfp', role: 'img', style: 'max-width:' + VW + 'px',
                             'aria-label': 'The old Minus FP against the change in the trials set against the change in FP' });
-    svg.appendChild(sv('line', { x1: 20, x2: 600, y1: B, y2: B, stroke: css('--line-2') }));
-    const X0 = { c1: 60, f1: 100, c4: 200, f4: 240 };
+    svg.appendChild(sv('line', { x1: sx(20), x2: sx(600), y1: B, y2: B, stroke: css('--line-2') }));
+    const X0 = { c1: sx(60), f1: sx(100), c4: sx(200), f4: sx(240) };
     const bars = {};
     for (const k of ['c1', 'f1', 'c4', 'f4']) {
-      const r = sv('rect', { x: X0[k], width: 32, fill: css(k[0] === 'c' ? '--ink-2' : '--node-grey'), class: 'jfpbar', 'data-k': k });
+      const r = sv('rect', { x: X0[k], width: sx(32), fill: css(k[0] === 'c' ? '--ink-2' : '--node-grey'), class: 'jfpbar', 'data-k': k });
       svg.appendChild(r);
       bars[k] = r;
     }
-    svg.appendChild(sv('text', { x: 96, y: B + 16, 'text-anchor': 'middle', 'font-size': 11, fill: css('--ink-2') }, 'Precon1'));
-    svg.appendChild(sv('text', { x: 236, y: B + 16, 'text-anchor': 'middle', 'font-size': 11, fill: css('--ink-2') }, 'Precon4'));
-    svg.appendChild(sv('text', { x: 76, y: T - 10, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-3') }, 'trials'));
-    svg.appendChild(sv('text', { x: 116, y: T - 10, 'text-anchor': 'middle', 'font-size': 10, fill: css('--ink-3') }, 'FP'));
+    svg.appendChild(sv('text', { x: sx(96), y: B + 16, 'text-anchor': 'middle', 'font-size': 11 * PF, fill: css('--ink-2') }, 'Precon1'));
+    svg.appendChild(sv('text', { x: sx(236), y: B + 16, 'text-anchor': 'middle', 'font-size': 11 * PF, fill: css('--ink-2') }, 'Precon4'));
+    svg.appendChild(sv('text', { x: sx(76), y: T - 10, 'text-anchor': 'middle', 'font-size': 10 * PF, fill: css('--ink-3') }, 'trials'));
+    svg.appendChild(sv('text', { x: sx(116), y: T - 10, 'text-anchor': 'middle', 'font-size': 10 * PF, fill: css('--ink-3') }, 'FP'));
     const right = sv('g', { class: 'jfpright' });
     svg.appendChild(right);
     const out = el('div', { class: 'jfpout' });
@@ -362,7 +387,7 @@ window.MONO_JOE = (function () {
       const g = sv('g', { class: 'jarrow', 'data-id': id });
       g.appendChild(sv('line', { x1: x, x2: x, y1: Y(a), y2: Y(b), stroke: col, 'stroke-width': 4, 'stroke-linecap': 'round' }));
       g.appendChild(sv('circle', { cx: x, cy: Y(b), r: 5, fill: col }));
-      g.appendChild(sv('text', { x: x + 10, y: (Y(a) + Y(b)) / 2 + 4, 'font-size': 11, fill: css('--ink') }, label));
+      g.appendChild(sv('text', { x: x + 10, y: (Y(a) + Y(b)) / 2 + 4, 'font-size': 11 * PF, fill: css('--ink') }, label));
       return g;
     };
     let run = 0, step = 0;
@@ -385,21 +410,22 @@ window.MONO_JOE = (function () {
           if (t >= 1) break;
           await new Promise((r) => setTimeout(r, 25));
         }
-        right.appendChild(arrow(420, v.c1 - v.f1, v.c4 - v.f4, css(old >= 0 ? '--up' : '--down'), 'change: ' + f3(old), 'old'));
+        right.appendChild(arrow(AX.old, v.c1 - v.f1, v.c4 - v.f4, css(old >= 0 ? '--up' : '--down'), 'change: ' + f3(old), 'old'));
         out.textContent = 'Old Minus FP: ' + f3(old);
       } else {
-        right.appendChild(arrow(380, v.c1, v.c4, css('--ink-2'), 'trials: ' + f3(dT), 'trials'));
-        right.appendChild(arrow(500, v.f1, v.f4, css('--node-grey'), 'FP: ' + f3(dF), 'fp'));
+        right.appendChild(arrow(AX.trials, v.c1, v.c4, css('--ink-2'), 'trials: ' + f3(dT), 'trials'));
+        right.appendChild(arrow(AX.fp, v.f1, v.f4, css('--node-grey'), 'FP: ' + f3(dF), 'fp'));
         if (k >= 2) {
           out.textContent = 'Trials − FP = ' + f3(dT - dF) + ' · old Minus FP = ' + f3(old) + (Math.abs(dT - dF - old) < 1e-9 ? ' · the same' : '');
-          if (!quick && !reduced()) X().celebrate(svg, 440, Y((v.c4 + v.f4) / 2), css('--ok'));
+          if (!quick && !reduced()) X().celebrate(svg, (AX.trials + AX.fp) / 2, Y((v.c4 + v.f4) / 2), css('--ok'));
         }
         if (k === 3) {
           const g = sv('g', { class: 'jsnips' });
-          g.appendChild(sv('text', { x: 360, y: B + 34, 'font-size': 10, fill: css('--ink-3') }, 'FP1'));
-          g.appendChild(sv('text', { x: 360, y: B + 48, 'font-size': 10, fill: css('--ink-3') }, 'FP2'));
-          const xs = [391, 433, 462, 520, 571, 409, 488, 547];
-          xs.forEach((x, i) => g.appendChild(sv('rect', { x, y: B + 26 + (i < 5 ? 0 : 14), width: 10, height: 8, rx: 2, fill: css('--node-grey') })));
+          const gx = k0 < 1 ? AX.trials - 20 : 360, gk = k0 < 1 ? 0.75 : 1;
+          g.appendChild(sv('text', { x: gx, y: B + 34, 'font-size': 10 * PF, fill: css('--ink-3') }, 'FP1'));
+          g.appendChild(sv('text', { x: gx, y: B + 48, 'font-size': 10 * PF, fill: css('--ink-3') }, 'FP2'));
+          const xs = [391, 433, 462, 520, 571, 409, 488, 547].map((x) => gx + 30 + (x - 391) * gk);
+          xs.forEach((x, i) => g.appendChild(sv('rect', { x, y: B + 26 + (i < 5 ? 0 : 14), width: 10 * Math.max(0.7, k0), height: 8, rx: 2, fill: css('--node-grey') })));
           right.appendChild(g);
         }
       }
@@ -453,7 +479,7 @@ window.MONO_JOE = (function () {
           'Coherence, Welch: the circuits’ method (1 s Hann segments, half overlapping, FFT twice as long). Dickson: Jeremy’s MATLAB, a 59–61 Hz Butterworth notch, then mscohere with hanning(1024), 512 overlap, 2048 points.',
           'Pairs: every pair of the ' + (D.regions || []).length + ' regions, kept in a model when at least ' + D.min_rats + ' rats have it at every level on both days.',
           'Clipping: measured here for every window (the rail, or a flat top, for 16 samples or more), as Spark measures it; a clipped wire gives way to its region’s next.',
-          'Models: a mixed model (Day × factor × Pair, the rat random, with rat × Day, rat × factor and rat × Day × factor) and the repeated-measures ANOVA on the rats with every cell.',
+          'Models: a mixed model, Day × factor × Pair, each term tested against the rats’ own spread in it (the rat random), a rat missing a pair keeping its others; and, beside it, the repeated-measures ANOVA on the rats with every cell. With every rat complete the two give the same F.',
         ];
         body.appendChild(el('ul', { class: 'small' }, lis.map((x) => el('li', { text: x }))));
         return null;
@@ -467,7 +493,12 @@ window.MONO_JOE = (function () {
   function plotOf(m, r) {
     const D = P.data;
     const levels = m.levels;
-    const VW = 480, VH = 230, L = 52, R = 300, T = 22, B = 178;
+    // On a phone the legend and statistics go under the plot, so the picture
+    // is drawn about as wide as its box and its words stay their size.
+    const narrow = phone();
+    const VW = narrow ? 330 : 480, L = narrow ? 46 : 52, R = narrow ? 316 : 300, T = 22, B = 178;
+    const VH = narrow ? B + 34 + 104 : 230;
+    const lgX = narrow ? 8 : R + 14, lgY = narrow ? B + 34 : T + 6, stX = narrow ? 168 : R + 14, stY = narrow ? B + 38 : T + 64;
     const vals = [];
     for (const d of D.days) for (const lv of levels) {
       const c = ((r.cells || {})[d] || {})[lv.id];
@@ -489,19 +520,26 @@ window.MONO_JOE = (function () {
     for (const v of [lo + pad, hi - pad]) svg.appendChild(sv('text', { x: L - 6, y: Y(v) + 3.5, 'text-anchor': 'end', 'font-size': 10, fill: css('--ink-3') }, sig(v)));
     svg.appendChild(sv('text', { x: 12, y: (T + B) / 2, 'font-size': 10, fill: css('--ink-3'), transform: 'rotate(-90 12 ' + ((T + B) / 2) + ')', 'text-anchor': 'middle' },
       m.unit === 'region' ? 'log10 power' : 'coherence'));
-    levels.forEach((lv, i) => svg.appendChild(sv('text', { x: Xl(i), y: B + 15, 'text-anchor': 'middle', 'font-size': 10.5, fill: css('--ink-2') }, lv.label)));
+    // The outer levels' names kept inside the picture on a phone.
+    const anc = (i) => (!narrow || levels.length < 2 ? 'middle' : i === 0 ? 'start' : i === levels.length - 1 ? 'end' : 'middle');
+    const ax = (i) => Xl(i) + (anc(i) === 'start' ? -10 : anc(i) === 'end' ? 10 : 0);
+    levels.forEach((lv, i) => svg.appendChild(sv('text', { x: ax(i), y: B + 15, 'text-anchor': anc(i), 'font-size': 10.5, fill: css('--ink-2') }, lv.label)));
     const style = { Precon1: [css('--down'), '5 3', 2.2, 1], Precon2: [css('--ink-3'), '1 3', 1, 0.6], Precon3: [css('--ink-3'), '1 3', 1, 0.6], Precon4: [css('--up'), null, 2.6, 1] };
     for (const d of D.days) {
       const [col, dash, w, op] = style[d] || [css('--ink-3'), null, 1, 0.6];
+      // The two tested days a few pixels apart, so one's ± SE never hides the other's.
+      const dx = d === D.tested[0] ? -5 : d === D.tested[1] ? 5 : 0;
       let path = '';
       levels.forEach((lv, i) => {
         const c = ((r.cells || {})[d] || {})[lv.id];
         if (!c || c.mean == null) return;
-        path += (path ? 'L' : 'M') + Xl(i).toFixed(1) + ',' + Y(c.mean).toFixed(1);
+        const x = Xl(i) + dx;
+        path += (path ? 'L' : 'M') + x.toFixed(1) + ',' + Y(c.mean).toFixed(1);
         if (c.se != null && D.tested.includes(d)) {
-          svg.appendChild(sv('line', { x1: Xl(i), x2: Xl(i), y1: Y(c.mean - c.se), y2: Y(c.mean + c.se), stroke: col, 'stroke-width': 1.2, opacity: op }));
+          svg.appendChild(sv('line', { x1: x, x2: x, y1: Y(c.mean - c.se), y2: Y(c.mean + c.se), stroke: col, 'stroke-width': 1.2, opacity: op }));
+          for (const e of [c.mean - c.se, c.mean + c.se]) svg.appendChild(sv('line', { x1: x - 3, x2: x + 3, y1: Y(e), y2: Y(e), stroke: col, 'stroke-width': 1.2, opacity: op }));
         }
-        svg.appendChild(sv('circle', { cx: Xl(i), cy: Y(c.mean), r: D.tested.includes(d) ? 3.5 : 2, fill: col, opacity: op, class: 'jpt', 'data-day': d, 'data-level': lv.id }));
+        svg.appendChild(sv('circle', { cx: x, cy: Y(c.mean), r: D.tested.includes(d) ? 3.5 : 2, fill: col, opacity: op, class: 'jpt', 'data-day': d, 'data-level': lv.id }));
       });
       if (path) svg.appendChild(sv('path', { d: path, fill: 'none', stroke: col, 'stroke-width': w, 'stroke-dasharray': dash, opacity: op, class: 'jline', 'data-day': d }));
     }
@@ -509,15 +547,15 @@ window.MONO_JOE = (function () {
     const t3 = ((r.mixed || {}).terms || {})[three(m)], t2 = ((r.mixed || {}).terms || {})[two(m)];
     const lg = [['Precon1', css('--down'), '5 3'], ['Precon4', css('--up'), null], ['Precon2, 3 (not tested)', css('--ink-3'), '1 3']];
     lg.forEach(([t, c, dash], i) => {
-      const y = T + 6 + i * 16;
-      svg.appendChild(sv('line', { x1: R + 14, x2: R + 34, y1: y, y2: y, stroke: c, 'stroke-width': 2.2, 'stroke-dasharray': dash }));
-      svg.appendChild(sv('text', { x: R + 38, y: y + 3.5, 'font-size': 10, fill: css('--ink-2') }, t));
+      const y = lgY + i * 16;
+      svg.appendChild(sv('line', { x1: lgX, x2: lgX + 20, y1: y, y2: y, stroke: c, 'stroke-width': 2.2, 'stroke-dasharray': dash }));
+      svg.appendChild(sv('text', { x: lgX + 24, y: y + 3.5, 'font-size': 10, fill: css('--ink-2') }, t));
     });
     const stats = [three(m).replace(' × ', '×').replace(' × ', '×') + ':', t3 ? 'F(' + t3.df1 + ', ' + t3.df2 + ') = ' + t3.F.toFixed(2) : '—', t3 ? 'p ' + fp(t3.p) : '',
       two(m).replace(' × ', '×') + ':', t2 ? 'F(' + t2.df1 + ', ' + t2.df2 + ') = ' + t2.F.toFixed(2) : '—', t2 ? 'p ' + fp(t2.p) : ''];
-    stats.forEach((s, i) => svg.appendChild(sv('text', { x: R + 14, y: T + 64 + i * 14, 'font-size': 10, fill: css(i % 3 === 0 ? '--ink-2' : '--ink'),
+    stats.forEach((s, i) => svg.appendChild(sv('text', { x: stX, y: stY + i * 14, 'font-size': 10, fill: css(i % 3 === 0 ? '--ink-2' : '--ink'),
                                                        'font-weight': i % 3 === 0 ? 600 : 400, class: 'jstat' }, s)));
-    svg.appendChild(sv('text', { x: R + 14, y: T + 64 + 6 * 14 + 4, 'font-size': 9.5, fill: css('--ink-3') }, 'mixed model, uncorrected'));
+    svg.appendChild(sv('text', { x: narrow ? lgX : stX, y: narrow ? lgY + 3 * 16 + 6 : stY + 6 * 14 + 4, 'font-size': 9.5, fill: css('--ink-3') }, 'mixed model, uncorrected'));
     return svg;
   }
   // Each unit's own Day x factor contrast, sorted, those Holm keeps marked.
@@ -526,7 +564,7 @@ window.MONO_JOE = (function () {
     const two2 = m.levels.length === 2;
     const val = (x) => (two2 ? x.delta : x.F);
     const rows = post.slice().sort((a, b) => (val(b) || 0) - (val(a) || 0));
-    const VW = 420, H = 90, L = 10, R = 410, mid = 50;
+    const VW = phone() ? 330 : 420, H = 90, L = 10, R = VW - 10, mid = 50;
     const svg = sv('svg', { viewBox: '0 0 ' + VW + ' ' + (H + 20), width: '100%', class: 'mfig jstrip', role: 'img', style: 'max-width:' + VW + 'px',
                             'aria-label': 'Each ' + (m.unit === 'pair' ? 'pair' : 'region') + '’s own change, sorted' });
     if (!rows.length) return svg;
@@ -575,9 +613,10 @@ window.MONO_JOE = (function () {
       el('tbody', {}, rows.map((n) => el('tr', { class: n === three(m) ? 'jkey' : null }, [el('th', { text: n }),
         el('td', { class: 'num', text: fmtF(((r.mixed || {}).terms || {})[n]) }),
         el('td', { class: 'num', text: (r.rm || {}).ok ? fmtF(r.rm.terms[n]) : (n === rows[0] ? (r.rm || {}).why || '—' : '') })])))]),
-      el('p', { class: 'small muted', text: 'Mixed model: ' + ((r.mixed || {}).random || '') + '; ' + fmt((r.mixed || {}).n_obs) + ' rat × day × level × '
-        + (m.unit === 'pair' ? 'pair' : 'region') + ' values from ' + ((r.mixed || {}).n_rats || 0) + ' rats. F from Wald tests with between-within df; SPSS MIXED '
-        + '(Satterthwaite), from the exported syntax, is the reference.' })]);
+      el('p', { class: 'small muted', text: 'Mixed model: ' + fmt((r.mixed || {}).n_obs) + ' rat × ' + (m.unit === 'pair' ? 'pair' : 'region')
+        + ' sets with every cell, from ' + ((r.mixed || {}).n_rats || 0) + ' rats, each term tested against the rats’ own spread in it (the rat random). '
+        + 'With every rat complete its F are the RM-ANOVA’s; a rat missing a ' + (m.unit === 'pair' ? 'pair' : 'region') + ' keeps its others. '
+        + 'SPSS MIXED (Satterthwaite), from the exported syntax, is the reference.' })]);
   }
   function postTable(m, r) {
     const two2 = m.levels.length === 2;
@@ -620,7 +659,7 @@ window.MONO_JOE = (function () {
     }
     const t3 = r.mixed.terms[three(m)], t2 = r.mixed.terms[two(m)];
     card.appendChild(el('p', { class: 'jline1' }, [el('b', { text: three(m) + ': ' }), fmtF(t3) + ' · ', el('b', { text: two(m) + ': ' }), fmtF(t2),
-      r.gate && r.gate.passed ? el('span', { class: 'chip jgate', text: 'opens follow-ups (' + r.gate.by + ')' }) : null]));
+      r.gate && r.gate.passed ? el('span', { class: 'chip jgate' + (m.kind === 'check' ? ' warn' : ''), text: gateSay(m, r) }) : null]));
     const plot = plotOf(m, r), strip = stripOf(m, r);
     card.appendChild(el('div', { class: 'jfigs' }, [el('div', {}, [plot]), el('div', {}, [strip])]));
     const nm = 'joe_' + m.id + '_' + P.band + '_' + r.method;
@@ -687,7 +726,7 @@ window.MONO_JOE = (function () {
     if (A) {
       const bad = A.files.filter((x) => !x.ok);
       kids.push(el('p', { class: 'physanswer ' + (A.ok ? 'ok' : 'warn'), id: 'joeagree' }, [el('span', { class: 'head', text: A.ok
-        ? 'Yes: ' + A.files.length + ' files, every cell within ' + A.tol + ' (largest difference ' + sig(Math.max(...A.files.map((x) => x.worst || 0))) + ').'
+        ? 'Yes: ' + A.files.length + ' files, every cell within ' + (A.tol === 1e-6 ? 'a millionth' : A.tol) + ' (largest difference ' + sig(Math.max(...A.files.map((x) => x.worst || 0))) + ').'
         : 'Not everywhere: ' + bad.length + ' of ' + A.files.length + ' files differ.' }), el('span', { class: 'small muted', text: ' Run ' + A.ran_at + '.' })]));
       if (bad.length) {
         kids.push(el('ul', { class: 'small' }, bad.slice(0, 12).map((x) => el('li', { text: x.file + ': ' + (x.why || ('largest difference ' + sig(x.worst)

@@ -21,7 +21,7 @@
     "schema": "2026-09-03T00:08:56.770588+00:00",
     "session": "2026-09-03T00:08:56.770588+00:00",
     "start": "2026-09-03T00:08:56.770588+00:00",
-    "updated": "2026-10-01T00:09:19.647394+00:00",
+    "updated": "2026-10-12T13:32:13.472268+00:00",
     "view_state": "2026-09-25T21:42:33.252824+00:00"
   },
   "_keys": {
@@ -79,8 +79,8 @@
         "2026-09-03T00:08:56.770588+00:00"
       ],
       "Z:\\harness\\split-me": [
-        "gone",
-        "2026-10-01T00:09:19.647394+00:00"
+        "set",
+        "2026-10-12T13:32:13.472268+00:00"
       ],
       "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-21_16-18-04": [
         "set",
@@ -144,6 +144,10 @@
         "set",
         "2026-09-03T00:08:56.770588+00:00"
       ],
+      "barrylab-d8e8": [
+        "set",
+        "2026-10-01T16:30:08.570413+00:00"
+      ],
       "desktop-4h65ai7-d565": [
         "set",
         "2026-09-25T21:42:13.802832+00:00"
@@ -151,7 +155,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-01T00:09:19.647394+00:00",
+    "at": "2026-10-12T13:32:13.472268+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -228,7 +232,8 @@
     "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_16-30-09",
     "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_17-36-24",
     "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_17-42-59",
-    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_18-56-46"
+    "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-22_18-56-46",
+    "Z:\\harness\\split-me"
   ],
   "project": "KCNT1",
   "project_source": "manual",
@@ -249,6 +254,14 @@
       "root": "//netfiles03.uvm.edu/bigdata_jbarry/Jeremy3/KCNT1",
       "scan": "scan_94ff1eb81c"
     },
+    "barrylab-d8e8": {
+      "at": "2026-10-01T12:30:08-04:00",
+      "by": "Rain Younger",
+      "machine": "Strawbarry",
+      "path": "Y:\\Jeremy3\\KCNT1\\Summer'26\\KCNT1_m0536\\KCNT1_m0536_s06_072126\\2026-07-21_16-18-04",
+      "root": "Y:/Jeremy3/KCNT1",
+      "scan": "scan_22235c040e"
+    },
     "desktop-4h65ai7-d565": {
       "at": "2026-09-25T17:42:13-04:00",
       "by": "Shahriar Tafti",
@@ -261,9 +274,9 @@
   "session": 6,
   "start": "2026-07-21T16:18:04",
   "updated": {
-    "app_version": "2026.09.30.3",
-    "at": "2026-09-30T20:09:19-04:00",
-    "commit": "1714e44f",
+    "app_version": "2026.10.09.4",
+    "at": "2026-10-12T09:32:13-04:00",
+    "commit": "2ec65512",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",

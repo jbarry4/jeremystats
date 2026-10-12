@@ -65,7 +65,7 @@ from . import csc, lazyimp, shards
 _sig = lazyimp.module("scipy.signal")
 _fft = lazyimp.module("scipy.fft")
 
-SCHEMA = 2
+SCHEMA = 3
 
 LFP_FS = 1250.0          # the rate everything after the read works at
 BIN_S = 1.0              # one row of the bins per second of recording
@@ -75,6 +75,13 @@ SPEC_WIN_S = 4.0         # the 4-12 Hz spectrum's window: 0.25 Hz resolution
 SPEC_LO, SPEC_HI = 4.0, 12.0
 DOM_LO, DOM_HI = 5.0, 11.0     # where a "dominant theta" peak may sit
 MUA_BAND = (300.0, 6000.0)
+# Mains, and the harmonics that land in the bands measured here. Notched out
+# of the 1250 Hz copy as it is made, so every band power, average, ripple and
+# ICA component downstream is free of it. Without this the mid-gamma curve
+# was a comb -- one contact after another lit up by its own pickup -- and
+# four of the first ICA run's six largest components peaked at 59.8 Hz.
+LINE_HZ = 60.0
+LINE_HARMONICS = 4
 MIN_SEGMENT_S = 0.5
 
 # Band powers kept per bin. The order is the array's last axis.
@@ -281,6 +288,35 @@ def _scan_channel(session, ch, plan, job=None, on_chunk=None):
     return lfp, mua.astype(np.float32)
 
 
+def _notch_mains(lfp, lfs, line_hz=LINE_HZ):
+    """Zero-phase notches at the mains and its harmonics, run over each
+    stretch of samples with no gap in it (a filter run across a gap rings
+    into both sides of it)."""
+    if not line_hz:
+        return lfp
+    fin = np.isfinite(lfp)
+    if not fin.any():
+        return lfp
+    d = np.diff(np.r_[0, fin.astype(np.int8), 0])
+    starts, ends = np.flatnonzero(d == 1), np.flatnonzero(d == -1)
+    soss = []
+    for k in range(1, LINE_HARMONICS + 1):
+        f0 = line_hz * k
+        if f0 >= lfs / 2.0 * 0.95:
+            break
+        b, a = _sig.iirnotch(f0 / (lfs / 2.0), 30.0)
+        soss.append(_sig.tf2sos(b, a))
+    out = lfp.copy()
+    for a0, e0 in zip(starts, ends):
+        if e0 - a0 < 64:
+            continue
+        seg = out[a0:e0].astype(np.float64)
+        for sos in soss:
+            seg = _sig.sosfiltfilt(sos, seg)
+        out[a0:e0] = seg.astype(np.float32)
+    return out
+
+
 def _bin_features(lfp, plan):
     """Per bin: band powers, theta coefficients, rms, 4-12 Hz spectrum."""
     lfs, nper = plan["lfp_fs"], plan["nper"]
@@ -355,7 +391,7 @@ def _bin_features(lfp, plan):
 
 
 def scan(session, report, gid, job=None, workers=4, channels=None,
-         on_progress=None):
+         on_progress=None, line_hz=LINE_HZ):
     """Read every channel once and keep what the steps need.
 
     Channels go through a small pool. Reading is disk-bound and the filters
@@ -403,6 +439,7 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
 
     def one(i, ch):
         lfp, mua = _scan_channel(session, ch, plan, job, chunk_read)
+        lfp = _notch_mains(lfp, plan["lfp_fs"], line_hz)
         feats = _bin_features(lfp, plan)
         fin = np.isfinite(lfp)
         peak = float(np.nanmax(np.abs(lfp))) if fin.any() else 0.0
@@ -455,6 +492,7 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
         "labels": [c.get("label") for c in plan["channels"]],
         "bands": [list(b) for b in BANDS],
         "invert": bool(session.get("invert", True)),
+        "line_hz": line_hz,
         "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "seconds": None,
     }
@@ -628,6 +666,67 @@ def forget(gid):
             _BINS_ORDER.remove(gid)
 
 
+# --------------------------------------------------------------------------
+# What was worked out from a scan, kept beside it
+# --------------------------------------------------------------------------
+# Ripples, the triggered averages and ICA depend on choices made after the
+# read -- which seconds are Theta Walk, which channel, which parameters -- so
+# each is kept under a digest of exactly those. Change a bout and the key
+# changes; come back to a recording and the last answer is still there.
+def derived_key(*parts):
+    h = hashlib.sha1(json.dumps(parts, sort_keys=True,
+                                default=str).encode()).hexdigest()
+    return h[:16]
+
+
+def derived_get(gid, kind, key):
+    p = os.path.join(_dir(gid), "derived", "%s-%s.json" % (kind, key))
+    if not os.path.exists(p):
+        return None
+    try:
+        with open(p, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return None
+
+
+def derived_put(gid, kind, key, value):
+    d = os.path.join(_dir(gid), "derived")
+    os.makedirs(d, exist_ok=True)
+    p = os.path.join(d, "%s-%s.json" % (kind, key))
+    tmp = p + ".part"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(value, fh)
+    os.replace(tmp, p)
+    return value
+
+
+# The job stages, declared to cfc so a run's progress is drawn (cfc drops a
+# stage it was not told about without a word -- see rootcanal.register_stages).
+STAGE_READ = "strata read"
+STAGE_ICA = "strata ica"
+_STAGES = ((STAGE_READ, "channels", 8e-4, False),
+           (STAGE_ICA, "steps", 3.0, True))
+
+
+def register_stages(cfcmod):
+    have = {name for name, _unit in cfcmod.STAGES}
+    for name, unit, seed, flat in _STAGES:
+        if name not in have:
+            cfcmod.STAGES.append((name, unit))
+        cfcmod._RATES.setdefault(name, seed)
+        if flat:
+            cfcmod._FLAT.add(name)
+
+
+def estimate_seconds(plan, workers=6):
+    """About how long a read takes here: measured at a tenth of real time
+    for 64 channels with six readers (2026-10-09, local disk), scaled by
+    channel count."""
+    return round(max(5.0, 0.1 * plan["span_s"]
+                     * plan["n_channels"] / 64.0 * 6.0 / max(1, workers)), 0)
+
+
 # ==========================================================================
 # Which seconds count
 # ==========================================================================
@@ -763,8 +862,12 @@ def guide(b, bad=(), params=None):
         stack = np.vstack([np.r_[sm[:1], sm[:-1]], sm, np.r_[sm[1:], sm[-1:]]])
         with np.errstate(all="ignore"):
             sm = np.nanmedian(stack, axis=0)
-    agree, med = horizon.agreement(b.dom[rows], tol=float(
-        params.get("agree_tol_hz", 0.5)))
+    with warnings.catch_warnings():
+        # A second with every channel invalid (a gap) is NaN, said by the
+        # NaN; numpy's warning about it is noise in the server log.
+        warnings.simplefilter("ignore", RuntimeWarning)
+        agree, med = horizon.agreement(b.dom[rows], tol=float(
+            params.get("agree_tol_hz", 0.5)))
     thr = params.get("ratio_threshold")
     thr = _otsu(sm[v]) if thr in (None, "") else float(thr)
     agree_min = float(params.get("agree_min", 0.6))
@@ -1353,3 +1456,617 @@ def ica_zone_sinks(comp, lo_row, hi_row, min_frac=0.3):
     if main >= 0 or seg[i] > min_frac * main:
         return None
     return lo_row + i
+
+
+# ==========================================================================
+# Proposals: where each step would put its lines
+# ==========================================================================
+# A proposal is anchors (points the evidence picks out: the pyramidal layer,
+# the fissure, the two granule layers) and lines (boundaries between layers,
+# made from the anchors by geometry). Every anchor carries its LEAD -- the one
+# measurement it is placed by -- and VOTES, the other measurements' answers
+# with how many channels they disagree by. A lead can be swapped for any vote
+# from the screen; disagreement lowers the starting confidence.
+#
+# WHAT THE LEADS ARE, AND WHY TWO DIFFER FROM THE PASTED METHOD
+# -------------------------------------------------------------
+# Measured on eight hand-labelled PTEN recordings (2026-10-09):
+#
+#   sp       Raw ripple-band power peaked in the dentate in six of eight --
+#            multiunit and dentate activity fill the band there. Toothy's
+#            ripple rule (ripple power relative to theta, among the
+#            low-theta channels), kept above the first theta maximum, landed
+#            within 1-5 channels of the labelled sp in all eight. That is
+#            the lead; the raw maximum is a vote.
+#   fissure  The pasted rule takes the theta maximum below sp. In these mice
+#            the GLOBAL theta maximum is usually in the hilus, so the lead is
+#            the FIRST theta maximum below sp. It still sat 6-10 channels
+#            below the labelled fissure in most of them, which is why it is a
+#            starting point with votes beside it rather than an answer.
+#   GCL      Multiunit peaks, as the method says. Theta's amplitude minimum
+#            (the dentate dipole reversing across the granule layer) matched
+#            the labelled GCL1 bottom edge within 1-2 channels in five of
+#            eight, so it is the first vote.
+SP_HALF_UM = 30.0
+GCL_HALF_UM = {"mouse": 30.0, "rat": 50.0}
+LOWER_ML_SCALE = 1.0
+SR_FRACTION = 200.0 / 340.0     # sr's share of sp-bottom..fissure (atlas)
+
+# The HippoCompass mouse atlas column (HippoCompass.html `layers`), as the
+# yardstick the sanity checks measure distances against. Mouse only.
+ATLAS_MOUSE_UM = {
+    "sp_to_fissure": 363.0,       # sp centre 1362 -> fissure 1725
+    "fissure_to_gcl1": 215.0,     # 1725 -> GCL1 centre 1940
+    "gcl1_to_gcl2": 207.0,        # 1940 -> GCL2 centre 2147
+    "upper_ml": 155.0,            # OML1 + MML1, 1725 -> 1880
+    "lower_ml": 175.0,            # MML2 + OML2, 2185 -> 2360
+}
+
+
+def _mean_cols(a):
+    """Row means ignoring NaN; an all-NaN row (a CSD's edge) stays NaN,
+    without numpy saying so in the server log."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        return np.nanmean(a, axis=1)
+
+
+def _fill(x):
+    x = np.asarray(x, dtype=float)
+    good = np.isfinite(x)
+    if not good.any():
+        return np.zeros_like(x)
+    if good.all():
+        return x
+    return np.interp(np.arange(x.size), np.flatnonzero(good), x[good])
+
+
+def _smooth(x, sigma=1.0):
+    from scipy.ndimage import gaussian_filter1d
+    return gaussian_filter1d(_fill(x), sigma)
+
+
+def _peaks(x, lo, hi, minima=False, distance=1, prom_frac=0.02):
+    """Local maxima (or minima) of `x` inside rows [lo, hi), strongest
+    first, as (row, prominence) pairs."""
+    from scipy.signal import find_peaks
+    lo, hi = max(0, int(lo)), min(len(x), int(hi))
+    if hi - lo < 3:
+        return []
+    seg = np.asarray(x[lo:hi], dtype=float)
+    if minima:
+        seg = -seg
+    span = float(np.nanmax(seg) - np.nanmin(seg)) or 1.0
+    pk, pr = find_peaks(seg, distance=max(1, int(distance)),
+                        prominence=prom_frac * span)
+    out = sorted(zip((pk + lo).tolist(), pr["prominences"].tolist()),
+                 key=lambda t: -t[1])
+    return [(int(r), float(p) / span) for r, p in out]
+
+
+def _toothy_sp(prof_curves, is_bad, above=None):
+    """Toothy's ripple rule (ephys.py:902): among channels below the 60th
+    percentile of theta, the largest ripple power relative to theta."""
+    th = np.asarray(prof_curves["theta"], dtype=float)
+    sw = np.asarray(prof_curves["ripple"], dtype=float)
+    good = ~is_bad & np.isfinite(th) & np.isfinite(sw)
+    if good.sum() < 3:
+        return None
+
+    def norm(v):
+        v = v.copy()
+        lo, hi = np.nanmin(v[good]), np.nanmax(v[good])
+        return (v - lo) / (hi - lo) if hi > lo else np.zeros_like(v)
+    nt, ns = norm(th), norm(sw)
+    ns[~good] = np.nan
+    ns[nt >= np.nanpercentile(nt[good], 60)] = np.nan
+    ns[nt == 0] = np.nan
+    if above is not None:
+        ns[int(above):] = np.nan
+    with np.errstate(invalid="ignore", divide="ignore"):
+        ratio = ns / nt
+    if not np.isfinite(ratio).any():
+        return None
+    return int(np.nanargmax(ratio))
+
+
+def _anchor(key, name, lead_key, lead_name, lead_row, votes, why):
+    """One anchor, with its votes measured against its lead."""
+    vs = []
+    for k, n, r in votes:
+        if r is None:
+            continue
+        vs.append({"key": k, "name": n, "row": int(r),
+                   "off": None if lead_row is None else int(r) - int(lead_row)})
+    if lead_row is None:
+        # No lead: the first vote that has an answer stands in, said so.
+        if vs:
+            lead_key, lead_name, lead_row = vs[0]["key"], vs[0]["name"], \
+                vs[0]["row"]
+            vs = vs[1:]
+            for v in vs:
+                v["off"] = v["row"] - lead_row
+    spread = max([abs(v["off"]) for v in vs if v["off"] is not None] or [0])
+    conf = "likely" if spread <= 2 else "guess"
+    return {"key": key, "name": name,
+            "lead": {"key": lead_key, "name": lead_name,
+                     "row": None if lead_row is None else int(lead_row)},
+            "votes": vs, "confidence": conf, "why": why}
+
+
+def _override(anchor, row):
+    """Put an anchor where somebody chose -- usually by clicking one of its
+    votes -- and measure the votes against that instead."""
+    if row is None:
+        return anchor
+    row = int(row)
+    pool = [anchor["lead"]] + list(anchor["votes"])
+    hit = next((v for v in pool if v.get("row") == row), None)
+    old = dict(anchor["lead"])
+    anchor["lead"] = {"key": hit["key"] if hit else "chosen",
+                      "name": hit["name"] if hit else "Set by hand",
+                      "row": row}
+    votes = [v for v in pool if v is not hit and v.get("row") is not None
+             and v.get("key") != anchor["lead"]["key"]]
+    if old.get("row") is not None and old.get("key") != anchor["lead"]["key"]:
+        votes = [dict(v) for v in votes]
+    for v in votes:
+        v["off"] = int(v["row"]) - row
+    anchor["votes"] = votes
+    anchor["chosen"] = True
+    spread = max([abs(v["off"]) for v in votes] or [0])
+    anchor["confidence"] = "likely" if spread <= 2 else "guess"
+    return anchor
+
+
+def _line(above, below, at, confidence, why, anchor=None):
+    return {"id": "%s|%s" % (above, below), "above": above, "below": below,
+            "at": None if at is None else int(at),
+            "confidence": confidence, "why": why, "anchor": anchor}
+
+
+def _rows_for_depth(d_um, spacing):
+    """The first row whose centre is at or below depth `d_um`."""
+    return int(math.ceil(d_um / spacing - 1e-9))
+
+
+def suggest_ca1(prof, params=None, ripple_tr=None, theta_tr=None,
+                overrides=None):
+    """Step 1: the pyramidal layer, the fissure, and the CA1 lines.
+
+    `ripple_tr` and `theta_tr` are the triggered averages when they have been
+    made; each adds a vote. Without them the step still proposes, from the
+    depth curves alone.
+    """
+    params = params or {}
+    c = prof["curves"]
+    is_bad = np.asarray(prof["bad"], dtype=bool)
+    n = len(prof["channels"])
+    s = float(params.get("spacing_um") or 20.0)
+    th = _smooth(np.sqrt(np.maximum(_fill(c["theta"]), 0)), 1.0)
+    th_peaks = _peaks(th, 0, n)
+    th_first = sorted(r for r, _p in th_peaks)
+    first_max = th_first[0] if th_first else int(np.argmax(th))
+
+    # sp: Toothy's rule above the first theta maximum, ripple and MUA maxima
+    # in the same stretch as votes.
+    sp_lead = _toothy_sp(c, is_bad, above=max(1, first_max))
+    top = max(1, first_max)
+    rip = np.where(is_bad, np.nan, _fill(c["ripple"]))
+    mua = np.where(is_bad, np.nan, _fill(c["mua"]))
+    sp_votes = [
+        ("ripple_max", "Ripple power maximum above the first theta peak",
+         int(np.nanargmax(rip[:top])) if np.isfinite(rip[:top]).any()
+         else None),
+        ("mua_max", "Multiunit maximum above the first theta peak",
+         int(np.nanargmax(mua[:top])) if np.isfinite(mua[:top]).any()
+         else None),
+    ]
+    if ripple_tr is not None:
+        # The sharp wave reverses across sp: the ripple-triggered LFP (low
+        # frequencies, at t=0) changes sign there. The crossing nearest the
+        # lead, above the first theta maximum.
+        lfp = np.asarray(ripple_tr["lfp"], dtype=float)
+        t = np.asarray(ripple_tr["t_ms"], dtype=float)
+        at0 = _mean_cols(lfp[:, np.abs(t) <= 10.0])
+        sgn = np.sign(at0[:top])
+        cross = [i for i in range(1, sgn.size) if sgn[i] != sgn[i - 1]
+                 and sgn[i] != 0 and sgn[i - 1] != 0]
+        if cross:
+            ref = sp_lead if sp_lead is not None else top // 2
+            sp_votes.append(("sw_reversal",
+                             "Sharp-wave reversal (ripple-triggered LFP)",
+                             min(cross, key=lambda i: abs(i - ref))))
+    sp = _anchor("sp", "CA1 pyramidal layer",
+                 "toothy_ripple", "Ripple power relative to theta "
+                 "(Toothy's ripple rule)", sp_lead, sp_votes,
+                 "Ripples are generated in the pyramidal layer. Ripple-band "
+                 "power alone is pulled into the dentate by spiking there, "
+                 "so it is weighed against theta, which is weak at sp.")
+    over = overrides or {}
+    _override(sp, over.get("sp"))
+    sp_row = sp["lead"]["row"]
+
+    # The fissure: the first theta maximum below sp.
+    below = [r for r in th_first if sp_row is None or r > sp_row + 1]
+    f_lead = below[0] if below else None
+    f_votes = [("theta_global", "Largest theta anywhere (Toothy's theta "
+                "channel)", int(np.nanargmax(np.where(is_bad, np.nan, th))))]
+    mg = np.where(is_bad, np.nan, _fill(c["mid_gamma"]))
+    lo_r = (sp_row or 0) + 1
+    hi_r = (f_lead + 3) if f_lead is not None else n
+    if np.isfinite(mg[lo_r:hi_r]).any():
+        # Mid gamma is an slm marker; the fissure is just under its peak.
+        f_votes.append(("mid_gamma_max", "Mid-gamma (60-100 Hz) maximum, "
+                        "the slm marker", lo_r + int(np.nanargmax(
+                            mg[lo_r:hi_r])) + 1))
+    ph = np.asarray(c["theta_phase"], dtype=float)
+    if sp_row is not None and np.isfinite(ph).any():
+        rel = np.abs(ph - ph[sp_row])
+        hits = [i for i in range(sp_row + 1, n)
+                if np.isfinite(rel[i]) and rel[i] >= 150.0]
+        if hits:
+            f_votes.append(("phase_150", "Theta phase 150 degrees from sp",
+                            hits[0]))
+    if theta_tr is not None and f_lead is not None:
+        csd = np.asarray(theta_tr["csd"], dtype=float)
+        t = np.asarray(theta_tr["t_ms"], dtype=float)
+        c0 = _mean_cols(csd[:, np.abs(t) <= 15.0])
+        d = np.abs(np.diff(_fill(c0)))
+        lo2, hi2 = max(lo_r, f_lead - 6), min(n - 1, f_lead + 4)
+        if hi2 > lo2:
+            f_votes.append(("trough_csd", "Sharpest change in the "
+                            "theta-trough CSD", lo2 + int(np.argmax(
+                                d[lo2:hi2])) + 1))
+    fis = _anchor("fissure", "Hippocampal fissure", "theta_first",
+                  "First theta maximum below sp", f_lead, f_votes,
+                  "Theta is largest near the fissure. In mice the dentate "
+                  "often has more theta still, so it is the first maximum "
+                  "below the pyramidal layer that counts, not the largest.")
+    # The fissure is the line BELOW the theta maximum: the peak channel is
+    # the last slm channel.
+    if over.get("fissure") is not None:
+        _override(fis, over.get("fissure"))
+    f_at = None if fis["lead"]["row"] is None else fis["lead"]["row"] + 1
+
+    lines, anchors = [], [sp, fis]
+    if sp_row is not None:
+        half = int(round(float(params.get("sp_half_um", SP_HALF_UM)) / s))
+        so_sp = max(0, sp_row - half)
+        sp_sr = min(n, sp_row + half + 1)
+        lines.append(_line("ca1_so", "ca1_sp", so_sp, sp["confidence"],
+                           "sp centre minus half its thickness", "sp"))
+        lines.append(_line("ca1_sp", "ca1_sr", sp_sr, sp["confidence"],
+                           "sp centre plus half its thickness", "sp"))
+        if f_at is not None and f_at > sp_sr:
+            sr_slm = sp_sr + int(round(SR_FRACTION * (f_at - sp_sr)))
+            srv = []
+            sg = np.where(is_bad, np.nan, _fill(c["slow_gamma"]))
+            if np.isfinite(sg[sp_sr:f_at]).any() and \
+                    np.isfinite(mg[sp_sr:f_at]).any():
+                a = sp_sr + int(np.nanargmax(sg[sp_sr:f_at]))
+                b_ = sp_sr + int(np.nanargmax(mg[sp_sr:f_at]))
+                if b_ > a:
+                    srv.append(("gamma_cross", "Between the slow-gamma (sr) "
+                                "and mid-gamma (slm) maxima",
+                                (a + b_ + 1) // 2))
+            if ripple_tr is not None:
+                csd = np.asarray(ripple_tr["csd"], dtype=float)
+                t = np.asarray(ripple_tr["t_ms"], dtype=float)
+                c0 = _fill(_mean_cols(csd[:, np.abs(t) <= 15.0]))
+                seg = c0[sp_sr:f_at]
+                if seg.size:
+                    k = int(np.argmin(seg))      # the sharp-wave sink, in sr
+                    pos = [i for i in range(k + 1, seg.size) if seg[i] > 0]
+                    if pos:
+                        srv.append(("sw_sink_end", "Where the sharp-wave sink "
+                                    "ends (ripple-triggered CSD)",
+                                    sp_sr + pos[0]))
+            srs = _anchor("sr_slm", "sr / slm boundary", "proportion",
+                          "Atlas proportion of sp to fissure (sr 200 : "
+                          "slm 140)", sr_slm, srv,
+                          "Nothing marks this line sharply. It starts where "
+                          "the atlas puts it between sp and the fissure, and "
+                          "the gamma bands and the sharp-wave sink vote.")
+            _override(srs, over.get("sr_slm"))
+            anchors.append(srs)
+            lines.append(_line("ca1_sr", "ca1_slm", srs["lead"]["row"],
+                               "guess" if not srv else srs["confidence"],
+                               "between sp and the fissure", "sr_slm"))
+    if f_at is not None:
+        lines.append(_line("ca1_slm", "dg_oml1", f_at, fis["confidence"],
+                           "below the theta peak", "fissure"))
+    return {"step": 1, "anchors": anchors, "lines": lines,
+            "assign_to": f_at if f_at is not None else n}
+
+
+def suggest_hilus(prof, params=None, fissure_at=None, overrides=None):
+    """Step 2: the two granule layers, and the hilus between them.
+
+    No dentate spikes: these labels are what DS results are checked
+    against. The granule layers come from multiunit activity (Method A's
+    step 4), with theta's minimum -- the dentate theta dipole reversing
+    across the cell layer -- as the first vote.
+    """
+    params = params or {}
+    c = prof["curves"]
+    is_bad = np.asarray(prof["bad"], dtype=bool)
+    n = len(prof["channels"])
+    s = float(params.get("spacing_um") or 20.0)
+    species = params.get("species") or "mouse"
+    h = float(params.get("gcl_half_um") or GCL_HALF_UM.get(species, 30.0))
+    lo = int(fissure_at) if fissure_at is not None else 0
+    dist = max(1, int(math.ceil(100.0 / s)))
+    mua = _smooth(c["mua"], 0.7)
+    mpk = _peaks(mua, lo + 1, n, distance=dist)
+    two = sorted(r for r, _p in mpk[:2])
+    th = _smooth(np.sqrt(np.maximum(_fill(c["theta"]), 0)), 1.0)
+    tmin = sorted(r for r, _p in _peaks(th, lo + 1, n, minima=True,
+                                         distance=dist)[:2])
+    sg = _smooth(np.sqrt(np.maximum(_fill(c["slow_gamma"]), 0)), 1.0)
+    gmin = sorted(r for r, _p in _peaks(sg, lo + 1, n, minima=True,
+                                         distance=dist)[:2])
+
+    def pick(lst, i):
+        return lst[i] if len(lst) > i else None
+
+    g1 = _anchor("gcl1", "Granule layer, upper blade", "mua_peak",
+                 "Multiunit peak below the fissure", pick(two, 0),
+                 [("theta_null", "Theta amplitude minimum", pick(tmin, 0)),
+                  ("slow_gamma_null", "Slow-gamma minimum", pick(gmin, 0))],
+                 "Granule cells are packed into a thin layer, and their "
+                 "spiking peaks there. Theta reverses across it, so its "
+                 "amplitude dips there too.")
+    g2 = _anchor("gcl2", "Granule layer, lower blade", "mua_peak",
+                 "Second multiunit peak, at least 100 um lower",
+                 pick(two, 1),
+                 [("theta_null", "Second theta amplitude minimum",
+                   pick(tmin, 1)),
+                  ("slow_gamma_null", "Second slow-gamma minimum",
+                   pick(gmin, 1))],
+                 "The lower blade's granule layer: the next multiunit peak "
+                 "below, at least 100 um from the first.")
+    lines = []
+    over = overrides or {}
+    _override(g1, over.get("gcl1"))
+    _override(g2, over.get("gcl2"))
+    r1, r2 = g1["lead"]["row"], g2["lead"]["row"]
+    if r1 is not None:
+        lines.append(_line("dg_gcl1", "hil",
+                           _rows_for_depth(r1 * s + h, s), g1["confidence"],
+                           "GCL1 centre plus half its thickness", "gcl1"))
+    if r2 is not None and (r1 is None or r2 > r1):
+        lines.append(_line("hil", "dg_gcl2",
+                           _rows_for_depth(r2 * s - h, s), g2["confidence"],
+                           "GCL2 centre minus half its thickness", "gcl2"))
+    return {"step": 2, "anchors": [g1, g2], "lines": lines,
+            "gcl_half_um": h}
+
+
+def suggest_ml(n, params=None, fissure_at=None, gcl1=None, gcl2=None,
+               ica=None):
+    """Step 3, Method A: the molecular layer in thirds.
+
+    Two anchors bound the upper blade's molecular layer: the fissure on top,
+    the granule layer's upper edge below. Entorhinal and mossy-cell inputs
+    end in bands of about equal thickness, so the span is cut in three:
+    OML nearest the fissure, then MML, then IML against the granule layer.
+    The lower blade has no fissure to bound it, so its outer edge is the
+    upper blade's thickness times `lower_ml_scale` (1.0 unless changed) and
+    its lines start at 'guess'.
+
+    Method B (ICA) checks it: where a slow-gamma (LEC-like) component sinks
+    should be the OML, a fast one (MEC-like) the MML.
+    """
+    params = params or {}
+    s = float(params.get("spacing_um") or 20.0)
+    species = params.get("species") or "mouse"
+    h = float(params.get("gcl_half_um") or GCL_HALF_UM.get(species, 30.0))
+    scale = float(params.get("lower_ml_scale") or LOWER_ML_SCALE)
+    notes, lines, anchors = [], [], []
+    if fissure_at is None or gcl1 is None:
+        return {"step": 3, "lines": [], "anchors": [], "notes": [
+            "Method A needs the fissure (Step 1) and the upper granule layer "
+            "(Step 2) first."]}
+    F = (int(fissure_at) - 0.5) * s
+    G1 = int(gcl1) * s
+    L = G1 - h - F
+    if L <= s:
+        return {"step": 3, "lines": [], "anchors": [], "notes": [
+            "The fissure is within one contact of the granule layer's edge, "
+            "so there is no molecular layer to divide. Check Steps 1 and 2."]}
+    third = L / 3.0
+    up = [("ca1_slm", "dg_oml1", F), ("dg_oml1", "dg_mml1", F + third),
+          ("dg_mml1", "dg_iml1", F + 2 * third), ("dg_iml1", "dg_gcl1",
+                                                    G1 - h),
+          ("dg_gcl1", "hil", G1 + h)]
+    for a, b_, d in up:
+        lines.append(_line(a, b_, _rows_for_depth(d, s) if a != "ca1_slm"
+                           else int(fissure_at), "likely",
+                           "%.0f um below the fissure" % (d - F),
+                           "method_a"))
+    out_edge = None
+    if gcl2 is not None and int(gcl2) > int(gcl1):
+        G2 = int(gcl2) * s
+        L2 = L * scale
+        low = [("hil", "dg_gcl2", G2 - h), ("dg_gcl2", "dg_iml2", G2 + h),
+               ("dg_iml2", "dg_mml2", G2 + h + L2 / 3.0),
+               ("dg_mml2", "dg_oml2", G2 + h + 2 * L2 / 3.0)]
+        for a, b_, d in low:
+            lines.append(_line(a, b_, _rows_for_depth(d, s), "guess",
+                               "lower blade, assumed as thick as the upper "
+                               "x %.2f" % scale, "method_a"))
+        out_edge = _rows_for_depth(G2 + h + L2, s)
+        if out_edge < n:
+            lines.append(_line("dg_oml2", None, out_edge, "guess",
+                               "lower blade's outer edge (assumed)",
+                               "method_a"))
+    else:
+        notes.append("No lower granule layer, so the lower blade is not "
+                     "divided.")
+    thirds_um = round(third, 1)
+
+    # Method B's votes, by blade.
+    checks = []
+    if ica and ica.get("components"):
+        fis_row = int(fissure_at)
+        g1_top = _rows_for_depth(G1 - h, s)
+        zones = [("upper", fis_row, g1_top)]
+        if out_edge is not None:
+            zones.append(("lower", _rows_for_depth(int(gcl2) * s + h, s),
+                          min(n, out_edge + 1)))
+        want = {"slow": "dg_oml", "fast": "dg_mml"}
+        for blade, z0, z1 in zones:
+            for kind in ("slow", "fast"):
+                cands = [cm for cm in ica["components"]
+                         if cm.get("kind") == kind
+                         and (cm.get("stability") or 0) >= 0.7]
+                best = None
+                for cm in cands:
+                    r = ica_zone_sinks(cm, z0, z1)
+                    if r is not None:
+                        best = (cm, r)
+                        break                       # sorted by variance
+                region = want[kind] + ("1" if blade == "upper" else "2")
+                if best is None:
+                    checks.append({"blade": blade, "kind": kind,
+                                   "region": region, "row": None,
+                                   "why": "No stable %s-gamma component "
+                                   "sinks in the %s molecular layer."
+                                   % (kind, blade)})
+                    continue
+                top = next((ln["at"] for ln in lines
+                            if ln["below"] == region), None)
+                bot = next((ln["at"] for ln in lines
+                            if ln["above"] == region), None)
+                off = 0
+                if top is not None and best[1] < top:
+                    off = best[1] - top
+                elif bot is not None and best[1] >= bot:
+                    off = best[1] - bot + 1
+                checks.append({"blade": blade, "kind": kind,
+                               "region": region, "row": best[1],
+                               "component": best[0]["index"],
+                               "peak_hz": best[0]["peak_hz"],
+                               "off": off, "agree": abs(off) <= 1})
+        # The upper blade's lines are 'likely' only if ICA agrees.
+        upper_ok = all(c_.get("agree") for c_ in checks
+                       if c_["blade"] == "upper" and c_.get("row") is not None)
+        if not upper_ok:
+            for ln in lines:
+                if ln["above"] in ("dg_oml1", "dg_mml1") or \
+                        ln["below"] in ("dg_mml1", "dg_iml1"):
+                    ln["confidence"] = "guess"
+    return {"step": 3, "lines": lines, "anchors": anchors, "notes": notes,
+            "third_um": thirds_um, "upper_ml_um": round(L, 1),
+            "gcl_half_um": h, "lower_ml_scale": scale, "ica_checks": checks}
+
+
+def labels_from_lines(lines, n, start=0, end=None):
+    """Turn a stack of lines into channel rows -> region, for rows in
+    [start, end). A row takes the region below the last line at or above
+    it."""
+    end = n if end is None else end
+    ls = sorted([ln for ln in lines if ln.get("at") is not None],
+                key=lambda ln: ln["at"])
+    out = {}
+    for r in range(max(0, start), min(n, end)):
+        region = None
+        for ln in ls:
+            if ln["at"] <= r:
+                region = ln["below"]
+            else:
+                if region is None:
+                    region = ln["above"]
+                break
+        if region:
+            out[r] = region
+    return out
+
+
+def checks(labels_rows, n, spacing_um, species="mouse", ica=None,
+           masks_info=None, ripples=None):
+    """Plain-word warnings about a finished sheet. They never block."""
+    s = float(spacing_um)
+    rows_of = {}
+    for r, reg in labels_rows.items():
+        rows_of.setdefault(reg, []).append(r)
+
+    def centre(reg):
+        rs = rows_of.get(reg)
+        return (float(np.mean(rs)) * s) if rs else None
+
+    def edge_top(regs):
+        rs = [r for reg in regs for r in rows_of.get(reg, [])]
+        return (min(rs) - 0.5) * s if rs else None
+
+    out = []
+
+    def add(key, ok, text, value=None, expect=None):
+        out.append({"key": key, "ok": bool(ok), "text": text,
+                    "value": value, "expect": expect})
+    sp = centre("ca1_sp")
+    fis = edge_top(["dg_oml1", "dg_mml1", "dg_iml1", "dg_gcl1"])
+    g1, g2 = centre("dg_gcl1"), centre("dg_gcl2")
+    if species == "mouse":
+        A = ATLAS_MOUSE_UM
+        for key, a, b_, ref, name in (
+                ("sp_to_fissure", sp, fis, A["sp_to_fissure"],
+                 "sp to the fissure"),
+                ("fissure_to_gcl1", fis, g1, A["fissure_to_gcl1"],
+                 "the fissure to GCL1"),
+                ("gcl1_to_gcl2", g1, g2, A["gcl1_to_gcl2"],
+                 "GCL1 to GCL2")):
+            if a is None or b_ is None:
+                continue
+            d = b_ - a
+            ok = 0.5 * ref <= d <= 1.6 * ref
+            add(key, ok, "%s is %.0f um; the mouse atlas has about %.0f."
+                % (name[0].upper() + name[1:], d, ref)
+                + ("" if ok else " That is far enough off to look at the "
+                   "probe angle, the spacing, or the labels."),
+                round(d), ref)
+    up = [r for reg in ("dg_oml1", "dg_mml1", "dg_iml1")
+          for r in rows_of.get(reg, [])]
+    lo = [r for reg in ("dg_oml2", "dg_mml2", "dg_iml2")
+          for r in rows_of.get(reg, [])]
+    if up and lo:
+        tu, tl = len(up) * s, len(lo) * s
+        ok = 0.6 <= tl / tu <= 1.6
+        add("ml_symmetry", ok, "Upper molecular layer %.0f um, lower %.0f um."
+            % (tu, tl) + ("" if ok else " The two blades should be about "
+                          "as thick as each other."), round(tl / tu, 2), 1.0)
+    for blade, oml, mml, upper in (("upper", "dg_oml1", "dg_mml1", True),
+                                   ("lower", "dg_oml2", "dg_mml2", False)):
+        a, b_ = centre(oml), centre(mml)
+        if a is None or b_ is None:
+            continue
+        ok = (a < b_) if upper else (a > b_)
+        add("order_" + blade, ok, "In the %s blade the OML is %s the MML."
+            % (blade, "above" if a < b_ else "below")
+            + ("" if ok else " It should be %s; something is mislabelled."
+               % ("above" if upper else "below")))
+    if masks_info is not None:
+        ws = masks_info.get("walk_s") or 0
+        if masks_info.get("theta_all_time"):
+            add("theta_walk", False, "No Theta Walk was painted, so the theta "
+                "curves average the whole recording -- including still time, "
+                "when dentate spikes and sharp waves add to the theta band.")
+        elif ws < 120:
+            add("theta_walk", False, "Only %.0f s of Theta Walk; theta and "
+                "gamma curves steady up past about two minutes." % ws, ws,
+                120)
+    if ripples is not None:
+        nr = len(ripples.get("events") or [])
+        add("ripples", nr >= 50, "%d ripples in still time." % nr
+            + ("" if nr >= 50 else " Fewer than 50 makes a noisy "
+               "ripple-triggered average."), nr, 50)
+    if ica and ica.get("components"):
+        st = [cm.get("stability") for cm in ica["components"]
+              if cm.get("kind") and cm.get("stability") is not None]
+        if st:
+            good = sum(1 for x in st if x >= 0.7)
+            add("ica_stability", good > 0, "%d of %d gamma components came "
+                "back in both halves of the walking." % (good, len(st)),
+                good, len(st))
+    return out

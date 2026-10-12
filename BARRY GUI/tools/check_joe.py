@@ -7,11 +7,11 @@ Eight rats (the identity sheet's own, so their sounds are real), Precon1 and
 Precon4, eight trials a day, six regions on one wire each, FP1 and FP2 beside
 every session. Planted:
 
-  * theta: regions 0 and 1 share a 7 Hz rhythm in cue 1, on Precon4 only;
-  * gamma: regions 2 and 3 share a 50 Hz rhythm in the first two seconds of
-    cue 2, on Precon4 only;
-  * FP: regions 4 and 5 share a 7 Hz rhythm in FP on Precon4 only, and never
-    in the trials;
+  * theta: regions 0 and 1 share 5-12 Hz activity in cue 1, on Precon4 only;
+  * gamma: regions 2 and 3 share 32-88 Hz activity in the first two seconds
+    of cue 2, on Precon4 only;
+  * FP: regions 4 and 5 share 5-12 Hz activity in FP on Precon4 only, and
+    never in the trials;
   * one clipped stretch: rat 4, Precon1, trial 2, region 0's wire at the
     rail through cue 2;
   * the sounds: nothing.
@@ -35,6 +35,7 @@ import time
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.stdout.reconfigure(encoding="utf-8")
 APP = os.path.dirname(HERE)
 sys.path.insert(0, APP)
 
@@ -103,6 +104,16 @@ def noise(rng, n, fs=FS_RAW):
     return lfilter([1.0], [1.0, -0.95], w) * 6.0
 
 
+def shared(rng, n, lo, hi, sd, fs=FS_RAW):
+    """Band-limited noise for two regions to share: coupling across the whole
+    band, as a band's mean coherence would see it (a pure tone would touch
+    two or three of its bins)."""
+    from scipy.signal import butter, sosfiltfilt
+    sos = butter(4, [lo / (fs / 2), hi / (fs / 2)], btype="bandpass", output="sos")
+    x = sosfiltfilt(sos, rng.standard_normal(n + 2000))[1000:1000 + n]
+    return x / (x.std() or 1.0) * sd
+
+
 def make_rat_day(root, rat, day, rng):
     """One rat-day's three recordings, and its trials (opener, closer, cue type)."""
     ids = ratidentity.identity(rat)
@@ -124,11 +135,11 @@ def make_rat_day(root, rat, day, rng):
         o, c = tr["opener_t"], tr["closer_t"]
         if p4:
             k = (t >= o) & (t < c)                      # cue 1: theta, regions 0 and 1
-            s = 18.0 * np.sin(2 * np.pi * 7.0 * t[k] + rng.uniform(0, 2 * np.pi))
+            s = shared(rng, int(k.sum()), 5.0, 12.0, 10.0)
             X[0][k] += s
             X[1][k] += s
             k = (t >= c) & (t < c + 2.0)                # first 2 s of cue 2: gamma, regions 2 and 3
-            s = 6.0 * np.sin(2 * np.pi * 50.0 * t[k] + rng.uniform(0, 2 * np.pi))
+            s = shared(rng, int(k.sum()), 32.0, 88.0, 12.0)
             X[2][k] += s
             X[3][k] += s
     if rat == 4 and day == "Precon1":
@@ -148,7 +159,7 @@ def make_rat_day(root, rat, day, rng):
         tf = np.arange(nf) / FS_RAW
         Y = [noise(rng, nf) for _r in REGIONS]
         if p4:
-            s = 18.0 * np.sin(2 * np.pi * 7.0 * tf + 0.3)
+            s = shared(rng, nf, 5.0, 12.0, 10.0)
             Y[4] += s
             Y[5] += s
         for i, y in enumerate(Y):
@@ -167,25 +178,41 @@ def _measure_day(d):
 
 
 def main():
+    import pickle
     keep = "--keep" in sys.argv
-    root = tempfile.mkdtemp(prefix="check_joe_")
-    print("made-up recordings in", root)
-    rng = np.random.default_rng(20261009)
-    days = []
-    t0 = time.time()
-    for rat in RATS:
-        for day in DAYS:
-            days.append(make_rat_day(root, rat, day, rng))
-    print("written in %.0f s" % (time.time() - t0))
+    # --root <dir>: the made-up recordings and the engine's measurement of
+    # them kept there, and reused if they are already there (for working on
+    # the models without measuring again). Otherwise a fresh temporary one.
+    given = sys.argv[sys.argv.index("--root") + 1] if "--root" in sys.argv else None
+    root = given or tempfile.mkdtemp(prefix="check_joe_")
+    cache = os.path.join(root, "measured.pkl")
+    reuse = bool(given) and os.path.isfile(cache)
+    print("made-up recordings in", root, "(reused)" if reuse else "")
+    if reuse:
+        with open(cache, "rb") as fh:
+            days, day_data = pickle.load(fh)
+    else:
+        os.makedirs(root, exist_ok=True)
+        rng = np.random.default_rng(20261009)
+        days = []
+        t0 = time.time()
+        for rat in RATS:
+            for day in DAYS:
+                days.append(make_rat_day(root, rat, day, rng))
+        print("written in %.0f s" % (time.time() - t0))
 
-    print("\nThe engine, one rat-day at a time")
-    day_data = {}
-    t0 = time.time()
-    from concurrent.futures import ProcessPoolExecutor
-    with ProcessPoolExecutor(max_workers=max(1, min(4, (os.cpu_count() or 2) - 1))) as ex:
-        for d, got in zip(days, ex.map(_measure_day, days)):
-            day_data[(d["rat"], d["day"])] = got
-    print("measured in %.0f s" % (time.time() - t0))
+        print("\nThe engine, one rat-day at a time")
+        day_data = {}
+        t0 = time.time()
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=max(1, min(4, (os.cpu_count() or 2) - 1))) as ex:
+            for d, got in zip(days, ex.map(_measure_day, days)):
+                day_data[(d["rat"], d["day"])] = got
+        print("measured in %.0f s" % (time.time() - t0))
+        if given:
+            with open(cache, "wb") as fh:
+                pickle.dump((days, day_data), fh)
+    keep = keep or bool(given)
     a, fp, meta = day_data[(4, "Precon1")]
     wi = joe.WINDOWS.index("cue2")
     check("the clipped wire: region 0 not measured in that trial's cue 2, measured in its cue 1",
@@ -209,12 +236,12 @@ def main():
     xb, yb = filtfilt(bb, aa, x), filtfilt(bb, aa, y)
     from scipy.signal import windows as W
     win = W.hann(1026, sym=True)[1:-1]
-    f, C = coherence(xb, yb, fs=1000.0, window=win, noverlap=512, nfft=2048, detrend=False)
+    f, Cxy = coherence(xb, yb, fs=1000.0, window=win, noverlap=512, nfft=2048, detrend=False)
     msk = (f >= 5 - 1e-9) & (f <= 12 + 1e-9)
     check("Dickson coherence is mscohere(x, y, hanning(1024), 512, 2048) over theta",
-          abs(m["coh"][0, 1, 0] - float(C[msk].mean())) < 1e-9, (m["coh"][0, 1, 0], float(C[msk].mean())))
+          abs(m["coh"][0, 1, 0] - float(Cxy[msk].mean())) < 1e-9, (m["coh"][0, 1, 0], float(Cxy[msk].mean())))
     msk = (f >= 30 - 1e-9) & (f <= 90 + 1e-9) & ~((f >= 59 - 1e-9) & (f <= 61 + 1e-9))
-    check("and over gamma without the notch's own 59–61 Hz bins", abs(m["coh"][1, 1, 0] - float(C[msk].mean())) < 1e-9)
+    check("and over gamma without the notch's own 59–61 Hz bins", abs(m["coh"][1, 1, 0] - float(Cxy[msk].mean())) < 1e-9)
 
     print("\nThe models")
     out = joe.build(day_data, REGIONS)
@@ -251,24 +278,44 @@ def main():
     r2 = res[("m2", "theta", "welch")]
     check("the RM-ANOVA beside it: every rat has every cell here except the clipped one's", r2["rm"].get("n_rats") in (7, 8), r2["rm"])
 
-    # The mixed model's fixed effects against least squares (balanced data,
-    # so the GLS fixed effects equal OLS's); the RM-ANOVA against a hand F.
+    # The mixed model against the RM-ANOVA: on complete data, with a real
+    # rat variance in every stratum, the two are the same test.
     import pandas as pd
-    import statsmodels.formula.api as smf
+    import warnings
+    from statsmodels.stats.anova import AnovaRM
+    for L in (2, 4):
+        rg = np.random.default_rng(40 + L)
+        levels = ["l%d" % i for i in range(L)]
+        rows = []
+        for r in range(8):
+            eff = {k: rg.normal(0, 0.5, sh) for k, sh in (("d", 2), ("l", L), ("u", 6), ("dl", (2, L)), ("du", (2, 6)), ("lu", (L, 6)))}
+            for di, d in enumerate(joe.TESTED):
+                for li, lv in enumerate(levels):
+                    for k in range(6):
+                        v = (eff["d"][di] + eff["l"][li] + eff["u"][k] + eff["dl"][di, li] + eff["du"][di, k]
+                             + eff["lu"][li, k] + rg.normal(0, 0.3) + (0.6 if (di == 1 and li == 1 and k == 2) else 0.0))
+                        rows.append((r, d, lv, "u%d" % k, v))
+        dfm = pd.DataFrame(rows, columns=["rat", "day", "level", "unit", "value"])
+        mx = joe.fit_mixed(dfm, "Phase", "pair")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            at = AnovaRM(dfm, "value", "rat", within=["day", "level", "unit"]).fit().anova_table
+        nm = {"day": "Day", "level": "Phase", "unit": "Pair", "day:level": "Day × Phase", "day:unit": "Day × Pair",
+              "level:unit": "Phase × Pair", "day:level:unit": "Day × Phase × Pair"}
+        off = {v: abs(mx["terms"][v]["F"] - float(at.loc[k, "F Value"])) / max(1.0, float(at.loc[k, "F Value"]))
+               for k, v in nm.items()} if mx.get("ok") else {"fit": mx}
+        check("the mixed model's seven F equal the RM-ANOVA's on complete data (%d levels), df too" % L,
+              mx.get("ok") and max(off.values()) < 1e-3
+              and all(mx["terms"][v]["df2"] == int(at.loc[k, "Den DF"]) for k, v in nm.items()), off)
+        part = joe.fit_mixed(dfm[~((dfm["rat"] == 2) & (dfm["unit"] == "u5"))], "Phase", "pair")
+        check("and a rat missing one pair keeps its others there (%d levels)" % L,
+              part.get("ok") and part["n_rats"] == 8 and part["n_obs"] == 8 * 6 - 1, (part.get("n_rats"), part.get("n_obs")))
     mdl = joe.MODEL_BY_ID["m2"]
     tab = joe.model_table(day_data, mdl, 0, 0, out["pairs"], days=joe.TESTED)
     keepu = joe.included_units(tab, mdl, out["pairs"])
     df = joe._frame(tab, mdl, keepu, out["pairs"])
     full = df.groupby("rat").size()
     dfb = df[df["rat"].isin(full[full == full.max()].index)]
-    ols = smf.ols("value ~ C(day, Sum) * C(level, Sum) * C(unit, Sum) + C(rat)", dfb).fit()
-    import warnings
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        mix = smf.mixedlm("value ~ C(day, Sum) * C(level, Sum) * C(unit, Sum)", dfb, groups=dfb["rat"]).fit(reml=True)
-    common = [k for k in mix.fe_params.index if k in ols.params.index and k != "Intercept"]
-    worst = max(abs(mix.fe_params[k] - ols.params[k]) for k in common)
-    check("the mixed model's fixed effects equal least squares' on balanced data (%d of them)" % len(common), worst < 1e-6, worst)
     # Hand two-way RM-ANOVA (day x level) on the per-rat means over units.
     g = dfb.groupby(["rat", "day", "level"])["value"].mean().unstack(["day", "level"])
     Y = g.values                                         # rats x 4 cells
@@ -276,7 +323,6 @@ def main():
     d1 = (Y[:, 2] + Y[:, 3] - Y[:, 0] - Y[:, 1]) / 2.0     # day effect per rat (cols: P1 base, P1 cue1, P4 base, P4 cue1)
     i1 = (Y[:, 3] - Y[:, 2]) - (Y[:, 1] - Y[:, 0])         # day x level contrast per rat
     F_int = n * i1.mean() ** 2 / (i1.var(ddof=1))
-    from statsmodels.stats.anova import AnovaRM
     a2 = AnovaRM(dfb.groupby(["rat", "day", "level"], as_index=False)["value"].mean(), "value", "rat", within=["day", "level"]).fit().anova_table
     check("the RM-ANOVA's Day × Phase F is the hand-made one (a paired contrast's t²)",
           abs(float(a2.loc["day:level", "F Value"]) - F_int) < 1e-6 * max(1.0, F_int), (float(a2.loc["day:level", "F Value"]), F_int))
@@ -296,7 +342,7 @@ def main():
     check("the .sps declares 999 missing, runs the GLM, restructures and runs MIXED (Satterthwaite)",
           "MISSING VALUES %s TO %s (999)." % (head[1], head[-1]) in sps and "/WSFACTOR=day 2 Polynomial phase 2 Polynomial pair %d Polynomial" % K in sps
           and "VARSTOCASES /MAKE value FROM %s TO %s" % (head[1], head[-1]) in sps and "DFMETHOD(SATTERTHWAITE)" in sps
-          and "/RANDOM=INTERCEPT day phase day*phase | SUBJECT(rat) COVTYPE(VC)" in sps)
+          and "/RANDOM=INTERCEPT day phase pair day*phase day*pair phase*pair | SUBJECT(rat) COVTYPE(VC)" in sps)
     check("and every variable it names is a column of its .csv, in order",
           [l.strip().split()[0] for l in sps.split("/VARIABLES=")[1].split(".\n")[0].splitlines()[1:]] == head)
     check("a zip of them all", os.path.isfile(os.path.join(exp, "joe_tab8_spss.zip")) and len(files) == 2 * sum(1 for r in out["results"] if r.get("units")))

@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8"><title>strata steps shot</title>
+<style>html,body{margin:0;height:100%}iframe{width:100vw;height:100vh;border:0}</style>
+<iframe id="f" src="/"></iframe>
+<script>
+/* Opens StrataScope's steps on a recording and leaves a step open, for a
+   screenshot. Writes nothing. ?gid=&path=&step=1 -- the demo by default. */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+(async () => {
+  const Q = new URLSearchParams(location.search);
+  const gid = Q.get('gid') || 'demo-ds-tutorial';
+  const path = Q.get('path') || 'demo:ds-tutorial';
+  const step = Q.get('step') || '1';
+  const f = document.getElementById('f');
+  await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  const W = f.contentWindow;
+  for (let i = 0; i < 300 && typeof W.setView !== 'function'; i++) await sleep(100);
+  await sleep(800);
+  W.eval("setView('xplore')");
+  await W.eval('BARRY.views.xplore.open(' + JSON.stringify(path) + ')');
+  await sleep(1500);
+  await W.eval('BARRY.strata.enter(' + JSON.stringify(gid) + ')');
+  for (let i = 0; i < 400; i++) {
+    const s = W.eval('BARRY.strataSteps._state()');
+    if (s && s.sug) break;
+    await sleep(100);
+  }
+  if (step !== 'none') await W.eval('BARRY.strataSteps._openStep(' + JSON.stringify(step) + ')');
+  await sleep(3000);
+  W.eval('BARRY.strata.alignRail()');
+  document.title = 'shot ready';
+})();
+</script>

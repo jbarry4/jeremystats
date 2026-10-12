@@ -26,3 +26,8 @@ fooof>=1.1.1
 # Guarded at the import in dspca.py: a machine that has not run Setup since
 # this line landed loses that one tool, not the whole server.
 scikit-learn>=1.1
+# Mixed models and the repeated-measures ANOVA, for the Monolith's tab 8
+# (backend/joe.py, Joe's planned tests). Imported only when tab 8 is worked
+# out, so a machine that has not run Setup since this line landed loses that
+# one button, not the server. Viewing tab 8 needs nothing.
+statsmodels>=0.14

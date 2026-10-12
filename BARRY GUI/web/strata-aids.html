@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StrataScope evidence</title>
+<!-- StrataScope's aid window. With no step open it is the four live panes
+     the aid window always was (an XploreFinder instance, in a frame); with a
+     step open it swaps to that step's evidence: triggered averages, depth
+     curves, the coherence matrix, ICA. It follows the labelling window over
+     /api/link (channel strata-steps:<gid>) and asks /api/strata/<gid>/* for
+     the numbers itself. Behaviour: js/strataaids.js. -->
+<link rel="icon" type="image/svg+xml" href="img/jarvis.svg">
+<link rel="stylesheet" href="app.css">
+<style>
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); }
+  body { font-family: var(--sans, system-ui, sans-serif); font-size: var(--fs-12); }
+  .sa-head {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 12px; border-bottom: 2px solid var(--accent);
+    background: var(--bg-2);
+  }
+  .sa-head strong { font-size: var(--fs-13); }
+  .sa-sub { color: var(--text-3); }
+  .sa-live { position: absolute; left: 0; right: 0; bottom: 0; border: 0;
+             width: 100%; }
+  .sa-body { padding: 10px 12px 24px; display: none; }
+  body.steps .sa-body { display: block; }
+  body.steps .sa-live { visibility: hidden; }
+  .sa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+             gap: 12px; }
+  .sa-card { background: var(--bg-2); border: 1px solid var(--line);
+             border-radius: var(--radius-sm); padding: 8px; min-width: 0; }
+  .sa-card h3 { margin: 0 0 4px; font-size: var(--fs-12); font-weight: 600; }
+  .sa-card p { margin: 2px 0 6px; color: var(--text-3); font-size: var(--fs-105); }
+  .sa-card canvas { width: 100%; display: block; }
+  .sa-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: var(--fs-10);
+               color: var(--text-2); margin-top: 4px; }
+  .sa-legend i { display: inline-block; width: 12px; height: 3px; margin-right: 4px;
+                 vertical-align: middle; border-radius: 2px; }
+  .sa-say { color: var(--text-2); padding: 18px 4px; }
+  .sa-ica { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px; }
+  .sa-comp { border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+             padding: 4px; font-size: var(--fs-10); color: var(--text-2); }
+  .sa-comp b { color: var(--text); }
+  .sa-comp.slow { border-color: var(--c2); }
+  .sa-comp.fast { border-color: var(--warn); }
+  .sa-checks li { margin: 3px 0; }
+  .sa-checks li.warn { color: var(--warn); }
+</style>
+</head>
+<body>
+<div class="sa-head" id="saHead">
+  <strong id="saTitle">StrataScope</strong>
+  <span class="sa-sub" id="saSub">waiting for the labelling window</span>
+  <span style="flex:1"></span>
+  <button class="mini" id="saToggle" type="button">Live panes</button>
+</div>
+<iframe class="sa-live" id="saLive" title="Live panes"></iframe>
+<div class="sa-body" id="saBody"></div>
+<script src="js/strataaids.js"></script>
+</body>
+</html>

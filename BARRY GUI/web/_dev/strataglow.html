@@ -355,8 +355,19 @@ true`;
   if (!aidUrl) return;
   say('note', '  ' + String(aidUrl).replace(/^[^?]*/, ''));
 
+  /* Since the steps (2026-10-09) the aid window is web/strata-aids.html,
+     which frames these same four live panes and swaps to a step's evidence
+     when one is open. The panes are what this part is about, so the frame
+     gets the panes' own address, which the aid page carries as `live`. */
+  let liveUrl = aidUrl;
+  try {
+    const got = new URL(aidUrl, location.href).searchParams.get('live');
+    if (got) liveUrl = got;
+  } catch (e) { /* an old-style URL: the panes themselves */ }
+  check('the aid window frames the live panes', /#xplore/.test(liveUrl),
+        String(liveUrl).slice(0, 80));
   const af = document.getElementById('aid');
-  af.src = aidUrl;
+  af.src = liveUrl;
   await new Promise((r) => af.addEventListener('load', r, { once: true }));
   const A = af.contentWindow;
   await untilN(() => typeof A.setView === 'function');

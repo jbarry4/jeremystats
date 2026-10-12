@@ -49,11 +49,20 @@ REGIONS = [
      "note": "outer molecular, upper blade"},
     {"id": "dg_mml1", "name": "DG MML1", "color": "#33FFF6",
      "note": "middle molecular, upper blade"},
+    # The inner third, which Method A (the molecular layer in thirds) needs a
+    # name for. Inserted in depth order rather than appended: an id keeps
+    # its meaning wherever it sits in the list, and the list is what the
+    # legend and the number keys read down. That does move the number keys
+    # from GCL1 on by one.
+    {"id": "dg_iml1", "name": "DG IML1", "color": "#ffb3c6",
+     "note": "inner molecular, upper blade"},
     {"id": "dg_gcl1", "name": "DG GCL1", "color": "#F6FF33",
      "note": "granule cell layer, upper blade"},
     {"id": "hil", "name": "HIL", "color": "#FF8C00", "note": "hilus"},
     {"id": "dg_gcl2", "name": "DG GCL2", "color": "#8A2BE2",
      "note": "granule cell layer, lower blade"},
+    {"id": "dg_iml2", "name": "DG IML2", "color": "#c9a227",
+     "note": "inner molecular, lower blade"},
     {"id": "dg_mml2", "name": "DG MML2", "color": "#006400",
      "note": "middle molecular, lower blade"},
     {"id": "dg_oml2", "name": "DG OML2", "color": "#8B4513",
@@ -72,6 +81,28 @@ REGIONS = [
 ]
 
 REGION_IDS = {r["id"] for r in REGIONS}
+REGION_ORDER = {r["id"]: i for i, r in enumerate(REGIONS)}
+
+# What StrataScope's steps keep on a sheet, beside the labels. Separate
+# fields rather than one block, so the shard merge treats them separately:
+# one person painting Theta Walk on the rig and another adjusting a
+# confidence on the laptop both keep their change.
+#
+#   strata_states      {"theta_walk": [[t0, t1], ...]}  painted by hand
+#   strata_wheel       [{"t0", "t1", "note"}]           typed from the notes
+#   strata_params      spacing, species, thresholds, reference channel ...
+#   strata_confidence  line id ("ca1_sp|ca1_sr") -> sure / likely / guess
+#   strata_steps       "0".."4" -> {status, at, by, basis}
+#   strata_anchors     sp, fissure_at, gcl1, gcl2 (channel numbers)
+#   strata_checks      the sanity checks as they stood at sign-off
+#   strata_signed      {by, at, v} for the last sign-off
+STRATA_FIELDS = ("strata_states", "strata_wheel", "strata_params",
+                 "strata_confidence", "strata_steps", "strata_anchors",
+                 "strata_checks", "strata_signed")
+STRATA_MAPS = ("strata_params", "strata_confidence", "strata_steps",
+               "strata_anchors")
+STRATA_DICTS = STRATA_MAPS + ("strata_states", "strata_signed")
+CONFIDENCE = ("sure", "likely", "guess")
 
 
 class LayerError(Exception):
@@ -87,11 +118,13 @@ class Layers:
         self.dir = os.path.join(logs_dir, "layers")
         # Per machine, compiled on read: two people can label different
         # stretches of the same shank and both keep their work.
-        self.book = shards.Book(self.dir, {
+        spec = {
             "labels": shards.MAPLWW,
             "channels": shards.UNION,
             "created": shards.FIRST,
-        }, store)
+        }
+        spec.update({k: shards.MAPLWW for k in STRATA_MAPS})
+        self.book = shards.Book(self.dir, spec, store)
         self.book.absorb_legacy()
         self.store = store
         os.makedirs(self.dir, exist_ok=True)
@@ -142,9 +175,9 @@ class Layers:
     # sixty-four short strings, and a snapshot cannot disagree with what it
     # is a snapshot of.
     # ---------------------------------------------------------------
-    def _version(self, rec, labels, note=None, by=None, v=None):
+    def _version(self, rec, labels, note=None, by=None, v=None, extra=None):
         vs = rec.get("versions") or []
-        return {
+        out = {
             "v": v if v is not None else (
                 max([x.get("v") or 0 for x in vs] or [-1]) + 1),
             "at": _now(),
@@ -155,6 +188,13 @@ class Layers:
             "note": note,
             "snap": dict(labels or {}),
         }
+        # A signed-off sheet keeps HOW it was decided beside what was
+        # decided: the parameters, the confidence per line, the anchors and
+        # the checks as they stood. A version that says "CA1 SP" without
+        # saying it was a guess is the label without the evidence.
+        if extra:
+            out["strata"] = dict(extra)
+        return out
 
     @shards.atomic
     def adopt_versions(self, gid, versions):
@@ -173,13 +213,107 @@ class Layers:
         return self._write(rec)
 
     @shards.atomic
-    def snapshot(self, gid, note=None, by=None):
+    def snapshot(self, gid, note=None, by=None, extra=None):
         """Freeze the sheet as it stands as the next version."""
         rec = self.get(gid)
         if not rec:
             raise LayerError("This recording has no layer sheet yet.")
         rec.setdefault("versions", []).append(
-            self._version(rec, rec.get("labels") or {}, note=note, by=by))
+            self._version(rec, rec.get("labels") or {}, note=note, by=by,
+                          extra=extra))
+        return self._write(rec)
+
+    # ---------------------------------------------------------------
+    # StrataScope's steps
+    # ---------------------------------------------------------------
+    @staticmethod
+    def strata_of(rec):
+        """The steps' fields, with empty defaults, under their short names."""
+        out = {}
+        for k in STRATA_FIELDS:
+            v = rec.get(k)
+            if v is None:
+                v = {} if k in STRATA_DICTS else []
+            out[k[len("strata_"):]] = v
+        return out
+
+    @shards.atomic
+    def set_strata(self, gid, patch):
+        """Change some of the steps' fields.
+
+        A map field (params, confidence, steps, anchors) is merged key by
+        key, and a key set to None is removed. Anything else is replaced
+        whole. Keys are the short names: "states", "params" ...
+        """
+        rec = self.get(gid)
+        if not rec:
+            raise LayerError("This recording has no layer sheet yet.")
+        self._patch_strata(rec, patch)
+        return self._write(rec)
+
+    def _patch_strata(self, rec, patch):
+        if patch:
+            # When any of the steps' fields last changed -- what a cloud pull
+            # compares to decide whose copy is newer (cloudsync._apply_layers).
+            rec["strata_updated"] = shards._now()
+        for short, value in (patch or {}).items():
+            field = "strata_" + str(short)
+            if field not in STRATA_FIELDS:
+                raise LayerError("%r is not something a sheet keeps." % short)
+            if field == "strata_confidence":
+                for _k, lvl in (value or {}).items():
+                    if lvl is not None and lvl not in CONFIDENCE:
+                        raise LayerError("Confidence is sure, likely or "
+                                         "guess, not %r." % lvl)
+            if field == "strata_states":
+                value = _clean_states(value)
+            if field in STRATA_MAPS:
+                cur = dict(rec.get(field) or {})
+                for k, v in (value or {}).items():
+                    if v is None:
+                        cur.pop(str(k), None)
+                    else:
+                        cur[str(k)] = v
+                rec[field] = cur
+            else:
+                rec[field] = value
+
+    @shards.atomic
+    def adopt_strata(self, gid, strata, at):
+        """Take the steps' fields down from the cloud, whole.
+
+        Only called when the cloud's copy is newer than this machine's
+        (cloudsync._apply_layers). Stamped with the cloud's time, not now:
+        stamping it now would make this machine's copy look like the newer
+        one and push it straight back up, the loop the roster was stuck in.
+        """
+        rec = self.get(gid)
+        if not rec:
+            return None
+        for short, value in (strata or {}).items():
+            field = "strata_" + str(short)
+            if field in STRATA_FIELDS:
+                rec[field] = value
+        rec["strata_updated"] = at
+        return self._write(rec)
+
+    @shards.atomic
+    def apply_step(self, gid, labels=None, strata=None):
+        """Accept a step: its labels and its bookkeeping in one write, so a
+        sheet can never hold a step's lines without the step saying so, or
+        the other way round."""
+        rec = self.get(gid)
+        if not rec:
+            raise LayerError("This recording has no layer sheet yet.")
+        for ch, region in (labels or {}).items():
+            key = str(int(ch))
+            if region in (None, ""):
+                rec["labels"].pop(key, None)
+            elif region in REGION_IDS:
+                rec["labels"][key] = region
+            else:
+                raise LayerError("%r is not one of the layers." % region)
+        self._patch_strata(rec, strata or {})
         return self._write(rec)
 
     @shards.atomic
@@ -423,8 +557,9 @@ class Layers:
             "assignee": rec.get("assignee"),
             "archived": bool(rec.get("archived")),
             "archived_at": rec.get("archived_at"),
-            "regions": rec.get("regions") or REGIONS,
+            "regions": regions_for(rec),
             "labels": rec.get("labels") or {},
+            "strata": self.strata_of(rec),
             "channels": self.covered(rec),
             "created": rec.get("created") or {},
             "updated": rec.get("updated") or {},
@@ -467,7 +602,7 @@ class Layers:
         return sorted(keys)
 
     def rows(self, rec):
-        names = {r["id"]: r["name"] for r in (rec.get("regions") or REGIONS)}
+        names = {r["id"]: r["name"] for r in regions_for(rec)}
         labels = rec.get("labels") or {}
         out = []
         for i, ch in enumerate(self.covered(rec)):
@@ -484,3 +619,41 @@ class Layers:
 
 
 CSV_COLUMNS = ("gid", "session", "row", "channel", "region", "region_id")
+
+
+def regions_for(rec):
+    """The vocabulary a sheet is labelled in, in depth order.
+
+    The sheet's own copy wins for every id it has -- that copy is what makes
+    a sheet labelled last year still mean what it meant -- and ids added to
+    the vocabulary since (IML1 and IML2) are filled in from the current one,
+    so an old sheet can use them. Ordered by the current list, with any id
+    the current list does not know kept at the end.
+    """
+    own = {r.get("id"): r for r in (rec.get("regions") or []) if r.get("id")}
+    out = [dict(own.get(r["id"]) or r) for r in REGIONS]
+    out += [dict(r) for i, r in own.items() if i not in REGION_ORDER]
+    return out
+
+
+def _clean_states(value):
+    """Theta Walk bouts as sorted, merged [t0, t1] pairs in seconds."""
+    out = {}
+    for name, bouts in (value or {}).items():
+        got = []
+        for b in bouts or []:
+            try:
+                t0, t1 = float(b[0]), float(b[1])
+            except (TypeError, ValueError, IndexError):
+                continue
+            if t1 - t0 > 0:
+                got.append([round(min(t0, t1), 3), round(max(t0, t1), 3)])
+        got.sort()
+        merged = []
+        for t0, t1 in got:
+            if merged and t0 <= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], t1)
+            else:
+                merged.append([t0, t1])
+        out[str(name)] = merged
+    return out

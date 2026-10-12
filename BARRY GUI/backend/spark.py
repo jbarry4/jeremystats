@@ -1093,9 +1093,10 @@ def _measure(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=(),
                         s_ranges.append((name, i0, i1))
                 t_wins = (transition_windows(p, before_s, after_s)
                           if want_trans else [])
-                t_ranges = _timed_ranges(t_wins, per_rec_s, n_rec)
+                at = _record_at(mm, origin_us, per_rec_us, n_rec)
+                t_ranges = _timed_ranges(t_wins, per_rec_s, n_rec, at)
                 w_ranges = (_timed_ranges(p.get("windows") or [], per_rec_s,
-                                          n_rec) if want_win else [])
+                                          n_rec, at) if want_win else [])
                 spans_of = ([(a, b) for _n, a, b in s_ranges if b > a]
                             + [(a, b) for _n, _a, _b, a, b in t_ranges
                                if b > a]
@@ -1183,16 +1184,47 @@ def _measure(folder, pairs, pad_s=CLIP_PAD_S, progress=None, skip=(),
     return result
 
 
-def _timed_ranges(wins, per_rec_s, n_rec):
+def _record_at(mm, origin_us, per_rec_us, n_rec):
+    """A function from a time (s from the recording's start) and the
+    arithmetic guess at its record to the record that holds it, walked by
+    the records' own timestamps -- a few single-record reads, and none
+    beyond the first in a continuous file.
+
+    The guess alone is exact only until the clock first breaks: after a
+    break of 0.59 s six seconds in (J3 Precon1's FP2), every later window
+    was looked for about 37 records too late, missed its block, and came
+    back "outside this channel's file, or in a break in its clock" -- on
+    every channel, so the window was thrown away (2026-10-09, found by tab
+    8's standalone script, which cuts from the timestamps alone)."""
+    if origin_us is None or n_rec <= 0:
+        return None
+
+    def at(t_s, j):
+        want = float(origin_us) + float(t_s) * 1e6
+        j = int(max(0, min(n_rec - 1, j)))
+        for _ in range(8):
+            step = int((want - float(mm["timestamp"][j])) // per_rec_us)
+            k = int(max(0, min(n_rec - 1, j + step)))
+            if step == 0 or k == j:
+                break
+            j = k
+        return j
+    return at
+
+
+def _timed_ranges(wins, per_rec_s, n_rec, at=None):
     """[(name, t0, t1, first record, last record)] for windows cut to the
-    sample. Slack either side: the arithmetic guess is exact in a
-    continuous file, and the cut is made from the timestamps, so a record
-    or two of margin is all it needs to find the sample it wants inside the
-    block."""
+    sample. The arithmetic guess, put right by the timestamps when `at`
+    (`_record_at`) is given; slack either side, since the cut itself is made
+    from the timestamps, so a record or two of margin is all it needs to
+    find the sample it wants inside the block."""
     out = []
     for name, wa, wb in wins:
-        j0 = int(max(0, wa // per_rec_s - 2))
-        j1 = int(min(n_rec, wb // per_rec_s + 3))
+        g0, g1 = wa // per_rec_s, wb // per_rec_s
+        if at is not None:
+            g0, g1 = at(wa, g0), at(wb, g1)
+        j0 = int(max(0, g0 - 2))
+        j1 = int(min(n_rec, g1 + 3))
         out.append((name, wa, wb, j0, j1))
     return out
 

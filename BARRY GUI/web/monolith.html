@@ -568,6 +568,18 @@ table.jans td.jcell:hover { background: var(--chip); }
 table.jans td.jcell .jp { font-variant-numeric: tabular-nums; font-weight: 600; }
 table.jans td.jcell.pass { background: color-mix(in srgb, var(--up) 12%, transparent); }
 table.jans td.jcell .jgate { font-size: 10.5px; margin-top: 2px; display: inline-block; }
+table.jans tr.check td.jcell.pass { background: color-mix(in srgb, var(--focus) 16%, transparent); }
+/* A phone: each model's name across the top of its row, its four cells under it. */
+@media (max-width: 600px) {
+  table.jans, table.jans thead, table.jans tbody { display: block; }
+  table.jans tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+  table.jans th, table.jans td { border-top: 0; padding: 3px 3px; }
+  table.jans tbody tr[data-model] > th:first-child, table.jans tr.jsep > th { grid-column: 1 / -1; }
+  table.jans tbody tr[data-model] > th:first-child > div { display: inline; margin-right: 6px; }
+  table.jans thead tr > th:first-child { display: none; }
+  table.jans thead th { text-align: center; }
+}
+.chip.jgate.warn { background: color-mix(in srgb, var(--focus) 26%, transparent); color: var(--ink); }
 table.jans tr.jsep th { padding-top: 10px; text-align: left; }
 table.jans tr.check th { font-weight: 500; }
 .jmodel { border-top: 1px solid var(--line); padding: 10px 0 4px; }

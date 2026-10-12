@@ -189,6 +189,11 @@ BARRY.strata = (function () {
     requestAnimationFrame(() => setTimeout(alignRail, 260));
     window.addEventListener('resize', alignRail);
 
+    /* The steps (stratasteps.js): what the evidence says, as lines to drag
+       and accept. Handed hooks rather than this module's state, so neither
+       has to know the other's insides to say "the sheet changed". */
+    if (BARRY.strataSteps) BARRY.strataSteps.enter(host());
+
     BARRY.activity.log('strata.enter', {
       gid, channels: channels.length,
       labelled: (sheet.progress || {}).labelled,
@@ -198,6 +203,7 @@ BARRY.strata = (function () {
 
   function exit() {
     if (!sheet) return;
+    if (BARRY.strataSteps && BARRY.strataSteps.active) BARRY.strataSteps.leave();
     BARRY.activity.log('strata.leave', {
       gid, labelled: (sheet.progress || {}).labelled,
     }, sess);
@@ -246,18 +252,64 @@ BARRY.strata = (function () {
     if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return; }
     const every8 = (sess.info.channels || [])
       .filter((c, i) => i % 8 === 0).map((c) => c.index);
-    aidWin = BARRY.views.xplore.popOutPanes(sess, [
+    const specs = [
       { panel: 'csd' },
       { panel: 'theta' },
       { panel: 'voltage' },
       { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
         fmin: 1, fmax: 250 },
-    ], { role: 'aids', name: 'barry-strata-aids', width: 720, height: 1000,
-         // Folded on arrival. These four are for glancing at: the headers,
-         // control strips and channel lists cost more of a short pane than
-         // they are worth, and every one of them has a sliver to bring it
-         // back if you want it.
-         chrome: 'notabs,noheads,nostrip,nochannels' });
+    ];
+    // Folded on arrival. These four are for glancing at: the headers,
+    // control strips and channel lists cost more of a short pane than
+    // they are worth, and every one of them has a sliver to bring it
+    // back if you want it.
+    const paneOpts = { role: 'aids', chrome: 'notabs,noheads,nostrip,nochannels' };
+    /* The steps' page, which IS the four live panes until a step is open and
+       then swaps to that step's evidence (web/strata-aids.html). Without the
+       steps module, the four panes on their own, as before. */
+    if (BARRY.strataSteps && BARRY.views.xplore.paneUrl) {
+      const q = new URLSearchParams({
+        gid, path: sess.path, theme: BARRY.state.theme || '',
+        live: BARRY.views.xplore.paneUrl(sess, specs, paneOpts),
+      });
+      aidWin = window.open(location.origin + '/strata-aids.html?'
+                           + q.toString(), 'barry-strata-aids',
+                           'width=760,height=1000,menubar=no,toolbar=no');
+      if (!aidWin) {
+        toast('The second window was blocked. Allow pop-ups for 127.0.0.1, '
+              + 'then leave and re-enter this mode.', 'err', 9000);
+      }
+      return;
+    }
+    aidWin = BARRY.views.xplore.popOutPanes(sess, specs, Object.assign(
+      { name: 'barry-strata-aids', width: 720, height: 1000 }, paneOpts));
+  }
+
+  /* What the steps module is allowed to touch. */
+  function host() {
+    return {
+      gid,
+      path: () => sess && sess.path,
+      sess: () => sess,
+      sheet: () => sheet,
+      channels: () => channels(),
+      regions: () => regions,
+      render: () => render(),
+      redraw: () => { if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw(); },
+      adoptSheet: (next) => {
+        if (!next || !sheet) return;
+        sheet = next;
+        regions = sheet.regions || regions;
+        if (sess) sess.strata = { gid, labels: sheet.labels, regions };
+        render();
+      },
+      setLabels: (map) => applyLabels(map),
+      openAids: () => { aidWin = null; openAids(); },
+      focusAids: () => {
+        if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return true; }
+        return false;
+      },
+    };
   }
 
   /* ==================================================================
@@ -306,6 +358,7 @@ BARRY.strata = (function () {
     bar();
     rail();
     share();
+    if (BARRY.strataSteps && BARRY.strataSteps.active) BARRY.strataSteps.sheetChanged();
     if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
   }
 
@@ -324,6 +377,10 @@ BARRY.strata = (function () {
        what it was doing on anything narrower than about 1200px. */
     const top = el('div', { class: 'strata-bar-top' });
     b.appendChild(top);
+    if (BARRY.strataSteps && BARRY.strataSteps.active) {
+      b.appendChild(BARRY.strataSteps.section());
+      BARRY.strataSteps.drawer();
+    }
 
     const pr = sheet.progress || {};
     top.appendChild(el('div', { class: 'cur-where' }, [
@@ -482,13 +539,24 @@ BARRY.strata = (function () {
      instead of thirty-two chances to interleave with somebody else's. */
   async function labelPicked(regionId) {
     if (!picked.size) return false;
-    const nums = Array.from(picked);
+    const map = {};
+    for (const n of picked) map[n] = regionId || null;
+    return applyLabels(map);
+  }
+
+  /* Channel number -> region (or null to unlabel), saved as one request.
+     The picked-channels path and a boundary dragged on the depth strip both
+     come through here. */
+  async function applyLabels(map) {
+    const nums = Object.keys(map || {}).map(Number);
+    if (!nums.length) return false;
     const was = {};
     const labels = {};
     for (const n of nums) {
       const key = String(n);
+      const regionId = map[n] || null;
       was[key] = sheet && sheet.labels[key] ? sheet.labels[key] : null;
-      labels[key] = regionId || null;
+      labels[key] = regionId;
       if (!sheet) continue;
       if (regionId) sheet.labels[key] = regionId; else delete sheet.labels[key];
     }
@@ -595,6 +663,7 @@ BARRY.strata = (function () {
        which ones show. */
     list.appendChild(runLabels());
     r.appendChild(list);
+    if (BARRY.strataSteps && BARRY.strataSteps.active) BARRY.strataSteps.railStrip(r);
     alignRail();
   }
 
@@ -666,6 +735,11 @@ BARRY.strata = (function () {
     const n = channels().length || 1;
     const lane = height / n;
     rows.style.setProperty('--lane', lane + 'px');
+    /* The depth strip (stratasteps.js) sits to the right of the rows, on the
+       same lanes, so a curve's peak reads straight across to its channel. */
+    const steps = BARRY.strataSteps && BARRY.strataSteps.active;
+    const sw = steps ? BARRY.strataSteps.stripWidth() : 0;
+    rows.style.right = sw + 'px';
 
     /* How much room each row actually got, said out loud so the CSS can
        react to it.
@@ -689,7 +763,8 @@ BARRY.strata = (function () {
        when the run labels appear and they need somewhere to be. The panes
        track the same variable, so nothing overlaps. */
     document.documentElement.style.setProperty(
-      '--rail-w', lane < 17 ? '158px' : '122px');
+      '--rail-w', ((lane < 17 ? 158 : 122) + sw) + 'px');
+    if (steps) BARRY.strataSteps.layout(top, height, n);
 
     /* A run shorter than a line of text drops its text. Half a clipped word
        reads as damage; the colour band is still saying where the boundary
@@ -1097,6 +1172,12 @@ BARRY.strata = (function () {
           ctx.fillText(text, right - 1, mid + 0.5);
         }
       }
+    }
+    /* The open step's proposed lines, dashed. Only where this module has
+       the sheet open: the aid window draws its own from the same payload. */
+    if (sheet && (mine || (s.strata && s.strata.gid === gid))
+        && BARRY.strataSteps && BARRY.strataSteps.active) {
+      BARRY.strataSteps.drawGhost(ctx, chans, x0, plotW, y0, lane);
     }
     ctx.restore();
   }

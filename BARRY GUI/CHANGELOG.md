@@ -15,6 +15,147 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.09.6 - StrataScope labels in steps, from evidence it measures
+
+### Added
+
+- **StrataScope's steps.** A row under the title: 0 Theta Walk, 1 CA1,
+  2 Hilus, 3 GCL · IML · MML · OML, 4 Sign off. Free to jump between; a
+  step accepted before an earlier one changed is marked "needs a look".
+  - **Reading a recording once.** The first visit reads every channel
+    (about a tenth of the recording's length here) and keeps, per second,
+    band powers, theta coefficients, a 4-12 Hz spectrum and multiunit
+    power, plus a 1250 Hz copy with the mains notched out. After that
+    every answer is immediate. Kept in `GUI_logs/.cache/strata`, not in git.
+  - **Step 0, Theta Walk.** Paint when the animal was walking on a strip
+    of the whole recording: the 4-12 Hz spectrogram, theta/delta with the
+    finder's threshold, how much of the probe agrees on one theta
+    frequency, and the finder's bouts hatched as a ghost that is never
+    saved unless you paint it. Wheel times from the notes are typed in
+    and can be painted with one click. Still time is everything not
+    painted, less 2 s either side.
+  - **The depth strip** beside the rail, on its lanes: multiunit, ripple,
+    theta power, theta phase and coherence against the CA1 pyramidal
+    channel, slow and mid gamma. Toggle each.
+  - **Steps 1-3 propose dashed lines**, on the strip, the traces and the
+    aid window. Each anchor names its lead measurement and the others'
+    votes, with how many channels they disagree by; click a vote to make
+    it the lead. Drag any dashed line by whole channels, rate it sure,
+    likely or guess, then Accept. Dragging a solid boundary on the strip
+    relabels the channels it passes.
+  - **Step 3** cuts the molecular layer into thirds between the fissure
+    and the granule layer's edge (Method A; GCL half 30 µm mouse, 50 µm
+    rat; the lower blade assumed as thick as the upper), and **Run ICA**
+    checks it against where slow and fast gamma generators sink
+    (Method B), refitted on each half of the walking for stability.
+  - **Step 4** lists the checks (distances against the HippoCompass mouse
+    atlas, blade symmetry, OML/MML order, enough Theta Walk, enough
+    ripples, ICA stability). They warn and never block. Sign off freezes
+    a version that keeps the parameters, every line's confidence, the
+    anchors, the Theta Walk and who signed it. Export JSON beside CSV.
+  - **The aid window** is the four live panes until a step is open, then
+    that step's evidence: ripple- and theta-trough-triggered LFP and CSD,
+    the depth curves, the theta coherence matrix, Method A to scale and
+    Method B's components.
+- **IML1 and IML2** labels, in depth order. The number keys from GCL1 on
+  move along by one.
+- Ripples are found with Toothy's own detector (`get_swr_peaks`: 120-180
+  Hz, 5 SD peaks, 3 SD edges, 25 ms, inst. frequency over 125 Hz), in
+  still time only, and Step 1 can bank them (type ripple) through the bank
+  dialog. Checkup cannot vet ripples yet; it knows dentate spikes and IEDs.
+
+### Not used, on purpose
+
+- **No dentate spikes anywhere in the steps.** These labels are what the
+  DS results get checked against.
+
+### Run this
+
+- `supabase/23_strata_steps.sql`, so the steps' fields sync. Until then
+  they travel by git with the sheet, and the labels sync as before.
+
+### Worth knowing
+
+- H3 contacts are taken as 20 µm apart (HippoCompass). The probe book
+  still says 50 µm because DS PCA reads it; a sheet carries its own
+  spacing.
+- On six of eight hand-labelled PTEN recordings the theta evidence puts
+  the fissure 6-11 channels below where those sheets have it (one agreed
+  within two, one found no theta peak in CA1); the theta maximum, mid
+  gamma and the theta-trough CSD mostly agree with each other there. The proposals start where the evidence is. Which is
+  right is the question the steps exist to answer.
+- Not for H10 probes or the DEWEY montage: the steps read depth down one
+  column.
+
+## 2026.10.09.5 - Holding a key in Checkup no longer floods it; a secret
+
+### Fixed
+
+- **Holding a key down in Checkup.** The keyboard repeats a held key
+  about 30 times a second, and every repeat used to be a decision with its
+  own redraw and its own save. The saves queued on the server. Leaving the
+  set while they were still in flight made each of them report "That did
+  not save: can't access property _progress, set_ is null", although every
+  one had saved: each was reading the set back off a screen that had
+  already moved on. Now:
+  - A held decision key decides once. Each decision is a fresh press.
+  - A held n or p still walks, at most about nine a second, so the screen
+    keeps up.
+  - A held u or Escape acts once.
+  - Each decision keeps hold of its own set, so a save that answers after
+    you have left reports nothing, unless it really failed.
+  - Failures come as one toast ("5 decisions did not save: …"), not one
+    each.
+  - Banking first waits for every decision still saving. A version banked
+    mid-flood used to be missing the last few.
+
+### Added
+
+- **A secret.** A keyhole, too faint to notice, sits at the end of the
+  curation progress bar.
+  - **The PIN:** it asks for a six-digit PIN. A wrong one shakes and
+    clears. Only the PIN's SHA-256 is in the code.
+  - **The reveal:** the right PIN dims the room to a golden sky. Rays
+    turn, sparks rise and a bloom breathes. A golden column with a scrolled
+    capital rises from the floor, and the **All Garbage** button descends
+    onto it under a glowing halo, with rings of light spreading out as it
+    lands.
+  - **The sound:** a choir of "aah"s sings C, F over C, then C with a high
+    G, and bells ring as the button lands. Both are made with Web Audio,
+    so there is no sound file.
+  - **The button:** the first press asks ("Truly? All Garbage"), saying
+    how many existing decisions would change. The second calls every
+    candidate in the set Garbage in one write. One `u` puts every candidate
+    back to what it was, also in one write.
+  - **Closing:** Escape or Close shuts it. While it is open, Checkup's
+    decision keys are not heard.
+- **Why the first build was silent.** Opening the heavens shut any heavens
+  already open, and that stopped the choir it had just started. The choir
+  was also set about 36 dB too quiet, because narrow vowel filters keep
+  only a small share of a saw's energy. Both are fixed. The audio context
+  is now made on the first digit typed, which is the gesture a stricter
+  browser such as Firefox wants. The score is now measured: the harness
+  renders it offline and checks it is louder than −24 dBFS and does not
+  clip.
+
+### Checked
+
+- New `_dev/curhold.html`: 12 ok. It holds keys, leaves mid-save and
+  forces failures, against a real set with every write answered in the
+  page.
+- New `_dev/allgarbage.html`: 23 ok.
+  - the keyhole
+  - wrong and right PINs
+  - the heavens, with the choir playing
+  - the two presses and the single write
+  - `u` restoring every label
+  - loudness
+  - keys muted behind the heavens
+  - Escape leaving curation open
+- New `_dev/agshot.html` poses the reveal for screenshots.
+
+---
+
 ## 2026.10.09.4 - Tooth Fairy batch; Avery is gone; Tooth Fairy has an icon
 
 ### Added

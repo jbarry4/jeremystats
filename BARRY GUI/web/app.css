@@ -7164,6 +7164,148 @@ body.aid-window .xf-tabs { display: none !important; }
   color: var(--text-3);
 }
 /* ==========================================================================
+   StrataScope's steps (stratasteps.js)
+   ==========================================================================
+   A row of steps under the title, then whatever the open step needs: the
+   Theta Walk strip, the anchors with their votes, the checks. The bar it
+   lives in already scrolls past 26vh; an open step lifts that, because the
+   step is what the bar is for while it is open. */
+/* While Theta Walk is being painted the layer brushes have nothing to do,
+   and the strip and the traces both want the height. */
+.strata-bar:has(.ss-zero) { max-height: 40vh; }
+.strata-bar:has(.ss-zero) .strata-brushes { display: none; }
+/* Steps 1-4: a drawer down the right of the traces. */
+.ss-drawer {
+  position: absolute; right: 0; top: 0; bottom: var(--bottom-bar, 0px);
+  width: var(--ss-drawer-w, 420px); z-index: 7; overflow-y: auto;
+  padding: 10px 12px 16px; background: var(--bg-2);
+  border-left: 1px solid var(--line); box-sizing: border-box;
+}
+#xfBody.strata-on.ss-drawer-on .pane-grid {
+  margin-right: var(--ss-drawer-w, 420px);
+}
+.ss { display: flex; flex-direction: column; gap: 7px; }
+.ss-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ss-step {
+  display: flex; align-items: center; gap: 6px; cursor: pointer; font: inherit;
+  font-size: var(--fs-115); padding: 3px 10px 3px 4px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: var(--bg); color: var(--text-2);
+}
+.ss-step:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
+.ss-step:disabled { opacity: .45; cursor: default; }
+.ss-step.on { border-color: var(--accent); color: var(--text);
+              background: var(--accent-soft); }
+.ss-tick {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; flex: none;
+  font-size: var(--fs-10); font-weight: 600;
+  background: var(--bg-3); color: var(--text-2);
+}
+.ss-step.done .ss-tick { background: var(--ok-soft); color: var(--ok); }
+.ss-step.stale .ss-tick { background: var(--warn-soft); color: var(--warn); }
+.ss-curves { display: flex; gap: 3px; flex-wrap: wrap; margin-left: 6px; }
+.ss-curve {
+  display: flex; align-items: center; gap: 4px; cursor: pointer; font: inherit;
+  font-size: var(--fs-105); padding: 2px 7px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft); background: transparent;
+  color: var(--text-3);
+}
+.ss-curve i { width: 12px; height: 3px; border-radius: 2px; background: var(--cv);
+              opacity: .35; }
+.ss-curve.on { color: var(--text); border-color: var(--line); }
+.ss-curve.on i { opacity: 1; }
+.ss-say { color: var(--text-2); font-size: var(--fs-115); margin: 0; }
+.ss-say.warn { color: var(--warn); }
+.ss-say.err { color: var(--err); }
+.ss-read { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ss-read .ss-say { flex: 1 1 360px; }
+.ss-job {
+  position: relative; flex: 1 1 320px; height: 22px; border-radius: var(--radius-sm);
+  background: var(--bg-3); overflow: hidden;
+}
+.ss-job i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent-soft);
+            border-right: 2px solid var(--accent);
+            transition: width var(--ease-dur) var(--ease-out); }
+.ss-job span { position: relative; padding: 0 8px; line-height: 22px;
+               font-size: var(--fs-11); color: var(--text); }
+.ss-zero, .ss-anchors, .ss-four { display: flex; flex-direction: column; gap: 6px; }
+.ss-zero-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ss-tw-wrap { border: 1px solid var(--line); border-radius: var(--radius-sm);
+              overflow: hidden; background: var(--bg); }
+.ss-tw { display: block; width: 100%; height: 128px; cursor: crosshair; }
+.ss-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ss-wheel { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ss-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px;
+  border: 1px solid var(--line); border-radius: 999px; font-size: var(--fs-105);
+  color: var(--text-2);
+}
+.ss-chip.ok { border-color: var(--ok); color: var(--ok); }
+.ss-chip.warn { border-color: var(--warn); color: var(--warn); }
+.ss-chip.dim { opacity: .6; }
+.ss-in {
+  width: 74px; font: inherit; font-size: var(--fs-11); padding: 3px 6px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--bg); color: var(--text);
+}
+.ss-in.wide { width: 150px; }
+.ss-anchor {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 7px 0; border-bottom: 1px solid var(--line-soft);
+  font-size: var(--fs-11); position: relative;
+}
+.ss-anchor .ss-conf { position: absolute; right: 0; top: 7px; }
+.ss-anchor-name { font-weight: 600; color: var(--text); }
+.ss-lead { color: var(--text-2); }
+.ss-lead b { color: var(--accent); }
+.ss-votes { display: flex; gap: 4px; flex-wrap: wrap; }
+.ss-vote {
+  font: inherit; font-size: var(--fs-105); cursor: pointer; padding: 1px 7px;
+  border-radius: var(--radius-sm); border: 1px solid var(--line);
+  background: var(--bg); color: var(--text-2);
+}
+.ss-vote:hover { border-color: var(--accent); color: var(--text); }
+.ss-vote b { color: var(--text); font-weight: 600; }
+.ss-vote i { font-style: normal; color: var(--text-3); }
+.ss-vote.near i { color: var(--ok); }
+.ss-vote.far i { color: var(--warn); }
+.ss-conf { font-size: var(--fs-10); text-transform: uppercase; letter-spacing: .05em;
+           padding: 1px 6px; border-radius: 999px; background: var(--bg-3);
+           color: var(--text-2); }
+.ss-conf.likely { color: var(--ok); }
+.ss-conf.guess { color: var(--warn); }
+.ss-lines { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.ss-line { display: flex; align-items: center; gap: 6px; font-size: var(--fs-11); }
+.ss-line-name { color: var(--text); }
+.ss-line-at { color: var(--text-3); min-width: 74px; }
+.ss-ica { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ss-more { margin: 0; font-size: var(--fs-11); color: var(--text-2); max-width: 900px; }
+.ss-checks { margin: 0; padding-left: 0; list-style: none; display: flex;
+             flex-direction: column; gap: 3px; font-size: var(--fs-115); }
+.ss-checks li { display: flex; align-items: center; gap: 8px; color: var(--text-2); }
+.ss-checks li.ok .ss-tick { background: var(--ok-soft); color: var(--ok); }
+.ss-checks li.warn .ss-tick { background: var(--warn-soft); color: var(--warn); }
+.ss-params { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.ss-params > .mini { align-self: flex-start; }
+.ss-params-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.ss-param { display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-105);
+            color: var(--text-2); }
+.ss-param .ss-in { width: 100%; box-sizing: border-box; }
+/* Whether the recording has been read, in the steps' row. */
+.ss-read { display: inline-flex; align-items: center; gap: 8px; }
+.ss-read .ss-job { flex: none; width: 280px; }
+/* Which curves the strip draws: in the rail, above the strip. */
+.ss-legend {
+  position: absolute; right: 0; width: 150px; box-sizing: border-box;
+  display: flex; flex-wrap: wrap; gap: 3px; padding: 0 4px; z-index: 1;
+}
+.ss-legend .ss-curve { padding: 1px 5px; font-size: var(--fs-95); gap: 3px; }
+.ss-legend .ss-curve i { width: 9px; }
+/* The depth strip, on the rail's lanes, right of the rows. */
+.ss-strip { position: absolute; right: 0; width: 150px;
+            border-left: 1px solid var(--line-soft); background: var(--bg); }
+/* ==========================================================================
    Layer sheets in the Event Bank
    ==========================================================================
    Shown as runs rather than as sixty-four rows: a probe passes through a

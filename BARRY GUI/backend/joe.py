@@ -748,60 +748,129 @@ def _term(name, factor, unit):
     return " × ".join(parts)
 
 
-def fit_mixed(df, factor, unit):
-    """value ~ Day x factor x unit, the rat a random intercept, with rat x
-    day, rat x level and rat x day x level as variance components (the
-    repeated-measures error strata). Wald tests per term, as F with
-    between-within denominator df; SPSS MIXED (Satterthwaite) is the
-    reference, from the exported syntax."""
-    import warnings
+def _helmert(L):
+    """L - 1 orthonormal contrasts over L levels (rows)."""
+    H = np.zeros((L - 1, L))
+    for j in range(1, L):
+        H[j - 1, :j] = -1.0 / j
+        H[j - 1, j] = 1.0
+        H[j - 1] /= np.linalg.norm(H[j - 1])
+    return H
+
+
+def _contrast_frames(df, levels):
+    """Each rat x unit with all 2L cells, as its contrasts: the mean (for
+    Unit), the day change averaged over the levels (Day, Day x Unit), and
+    the levels' L - 1 orthonormal contrasts of the mean over the days
+    (factor, factor x Unit) and of the day change (Day x factor, Day x
+    factor x Unit). The repeated-measures ANOVA's strata, one score each."""
+    import pandas as pd
+    L = len(levels)
+    H = _helmert(L)
+    pv = df.pivot_table(index=["rat", "unit"], columns=["day", "level"], values="value", aggfunc="first")
+    cols = [(d, lv) for d in TESTED for lv in levels]
+    pv = pv.reindex(columns=pd.MultiIndex.from_tuples(cols)).dropna()
+    Y1 = pv[[(TESTED[0], lv) for lv in levels]].to_numpy()
+    Y4 = pv[[(TESTED[1], lv) for lv in levels]].to_numpy()
+    rat = pv.index.get_level_values(0).to_numpy()
+    unit = pv.index.get_level_values(1).to_numpy()
+    scal = pd.DataFrame({"rat": rat, "unit": unit, "m": (Y1 + Y4).mean(axis=1) / 2.0,
+                         "d": (Y4 - Y1).mean(axis=1)})
+    rows = []
+    mid = (Y1 + Y4) / 2.0
+    chg = Y4 - Y1
+    for j in range(L - 1):
+        rows.append(pd.DataFrame({"rat": rat, "unit": unit, "j": "c%d" % j, "lv": mid @ H[j], "dl": chg @ H[j]}))
+    return scal, pd.concat(rows, ignore_index=True)
+
+
+def _mlm(formula, data, groups):
+    """A REML random-intercept fit, trying the next optimiser when one fails:
+    L-BFGS now and then steps somewhere singular."""
     import statsmodels.formula.api as smf
+    md = smf.mixedlm(formula, data, groups=groups)
+    last = None
+    for meth in ("lbfgs", "bfgs", "powell", "nm"):
+        try:
+            r = md.fit(reml=True, method=[meth])
+        except Exception as e:                           # noqa: BLE001
+            last = e
+            continue
+        if r.converged and np.all(np.isfinite(r.bse_fe)):
+            return r
+        last = last or RuntimeError("did not converge")
+    raise JoeError("a mixed model did not fit (%s)" % last)
+
+
+def fit_mixed(df, factor, unit):
+    """Day x factor x unit as the repeated-measures ANOVA's strata, each
+    fitted as a mixed model of the rat x unit contrasts that stratum is
+    about, with the rat random: Unit from each rat x unit's mean; Day and
+    Day x Unit from its day change; factor and factor x Unit from the
+    levels' orthonormal contrasts of its mean, and Day x factor and Day x
+    factor x Unit from those of its day change (each rat x contrast its own
+    random intercept, one variance, as the univariate RM-ANOVA assumes).
+    On complete data every F is the RM-ANOVA's, except where a stratum's rat variance
+    estimates at zero, when the mixed model pools that stratum's error with
+    the one below it, as SPSS MIXED and lme4 do; a rat missing a pair keeps
+    its other pairs (the RM-ANOVA, like SPSS's GLM, drops the whole rat).
+    Checked against AnovaRM on made-up data, two and four levels. F from Wald
+    tests, with each stratum's (rats - 1) x df denominator; SPSS MIXED with
+    the full random structure, from the exported syntax, is the reference.
+
+    One mixed model over the long data with every stratum as a variance
+    component is the same thing in principle, and was tried: on the real
+    44 pairs it took ten minutes a fit (2026-10-09)."""
+    import warnings
+    import pandas as pd
     from scipy.stats import f as fdist
-    N = df["rat"].nunique()
-    L = df["level"].nunique()
-    if N < MIN_RATS or df["unit"].nunique() < 1:
+    levels = list(pd.unique(df["level"]))
+    N0 = df["rat"].nunique()
+    if N0 < MIN_RATS:
         return {"ok": False, "why": "fewer than %d rats" % MIN_RATS}
-    formula = "value ~ C(day, Sum) * C(level, Sum)" + (" * C(unit, Sum)" if df["unit"].nunique() > 1 else "")
-    vc = {"day": "0 + C(day)", "level": "0 + C(level)", "dl": "0 + C(day):C(level)"}
-    res, how = None, "random intercept + rat × day, rat × %s, rat × day × %s" % (factor.lower(), factor.lower())
+    scal, cont = _contrast_frames(df, levels)
+    N = scal["rat"].nunique()
+    K = scal["unit"].nunique()
+    L = len(levels)
+    if N < MIN_RATS or K < 1:
+        return {"ok": False, "why": "fewer than %d rats with every cell of a %s" % (MIN_RATS, "pair" if unit == "pair" else "region")}
+    many = K > 1
+    u = "Pair" if unit == "pair" else "Region"
+    terms = {}
+
+    def put(name, chi2, df1, df2):
+        F = chi2 / df1
+        terms[name] = {"F": F, "df1": int(df1), "df2": int(max(1, df2)), "p": float(fdist.sf(F, df1, max(1, df2))), "chi2": float(chi2)}
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        for attempt in ("vc", "plain"):
-            try:
-                if attempt == "vc":
-                    md = smf.mixedlm(formula, df, groups=df["rat"], re_formula="1", vc_formula=vc)
-                else:
-                    md = smf.mixedlm(formula, df, groups=df["rat"])
-                    how = "random intercept only (the fuller model did not converge)"
-                r = md.fit(reml=True, method=["lbfgs"])
-                if r.converged or attempt == "plain":
-                    res = r
-                    break
-            except Exception as exc:                     # noqa: BLE001
-                why = str(exc)
-                continue
-    if res is None:
-        return {"ok": False, "why": "the mixed model did not fit"}
-    w = res.wald_test_terms(skip_single=False, scalar=True).summary_frame()
-    n_obs = int(res.nobs)
-    k_fe = int(res.k_fe)
-    df_res = max(1, n_obs - k_fe - N * (3 + 3 * L))
-    terms = {}
-    for name, row in w.iterrows():
-        if name == "Intercept":
-            continue
-        df1 = int(row["df constraint"])
-        chi2 = float(row["chi2"])
-        if name == "C(day, Sum)":
-            df2 = N - 1
-        elif name in ("C(level, Sum)", "C(day, Sum):C(level, Sum)"):
-            df2 = (N - 1) * (L - 1)
-        else:
-            df2 = df_res
-        F = chi2 / df1
-        terms[_term(name, factor, unit)] = {"F": F, "df1": df1, "df2": int(df2),
-                                            "p": float(fdist.sf(F, df1, df2)), "chi2": chi2}
-    return {"ok": True, "terms": terms, "n_rats": N, "n_obs": n_obs, "random": how}
+        try:
+            _strata(scal, cont, factor, u, many, N, K, L, put)
+        except JoeError as exc:
+            return {"ok": False, "why": str(exc)}
+    return {"ok": True, "terms": terms, "n_rats": int(N), "n_obs": int(len(scal)),
+            "random": "each stratum’s rat × %s contrasts, the rat random" % u.lower()}
+
+
+def _strata(scal, cont, factor, u, many, N, K, L, put):
+    """The four strata's fits, each term handed to put()."""
+    # Unit, from the means; Day and Day x Unit, from the day changes.
+    for col, main, inter in (("m", None, u), ("d", "Day", "Day × " + u)):
+        r = _mlm(col + (" ~ C(unit, Sum)" if many else " ~ 1"), scal, scal["rat"])
+        w = r.wald_test_terms(skip_single=False, scalar=True).summary_frame()
+        if main and "Intercept" in w.index:
+            put(main, float(w.loc["Intercept", "chi2"]), 1, N - 1)
+        if many and "C(unit, Sum)" in w.index:
+            put(inter, float(w.loc["C(unit, Sum)", "chi2"]), K - 1, (N - 1) * (K - 1))
+    # factor and factor x Unit; Day x factor and Day x factor x Unit.
+    for col, main, inter in (("lv", factor, factor + " × " + u), ("dl", "Day × " + factor, "Day × " + factor + " × " + u)):
+        f = col + " ~ 0 + C(j)" + (" + C(j):C(unit, Sum)" if many else "")
+        r = _mlm(f, cont, cont["rat"].astype(str) + "|" + cont["j"])
+        w = r.wald_test_terms(skip_single=False, scalar=True).summary_frame()
+        if "C(j)" in w.index:
+            put(main, float(w.loc["C(j)", "chi2"]), L - 1, (N - 1) * (L - 1))
+        if many and "C(j):C(unit, Sum)" in w.index:
+            put(inter, float(w.loc["C(j):C(unit, Sum)", "chi2"]), (L - 1) * (K - 1), (N - 1) * (L - 1) * (K - 1))
 
 
 def fit_rm(df, factor, unit, n_units):
@@ -1169,7 +1238,8 @@ def sps_text(res, mdl, csv_name):
               "MIXED value BY day %s %s" % (factor, unit_word if K > 1 else ""),
               "  /FIXED=day %s %s day*%s%s | SSTYPE(3)" % (factor, unit_word if K > 1 else "", factor,
                                                          (" day*%s %s*%s day*%s*%s" % (unit_word, factor, unit_word, factor, unit_word)) if K > 1 else ""),
-              "  /RANDOM=INTERCEPT day %s day*%s | SUBJECT(rat) COVTYPE(VC)" % (factor, factor),
+              ("  /RANDOM=INTERCEPT day %s %s day*%s day*%s %s*%s | SUBJECT(rat) COVTYPE(VC)" % (factor, unit_word, factor, unit_word, factor, unit_word))
+              if K > 1 else "  /RANDOM=INTERCEPT day %s day*%s | SUBJECT(rat) COVTYPE(VC)" % (factor, factor),
               "  /METHOD=REML",
               "  /CRITERIA=DFMETHOD(SATTERTHWAITE)",
               "  /PRINT=SOLUTION TESTCOV.", ""]
@@ -1443,7 +1513,7 @@ def script_work(worker):
     worker.note(phase="joe-script", item="running tools/joe_standalone.py")
     log = open(joe_dir("script.log"), "w", encoding="utf-8")
     try:
-        p = subprocess.Popen([sys.executable, script_path(), "--inputs", inp, "--out", out],
+        p = subprocess.Popen([sys.executable, script_path(), "--inputs", inp, "--out", out, "--jobs", "4"],
                              stdout=log, stderr=subprocess.STDOUT)
         while p.poll() is None:
             if worker.stopping():
