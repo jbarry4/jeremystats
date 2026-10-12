@@ -1,0 +1,29 @@
+THE DETECTOR AS THE LAB RAN IT (raw 30 kHz, 40 ms, even channels, pooled 99.9th percentile)
+
+{'key': 'm3_s2', 'minutes': 33.1, 'solids': 11, 'candidates_in_bank': 11, 'bins_over': 18087, 'share_single_channel': 0.836, 'top3_channels': [64, 62, 38], 'top3_share': [0.452, 0.067, 0.035], 'bad_even': []}
+{'key': 'm3_s7', 'minutes': 20.0, 'solids': 18, 'candidates_in_bank': 18, 'bins_over': 2401, 'share_single_channel': 0.234, 'top3_channels': [60, 58, 28], 'top3_share': [0.094, 0.081, 0.052], 'bad_even': []}
+{'key': 'm5_s2', 'minutes': 50.2, 'solids': 3, 'candidates_in_bank': 184, 'bins_over': 7341, 'share_single_channel': 0.283, 'top3_channels': [60, 50, 52], 'top3_share': [0.112, 0.089, 0.084], 'bad_even': []}
+{'key': 'm5_s7', 'minutes': 43.4, 'solids': 14, 'candidates_in_bank': 324, 'bins_over': 10614, 'share_single_channel': 0.417, 'top3_channels': [50, 48, 30], 'top3_share': [0.202, 0.139, 0.053], 'bad_even': [8]}
+{'key': 'm13_s2', 'minutes': 31.2, 'solids': 11, 'candidates_in_bank': 423, 'bins_over': 17244, 'share_single_channel': 0.623, 'top3_channels': [36, 20, 30], 'top3_share': [0.364, 0.13, 0.122], 'bad_even': []}
+{'key': 'm13_s17', 'minutes': 94.8, 'solids': 43, 'candidates_in_bank': 906, 'bins_over': 35855, 'share_single_channel': 0.348, 'top3_channels': [64, 62, 60], 'top3_share': [0.223, 0.159, 0.143], 'bad_even': []}
+{'key': 'm28_s2', 'minutes': 48.6, 'solids': 8, 'candidates_in_bank': 1010, 'bins_over': 32778, 'share_single_channel': 0.804, 'top3_channels': [28, 34, 40], 'top3_share': [0.538, 0.07, 0.063], 'bad_even': [8]}
+{'key': 'm28_s7', 'minutes': 36.5, 'solids': 49, 'candidates_in_bank': 49, 'bins_over': 12560, 'share_single_channel': 0.275, 'top3_channels': [62, 58, 60], 'top3_share': [0.319, 0.23, 0.214], 'bad_even': [8]}
+{'key': 'm34_s5', 'minutes': 21.6, 'solids': 6, 'candidates_in_bank': 211, 'bins_over': 17668, 'share_single_channel': 0.853, 'top3_channels': [8, 38, 36], 'top3_share': [0.466, 0.111, 0.068], 'bad_even': [8]}
+{'key': 'm34_s8', 'minutes': 30.2, 'solids': 7, 'candidates_in_bank': 325, 'bins_over': 9334, 'share_single_channel': 0.337, 'top3_channels': [48, 46, 44], 'top3_share': [0.188, 0.175, 0.114], 'bad_even': [8]}
+
+SOLID vs GARBAGE at the hand-sorted stamps
+
+feature       Solid median [IQR]     Garbage median [IQR]   Unreviewed median      AUC solid vs garbage
+orig_n_cross  5 [0-7]                5 [3-7]                2                      0.43
+top_ratio     1.23 [0.932-1.37]      1.12 [1.08-1.2]        1.07                   0.55
+top_share     1.06 [1.03-1.09]       1.04 [1.01-1.09]       1.07                   0.56
+top_is_bad    0 [0-0]                0 [0-0]                0                      0.00
+amp_uv        2.17e+03 [1.61e+03-2.69e+03] 1.38e+03 [835-1.92e+03] 1.11e+03               0.73
+amp_rel       1 [0.874-1.16]         0.664 [0.399-0.897]    0.569                  0.82
+width_ms      18.5 [13-29.5]         22 [15.5-32.5]         20.5                   0.43
+hf_frac       0.0429 [0.0216-0.0705] 0.0202 [0.0033-0.0469] 0.0068                 0.70
+hf_ll_share   0.513 [0.459-0.566]    0.648 [0.483-0.772]    0.58                   0.30
+mains_frac    0.0221 [0.0142-0.0326] 0.0103 [0.0066-0.0167] 0.0115                 0.78
+common_mode   0.354 [0.258-0.428]    0.444 [0.362-0.565]    0.411                  0.31
+car_keep      0.859 [0.783-0.912]    0.701 [0.509-0.852]    0.746                  0.73
+neighbours    0 [0-1]                0 [0-1]                1                      0.35

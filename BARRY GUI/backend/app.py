@@ -13925,6 +13925,62 @@ def api_strata_ica(gid):
     return jsonify({"ok": True, "cached": False, "job": job.snapshot()})
 
 
+def _strata_ml_bounds(ctx, nums, s1, s2, over):
+    """The fissure row and the hilus rows Step 3 is cut between, and where
+    each came from, in words.
+
+    Accepted first: once Step 1 is done the fissure is the line under the
+    sheet's last CA1 SLM channel; once Step 2 is done the hilus is the
+    sheet's longest run of HIL. Otherwise the step's own proposal. An
+    override (a vote clicked in Step 1) still wins for the fissure.
+    """
+    labels = ctx["rec"].get("labels") or {}
+    steps = ctx["strata"].get("steps") or {}
+    lab = [labels.get(str(c)) for c in nums]
+    chs = lambda i: ("ch %s" % nums[i]) if 0 <= i < len(nums) else "the end"  # noqa: E731
+    src = {}
+    fis = None
+    if over.get("fissure_at") is not None:
+        fis = int(over["fissure_at"])
+        src["fissure"] = "the fissure you moved (above %s)" % chs(fis)
+    elif (steps.get("1") or {}).get("status") == "done":
+        slm = [i for i, x in enumerate(lab) if x == "ca1_slm"]
+        if slm:
+            fis = slm[-1] + 1
+            src["fissure"] = "the fissure you accepted (above %s)" % chs(fis)
+    if fis is None:
+        fis = next((ln["at"] for ln in s1["lines"]
+                    if ln["below"] == "dg_oml1"), None)
+        if fis is not None:
+            src["fissure"] = "Step 1's proposed fissure (above %s)" % chs(fis)
+    hil = None
+    if (steps.get("2") or {}).get("status") == "done":
+        runs, i = [], 0
+        while i < len(lab):
+            if lab[i] == "hil":
+                j = i
+                while j < len(lab) and lab[j] == "hil":
+                    j += 1
+                runs.append((i, j))
+                i = j
+            else:
+                i += 1
+        if runs:
+            hil = max(runs, key=lambda r: r[1] - r[0])
+            src["hilus"] = "the hilus you accepted (%s-%s)" % (
+                chs(hil[0]), chs(hil[1] - 1))
+    if hil is None:
+        top = next((ln["at"] for ln in s2["lines"]
+                    if ln["above"] == "dg_gcl1"), None)
+        end = next((ln["at"] for ln in s2["lines"]
+                    if ln["below"] == "dg_gcl2"), None)
+        if top is not None:
+            hil = (top, end if end is not None else len(nums))
+            src["hilus"] = "Step 2's proposed hilus (%s-%s)" % (
+                chs(hil[0]), chs(hil[1] - 1))
+    return fis, hil, src
+
+
 def _strata_proposals(ctx, body=None):
     """Steps 1-3 as they stand: each proposal built on what the sheet has
     accepted so far, falling back to the earlier step's proposal."""
@@ -13991,7 +14047,12 @@ def _strata_proposals(ctx, body=None):
                                     _strata_ica_key(ctx, ref))
     except Exception:                                    # noqa: BLE001
         ica = None
-    s3 = stratamod.suggest_ml(n, p, fis_at, g1, g2, ica)
+    # Step 3 is cut between what is DECIDED: the fissure and the hilus as
+    # the sheet has them once Steps 1 and 2 are accepted (and anything
+    # moved by hand since), else those steps' proposals.
+    s3f, s3h, src = _strata_ml_bounds(ctx, nums, s1, s2, over)
+    s3 = stratamod.suggest_ml(n, p, s3f, s3h[0] if s3h else None,
+                              s3h[1] if s3h else None, ica, src)
     rip = None
     try:
         got = _strata_ripples(ctx, mk, ref)

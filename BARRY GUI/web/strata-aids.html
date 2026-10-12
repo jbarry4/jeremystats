@@ -23,7 +23,13 @@
 <link rel="stylesheet" href="app.css">
 <style>
   html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); }
-  body { font-family: var(--sans, system-ui, sans-serif); font-size: var(--fs-12); }
+  /* app.css holds the page still (html, body { overflow: hidden }), which
+     is right for the app and left this page with no way to scroll its
+     evidence (2026-10-12). The header stays put and the evidence scrolls
+     under it. */
+  body { font-family: var(--sans, system-ui, sans-serif); font-size: var(--fs-12);
+         display: flex; flex-direction: column; }
+  .sa-head { flex: none; }
   .sa-head {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     padding: 8px 12px; border-bottom: 2px solid var(--accent);
@@ -33,9 +39,10 @@
   .sa-sub { color: var(--text-3); }
   .sa-live { position: absolute; left: 0; right: 0; bottom: 0; border: 0;
              width: 100%; }
-  .sa-body { padding: 10px 12px 24px; display: none; }
+  .sa-body { padding: 10px 12px 24px; display: none; flex: 1 1 auto;
+             min-height: 0; overflow-y: auto; }
   body.steps .sa-body { display: block; }
-  body.steps .sa-live { visibility: hidden; }
+  body.steps .sa-live { visibility: hidden; pointer-events: none; }
   .sa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
              gap: 12px; }
   .sa-card { background: var(--bg-2); border: 1px solid var(--line);

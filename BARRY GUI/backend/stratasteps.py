@@ -1843,78 +1843,113 @@ def suggest_hilus(prof, params=None, fissure_at=None, overrides=None):
             "gcl_half_um": h}
 
 
-def suggest_ml(n, params=None, fissure_at=None, gcl1=None, gcl2=None,
-               ica=None):
-    """Step 3, Method A: the molecular layer in thirds.
+def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
+               ica=None, sources=None):
+    """Step 3, Method A: the molecular layers, between what is already
+    decided.
 
-    Two anchors bound the upper blade's molecular layer: the fissure on top,
-    the granule layer's upper edge below. Entorhinal and mossy-cell inputs
-    end in bands of about equal thickness, so the span is cut in three:
-    OML nearest the fissure, then MML, then IML against the granule layer.
-    The lower blade has no fissure to bound it, so its outer edge is the
-    upper blade's thickness times `lower_ml_scale` (1.0 unless changed) and
-    its lines start at 'guess'.
+    THE TWO ANCHORS ARE WHAT YOU ACCEPTED (2026-10-12). The fissure from
+    Step 1 and the hilus from Step 2 -- including anything you dragged
+    before accepting them -- bound the upper blade: from the fissure down
+    to the hilus's top edge is OML1, MML1, (IML1) and GCL1. The granule
+    layer takes its thickness (twice the half-thickness parameter) against
+    the hilus, and the molecular layer above it is cut in thirds -- OML
+    nearest the fissure. This used to recompute its own granule layers
+    from multiunit peaks, so accepting it threw away the hilus you had
+    just placed.
 
-    Method B (ICA) checks it: where a slow-gamma (LEC-like) component sinks
-    should be the OML, a fast one (MEC-like) the MML.
+    THE LOWER BLADE MIRRORS THE UPPER ONE. From the hilus's bottom edge
+    down the same distance (times `lower_ml_scale`, 1.0 unless changed):
+    GCL2 against the hilus, then (IML2), MML2, OML2. The HippoCompass mouse
+    atlas has the lower blade at about 0.9 of the upper (fissure -> hilus
+    275 um, hilus -> outer edge 250 um), so a mirror is a fair start and the
+    lines start at 'guess'. Below that is thalamus (`below_lower`: 'thal',
+    or 'none' to leave those channels alone).
+
+    `hil_top` is the first hilus row; `hil_end` the first row after it.
+    Method B (ICA) then checks the molecular layers: a slow-gamma (LEC-like)
+    component should sink in the OML, a fast one (MEC-like) in the MML.
     """
     params = params or {}
     s = float(params.get("spacing_um") or 20.0)
     species = params.get("species") or "mouse"
     h = float(params.get("gcl_half_um") or GCL_HALF_UM.get(species, 30.0))
     scale = float(params.get("lower_ml_scale") or LOWER_ML_SCALE)
+    use_iml = params.get("use_iml", True) not in (False, "false", 0, "0")
+    below = params.get("below_lower") or "thal"
     notes, lines, anchors = [], [], []
-    if fissure_at is None or gcl1 is None:
-        return {"step": 3, "lines": [], "anchors": [], "notes": [
-            "Method A needs the fissure (Step 1) and the upper granule layer "
-            "(Step 2) first."]}
-    F = (int(fissure_at) - 0.5) * s
-    G1 = int(gcl1) * s
-    L = G1 - h - F
-    if L <= s:
-        return {"step": 3, "lines": [], "anchors": [], "notes": [
-            "The fissure is within one contact of the granule layer's edge, "
-            "so there is no molecular layer to divide. Check Steps 1 and 2."]}
+    if fissure_at is None or hil_top is None:
+        return {"step": 3, "lines": [], "anchors": [], "use_iml": use_iml,
+                "below_lower": below, "notes": [
+                    "Method A needs the fissure (Step 1) and the hilus "
+                    "(Step 2) first."]}
+    fissure_at, hil_top = int(fissure_at), int(hil_top)
+    hil_end = int(hil_end) if hil_end is not None else n
+    F = (fissure_at - 0.5) * s
+    Ht = (hil_top - 0.5) * s
+    Hb = (hil_end - 0.5) * s
+    U = Ht - F
+    if U <= 2 * s:
+        return {"step": 3, "lines": [], "anchors": [], "use_iml": use_iml,
+                "below_lower": below, "notes": [
+                    "The fissure is within two contacts of the hilus, so "
+                    "there is no molecular layer to divide. Check Steps 1 "
+                    "and 2."]}
+    gcl = min(2.0 * h, U / 2.0)
+    L = U - gcl
     third = L / 3.0
-    up = [("ca1_slm", "dg_oml1", F), ("dg_oml1", "dg_mml1", F + third),
-          ("dg_mml1", "dg_iml1", F + 2 * third), ("dg_iml1", "dg_gcl1",
-                                                    G1 - h),
-          ("dg_gcl1", "hil", G1 + h)]
-    for a, b_, d in up:
-        lines.append(_line(a, b_, _rows_for_depth(d, s) if a != "ca1_slm"
-                           else int(fissure_at), "likely",
-                           "%.0f um below the fissure" % (d - F),
+    row = lambda d: _rows_for_depth(d, s)                     # noqa: E731
+    up = [("ca1_slm", "dg_oml1", fissure_at),
+          ("dg_oml1", "dg_mml1", row(F + third))]
+    if use_iml:
+        up += [("dg_mml1", "dg_iml1", row(F + 2 * third)),
+               ("dg_iml1", "dg_gcl1", row(Ht - gcl))]
+    else:
+        # The lab's own scheme: the inner third belongs to the MML.
+        up += [("dg_mml1", "dg_gcl1", row(Ht - gcl))]
+    up += [("dg_gcl1", "hil", hil_top)]
+    for a_, b_, at in up:
+        lines.append(_line(a_, b_, at, "likely",
+                           "between the accepted fissure and hilus",
                            "method_a"))
+    if src := (sources or {}):
+        notes.append("Cut between " + src.get("fissure", "the fissure")
+                     + " and " + src.get("hilus", "the hilus") + ".")
+
     out_edge = None
-    if gcl2 is not None and int(gcl2) > int(gcl1):
-        G2 = int(gcl2) * s
-        L2 = L * scale
-        low = [("hil", "dg_gcl2", G2 - h), ("dg_gcl2", "dg_iml2", G2 + h),
-               ("dg_iml2", "dg_mml2", G2 + h + L2 / 3.0),
-               ("dg_mml2", "dg_oml2", G2 + h + 2 * L2 / 3.0)]
-        for a, b_, d in low:
-            lines.append(_line(a, b_, _rows_for_depth(d, s), "guess",
-                               "lower blade, assumed as thick as the upper "
-                               "x %.2f" % scale, "method_a"))
-        out_edge = _rows_for_depth(G2 + h + L2, s)
+    if hil_end < n:
+        U2 = U * scale
+        L2 = max(0.0, U2 - gcl)
+        low = [("hil", "dg_gcl2", hil_end)]
+        if use_iml:
+            low += [("dg_gcl2", "dg_iml2", row(Hb + gcl)),
+                    ("dg_iml2", "dg_mml2", row(Hb + gcl + L2 / 3.0))]
+        else:
+            low += [("dg_gcl2", "dg_mml2", row(Hb + gcl))]
+        low += [("dg_mml2", "dg_oml2", row(Hb + gcl + 2 * L2 / 3.0))]
+        for a_, b_, at in low:
+            lines.append(_line(a_, b_, min(at, n), "guess",
+                               "lower blade, the upper mirrored x %.2f"
+                               % scale, "method_a"))
+        out_edge = min(n, row(Hb + U2))
         if out_edge < n:
-            lines.append(_line("dg_oml2", None, out_edge, "guess",
-                               "lower blade's outer edge (assumed)",
+            lines.append(_line("dg_oml2", "thal" if below == "thal" else None,
+                               out_edge, "guess",
+                               "below the lower blade" + (
+                                   ": thalamus" if below == "thal" else ""),
                                "method_a"))
     else:
-        notes.append("No lower granule layer, so the lower blade is not "
-                     "divided.")
+        notes.append("The hilus runs to the bottom of the probe, so there is "
+                     "no lower blade to divide.")
     thirds_um = round(third, 1)
+    G1_top_row = row(Ht - gcl)
 
     # Method B's votes, by blade.
     checks = []
     if ica and ica.get("components"):
-        fis_row = int(fissure_at)
-        g1_top = _rows_for_depth(G1 - h, s)
-        zones = [("upper", fis_row, g1_top)]
+        zones = [("upper", fissure_at, G1_top_row)]
         if out_edge is not None:
-            zones.append(("lower", _rows_for_depth(int(gcl2) * s + h, s),
-                          min(n, out_edge + 1)))
+            zones.append(("lower", row(Hb + gcl), min(n, out_edge + 1)))
         want = {"slow": "dg_oml", "fast": "dg_mml"}
         for blade, z0, z1 in zones:
             for kind in ("slow", "fast"):
@@ -1958,6 +1993,8 @@ def suggest_ml(n, params=None, fissure_at=None, gcl1=None, gcl2=None,
                         ln["below"] in ("dg_mml1", "dg_iml1"):
                     ln["confidence"] = "guess"
     return {"step": 3, "lines": lines, "anchors": anchors, "notes": notes,
+            "use_iml": use_iml, "below_lower": below,
+            "upper_blade_um": round(U, 1),
             "third_um": thirds_um, "upper_ml_um": round(L, 1),
             "gcl_half_um": h, "lower_ml_scale": scale, "ica_checks": checks}
 
