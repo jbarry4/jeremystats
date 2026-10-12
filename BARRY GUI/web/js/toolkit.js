@@ -206,8 +206,11 @@ BARRY.views.toolkit = (function () {
            the last two hand-kept entries and are now steps of The Lookout;
            they still appear here in source and correctly do not render. */
         toolButton('strata', 'StrataScope',
-                   'Say which anatomical layer each channel is in, against '
-                   + 'the live rasters rather than a cropped screenshot.'),
+                   'Say which anatomical layer each channel is in, in steps: '
+                   + 'Theta Walk, CA1, the hilus, then the molecular layer in '
+                   + 'thirds (Method A) checked by ICA gamma (Method B) — '
+                   + 'from evidence Jarvis measures, never from dentate '
+                   + 'spikes.'),
         toolButton('cfc', 'Braid',
                    'Band-resolved theta power and phase-amplitude coupling, '
                    + 'against the live recording. Looks only — nothing '
@@ -2732,6 +2735,27 @@ BARRY.views.toolkit = (function () {
   /* One sheet, as a card. The same shape as a curation set, because it is
      the same kind of thing: a pile of decisions about one recording that
      somebody is or is not working on. */
+  /* How far StrataScope's steps have got on a sheet, in one chip: signed
+     off, or which of 0-3 are accepted. Nothing for a sheet labelled by hand
+     only -- most of the shelf -- so the chip means something when it is
+     there. */
+  function stepsChip(sh) {
+    const st = (sh.strata || {});
+    if ((st.signed || {}).at) {
+      return el('span', { class: 'hk-chip', text: 'signed off',
+                          title: 'Signed off by ' + (st.signed.by || '?')
+                               + ' (v' + st.signed.v + ')' });
+    }
+    const steps = st.steps || {};
+    const done = ['0', '1', '2', '3'].filter(
+      (k) => (steps[k] || {}).status === 'done');
+    if (!done.length) return null;
+    return el('span', { class: 'hk-chip', text: 'steps ' + done.join(' ')
+                        + ' done',
+                        title: 'StrataScope steps accepted: '
+                             + done.join(', ') });
+  }
+
   function sheetCard(sh, onBench) {
     const pr = sh.progress || {};
     const done = pr.left === 0 && pr.total > 0;
@@ -2801,6 +2825,7 @@ BARRY.views.toolkit = (function () {
       title: nameCell(sh),
       chips: [
         el('span', { class: 'hk-chip', text: 'layers' }),
+        stepsChip(sh),
         sh.name && sh.session_label
           ? el('span', { class: 'cur-set-sess', text: sh.session_label }) : null,
         sh.archived ? el('span', { class: 'hk-chip', text: 'archived' }) : null,

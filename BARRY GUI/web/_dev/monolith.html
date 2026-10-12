@@ -2893,6 +2893,12 @@ window.MONO_FIXTURE = {
   check('one line counts the first-pass fits that open, and the checks', new RegExp('^' + passFirst + ' of \\d+ first-pass model fits change from Precon1 to Precon4').test(txt(D().getElementById('joesay'))),
         txt(D().getElementById('joesay')));
   check('a check (Noise vs Click) is said to be expected null', /expected null/.test(txt(D().querySelector('#joeanswer tr[data-model="c1"] th'))));
+  // A check that reaches p < .05 (A/B/C/D sees the planted cue-1 change) is
+  // said so, and never claims the follow-ups only first-pass models open.
+  const c3c = cell8('c3', 'theta', 'welch');
+  check('a check at p < .05 says so, not “follow-ups” (checks open nothing)', r8('c3', 'theta', 'welch').gate.passed && c3c.classList.contains('pass')
+        && txt(c3c.querySelector('.jgate')) === 'p < .05' && !Array.from(D().querySelectorAll('#joeanswer tr.check .jgate')).some((g) => /follow/.test(txt(g))),
+        c3c && txt(c3c));
   cell8('m4', 'gamma', 'dickson').click();
   await until(() => JO.state.band === 'gamma' && JO.state.method === 'dickson' && D().getElementById('jm-m4'), 40);
   const c4 = () => D().getElementById('jm-m4');
@@ -2958,7 +2964,7 @@ window.MONO_FIXTURE = {
   // Take it away.
   check('the SPSS zip and the script to download, every file listed', /\/api\/arc\/monolith\/joe\/file\/joe_tab8_spss\.zip$/.test(D().getElementById('joezip').getAttribute('href'))
         && D().querySelectorAll('#joeexports .jfiles li a').length === JOE.exports.length && JOE.exports.some((x) => /\.sps$/.test(x)), D().querySelectorAll('#joeexports .jfiles li a').length);
-  check('the script’s agreement said', /^Yes: \d+ files, every cell within 1e-6/.test(txt(D().querySelector('#joeagree .head'))), txt(D().getElementById('joeagree')));
+  check('the script’s agreement said', /^Yes: \d+ files, every cell within a millionth/.test(txt(D().querySelector('#joeagree .head'))), txt(D().getElementById('joeagree')));
   joePosted = [];
   D().getElementById('joescriptrun').click();
   await until(() => joePosted.length, 80);
@@ -2974,6 +2980,23 @@ window.MONO_FIXTURE = {
   await sleep(300);
   const jw8p = figWords(D().getElementById('joepane'));
   check('and drawn again there, no figure word cut or on another', jw8p.length === 0, jw8p.slice(0, 4).join(' | '));
+  // A phone: the answer table a model a row with its four cells under it
+  // (no scrolling inside it), and every picture drawn about as wide as its
+  // box, so no word in one is smaller than about 8.5 px on screen.
+  const ans8 = D().getElementById('joeanswer');
+  check('at 390 px the answer table fits its card, a model’s name over its four cells', ans8.scrollWidth <= ans8.parentElement.clientWidth + 1
+        && getComputedStyle(ans8.querySelector('tbody tr[data-model]')).display === 'grid', ans8.scrollWidth + ' in ' + ans8.parentElement.clientWidth);
+  const tiny8 = [];
+  for (const g of D().querySelectorAll('#joepane svg.jplot, #joepane svg.jstrip, #joepane svg.jtime, #joepane svg.jharm, #joepane svg.jfp')) {
+    const k = g.getBoundingClientRect().width / g.viewBox.baseVal.width;
+    for (const t of g.querySelectorAll('text')) {
+      const px = parseFloat(t.getAttribute('font-size')) * k;
+      if (px < 8.5 && txt(t)) tiny8.push(g.getAttribute('class').split(' ').pop() + ' “' + txt(t) + '” ' + px.toFixed(1) + ' px');
+    }
+  }
+  check('and every picture’s words at least 8.5 px there (the plot’s legend under it)', tiny8.length === 0
+        && Number(D().querySelector('#joepane svg.jplot text').closest('svg').querySelector('line[stroke-dasharray="5 3"]').getAttribute('y1')) > 178,
+        tiny8.slice(0, 4).join(' | '));
   if (STOP === 'joe') {
     const sa8 = new URLSearchParams(location.search);
     if (!sa8.get('phone')) f.style.width = '';

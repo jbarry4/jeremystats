@@ -134,6 +134,15 @@ def fake_monolith(work):
     MO.physical_build(man, summ, data, roles)
     from backend import narrow as NR
     NR.narrow_build(man, summ, data, roles)
+    # Tab 8, as worked out: the harness's made-up joe.json (written by
+    # tools/check_joe.py from made-up recordings), and a stand-in for each
+    # file it lists, so the copy has something to carry.
+    from backend import joe as JO
+    os.makedirs(JO.joe_dir("export"), exist_ok=True)
+    shutil.copyfile(os.path.join(APP, "web", "_dev", "joe_fixture.json"), JO.joe_dir("joe.json"))
+    for f in ["joe_tab8_spss.zip"] + list(JO.result().get("exports") or []):
+        with open(JO.joe_dir("export", f), "w", encoding="utf-8") as fh:
+            fh.write("stand-in for %s\n" % f)
     MO.save_manifest(man)
     MO.save_state(run=t, built={"rid": t["rid"], "at": MO.now_iso(),
                                 "artifact_id": "zz", "version": 1,
@@ -155,7 +164,8 @@ def build_checks(work, port):
             "js/static_adapter.js", "js/report.js",
             "js/monolith.js", "js/monolith_progress.js", "js/monolith_physical.js", "css/site.css",
             "data/summary.json", "data/damage.json", "data/review.json", "data/physical.json",
-            "data/narrow.json", "js/monolith_narrow.js", "js/monolith_explain.js", "js/monolith_joe.js"]
+            "data/narrow.json", "js/monolith_narrow.js", "js/monolith_explain.js", "js/monolith_joe.js",
+            "data/joe.json", "data/joe/joe_tab8_spss.zip", "data/joe/joe_standalone.py"]
     missing = [f for f in must if not os.path.isfile(os.path.join(out, f))]
     check("every file the site needs (%d)" % len(must), not missing, missing)
     pk = json.load(open(os.path.join(out, "package.json"), encoding="utf-8"))
@@ -319,6 +329,12 @@ def page_checks(work, site, S):
           re.search(r'id="tab-narrow"[^>]*aria-selected="true"', nr) is not None and 'id="naranswer"' in nr
           and 'id="narcorrecttbl"' in nr and 'class="mfig narcircuit"' in nr and 'id="narrowmake"' not in nr,
           re.findall(r"(?:Could not read|not in this copy)[^<]*", nr)[:2])
+    jo = dom("monolith.html#tab=joe")
+    check("tab 8 opens by its link, from the copy: the answer, the plots and the files to download, and nothing to run",
+          re.search(r'id="tab-joe"[^>]*aria-selected="true"', jo) is not None and 'id="joeanswer"' in jo
+          and 'class="mfig jplot"' in jo and re.search(r'id="joezip"[^>]*href="data/joe/joe_tab8_spss\.zip"', jo) is not None
+          and 'id="joemake"' not in jo and 'id="joescriptrun"' not in jo,
+          re.findall(r"(?:Could not read|not in this copy)[^<]*", jo)[:2])
     srv.shutdown()
 
 

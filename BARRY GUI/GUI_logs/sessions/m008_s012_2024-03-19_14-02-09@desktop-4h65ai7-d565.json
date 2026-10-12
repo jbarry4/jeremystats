@@ -1,0 +1,90 @@
+{
+  "_at": {
+    "created": "2026-10-12T13:29:26.137552+00:00",
+    "gid": "2026-10-12T13:29:26.137552+00:00",
+    "group": "2026-10-12T13:29:26.137552+00:00",
+    "key": "2026-10-12T13:29:26.137552+00:00",
+    "label": "2026-10-12T13:29:26.137552+00:00",
+    "loose_key": "2026-10-12T13:29:26.137552+00:00",
+    "mouse": "2026-10-12T13:29:26.137552+00:00",
+    "project": "2026-10-12T13:29:26.137552+00:00",
+    "project_source": "2026-10-12T13:29:26.137552+00:00",
+    "retired": "2026-10-12T13:29:26.137552+00:00",
+    "schema": "2026-10-12T13:29:26.137552+00:00",
+    "session": "2026-10-12T13:29:26.137552+00:00",
+    "start": "2026-10-12T13:29:26.137552+00:00",
+    "updated": "2026-10-12T13:31:59.971242+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-12T13:29:26.137552+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-12T13:29:26.137552+00:00"
+      ]
+    },
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s12-FP-mar19\\2024-03-19_14-02-09": [
+        "set",
+        "2026-10-12T13:31:59.971242+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T13:31:59.971242+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.10.09.4",
+    "at": "2026-10-12T09:29:26-04:00",
+    "commit": "2ec65512",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "sb8ab9ae6a7d5",
+  "group": null,
+  "key": "m008_s012_2024-03-19_14-02-09",
+  "label": "PTEN m8 s12 2024-03-19",
+  "loose_key": "m008_s012",
+  "mouse": 8,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M8_Pten\\m8s12-FP-mar19\\2024-03-19_14-02-09"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 12,
+  "start": "2024-03-19T18:02:09+00:00",
+  "updated": {
+    "app_version": "2026.10.09.4",
+    "at": "2026-10-12T09:31:59-04:00",
+    "commit": "2ec65512",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

@@ -2,7 +2,7 @@
 joe_standalone.py -- Joe's tab 8 numbers, from the recordings, with nothing
 from Jarvis.
 
-    python joe_standalone.py --inputs joe_inputs.json --out <folder>
+    python joe_standalone.py --inputs joe_inputs.json --out <folder> [--jobs 4]
 
 Needs only Python 3, numpy and scipy. It reads the Neuralynx recordings
 itself (.ncs channels, Events.nev), finds the cue pairs in the TTLs, decides
@@ -782,28 +782,46 @@ def write_models(values, inp, out):
                 say("wrote", name)
 
 
+def one_day(day, inp):
+    """day_values for one rat-day, an error as its note (a process each,
+    with --jobs)."""
+    try:
+        return day_values(day, inp), None
+    except Exception as exc:                              # noqa: BLE001
+        return None, str(exc)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--inputs", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--only", help="rat:day[,rat:day] for a quick check", default=None)
+    ap.add_argument("--jobs", type=int, default=1, help="rat-days at once (processes); the results do not depend on it")
     a = ap.parse_args()
     inp = json.load(open(a.inputs, encoding="utf-8"))
     os.makedirs(a.out, exist_ok=True)
     only = None
     if a.only:
         only = {(int(x.split(":")[0]), x.split(":")[1]) for x in a.only.split(",")}
+    todo = [day for day in inp["days"] if day["day"] in TESTED
+            and not (only and (int(day["rat"]), day["day"]) not in only)]
+    if a.jobs > 1:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=a.jobs) as ex:
+            futs = [ex.submit(one_day, day, inp) for day in todo]
+            got = []
+            for day, fu in zip(todo, futs):
+                got.append(fu.result())
+                say("r%d %s done" % (day["rat"], day["day"]))
+    else:
+        got = []
+        for day in todo:
+            say("r%d %s ..." % (day["rat"], day["day"]))
+            got.append(one_day(day, inp))
     values, notes = {}, []
-    for day in inp["days"]:
-        if day["day"] not in TESTED:
-            continue
-        if only and (int(day["rat"]), day["day"]) not in only:
-            continue
-        say("r%d %s ..." % (day["rat"], day["day"]))
-        try:
-            dv = day_values(day, inp)
-        except Exception as exc:                          # noqa: BLE001
-            notes.append("r%d %s: %s" % (day["rat"], day["day"], exc))
+    for day, (dv, err) in zip(todo, got):
+        if err is not None:
+            notes.append("r%d %s: %s" % (day["rat"], day["day"], err))
             continue
         values[(int(day["rat"]), day["day"])] = dv
         notes += ["r%d %s %s" % (day["rat"], day["day"], n) for n in dv["notes"]]

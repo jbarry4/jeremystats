@@ -3199,7 +3199,11 @@ BARRY.views.xplore = (function () {
      goes over as JSON in the query string: it is a handful of short objects,
      it never needs to be read by anything but the window it opens, and the
      alternative was inventing a shorthand for it. */
-  function popOutPanes(sess, specs, opts) {
+  /* The address of a window of panes, without opening it. StrataScope's aid
+     window frames the same four live panes this opens, and building the
+     query in two places is how two windows of one recording come to
+     disagree about which filters they were opened with. */
+  function paneUrl(sess, specs, opts) {
     const o = opts || {};
     const q = new URLSearchParams({
       csc: sess.path, t0: sess.t0.toFixed(4), span: sess.span.toFixed(4),
@@ -3215,10 +3219,14 @@ BARRY.views.xplore = (function () {
       chrome: o.chrome || 'notabs,noheads',
       role: o.role || 'aids',
     });
+    return location.origin + '/?' + q.toString() + '#xplore';
+  }
+
+  function popOutPanes(sess, specs, opts) {
+    const o = opts || {};
     const feat = 'width=' + (o.width || 760) + ',height=' + (o.height || 980)
                + ',menubar=no,toolbar=no';
-    const w = window.open(location.origin + '/?' + q.toString() + '#xplore',
-                          o.name || 'barry-aids', feat);
+    const w = window.open(paneUrl(sess, specs, o), o.name || 'barry-aids', feat);
     if (!w) {
       toast('The second window was blocked. Allow pop-ups for 127.0.0.1, '
             + 'then leave and re-enter this mode.', 'err', 9000);
@@ -10703,6 +10711,7 @@ BARRY.views.xplore = (function () {
     setChannelLines, channelLines,
     open: openSession,
     popOutPanes,
+    paneUrl,
     /* Whatever recording is on screen. Braid's `enter()` with no argument
        means "this one", which is what somebody already looking at a window
        and wanting a closer look is asking for. */

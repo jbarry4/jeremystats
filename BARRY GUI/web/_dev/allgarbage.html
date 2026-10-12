@@ -68,7 +68,7 @@ async function untilN(fn, tries = 300, gap = 100) {
 
     const posts = [];
     const real = W.fetch.bind(W);
-    const STUB = /^\/api\/curation\/[^/]+\/[^/]+\/open$|^\/api\/session\/state|^\/api\/activity|^\/api\/presence\//;
+    const STUB = /^\/api\/curation\/[^/]+\/[^/]+\/open$|^\/api\/session\/state|^\/api\/activity|^\/api\/presence\/|^\/api\/prefs/;
     W.fetch = (url, opts) => {
       const u = String(url);
       const method = ((opts && opts.method) || 'GET').toUpperCase();
@@ -123,6 +123,8 @@ async function untilN(fn, tries = 300, gap = 100) {
              && heaven.querySelector('.ag-halo')
              && heaven.querySelector('.ag-pillar .ag-capital')
              && heaven.querySelector('#agAllGarbage')));
+    check('the choir is singing -- opening the heavens no longer stops it',
+          W.eval('BARRY.allGarbage.playing()'));
     check('the PIN dialog is gone',
           !D().querySelector('#bigModal:not(.hidden) .ag-pin'));
     check('nothing has been decided yet', posts.length === 0, posts.length);
@@ -156,13 +158,27 @@ async function untilN(fn, tries = 300, gap = 100) {
       JSON.stringify(labelsNow()) === JSON.stringify(before), 50);
     check('to exactly what they were', !!restored);
 
+    head('how loud');
+    const lv = await W.eval('BARRY.allGarbage._measure(10)');
+    say('note', '  rendered offline: peak ' + (lv && lv.peak.toFixed(3))
+        + ', loudest half second RMS ' + (lv && lv.loudest.toFixed(3))
+        + ', overall RMS ' + (lv && lv.rms.toFixed(3)));
+    check('loud enough to hear: the loudest half second is above -24 dBFS',
+          !!lv && lv.loudest > 0.063, lv && lv.loudest);
+    check('and it does not clip', !!lv && lv.peak < 1.0, lv && lv.peak);
+
     head('Escape');
-    kh.isConnected || true;
     const kh2 = D().querySelector('#curBar .ag-keyhole');
     kh2.click();
     await untilN(() => digits().length === 6);
     type('696969');
     await untilN(() => D().getElementById('agHeaven'), 50);
+    posts.length = 0;
+    W.document.dispatchEvent(new W.KeyboardEvent('keydown',
+      { key: 'g', bubbles: true, cancelable: true }));
+    await sleep(150);
+    check('behind the heavens, the decision keys are not heard',
+          posts.length === 0, posts.length);
     W.document.dispatchEvent(new W.KeyboardEvent('keydown',
       { key: 'Escape', bubbles: true, cancelable: true }));
     await sleep(150);

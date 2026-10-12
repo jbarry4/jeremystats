@@ -49,6 +49,7 @@ from . import (aibeta as aibetamod,
                horizon as horizonmod,
                retime as retimemod,
                spectrum as spectrummod,
+               stratasteps as stratamod,
                device as devicemod,
                curation, discovery, eventbank, events, export, extras, ids,
                demo as demomod,
@@ -106,6 +107,7 @@ FEEDBACK = feedbackmod.Feedback(LOGS_DIR)
 # `rootcanal.register_stages`.
 rootcanal.register_stages(cfcmod)
 aibetamod.register_stages(cfcmod)
+stratamod.register_stages(cfcmod)
 cfcmod.configure(LOGS_DIR)
 # Whether a recording is one continuous block or several, keyed on the
 # reference file's size and mtime. A clean folder is decided by two records
@@ -113,6 +115,10 @@ cfcmod.configure(LOGS_DIR)
 # deep-check extra; the cache is what keeps a re-scan of the archive from
 # re-reading the ones that are not clean.
 continuitymod.configure(LOGS_DIR)
+# StrataScope's read of a recording: per-second band powers and a 1250 Hz
+# copy, kept in GUI_logs/.cache/strata (gitignored) so the steps can ask any
+# question of any stretch of the recording without reading it again.
+stratamod.configure(LOGS_DIR)
 # Where the cluster is, and who this machine is on it. Reads two JSON files
 # and nothing else -- no connection is made here, and none is ever made on
 # the path of a request. `vacc.loop` below keeps the answer worth reading.
@@ -13604,6 +13610,555 @@ def api_layers_export(gid):
     if saved:
         resp.headers["X-Barry-Output"] = saved["rel"]
     return resp
+
+
+# ==========================================================================
+# StrataScope's steps -- the evidence a layer is decided from
+# ==========================================================================
+# 0 Theta Walk, 1 CA1, 2 the hilus, 3 the molecular layer in thirds, 4 sign
+# off. The numbers come from backend/stratasteps.py; the decisions are kept
+# on the layer sheet (layers.py: strata_* fields). No dentate-spike evidence
+# is read anywhere in here -- see the top of stratasteps.py for why.
+
+STRATA_REFUSED_PROBES = {
+    "h10d": "StrataScope's steps are not developed for H10 probes yet: the "
+            "steps read depth down one column, and an H10-D steps across "
+            "three. Label this one by hand on the rail.",
+    "dewey32": "StrataScope's steps are not developed for the DEWEY 32 "
+               "montage: its channels are wires in separate structures, not "
+               "a column through the hippocampus.",
+}
+
+# Where the defaults come from. H3 contacts are 20 um apart, which is what
+# HippoCompass (Desktop/HippoCompass, PROBE_SPECS.H3) measures with; the
+# probe book's 50 um is the app's CSD default and is read by DS PCA, so it is
+# not changed under it -- the sheet carries its own spacing instead.
+STRATA_DEFAULT_PARAMS = {
+    "spacing_um": 20.0,
+    "species": "mouse",
+    "still_buffer_s": stratamod.STILL_BUFFER_S,
+    "sp_half_um": stratamod.SP_HALF_UM,
+    "gcl_half_um": None,            # by species unless set
+    "lower_ml_scale": stratamod.LOWER_ML_SCALE,
+    "ref_channel": None,            # CA1 pyramidal unless set
+}
+
+
+def _strata_context(gid, body, need_scan=True):
+    """Everything a steps route needs, from one place.
+
+    Returns (sess, ctx) where ctx carries the sheet, its steps' fields, the
+    parameters with defaults filled in, the bad channels (the recording's
+    own list, by CSC number), the channel order down the probe, and -- when
+    `need_scan` -- the loaded scan.
+    """
+    sess, err = _body_session(body)
+    if err:
+        raise stratamod.StrataError(err.get("error") or "Could not open the "
+                                    "recording.")
+    if vacciomod.is_vacc(sess.get("path")):
+        raise stratamod.StrataError(
+            "This recording is only on the cluster. StrataScope reads every "
+            "channel of the whole recording once, which needs a copy on this "
+            "computer.")
+    stored = _stored_for(sess)
+    probe_id = _probe_for(stored) or "h3"
+    if probe_id in STRATA_REFUSED_PROBES:
+        raise stratamod.StrataError(STRATA_REFUSED_PROBES[probe_id])
+    bad = sorted({int(b) for b in (stored.get("bad_channels") or [])})
+    rec = LAYERS.get(gid) or {}
+    st = LAYERS.strata_of(rec)
+    params = dict(STRATA_DEFAULT_PARAMS)
+    params.update({k: v for k, v in (st.get("params") or {}).items()
+                   if v is not None})
+    if not params.get("gcl_half_um"):
+        params["gcl_half_um"] = stratamod.GCL_HALF_UM.get(
+            params.get("species") or "mouse", 30.0)
+    nums = [int(c["number"]) for c in (sess.get("channels") or [])]
+    order = [int(c) for c in (body.get("channels") or rec.get("channels")
+                              or nums)]
+    if probe_id == "dual":
+        # The hippocampal array is CSC 1-64; the other 64 are in M2.
+        order = [c for c in order if 1 <= c <= probebook.DUAL_SIZE]
+    ctx = {"gid": gid, "stored": stored, "probe": probe_id, "bad": bad,
+           "rec": rec, "strata": st, "params": params, "order": order,
+           "states": st.get("states") or {}}
+    if need_scan:
+        ctx["bins"] = stratamod.load(gid)
+        ctx["order"] = [c for c in order if c in ctx["bins"].row]
+    return sess, ctx
+
+
+def _strata_fail(where, exc, gid):
+    if isinstance(exc, (stratamod.StrataError, layers.LayerError)):
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return fail("strata/" + where, exc, 400, {"gid": gid})
+
+
+def _strata_masks(ctx):
+    return stratamod.masks(ctx["bins"], ctx["states"], ctx["params"])
+
+
+def _masks_public(mk):
+    return {k: mk[k] for k in ("theta_all_time", "walk_s", "still_s",
+                                "all_s")}
+
+
+@app.route("/api/strata/<gid>/status", methods=["POST"])
+def api_strata_status(gid):
+    """Whether this recording has been read, and what a read would cost."""
+    body = request.get_json(force=True) or {}
+    try:
+        sess, ctx = _strata_context(gid, body, need_scan=False)
+        st = stratamod.status(gid, sess)
+        plan = stratamod.plan_for(sess, None)
+        out = {"ok": True, "status": st, "probe": ctx["probe"],
+               "params": ctx["params"], "bad": ctx["bad"],
+               "estimate_s": stratamod.estimate_seconds(plan),
+               "plan": stratamod.plan_public(plan)}
+        return jsonify(out)
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("status", exc, gid)
+
+
+@app.route("/api/strata/<gid>/scan", methods=["POST"])
+def api_strata_scan(gid):
+    """Read every channel once. Poll on /api/cfc/job/<id>."""
+    body = request.get_json(force=True) or {}
+    try:
+        sess, ctx = _strata_context(gid, body, need_scan=False)
+        st = stratamod.status(gid, sess)
+        if st.get("scanned") and st.get("current") and not body.get("force"):
+            return jsonify({"ok": True, "cached": True, "status": st})
+        rep_ = None
+        if sess.get("source") == "ncs":
+            rep_ = _incisor_report(sess["path"])
+        # A dual implant reads its hippocampal array only: the other 64
+        # contacts are in M2 and no step asks anything of them.
+        only = ctx["order"] if ctx["probe"] == "dual" else None
+        plan = stratamod.plan_for(sess, rep_, only)
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("scan", exc, gid)
+
+    spec = {"path": sess.get("path"), "gid": gid, "tool": "strata"}
+    steps = [(stratamod.STAGE_READ, plan["n_channels"])]
+
+    def work(job):
+        meta = stratamod.scan(sess, rep_, gid, job=job, workers=6,
+                              channels=only)
+        return {"status": stratamod.status(gid, sess), "meta": {
+            k: meta.get(k) for k in ("n_bins", "channels", "end_s",
+                                     "scanned_at", "lfp_fs")}}
+
+    job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    STORE.record_activity([{
+        "action": "strata.scan",
+        "detail": {"gid": gid, "channels": plan["n_channels"],
+                   "span_s": round(plan["span_s"], 1)},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "estimate_s": stratamod.estimate_seconds(plan)})
+
+
+@app.route("/api/strata/<gid>/guide", methods=["POST"])
+def api_strata_guide(gid):
+    """Step 0's strip: theta/delta, agreement, the finder's ghost bouts and
+    the 4-12 Hz spectrogram, across the whole recording."""
+    body = request.get_json(force=True) or {}
+    try:
+        _sess, ctx = _strata_context(gid, body)
+        g = stratamod.guide(ctx["bins"], ctx["bad"], dict(
+            ctx["params"], **(body.get("finder") or {})))
+        mk = _strata_masks(ctx)
+        return jsonify({"ok": True, "guide": g, "masks": _masks_public(mk),
+                        "states": ctx["states"],
+                        "wheel": ctx["strata"].get("wheel") or []})
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("guide", exc, gid)
+
+
+@app.route("/api/strata/<gid>/profile", methods=["POST"])
+def api_strata_profile(gid):
+    """The depth curves for the strip beside the rail."""
+    body = request.get_json(force=True) or {}
+    try:
+        _sess, ctx = _strata_context(gid, body)
+        mk = _strata_masks(ctx)
+        ref = body.get("ref", ctx["params"].get("ref_channel"))
+        pr = stratamod.profile(ctx["bins"], mk, ctx["order"], ctx["bad"], ref)
+        return jsonify({"ok": True, "profile": stratamod.profile_public(pr),
+                        "masks": _masks_public(mk), "params": ctx["params"],
+                        "bad": ctx["bad"]})
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("profile", exc, gid)
+
+
+def _strata_ripples(ctx, mk, channel):
+    p = {k: ctx["params"].get("ripple_" + k)
+         for k in stratamod.RIPPLE_DEFAULTS}
+    key = stratamod.derived_key("ripples", ctx["bins"].meta.get("stamp"),
+                                ctx["states"], ctx["params"].get(
+                                    "still_buffer_s"), int(channel), p)
+    hit = stratamod.derived_get(ctx["gid"], "ripples", key)
+    if hit is not None:
+        return hit
+    got = stratamod.detect_ripples(ctx["bins"], int(channel), mk, p)
+    return stratamod.derived_put(ctx["gid"], "ripples", key, got)
+
+
+def _strata_triggered(ctx, mk, kind, channel):
+    key = stratamod.derived_key("trig", kind, ctx["bins"].meta.get("stamp"),
+                                ctx["states"], ctx["params"], int(channel),
+                                ctx["order"], ctx["bad"])
+    hit = stratamod.derived_get(ctx["gid"], "trig-" + kind, key)
+    if hit is not None:
+        return hit
+    if kind == "ripple":
+        rip = _strata_ripples(ctx, mk, channel)
+        times = [e["t"] for e in rip.get("events") or []]
+        half = 100.0
+    else:
+        times = stratamod.theta_troughs(ctx["bins"], int(channel), mk)
+        half = 150.0
+    if not len(times):
+        raise stratamod.StrataError(
+            "No %s to average on channel %s." % (
+                "ripples" if kind == "ripple" else "theta troughs", channel))
+    tr = stratamod.triggered(ctx["bins"], times, ctx["order"], ctx["bad"],
+                             float(ctx["params"]["spacing_um"]),
+                             half_ms=half)
+    out = dict(stratamod.triggered_public(tr), kind=kind,
+               channel=int(channel))
+    return stratamod.derived_put(ctx["gid"], "trig-" + kind, key, out)
+
+
+def _strata_ref(ctx, mk, prof=None):
+    """The reference channel: what was chosen, else CA1 pyramidal."""
+    ref = ctx["params"].get("ref_channel")
+    if ref is not None and int(ref) in ctx["bins"].row:
+        return int(ref)
+    if prof is None:
+        prof = stratamod.profile(ctx["bins"], mk, ctx["order"], ctx["bad"])
+    s1 = stratamod.suggest_ca1(prof, ctx["params"])
+    r = s1["anchors"][0]["lead"]["row"]
+    return prof["channels"][r] if r is not None else prof["ref_channel"]
+
+
+@app.route("/api/strata/<gid>/ripples", methods=["POST"])
+def api_strata_ripples(gid):
+    body = request.get_json(force=True) or {}
+    try:
+        _sess, ctx = _strata_context(gid, body)
+        mk = _strata_masks(ctx)
+        ch = body.get("channel") or _strata_ref(ctx, mk)
+        return jsonify({"ok": True,
+                        "ripples": _strata_ripples(ctx, mk, int(ch))})
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("ripples", exc, gid)
+
+
+@app.route("/api/strata/<gid>/triggered", methods=["POST"])
+def api_strata_triggered(gid):
+    """Ripple- or theta-trough-triggered LFP and CSD, every channel."""
+    body = request.get_json(force=True) or {}
+    kind = "theta" if body.get("kind") == "theta" else "ripple"
+    try:
+        _sess, ctx = _strata_context(gid, body)
+        mk = _strata_masks(ctx)
+        ch = body.get("channel") or _strata_ref(ctx, mk)
+        return jsonify({"ok": True, "triggered": _strata_triggered(
+            ctx, mk, kind, int(ch)), "masks": _masks_public(mk)})
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("triggered", exc, gid)
+
+
+def _strata_ica_key(ctx, ref):
+    keep = {k: ctx["params"].get("ica_" + k)
+            for k in stratamod.ICA_DEFAULTS}
+    return stratamod.derived_key("ica", ctx["bins"].meta.get("stamp"),
+                                 ctx["states"], ctx["order"], ctx["bad"],
+                                 ctx["params"].get("spacing_um"), ref, keep)
+
+
+@app.route("/api/strata/<gid>/ica", methods=["POST"])
+def api_strata_ica(gid):
+    """Method B. Answers from the cache, or starts a job."""
+    body = request.get_json(force=True) or {}
+    try:
+        _sess, ctx = _strata_context(gid, body)
+        mk = _strata_masks(ctx)
+        # The same reference the proposals use: sp moved by hand counts.
+        sp_over = (body.get("overrides") or {}).get("sp")
+        if ctx["params"].get("ref_channel") is not None:
+            ref = int(ctx["params"]["ref_channel"])
+        elif sp_over is not None and 0 <= int(sp_over) < len(ctx["order"]):
+            ref = ctx["order"][int(sp_over)]
+        else:
+            ref = _strata_ref(ctx, mk)
+        key = _strata_ica_key(ctx, ref)
+        hit = stratamod.derived_get(gid, "ica", key)
+        if hit is not None and not body.get("force"):
+            return jsonify({"ok": True, "cached": True, "ica": hit})
+        if body.get("peek"):
+            return jsonify({"ok": True, "cached": False, "ica": None})
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("ica", exc, gid)
+    params = {k: ctx["params"].get("ica_" + k)
+              for k in stratamod.ICA_DEFAULTS}
+
+    def work(job):
+        out = stratamod.run_ica(ctx["bins"], mk, ctx["order"], ctx["bad"],
+                                float(ctx["params"]["spacing_um"]), ref,
+                                params, job)
+        return stratamod.derived_put(gid, "ica", key, out)
+
+    job = cfcmod.start({"path": body.get("path"), "gid": gid,
+                        "tool": "strata-ica"},
+                       [(stratamod.STAGE_ICA, len(ctx["order"]) + 3)], work,
+                       1.0)
+    STORE.record_activity([{"action": "strata.ica",
+                            "detail": {"gid": gid, "walk_s": mk["walk_s"]}}])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot()})
+
+
+def _strata_proposals(ctx, body=None):
+    """Steps 1-3 as they stand: each proposal built on what the sheet has
+    accepted so far, falling back to the earlier step's proposal."""
+    body = body or {}
+    mk = _strata_masks(ctx)
+    b = ctx["bins"]
+    prof = stratamod.profile(b, mk, ctx["order"], ctx["bad"],
+                             ctx["params"].get("ref_channel"))
+    n = len(prof["channels"])
+    nums = prof["channels"]
+    row_of = {c: i for i, c in enumerate(nums)}
+    p = ctx["params"]
+    over = {k: v for k, v in (body.get("overrides") or {}).items()
+            if v is not None}
+    # The reference -- the stopwatch the phase curve, the theta troughs and
+    # ICA's phase preference are all read against -- is CA1 pyramidal
+    # (decided 2026-10-09): the one set by hand, else wherever sp has been
+    # moved to, else Step 1's own sp. The profile is redrawn against it, so
+    # the phase curve and the proposal can never be about two different
+    # channels.
+    if p.get("ref_channel") is not None and int(p["ref_channel"]) in row_of:
+        ref = int(p["ref_channel"])
+    elif over.get("sp") is not None and 0 <= int(over["sp"]) < n:
+        ref = nums[int(over["sp"])]
+    else:
+        ref = _strata_ref(ctx, mk, prof)
+    if ref is not None and ref != prof.get("ref_channel"):
+        prof = stratamod.profile(b, mk, ctx["order"], ctx["bad"], ref)
+    rtr = ttr = None
+    for kind in ("ripple", "theta"):
+        try:
+            got = _strata_triggered(ctx, mk, kind, ref)
+            if kind == "ripple":
+                rtr = got
+            else:
+                ttr = got
+        except stratamod.StrataError:
+            pass
+    s1 = stratamod.suggest_ca1(prof, p, rtr, ttr, over)
+    anchors = ctx["strata"].get("anchors") or {}
+
+    def accepted_row(key):
+        c = anchors.get(key)
+        return row_of.get(int(c)) if c is not None and int(c) in row_of \
+            else None
+    fis_at = accepted_row("fissure_at")
+    if over.get("fissure_at") is not None:
+        fis_at = int(over["fissure_at"])
+    if fis_at is None:
+        fis_at = next((ln["at"] for ln in s1["lines"]
+                       if ln["below"] == "dg_oml1"), None)
+    s2 = stratamod.suggest_hilus(prof, p, fis_at, over)
+    g1 = over.get("gcl1") if over.get("gcl1") is not None \
+        else accepted_row("gcl1")
+    g2 = over.get("gcl2") if over.get("gcl2") is not None \
+        else accepted_row("gcl2")
+    if g1 is None:
+        g1 = s2["anchors"][0]["lead"]["row"]
+    if g2 is None:
+        g2 = s2["anchors"][1]["lead"]["row"]
+    ica = None
+    try:
+        ica = stratamod.derived_get(ctx["gid"], "ica",
+                                    _strata_ica_key(ctx, ref))
+    except Exception:                                    # noqa: BLE001
+        ica = None
+    s3 = stratamod.suggest_ml(n, p, fis_at, g1, g2, ica)
+    rip = None
+    try:
+        got = _strata_ripples(ctx, mk, ref)
+        rip = {k: got.get(k) for k in ("channel", "still_s", "rate_per_min",
+                                       "detector", "why")}
+        rip["n"] = len(got.get("events") or [])
+    except stratamod.StrataError:
+        pass
+    return {"profile": prof, "masks": mk, "ref": ref, "steps": {
+        "1": s1, "2": s2, "3": s3}, "channels": nums,
+        "ripple_tr": rtr, "theta_tr": ttr, "ica": ica, "ripples": rip}
+
+
+@app.route("/api/strata/<gid>/suggest", methods=["POST"])
+def api_strata_suggest(gid):
+    """What every step would propose right now, and the evidence for it."""
+    body = request.get_json(force=True) or {}
+    try:
+        _sess, ctx = _strata_context(gid, body)
+        got = _strata_proposals(ctx, body)
+        return jsonify({
+            "ok": True, "steps": got["steps"], "channels": got["channels"],
+            "ref_channel": got["ref"], "masks": _masks_public(got["masks"]),
+            "profile": stratamod.profile_public(got["profile"]),
+            "ripple_tr": got["ripple_tr"], "theta_tr": got["theta_tr"],
+            "ica_ready": got["ica"] is not None,
+            "ripples": got["ripples"],
+            "params": ctx["params"], "bad": ctx["bad"],
+        })
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("suggest", exc, gid)
+
+
+@app.route("/api/strata/<gid>/state", methods=["POST"])
+def api_strata_state(gid):
+    """Save Theta Walk, wheel times, parameters, confidences, anchors or
+    step status. `patch` uses the short names layers.STRATA_FIELDS has."""
+    body = request.get_json(force=True) or {}
+    try:
+        if not LAYERS.get(gid):
+            raise layers.LayerError("Open the recording in StrataScope first.")
+        rec = LAYERS.set_strata(gid, body.get("patch") or {})
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("state", exc, gid)
+    STORE.record_activity([{"action": "strata.state",
+                            "detail": {"gid": gid, "fields": sorted(
+                                (body.get("patch") or {}).keys())}}])
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+@app.route("/api/strata/<gid>/accept", methods=["POST"])
+def api_strata_accept(gid):
+    """Accept a step: write its labels, confidences and anchors, and mark it
+    done -- one write."""
+    body = request.get_json(force=True) or {}
+    step = str(body.get("step"))
+    if step not in ("0", "1", "2", "3"):
+        return jsonify({"ok": False, "error": "Which step?"}), 400
+    who = (PROFILE.effective() or {}).get("user")
+    patch = {
+        "steps": {step: {"status": "done", "at": time.strftime(
+            "%Y-%m-%dT%H:%M:%S%z"), "by": who,
+            "basis": body.get("basis")}},
+    }
+    if body.get("confidence"):
+        patch["confidence"] = body["confidence"]
+    if body.get("anchors"):
+        patch["anchors"] = body["anchors"]
+    if body.get("states") is not None:
+        patch["states"] = body["states"]
+    try:
+        rec = LAYERS.apply_step(gid, body.get("labels") or {}, patch)
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("accept", exc, gid)
+    STORE.record_activity([{"action": "strata.accept",
+                            "detail": {"gid": gid, "step": step,
+                                       "labels": len(body.get("labels")
+                                                     or {})}}])
+    return jsonify({"ok": True, "sheet": LAYERS.summary(rec)})
+
+
+def _strata_checks(ctx, got=None):
+    rec = LAYERS.get(ctx["gid"]) or {}
+    labels = rec.get("labels") or {}
+    nums = ctx["order"]
+    rows = {i: labels.get(str(c)) for i, c in enumerate(nums)
+            if labels.get(str(c))}
+    mk = _strata_masks(ctx)
+    rip = None
+    try:
+        rip = _strata_ripples(ctx, mk, _strata_ref(ctx, mk))
+    except stratamod.StrataError:
+        pass
+    ica = (got or {}).get("ica")
+    return stratamod.checks(rows, len(nums), ctx["params"]["spacing_um"],
+                            ctx["params"].get("species") or "mouse", ica,
+                            _masks_public(mk), rip)
+
+
+@app.route("/api/strata/<gid>/checks", methods=["POST"])
+def api_strata_checks(gid):
+    body = request.get_json(force=True) or {}
+    try:
+        _sess, ctx = _strata_context(gid, body)
+        return jsonify({"ok": True, "checks": _strata_checks(ctx)})
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("checks", exc, gid)
+
+
+@app.route("/api/strata/<gid>/signoff", methods=["POST"])
+def api_strata_signoff(gid):
+    """Step 4: run the checks, freeze the sheet as a version that carries
+    how it was decided, and say who signed it."""
+    body = request.get_json(force=True) or {}
+    try:
+        _sess, ctx = _strata_context(gid, body)
+        chk = _strata_checks(ctx)
+        who = (PROFILE.effective() or {}).get("user")
+        st = ctx["strata"]
+        extra = {"params": ctx["params"], "confidence": st.get("confidence"),
+                 "anchors": st.get("anchors"), "states": st.get("states"),
+                 "wheel": st.get("wheel"), "checks": chk}
+        rec = LAYERS.snapshot(gid, note=body.get("note") or
+                              "Signed off in StrataScope", by=who,
+                              extra=extra)
+        v = (rec.get("versions") or [{}])[-1].get("v")
+        rec = LAYERS.set_strata(gid, {
+            "checks": chk,
+            "signed": {"by": who, "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                       "v": v},
+            "steps": {"4": {"status": "done", "by": who,
+                            "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}},
+        })
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("signoff", exc, gid)
+    STORE.record_activity([{"action": "strata.signoff",
+                            "detail": {"gid": gid, "v": v,
+                                       "warnings": sum(1 for c in chk
+                                                       if not c["ok"])}}])
+    out = LAYERS.summary(rec)
+    out["versions"] = [dict(x) for x in (rec.get("versions") or [])]
+    return jsonify({"ok": True, "sheet": out, "checks": chk})
+
+
+@app.route("/api/strata/<gid>/export.json")
+def api_strata_export_json(gid):
+    """The sheet as JSON: labels, how they were decided, and by whom."""
+    rec = LAYERS.get(gid)
+    if not rec:
+        return jsonify({"ok": False, "error": "No layer sheet yet."}), 404
+    sess = _session_by_gid(gid) or {}
+    names = {r["id"]: r["name"] for r in layers.regions_for(rec)}
+    out = {
+        "gid": gid,
+        "session": {k: sess.get(k) for k in ("project", "mouse", "session",
+                                             "label", "date")},
+        "channels": [{"channel": int(c),
+                      "region": (rec.get("labels") or {}).get(str(int(c))),
+                      "region_name": names.get(
+                          (rec.get("labels") or {}).get(str(int(c))))}
+                     for c in LAYERS.covered(rec)],
+        "strata": LAYERS.strata_of(rec),
+        "created": rec.get("created"), "updated": rec.get("updated"),
+        "versions": [{k: v for k, v in x.items() if k != "snap"}
+                     for x in (rec.get("versions") or [])],
+        "exported_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
+    text = json.dumps(out, indent=1, default=str)
+    name = "strata_%s_%s.json" % (gid, time.strftime("%Y%m%d_%H%M%S"))
+    return Response(text, mimetype="application/json", headers={
+        "Content-Disposition": 'attachment; filename="%s"' % name})
 
 
 # ==========================================================================

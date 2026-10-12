@@ -67,8 +67,10 @@ async function untilN(fn, tries = 300, gap = 100) {
     }
     // The smallest that will do, on this computer's own disk: opening a
     // recording is the slow part, and a network share makes it slower.
+    // Undecided ones to walk through: a set already decided end to end
+    // opens on another pass, and the walk has nowhere to go.
     const target = sets.filter((s) => s.kind === 'ds' && here[s.gid]
-      && ((s.progress || {}).total || 0) >= 40 && !/demo|harness/i.test(s.gid))
+      && ((s.progress || {}).left || 0) >= 40 && !/demo|harness/i.test(s.gid))
       .sort((a, b) => (/^\\/.test(here[a.gid]) - /^\\/.test(here[b.gid]))
                       || a.progress.total - b.progress.total)[0];
     if (!target) { say('bad', 'no reachable DS set of 40 or more'); return; }
@@ -79,7 +81,7 @@ async function untilN(fn, tries = 300, gap = 100) {
     const labels = [];
     let saveDelay = 0, failSaves = false;
     const real = W.fetch.bind(W);
-    const STUB = /^\/api\/curation\/[^/]+\/[^/]+\/open$|^\/api\/session\/state|^\/api\/activity|^\/api\/presence\//;
+    const STUB = /^\/api\/curation\/[^/]+\/[^/]+\/open$|^\/api\/session\/state|^\/api\/activity|^\/api\/presence\/|^\/api\/prefs/;
     W.fetch = (url, opts) => {
       const u = String(url);
       const method = ((opts && opts.method) || 'GET').toUpperCase();
@@ -109,6 +111,10 @@ async function untilN(fn, tries = 300, gap = 100) {
     head('1  a held decision key decides once');
     check('curation opens', !!(await enter()));
     await sleep(500);
+    // From the start, whatever this set remembers: where a person (or the
+    // last run of this page) left off is not this page's starting point.
+    W.eval('BARRY.curate.goTo(0)');
+    await sleep(300);
     const before = state();
     key('g');
     for (let i = 0; i < 40; i++) { await sleep(30); key('g', true); }

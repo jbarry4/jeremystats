@@ -1014,6 +1014,13 @@ class Sync:
                 "archived": bool(rec.get("archived")),
                 "archived_at": cloud.ts(rec.get("archived_at")),
                 "archived_by": rec.get("archived_by"),
+                # StrataScope's steps (supabase/23_strata_steps.sql): how
+                # every line was decided, carried whole with the time it last
+                # changed. None for a sheet nobody has used the steps on, so
+                # the seventy-odd hand-labelled sheets add nothing to a push.
+                "strata": (self.layers.strata_of(rec)
+                           if rec.get("strata_updated") else None),
+                "strata_at": cloud.ts(rec.get("strata_updated")),
                 "created_at": cloud.ts(cr.get("at")) or cloud.now(),
                 "created_by": cr.get("user"),
                 "updated_at": stamp,
@@ -3026,6 +3033,15 @@ class Sync:
                     except Exception:                          # noqa: BLE001
                         pass
                     mine = self.layers.get(gid) or {}
+
+            # The steps' fields, whole, when the cloud's are newer -- and
+            # only then, or a pull would undo a confidence somebody set here
+            # a minute ago with the copy from before it.
+            if s.get("strata") and s.get("strata_at") and _newer_in(
+                    s.get("strata_at"), mine.get("strata_updated")):
+                self.layers.adopt_strata(gid, s["strata"], s["strata_at"])
+                mine = self.layers.get(gid) or {}
+                n += 1
 
             # The history, when this machine has less of it than the cloud.
             # Never the other way: a sheet that has been versioned here and
