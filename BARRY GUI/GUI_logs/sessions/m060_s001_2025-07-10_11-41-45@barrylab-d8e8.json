@@ -24,14 +24,14 @@
     "schema": "2026-09-04T15:57:01.904976+00:00",
     "session": "2026-09-04T15:57:01.904976+00:00",
     "start": "2026-09-04T15:57:01.904976+00:00",
-    "updated": "2026-10-08T15:37:41.426072+00:00",
-    "view_state": "2026-10-08T15:37:41.426072+00:00"
+    "updated": "2026-10-12T18:07:02.406259+00:00",
+    "view_state": "2026-10-12T18:07:02.406259+00:00"
   },
   "_keys": {
     "bookmarks": {
       "3c4d2236": [
-        "set",
-        "2026-09-12T23:53:58.969126+00:00"
+        "gone",
+        "2026-10-12T17:39:56.468284+00:00"
       ]
     },
     "paths": {
@@ -67,7 +67,7 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-08T15:25:48.145358+00:00"
+        "2026-10-12T17:08:32.059760+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
@@ -76,7 +76,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-08T15:37:41.426072+00:00",
+    "at": "2026-10-12T18:07:02.406259+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -84,23 +84,7 @@
     59
   ],
   "bad_channels_note": "Bad channels from the Toothy workbook.",
-  "bookmarks": [
-    {
-      "color": null,
-      "id": "3c4d2236",
-      "name": "More than 100ms offset",
-      "saved": {
-        "at": "2026-09-12T19:53:57-04:00",
-        "email": "rain.younger@uvm.edu",
-        "host": "BarryLab",
-        "machine": "Bluebarry",
-        "os": "Windows",
-        "user": "Rain Younger"
-      },
-      "span": 1,
-      "t": 2073.898810709838
-    }
-  ],
+  "bookmarks": [],
   "condition": "base",
   "converted": true,
   "created": {
@@ -155,7 +139,7 @@
       "scan": null
     },
     "barrylab-d8e8": {
-      "at": "2026-10-08T11:25:46-04:00",
+      "at": "2026-10-12T13:08:30-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\PTENDKOM60\\m60s1jul10\\2025-07-10_11-41-45",
@@ -174,9 +158,9 @@
   "session": 1,
   "start": "2025-07-10T11:41:45",
   "updated": {
-    "app_version": "2026.10.07.7",
-    "at": "2026-10-08T11:37:41-04:00",
-    "commit": "07c4708b",
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T14:07:02-04:00",
+    "commit": "3bb42430",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
@@ -232,7 +216,7 @@
     "spacing": 50,
     "span": 0.8,
     "stft_mode": null,
-    "t0": 11.397984,
+    "t0": 2415.1914666666667,
     "ylim": null
   }
 }

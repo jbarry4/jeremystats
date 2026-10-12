@@ -1,16 +1,16 @@
 {
   "_at": {
-    "added": "2026-10-12T13:59:36.749801+00:00",
-    "aligned": "2026-10-12T13:59:36.749801+00:00",
-    "by_label": "2026-10-12T13:59:36.749801+00:00",
+    "added": "2026-09-09T02:03:42.549977+00:00",
+    "aligned": "2026-10-12T14:06:40.352739+00:00",
+    "by_label": "2026-10-12T14:06:40.352739+00:00",
     "curation_label": "2026-10-12T13:59:36.749801+00:00",
     "duration_s": "2026-10-12T13:59:36.749801+00:00",
-    "events": "2026-10-12T13:59:36.749801+00:00",
+    "events": "2026-10-12T14:06:40.352739+00:00",
     "gid": "2026-10-12T13:59:36.749801+00:00",
     "id": "2026-10-12T13:59:36.749801+00:00",
     "label_names": "2026-10-12T13:59:36.749801+00:00",
     "mouse": "2026-10-12T13:59:36.749801+00:00",
-    "n": "2026-10-12T13:59:36.749801+00:00",
+    "n": "2026-10-12T14:06:40.352739+00:00",
     "name": "2026-10-12T13:59:36.749801+00:00",
     "note": "2026-10-12T13:59:36.749801+00:00",
     "project": "2026-10-12T13:59:36.749801+00:00",
@@ -60,6 +60,10 @@
         "set",
         "2026-10-08T17:59:07.651476+00:00"
       ],
+      "br-7771a2f62c": [
+        "set",
+        "2026-10-12T14:06:40.352739+00:00"
+      ],
       "br-f9dd839676": [
         "set",
         "2026-10-06T14:22:25.277004+00:00"
@@ -103,7 +107,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-12T13:59:36.749801+00:00",
+    "at": "2026-10-12T14:06:40.352739+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -113,7 +117,7 @@
     "machine": "DESKTOP-4H65AI7"
   },
   "aligned": {
-    "at": "2026-09-22T15:21:09-04:00",
+    "at": "2026-10-12T10:06:40-04:00",
     "band": [
       5.0,
       100.0
@@ -122,8 +126,6 @@
     "cand_dist_ms": 12.0,
     "cand_height_sd": 0.0,
     "channels": [
-      28,
-      29,
       30,
       31,
       32,
@@ -139,7 +141,9 @@
       42,
       43,
       44,
-      45
+      45,
+      46,
+      47
     ],
     "csd_smooth": true,
     "dist_ms": 100.0,
@@ -154,735 +158,57 @@
     "n_channels": 16,
     "order": 3,
     "profile": {
-      "29": -0.014793,
-      "30": -0.05837,
-      "31": 0.094324,
-      "32": 0.350792,
-      "33": 0.384776,
-      "34": 0.291464,
-      "35": 0.339843,
-      "36": 0.433744,
-      "37": 0.394226,
-      "38": 0.046403,
-      "39": -0.190081,
-      "40": -0.149999,
-      "41": -0.228087,
-      "42": -0.204885,
-      "43": -0.112914,
-      "44": -0.069586
+      "31": 0.097197,
+      "32": 0.362765,
+      "33": 0.388341,
+      "34": 0.26203,
+      "35": 0.315356,
+      "36": 0.43789,
+      "37": 0.41171,
+      "38": 0.071345,
+      "39": -0.140993,
+      "40": -0.123256,
+      "41": -0.243636,
+      "42": -0.197858,
+      "43": -0.088722,
+      "44": -0.04812,
+      "45": 0.075102,
+      "46": 0.155851
     },
     "screened": {
-      "59": "dead (0.5 uV against a median of 58)"
+      "59": "dead (0.5 uV against a median of 69)"
     },
     "smooth_ms": 0.0,
-    "source_version": 2,
-    "source_version_id": "ccec6580c698",
+    "source_version": null,
+    "source_version_id": null,
     "spacing_um": 30.0,
     "tool": "jarvis.braces/1",
-    "version": 3,
+    "version": 7,
     "window_ms": 100.0
   },
   "by_label": {
-    "garbage": 136,
-    "spike": 4
+    "Dentate Spike": 4
   },
   "curation_label": "*",
   "duration_s": null,
   "events": [
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 79.996533
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 159.50907
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 160.622063
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 185.512918
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 187.866904
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 189.750893
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 192.672876
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 192.858875
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 311.454183
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 313.68617
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 314.958163
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 458.625325
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 532.900892
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 535.948874
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 554.291767
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 557.840746
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 596.153523
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 596.54352
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 642.88125
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 660.359148
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 660.953145
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 715.457827
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 715.603826
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 715.724825
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 747.42164
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 754.059602
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 754.216601
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 764.172543
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 935.721542
-    },
-    {
+      "from_t": 937.72853,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 937.72853
+      "start": 937.701727
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 942.308504
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 942.496502
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 943.210498
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 943.258498
-    },
-    {
+      "from_t": 956.523421,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 956.523421
+      "start": 956.527384
     },
     {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 967.046359
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 967.399357
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 970.088341
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 970.819337
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 971.414334
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 985.83525
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 990.220224
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 992.334212
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1106.525546
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1110.144525
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1110.381523
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1112.062513
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1174.40215
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1195.786025
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1199.115006
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1201.897989
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1306.35938
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1325.056271
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1330.095242
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1376.231972
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1388.501901
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1402.33782
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1433.22364
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1433.846636
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1434.94163
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1454.891514
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1500.379248
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1500.546247
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1501.88824
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1539.676019
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1542.523003
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1544.110993
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1544.917989
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1545.440985
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1549.78496
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1555.892925
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1556.205923
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1556.832919
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1560.419898
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1564.492874
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1565.830867
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1569.255847
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1569.403846
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1569.562845
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1570.072842
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1571.682832
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1573.484822
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1573.85382
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1574.139818
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1576.271806
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1576.479804
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1576.802803
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1576.994801
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1584.637757
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1589.994726
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1590.142725
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1595.036696
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1598.719675
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1602.055655
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1602.189654
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1602.601652
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1605.967632
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1609.86361
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1610.003609
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1611.978597
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1613.22459
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1617.104567
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1619.834552
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1620.318549
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1620.451548
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1622.138538
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1622.970533
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1626.678512
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1635.682459
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1637.23345
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1637.405449
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1638.89944
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1639.213439
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1639.401437
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1640.61243
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1640.74943
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1641.128427
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1641.954423
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1649.26838
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1654.093352
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1654.711348
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1664.775289
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1665.986282
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1670.206258
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1680.319199
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1730.742905
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1773.768654
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1830.555322
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1846.599229
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1906.996877
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1935.309711
-    },
-    {
+      "from_t": 1940.248683,
       "label": "Dentate Spike",
       "label_id": "spike",
-      "start": 1940.248683
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1942.076672
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 1954.241601
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 2081.140861
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 2117.079651
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 2136.545538
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 2151.974448
-    },
-    {
-      "label": "Garbage",
-      "label_id": "garbage",
-      "start": 2179.149289
+      "start": 1940.250241
     },
     {
       "label": "Dentate Spike",
@@ -947,7 +273,7 @@
     "spike": "Dentate Spike"
   },
   "mouse": 51,
-  "n": 140,
+  "n": 4,
   "name": "PTEN m51 s1 2025-04-08  \u00b7  Incisor CSC23\u2013CSC58",
   "note": "",
   "project": "PTEN",
@@ -3792,6 +3118,118 @@
         ]
       ],
       "v": 6
+    },
+    {
+      "aligned": {
+        "band": [
+          5.0,
+          100.0
+        ],
+        "cand_dist_ms": 12.0,
+        "cand_height_sd": 0.0,
+        "channels": [
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47
+        ],
+        "csd_smooth": true,
+        "dist_ms": 100.0,
+        "estimator": "mad",
+        "flagged": {},
+        "invert": true,
+        "left_out": [
+          59
+        ],
+        "lfp_fs": 1000.0,
+        "line_hz": 60.0,
+        "measure": "csd",
+        "n_channels": 16,
+        "n_moved": 3,
+        "n_unmoved": 137,
+        "order": 3,
+        "order_held": true,
+        "profile": {
+          "31": 0.097197,
+          "32": 0.362765,
+          "33": 0.388341,
+          "34": 0.26203,
+          "35": 0.315356,
+          "36": 0.43789,
+          "37": 0.41171,
+          "38": 0.071345,
+          "39": -0.140993,
+          "40": -0.123256,
+          "41": -0.243636,
+          "42": -0.197858,
+          "43": -0.088722,
+          "44": -0.04812,
+          "45": 0.075102,
+          "46": 0.155851
+        },
+        "resorted": 0,
+        "screened": {
+          "59": "dead (0.5 uV against a median of 69)"
+        },
+        "shift_max_ms": 3.963,
+        "shift_median_ms": 3.963,
+        "shift_min_ms": -26.803,
+        "smooth_ms": 0.0,
+        "source_version": null,
+        "source_version_id": null,
+        "spacing_um": 30.0,
+        "tool": "jarvis.braces/1",
+        "window_ms": 100.0
+      },
+      "at": "2026-10-12T10:06:40-04:00",
+      "by": "Rain Younger",
+      "by_label": {
+        "Dentate Spike": 4
+      },
+      "changed": 0,
+      "from_id": "e15cc7aecb39",
+      "from_v": 6,
+      "gained": 0,
+      "id": "br-7771a2f62c",
+      "lost": 0,
+      "machine": "BarryLab",
+      "moves": {},
+      "n": 4,
+      "note": "Aligned to the mean magnitude over 16 channels, \u00b1100 ms. 3 stamp(s) moved by -26.8 to 4.0 ms; 137 left where they were. No labels changed.",
+      "shifted": 3,
+      "snap": [
+        [
+          937.701727,
+          "spike"
+        ],
+        [
+          956.527384,
+          "spike"
+        ],
+        [
+          1940.250241,
+          "spike"
+        ],
+        [
+          2179.810285,
+          "spike"
+        ]
+      ],
+      "v": 7
     }
   ]
 }
