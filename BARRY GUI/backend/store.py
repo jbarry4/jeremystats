@@ -82,6 +82,10 @@ PREFS_SPEC = {
     # rig turning the mode off would replace the whole map and the laptop's
     # entry would vanish on its next pull.
     "vacc": shards.MAPLWW,
+    # Whether the name is shown (web/js/jarvis.js), keyed by hostname for the
+    # same reason again -- and start.py reads it to keep the name out of the
+    # terminal on a machine where it is hidden.
+    "jarvis": shards.MAPLWW,
 }
 
 # Settings that describe this screen rather than this project. Merging them

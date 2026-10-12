@@ -30,7 +30,7 @@ this one deliberately is not that. Five rules, each of which narrows when a
 cached answer can possibly be seen:
 
 1. **The window is opened by the launcher and by nothing else.** `arm()` is
-   called from start.py -- from "Wake up Jarvis" -- and from nowhere in the
+   called from start.py -- from "Activate Jarvis" -- and from nowhere in the
    request path. A server started by the harness suite, by vacc_run, or by
    an `import backend.app` in a script never serves a cached byte, so no
    test is ever measuring the cache when it means to measure the store.

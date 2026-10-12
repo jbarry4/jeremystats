@@ -9026,7 +9026,13 @@ BARRY.views.xplore = (function () {
       BARRY.spotter.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
     }
     if (BARRY.strata && BARRY.strata.draw) {
-      BARRY.strata.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+      /* With the lanes this pane drew, as the early paint above passes
+         them: one lane per TICKED channel. Without them the overlay laid
+         every channel of the recording over the drawn lanes, so with the
+         even channels ticked each band sat on a lane twice its width
+         (web/_dev/strataalign.html). */
+      BARRY.strata.draw(ctx, sess, win, padL, plotW, padTop, plotH, P,
+                        { rows: win.series.map((x) => ({ number: x.number })) });
     }
     /* The Arc's two verify modes share one drawing function -- they differ
        in what they highlight, not in how they reach the canvas. */
@@ -10786,6 +10792,43 @@ BARRY.views.xplore = (function () {
        under the pointer. `null` hands it back. */
     grabTime: (hooks) => { XF.grabTime = hooks || null; },
     fillPanes,
+    /* Repaint what is loaded, in every kind of pane -- the traces, and on a
+       raster its grid, bands, marks and StrataScope's lines -- with no
+       fetch. `redraw` only knows the traces, so a line dragged in
+       StrataScope moved on the traces and stayed put on a CSD in the same
+       window (2026-10-12). */
+    repaint: (index) => {
+      for (let i = 0; i < XF.nPanes; i++) {
+        if (index === undefined || i === index) redrawGeometry(i);
+      }
+    },
+    /* Where a pane's channel lanes are on screen, whichever panel it shows:
+       the traces' plot box, or a raster's image. Client pixels, measured
+       off the canvas the lanes were drawn on, plus the channel numbers in
+       lane order. StrataScope's rail is laid on exactly this, so a row is
+       on its lane by construction rather than by two layouts agreeing
+       (2026-10-12: the rail assumed every channel and an 8/22 px inset,
+       and drifted off a raster or a partial selection). */
+    laneRows: (index) => {
+      const pane = XF.panes[index == null ? 0 : index];
+      if (!pane) return null;
+      if (pane.panel === 'traces') {
+        const g = pane._geom, c = pane._canvas;
+        if (!g || !c || !c.isConnected || !g.labels || !g.labels.length) {
+          return null;
+        }
+        const r = c.getBoundingClientRect();
+        return { kind: 'traces', top: r.top + g.top,
+                 height: r.height - g.top - g.padBottom,
+                 numbers: g.labels.slice() };
+      }
+      const res = pane._panelData, c = pane._grid;
+      const rows = res && res.rows;
+      if (!c || !c.isConnected || !rows || !rows.length) return null;
+      const r = c.getBoundingClientRect();
+      return { kind: pane.panel, top: r.top, height: r.height,
+               numbers: rows.map((x) => x.number) };
+    },
     state: XF,
     refreshAll,
     render,

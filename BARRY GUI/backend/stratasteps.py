@@ -1736,7 +1736,7 @@ def suggest_ca1(prof, params=None, ripple_tr=None, theta_tr=None,
         sp_sr = min(n, sp_row + half + 1)
         lines.append(_line("ca1_so", "ca1_sp", so_sp, sp["confidence"],
                            "sp centre minus half its thickness", "sp"))
-        lines.append(_line("ca1_sp", "ca1_sr", sp_sr, sp["confidence"],
+        lines.append(_line("ca1_sp", "ca1_rad", sp_sr, sp["confidence"],
                            "sp centre plus half its thickness", "sp"))
         if f_at is not None and f_at > sp_sr:
             sr_slm = sp_sr + int(round(SR_FRACTION * (f_at - sp_sr)))
@@ -1770,7 +1770,7 @@ def suggest_ca1(prof, params=None, ripple_tr=None, theta_tr=None,
                           "the gamma bands and the sharp-wave sink vote.")
             _override(srs, over.get("sr_slm"))
             anchors.append(srs)
-            lines.append(_line("ca1_sr", "ca1_slm", srs["lead"]["row"],
+            lines.append(_line("ca1_rad", "ca1_slm", srs["lead"]["row"],
                                "guess" if not srv else srs["confidence"],
                                "between sp and the fissure", "sr_slm"))
     if f_at is not None:

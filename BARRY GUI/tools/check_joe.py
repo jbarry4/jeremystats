@@ -62,9 +62,13 @@ DUR = FIRST + N_TRIALS * TRIAL_EVERY + 30.0
 FP_DUR = 200.0
 T0_US = 1_000_000_000.0
 CODE = {"Click": 124, "Noise": 122, "High": 118, "Low": 110}
+# One FP recording whose clock breaks 6 s in for 0.6 s, as J3 Precon1's FP2
+# does: every snippet after it must still be found and measured (Spark once
+# looked for them by arithmetic and threw them all away).
+CLOCK_BREAK = ((6, "Precon1", "FP2"), 6.0, 0.6)
 
 
-def write_ncs(path, x_uv, chan, fs=FS_RAW, t0_us=T0_US):
+def write_ncs(path, x_uv, chan, fs=FS_RAW, t0_us=T0_US, gap=None):
     head = ("######## Neuralynx Data File Header\n-FileType CSC\n-AcqEntName CSC%d\n"
             "-SamplingFrequency %.4f\n-ADBitVolts %.24f\n-ADMaxValue 32767\n") % (chan, fs, ADBV)
     raw = head.encode("latin-1")
@@ -73,7 +77,10 @@ def write_ncs(path, x_uv, chan, fs=FS_RAW, t0_us=T0_US):
     n = nlx.SAMPLES_PER_RECORD
     nrec = counts.size // n
     rec = np.zeros(nrec, dtype=nlx.RECORD_DTYPE)
-    rec["timestamp"] = np.round(t0_us + np.arange(nrec) * (n / fs * 1e6)).astype(np.uint64)
+    ts = t0_us + np.arange(nrec) * (n / fs * 1e6)
+    if gap:                                              # (at s, for s): the clock jumps, as J3 Precon1's FP2 does
+        ts[ts >= t0_us + gap[0] * 1e6] += gap[1] * 1e6
+    rec["timestamp"] = np.round(ts).astype(np.uint64)
     rec["channel"] = chan
     rec["freq"] = int(round(fs))
     rec["nvalid"] = n
@@ -162,8 +169,9 @@ def make_rat_day(root, rat, day, rng):
             s = shared(rng, nf, 5.0, 12.0, 10.0)
             Y[4] += s
             Y[5] += s
+        gap = CLOCK_BREAK[1:] if (rat, day, role) == CLOCK_BREAK[0] else None
         for i, y in enumerate(Y):
-            write_ncs(os.path.join(f, "CSC%d.ncs" % (i + 1)), y, i + 1)
+            write_ncs(os.path.join(f, "CSC%d.ncs" % (i + 1)), y, i + 1, gap=gap)
         fps.append((role, f))
     units = [{"id": "p%02d" % (i + 1), "pair_id": i + 1, "cue_type": tr["cue_type"],
               "pair": {"pair_id": i + 1, "opener_t": tr["opener_t"], "closer_t": tr["closer_t"], "offset_t": tr["offset_t"]},
@@ -222,6 +230,12 @@ def main():
     check("FP snippets: as many as the trials, 10 s and 20 s, inside FP1 and FP2 and 10 s from their ends",
           len(meta["fp"]["fp10"]) == N_TRIALS and len(meta["fp"]["fp20"]) == N_TRIALS
           and all(10.0 <= s["t0"] and s["t1"] <= FP_DUR - 10.0 for s in meta["fp"]["fp20"]), meta["fp"]["fp20"][:2])
+    a6, fp6, meta6 = day_data[CLOCK_BREAK[0][:2]]
+    after = [i for i, s in enumerate(meta6["fp"]["fp20"]) if s["rec"] == CLOCK_BREAK[0][2]]
+    check("an FP recording whose clock breaks: every snippet after the break measured (%d of them), none lost" % len(after),
+          after and not [n for n in meta6["notes"] if "snippet" in n]
+          and all(np.isfinite(fp6["fp20"]["coh"][0, i]).all() for i in after),
+          [n for n in meta6["notes"] if "snippet" in n][:2])
     check("the FP snippets are the same every time (seeded)",
           joe.fp_random(meta["fp_recordings"], N_TRIALS, 20.0, joe.fp_seed(4, "Precon1", 20.0))
           == [(s["rec"], s["t0"], s["t1"]) for s in meta["fp"]["fp20"]], meta["fp_recordings"])

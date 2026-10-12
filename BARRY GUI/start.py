@@ -1,8 +1,8 @@
 """
 Jarvis -- launcher.
 
-Windows: double-click "Wake up Jarvis.bat"
-macOS:   double-click "Wake up Jarvis.command"
+Windows: double-click "Activate Jarvis.bat" (or its .lnk, which has the icon)
+macOS:   double-click "Activate Jarvis.command"
 Either:  python start.py
 
 Starts the local server and opens your browser. Nothing is installed and
@@ -96,6 +96,47 @@ def _greeting():
     return "Good evening."
 
 
+def _name_hidden():
+    """Has this machine been told to keep the name out of sight?
+
+    The switch is in the interface (web/js/jarvis.js) and is stored the way
+    the theme is: a map keyed by hostname in the shared preferences, merged
+    per key, newest stamp wins. Read straight off the shard files rather
+    than through the store, because the banner is printed before the
+    dependencies are checked and must not import anything that needs them.
+    Any trouble reading is "not hidden", which is the default.
+    """
+    import glob
+    import json
+    import platform
+    host = platform.node()
+    newest, hidden = "", False
+    pattern = os.path.join(HERE, "GUI_logs", "prefs", "workbench@*.json")
+    for path in glob.glob(pattern):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                shard = json.load(fh)
+            op, at = ((shard.get("_keys") or {}).get("jarvis") or {}).get(host)[:2]
+        except (OSError, ValueError, AttributeError, TypeError):
+            continue
+        if at and at > newest:
+            newest = at
+            hidden = (op == "set"
+                      and (shard.get("jarvis") or {}).get(host) is False)
+    return hidden
+
+
+def _console_title(text):
+    """Retitle the console window; the .bat names it before Python starts."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetConsoleTitleW(text)
+    except Exception:                              # noqa: BLE001
+        pass
+
+
 def banner():
     """The thing the window opens with."""
     art = BLOCK if _fits(BLOCK) else PLAIN
@@ -103,12 +144,18 @@ def banner():
     cyan, dim, bold, off = (("\033[38;5;45m", "\033[38;5;245m",
                              "\033[1m", "\033[0m")
                             if tint else ("", "", "", ""))
+    # Hidden on this machine: no wordmark, and the window is not called
+    # Jarvis either. The interface has the switch that brings both back.
+    hidden = _name_hidden()
+    if hidden:
+        _console_title("Workbench")
     lines = [""]
     lines.append("  " + dim + "Hello. " + off + bold + _greeting() + off)
     lines.append("")
-    for row in art.strip("\n").splitlines():
-        lines.append("  " + cyan + row + off)
-    lines.append("")
+    if not hidden:
+        for row in art.strip("\n").splitlines():
+            lines.append("  " + cyan + row + off)
+        lines.append("")
     lines.append("  " + dim
                  + "a workbench for the recordings on this machine" + off)
     return "\n".join(lines)

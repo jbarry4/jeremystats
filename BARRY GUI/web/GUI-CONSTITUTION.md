@@ -174,6 +174,24 @@ Opt-in **per surface**. The six that opt in are enumerated in `app.css` under
 *"the six surfaces that opt in"*. A new surface joins that list deliberately
 or not at all; the mode is not a filter over everything.
 
+### The name and the mark
+
+The name can be switched off (`js/jarvis.js`), and while it is, the page is
+rewritten as it is drawn: every text node, `title`, `placeholder`,
+`aria-label` and `alt` saying **Jarvis** becomes "the workbench", and
+`alert`/`confirm`/`prompt` are wrapped. So write the name in a string the
+ordinary way — no flag to check. Three things it cannot reach:
+
+- **Text painted onto a canvas.** Do not paint the name; put it in the DOM.
+- **Lower case.** `jarvis` is left alone on purpose, because it is a file or
+  a key (`jarvis.ico`, scope `'jarvis'`). The name in prose is capitalised.
+- **Text that must keep it** (the reveal's own lettering): mark the element
+  `data-jarvis-keep`.
+
+Never draw the mark yourself. `BARRY.jarvis.markSvg(colours, detail)` draws
+it for every surface, and `tools/make_icons.py` writes the static files from
+the same function.
+
 ---
 
 ## 5. Waiting, empty, and wrong

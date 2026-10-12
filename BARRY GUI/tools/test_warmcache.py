@@ -1,7 +1,7 @@
 """
 test_warmcache.py -- Prove the warm start cannot show you a stale answer.
 
-The warm cache exists to make "Wake up Jarvis" fast: the three roll-ups that
+The warm cache exists to make "Activate Jarvis" fast: the three roll-ups that
 take five seconds each from cold are answered out of last boot's file while
 the real ones are recomputed behind the page. That trade is only acceptable
 because of the rules that bound it, so this checks the rules rather than the

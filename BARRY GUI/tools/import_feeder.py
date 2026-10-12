@@ -86,8 +86,8 @@ EXTRA_REGIONS = [
 ]
 
 LOCATION_TO_REGION = {
-    "CA1": "ca1_sr",          # the vocabulary's ca1_sr is named "CA1"
-    "CA1 SR": "ca1_sr",
+    "CA1": "ca1_sr",          # the placeholder: in CA1, layer not decided
+    "CA1 SR": "ca1_rad",      # stratum radiatum (2026-10-12)
     "CA1 SP": "ca1_sp",
     "CA1 SO": "ca1_so",
     "CA1 SLM": "ca1_slm",

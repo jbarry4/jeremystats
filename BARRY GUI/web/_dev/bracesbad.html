@@ -167,11 +167,77 @@ async function until(fn, ms, what) {
   eq('the bar counts the ones the registry can actually reach',
      claimed, reachable);
 
+  head('THE SETTINGS, IN MANY TOO (THE RUN INTERCEPTED; NOTHING IS READ)');
+  /* One set could change the window and many could not: a bulk run sent
+     the one-set panel's value without showing it. */
+  const st0 = () => ev('BARRY.braces._state().q');
+  const winWas = st0().window_ms;
+  const winIn = () => D().querySelector('.br-bulk .br-window');
+  ok('the window is in the many-sets card, showing the value a run will use',
+     !!winIn() && Number(winIn().value) === Number(winWas),
+     winIn() ? winIn().value + ' vs ' + winWas : 'missing');
+  ok('and so is what it is measured on',
+     D().querySelectorAll('.br-bulk .br-measure button').length === 2
+     && !!D().querySelector('.br-bulk .br-measure button.active'));
+  const winWant = Number(winWas) === 150 ? 120 : 150;
+  winIn().value = String(winWant);
+  winIn().dispatchEvent(new Event('change', { bubbles: true }));
+  await until(() => winIn() && Number(winIn().value) === winWant, 5000, 'the window');
+  eq('changed there, it is the setting', Number(st0().window_ms), winWant);
+  ev('(function(){ var W = window; if (W.__brbFetch) return; W.__brbFetch = W.fetch;'
+     + ' W.__brbSent = []; W.fetch = function(u, o) {'
+     + ' if (String(u).indexOf("/api/braces/run") >= 0) {'
+     + '   W.__brbSent.push(JSON.parse((o && o.body) || "{}"));'
+     + '   return Promise.resolve(new Response(JSON.stringify({ ok: false,'
+     + '     error: "harness: not read" }), { status: 400,'
+     + '     headers: { "Content-Type": "application/json" } })); }'
+     + ' return W.__brbFetch.apply(this, arguments); }; })()');
+  try {
+    const box = [...D().querySelectorAll('.br-bulk-row input[type=checkbox]')]
+      .find((b) => !b.disabled);
+    ok('a set that can be read here is there to tick', !!box);
+    if (box) {
+      box.click();
+      await until(() => [...D().querySelectorAll('.br-bulk-bar .btn')]
+        .some((b) => /^Align 1 set$/.test(b.textContent) && !b.disabled),
+        5000, 'the Align button');
+      [...D().querySelectorAll('.br-bulk-bar .btn')]
+        .find((b) => /^Align 1 set$/.test(b.textContent)).click();
+      await until(() => JSON.parse(ev('JSON.stringify(window.__brbSent)')).length
+                        && D().querySelector('.br-bulk-row.failed'),
+                  9000, 'the run');
+      const sent = JSON.parse(ev('JSON.stringify(window.__brbSent)'));
+      ok('a many-sets run reads every set with the window set there',
+         sent.length === 1 && Number(sent[0].window_ms) === winWant
+         && sent[0].measure === st0().measure, JSON.stringify(sent));
+      ok('and the refused read is said on its row',
+         /harness: not read/.test((D().querySelector('.br-bulk-row.failed .st')
+                                    || {}).textContent || ''));
+    }
+  } finally {
+    ev('(function(){ var W = window; if (W.__brbFetch) { W.fetch = W.__brbFetch;'
+       + ' delete W.__brbFetch; } })()');
+    // Put back what this changed: the ticks, and the window.
+    const clr = [...D().querySelectorAll('.br-bulk-bar .btn.ghost')]
+      .find((b) => b.textContent === 'Clear');
+    if (clr) clr.click();
+    await sleep(150);
+    if (winIn()) {
+      winIn().value = String(winWas);
+      winIn().dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    await sleep(150);
+  }
+  eq('the window is back as it was found', Number(st0().window_ms),
+     Number(winWas));
+
   say('');
   say(fail ? (fail + ' FAILED, ' + pass + ' ok')
            : ('all ' + pass + ' checks passed'), fail ? 'bad' : 'ok');
   document.title = fail ? ('bracesbad: ' + fail + ' FAILED')
                         : ('bracesbad: ' + pass + ' ok');
+  // Unloaded, or the app's polling keeps the runner waiting.
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
 })().catch((e) => {
   say('the harness itself threw: ' + (e && e.message), 'bad');
   document.title = 'bracesbad: harness threw';

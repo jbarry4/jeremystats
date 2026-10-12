@@ -68,7 +68,7 @@ const untilN = async (fn, n) => {
   ck('a sheet can be made', !!(started && started.sheet),
      started && started.error);
   await post('/api/layers/' + gid + '/set',
-    { labels: { 3: 'ca1_sp', 4: 'ca1_sp', 5: 'ca1_sr' } });
+    { labels: { 3: 'ca1_sp', 4: 'ca1_sp', 5: 'ca1_rad' } });
   let sheet = (await get('/api/layers/' + gid)).sheet;
   const labelled0 = (sheet.progress || {}).labelled;
   p('  labelled: ' + labelled0 + ' of ' + (sheet.progress || {}).total);

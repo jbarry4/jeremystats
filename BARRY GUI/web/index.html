@@ -8,6 +8,19 @@
      file rather than an inline copy: two copies of one mark drift the
      first time either is edited. -->
 <link rel="icon" type="image/svg+xml" href="img/jarvis.svg">
+<!-- The name, hidden on this machine (js/jarvis.js). The tab's title and
+     icon are on screen before any script below has run, so they are the
+     two this has to settle here; jarvis.js takes over from the first frame
+     it controls. -->
+<script>
+  try {
+    if (localStorage.getItem('barry.jarvis') === 'off') {
+      document.documentElement.dataset.jarvis = 'off';
+      document.title = 'Workbench';
+      document.querySelector('link[rel="icon"]').href = 'img/workbench.svg';
+    }
+  } catch (e) { /* private window: the name shows, which is the default */ }
+</script>
 <link rel="stylesheet" href="app.css">
 <!-- The boot overlay's own styles, inline and before app.css, so the first
      paint has them. Deliberately duplicating a few colours rather than using
@@ -92,6 +105,9 @@
     text-transform: uppercase;
   }
   :root[data-theme="light"] .boot-name { color: #2d3b45; }
+  /* Hidden on this machine: the stand-in, from the first paint. */
+  :root[data-jarvis="off"] .boot-name { font-size: 0; }
+  :root[data-jarvis="off"] .boot-name::after { content: "Workbench"; font-size: 13px; }
   .boot-what { font-size: 11px; opacity: .8; min-height: 1.6em; }
   /* A track that fills rather than a spinner: a spinner says "busy", a bar
      that moves says "getting somewhere", and this is a sequence of known
@@ -183,26 +199,12 @@
   <!-- ================= LEFT RAIL ================= -->
   <nav id="rail">
     <div class="brand">
-      <!-- The mark, not a letter. Inline so it can take the theme's
-           own colours; the same path the favicon and the desktop
-           icon are drawn from. -->
-      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-        <defs>
-          <!-- Light at the top, dark at the bottom. One rect and no filter,
-               and it is the difference between a badge and a swatch. -->
-          <linearGradient id="bmSheen" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#fff" stop-opacity=".20"/>
-            <stop offset=".55" stop-color="#fff" stop-opacity=".04"/>
-            <stop offset="1" stop-color="#000" stop-opacity=".12"/>
-          </linearGradient>
-        </defs>
-        <rect class="bm-ground" width="32" height="32" rx="8"/>
-        <rect width="32" height="32" rx="8" fill="url(#bmSheen)"/>
-        <!-- A dentate spike: rest, a small pre-deflection, one sharp spike,
-             its after-wave, rest. A letter was tried twice and dropped — a
-             flat baseline with a peak on it reads as a capital A. -->
-        <path class="bm-trace" d="M4.5 19.4 H10.2 L11.5 21 L13.5 6.3 L15.8 19.4 L18 15.3 L20.2 19.4 H27.5"/>
-      </svg>
+      <!-- The mark: a power symbol whose stroke is a dentate spike. Drawn
+           into this box by js/jarvis.js in the theme's own colours -- the
+           same function that draws the tab icon, the reveal and the desktop
+           icon. Empty here because the boot overlay covers the rail until
+           the script has filled it. -->
+      <span class="brand-mark" aria-hidden="true"></span>
       <div class="brand-text">
         <strong>Jarvis</strong>
         <span class="brand-line">
@@ -312,6 +314,14 @@
           <span id="syncLabel">Sync</span>
         </button>
       </div>
+      <!-- Only while the name is hidden: the way back, and the reveal that
+           comes with it (js/jarvis.js). The theme picker has the same
+           switch both ways. -->
+      <button class="chip-btn jv-activate hidden" id="jarvisActivate"
+              title="Bring the name and logo back">
+        <svg viewBox="0 0 20 20"><path d="M6.2 5.6a6.2 6.2 0 1 0 7.6 0"/><path d="M10 2.5v7"/></svg>
+        <span>Activate</span>
+      </button>
       <button class="chip-btn" id="tourBtn" title="Show me around">
         <svg viewBox="0 0 20 20"><path d="M10 3 2 7l8 4 8-4z"/><path d="M5 9v4c0 1.7 2.2 3 5 3s5-1.3 5-3V9"/></svg>
         <span>Guide</span>
@@ -757,6 +767,7 @@
 </div>
 
 <script src="js/core.js"></script>
+<script src="js/jarvis.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/stash.js"></script>
 <script src="js/syncstate.js"></script>

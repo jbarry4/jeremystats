@@ -612,33 +612,7 @@ BARRY.braces = (function () {
     const set = el('div', { class: 'card' });
     set.appendChild(el('div', { class: 'section-label',
                                 text: 'Settings' }));
-    set.appendChild(el('div', { class: 'br-fields' }, [
-      el('div', { class: 'br-field' }, [
-        el('label', { text: 'Measured on' }),
-        el('div', { class: 'seg sm' }, [
-          ['csd', 'CSD'],
-          ['voltage', 'Voltage'],
-        ].map(([id, label]) => el('button', {
-          class: q.measure === id ? 'active' : '',
-          title: id === 'csd'
-            ? 'The current source density across depth — the part of '
-              + 'the signal that cannot be volume-conducted'
-            : 'The magnitude of the filtered voltage, which is what the '
-              + 'detectors these stamps came from were run on',
-          onclick: () => { if (q.measure === id) return;
-                           q.measure = id; render(); },
-          text: label,
-        }))),
-        el('span', { class: 'br-hint', text: '5–100 Hz either way' }),
-      ]),
-      field('Window ±ms', el('input', {
-        type: 'number', step: '10', min: '5', value: String(q.window_ms),
-        onchange: (e) => {
-          q.window_ms = Math.max(5, parseFloat(e.target.value) || 100);
-          render();
-        },
-      }), 'how far a stamp may move'),
-    ]));
+    set.appendChild(settingsFields(false));
     if (plan && plan.ok) set.appendChild(channelPicker());
     set.appendChild(el('p', { class: 'hint', text:
       (q.measure === 'csd'
@@ -746,6 +720,44 @@ BARRY.braces = (function () {
     }
     box.appendChild(grid);
     return box;
+  }
+
+  /* What the read is measured on, and how far a stamp may move. ONE pair of
+     settings for one set and for many: a bulk run always sent these, but
+     could neither show nor change them, so "many" read at ±100 ms unless
+     somebody had changed it in the one-set panel first (2026-10-12).
+     `lock` while a bulk run is going -- the queue already has its values. */
+  function settingsFields(lock) {
+    const off = lock ? 'disabled' : null;
+    return el('div', { class: 'br-fields' }, [
+      el('div', { class: 'br-field' }, [
+        el('label', { text: 'Measured on' }),
+        el('div', { class: 'seg sm br-measure' }, [
+          ['csd', 'CSD'],
+          ['voltage', 'Voltage'],
+        ].map(([id, label]) => el('button', {
+          class: q.measure === id ? 'active' : '',
+          disabled: off,
+          title: id === 'csd'
+            ? 'The current source density across depth — the part of '
+              + 'the signal that cannot be volume-conducted'
+            : 'The magnitude of the filtered voltage, which is what the '
+              + 'detectors these stamps came from were run on',
+          onclick: () => { if (q.measure === id) return;
+                           q.measure = id; render(); },
+          text: label,
+        }))),
+        el('span', { class: 'br-hint', text: '5–100 Hz either way' }),
+      ]),
+      field('Window ±ms', el('input', {
+        type: 'number', step: '10', min: '5', value: String(q.window_ms),
+        class: 'br-window', disabled: off,
+        onchange: (e) => {
+          q.window_ms = Math.max(5, parseFloat(e.target.value) || 100);
+          render();
+        },
+      }), 'how far a stamp may move'),
+    ]);
   }
 
   function field(label, input, hint) {
@@ -951,6 +963,13 @@ BARRY.braces = (function () {
         'One read after another, leaving a proposal per entry. Nothing is '
         + 'banked \u2014 every set still has to be reviewed.' }),
     ]));
+    /* The same settings as one set, for every set in the queue. */
+    const sets = el('div', { class: 'br-bulk-settings' }, [settingsFields(bulk.running)]);
+    sets.appendChild(el('span', { class: 'br-hint', text: 'Every set in '
+      + 'this run is read with these, and its proposal records them. They '
+      + 'are the one-set panel\u2019s too: changing them here changes them '
+      + 'there.' }));
+    card.appendChild(sets);
 
     const ready = cands.filter(bulkReady);
     const bar = el('div', { class: 'br-bulk-bar' });
@@ -1200,6 +1219,8 @@ BARRY.braces = (function () {
     if (!queue.length || bulk.running) return;
     bulk.running = true;
     bulk.stop = false;
+    // The settings as they stood when the run was asked for, for every set.
+    const conf = { measure: q.measure, window_ms: q.window_ms };
     for (const c of queue) bulk.state[c.id] = { state: 'queued',
                                                 msg: 'waiting' };
     render();
@@ -1216,8 +1237,8 @@ BARRY.braces = (function () {
         const started = await apiPost('/api/braces/run', {
           entry_id: c.id,
           from_version: bulk.pick[c.id] || null,
-          measure: q.measure,
-          window_ms: q.window_ms,
+          measure: conf.measure,
+          window_ms: conf.window_ms,
         });
         const id = (started.job || {}).id;
         if (!id) throw new Error('the read did not start');

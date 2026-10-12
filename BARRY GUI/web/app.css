@@ -1328,27 +1328,201 @@ code { font-family: var(--mono); }
 }
 .brand { display: flex; align-items: center; gap: var(--sp-10); padding: 2px 6px 0; }
 .brand-mark {
-  /* The mark itself, at rail size. No gradient and no letter: the shape
-     carries its own rounded square, and nesting that inside a second one
-     with a different fill was two badges deep. The glow stays -- it is what
-     lifts the badge off the rail. */
+  /* The mark itself, at rail size. The SVG inside is drawn by
+     `BARRY.jarvis.markSvg` in the theme's own colours -- the same function
+     that draws the tab icon and the desktop icon -- so this box only sizes
+     it and carries the light it throws on the rail. */
   width: 30px; height: 30px; flex: none; display: block;
   border-radius: var(--r-8);
   box-shadow: 0 2px 10px var(--accent-soft);
 }
-/* Coloured from the theme, like `paintFavicon` does, so the badge in the
-   rail and the icon in the tab are the same mark in the same light. */
-.brand-mark .bm-ground { fill: var(--accent); }
-.brand-mark .bm-trace {
-  fill: none; stroke: var(--on-accent, #FFB81C); stroke-width: 2.9;
-  stroke-linecap: round; stroke-linejoin: round;
-}
+.brand-mark svg { display: block; width: 100%; height: 100%; }
+/* Hidden, the badge is a plain tile and throws no light. */
+:root[data-jarvis="off"] .brand-mark { box-shadow: none; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
 .brand-text strong { font-size: var(--fs-14); letter-spacing: 0.03em; }
 .brand-text span {
   font-size: var(--fs-105); color: var(--text-3);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* ==========================================================================
+   The name: hidden, and the reveal that brings it back (js/jarvis.js)
+
+   Colour inside the badges comes from `markSvg`, which resolves the theme's
+   accent pair; everything around the reveal's badge -- the name, the burst,
+   the wave -- is `--accent`, which is legible on every theme's own ground.
+   ========================================================================== */
+/* The badge lands. The reveal's mark flies into the rail and this one takes
+   over from it, with the flash the flight ended on. */
+.brand-mark.jv-await { opacity: 0; }
+.brand-mark.jv-landed { animation: jvLanded 820ms var(--ease-out); }
+@keyframes jvLanded {
+  0%   { transform: scale(1.16);
+         box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent),
+                     0 0 26px var(--accent); }
+  100% { transform: scale(1);
+         box-shadow: 0 0 0 14px transparent, 0 2px 10px var(--accent-soft); }
+}
+
+/* The way back, and only while the name is hidden. It breathes, because it
+   is the one button somebody is about to be asked to press. */
+.chip-btn.jv-activate {
+  position: relative;
+  border-color: var(--accent-line); color: var(--accent);
+}
+.chip-btn.jv-activate:hover { background: var(--accent-soft); color: var(--accent); }
+.chip-btn.jv-activate::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit;
+  box-shadow: 0 0 12px var(--accent-soft), inset 0 0 8px var(--accent-soft);
+  opacity: 0; pointer-events: none;
+  animation: jvBreathe 2.8s ease-in-out infinite;
+}
+@keyframes jvBreathe { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+
+/* The switch in the theme picker. Its pill is the swatch's size, so it
+   lines up with the column of swatches above it. */
+.theme-opt.jv-opt {
+  border-top: 1px solid var(--line-soft); border-radius: 0;
+  margin-top: 3px; padding-top: 8px;
+}
+.theme-opt.jv-opt.on { background: transparent; color: var(--text-2); }
+.theme-opt.jv-opt:hover { background: var(--bg-3); color: var(--text); }
+.jv-pill {
+  width: 26px; height: 14px; border-radius: 7px; flex: none; position: relative;
+  background: var(--bg-3); border: 1px solid var(--line);
+  transition: background .2s ease, border-color .2s ease;
+}
+.jv-pill::after {
+  content: ''; position: absolute; top: 1px; left: 1px;
+  width: 10px; height: 10px; border-radius: 50%; background: var(--text-3);
+  transition: transform .2s var(--ease-out), background .2s ease;
+}
+.jv-opt.on .jv-pill { background: var(--accent-soft); border-color: var(--accent-line); }
+.jv-opt.on .jv-pill::after { transform: translateX(12px); background: var(--accent); }
+
+/* The names on the page, as they decode back in. */
+::highlight(jarvis-reveal) { color: var(--accent); background-color: var(--accent-soft); }
+::highlight(jarvis-glow) { color: var(--accent); }
+
+/* The reveal. Built by `playReveal`, removed by a timer whatever the
+   animations are doing. Timings are the script's `T`; the two must move
+   together, and both are multiplied by `--jv-pace`. */
+.jv-reveal {
+  /* One pace for the whole sequence: 2 plays it at half speed. The script
+     reads the same property for its own timers, so the two cannot drift. */
+  --jvp: var(--jv-pace, 1);
+  position: fixed; inset: 0; z-index: 9000;
+  display: grid; place-items: center; cursor: pointer;
+}
+.jv-scrim {
+  position: absolute; inset: 0; opacity: 0;
+  background: radial-gradient(circle at 50% 45%,
+      color-mix(in srgb, var(--accent) 16%, var(--bg)) 0%,
+      color-mix(in srgb, var(--bg) 94%, transparent) 58%);
+  transition: opacity calc(320ms * var(--jvp)) var(--ease-out);
+}
+.jv-reveal.go .jv-scrim { opacity: 1; }
+.jv-reveal.fly .jv-scrim { opacity: 0; transition-duration: calc(560ms * var(--jvp)); }
+.jv-stage {
+  position: relative; display: flex; flex-direction: column;
+  align-items: center; gap: var(--sp-16, 16px);
+}
+.jv-big { width: 168px; height: 168px; position: relative; z-index: 1; }
+.jv-reveal.fly .jv-big {
+  transition: transform calc(560ms * var(--jvp)) cubic-bezier(.7, 0, .25, 1),
+              opacity calc(400ms * var(--jvp)) ease;
+}
+.jv-big svg {
+  display: block; width: 100%; height: 100%; overflow: visible;
+  border-radius: 25%; opacity: 0; transform: scale(.82);
+}
+.jv-reveal.go .jv-big svg { animation: jvIn calc(420ms * var(--jvp)) var(--ease-out) forwards; }
+@keyframes jvIn { to { opacity: 1; transform: scale(1); } }
+
+/* Inside the badge: the tile warms, the ring draws round, the dial turns
+   in, and the spike fires out of the flatline. */
+/* A gap longer than the path and an offset one past it: with `100 / 100`
+   the hidden dash still ends exactly at the path's start, and its round cap
+   draws a dot there before anything has fired. */
+.jv-big .jm-ring, .jv-big .jm-trace { stroke-dasharray: 100 120; stroke-dashoffset: 101; }
+.jv-big .jm-glow, .jv-big .jm-core, .jv-big .jm-ticks, .jv-big .jm-spark { opacity: 0; }
+.jv-big .jm-ticks { transform-box: view-box; transform-origin: 16px 17.6px; }
+.jv-big .jm-spark { transform-box: fill-box; transform-origin: center; }
+.jv-reveal.go .jm-dormant { animation: jvOut calc(420ms * var(--jvp)) ease calc(240ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-ring { animation: jvDraw calc(520ms * var(--jvp)) var(--ease-out) calc(240ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-ticks { animation: jvDial calc(760ms * var(--jvp)) var(--ease-out) calc(300ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-flat { animation: jvOut calc(160ms * var(--jvp)) ease calc(760ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-trace { animation: jvDraw calc(260ms * var(--jvp)) cubic-bezier(.5, 0, .3, 1) calc(720ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-glow { animation: jvGlow calc(900ms * var(--jvp)) ease calc(760ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-core { animation: jvGlow calc(900ms * var(--jvp)) ease calc(760ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-spark { animation: jvSpark calc(520ms * var(--jvp)) var(--ease-out) calc(940ms * var(--jvp)) forwards; }
+@keyframes jvDraw { to { stroke-dashoffset: 0; } }
+@keyframes jvOut  { from { opacity: 1; } to { opacity: 0; } }
+@keyframes jvDial {
+  from { opacity: 0; transform: rotate(-50deg); }
+  to   { opacity: 1; transform: rotate(0); }
+}
+@keyframes jvGlow { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: 1; } }
+@keyframes jvSpark {
+  0%   { opacity: 0; transform: scale(0); }
+  45%  { opacity: 1; transform: scale(2.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* The flash when the spike fires, and the wave it throws. Scaled, never
+   resized: `width` would relayout, `transform` does not. */
+.jv-burst, .jv-wave {
+  position: absolute; left: 50%; top: 84px; pointer-events: none;
+  width: 168px; height: 168px; margin: -84px 0 0 -84px; border-radius: 50%;
+  opacity: 0;
+}
+.jv-burst {
+  background: radial-gradient(circle,
+      color-mix(in srgb, var(--accent) 80%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 30%, transparent) 34%,
+      transparent 68%);
+}
+.jv-wave { border: 2px solid color-mix(in srgb, var(--accent) 80%, transparent); }
+.jv-reveal.go .jv-burst { animation: jvBurst calc(760ms * var(--jvp)) var(--ease-out) calc(760ms * var(--jvp)) forwards; }
+.jv-reveal.go .jv-wave { animation: jvWave calc(1000ms * var(--jvp)) var(--ease-out) calc(800ms * var(--jvp)) forwards; }
+@keyframes jvBurst {
+  0%   { opacity: 0;  transform: scale(.35); }
+  18%  { opacity: .9; transform: scale(1.1); }
+  100% { opacity: 0;  transform: scale(2.3); }
+}
+@keyframes jvWave {
+  0%   { opacity: 0;  transform: scale(.6); }
+  10%  { opacity: .9; }
+  100% { opacity: 0;  transform: scale(5); }
+}
+
+/* The name, decoded a letter at a time by the script. */
+.jv-word {
+  font-family: var(--mono); font-size: 34px; font-weight: 700;
+  letter-spacing: .42em; margin-right: -.42em;   /* the last letter's spacing */
+  color: var(--accent); opacity: 0;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.jv-word span { display: inline-block; min-width: .7em; text-align: center; opacity: .55; }
+.jv-word span.lit { opacity: 1; }
+.jv-sub {
+  font-size: var(--fs-13, 13px); letter-spacing: .08em; color: var(--text-2);
+  opacity: 0;
+}
+.jv-reveal.go .jv-word { animation: jvIn2 calc(200ms * var(--jvp)) ease calc(880ms * var(--jvp)) forwards; }
+.jv-reveal.go .jv-sub { animation: jvIn2 calc(420ms * var(--jvp)) ease calc(1480ms * var(--jvp)) forwards; }
+.jv-reveal.fly .jv-word, .jv-reveal.fly .jv-sub { animation: jvOut calc(260ms * var(--jvp)) ease forwards; }
+@keyframes jvIn2 { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The script plays no reveal at all under reduced motion; these are for
+     the two things that move on their own. */
+  .chip-btn.jv-activate::after { animation: none; opacity: .6; }
+  .brand-mark.jv-landed { animation: none; }
+  .jv-pill, .jv-pill::after { transition: none; }
+}
+
 .nav-group { display: flex; flex-direction: column; gap: var(--sp-2); }
 .nav-item {
   display: flex; align-items: center; gap: var(--sp-10);
@@ -7295,13 +7469,46 @@ body.aid-window .xf-tabs { display: none !important; }
 /* Whether the recording has been read, in the steps' row. */
 .ss-read { display: inline-flex; align-items: center; gap: 8px; }
 .ss-read .ss-job { flex: none; width: 280px; }
-/* Which curves the strip draws: in the rail, above the strip. */
-.ss-legend {
-  position: absolute; right: 0; width: 150px; box-sizing: border-box;
-  display: flex; flex-wrap: wrap; gap: 3px; padding: 0 4px; z-index: 1;
+/* Which curves the strip draws, at the top of the step's drawer. */
+.ss-legend-row { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.ss-legend-row .section-label { margin-right: 4px; }
+.ss-legend-row .ss-curve { padding: 1px 6px; font-size: var(--fs-10); gap: 4px; }
+.ss-legend-row .ss-curve.vote.on i { opacity: .5; }
+.ss-legend-gap { color: var(--text-3); padding: 0 3px; }
+/* Accepting a step: what it would change, before it does. */
+.ss-confirm {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px;
+  border: 1px solid var(--accent); border-radius: var(--radius-sm);
+  background: var(--accent-soft);
 }
-.ss-legend .ss-curve { padding: 1px 5px; font-size: var(--fs-95); gap: 3px; }
-.ss-legend .ss-curve i { width: 9px; }
+.ss-changes { margin: 0; padding: 0; list-style: none; max-height: 240px;
+              overflow-y: auto; font-size: var(--fs-115); }
+.ss-changes li { display: flex; align-items: baseline; gap: 6px; padding: 1px 0; }
+.ss-changes b { min-width: 74px; color: var(--text); font-weight: 600; }
+.ss-changes .was { color: var(--text-3); text-decoration: line-through; }
+.ss-changes .arrow { color: var(--text-3); }
+.ss-changes .now { color: var(--text); }
+/* A step open: the channels and layers it does not touch, greyed. */
+.strata-row.out { opacity: .32; filter: grayscale(1); }
+.strata-span.out { opacity: .32; filter: grayscale(1); }
+.strata-brush.out { opacity: .38; filter: grayscale(1); }
+/* A channel still carrying a retired placeholder ("CA1", "DG", "DG2"):
+   not decided, so it reads as not decided. */
+.strata-row.ph .strata-name { font-style: italic; opacity: .6; }
+.strata-row.ph .strata-sw { opacity: .45; }
+/* Method B's checks: buttons, a ? that explains, a sentence when picked. */
+.ss-ica-box { display: flex; flex-direction: column; gap: 6px; }
+.ss-chip-btn { cursor: pointer; font: inherit; background: transparent; }
+.ss-chip-btn:hover { background: var(--bg-hover); }
+.ss-chip-btn.picked { background: var(--accent-soft); border-color: var(--accent); }
+.ss-help {
+  width: 18px; height: 18px; border-radius: 50%; padding: 0; cursor: pointer;
+  font: inherit; font-size: var(--fs-10); font-weight: 700; line-height: 1;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text-2);
+}
+.ss-help:hover, .ss-help.on { border-color: var(--accent); color: var(--accent); }
+div.ss-more { display: flex; flex-direction: column; gap: 4px; }
+div.ss-more p { margin: 0; }
 /* The depth strip, on the rail's lanes, right of the rows. */
 .ss-strip { position: absolute; right: 0; width: 150px;
             border-left: 1px solid var(--line-soft); background: var(--bg); }
@@ -11064,6 +11271,10 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 /* ---- Braces: many sets at once -------------------------------------- */
 .br-mode { display: flex; align-items: center; gap: var(--sp-12); }
 .br-mode .br-hint { color: var(--text-3); font-size: var(--fs-115); }
+/* One set's settings, in many too (2026-10-12). */
+.br-bulk-settings { display: flex; flex-wrap: wrap; align-items: flex-end;
+  gap: var(--sp-6) 14px; margin: var(--sp-8) 0; }
+.br-bulk-settings > .br-hint { flex: 1 1 24ch; min-width: 0; }
 .br-bulk-bar {
   display: flex; align-items: center; gap: var(--sp-8); flex-wrap: wrap;
   padding: 8px 0 10px;

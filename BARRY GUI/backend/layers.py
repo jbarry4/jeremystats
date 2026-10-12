@@ -34,14 +34,27 @@ from . import shards
 
 SCHEMA = 1
 
-# The hippocampal layers, in the order they are met going down a shank. Order
-# matters: it is what "fill downward" follows, and what the legend reads like.
+# The hippocampal layers, in the order they are met going down a shank, then
+# the names for "somewhere in here, not decided". Order matters: it is what
+# the legend reads like and what the number keys count down.
+#
+# THE PLACEHOLDERS (2026-10-12). "CA1", "DG" and "DG2" were never layers: the
+# lab used them for a channel it knew was in CA1, or in the dentate, without
+# deciding which layer. "CA1" carries the id `ca1_sr`, from when it was
+# mistaken for stratum radiatum. Stratum radiatum itself had no label at
+# all; it is `ca1_rad` ("CA1 SR").
+#
+# They are RETIRED: no longer offered, and refused when somebody tries to
+# label with one ("get rid of CA1, DG and DG2 as label options"). They stay
+# in this list only so the thousands of channels already labelled with them
+# still say so -- greyed, as not decided -- until a step relabels them. Sync
+# and the importers can still carry them; only a person cannot choose one.
 REGIONS = [
     {"id": "ca1_so", "name": "CA1 SO", "color": "#8ec5ff",
      "note": "stratum oriens"},
     {"id": "ca1_sp", "name": "CA1 SP", "color": "#FF5733",
      "note": "pyramidal layer"},
-    {"id": "ca1_sr", "name": "CA1", "color": "#33FF57",
+    {"id": "ca1_rad", "name": "CA1 SR", "color": "#2a9d8f",
      "note": "stratum radiatum"},
     {"id": "ca1_slm", "name": "CA1 SLM", "color": "#3357FF",
      "note": "lacunosum-moleculare"},
@@ -50,10 +63,7 @@ REGIONS = [
     {"id": "dg_mml1", "name": "DG MML1", "color": "#33FFF6",
      "note": "middle molecular, upper blade"},
     # The inner third, which Method A (the molecular layer in thirds) needs a
-    # name for. Inserted in depth order rather than appended: an id keeps
-    # its meaning wherever it sits in the list, and the list is what the
-    # legend and the number keys read down. That does move the number keys
-    # from GCL1 on by one.
+    # name for.
     {"id": "dg_iml1", "name": "DG IML1", "color": "#ffb3c6",
      "note": "inner molecular, upper blade"},
     {"id": "dg_gcl1", "name": "DG GCL1", "color": "#F6FF33",
@@ -67,18 +77,33 @@ REGIONS = [
      "note": "middle molecular, lower blade"},
     {"id": "dg_oml2", "name": "DG OML2", "color": "#8B4513",
      "note": "outer molecular, lower blade"},
-    {"id": "dg", "name": "DG", "color": "#808080",
-     "note": "dentate, unspecified"},
+    # Not decided.
+    {"id": "ca1_sr", "name": "CA1", "color": "#33FF57", "placeholder": True, "retired": True,
+     "note": "in CA1, layer not decided (a placeholder)"},
+    {"id": "dg", "name": "DG", "color": "#808080", "placeholder": True, "retired": True,
+     "note": "in the dentate, layer not decided (a placeholder)"},
+    {"id": "dg2", "name": "DG2", "color": "#7fb069", "placeholder": True, "retired": True,
+     "note": "in the dentate's lower blade, layer not decided (a "
+             "placeholder)"},
     {"id": "out", "name": "Out of brain", "color": "#3d4a44",
      "note": "above the surface, or in white matter"},
-    # The lab's feeder sheet uses two names this list had no home for.
-    # Appended rather than inserted, so every id already written down keeps
-    # meaning what it meant.
     {"id": "thal", "name": "THAL", "color": "#b48ead",
      "note": "thalamus"},
-    {"id": "dg2", "name": "DG2", "color": "#7fb069",
-     "note": "dentate, lower blade, unspecified"},
 ]
+
+PLACEHOLDERS = {r["id"] for r in REGIONS if r.get("placeholder")}
+RETIRED = {r["id"] for r in REGIONS if r.get("retired")}
+
+
+def refuse_retired(regions):
+    """A person may not label with a retired placeholder."""
+    bad = sorted({r for r in regions if r in RETIRED})
+    if bad:
+        names = {x["id"]: x["name"] for x in REGIONS}
+        raise LayerError(
+            "%s %s no longer a label: pick the layer the channel is in."
+            % (", ".join(names.get(b, b) for b in bad),
+               "is" if len(bad) == 1 else "are"))
 
 REGION_IDS = {r["id"] for r in REGIONS}
 REGION_ORDER = {r["id"]: i for i, r in enumerate(REGIONS)}
@@ -305,6 +330,7 @@ class Layers:
         rec = self.get(gid)
         if not rec:
             raise LayerError("This recording has no layer sheet yet.")
+        refuse_retired((labels or {}).values())
         for ch, region in (labels or {}).items():
             key = str(int(ch))
             if region in (None, ""):
@@ -405,7 +431,9 @@ class Layers:
         for ch in order:
             here = rec["labels"].get(ch)
             if here:
-                carry = here
+                # A retired placeholder is not carried down: filling with
+                # one is labelling with one.
+                carry = here if here not in RETIRED else None
             elif carry:
                 rec["labels"][ch] = carry
                 n += 1
@@ -631,7 +659,16 @@ def regions_for(rec):
     the current list does not know kept at the end.
     """
     own = {r.get("id"): r for r in (rec.get("regions") or []) if r.get("id")}
-    out = [dict(own.get(r["id"]) or r) for r in REGIONS]
+    out = []
+    for r in REGIONS:
+        got = dict(own.get(r["id"]) or r)
+        # A placeholder's colour is the sheet's, but what it is called and
+        # what it means are the vocabulary's: copies made before 2026-10-12
+        # say "stratum radiatum" for `ca1_sr`, which it never meant here.
+        if r.get("placeholder"):
+            got.update(name=r["name"], note=r["note"], placeholder=True,
+                       retired=bool(r.get("retired")))
+        out.append(got)
     out += [dict(r) for i, r in own.items() if i not in REGION_ORDER]
     return out
 

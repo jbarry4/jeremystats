@@ -15,6 +15,304 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.12.4 - Braces: the window, and what it is measured on, in many sets too
+
+### Fixed
+
+- **Align many sets now shows the two settings a run uses**: "Measured on"
+  (CSD or voltage) and "Window ±ms" (how far a stamp may move).
+  - Before, a run of many sets sent whatever the one-set panel held, and
+    nothing showed it. Every bulk run read at ±100 ms (a 200 ms window)
+    unless somebody had changed it in the one-set panel first.
+  - It is one pair of settings for both views: changed in many, it is
+    changed in one too.
+  - The fields lock while a run is going. Each run takes the values as
+    they stood when Align was pressed, for every set in its queue. Each
+    proposal records the window it was read with, as before.
+
+### Checked
+
+- `bracesbad.html` 15. It shows the window and what it is measured on in
+  the many-sets card. A changed window is the setting. A run (intercepted,
+  nothing read) sends that window and that measure. The refused read is
+  shown on its row, and the window is put back as it was found.
+- `braces.html` 21.
+- Bite-tested: a bulk run sending ±100 ms whatever was set turned it red.
+- No Braces set or bank entry changed.
+
+## 2026.10.12.3 - Activate Jarvis: a new mark, and a switch that hides the name until a reveal brings it back
+
+### Changed
+
+- **The launchers are called Activate Jarvis.** `Activate Jarvis.bat`,
+  `Activate Jarvis.command` and `Activate Jarvis.lnk` replace the three
+  "Wake up Jarvis" files; nothing else about starting it has changed. The
+  shortcut now carries a path relative to itself, so a clone anywhere else
+  still finds the `.bat` beside it. A shortcut you made yourself to the old
+  name (on a desktop, or pinned to the taskbar) points at a file that is no
+  longer there: make it again from the new one.
+
+- **A new mark: a power button whose stroke is a dentate spike.** The ring
+  is broken at the top and the spike fires up through the gap, so at 16 px
+  in a tab it reads as "on", and at 256 px on a desktop it is what this
+  application is for, with a dial around it and a glow. It is drawn by one
+  function, `markSvg` in `web/js/jarvis.js`, for the rail, the tab, the
+  reveal and the desktop icon; `tools/make_icons.py` now asks that function
+  for `img/jarvis.svg` rather than keeping a copy, and renders the 16 and
+  32 px icons from a heavier small cut instead of shrinking the large one.
+  In the app it follows the theme: a dark tile and a bright stroke on every
+  theme, the darker of the accent pair as the ground (gold on deep green in
+  UVM Dark, white on green in UVM Light).
+
+### Added
+
+- **Hide the name and logo, everywhere.** The theme picker has a switch,
+  and Ctrl+K has "Hide the name and logo". While it is off, every place the
+  interface says Jarvis says "the workbench" instead (543 of them across the
+  eleven views when last counted, tooltips and dialogs included), the tab is
+  titled Workbench, the badge is a plain tile with a flat line, and the
+  launcher's terminal drops the wordmark and its window title. Nothing had to
+  be changed in the thirty modules that say the name: while it is hidden the
+  page is rewritten as it is drawn, and the originals are kept to be put
+  back. While it is shown -- the default -- none of that runs.
+
+- **Activate, and the reveal.** While the name is hidden, an Activate chip
+  sits at the foot of the rail. Pressing it (or the switch) plays a short
+  reveal: the plain tile powers up, the ring draws round, the spike fires out
+  of the flatline with a shockwave, JARVIS decodes a letter at a time, every
+  "the workbench" on the screen turns back into Jarvis in a wave from the
+  centre, and the mark flies home to the rail. About two and a half seconds.
+  A click or a key skips to the end, reduced motion gets the end at once, and
+  only a person's press plays it: a morning boot, another window, or the
+  preferences catching up show the name quietly. `--jv-pace` on the page's
+  root slows or quickens the whole thing from one number.
+
+- Remembered per computer, like the theme: in this browser, and for this
+  host in the shared preferences, which is where the launcher reads it.
+
+- `web/_dev/jarvisname.html`: 61 checks. That nothing says Jarvis after
+  hiding, after every view has drawn, or in something that arrives later or
+  changes in place; that the reveal puts every mention back and leaves no
+  stand-in and no scrambled letters; that only a press plays it; that the
+  tab icon and `img/jarvis.svg` are exactly what `markSvg` draws; and that
+  every theme gets a dark ground under a bright stroke at 3:1 or better.
+  Writes nothing to the store.
+
+---
+
+## 2026.10.12.2 - Tab 8, Joe's data: the proposal's tests, SPSS files, and a script that does it all again; Spark finds windows after a break in the clock
+
+From the Oct 6 meeting: Joe's dissertation tests only what his proposal
+names (Aim 2: does coherence between regions change across preconditioning,
+in theta and gamma?). The Monolith stays the exploratory map. Tab 8 is the
+planned test: a handful of models chosen before looking, follow-ups only
+where they pass, files Neil and Derek can open in SPSS, and a script with
+nothing from Jarvis in it, so nobody has to trust code they cannot read.
+Every decision is in memory (`joe-tab8-decisions`). **Restart Jarvis**:
+`backend/joe.py` is new, `app.py` has new routes and `spark.py` changed.
+Working tab 8 out needs `statsmodels` (now in `requirements.txt`; run
+Setup). Viewing it needs nothing.
+
+### Added
+
+- **Tab 8 on the Monolith page, and on the review site.**
+  - **The answer first:** a table with a row for each model and a column
+    for each band and method (theta 5-12 Hz, gamma 30-90 Hz; Welch and
+    Dickson). Each cell gives the test of interest's p (Day × level × Pair)
+    with Day × level under it. A cell that opens follow-ups says so. A check
+    that reaches p < .05 says only that, since checks open nothing. Click a
+    cell for its model.
+  - **What is measured,** with three things to play with:
+    - one trial's timeline, where choosing a model lights the two windows
+      it compares;
+    - **mains and its harmonics** (your question 4): 60 Hz and its whole
+      multiples (120, 180 … 480 Hz) as spikes, the notch taking each out,
+      then the bands. Theta is far from all of them. Gamma holds only
+      60 Hz, and its notched 59-61 Hz bins are left out of gamma's average;
+    - **the old Minus FP against this** (question 7): the old way was each
+      day's trials less that day's FP, then the change. This way is the
+      trials' change and FP's change side by side, then their difference.
+      It is the same number, played on joe.json's own means. What is new:
+      the FP is random snippets, and the model asks whether FP itself
+      changed.
+  - **A card per model:** the interaction plot (Precon1 dashed, Precon4
+    solid, Precon2 and 3 faint and never tested; ± SE) with F, df and p in
+    its legend, saved as SVG or PNG. Beside it, every pair's own contrast,
+    sorted, with the ones Holm keeps marked. Behind ▸: every term in both
+    models; which pairs drive it (Holm within that interaction, raw p
+    beside); the follow-ups; and bilateral coherence.
+  - **Take it away:** a zip of one wide .csv and one .sps per model, band
+    and method. Each .csv has one row a rat, 999 for missing. Each .sps
+    declares 999 missing, labels every variable, runs the repeated-measures
+    GLM, restructures to long and runs MIXED (Satterthwaite). Also here:
+    the standalone script and its inputs file, and a button that runs it
+    and says whether every cell agrees.
+  - On a phone, each model's name sits over its four cells and every
+    picture is drawn for the narrow box, so no word in one drops below
+    about 8.5 px.
+- **The models.** Day is always Precon1 vs Precon4. A pair enters a model
+  when at least 4 rats have it at every level on both days: 44 of the 66
+  pairs on the real data.
+  - **First pass:**
+    - Baseline (20 s) vs Cue 1 + Cue 2;
+    - Baseline (10 s) vs Cue 1;
+    - Baseline (10 s) vs Cue 2;
+    - the switch (8-10 s vs 10-12 s);
+    - Cue 1 vs Cue 2;
+    - trials vs FP: the Precon change against the FP change, at 20 s and at
+      10 s;
+    - power in each region.
+  - **Checks, expected null:** Noise vs Click, all four sounds, A/B/C/D,
+    High vs Low tone.
+- **The follow-ups run by themselves**, for a first-pass model whose Day ×
+  level × Pair or Day × level reaches p < .05. They cover the pairs Holm
+  keeps, or the raw p < .05 pairs when Holm keeps none (said as such):
+  - PLI and imaginary coherence;
+  - Granger both ways and the amplitude cross-correlation lag;
+  - PAC between and within regions;
+  - left vs right of each structure.
+- **The statistics.** The mixed model tests each term against the rats' own
+  spread in it, the same split the repeated-measures ANOVA makes. A rat
+  missing a pair keeps its other pairs. With every rat complete, its seven F
+  equal the RM-ANOVA's; `check_joe.py` checks this at two and at four
+  levels. The RM-ANOVA sits beside it with its rat count. On the real data
+  it can keep only 3 of the 8 rats, because each of the others is missing
+  some pair. That is why the mixed model leads. p is uncorrected except the
+  post hocs (Holm).
+- **`tools/joe_standalone.py`:** numpy and scipy only. It reads the .ncs and
+  Events.nev itself, finds the cue pairs, decides the clipping, picks each
+  region's wire, cuts the windows, filters, computes both coherences and
+  writes the same .csv files. It runs with `--jobs 4`, and the output does
+  not depend on the number of jobs (byte-identical).
+- **`tools/check_joe.py`:** made-up recordings written as real Neuralynx
+  files, with planted changes: theta in cue 1, gamma at the switch, an
+  FP-only change, and a clipped wire. Each plant must be found only where
+  it was planted, by both methods. The checks must stay null. The models,
+  the SPSS files and the script are checked too: the script reproduces the
+  engine's 25,344 cells within 1e-9. A clock break in one FP recording is
+  planted too (below). 33 checks.
+
+### Fixed
+
+- **Spark threw away every window after a break in a recording's clock.**
+  When a recording pauses, its timestamps jump. Spark found a window's
+  records by arithmetic from the first record, which is exact only until
+  the first break. After J3 Precon1's FP2 paused for 0.59 s six seconds
+  in, every later window was looked for about 37 records too late. It came
+  back "outside this channel's file, or in a break in its clock" on every
+  channel and was dropped. Spark now walks the guess to the right record
+  by the records' own timestamps (`spark._record_at`): a few single-record
+  reads, and none past the first in a recording with no break. The
+  standalone script found this. It cuts from the timestamps alone, and it
+  disagreed with tab 8 on r3's FP, and only there.
+  - **The same rule serves** the Arc's transition windows, the FP epochs
+    behind Minus FP (`circuitrun`, `sweep`) and the Monolith's named
+    windows. On a recording with an early break, all of them had lost
+    windows the same way. Results made before this change stay as they
+    were until they are made again.
+  - **Spark's four state windows** (pre, cue 1, cue 2, post) still sit on
+    whole records counted from the first. None of tab 8's 96 recordings
+    has a break before its trials, so nothing here depends on that.
+  - **Tab 8's day files are made again** (schema 3), and files from an
+    older schema are now cleared away.
+  - **Checked by** `check_joe.py`'s planted break: with Spark as it was,
+    a window after the break is unmeasured on all six channels; now every
+    snippet after it is measured. `check_arc_transition.py --quick`: 76
+    passed.
+
+### On the real data (8 rats, 16 trials a day)
+
+- 4 of 30 first-pass fits reach p < .05. All four are gamma, Day × Phase:
+  Baseline vs Cue 1 + Cue 2 and Baseline vs Cue 1, by both methods. No
+  model's Day × level × Pair passes, and no single pair survives Holm. The
+  follow-ups ran on the raw p < .05 pairs, and Right ACC is in most of them
+  for Baseline vs Cue 1.
+- 1 of 16 checks reaches p < .05: Noise vs Click, theta, Dickson
+  (p = .039). Chance alone gives about 0.8 of 16.
+- **The standalone script agrees with tab 8 everywhere:** all 46 files,
+  73,856 cells, largest difference 0. It ran on E: in 43 minutes with four
+  jobs. On the first run the FP models differed for r3, which is how the
+  Spark break was found.
+- 27 FP snippets and 2 trials could not be measured, each listed on the
+  tab. 23 of the snippets are r10 Precon3's FP1. That recording pauses for
+  26 minutes partway through, and a snippet drawn inside the pause has no
+  recording under it. Precon3 is drawn, never tested. The other snippets
+  and the two trials have every wire they need clipped or unreadable.
+
+### Checked
+
+- `tools/check_joe.py`: 33 passed.
+- `web/_dev/monolith.html`: 525 passed, including the new tab 8 checks
+  (a check at p < .05, the phone layout and its word sizes).
+- `driftmono.html` 77 and `monolithrank.html` 5 passed.
+- `tools/check_review.py`: 54 passed. It now seeds the harness's made-up
+  tab 8 and checks that the copy opens it: the answer, the plots and the
+  downloads, with nothing to run.
+
+## 2026.10.12.1 - StrataScope: the rail sits on the lanes; a step shows only itself; CA1 SR
+
+### Fixed
+
+- **The rail lined up with nothing once some channels were unticked, or a
+  raster was in the pane.** It listed every channel of the recording and
+  spread them over the pane, so with the even channels ticked each row sat
+  over somebody else's trace, and on a CSD it did not move at all. It now
+  lists exactly the channels the pane draws, in its order, and sits on the
+  lanes the pane drew, measured off that canvas. Measured on the 64-channel
+  demo: 0 px off with every channel, 0 px with the even ones, 0.3 px on a
+  CSD; it was 2 px, 64 rows over 32 lanes, and 84 px. The header says
+  "32 of 64 ch" when not every channel is drawn.
+- The layer bands on the traces were laid over every channel rather than
+  the ticked ones; they now use the lanes the traces drew.
+- **A dragged line moved on the traces but not on a raster** in the same
+  window (a CSD or theta CSD in the pane): only the traces were repainted.
+  Every pane is now, as you drag, without fetching anything again; the
+  same goes for painting labels.
+- **Stratum radiatum had no label.** "CA1" was the lab's placeholder for "in
+  CA1, layer not decided", and the steps were writing it for stratum
+  radiatum. There is now **CA1 SR**. **"CA1", "DG" and "DG2" are gone as
+  labels:** no brush, no key, and labelling with one is refused; fill-down
+  does not carry them either. Channels already labelled with one keep it,
+  greyed and in italics as not decided, until a step relabels them.
+  Imports of "CA1 SR" from Toothy or the feeder sheet now become CA1 SR.
+- **Curves broke off at a bad channel** and started again below it, which
+  read as two curves. They are bridged with a faint dotted stretch, and the
+  bad channel is marked with a cross on the strip.
+- "Needs a look" compared the steps' times as text, to the second, so two
+  steps accepted in the same second could miss it. They are compared as
+  times, stamped to the microsecond.
+
+### Changed
+
+- **A step shows only what it is about.** Channels the step would not
+  write are greyed on the rail, veiled on the traces, the strip and the aid
+  window; boundaries of other layers go thin and grey; brushes for other
+  layers grey out. The strip draws only the curves the step is placed by:
+  the lead full, the votes faint. The others are a click away at the top of
+  the drawer. The aid window shows three or four pictures per step, the
+  rest behind "More evidence".
+- **What Accept would write is drawn before it is written,** hatched in the
+  colour each channel would become, on the traces, the rasters and the aid
+  window's CSDs. Clicking a vote moves the lines and the hatching with it.
+- **Accept asks first.** The drawer lists every change, "Ch 6-9: CA1 -> CA1
+  SR", and writes nothing until Continue.
+- **sure / likely / guess** now show in how a line is drawn: solid,
+  dashed, dotted, everywhere it is drawn. They are still what they were:
+  how sure you are of a line, saved with the sheet and kept in the version
+  at sign-off. They move nothing.
+- The number keys follow the depth order: 1 SO, 2 SP, 3 SR, 4 SLM, 5 OML1
+  ... 9 HIL.
+- **Sign off shows everything:** every layer in colour, every curve on the
+  strip, and in the aid window every picture, Method B included.
+- **Method B explains itself.** A **?** beside it says how it works, in four
+  steps. Each of its checks is a button: picking one draws that ICA
+  component's CSD on the strip, its sink as a solid line on the strip and
+  the traces, and the layer Method A drew as a bracket, and says in a
+  sentence how far apart they are. "No stable sink" now reads "nothing
+  reliable" and says what that means: no component that came back in both
+  halves of the walking sinks in that layer, which is no evidence for the
+  line rather than evidence against it.
+
 ## 2026.10.09.6 - StrataScope labels in steps, from evidence it measures
 
 ### Added
