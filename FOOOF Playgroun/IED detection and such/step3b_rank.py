@@ -57,11 +57,34 @@ def totals(rows, n_recs):
     return out
 
 
+def reachable_solids():
+    """Solids that lie inside their recording.
+
+    m28 s7's hand-sort has one Solid 3.3 s after the recording ends (the
+    sort was made on a differently trimmed copy -- tools/import_ied.py says
+    so). No setting can find it, so requiring it would make "every Solid"
+    impossible and rank nothing.
+    """
+    import json
+    n = 0
+    for rec in C.load_gt():
+        meta = json.load(open(os.path.join(C.DATA, rec["key"], "meta.json")))
+        n += sum(1 for e in rec["events"] if e["label"] == "solid"
+                 and e["t"] <= meta["seconds"])
+    return n
+
+
 def main():
     rows = load()
     recs = sorted({r["key"] for r in rows})
     C.log("recordings in the sweep:", len(recs), recs)
     tot = totals(rows, len(recs))
+    reach = reachable_solids()
+    C.log("reachable Solids: %d (of %d hand-sorted)"
+          % (reach, int(tot[0]["solid_n"]) if tot else 0))
+    for d in tot:
+        d["solid_n"] = reach
+        d["recall"] = d["solid_hit"] / reach
     tot.sort(key=lambda d: (-d["recall"], d["n_det"]))
     with open(os.path.join(C.OUT, "sweep_totals.csv"), "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(KEYS) + list(SUMS)

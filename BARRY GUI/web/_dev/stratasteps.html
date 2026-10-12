@@ -354,9 +354,54 @@ const PATH = 'demo:ds-tutorial';
        D().querySelectorAll('.ss-step')[1].classList.contains('stale'),
        D().querySelectorAll('.ss-step')[1].className);
 
-    hd('Step 3: Method B');
-    D().querySelectorAll('.ss-step')[3].click();
+    hd('Step 2, then Step 3 builds on it');
+    D().querySelectorAll('.ss-step')[2].click();
+    await untilN(() => SS()._state().ghost && SS()._state().ghost.step === '2', 100);
+    const acc2 = Array.from(D().querySelectorAll('.ss-drawer .btn'))
+      .find((b) => /^Accept/.test(b.textContent));
+    if (acc2) {
+      acc2.click();
+      await untilN(() => D().querySelector('.ss-confirm'), 50);
+      const go2 = Array.from(D().querySelectorAll('.ss-confirm .btn'))
+        .find((b) => /Continue/.test(b.textContent));
+      if (go2) go2.click();
+      await untilN(() => (SS()._state().open === '3') && SS()._state().ghost
+                         && SS()._state().ghost.step === '3', 150);
+      await sleep(600);
+    }
+    const sh2 = (await W().fetch('/api/layers/' + GID).then((r) => r.json())).sheet;
+    const allCh = SS()._state().sug.channels;
+    const hilRows = allCh.map((c, i) => (sh2.labels[String(c)] === 'hil' ? i : -1))
+      .filter((i) => i >= 0);
+    const l3 = SS()._state().ghost.lines;
+    const top3 = (l3.find((l) => l.above === 'dg_gcl1' && l.below === 'hil') || {}).at;
+    ck('Step 3 starts the hilus where Step 2 accepted it',
+       hilRows.length > 0 && top3 === hilRows[0], top3 + ' vs ' + hilRows[0]);
+    const prop3 = SS().proposedLabels() || new Map();
+    ck('... and would leave every accepted hilus channel as hilus',
+       hilRows.every((i) => prop3.get(allCh[i]) === 'hil'));
+
+    hd('Step 3: IML optional');
+    if (SS()._state().open !== '3') D().querySelectorAll('.ss-step')[3].click();
     await untilN(() => D().querySelector('.ss-drawer .ss-anchors'), 100);
+    const imlIds = () => ((SS()._state().ghost || {}).lines || [])
+      .filter((l) => /iml/.test(l.above + '|' + l.below)).length;
+    ck('Step 3 cuts in thirds, IML included, by default', imlIds() > 0, imlIds());
+    const noIml = Array.from(D().querySelectorAll('.ss-drawer button'))
+      .find((b) => /part of MML/.test(b.textContent));
+    ck('there is a switch to leave IML out', !!noIml);
+    if (noIml) {
+      noIml.click();
+      await untilN(() => imlIds() === 0, 200);
+      ck('... and with it off, no line names IML', imlIds() === 0, imlIds());
+      const back = Array.from(D().querySelectorAll('.ss-drawer button'))
+        .find((b) => /its own \(IML\)/.test(b.textContent));
+      if (back) back.click();
+      await untilN(() => imlIds() > 0, 200);
+      ck('... and it comes back', imlIds() > 0, imlIds());
+    }
+
+    hd('Step 3: Method B');
     const runBtn = Array.from(D().querySelectorAll('.ss-drawer .btn'))
       .find((b) => /Run ICA/.test(b.textContent));
     if (runBtn) {

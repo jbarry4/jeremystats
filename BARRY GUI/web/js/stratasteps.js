@@ -104,7 +104,8 @@ BARRY.strataSteps = (function () {
     2: { regions: ['dg_gcl1', 'hil', 'dg_gcl2', 'dg', 'dg2'],
          lead: ['mua'], votes: ['theta'] },
     3: { regions: ['dg_oml1', 'dg_mml1', 'dg_iml1', 'dg_gcl1', 'hil',
-                   'dg_gcl2', 'dg_iml2', 'dg_mml2', 'dg_oml2', 'dg', 'dg2'],
+                   'dg_gcl2', 'dg_iml2', 'dg_mml2', 'dg_oml2', 'dg', 'dg2',
+                   'thal'],
          lead: ['mua', 'theta'], votes: [] },
     // Sign off: everything, every layer in colour and every curve.
     4: { regions: null, lead: ['mua', 'ripple', 'theta', 'theta_phase',
@@ -827,6 +828,7 @@ BARRY.strataSteps = (function () {
     }
     for (const a of prop.anchors || []) box.appendChild(anchorRow(a));
     if (id === '1') box.appendChild(rippleRow());
+    if (id === '3') box.appendChild(imlRow(prop));
     for (const n of prop.notes || []) {
       box.appendChild(el('p', { class: 'ss-say warn', text: n }));
     }
@@ -985,6 +987,51 @@ BARRY.strataSteps = (function () {
               + v.off })]))),
       el('span', { class: 'ss-conf ' + a.confidence, text: a.confidence }),
     ]);
+  }
+
+  /* Whether the molecular layer is cut in three (OML, MML, IML) or two
+     (OML, then MML down to the granule layer -- the lab's own scheme). Saved
+     with the sheet's parameters. */
+  function imlRow(prop) {
+    const on = prop.use_iml !== false;
+    const set = async (v) => {
+      if (v === on) return;
+      await saveStrata({ params: { use_iml: v } }, true);
+      await load();
+    };
+    const thal = (prop.below_lower || 'thal') === 'thal';
+    const setBelow = async (v) => {
+      if ((v === 'thal') === thal) return;
+      await saveStrata({ params: { below_lower: v } }, true);
+      await load();
+    };
+    return el('div', { class: 'ss-lines' }, [imlSwitch(), el('div', {
+      class: 'ss-line' }, [
+      el('span', { class: 'ss-line-name', text: 'Below the lower blade' }),
+      el('span', { class: 'ctl-seg', title: 'The lower blade mirrors the '
+        + 'upper one: from the hilus down the same distance as the fissure '
+        + 'is above it (times "Lower blade" in Parameters). What is under '
+        + 'that is thalamus, or can be left as it is.' }, [
+        el('button', { class: 'mini' + (thal ? ' on' : ''), text: 'THAL',
+                       onclick: () => setBelow('thal') }),
+        el('button', { class: 'mini' + (thal ? '' : ' on'), text: 'leave as is',
+                       onclick: () => setBelow('none') }),
+      ]),
+    ])]);
+
+    function imlSwitch() {
+    return el('div', { class: 'ss-line' }, [
+      el('span', { class: 'ss-line-name', text: 'Inner molecular layer' }),
+      el('span', { class: 'ctl-seg', title: 'Method A cuts the molecular '
+        + 'layer in thirds. Without IML the inner third is part of the MML, '
+        + 'as in the lab\u2019s own scheme; the OML line does not move.' }, [
+        el('button', { class: 'mini' + (on ? ' on' : ''), text: 'its own (IML)',
+                       onclick: () => set(true) }),
+        el('button', { class: 'mini' + (on ? '' : ' on'), text: 'part of MML',
+                       onclick: () => set(false) }),
+      ]),
+    ]);
+    }
   }
 
   /* The ripples Step 1 leans on, and a way to keep them. They go into the

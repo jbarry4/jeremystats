@@ -15,6 +15,38 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.12.5 - StrataScope: the evidence window scrolls; IML is optional; Step 3 builds on Steps 1 and 2
+
+### Fixed
+
+- **The evidence window could not scroll.** It shares the app's stylesheet,
+  which holds the whole page still, so a step with more pictures than the
+  window is tall had no way to reach the rest. The evidence now scrolls
+  under a header that stays put. `web/_dev/strataaidscroll.html` checks it.
+
+### Added
+
+- **IML is optional in Step 3.** A switch at the top of the step:
+  "Inner molecular layer: its own (IML) / part of MML". Part of MML is the
+  lab's own scheme: the OML line stays at one third and MML runs on to the
+  granule layer, in both blades. Saved with the sheet's parameters.
+
+### Changed
+
+- **Step 3 cuts between what you accepted.** It used to work out its own
+  granule layers again, so accepting it threw away the hilus you had just
+  placed in Step 2. Now the upper blade runs from the fissure accepted in
+  Step 1 to the hilus accepted in Step 2 (or those steps' proposals, until
+  they are accepted), and the step says which. The granule layer takes its
+  thickness against the hilus and the molecular layer above it is cut in
+  thirds. The hilus itself is left exactly as accepted.
+- **The lower blade mirrors the upper one:** from the hilus's bottom edge
+  down the same distance as the fissure is above its top (times "Lower
+  blade" in Parameters), GCL2 against the hilus, then IML2, MML2, OML2. The
+  HippoCompass mouse atlas has the lower blade at about 0.9 of the upper,
+  so the mirror is a start, drawn as a guess. **Below it is THAL** unless
+  the switch says to leave those channels as they are.
+
 ## 2026.10.12.4 - Braces: the window, and what it is measured on, in many sets too
 
 ### Fixed
