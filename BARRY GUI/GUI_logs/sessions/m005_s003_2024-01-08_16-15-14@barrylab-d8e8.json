@@ -1,0 +1,100 @@
+{
+  "_at": {
+    "created": "2026-10-12T13:12:24.174495+00:00",
+    "gid": "2026-10-12T13:12:24.174495+00:00",
+    "group": "2026-10-12T13:12:24.174495+00:00",
+    "key": "2026-10-12T13:12:24.174495+00:00",
+    "label": "2026-10-12T13:12:24.174495+00:00",
+    "loose_key": "2026-10-12T13:12:24.174495+00:00",
+    "mouse": "2026-10-12T13:12:24.174495+00:00",
+    "project": "2026-10-12T13:12:24.174495+00:00",
+    "project_source": "2026-10-12T13:12:24.174495+00:00",
+    "retired": "2026-10-12T13:12:24.174495+00:00",
+    "schema": "2026-10-12T13:12:24.174495+00:00",
+    "session": "2026-10-12T13:12:24.174495+00:00",
+    "start": "2026-10-12T13:12:24.174495+00:00",
+    "updated": "2026-10-12T13:15:06.655696+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-12T13:12:24.174495+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-12T13:12:24.174495+00:00"
+      ],
+      "b3": [
+        "set",
+        "2026-10-12T13:12:24.174495+00:00"
+      ]
+    },
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s3jan8\\2024-01-08_16-15-14": [
+        "set",
+        "2026-10-12T13:15:06.655696+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T13:15:06.655696+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    },
+    {
+      "first": 129,
+      "id": "b3",
+      "last": 192,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.10.09.4",
+    "at": "2026-10-12T09:12:24-04:00",
+    "commit": "1b2184e3",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s5822cc97c64c",
+  "group": null,
+  "key": "m005_s003_2024-01-08_16-15-14",
+  "label": "PTEN m5 s3 2024-01-08",
+  "loose_key": "m005_s003",
+  "mouse": 5,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\Chronic_SAPilot\\M5_Pten\\Bad sessions\\M5s3jan8\\2024-01-08_16-15-14"
+  ],
+  "project": "PTEN",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 3,
+  "start": "2024-01-08T21:15:14+00:00",
+  "updated": {
+    "app_version": "2026.10.09.4",
+    "at": "2026-10-12T09:15:06-04:00",
+    "commit": "1b2184e3",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}

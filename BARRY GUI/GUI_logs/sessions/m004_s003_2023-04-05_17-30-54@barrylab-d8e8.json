@@ -1,0 +1,90 @@
+{
+  "_at": {
+    "created": "2026-10-12T13:12:08.827200+00:00",
+    "gid": "2026-10-12T13:12:08.827200+00:00",
+    "group": "2026-10-12T13:12:08.827200+00:00",
+    "key": "2026-10-12T13:12:08.827200+00:00",
+    "label": "2026-10-12T13:12:08.827200+00:00",
+    "loose_key": "2026-10-12T13:12:08.827200+00:00",
+    "mouse": "2026-10-12T13:12:08.827200+00:00",
+    "project": "2026-10-12T13:12:08.827200+00:00",
+    "project_source": "2026-10-12T13:12:08.827200+00:00",
+    "retired": "2026-10-12T13:12:08.827200+00:00",
+    "schema": "2026-10-12T13:12:08.827200+00:00",
+    "session": "2026-10-12T13:12:08.827200+00:00",
+    "start": "2026-10-12T13:12:08.827200+00:00",
+    "updated": "2026-10-12T13:14:55.568743+00:00"
+  },
+  "_keys": {
+    "channel_banks": {
+      "b1": [
+        "set",
+        "2026-10-12T13:12:08.827200+00:00"
+      ],
+      "b2": [
+        "set",
+        "2026-10-12T13:12:08.827200+00:00"
+      ]
+    },
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s3apr5\\2023-04-05_17-30-54": [
+        "set",
+        "2026-10-12T13:14:55.568743+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-12T13:14:55.568743+00:00",
+    "machine": "barrylab-d8e8",
+    "schema": 1
+  },
+  "channel_banks": [
+    {
+      "first": 1,
+      "id": "b1",
+      "last": 64,
+      "region": null
+    },
+    {
+      "first": 65,
+      "id": "b2",
+      "last": 128,
+      "region": null
+    }
+  ],
+  "created": {
+    "app_version": "2026.10.09.4",
+    "at": "2026-10-12T09:12:08-04:00",
+    "commit": "1b2184e3",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  },
+  "gid": "s33de61d7ba0b",
+  "group": null,
+  "key": "m004_s003_2023-04-05_17-30-54",
+  "label": "m4 s3 2023-04-05",
+  "loose_key": "m004_s003",
+  "mouse": 4,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy3\\5XFAD\\FADM4_old\\FADM4s3apr5\\2023-04-05_17-30-54"
+  ],
+  "project": "Unfiled",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 3,
+  "start": "2023-04-05T21:30:54+00:00",
+  "updated": {
+    "app_version": "2026.10.09.4",
+    "at": "2026-10-12T09:14:55-04:00",
+    "commit": "1b2184e3",
+    "email": "rain.younger@uvm.edu",
+    "host": "BarryLab",
+    "machine": "Strawbarry",
+    "os": "Windows",
+    "user": "Rain Younger"
+  }
+}
