@@ -264,10 +264,96 @@ function lum(c) {
         D().documentElement.dataset.jarvis === 'off');
   check('the overlay keeps its own copy of the name from being rewritten',
         D().getElementById('jarvisReveal').hasAttribute('data-jarvis-keep'));
-  await until(() => !J.revealing(), 8000);
+  await until(() => J.holding(), 12000);
+  check('it builds, then HOLDS rather than leaving by itself',
+        J.holding() && !!D().getElementById('jarvisReveal'));
+  const goes = Array.from(D().querySelectorAll('#jarvisReveal .jv-go'));
+  check('with four ways on: home, dentate spikes, Monolith, IEDs',
+        goes.map((b) => b.dataset.k).join(',') === 'home,ds,mono,ied',
+        goes.map((b) => b.textContent.trim().slice(0, 24)).join(' | '));
+  check('and "Who is Jarvis?" under the greeting',
+        /Who is Jarvis\?/.test((D().querySelector('#jarvisReveal .jv-who') || {}).textContent || ''));
+  check('the name is shown underneath it', J.shown()
+        && D().documentElement.dataset.jarvis === undefined);
+  await sleep(4000);
+  check('and it is still holding seconds later', J.holding());
+
+  say('');
+  say('=== where the choices go ===');
+  const errs = [];
+  W().addEventListener('error', (e) => errs.push(String(e.message)));
+  const ink = (cv) => {
+    try {
+      const c = cv.getContext('2d');
+      const d = c.getImageData(0, 0, cv.width, cv.height).data;
+      let lit = 0;
+      for (let i = 3; i < d.length; i += 4 * 7) if (d[i] > 0) lit++;
+      return lit;
+    } catch (e) { return -1; }
+  };
+  goes[1].click();
+  await until(() => D().getElementById('jarvisShow'), 3000);
+  await sleep(400);
+  for (const k of ['ds', 'mono', 'ied']) {
+    const tab = D().querySelector('#jarvisShow .jx-tab[data-k="' + k + '"]');
+    if (k !== 'ds') { tab.click(); await sleep(400); }
+    const cv = D().querySelector('#jarvisShow .jx-canvas');
+    const lit = cv ? ink(cv) : 0;
+    check(k + ': the live picture draws', lit > 200, lit + ' lit samples');
+    check(k + ': and says it is simulated',
+          /Simulated/.test((D().querySelector('#jarvisShow .jx-sim') || {}).textContent || ''));
+    const imgs = Array.from(D().querySelectorAll('#jarvisShow .jx-fig img'));
+    await until(() => imgs.every((i) => i.complete), 8000);
+    const bad = imgs.filter((i) => !i.naturalWidth).map((i) => i.getAttribute('src'));
+    check(k + ': every real figure loads (' + imgs.length + ')', imgs.length >= 3 && !bad.length,
+          bad.join(', '));
+  }
+  D().querySelector('#jarvisShow .jx-tab[data-k="mono"]').click();
+  await sleep(200);
+  check('the Monolith tab offers the full page, in a new tab',
+        /full Monolith page/.test((D().querySelector('#jarvisShow .jx-ext') || {}).textContent || ''));
+  D().querySelector('#jarvisShow .jx-fig').click();
   await sleep(100);
-  check('and it ends by itself, overlay and all', !J.revealing()
-        && !D().getElementById('jarvisReveal'));
+  check('a figure opens full size', !!D().getElementById('jarvisLight'));
+  D().getElementById('jarvisLight').click();
+  await sleep(50);
+  check('and closes on a click', !D().getElementById('jarvisLight'));
+  const KE = W().KeyboardEvent;
+  D().dispatchEvent(new KE('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(400);
+  check('Escape goes back to the choices, still holding',
+        !D().getElementById('jarvisShow') && J.holding());
+  check('nothing threw in there', errs.length === 0, errs.join(' | '));
+
+  say('');
+  say('=== who is Jarvis ===');
+  D().querySelector('#jarvisReveal .jv-who').click();
+  await sleep(150);
+  const card = D().getElementById('jarvisAbout');
+  check('the card opens', !!card);
+  const ctext = card ? card.textContent : '';
+  check('it says who he was', /Dr\. Paul Jarvis/.test(ctext) && /1987/.test(ctext) && /2021/.test(ctext)
+        && /Larner College of Medicine/.test(ctext));
+  const gift = card && card.querySelector('a.jx-gift');
+  check('it links to the memorial fund, in a new tab',
+        !!gift && gift.getAttribute('href') === 'https://go.uvm.edu/pjarvis'
+        && gift.getAttribute('target') === '_blank' && /noopener/.test(gift.getAttribute('rel') || ''));
+  const ph = card && card.querySelector('.jx-photo img');
+  if (ph) await until(() => ph.complete, 5000);
+  check('his photo loads', !!ph && ph.naturalWidth > 0, ph ? ph.getAttribute('src') : 'no img');
+  D().dispatchEvent(new KE('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(400);
+  check('Escape closes it and leaves the choices up', !D().getElementById('jarvisAbout') && J.holding());
+
+  say('');
+  say('=== home ===');
+  D().querySelector('#jarvisReveal .jv-go[data-k="home"]').click();
+  await until(() => !J.revealing(), 6000);
+  // The names decode in a wave out of the badge; frames do not run under
+  // the runner's virtual clock, so this waits for the wave's own timer.
+  await sleep(3000);
+  check('Home ends it, overlay and all', !J.revealing() && !D().getElementById('jarvisReveal'));
+  check('on the home page', ev('BARRY.state.view') === 'pipeline');
   check('the name is shown', J.shown() && D().documentElement.dataset.jarvis === undefined);
   check('the tab title is Jarvis', D().title === 'Jarvis', D().title);
   check('the rail says exactly Jarvis, nothing still scrambled',
@@ -294,6 +380,13 @@ function lum(c) {
   check('and remembered for this host (recorded here, not written)',
         !!pressed && pressed[1][ev('BARRY.state.catalog.system.hostname')] === true,
         JSON.stringify(pressed));
+  check('the badge in the rail opens the card about Paul',
+        rail().getAttribute('role') === 'button' && /Who is Jarvis/.test(rail().title || ''));
+  rail().click();
+  await sleep(150);
+  check('and does', !!D().getElementById('jarvisAbout'));
+  D().dispatchEvent(new KE('keydown', { key: 'Escape', bubbles: true }));
+  await sleep(400);
 
   say('');
   say('=== skipping ===');
@@ -301,13 +394,17 @@ function lum(c) {
   await sleep(50);
   chip.click();
   await sleep(300);
-  check('the reveal is playing', J.revealing());
+  check('the reveal is building', J.revealing() && !J.holding());
   const PE = W().PointerEvent;
   W().dispatchEvent(new PE('pointerdown', { bubbles: true }));
-  await sleep(20);
-  check('a click anywhere ends it at once, name shown',
-        !J.revealing() && !D().getElementById('jarvisReveal') && J.shown()
-        && (D().querySelector('#rail .brand-text strong') || {}).textContent === 'Jarvis');
+  await sleep(60);
+  check('a click while it builds skips to the choices -- never past them',
+        J.holding() && !!D().getElementById('jarvisReveal') && J.shown());
+  check('with the name complete, nothing still scrambled',
+        Array.from(D().querySelectorAll('#jarvisReveal .jv-word span')).map((s) => s.textContent).join('') === 'JARVIS');
+  D().dispatchEvent(new KE('keydown', { key: '1', bubbles: true }));
+  await until(() => !J.revealing(), 6000);
+  check('and 1 on the keyboard is home', !J.revealing() && !D().getElementById('jarvisReveal'));
 
   say('');
   say('=== only a press plays it ===');
@@ -331,8 +428,32 @@ function lum(c) {
   chip.click();
   await sleep(40);
   check('two presses make one reveal', D().querySelectorAll('#jarvisReveal').length <= 1);
+  J.home();
   await until(() => !J.revealing(), 8000);
-  check('and it ends shown', J.shown() && !D().getElementById('jarvisReveal'));
+  check('and Home from mid-build still ends shown', J.shown() && !D().getElementById('jarvisReveal'));
+
+  say('');
+  say('=== replay, and the sounds ===');
+  const remembered = prefs.filter((x) => x[0] === 'jarvis').length;
+  check('Replay plays it again from a shown name', J.replay() === true && J.revealing());
+  check('hiding the names while it builds', D().documentElement.dataset.jarvis === 'off');
+  J.toHold();
+  await sleep(50);
+  check('and holds like the first time', J.holding() && J.shown());
+  J.home();
+  await until(() => !J.revealing(), 6000);
+  check('a replay is not remembered', prefs.filter((x) => x[0] === 'jarvis').length === remembered);
+  const fxo = ev('BARRY.jarvisfx');
+  let threw = '';
+  for (const name of ['unlock', 'charge', 'fire', 'tick', 'chatter', 'chord', 'hover', 'select',
+                      'whoosh', 'land', 'pop', 'zap', 'bell', 'hush']) {
+    try { fxo[name](0.05); } catch (e) { threw += name + ': ' + e.message + ' '; }
+  }
+  check('every sound can be played and none throws', !!fxo && !threw, threw);
+  const wasMuted = fxo.muted;
+  fxo.setMuted(true);
+  check('Sound off is remembered in this browser', W().localStorage.getItem('barry.jarvis.sound') === 'off');
+  fxo.setMuted(wasMuted);
 
   say('');
   say('=== remembering ===');

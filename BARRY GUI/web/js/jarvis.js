@@ -391,10 +391,26 @@
   function controls() {
     const chip = document.getElementById('jarvisActivate');
     if (chip) chip.classList.toggle('hidden', state.shown);
+    // The badge in the rail says who Jarvis is, while there is a name to
+    // say it about.
+    document.querySelectorAll('#rail .brand-mark').forEach((m) => {
+      if (state.shown) {
+        m.setAttribute('role', 'button');
+        m.setAttribute('tabindex', '0');
+        m.setAttribute('title', 'Who is ' + NAME + '?');
+        m.removeAttribute('aria-hidden');
+      } else {
+        m.removeAttribute('role');
+        m.removeAttribute('tabindex');
+        m.removeAttribute('title');
+        m.setAttribute('aria-hidden', 'true');
+      }
+    });
   }
 
   function hide() {
     finishStage();
+    if (waveStop) { try { waveStop(); } catch (e) { /* done */ } waveStop = null; }
     state.shown = false;
     ROOT.dataset.jarvis = 'off';
     wrapDialogs(true);
@@ -419,8 +435,9 @@
      ------------------------------------------------------------------------ */
   // The script's half of the timings; app.css has the other half. Both are
   // multiplied by `--jv-pace` (1 unless somebody sets it), read once per
-  // reveal.
-  const T = { name: 860, word: 900, fly: 2050, end: 2650 };
+  // reveal. The build takes about five seconds and then HOLDS: the name
+  // stays up, with the four ways on, until somebody picks one.
+  const T = { charge: 450, fire: 2600, word: 3000, name: 3150, greet: 4400, choose: 5000 };
   function pace() {
     const v = parseFloat(getComputedStyle(ROOT).getPropertyValue('--jv-pace'));
     return v > 0 ? v : 1;
@@ -431,6 +448,14 @@
     const set = ch === ch.toLowerCase() ? GLYPHS_LO : GLYPHS_UP;
     return set[(Math.random() * set.length) | 0];
   };
+  // The sounds (js/jarvisfx.js). Never able to throw into the reveal.
+  const sfx = (name, arg) => {
+    try {
+      const f = (B && B.jarvisfx) || window.JarvisFX;
+      if (f && f[name]) f[name](arg);
+    } catch (e) { /* silence */ }
+  };
+  const shows = () => (B && B.jarvisshow) || window.JarvisShow || null;
 
   function canAnimate() {
     try {
@@ -456,10 +481,10 @@
     return 'Good evening.';
   }
 
-  /* Every restored name on screen decodes in place: the letters cycle
-     through noise and lock in from the left, in a wave that leaves the
-     middle of the screen first. Only `replaceData` on the six letters, so
-     the node is the same node throughout and nothing holding it notices. */
+  /* Every name on screen decodes in place: the letters cycle through noise
+     and lock in from the left, in a wave that leaves `origin` first. Only
+     `replaceData` on the six letters, so the node is the same node
+     throughout and nothing holding it notices. */
   const HL = typeof Highlight !== 'undefined' && window.CSS && CSS.highlights;
   function decodeWave(nodes, origin, k) {
     const vw = window.innerWidth, vh = window.innerHeight;
@@ -537,45 +562,86 @@
       if (HL) { CSS.highlights.delete('jarvis-reveal'); CSS.highlights.delete('jarvis-glow'); }
     }
     raf = requestAnimationFrame(frame);
+    // A timer as well as the frames: a background tab or a virtual clock
+    // stops frames, and the names must not be left as noise.
+    setTimeout(stop, 700 * k + DUR + GLOW + 400);
     return stop;
   }
+  // The names on the page, outside the reveal's own overlays.
+  function namesOnPage() {
+    const out = [];
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode())) {
+      if (!/Jarvis|JARVIS/.test(n.data)) continue;
+      const p = n.parentNode;
+      if (!p || (p.closest && p.closest('#jarvisReveal, #jarvisShow, #jarvisAbout, script, style'))) continue;
+      out.push(n);
+    }
+    return out;
+  }
+  let waveStop = null;
 
   function decodeWord(letters, k) {
     const word = NAME.toUpperCase();
     const t0 = performance.now();
-    const STEP = 85 * k, SPIN = 260 * k;
+    const STEP = 150 * k, SPIN = 420 * k;
     const id = setInterval(() => {
       const t = performance.now() - t0;
       let all = true;
       letters.forEach((sp, i) => {
         const lockAt = SPIN + i * STEP;
         if (t >= lockAt) {
-          if (sp.textContent !== word[i]) { sp.textContent = word[i]; sp.classList.add('lit'); }
+          if (sp.textContent !== word[i] || !sp.classList.contains('lit')) {
+            sp.textContent = word[i];
+            sp.classList.add('lit');
+            sfx('tick', i);
+          }
         } else {
           all = false;
           sp.textContent = scramble(word[i]);
         }
       });
       if (all) clearInterval(id);
-    }, 40);
+    }, 45);
     return () => {
       clearInterval(id);
       letters.forEach((sp, i) => { sp.textContent = word[i]; sp.classList.add('lit'); });
     };
   }
 
+  /* The four ways on, once the name is up. The icons are drawn in the rail's
+     own line style. */
+  const CHOICES = [
+    { k: 'home', title: 'Go to home page', line: 'The workbench, ready to use',
+      icon: '<path d="M4 11.5 12 4.5l8 7"/><path d="M6.5 10v9.5h11V10"/><path d="M10 19.5v-5h4v5"/>' },
+    { k: 'ds', title: 'Analyze Dentate Spikes', line: 'Catch them live, depth by depth',
+      icon: '<path d="M2 15.5h5l1.2 1.6L10.6 3.5l2.5 14 1.6-3.6 1.5 1.6H22"/>' },
+    { k: 'mono', title: 'Open Monolith', line: 'How twelve brain regions talk',
+      icon: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="3.5" r="1.7"/>'
+          + '<circle cx="19.4" cy="16.3" r="1.7"/><circle cx="4.6" cy="16.3" r="1.7"/>'
+          + '<path d="M12 5.2q1.5 7.5 6 9.7M6 15.5q5.5-1.5 6-10.3"/>' },
+    { k: 'ied', title: 'Detect IEDs', line: 'Find the sharp spikes of epilepsy',
+      icon: '<path d="M2 13h4l1.8-3 2.2 9 3-15.5 2.2 11.5 1.8-4H22"/>' },
+  ];
+
   function playReveal() {
     finishStage();
     const c = colours();
+    const k = pace();
     const railMark = document.querySelector('#rail .brand-mark');
     const box = node('div', 'jv-reveal');
     box.id = 'jarvisReveal';
-    box.setAttribute('aria-hidden', 'true');
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', NAME);
+    // Its own lettering is the name, on purpose, even mid-hide.
     box.setAttribute('data-jarvis-keep', '');
     const scrim = node('div', 'jv-scrim');
+    const corner = node('div', 'jv-corner');
+    const S = shows();
+    if (S && S.soundButton) { try { corner.append(S.soundButton('jv-snd')); } catch (e) { /* none */ } }
     const stageEl = node('div', 'jv-stage');
-    const burst = node('div', 'jv-burst');
-    const wave = node('div', 'jv-wave');
     const big = node('div', 'jv-big');
     big.innerHTML = markSvg(c, 'full', { stage: true });
     const word = node('div', 'jv-word');
@@ -585,54 +651,65 @@
       return sp;
     });
     const sub = node('div', 'jv-sub', greeting());
-    stageEl.append(burst, wave, big, word, sub);
-    box.append(scrim, stageEl);
+    const who = node('button', 'jv-who', 'Who is ' + NAME + '?');
+    who.type = 'button';
+    who.addEventListener('click', () => { const s2 = shows(); if (s2) s2.about(); });
+    const choices = node('div', 'jv-choices');
+    CHOICES.forEach((ch, i) => {
+      const b = node('button', 'jv-go');
+      b.type = 'button';
+      b.dataset.k = ch.k;
+      b.style.setProperty('--i', String(i));
+      const ic = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      ic.setAttribute('viewBox', '0 0 24 24');
+      ic.setAttribute('aria-hidden', 'true');
+      ic.innerHTML = ch.icon;
+      b.append(ic, node('strong', null, ch.title), node('span', null, ch.line));
+      b.addEventListener('click', () => choose(ch.k));
+      b.addEventListener('pointerenter', () => { if (st.held) sfx('hover'); });
+      choices.append(b);
+    });
+    stageEl.append(node('div', 'jv-burst'), node('div', 'jv-wave'), node('div', 'jv-wave two'),
+                   big, word, sub, who, choices);
+    box.append(scrim, corner, stageEl);
     document.body.appendChild(box);
     if (railMark) railMark.classList.add('jv-await');
 
-    const k = pace();
-    const st = { box, big, railMark, timers: [], stops: [], shown: false };
+    const st = { box, big, railMark, letters, k, timers: [], stops: [], shown: false,
+                 held: false, leaving: false };
     state.stage = st;
     const later = (ms, fn) => st.timers.push(setTimeout(() => {
       try { fn(); } catch (e) { finishStage(); }
     }, ms * k));
 
+    sfx('unlock');
     // Next frame, so the starting state has been painted and the
     // animations have something to animate from.
     requestAnimationFrame(() => box.classList.add('go'));
     later(30, () => box.classList.add('go'));
-
+    later(T.charge, () => sfx('charge', (T.fire - T.charge) * k / 1000));
+    later(T.fire, () => sfx('fire'));
+    later(T.word, () => {
+      sfx('chatter', (420 + 5 * 150) * k / 1000);
+      st.stops.push(decodeWord(letters, k));
+    });
     later(T.name, () => {
       st.shown = true;
-      const live = show();
-      const br = big.getBoundingClientRect();
-      const stop = decodeWave(live, { x: br.left + br.width / 2, y: br.top + br.height / 2 }, k);
-      if (stop) st.stops.push(stop);
+      show();
       if (railMark) railMark.classList.add('jv-await');
     });
-    later(T.word, () => st.stops.push(decodeWord(letters, k)));
+    later(T.greet, () => sfx('chord'));
+    later(T.choose, () => hold());
 
-    later(T.fly, () => {
-      const to = railMark && railMark.getBoundingClientRect();
-      const from = big.getBoundingClientRect();
-      box.classList.add('fly');
-      if (to && to.width && from.width) {
-        const dx = (to.left + to.width / 2) - (from.left + from.width / 2);
-        const dy = (to.top + to.height / 2) - (from.top + from.height / 2);
-        big.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale('
-          + (to.width / from.width) + ')';
-      } else {
-        big.style.opacity = '0';
-      }
-    });
-    later(T.end, () => finishStage(true));
-
-    // Anything pressed skips to the end. On the next tick, so the click
-    // that started this is not also the click that ends it.
+    // Anything pressed while it builds skips to the choices -- never past
+    // them, so nobody leaves the moment by accident. On the next tick, so
+    // the click that started this is not also the click that skips it.
     st.skip = (e) => {
-      if (e && e.type === 'keydown'
-          && ['Shift', 'Control', 'Alt', 'Meta'].indexOf(e.key) >= 0) return;
-      finishStage();
+      if (st.held) return;
+      if (e && e.type === 'keydown' && ['Shift', 'Control', 'Alt', 'Meta'].indexOf(e.key) >= 0) return;
+      if (e && e.target && e.target.closest && e.target.closest('.jv-corner')) return;
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      toHold(true);
     };
     later(0, () => {
       window.addEventListener('pointerdown', st.skip, true);
@@ -640,11 +717,111 @@
     });
   }
 
-  /* The end of the reveal, however it ends: on time, skipped, or cut short
-     by another toggle. Every path lands in the same place -- name shown,
-     overlay gone, rail badge lit -- and a timer rather than `animationend`
-     decides it, because animations stall in a background tab and under the
-     harness runner's virtual clock. */
+  /* Holding: the name up, the four ways on, and nothing more happening
+     until somebody chooses. 1-4 choose from the keyboard; Escape is home. */
+  function hold() {
+    const st = state.stage;
+    if (!st || st.held) return;
+    st.held = true;
+    window.removeEventListener('pointerdown', st.skip, true);
+    window.removeEventListener('keydown', st.skip, true);
+    st.box.classList.add('hold');
+    st.keys = (e) => {
+      const S = shows();
+      if (!state.stage || st.leaving) return;
+      if (document.getElementById('jarvisAbout') || document.getElementById('jarvisLight')) return;
+      if (S && S.isOpen && S.isOpen()) return;
+      const i = '1234'.indexOf(e.key);
+      if (i >= 0) { e.preventDefault(); choose(CHOICES[i].k); }
+      else if (e.key === 'Escape') { e.preventDefault(); goHome(); }
+    };
+    document.addEventListener('keydown', st.keys, true);
+    const first = st.box.querySelector('.jv-go');
+    try { if (first) first.focus({ preventScroll: true }); } catch (e) { /* fine */ }
+  }
+
+  // The build cut short: everything to its final state at once.
+  function toHold(skipped) {
+    const st = state.stage;
+    if (!st || st.held) return;
+    st.timers.forEach(clearTimeout);
+    st.timers = [];
+    st.box.classList.add('go', 'done');
+    if (!st.shown) { st.shown = true; show(); }
+    if (st.railMark) st.railMark.classList.add('jv-await');
+    st.stops.forEach((f) => { try { f(); } catch (e) { /* decoration */ } });
+    st.stops = [];
+    st.letters.forEach((sp, i) => { sp.textContent = NAME.toUpperCase()[i]; sp.classList.add('lit'); });
+    if (skipped) { sfx('hush'); sfx('chord'); }
+    hold();
+  }
+
+  function choose(key) {
+    const st = state.stage;
+    if (!st || st.leaving) return;
+    if (!st.held) toHold(true);
+    sfx('select');
+    if (key === 'home') { goHome(); return; }
+    const S = shows();
+    if (!S) { goHome(); return; }
+    st.box.classList.add('away');
+    try {
+      S.open(key, {
+        back: () => {
+          if (state.stage !== st) return;
+          st.box.classList.remove('away');
+          const b = st.box.querySelector('.jv-go[data-k="' + key + '"]');
+          try { if (b) b.focus({ preventScroll: true }); } catch (e) { /* fine */ }
+        },
+        home: () => goHome(),
+      });
+    } catch (e) {
+      st.box.classList.remove('away');
+    }
+  }
+
+  /* Home: the mark flies to the rail, the overlay lifts on the home page,
+     and the names on it decode in a wave out of the badge. */
+  function goHome() {
+    const st = state.stage;
+    if (!st || st.leaving) return;
+    st.leaving = true;
+    if (!st.held) toHold(false);
+    const S = shows();
+    try { if (S && S.isOpen && S.isOpen()) S.close(); } catch (e) { /* gone */ }
+    st.box.classList.remove('away');
+    try {
+      if (typeof setView === 'function' && B && B.state && B.state.view !== 'pipeline') setView('pipeline');
+    } catch (e) { /* stay where it is */ }
+    sfx('whoosh', 0.75 * st.k);
+    const to = st.railMark && st.railMark.getBoundingClientRect();
+    const from = st.big.getBoundingClientRect();
+    st.box.classList.add('fly');
+    if (to && to.width && from.width) {
+      const dx = (to.left + to.width / 2) - (from.left + from.width / 2);
+      const dy = (to.top + to.height / 2) - (from.top + from.height / 2);
+      st.big.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale('
+        + (to.width / from.width) + ')';
+    } else {
+      st.big.style.opacity = '0';
+    }
+    st.timers.push(setTimeout(() => {
+      sfx('land');
+      finishStage(true);
+      const m = document.querySelector('#rail .brand-mark');
+      const r = m && m.getBoundingClientRect();
+      if (waveStop) { try { waveStop(); } catch (e) { /* done */ } }
+      waveStop = decodeWave(namesOnPage(),
+                            r && r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+                                         : { x: 0, y: 0 }, 1);
+    }, 640 * st.k));
+  }
+
+  /* The end of the reveal, however it ends: home, cut short by hiding the
+     name again, or a new one starting. Every path lands in the same place --
+     name shown, overlays gone, rail badge back -- and timers rather than
+     `animationend` decide it, because animations stall in a background tab
+     and under the harness runner's virtual clock. */
   function finishStage(landed) {
     const st = state.stage;
     if (!st) return;
@@ -652,6 +829,9 @@
     st.timers.forEach(clearTimeout);
     window.removeEventListener('pointerdown', st.skip, true);
     window.removeEventListener('keydown', st.skip, true);
+    if (st.keys) document.removeEventListener('keydown', st.keys, true);
+    const S = shows();
+    try { if (S && S.isOpen && S.isOpen()) S.close(); } catch (e) { /* gone */ }
     if (!st.shown) show();
     st.stops.forEach((f) => { try { f(); } catch (e) { /* decoration */ } });
     if (st.box.parentNode) st.box.parentNode.removeChild(st.box);
@@ -663,6 +843,15 @@
         setTimeout(() => mark.classList.remove('jv-landed'), 900);
       }
     }
+  }
+
+  /* The whole thing again, for a rehearsal or for somebody who missed it:
+     hidden without remembering it, then revealed. */
+  function replay() {
+    if (state.stage || !canAnimate()) return false;
+    if (state.shown) hide();
+    playReveal();
+    return true;
   }
 
   /* ------------------------------------------------------------------------
@@ -736,6 +925,15 @@
       chip.dataset.wired = '1';
       chip.addEventListener('click', () => { if (!state.shown) toggle(); });
     }
+    const mark = document.querySelector('#rail .brand-mark');
+    if (mark && !mark.dataset.wired) {
+      mark.dataset.wired = '1';
+      const go = () => { const S = shows(); if (S && state.shown && !state.stage) S.about(); };
+      mark.addEventListener('click', go);
+      mark.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+      });
+    }
     controls();
   }
 
@@ -757,7 +955,11 @@
     set, toggle, reconcile, wire, paint, neutral, markSvg, colours,
     pickerRow, UVM,
     revealing: () => !!state.stage,
+    holding: () => !!(state.stage && state.stage.held),
     skip: () => finishStage(),
+    toHold: () => toHold(false),
+    choose, home: () => goHome(), replay,
+    about: () => { const S = shows(); if (S && state.shown) S.about(); },
   };
   if (B) B.jarvis = api; else window.JarvisName = api;
 

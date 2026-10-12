@@ -513,8 +513,31 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
             _BINS_ORDER.remove(gid)
         if os.path.isdir(d):
             shutil.rmtree(d, ignore_errors=True)
-        os.replace(tmp, d)
+        try:
+            _replace(tmp, d)
+        except OSError as exc:
+            raise StrataError(
+                "The read finished but its folder could not be put in "
+                "place: something (OneDrive, an antivirus scan, another "
+                "window) is holding %s. Read it again in a moment. (%s)"
+                % (d, exc)) from exc
     return meta
+
+
+def _replace(src, dst, tries=8):
+    """os.replace, retried. Windows refuses to replace a file somebody has
+    open -- a reader in another thread, OneDrive uploading it, an antivirus
+    scan -- and each of those lets go within a second or so."""
+    wait = 0.05
+    for k in range(tries):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if k == tries - 1:
+                raise
+            time.sleep(wait)
+            wait = min(wait * 2, 0.5)
 
 
 # --------------------------------------------------------------------------
@@ -685,20 +708,63 @@ def derived_get(gid, kind, key):
         return None
     try:
         with open(p, encoding="utf-8") as fh:
-            return json.load(fh)
+            got = json.load(fh)
     except (OSError, ValueError):
         return None
+    if kind == "ica" and isinstance(got, dict):
+        # Kinds are read off the peak each time, so a run kept before the
+        # kinds changed is named by today's rule.
+        for cm in got.get("components") or []:
+            cm["kind"] = ica_kind(cm.get("peak_hz"))
+    return got
 
 
 def derived_put(gid, kind, key, value):
-    d = os.path.join(_dir(gid), "derived")
-    os.makedirs(d, exist_ok=True)
-    p = os.path.join(d, "%s-%s.json" % (kind, key))
-    tmp = p + ".part"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(value, fh)
-    os.replace(tmp, p)
+    """Keep a derived value. A cache, so a write that fails (Windows or
+    OneDrive holding the file) is dropped, not raised: the value is good
+    and the request asking for it should get it."""
+    try:
+        d = os.path.join(_dir(gid), "derived")
+        os.makedirs(d, exist_ok=True)
+        p = os.path.join(d, "%s-%s.json" % (kind, key))
+        # A temp name of its own: two writers of one key used to share
+        # "<name>.part" and trip over each other.
+        tmp = "%s.%d-%d.part" % (p, os.getpid(), threading.get_ident())
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(value, fh)
+        try:
+            _replace(tmp, p)
+        except OSError:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+    except OSError:
+        pass
     return value
+
+
+_DERIVED_LOCKS = {}
+_DERIVED_LOCKS_LOCK = threading.Lock()
+
+
+def derived(gid, kind, key, compute):
+    """The value kept under (kind, key), computed once if it is not there.
+
+    Both windows of a step ask for the same things at the same moment --
+    the labelling window for its ripple count, the evidence window for the
+    ripple-triggered average -- so one asks and the other waits for the
+    answer instead of working it out again beside it."""
+    hit = derived_get(gid, kind, key)
+    if hit is not None:
+        return hit
+    with _DERIVED_LOCKS_LOCK:
+        lock = _DERIVED_LOCKS.setdefault((gid, kind, key), threading.Lock())
+    with lock:
+        hit = derived_get(gid, kind, key)
+        if hit is not None:
+            return hit
+        return derived_put(gid, kind, key, compute())
 
 
 # The job stages, declared to cfc so a run's progress is drawn (cfc drops a
@@ -852,6 +918,21 @@ def guide(b, bad=(), params=None):
     if not np.isfinite(mean_th).any():
         raise StrataError("No theta was measured on any good channel.")
     r_best = rows[int(np.nanargmax(mean_th))]
+    r_auto = r_best
+    # Or the channel somebody chose to read it on (Step 0's auto painter).
+    note = None
+    want = params.get("theta_channel")
+    if want not in (None, ""):
+        try:
+            want = int(float(want))
+        except (TypeError, ValueError):
+            want = None
+        if want is not None and want in b.row and b.row[want] in rows:
+            r_best = b.row[want]
+        elif want is not None:
+            note = ("ch %s is not a good channel here, so this reads ch %s, "
+                    "the one with the most theta." % (want,
+                                                      b.channels[r_best]))
     with np.errstate(invalid="ignore", divide="ignore"):
         ratio = np.log10(th[r_best] / de[r_best])
     ratio[~v] = np.nan
@@ -894,6 +975,8 @@ def guide(b, bad=(), params=None):
         "peak_hz": _lst(med, 2),
         "ghost": ghost,
         "channel": int(b.channels[r_best]),
+        "channel_auto": int(b.channels[r_auto]),
+        "channel_note": note,
         "spec_png": png,
         "spec_hz": [float(b.spec_freqs[0]), float(b.spec_freqs[-1])],
         "valid": [bool(x) for x in v],
@@ -1421,8 +1504,7 @@ def run_ica(b, mk, order=None, bad=(), spacing_um=20.0, ref=None,
             "sink_channel": nums[sink] if sink is not None else None,
             "sink_value": float(csd[sink]) if sink is not None else None,
             "peak_hz": round(peak, 1) if np.isfinite(peak) else None,
-            "kind": ("slow" if np.isfinite(peak) and peak < 60
-                     else "fast" if np.isfinite(peak) else None),
+            "kind": ica_kind(peak),
             "theta_phase_deg": None if pref is None else round(pref, 1),
             "theta_mvl": None if mvl is None else round(mvl, 4),
             "variance": round(float(var_exp[c]), 5),
@@ -1441,21 +1523,57 @@ def run_ica(b, mk, order=None, bad=(), spacing_um=20.0, ref=None,
     }
 
 
+# The dentate's three gamma inputs, by the frequency their component peaks
+# at (Fernandez-Ruiz et al. 2021, Science 372:eabf3119, ICA of 25-200 Hz on
+# the same probes): slow 30-50 Hz from the lateral entorhinal cortex, in the
+# outer third of the molecular layer; mid 60-80 Hz, commissural, in the
+# inner third; fast 100-150 Hz from the medial entorhinal cortex, in the
+# middle third. Cut halfway between. Until 2026-10-12 everything at 60 Hz
+# and up was "fast", so a commissural (inner-third) source was judged
+# against the MML.
+ICA_KINDS = (("slow", 55.0), ("mid", 90.0), ("fast", float("inf")))
+ICA_WANT = {"slow": "dg_oml", "mid": "dg_iml", "fast": "dg_mml"}
+
+
+def ica_kind(peak_hz):
+    try:
+        f = float(peak_hz)
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(f):
+        return None
+    return next(k for k, hi in ICA_KINDS if f < hi)
+
+
 def ica_zone_sinks(comp, lo_row, hi_row, min_frac=0.3):
     """The component's deepest sink inside rows [lo_row, hi_row), if it is at
     least `min_frac` of the component's main sink -- a weak local dip in a
-    zone is not that generator living there."""
+    zone is not that generator living there.
+
+    A sink is a real dip: no lower than the channels either side of it.
+    The lowest point of a zone whose edge sits on the flank of a sink
+    outside it is that other sink's shoulder, and used to read as a match
+    (2026-10-12: a 41 Hz source sinking 4 ch above the fissure was called
+    'in OML1' by its value at the fissure)."""
     csd = np.array([np.nan if v is None else v for v in comp["csd"]])
+    n = csd.size
+    lo_row, hi_row = max(0, int(lo_row)), min(n, int(hi_row))
     if hi_row <= lo_row or not np.isfinite(csd).any():
         return None
     main = np.nanmin(csd)
-    seg = csd[lo_row:hi_row]
-    if not np.isfinite(seg).any():
+    if main >= 0:
         return None
-    i = int(np.nanargmin(seg))
-    if main >= 0 or seg[i] > min_frac * main:
-        return None
-    return lo_row + i
+    best = None
+    for i in range(lo_row, hi_row):
+        v = csd[i]
+        if not np.isfinite(v) or v > min_frac * main:
+            continue
+        if any(0 <= j < n and np.isfinite(csd[j]) and csd[j] < v
+               for j in (i - 1, i + 1)):
+            continue
+        if best is None or v < csd[best]:
+            best = i
+    return best
 
 
 # ==========================================================================
@@ -1876,11 +1994,20 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     h = float(params.get("gcl_half_um") or GCL_HALF_UM.get(species, 30.0))
     scale = float(params.get("lower_ml_scale") or LOWER_ML_SCALE)
     use_iml = params.get("use_iml", True) not in (False, "false", 0, "0")
+    # How the blade is cut. 'iml': GCL at its thickness against the hilus,
+    # the molecular layer above in thirds, OML / MML / IML. 'mml': the same,
+    # the inner third part of the MML (the lab's scheme). 'thirds': no IML
+    # and no GCL thickness -- fissure to hilus in three equal parts, OML /
+    # MML / GCL (2026-10-12).
+    scheme = params.get("ml_scheme")
+    if scheme not in ("iml", "mml", "thirds"):
+        scheme = "iml" if use_iml else "mml"
+    use_iml = scheme == "iml"
     below = params.get("below_lower") or "thal"
     notes, lines, anchors = [], [], []
     if fissure_at is None or hil_top is None:
         return {"step": 3, "lines": [], "anchors": [], "use_iml": use_iml,
-                "below_lower": below, "notes": [
+                "ml_scheme": scheme, "below_lower": below, "notes": [
                     "Method A needs the fissure (Step 1) and the hilus "
                     "(Step 2) first."]}
     fissure_at, hil_top = int(fissure_at), int(hil_top)
@@ -1891,18 +2018,24 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     U = Ht - F
     if U <= 2 * s:
         return {"step": 3, "lines": [], "anchors": [], "use_iml": use_iml,
-                "below_lower": below, "notes": [
+                "ml_scheme": scheme, "below_lower": below, "notes": [
                     "The fissure is within two contacts of the hilus, so "
                     "there is no molecular layer to divide. Check Steps 1 "
                     "and 2."]}
-    gcl = min(2.0 * h, U / 2.0)
-    L = U - gcl
-    third = L / 3.0
+    if scheme == "thirds":
+        gcl = U / 3.0
+        L = U - gcl                   # OML + MML, a third each
+        oml_frac = 0.5
+    else:
+        gcl = min(2.0 * h, U / 2.0)
+        L = U - gcl
+        oml_frac = 1.0 / 3.0
+    third = oml_frac * L              # the OML's thickness, either way
     row = lambda d: _rows_for_depth(d, s)                     # noqa: E731
     up = [("ca1_slm", "dg_oml1", fissure_at),
           ("dg_oml1", "dg_mml1", row(F + third))]
     if use_iml:
-        up += [("dg_mml1", "dg_iml1", row(F + 2 * third)),
+        up += [("dg_mml1", "dg_iml1", row(F + 2 * L / 3.0)),
                ("dg_iml1", "dg_gcl1", row(Ht - gcl))]
     else:
         # The lab's own scheme: the inner third belongs to the MML.
@@ -1919,14 +2052,16 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     out_edge = None
     if hil_end < n:
         U2 = U * scale
-        L2 = max(0.0, U2 - gcl)
+        gcl2 = U2 / 3.0 if scheme == "thirds" else gcl
+        L2 = max(0.0, U2 - gcl2)
         low = [("hil", "dg_gcl2", hil_end)]
         if use_iml:
-            low += [("dg_gcl2", "dg_iml2", row(Hb + gcl)),
-                    ("dg_iml2", "dg_mml2", row(Hb + gcl + L2 / 3.0))]
+            low += [("dg_gcl2", "dg_iml2", row(Hb + gcl2)),
+                    ("dg_iml2", "dg_mml2", row(Hb + gcl2 + L2 / 3.0))]
         else:
-            low += [("dg_gcl2", "dg_mml2", row(Hb + gcl))]
-        low += [("dg_mml2", "dg_oml2", row(Hb + gcl + 2 * L2 / 3.0))]
+            low += [("dg_gcl2", "dg_mml2", row(Hb + gcl2))]
+        low += [("dg_mml2", "dg_oml2",
+                 row(Hb + gcl2 + (1.0 - oml_frac) * L2))]
         for a_, b_, at in low:
             lines.append(_line(a_, b_, min(at, n), "guess",
                                "lower blade, the upper mirrored x %.2f"
@@ -1944,15 +2079,22 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     thirds_um = round(third, 1)
     G1_top_row = row(Ht - gcl)
 
-    # Method B's votes, by blade.
+    # Method B's votes, by blade. Each blade's zone is its molecular layer
+    # plus one OML-thickness past the outer edge, so a sink just beyond the
+    # fissure (or the lower blade's edge) is reported as that far off
+    # rather than not seen.
     checks = []
     if ica and ica.get("components"):
-        zones = [("upper", fissure_at, G1_top_row)]
+        reach = max(1, int(round(third / s)))
+        zones = [("upper", max(0, fissure_at - reach), G1_top_row)]
         if out_edge is not None:
-            zones.append(("lower", row(Hb + gcl), min(n, out_edge + 1)))
-        want = {"slow": "dg_oml", "fast": "dg_mml"}
+            zones.append(("lower", row(Hb + gcl2), min(n, out_edge + reach)))
+        want = ICA_WANT
+        # The mid (commissural) kind is only checked where there is an IML
+        # to check it against.
+        kinds = ("slow", "mid", "fast") if use_iml else ("slow", "fast")
         for blade, z0, z1 in zones:
-            for kind in ("slow", "fast"):
+            for kind in kinds:
                 cands = [cm for cm in ica["components"]
                          if cm.get("kind") == kind
                          and (cm.get("stability") or 0) >= 0.7]
@@ -1992,8 +2134,11 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
                 if ln["above"] in ("dg_oml1", "dg_mml1") or \
                         ln["below"] in ("dg_mml1", "dg_iml1"):
                     ln["confidence"] = "guess"
+    if scheme == "thirds":
+        notes.append("No IML: fissure to hilus in three equal parts, OML, "
+                     "MML and GCL, each %.0f µm." % (U / 3.0))
     return {"step": 3, "lines": lines, "anchors": anchors, "notes": notes,
-            "use_iml": use_iml, "below_lower": below,
+            "use_iml": use_iml, "ml_scheme": scheme, "below_lower": below,
             "upper_blade_um": round(U, 1),
             "third_um": thirds_um, "upper_ml_um": round(L, 1),
             "gcl_half_um": h, "lower_ml_scale": scale, "ica_checks": checks}

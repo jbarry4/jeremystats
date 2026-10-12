@@ -230,6 +230,17 @@ BARRY.palette = (function () {
         hay: 'jarvis name logo brand mark hide show activate reveal',
         run: () => BARRY.jarvis.toggle(),
       });
+      if (on) {
+        // For a rehearsal, or for whoever missed it.
+        out.push({ kind: 'action', label: 'Replay the reveal',
+                   sub: 'the whole thing again, ending on its four ways on',
+                   hay: 'replay reveal activate jarvis demo show again',
+                   run: () => BARRY.jarvis.replay() });
+        out.push({ kind: 'action', label: 'Who is Jarvis?',
+                   sub: 'the person this workbench is named for',
+                   hay: 'who is jarvis paul about name memory dedication',
+                   run: () => BARRY.jarvis.about() });
+      }
     }
 
     /* The Arc's five steps, each reachable by name.

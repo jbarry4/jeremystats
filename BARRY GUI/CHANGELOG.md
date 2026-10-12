@@ -15,6 +15,101 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.12.7 - The reveal holds, with sound, four ways on, and who Jarvis is
+
+### Added
+
+- **Who is Jarvis?** The application is named in memory of Dr. Paul Jarvis
+  (1987 - 2021), a graduate of UVM's Larner College of Medicine who was
+  training in neurology. A card with his photo says who he was, in a few
+  lines, and links to the fund his family asked gifts in his memory to
+  support: epilepsy research at the Larner College of Medicine
+  (go.uvm.edu/pjarvis). It opens from "Who is Jarvis?" under the name in the
+  reveal, from the same button in the destinations below, from the badge at
+  the top of the rail, and from Ctrl+K.
+
+- **The reveal holds, and says where to go.** It is slower -- about five
+  seconds -- and no longer leaves by itself: the name stays up with four
+  ways on. **Go to home page** flies the badge to the rail and lands on the
+  pipeline, the names on the page decoding back in a wave out of the badge.
+  **Analyze Dentate Spikes**, **Open Monolith** and **Detect IEDs** each open
+  a page with a live picture and the lab's own figures. A click while it
+  builds skips to the choices, never past them; 1-4 choose from the
+  keyboard, Escape is home.
+
+- **Sound.** Made on the spot with Web Audio, so there is no file to load
+  or lose: the crackle of a neuron on an audio monitor firing faster and
+  faster as the ring draws, a zap and a boom when the spike fires, a blip
+  per letter as the name locks in, a warm chord when it lands, and small
+  sounds for choosing, flying home and landing. In the destinations, a
+  "tock" per dentate spike found and a crack per IED. "Sound on/off" in the
+  corner, remembered in this browser.
+
+- **Three destinations that cannot fail.** Each live picture is a
+  simulated signal drawn in the browser -- it reads no recording and asks
+  the server nothing -- and says so on the page:
+  - Dentate spikes: a 14-channel probe swept like a scope, each spike caught
+    and labelled DS1 or DS2, the average spike building up, and its current
+    source density by depth.
+  - The Monolith: twelve regions on the real page's ring, swept from 1 to
+    55 Hz, measure by measure, red for stronger on Precon4 and blue for
+    weaker, with the top result named.
+  - IEDs: six channels, the line-length feature with its threshold, every
+    detection flagged, and the last minute's detections by channel.
+  Under each, the real figures: Root Canal's dentate spike clusters and a
+  CSD from Results/, KCNT1 and m34 recordings, a Panorama, and the
+  Monolith's own circuit, frequency, PAC and rat-by-rat views, prerendered
+  into `web/img/showcase/` (1.4 MB). A figure opens full size on a click.
+  The Monolith tab also opens the full, live Monolith page in a new tab.
+
+- **Replay the reveal** in Ctrl+K, for a rehearsal or for whoever missed it.
+  It hides the name without remembering that, and plays.
+
+- `web/_dev/jarvisname.html`: 96 checks, now including that the reveal
+  holds and keeps holding, that every destination draws, says it is
+  simulated and loads every figure, that Escape goes back, that the card
+  about Paul has his photo and the memorial link, that a click mid-build
+  skips to the choices, that a replay is not remembered, and that every
+  sound plays without throwing.
+
+---
+
+## 2026.10.12.6 - StrataScope: Method B says match or no match, one frequency at a time
+
+### Changed
+
+- **Method B in the evidence window is two cards, not ten.** One for slow
+  gamma (should sink in the OML), one for fast gamma (should sink in the
+  MML). Each has a badge: **Matches**, **Does not match** or **Can't
+  tell**, then one line per blade saying where the gamma sinks. Under the
+  lines is a picture of the source those lines are about, with only the
+  layer it should be in shaded, the hilus in grey and a tick or cross where
+  it dips. The full set of components is still there, folded under
+  "Every component".
+- **"Can't tell" is explained where it shows.** It means no source of that
+  kind came back when ICA was refit on each half of the walking and also
+  dips in that blade's molecular layer, so Method B neither confirms nor
+  contradicts Method A there. The card shows the closest source it did
+  find and why that one doesn't count: "came back only 63% alike (it
+  needs 70%)", or "sinks somewhere else".
+- A mismatch is now red, not orange, so it can't be confused with the fast
+  gamma curve. This applies to the drawer's checks too.
+
+### Fixed
+
+- **A source sinking just above the fissure could be called "in OML1".**
+  The check took the lowest point inside the molecular layer even when
+  that point was only the edge of a sink outside the layer. It now counts
+  only real dips. It also looks one OML-thickness beyond the outer edge, so
+  that sink is reported as "4 ch above OML1" instead of being missed.
+- **A CA1 pyramidal layer moved with a vote now survives a reload.** After
+  Step 1 is accepted, the reference channel is the middle of the sheet's
+  CA1 SP. It used to fall back to Step 1's own pick, which moved the phase
+  curves and lost the ICA saved against the moved channel.
+- `web/_dev/stratastepsshot.html` no longer leaves a demo layer sheet
+  behind when the suite runs it (`?keep=1` holds the step open for a
+  screenshot).
+
 ## 2026.10.12.5 - StrataScope: the evidence window scrolls; IML is optional; Step 3 builds on Steps 1 and 2
 
 ### Fixed

@@ -1405,43 +1405,56 @@ code { font-family: var(--mono); }
 ::highlight(jarvis-reveal) { color: var(--accent); background-color: var(--accent-soft); }
 ::highlight(jarvis-glow) { color: var(--accent); }
 
-/* The reveal. Built by `playReveal`, removed by a timer whatever the
-   animations are doing. Timings are the script's `T`; the two must move
-   together, and both are multiplied by `--jv-pace`. */
+/* The reveal. Built by `playReveal`; it builds for about five seconds and
+   then HOLDS on the name and four ways on until somebody chooses. Timings
+   are the script's `T` for its half and these for the rest; the two must
+   move together, and both are multiplied by `--jv-pace`. */
 .jv-reveal {
   /* One pace for the whole sequence: 2 plays it at half speed. The script
      reads the same property for its own timers, so the two cannot drift. */
   --jvp: var(--jv-pace, 1);
   position: fixed; inset: 0; z-index: 9000;
-  display: grid; place-items: center; cursor: pointer;
+  display: grid; place-items: center; overflow: hidden;
 }
+.jv-reveal:not(.hold) { cursor: pointer; }
 .jv-scrim {
   position: absolute; inset: 0; opacity: 0;
-  background: radial-gradient(circle at 50% 45%,
+  background: radial-gradient(circle at 50% 40%,
       color-mix(in srgb, var(--accent) 16%, var(--bg)) 0%,
-      color-mix(in srgb, var(--bg) 94%, transparent) 58%);
-  transition: opacity calc(320ms * var(--jvp)) var(--ease-out);
+      color-mix(in srgb, var(--bg) 97%, transparent) 62%);
+  transition: opacity calc(600ms * var(--jvp)) var(--ease-out);
 }
 .jv-reveal.go .jv-scrim { opacity: 1; }
 .jv-reveal.fly .jv-scrim { opacity: 0; transition-duration: calc(560ms * var(--jvp)); }
+.jv-corner {
+  position: absolute; top: 16px; right: 16px; z-index: 2;
+  display: flex; gap: var(--sp-8); opacity: 0;
+  transition: opacity calc(600ms * var(--jvp)) ease;
+}
+.jv-reveal.go .jv-corner { opacity: 1; }
+.jv-reveal.fly .jv-corner { opacity: 0; }
 .jv-stage {
   position: relative; display: flex; flex-direction: column;
-  align-items: center; gap: var(--sp-16, 16px);
+  align-items: center; gap: var(--sp-16, 16px); padding: 24px 16px;
+  transition: opacity 300ms ease, transform 300ms var(--ease-out);
 }
-.jv-big { width: 168px; height: 168px; position: relative; z-index: 1; }
+/* A destination is open over it: the stage steps back. */
+.jv-reveal.away .jv-stage { opacity: 0; transform: scale(.96); pointer-events: none; }
+.jv-big { width: 168px; height: 168px; position: relative; z-index: 1; flex: none; }
 .jv-reveal.fly .jv-big {
-  transition: transform calc(560ms * var(--jvp)) cubic-bezier(.7, 0, .25, 1),
+  transition: transform calc(620ms * var(--jvp)) cubic-bezier(.7, 0, .25, 1),
               opacity calc(400ms * var(--jvp)) ease;
 }
 .jv-big svg {
   display: block; width: 100%; height: 100%; overflow: visible;
   border-radius: 25%; opacity: 0; transform: scale(.82);
 }
-.jv-reveal.go .jv-big svg { animation: jvIn calc(420ms * var(--jvp)) var(--ease-out) forwards; }
+.jv-reveal.go .jv-big svg { animation: jvIn calc(800ms * var(--jvp)) var(--ease-out) forwards; }
 @keyframes jvIn { to { opacity: 1; transform: scale(1); } }
 
-/* Inside the badge: the tile warms, the ring draws round, the dial turns
-   in, and the spike fires out of the flatline. */
+/* Inside the badge: the tile warms, the ring draws slowly round as the
+   charge builds, the dial turns in, and the spike fires out of the
+   flatline. */
 /* A gap longer than the path and an offset one past it: with `100 / 100`
    the hidden dash still ends exactly at the path's start, and its round cap
    draws a dot there before anything has fired. */
@@ -1449,31 +1462,35 @@ code { font-family: var(--mono); }
 .jv-big .jm-glow, .jv-big .jm-core, .jv-big .jm-ticks, .jv-big .jm-spark { opacity: 0; }
 .jv-big .jm-ticks { transform-box: view-box; transform-origin: 16px 17.6px; }
 .jv-big .jm-spark { transform-box: fill-box; transform-origin: center; }
-.jv-reveal.go .jm-dormant { animation: jvOut calc(420ms * var(--jvp)) ease calc(240ms * var(--jvp)) forwards; }
-.jv-reveal.go .jm-ring { animation: jvDraw calc(520ms * var(--jvp)) var(--ease-out) calc(240ms * var(--jvp)) forwards; }
-.jv-reveal.go .jm-ticks { animation: jvDial calc(760ms * var(--jvp)) var(--ease-out) calc(300ms * var(--jvp)) forwards; }
-.jv-reveal.go .jm-flat { animation: jvOut calc(160ms * var(--jvp)) ease calc(760ms * var(--jvp)) forwards; }
-.jv-reveal.go .jm-trace { animation: jvDraw calc(260ms * var(--jvp)) cubic-bezier(.5, 0, .3, 1) calc(720ms * var(--jvp)) forwards; }
-.jv-reveal.go .jm-glow { animation: jvGlow calc(900ms * var(--jvp)) ease calc(760ms * var(--jvp)) forwards; }
-.jv-reveal.go .jm-core { animation: jvGlow calc(900ms * var(--jvp)) ease calc(760ms * var(--jvp)) forwards; }
-.jv-reveal.go .jm-spark { animation: jvSpark calc(520ms * var(--jvp)) var(--ease-out) calc(940ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-dormant { animation: jvOut calc(1700ms * var(--jvp)) ease calc(500ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-ring {
+  animation: jvDraw calc(2050ms * var(--jvp)) cubic-bezier(.45, 0, .2, 1) calc(500ms * var(--jvp)) forwards;
+}
+.jv-reveal.go .jm-ticks { animation: jvDial calc(1700ms * var(--jvp)) var(--ease-out) calc(800ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-flat { animation: jvOut calc(200ms * var(--jvp)) ease calc(2600ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-trace {
+  animation: jvDraw calc(360ms * var(--jvp)) cubic-bezier(.5, 0, .3, 1) calc(2560ms * var(--jvp)) forwards;
+}
+.jv-reveal.go .jm-glow { animation: jvGlow calc(1200ms * var(--jvp)) ease calc(2600ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-core { animation: jvGlow calc(1200ms * var(--jvp)) ease calc(2600ms * var(--jvp)) forwards; }
+.jv-reveal.go .jm-spark { animation: jvSpark calc(700ms * var(--jvp)) var(--ease-out) calc(2900ms * var(--jvp)) forwards; }
 @keyframes jvDraw { to { stroke-dashoffset: 0; } }
 @keyframes jvOut  { from { opacity: 1; } to { opacity: 0; } }
 @keyframes jvDial {
-  from { opacity: 0; transform: rotate(-50deg); }
+  from { opacity: 0; transform: rotate(-70deg); }
   to   { opacity: 1; transform: rotate(0); }
 }
-@keyframes jvGlow { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: 1; } }
+@keyframes jvGlow { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 1; } }
 @keyframes jvSpark {
   0%   { opacity: 0; transform: scale(0); }
-  45%  { opacity: 1; transform: scale(2.1); }
+  45%  { opacity: 1; transform: scale(2.3); }
   100% { opacity: 1; transform: scale(1); }
 }
 
-/* The flash when the spike fires, and the wave it throws. Scaled, never
-   resized: `width` would relayout, `transform` does not. */
+/* The flash when the spike fires, and the two waves it throws. Scaled,
+   never resized: `width` would relayout, `transform` does not. */
 .jv-burst, .jv-wave {
-  position: absolute; left: 50%; top: 84px; pointer-events: none;
+  position: absolute; left: 50%; top: calc(24px + 84px); pointer-events: none;
   width: 168px; height: 168px; margin: -84px 0 0 -84px; border-radius: 50%;
   opacity: 0;
 }
@@ -1484,17 +1501,18 @@ code { font-family: var(--mono); }
       transparent 68%);
 }
 .jv-wave { border: 2px solid color-mix(in srgb, var(--accent) 80%, transparent); }
-.jv-reveal.go .jv-burst { animation: jvBurst calc(760ms * var(--jvp)) var(--ease-out) calc(760ms * var(--jvp)) forwards; }
-.jv-reveal.go .jv-wave { animation: jvWave calc(1000ms * var(--jvp)) var(--ease-out) calc(800ms * var(--jvp)) forwards; }
+.jv-reveal.go .jv-burst { animation: jvBurst calc(1000ms * var(--jvp)) var(--ease-out) calc(2600ms * var(--jvp)) forwards; }
+.jv-reveal.go .jv-wave { animation: jvWave calc(1400ms * var(--jvp)) var(--ease-out) calc(2650ms * var(--jvp)) forwards; }
+.jv-reveal.go .jv-wave.two { animation: jvWave calc(1700ms * var(--jvp)) var(--ease-out) calc(2880ms * var(--jvp)) forwards; }
 @keyframes jvBurst {
   0%   { opacity: 0;  transform: scale(.35); }
-  18%  { opacity: .9; transform: scale(1.1); }
-  100% { opacity: 0;  transform: scale(2.3); }
+  15%  { opacity: .95; transform: scale(1.15); }
+  100% { opacity: 0;  transform: scale(2.6); }
 }
 @keyframes jvWave {
   0%   { opacity: 0;  transform: scale(.6); }
-  10%  { opacity: .9; }
-  100% { opacity: 0;  transform: scale(5); }
+  8%   { opacity: .9; }
+  100% { opacity: 0;  transform: scale(6); }
 }
 
 /* The name, decoded a letter at a time by the script. */
@@ -1504,24 +1522,261 @@ code { font-family: var(--mono); }
   color: var(--accent); opacity: 0;
   text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 55%, transparent);
 }
-.jv-word span { display: inline-block; min-width: .7em; text-align: center; opacity: .55; }
+.jv-word span { display: inline-block; min-width: .7em; text-align: center; opacity: .5; }
 .jv-word span.lit { opacity: 1; }
 .jv-sub {
-  font-size: var(--fs-13, 13px); letter-spacing: .08em; color: var(--text-2);
-  opacity: 0;
+  font-size: var(--fs-14); letter-spacing: .06em; color: var(--text-2);
+  opacity: 0; margin-top: -6px;
 }
-.jv-reveal.go .jv-word { animation: jvIn2 calc(200ms * var(--jvp)) ease calc(880ms * var(--jvp)) forwards; }
-.jv-reveal.go .jv-sub { animation: jvIn2 calc(420ms * var(--jvp)) ease calc(1480ms * var(--jvp)) forwards; }
-.jv-reveal.fly .jv-word, .jv-reveal.fly .jv-sub { animation: jvOut calc(260ms * var(--jvp)) ease forwards; }
+/* Who the name is for. Quiet, under the greeting. */
+.jv-who {
+  border: 0; background: transparent; cursor: pointer; padding: 2px 8px;
+  font-size: var(--fs-12); color: var(--text-3); opacity: 0;
+  text-decoration: underline; text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+.jv-who:hover, .jv-who:focus-visible { color: var(--accent); text-decoration-color: var(--accent); }
+.jv-reveal.go .jv-word { animation: jvIn2 calc(300ms * var(--jvp)) ease calc(2950ms * var(--jvp)) forwards; }
+.jv-reveal.go .jv-sub { animation: jvIn2 calc(800ms * var(--jvp)) ease calc(4400ms * var(--jvp)) forwards; }
+.jv-reveal.go .jv-who { animation: jvIn2 calc(700ms * var(--jvp)) ease calc(4700ms * var(--jvp)) forwards; }
 @keyframes jvIn2 { from { opacity: 0; } to { opacity: 1; } }
+
+/* The four ways on. They rise in one after another and wait. */
+.jv-choices {
+  display: grid; grid-template-columns: repeat(4, minmax(150px, 196px));
+  gap: 14px; margin-top: 18px;
+}
+.jv-go {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 14px 16px 15px; text-align: left; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-2) 86%, transparent);
+  color: var(--text-2); font-size: var(--fs-12);
+  opacity: 0; transform: translateY(16px);
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s var(--ease-out),
+              background .18s ease;
+}
+.jv-go svg {
+  width: 26px; height: 26px; color: var(--accent); margin-bottom: 6px;
+  stroke-width: 1.6;
+}
+.jv-go strong { color: var(--text); font-size: var(--fs-14); font-weight: 650; }
+.jv-reveal.go .jv-go {
+  animation: jvRise calc(600ms * var(--jvp)) var(--ease-out)
+             calc((5000ms + var(--i) * 120ms) * var(--jvp)) forwards;
+}
+.jv-reveal.hold .jv-go:hover, .jv-reveal.hold .jv-go:focus-visible {
+  border-color: var(--accent-line); outline: none;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-2));
+  box-shadow: 0 0 0 1px var(--accent-line), 0 10px 30px var(--accent-soft);
+  transform: translateY(-3px);
+}
+@keyframes jvRise { to { opacity: 1; transform: translateY(0); } }
+
+/* Holding: the badge breathes and its dial turns, slowly. */
+@keyframes jvBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+@keyframes jvSpin { to { transform: rotate(360deg); } }
+.jv-reveal.hold .jv-big svg {
+  opacity: 1; transform: none;
+  animation: jvBreath calc(4200ms * var(--jvp)) ease-in-out infinite;
+}
+.jv-reveal.hold .jm-ticks { opacity: 1; animation: jvSpin 60s linear infinite; }
+
+/* Skipped: everything at its last frame, at once. */
+.jv-reveal.done .jv-scrim { opacity: 1; transition: none; }
+.jv-reveal.done .jv-corner { opacity: 1; transition: none; }
+.jv-reveal.done .jm-dormant, .jv-reveal.done .jm-flat,
+.jv-reveal.done .jv-burst, .jv-reveal.done .jv-wave { animation: none; opacity: 0; }
+.jv-reveal.done .jm-ring, .jv-reveal.done .jm-trace { animation: none; stroke-dashoffset: 0; }
+.jv-reveal.done .jm-glow, .jv-reveal.done .jm-core, .jv-reveal.done .jm-spark {
+  animation: none; opacity: 1; transform: none;
+}
+.jv-reveal.done .jv-word, .jv-reveal.done .jv-sub, .jv-reveal.done .jv-who {
+  animation: none; opacity: 1;
+}
+.jv-reveal.done .jv-go { animation: none; opacity: 1; transform: none; }
+
+/* Home: everything but the badge fades, and the badge flies to the rail. */
+.jv-reveal.fly .jv-word, .jv-reveal.fly .jv-sub, .jv-reveal.fly .jv-who,
+.jv-reveal.fly .jv-choices {
+  animation: jvOut calc(300ms * var(--jvp)) ease forwards; pointer-events: none;
+}
+
+@media (max-width: 880px) {
+  .jv-choices { grid-template-columns: repeat(2, minmax(140px, 220px)); }
+}
+@media (max-height: 760px) {
+  .jv-big { width: 128px; height: 128px; }
+  .jv-burst, .jv-wave { top: calc(24px + 64px); width: 128px; height: 128px; margin: -64px 0 0 -64px; }
+  .jv-word { font-size: 28px; }
+  .jv-stage { gap: var(--sp-10); }
+  .jv-choices { margin-top: 8px; }
+}
+
+/* ==========================================================================
+   The destinations (js/jarvisshow.js): a live picture and the lab's real
+   figures, over everything, until Back or the workbench.
+   ========================================================================== */
+.jx-show {
+  position: fixed; inset: 0; z-index: 9001;
+  display: grid; grid-template-rows: auto 1fr;
+  background: var(--bg); color: var(--text);
+  opacity: 0; transform: translateY(18px);
+  transition: opacity 320ms var(--ease-out), transform 320ms var(--ease-out);
+}
+.jx-show.in { opacity: 1; transform: none; }
+.jx-show.leaving { opacity: 0; transform: translateY(12px); pointer-events: none; }
+.jx-head {
+  display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap;
+  padding: 10px 18px; border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.jx-mark { width: 28px; height: 28px; display: block; border-radius: var(--r-8);
+           box-shadow: 0 2px 10px var(--accent-soft); }
+.jx-mark svg { display: block; width: 100%; height: 100%; }
+.jx-name { font-weight: 700; letter-spacing: .03em; margin-right: 10px; }
+.jx-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--bg-3); }
+.jx-tab {
+  border: 0; background: transparent; color: var(--text-2); cursor: pointer;
+  padding: 6px 14px; border-radius: 8px; font-size: var(--fs-13);
+}
+.jx-tab:hover { color: var(--text); }
+.jx-tab.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.jx-spacer { flex: 1; }
+.jx-who, .jx-snd, .jv-snd {
+  border: 1px solid var(--line); background: transparent; color: var(--text-2);
+  border-radius: var(--radius-sm); padding: 6px 12px; cursor: pointer; font-size: var(--fs-12);
+}
+.jx-who:hover, .jx-snd:hover, .jv-snd:hover { color: var(--text); background: var(--bg-3); }
+.jx-snd.off, .jv-snd.off { color: var(--text-3); text-decoration: line-through; }
+.jx-btn {
+  border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent);
+  border-radius: var(--radius-sm); padding: 6px 14px; cursor: pointer;
+  font-size: var(--fs-13); font-weight: 600;
+}
+.jx-btn.ghost { background: transparent; color: var(--text-2); border-color: var(--line); font-weight: 500; }
+.jx-btn.ghost:hover { color: var(--text); background: var(--bg-3); }
+.jx-body { overflow-y: auto; padding: 22px 26px 40px; }
+.jx-hero h2 { margin: 0 0 6px; font-size: 24px; }
+.jx-lede { margin: 0 0 16px; max-width: 920px; color: var(--text-2); line-height: 1.55; }
+.jx-live {
+  display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 16px;
+  min-height: 0;
+}
+.jx-canvas {
+  width: 100%; height: clamp(300px, 46vh, 460px); display: block;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-2) 70%, var(--bg));
+}
+.jx-stats {
+  border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+  background: var(--bg-2); display: flex; flex-direction: column; gap: 12px;
+}
+.jx-stats dl { margin: 0; display: grid; gap: 10px; }
+.jx-stats dt { font-size: var(--fs-105); color: var(--text-3); text-transform: uppercase;
+               letter-spacing: .06em; }
+.jx-stats dd { margin: 2px 0 0; font-size: var(--fs-14); color: var(--text); font-weight: 600;
+               font-variant-numeric: tabular-nums; }
+.jx-sim {
+  margin-top: auto; font-size: var(--fs-105); color: var(--text-3); line-height: 1.45;
+  border-top: 1px solid var(--line-soft); padding-top: 10px;
+}
+.jx-gallery h3 { margin: 26px 0 10px; font-size: var(--fs-14); color: var(--text-2);
+                 text-transform: uppercase; letter-spacing: .08em; }
+.jx-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.jx-fig {
+  display: flex; flex-direction: column; gap: 6px; text-align: left; cursor: zoom-in;
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 10px 12px;
+  background: var(--bg-2); color: var(--text-2); font-size: var(--fs-12); line-height: 1.45;
+  transition: border-color .18s ease, transform .18s var(--ease-out), box-shadow .18s ease;
+}
+.jx-fig:hover, .jx-fig:focus-visible {
+  border-color: var(--accent-line); transform: translateY(-2px);
+  box-shadow: 0 10px 26px var(--accent-soft); outline: none;
+}
+.jx-fig img {
+  width: 100%; height: 180px; object-fit: contain; border-radius: 8px;
+  background: var(--bg-3);
+}
+.jx-fig strong { color: var(--text); font-size: var(--fs-13); }
+.jx-ext {
+  margin-top: 14px; border: 1px solid var(--accent-line); background: transparent;
+  color: var(--accent); border-radius: var(--radius-sm); padding: 8px 14px; cursor: pointer;
+}
+.jx-ext:hover { background: var(--accent-soft); }
+@media (max-width: 900px) {
+  .jx-live { grid-template-columns: 1fr; }
+}
+
+/* A figure, as big as the window allows. */
+.jx-light {
+  position: fixed; inset: 0; z-index: 9004; cursor: zoom-out;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 24px;
+}
+.jx-light img { max-width: 100%; max-height: calc(100vh - 140px); border-radius: 10px;
+                background: var(--bg-3); box-shadow: var(--shadow); }
+.jx-light-cap { max-width: 900px; text-align: center; color: var(--text-2); font-size: var(--fs-13);
+                display: flex; flex-direction: column; gap: 4px; }
+.jx-light-cap strong { color: var(--text); font-size: var(--fs-14); }
+
+/* Who is Jarvis? */
+.jx-about-back {
+  position: fixed; inset: 0; z-index: 9003; display: grid; place-items: center;
+  padding: 24px; background: color-mix(in srgb, var(--bg) 78%, transparent);
+  opacity: 0; transition: opacity 300ms ease;
+}
+.jx-about-back.in { opacity: 1; }
+.jx-about-back.leaving { opacity: 0; }
+.jx-about {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 26px; align-items: start;
+  max-width: 760px; max-height: calc(100vh - 48px); overflow-y: auto;
+  padding: 28px 30px; border-radius: 18px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  box-shadow: var(--shadow), 0 0 60px var(--accent-soft);
+  transform: translateY(10px); transition: transform 300ms var(--ease-out);
+}
+.jx-about-back.in .jx-about { transform: none; }
+.jx-photo { margin: 6px 0 0; }
+.jx-photo img {
+  display: block; width: 168px; height: auto; border-radius: 14px;
+  border: 3px solid color-mix(in srgb, var(--accent) 70%, var(--bg-2));
+  box-shadow: 0 0 0 6px var(--accent-soft), 0 12px 30px rgba(0, 0, 0, .35);
+}
+.jx-about-text { display: flex; flex-direction: column; gap: 10px; color: var(--text-2);
+                 font-size: var(--fs-14); line-height: 1.6; }
+.jx-about-text p { margin: 0; }
+.jx-about-text h2 { margin: 6px 0 0; font-size: var(--fs-13); color: var(--text-3);
+                    text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
+.jx-about-kicker { font-size: var(--fs-12); color: var(--text-3); letter-spacing: .14em;
+                   text-transform: uppercase; }
+.jx-about-name { font-size: 28px; color: var(--text); font-weight: 700; line-height: 1.15; }
+.jx-about-years { color: var(--accent); font-family: var(--mono); letter-spacing: .1em; }
+.jx-gift {
+  display: flex; flex-direction: column; gap: 2px; margin-top: 4px;
+  padding: 12px 14px; border-radius: 12px; text-decoration: none;
+  border: 1px solid var(--accent-line); background: var(--accent-soft); color: var(--text-2);
+}
+.jx-gift strong { color: var(--accent); }
+.jx-gift:hover { box-shadow: 0 0 0 1px var(--accent-line), 0 8px 22px var(--accent-soft); }
+.jx-about-close { align-self: flex-start; margin-top: 4px; }
+@media (max-width: 640px) {
+  .jx-about { grid-template-columns: 1fr; }
+  .jx-photo img { width: 140px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   /* The script plays no reveal at all under reduced motion; these are for
-     the two things that move on their own. */
+     the things that move on their own. */
   .chip-btn.jv-activate::after { animation: none; opacity: .6; }
   .brand-mark.jv-landed { animation: none; }
   .jv-pill, .jv-pill::after { transition: none; }
+  .jx-show, .jx-about-back, .jx-about, .jx-fig, .jv-go { transition: none; }
 }
+/* While the name is shown, the badge says who it is for. */
+:root:not([data-jarvis="off"]) #rail .brand-mark[role="button"] { cursor: pointer; }
+#rail .brand-mark[role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .nav-group { display: flex; flex-direction: column; gap: var(--sp-2); }
 .nav-item {
@@ -7410,6 +7665,12 @@ body.aid-window .xf-tabs { display: none !important; }
 .ss-tw { display: block; width: 100%; height: 128px; cursor: crosshair; }
 .ss-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ss-wheel { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ss-finder { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; }
+.ss-fin { display: inline-flex; align-items: center; gap: 4px;
+          font-size: var(--fs-115); color: var(--text-2); }
+.ss-unit { color: var(--text-3); }
+.ss-else { display: inline-flex; align-items: center; gap: 6px;
+           font-size: var(--fs-115); color: var(--warn); }
 .ss-chip {
   display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px;
   border: 1px solid var(--line); border-radius: 999px; font-size: var(--fs-105);
@@ -7509,6 +7770,20 @@ body.aid-window .xf-tabs { display: none !important; }
 .ss-help:hover, .ss-help.on { border-color: var(--accent); color: var(--accent); }
 div.ss-more { display: flex; flex-direction: column; gap: 4px; }
 div.ss-more p { margin: 0; }
+/* Method B's verdicts in the drawer: a tick, a cross or a dash, said. */
+.ss-verdicts { display: flex; flex-direction: column; gap: 3px; }
+.ss-verdict {
+  display: flex; align-items: baseline; gap: 7px; text-align: left;
+  font: inherit; font-size: var(--fs-115); cursor: pointer;
+  padding: 3px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft); background: transparent; color: var(--text-2);
+}
+.ss-verdict b { width: 12px; text-align: center; }
+.ss-verdict:hover { background: var(--bg-hover); }
+.ss-verdict.match { color: var(--ok); border-color: var(--ok-soft); }
+.ss-verdict.off { color: var(--err); border-color: var(--err-soft); }
+.ss-verdict.none { color: var(--text-3); }
+.ss-verdict.picked { border-color: var(--accent); background: var(--accent-soft); }
 /* The depth strip, on the rail's lanes, right of the rows. */
 .ss-strip { position: absolute; right: 0; width: 150px;
             border-left: 1px solid var(--line-soft); background: var(--bg); }

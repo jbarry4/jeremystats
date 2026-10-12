@@ -63,6 +63,33 @@
   .sa-comp.slow { border-color: var(--c2); }
   .sa-comp.fast { border-color: var(--warn); }
   .sa-comp.picked { box-shadow: 0 0 0 2px var(--accent); }
+  .sa-comp.weak { opacity: .55; }
+  /* Method B: one card per frequency, a verdict per blade. */
+  .sa-expect { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+               gap: 12px; }
+  .sa-exp { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px; }
+  .sa-exp.match { border-left: 3px solid var(--ok); }
+  .sa-exp.off { border-left: 3px solid var(--err); }
+  .sa-exp h4 { margin: 0 0 2px; font-size: var(--fs-12); display: flex;
+               align-items: center; gap: 6px; flex-wrap: wrap; }
+  .sa-swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .sa-badge { margin-left: auto; padding: 1px 8px; border-radius: 999px;
+              font-size: var(--fs-105); font-weight: 600; }
+  .sa-badge.match { color: var(--ok); background: var(--ok-soft); }
+  .sa-badge.off { color: var(--err); background: var(--err-soft); }
+  .sa-badge.none { color: var(--text-2); background: var(--bg-hover); }
+  .sa-pics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+             gap: 8px; }
+  .sa-pic { margin: 0; min-width: 0; }
+  .sa-mean { margin: 6px 0 0; padding: 6px 8px; border-radius: var(--radius-sm);
+             background: var(--bg-hover); color: var(--text-2); font-size: var(--fs-105); }
+  .sa-exp-why { margin: 2px 0 6px; color: var(--text-3); font-size: var(--fs-105); }
+  .sa-verdicts { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
+  .sa-verdict { display: flex; gap: 6px; align-items: baseline; font-size: var(--fs-115); }
+  .sa-verdict b { width: 14px; text-align: center; }
+  .sa-verdict.match { color: var(--ok); }
+  .sa-verdict.off { color: var(--err); }
+  .sa-verdict.none { color: var(--text-3); }
   .sa-checks li { margin: 3px 0; }
   .sa-checks li.warn { color: var(--warn); }
 </style>

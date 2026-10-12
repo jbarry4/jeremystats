@@ -120,6 +120,7 @@ BARRY.strataSteps = (function () {
   let jobId = null;        // a read or an ICA running
   let jobKind = null;
   let jobSnap = null;
+  let jobsNow = [];        // every read and ICA running, any recording
   let open = null;         // which step is open, '0'..'4', or null
   let sug = null;          // the last /suggest answer
   let guide = null;        // the last /guide answer (Step 0)
@@ -145,10 +146,70 @@ BARRY.strataSteps = (function () {
   async function enter(host) {
     H = host;
     status = null; sug = null; guide = null; ghost = null; overrides = {};
-    checks = null; ica = null; open = null; jobId = null; busy = '';
+    checks = null; ica = null; open = null; busy = '';
+    jobId = null; jobKind = null; jobSnap = null; jobsNow = [];
     await refreshStatus();
-    if (status && status.scanned && status.current) await load();
+    attachJob();
+    if (status && status.scanned && status.current && jobKind !== 'scan') {
+      await load();
+    }
     H.render();
+    watchElsewhere();
+  }
+
+  /* A read or ICA of this recording still running -- started before
+     somebody left it -- is picked up again rather than offered twice.
+     (Leaving used to keep the old run's kind and lose its id, so the next
+     recording showed a Stop with nothing behind it: "No such run".) */
+  function attachJob() {
+    if (!H || jobId) return;
+    const mine = jobsNow.find((j) => j.gid === H.gid);
+    if (!mine) return;
+    jobId = mine.id; jobKind = mine.kind; jobSnap = null;
+    poll();
+  }
+
+  const elsewhere = () => (H ? jobsNow.filter((j) => j.gid !== H.gid) : []);
+
+  /* Runs on other recordings: kept up to date while any is going, so the
+     bar can say so and stop them. */
+  let watching = false;
+  async function watchElsewhere() {
+    if (watching) return;
+    watching = true;
+    try {
+      while (H && elsewhere().length) {
+        await new Promise((r) => setTimeout(r, 2000));
+        if (!H) break;
+        let changed = false;
+        for (const j of elsewhere()) {
+          let snap = null;
+          try { snap = (await api('/api/cfc/job/' + j.id)).job; } catch (e) { /* gone */ }
+          const st = snap && (snap.stages || [])[0];
+          if (!snap || snap.status !== 'running') {
+            jobsNow = jobsNow.filter((x) => x.id !== j.id);
+            changed = true;
+          } else if (st && st.done !== j.done) {
+            j.done = st.done; j.of = st.of;
+            changed = true;
+          }
+        }
+        if (changed && H) H.render();
+      }
+    } finally { watching = false; }
+  }
+
+  /* Stop a run, this recording's or another's. A run that has already
+     ended is not an error: there is nothing left to stop. */
+  async function stopJob(id) {
+    if (!id) return;
+    try {
+      await apiPost('/api/cfc/job/' + id + '/cancel', {});
+    } catch (e) {
+      if (id === jobId) { jobId = null; jobKind = null; jobSnap = null; }
+    }
+    jobsNow = jobsNow.filter((x) => x.id !== id);
+    if (H && id !== jobId) { await refreshStatus(); H.render(); }
   }
 
   function leave() {
@@ -162,6 +223,8 @@ BARRY.strataSteps = (function () {
     }
     H = null; status = null; sug = null; guide = null; ghost = null;
     stripCanvas = null; open = null;
+    // The run goes on on the server; whoever comes back picks it up.
+    jobId = null; jobKind = null; jobSnap = null; jobsNow = [];
   }
 
   const sheet = () => (H && H.sheet()) || null;
@@ -178,6 +241,7 @@ BARRY.strataSteps = (function () {
       status = res.status;
       estimate = res.estimate_s;
       status.probe = res.probe;
+      jobsNow = res.jobs || [];
     } catch (e) {
       status = { scanned: false, error: e.message };
     }
@@ -386,6 +450,18 @@ BARRY.strataSteps = (function () {
         el('span', { text: s.name }),
       ]));
     }
+    for (const j of elsewhere()) {
+      const pct = j.of ? Math.round(100 * j.done / j.of) : 0;
+      row.appendChild(el('span', { class: 'ss-else' }, [
+        el('span', { text: (j.kind === 'ica' ? 'ICA on ' : 'Still reading ')
+          + j.label + (j.kind === 'scan' ? ' · ' + pct + '%' : '') }),
+        el('button', {
+          class: 'mini', text: 'Stop',
+          title: 'Stop that run. What it has read so far is thrown away.',
+          onclick: () => stopJob(j.id),
+        }),
+      ]));
+    }
     if (status && status.error) {
       row.appendChild(el('span', { class: 'ss-say err', text: status.error }));
     } else if (!status || !status.scanned || !status.current
@@ -415,7 +491,7 @@ BARRY.strataSteps = (function () {
       ]));
       wrap.appendChild(el('button', {
         class: 'btn ghost sm', text: 'Stop',
-        onclick: () => apiPost('/api/cfc/job/' + jobId + '/cancel', {}),
+        onclick: () => stopJob(jobId),
       }));
       return wrap;
     }
@@ -495,14 +571,6 @@ BARRY.strataSteps = (function () {
           + 'dentate spikes and sharp waves included.' }),
       el('div', { style: 'flex:1' }),
       el('button', {
-        class: 'btn ghost sm', text: 'Paint the finder’s bouts',
-        title: 'Adds every ghost bout to Theta Walk. They are yours from '
-             + 'then on: erase any you disagree with.',
-        disabled: (guide && guide.guide && guide.guide.ghost.length) ? null
-          : 'disabled',
-        onclick: () => setWalk(merge(walk().concat(guide.guide.ghost))),
-      }),
-      el('button', {
         class: 'btn ghost sm', text: 'Clear',
         title: 'Clear every painted Theta Walk bout',
         disabled: walk().length ? null : 'disabled',
@@ -517,13 +585,18 @@ BARRY.strataSteps = (function () {
         },
       }),
     ]));
+    box.appendChild(finderRow());
+    const g0 = guide && guide.guide;
     const cv = el('canvas', {
       class: 'ss-tw', height: '128',
-      title: 'Drag to paint Theta Walk; shift-drag to erase; a click moves '
-           + 'the traces there.\nTop: spectrogram, 4-12 Hz. Middle: '
-           + 'theta/delta, the dashed line is the finder’s threshold; '
-           + 'hatched is where the finder would put bouts. Bottom: how much '
-           + 'of the probe agrees on one theta frequency.',
+      title: 'Drag to paint Theta Walk; drag a painted bout’s edge to move '
+           + 'it; shift-drag to erase; a click moves the traces there.\n'
+           + 'Top: spectrogram, 4-12 Hz' + (g0 ? ', ch ' + g0.channel : '')
+           + '. Middle: theta (6-10 Hz) over delta (1-4 Hz) power on that '
+           + 'channel, a three-second median; the dashed line is the '
+           + 'finder’s level; hatched is where the finder would put '
+           + 'bouts. Bottom: how much of the probe agrees on one theta '
+           + 'frequency.',
     });
     box.appendChild(el('div', { class: 'ss-tw-wrap' }, [cv]));
     box.appendChild(wheelBox());
@@ -538,8 +611,8 @@ BARRY.strataSteps = (function () {
   function wheelBox() {
     const list = strata().wheel || [];
     const box = el('div', { class: 'ss-wheel' }, [
-      el('span', { class: 'ss-say', text: 'Drag to paint · shift-drag '
-        + 'erases · click moves the traces' }),
+      el('span', { class: 'ss-say', text: 'Drag to paint · drag an edge '
+        + 'to move it · shift-drag erases · click moves the traces' }),
       el('div', { style: 'flex:1' }),
       el('span', { class: 'section-label', text: 'Wheel times' }),
     ]);
@@ -580,6 +653,76 @@ BARRY.strataSteps = (function () {
       },
     }));
     return box;
+  }
+
+  /* The auto painter: what the finder calls a bout. Kept with the sheet's
+     parameters; changing one redraws the ghost, and nothing is painted
+     until "Paint them". */
+  const FINDER = [
+    { k: 'min_bout_s', name: 'Shortest bout', unit: 's', def: '2',
+      why: 'A run of theta shorter than this is not a bout.' },
+    { k: 'merge_gap_s', name: 'Join gaps under', unit: 's', def: '1',
+      why: 'Two bouts closer than this become one.' },
+    { k: 'ratio_threshold', name: 'θ/δ above', unit: '', def: null,
+      why: 'The level the theta/delta curve has to clear: the dashed line. '
+        + 'Empty: the finder picks it from this recording (Otsu).' },
+    { k: 'theta_channel', name: 'Read on ch', unit: '', def: null,
+      why: 'The channel the theta/delta curve and the spectrogram are read '
+        + 'on. Empty: the good channel with the most theta.' },
+  ];
+
+  function finderRow() {
+    const g = guide && guide.guide;
+    const p = strata().params || {};
+    const row = el('div', { class: 'ss-finder' }, [
+      el('span', { class: 'section-label', text: 'Auto painter' })]);
+    for (const f of FINDER) {
+      const auto = f.def != null ? f.def
+        : g ? 'auto: ' + (f.k === 'theta_channel' ? g.channel : g.threshold)
+          : 'auto';
+      row.appendChild(el('label', { class: 'ss-fin', title: f.why }, [
+        el('span', { text: f.name }),
+        el('input', {
+          class: 'ss-in num', 'data-k': f.k, inputmode: 'decimal',
+          // Wide enough for its own placeholder: never cut text short.
+          style: 'width:' + (Math.max(4, String(auto).length) + 4) + 'ch',
+          value: p[f.k] == null ? '' : String(p[f.k]), placeholder: auto,
+          onchange: (e) => setFinder(f.k, e.target.value),
+        }),
+        f.unit ? el('span', { class: 'ss-unit', text: f.unit }) : null,
+      ]));
+    }
+    const gb = (g && g.ghost) || [];
+    const secs = gb.reduce((a, b) => a + (b[1] - b[0]), 0);
+    row.appendChild(el('span', { class: 'ss-say', text: gb.length + ' bout'
+      + (gb.length === 1 ? '' : 's') + ', ' + fmtT(secs) }));
+    if (g && g.channel_note) {
+      row.appendChild(el('span', { class: 'ss-say warn', text: g.channel_note }));
+    }
+    row.appendChild(el('button', {
+      class: 'btn ghost sm', text: 'Paint them',
+      title: 'Adds every ghost bout to Theta Walk. They are yours from '
+           + 'then on: drag their edges, or erase any you disagree with.',
+      disabled: gb.length ? null : 'disabled',
+      onclick: () => setWalk(merge(walk().concat(gb))),
+    }));
+    return row;
+  }
+
+  async function setFinder(k, raw) {
+    const v = String(raw == null ? '' : raw).trim();
+    let val = null;
+    if (v !== '') {
+      val = Number(v);
+      if (!isFinite(val) || (k !== 'ratio_threshold' && val < 0)) {
+        toast('The auto painter needs a number there.', 'err', 5000);
+        H.render();
+        return;
+      }
+      if (k === 'theta_channel') val = Math.round(val);
+    }
+    await saveStrata({ params: { [k]: val } }, true);
+    await loadGuide();
   }
 
   function merge(bouts) {
@@ -677,14 +820,27 @@ BARRY.strataSteps = (function () {
         ctx.stroke();
       }
       ctx.restore();
-      // the painted bouts, solid, full height
+      // the painted bouts, solid, full height -- or, while an edge is
+      // being dragged, the bouts as they will be
+      const bouts = paint && paint.bouts ? paint.bouts : walk();
       ctx.save();
       ctx.fillStyle = BARRY.token('--accent');
       ctx.globalAlpha = 0.28;
-      for (const b of walk()) ctx.fillRect(X(b[0]), 0, Math.max(1, X(b[1]) - X(b[0])), Hh);
+      for (const b of bouts) {
+        const a = Math.min(b[0], b[1]), z = Math.max(b[0], b[1]);
+        ctx.fillRect(X(a), 0, Math.max(1, X(z) - X(a)), Hh);
+      }
       ctx.globalAlpha = 1;
       ctx.fillStyle = BARRY.token('--accent');
-      for (const b of walk()) ctx.fillRect(X(b[0]), Hh - 3, Math.max(1, X(b[1]) - X(b[0])), 3);
+      for (const b of bouts) {
+        const a = Math.min(b[0], b[1]), z = Math.max(b[0], b[1]);
+        ctx.fillRect(X(a), Hh - 3, Math.max(1, X(z) - X(a)), 3);
+        // the edges, which can be taken hold of
+        ctx.globalAlpha = 0.85;
+        ctx.fillRect(Math.round(X(a)) - 1, 0, 2, Hh);
+        ctx.fillRect(Math.round(X(z)) - 1, 0, 2, Hh);
+        ctx.globalAlpha = 1;
+      }
       ctx.restore();
       // wheel times, on top
       ctx.fillStyle = BARRY.token('--ok');
@@ -732,7 +888,17 @@ BARRY.strataSteps = (function () {
         ctx.strokeRect(X(s.t0), 0.5, Math.max(2, X(s.t0 + s.span) - X(s.t0)),
                        Hh - 1);
       }
-      if (paint) {
+      if (paint && paint.grab) {
+        // the time of the edge being moved, beside it
+        const t = paint.bouts[paint.grab.i][paint.grab.side];
+        const x = X(t);
+        ctx.font = '600 11px system-ui, sans-serif';
+        ctx.textBaseline = 'top';
+        ctx.textAlign = x > W - 60 ? 'right' : 'left';
+        ctx.fillStyle = BARRY.token('--text');
+        ctx.fillText(fmtT(t), x + (x > W - 60 ? -5 : 5), 3);
+      }
+      if (paint && !paint.bouts) {
         ctx.fillStyle = paint.erase ? BARRY.token('--err')
                                     : BARRY.token('--accent');
         ctx.globalAlpha = 0.35;
@@ -750,8 +916,51 @@ BARRY.strataSteps = (function () {
       const r = cv.getBoundingClientRect();
       return Math.max(0, Math.min(end, ((e.clientX - r.left) / r.width) * end));
     };
+    /* A painted bout's edge, if the pointer is on one: within a few pixels,
+       the nearest. */
+    const EDGE_PX = 6;
+    const edgeAt = (e) => {
+      const r = cv.getBoundingClientRect();
+      const x = (e.clientX - r.left) * (W / (r.width || W));
+      let best = null;
+      walk().forEach((b, i) => [0, 1].forEach((side) => {
+        const d = Math.abs(X(b[side]) - x);
+        if (d <= EDGE_PX && (!best || d < best.d)) best = { i, side, d };
+      }));
+      return best;
+    };
+    cv.onmousemove = (e) => {
+      if (paint) return;
+      cv.style.cursor = !e.shiftKey && edgeAt(e) ? 'ew-resize' : '';
+    };
     cv.onmousedown = (e) => {
       e.preventDefault();
+      const grab = !(e.shiftKey || e.button === 2) && edgeAt(e);
+      if (grab) {
+        // Moving an edge: the bout is redrawn as it goes and saved on
+        // release; dragged past its other edge or onto a neighbour, the
+        // bouts are tidied (merged, a sliver dropped) as painting does.
+        paint = { bouts: walk().map((b) => b.slice()), grab, x: e.clientX };
+        const moveE = (ev) => {
+          paint.bouts[grab.i][grab.side] = tAt(ev);
+          draw();
+        };
+        const upE = (ev) => {
+          window.removeEventListener('mousemove', moveE);
+          window.removeEventListener('mouseup', upE);
+          const p = paint;
+          paint = null;
+          if (Math.abs(ev.clientX - p.x) < 2) { draw(); return; }
+          setWalk(p.bouts);
+          requestAnimationFrame(() => {
+            const c = document.querySelector('.ss-tw');
+            if (c) drawWalk(c);
+          });
+        };
+        window.addEventListener('mousemove', moveE);
+        window.addEventListener('mouseup', upE);
+        return;
+      }
       paint = { t0: tAt(e), t1: tAt(e), erase: e.shiftKey || e.button === 2,
                 x: e.clientX };
       const move = (ev) => { paint.t1 = tAt(ev); draw(); };
@@ -993,10 +1202,10 @@ BARRY.strataSteps = (function () {
      (OML, then MML down to the granule layer -- the lab's own scheme). Saved
      with the sheet's parameters. */
   function imlRow(prop) {
-    const on = prop.use_iml !== false;
+    const scheme = prop.ml_scheme || (prop.use_iml === false ? 'mml' : 'iml');
     const set = async (v) => {
-      if (v === on) return;
-      await saveStrata({ params: { use_iml: v } }, true);
+      if (v === scheme) return;
+      await saveStrata({ params: { ml_scheme: v, use_iml: v === 'iml' } }, true);
       await load();
     };
     const thal = (prop.below_lower || 'thal') === 'thal';
@@ -1022,13 +1231,25 @@ BARRY.strataSteps = (function () {
     function imlSwitch() {
     return el('div', { class: 'ss-line' }, [
       el('span', { class: 'ss-line-name', text: 'Inner molecular layer' }),
-      el('span', { class: 'ctl-seg', title: 'Method A cuts the molecular '
-        + 'layer in thirds. Without IML the inner third is part of the MML, '
-        + 'as in the lab\u2019s own scheme; the OML line does not move.' }, [
-        el('button', { class: 'mini' + (on ? ' on' : ''), text: 'its own (IML)',
-                       onclick: () => set(true) }),
-        el('button', { class: 'mini' + (on ? '' : ' on'), text: 'part of MML',
-                       onclick: () => set(false) }),
+      el('span', { class: 'ctl-seg' }, [
+        el('button', { class: 'mini' + (scheme === 'iml' ? ' on' : ''),
+                       text: 'its own (IML)',
+                       title: 'GCL at its thickness against the hilus; the '
+                         + 'molecular layer above it in thirds: OML, MML, IML.',
+                       onclick: () => set('iml') }),
+        el('button', { class: 'mini' + (scheme === 'mml' ? ' on' : ''),
+                       text: 'part of MML',
+                       title: 'As above, with the inner third part of the '
+                         + 'MML (the lab\u2019s scheme). The OML line does not '
+                         + 'move.',
+                       onclick: () => set('mml') }),
+        el('button', { class: 'mini' + (scheme === 'thirds' ? ' on' : ''),
+                       text: 'none: OML, MML, GCL in thirds',
+                       title: 'No IML and no set GCL thickness: fissure to '
+                         + 'hilus in three equal parts. Simple, but the GCL '
+                         + 'comes out thicker than the atlas has it (in a '
+                         + 'mouse about 90 \u00b5m against 60).',
+                       onclick: () => set('thirds') }),
       ]),
     ]);
     }
@@ -1149,26 +1370,35 @@ BARRY.strataSteps = (function () {
     row.appendChild(el('span', { class: 'section-label', text: 'Method B '
       + 'says' }));
     row.appendChild(helpBtn());
-    for (const c of chk) {
-      const on = icaPick && icaPick.region === c.region
-        && icaPick.kind === c.kind;
-      row.appendChild(el('button', {
-        class: 'ss-chip ss-chip-btn' + (c.row == null ? ' dim'
-          : c.agree ? ' ok' : ' warn') + (on ? ' picked' : ''),
-        title: 'Click to see it against Method A\u2019s lines',
+    /* One verdict per layer, said plainly (2026-10-12: "indicate if it
+       matches our expectations"): a tick where the gamma sits in the layer
+       it should, a cross where it sits somewhere else, a dash where ICA
+       found nothing it can vouch for. */
+    const vs = chk.map(icaVerdict);
+    const found = vs.filter((v) => v.status !== 'none');
+    const good = vs.filter((v) => v.status === 'match');
+    row.appendChild(el('span', { class: 'ss-say', text: !found.length
+      ? 'Nothing it can vouch for yet.'
+      : good.length === found.length
+        ? 'Agrees with Method A wherever it found something.'
+        : (found.length - good.length) + ' of ' + found.length
+          + ' disagree with Method A.' }));
+    const chips = el('div', { class: 'ss-verdicts' });
+    chk.forEach((c, k) => {
+      const v = vs[k];
+      const on = icaPick && icaPick.region === c.region && icaPick.kind === c.kind;
+      chips.appendChild(el('button', {
+        class: 'ss-verdict ' + v.status + (on ? ' picked' : ''),
+        title: 'Click to see it on the strip and the traces, and what it means',
         onclick: () => {
           icaPick = on ? null : c;
           H.render();
           drawStrip();
           H.redraw();
         },
-      }, [el('span', { text: (c.kind === 'slow' ? 'slow \u03b3 \u2192 '
-        : 'fast \u03b3 \u2192 ') + regionName(c.region) + ': '
-        + (c.row == null ? 'nothing reliable'
-          : chName(c.row) + (c.agree ? ', agrees'
-            : ', ' + Math.abs(c.off) + ' ch off')) })]));
-    }
-    const box = el('div', { class: 'ss-ica-box' }, [row]);
+      }, [el('b', { text: v.icon }), el('span', { text: v.text })]));
+    });
+    const box = el('div', { class: 'ss-ica-box' }, [row, chips]);
     if (icaPick) box.appendChild(icaCompare(icaPick));
     if (icaHelp) box.appendChild(icaExplain());
     return box;
@@ -1179,38 +1409,93 @@ BARRY.strataSteps = (function () {
 
   /* What one check means, in a sentence, and where it is on the strip and
      the traces (drawn while it is picked). */
+  const layerShort = (id) => SHORT[id] || regionName(id);
+  const kindName = (k) => (k === 'slow' ? 'slow \u03b3'
+    : k === 'mid' ? 'mid \u03b3' : 'fast \u03b3');
+  /* The colours are the depth curves' where there is one: slow gamma's
+     curve is --c2, mid (60-100 Hz) is --warn. */
+  const kindTok = (k) => (k === 'slow' ? '--c2' : k === 'mid' ? '--warn' : '--c4');
+  /* Fernandez-Ruiz et al. 2021 (Science 372:eabf3119): the dentate's three
+     gamma inputs, each into its own third of the molecular layer. */
+  const KIND_WHY = {
+    slow: 'Slow gamma (30-50 Hz) comes from the lateral entorhinal cortex, '
+      + 'whose input ends in the outer third of the molecular layer',
+    mid: 'Mid gamma (60-80 Hz) comes from the commissural input from the '
+      + 'other hippocampus, which ends in the inner third',
+    fast: 'Fast gamma (100-150 Hz) comes from the medial entorhinal cortex, '
+      + 'whose input ends in the middle third',
+  };
+
+  function icaVerdict(c) {
+    const layer = layerShort(c.region);
+    if (c.row == null) {
+      return { status: 'none', icon: '\u2013',
+               text: kindName(c.kind) + ': nothing reliable in ' + layer };
+    }
+    if (c.agree) {
+      return { status: 'match', icon: '\u2713',
+               text: kindName(c.kind) + ' sits in ' + layer + ' ('
+                 + chName(c.row) + ')' };
+    }
+    return { status: 'off', icon: '\u2717',
+             text: kindName(c.kind) + ' sinks ' + Math.abs(c.off) + ' ch '
+               + (c.off > 0 ? 'below ' : 'above ') + layer };
+  }
+
+  /* Where a channel sits now: in the step's proposal if it has one there,
+     else on the sheet. */
+  function regionAtRow(row) {
+    const ch = sug && sug.channels ? sug.channels[row] : null;
+    if (ch == null) return null;
+    const prop = proposedLabels();
+    const id = (prop && prop.get(ch)) || ((sheet() || {}).labels || {})[String(ch)];
+    return id ? layerShort(id) : 'unlabelled';
+  }
+
+  /* What one verdict means, in plain words. */
   function icaCompare(c) {
-    const lines = (ghost && ghost.lines) || [];
-    const top = lines.find((l) => l.below === c.region);
-    const bot = lines.find((l) => l.above === c.region);
-    const span = (top && top.at != null)
-      ? chName(top.at) + (bot && bot.at != null && bot.at - 1 > top.at
-        ? '\u2013' + (sug.channels[bot.at - 1] != null
-          ? sug.channels[bot.at - 1] : '') : '')
-      : 'nowhere yet';
-    const comp = (ica && ica.components || []).find((x) => x.index === c.component);
-    const kind = c.kind === 'slow' ? 'slow-gamma (LEC-like, 25-60 Hz)'
-                                   : 'fast-gamma (MEC-like, 60-180 Hz)';
+    const layer = layerShort(c.region);
+    const expect = (KIND_WHY[c.kind] || KIND_WHY.fast) + ', so it should '
+      + 'sink in ' + layer + '.';
     let say;
     if (c.row == null) {
-      say = 'No ' + kind + ' component that came back in both halves of '
-        + 'the walking has a sink inside ' + regionName(c.region)
-        + ' (' + span + ') at least 30% as strong as its own strongest '
-        + 'sink. So ICA found no generator it can vouch for in this layer: '
-        + 'not evidence against Method A\u2019s line, just no evidence '
-        + 'for it. Fast gamma is often too weak in mice for this.';
+      // The strongest trusted source of this kind, to say where it went.
+      const best = ((ica && ica.components) || [])
+        .filter((x) => x.kind === c.kind && (x.stability || 0) >= 0.7)
+        .sort((a, b) => b.variance - a.variance)[0];
+      const near = ((ica && ica.components) || [])
+        .filter((x) => x.kind === c.kind)
+        .sort((a, b) => b.variance - a.variance)[0];
+      const where = best && best.sink_row != null
+        ? ' The strongest ' + kindName(c.kind) + ' source it does trust '
+          + 'sinks at ch ' + best.sink_channel + ', in '
+          + regionAtRow(best.sink_row) + ' -- not in ' + layer + '.'
+        : near
+          ? ' The nearest thing it found is a ' + near.peak_hz + ' Hz '
+            + 'source, but it came back only '
+            + Math.round(100 * (near.stability || 0)) + '% alike in the two '
+            + 'halves (it needs 70%).'
+          : ' ICA found no ' + kindName(c.kind) + ' source at all.';
+      say = 'Nothing reliable means ICA found no ' + kindName(c.kind)
+        + ' source it can trust sitting in ' + layer + '. To be trusted a '
+        + 'source has to come back when ICA is run again on each half of '
+        + 'the walking separately, and to count for ' + layer + ' its '
+        + 'current sink has to be there.' + where + ' So Method B says '
+        + 'nothing about this line: it neither confirms nor contradicts '
+        + 'it.' + (c.kind === 'slow' ? '' : ' That is common for '
+          + kindName(c.kind) + ' in mice, which is small and gets mixed '
+          + 'into other sources.') + ' More Theta Walk helps.';
+    } else if (c.agree) {
+      say = 'Matches. ' + expect + ' It sinks at ' + chName(c.row)
+        + ', which is in ' + layer + ' as Method A drew it.';
     } else {
-      const dir = c.off > 0 ? 'deeper' : 'shallower';
-      say = 'Component ' + c.component + (comp ? ' (' + comp.peak_hz
-        + ' Hz, ' + (100 * comp.variance).toFixed(0) + '% of the gamma '
-        + 'field, came back in both halves at ' + comp.stability + ')' : '')
-        + ' sinks at ' + chName(c.row) + '. Method A puts '
-        + regionName(c.region) + ' at ' + span + (c.agree
-          ? ', so they agree.'
-          : ', so ICA puts it ' + Math.abs(c.off) + ' channel'
-            + (Math.abs(c.off) === 1 ? '' : 's') + ' ' + dir + '.')
-        + ' On the strip: the component\u2019s CSD (its sink is the dip), '
-        + 'the sink as a solid line, and the layer as a bracket.';
+      say = 'Does not match. ' + expect + ' It sinks at ' + chName(c.row)
+        + ', in ' + regionAtRow(c.row) + ', ' + Math.abs(c.off) + ' channel'
+        + (Math.abs(c.off) === 1 ? '' : 's') + ' '
+        + (c.off > 0 ? 'below' : 'above') + ' where Method A put ' + layer
+        + '. Either the thirds are off here, or this source is not that '
+        + 'input. The strip and the traces mark where ' + layer + ' would '
+        + 'reach to take it in.';
     }
     return el('p', { class: 'ss-more', text: say });
   }
@@ -1229,12 +1514,16 @@ BARRY.strataSteps = (function () {
         + 'loading has a sink where the generator\u2019s synapses are; '
         + 'that is the "where". The time course\u2019s spectrum says '
         + 'which frequency it carries; that is the "what".' }),
-      el('p', { text: '3. In the dentate, slow gamma (25-60 Hz) comes from '
-        + 'the lateral entorhinal cortex and ends in the outer molecular '
-        + 'layer; fast gamma (60-180 Hz) from the medial entorhinal cortex, '
-        + 'in the middle molecular layer. So a slow source should sink in '
-        + 'OML, a fast one in MML -- an answer that never used Method A\u2019s '
-        + 'thirds.' }),
+      el('p', { text: '3. In the dentate each input brings its own gamma '
+        + '(Fern\u00e1ndez-Ruiz et al. 2021, Science): slow (30-50 Hz) from '
+        + 'the lateral entorhinal cortex into the outer third of the '
+        + 'molecular layer, fast (100-150 Hz) from the medial entorhinal '
+        + 'cortex into the middle third, and mid (60-80 Hz) from the '
+        + 'commissural input into the inner third. A source is called by '
+        + 'its peak: under 55 Hz slow, 55-90 mid, 90 and up fast. So a slow '
+        + 'source should sink in OML, a mid one in IML, a fast one in MML '
+        + '-- an answer that never used Method A\u2019s thirds. Mid is only '
+        + 'checked when IML is its own layer.' }),
       el('p', { text: '4. Every source is fitted again on the first and the '
         + 'second half of the walking. Only sources that come back in both '
         + '(their loadings correlate at 0.7 or more) are trusted. "Agrees" '
@@ -1260,6 +1549,11 @@ BARRY.strataSteps = (function () {
     try {
       const res = await apiPost(url('ica'), body({ peek: true, overrides }));
       if (res.ica) ica = res.ica;
+      else if (res.job && !jobId && H) {
+        jobId = res.job.id; jobKind = 'ica'; jobSnap = res.job;
+        H.render();
+        poll();
+      }
     } catch (e) { /* the button says so */ }
   }
 
@@ -1724,7 +2018,7 @@ BARRY.strataSteps = (function () {
     // a picked ICA check: the component's CSD, its sink, and the layer
     if (icaPick && open === '3' && ica && ica.components) {
       const comp = ica.components.find((x) => x.index === icaPick.component);
-      const col = BARRY.token(icaPick.kind === 'slow' ? '--c2' : '--warn');
+      const col = BARRY.token(kindTok(icaPick.kind));
       if (comp && comp.csd) {
         const idx = new Map((ica.channels || []).map((ch, k) => [ch, k]));
         const vals = chans.map((c) => {
@@ -1748,12 +2042,20 @@ BARRY.strataSteps = (function () {
         ctx.fillRect(1, y0 + 1, 4, Math.max(2, y1 - y0 - 2));
       }
       if (icaPick.row != null) {
-        const i = laneOfRow(icaPick.row, chans);
-        if (i != null && i < n) {
-          const y = (i + 0.5) * lane;
-          ctx.strokeStyle = col;
-          ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        const m = icaMark(icaPick, chans);
+        if (m) {
+          ctx.globalAlpha = 0.3;
+          ctx.fillStyle = col;
+          ctx.fillRect(0, m.a * lane, W, (m.b - m.a) * lane);
+          ctx.globalAlpha = 1;
+          if (m.edge != null) {
+            const y = Math.round(m.edge * lane) + 0.5;
+            ctx.setLineDash([5, 3]);
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+            ctx.setLineDash([]);
+          }
         }
       }
     }
@@ -1937,25 +2239,63 @@ BARRY.strataSteps = (function () {
       ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + plotW, y); ctx.stroke();
     }
-    // A picked ICA check: where its component sinks, solid, in its colour.
+    /* A picked ICA check: the channel its component sinks on, shaded edge
+       to edge, and -- when that is outside the layer -- the boundary that
+       would take it in, dashed, on the same channel edge any other line
+       sits on. (It used to be a line through the middle of the channel,
+       half way between two boundaries.) */
     if (icaPick && open === '3' && icaPick.row != null) {
-      const i = laneOfRow(icaPick.row, chans);
-      if (i != null && i < chans.length) {
-        const y = Math.round(y0 + (i + 0.5) * lane) + 0.5;
+      const m = icaMark(icaPick, chans);
+      if (m) {
+        const col = BARRY.token(kindTok(icaPick.kind));
+        const ya = Math.round(y0 + m.a * lane), yb = Math.round(y0 + m.b * lane);
         ctx.setLineDash([]);
-        ctx.globalAlpha = 0.9;
-        ctx.strokeStyle = BARRY.token(icaPick.kind === 'slow' ? '--c2' : '--warn');
-        ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + plotW, y); ctx.stroke();
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = col;
+        ctx.fillRect(x0, ya, plotW, Math.max(1, yb - ya));
         ctx.globalAlpha = 1;
         ctx.font = '10px system-ui, sans-serif';
         ctx.textAlign = 'left';
-        ctx.textBaseline = 'bottom';
-        ctx.fillStyle = ctx.strokeStyle;
-        ctx.fillText('ICA ' + icaPick.kind + ' \u03b3 sink', x0 + 6, y - 2);
+        ctx.fillStyle = col;
+        if (m.edge != null) {
+          const y = Math.round(y0 + m.edge * lane) + 0.5;
+          ctx.setLineDash([6, 4]);
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 3.5;
+          ctx.globalAlpha = 0.8;
+          ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + plotW, y); ctx.stroke();
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + plotW, y); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.textBaseline = m.edge === m.a ? 'bottom' : 'top';
+          ctx.fillText('ICA: ' + layerShort(icaPick.region) + ' would '
+                       + (m.edge === m.a ? 'start' : 'end') + ' here ('
+                       + kindName(icaPick.kind) + ' sink, ' + chName(icaPick.row)
+                       + ')', x0 + 6, m.edge === m.a ? y - 2 : y + 2);
+        } else {
+          ctx.textBaseline = 'bottom';
+          ctx.fillText('ICA ' + kindName(icaPick.kind) + ' sink, '
+                       + chName(icaPick.row), x0 + 6, ya - 2);
+        }
       }
     }
     ctx.restore();
+  }
+
+  /* Where a picked ICA check goes, in lanes: the sink channel's lane
+     [a, b), and the boundary it would move -- the layer's top edge pulled
+     up to the sink channel's top, or its bottom pushed down to the sink
+     channel's bottom. Both are lane edges, found the way every other line
+     is (laneOfRow), so they land exactly on them. Null when the sink
+     channel is not drawn. */
+  function icaMark(c, chans) {
+    const a = laneOfRow(c.row, chans);
+    const b = laneOfRow(c.row + 1, chans);
+    if (a == null || b == null || b <= a) return null;
+    const edge = c.agree || !c.off ? null : c.off < 0 ? a : b;
+    return { a, b, edge };
   }
 
   /* ==================================================================
@@ -2027,5 +2367,7 @@ BARRY.strataSteps = (function () {
     affected,
     focusRegions,
     _labelsFromLines: labelsFromLines,
+    _icaMark: (c) => (H ? icaMark(c, H.channels()) : null),
+    _jobs: () => ({ jobId, jobKind, jobsNow }),
   };
 })();

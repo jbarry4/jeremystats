@@ -13708,6 +13708,51 @@ def _masks_public(mk):
                                 "all_s")}
 
 
+# The reads and ICA runs going on, by recording. A run keeps going when
+# somebody leaves its recording, so coming back has to find it, a second
+# read of the same recording has to join the first rather than race it into
+# the same folder, and a run on another recording has to stay stoppable
+# (2026-10-12: Stop on the next recording answered "No such run").
+_STRATA_JOBS = {}                       # gid -> {"scan": job id, "ica": ...}
+_STRATA_JOBS_LOCK = threading.Lock()
+
+
+def _strata_job(gid, kind):
+    with _STRATA_JOBS_LOCK:
+        jid = (_STRATA_JOBS.get(gid) or {}).get(kind)
+    job = cfcmod.get(jid) if jid else None
+    return job if job is not None and job.status == "running" else None
+
+
+def _strata_job_keep(gid, kind, job):
+    with _STRATA_JOBS_LOCK:
+        _STRATA_JOBS.setdefault(gid, {})[kind] = job.id
+
+
+def _strata_jobs_public():
+    with _STRATA_JOBS_LOCK:
+        items = [(g, k, j) for g, d in _STRATA_JOBS.items()
+                 for k, j in d.items()]
+    out = []
+    for g, k, jid in items:
+        job = cfcmod.get(jid)
+        if job is None or job.status != "running":
+            continue
+        snap = job.snapshot()
+        st = (snap.get("stages") or [{}])[0]
+        out.append({"gid": g, "kind": k, "id": jid,
+                    "label": (snap.get("spec") or {}).get("label") or g,
+                    "done": st.get("done") or 0, "of": st.get("of") or 0})
+    return out
+
+
+def _strata_label(ctx, sess):
+    rec = ctx.get("rec") or {}
+    path = (sess.get("path") or "").rstrip("\\/")
+    return (rec.get("session_label") or os.path.basename(path)
+            or ctx.get("gid"))
+
+
 @app.route("/api/strata/<gid>/status", methods=["POST"])
 def api_strata_status(gid):
     """Whether this recording has been read, and what a read would cost."""
@@ -13719,7 +13764,8 @@ def api_strata_status(gid):
         out = {"ok": True, "status": st, "probe": ctx["probe"],
                "params": ctx["params"], "bad": ctx["bad"],
                "estimate_s": stratamod.estimate_seconds(plan),
-               "plan": stratamod.plan_public(plan)}
+               "plan": stratamod.plan_public(plan),
+               "jobs": _strata_jobs_public()}
         return jsonify(out)
     except Exception as exc:                             # noqa: BLE001
         return _strata_fail("status", exc, gid)
@@ -13743,8 +13789,16 @@ def api_strata_scan(gid):
         plan = stratamod.plan_for(sess, rep_, only)
     except Exception as exc:                             # noqa: BLE001
         return _strata_fail("scan", exc, gid)
+    # Already being read: join that read. Two reads of one recording write
+    # the same folder.
+    going = _strata_job(gid, "scan")
+    if going is not None:
+        return jsonify({"ok": True, "cached": False, "joined": True,
+                        "job": going.snapshot(),
+                        "estimate_s": stratamod.estimate_seconds(plan)})
 
-    spec = {"path": sess.get("path"), "gid": gid, "tool": "strata"}
+    spec = {"path": sess.get("path"), "gid": gid, "tool": "strata",
+            "label": _strata_label(ctx, sess)}
     steps = [(stratamod.STAGE_READ, plan["n_channels"])]
 
     def work(job):
@@ -13755,6 +13809,7 @@ def api_strata_scan(gid):
                                      "scanned_at", "lfp_fs")}}
 
     job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    _strata_job_keep(gid, "scan", job)
     STORE.record_activity([{
         "action": "strata.scan",
         "detail": {"gid": gid, "channels": plan["n_channels"],
@@ -13803,20 +13858,21 @@ def _strata_ripples(ctx, mk, channel):
     key = stratamod.derived_key("ripples", ctx["bins"].meta.get("stamp"),
                                 ctx["states"], ctx["params"].get(
                                     "still_buffer_s"), int(channel), p)
-    hit = stratamod.derived_get(ctx["gid"], "ripples", key)
-    if hit is not None:
-        return hit
-    got = stratamod.detect_ripples(ctx["bins"], int(channel), mk, p)
-    return stratamod.derived_put(ctx["gid"], "ripples", key, got)
+    return stratamod.derived(
+        ctx["gid"], "ripples", key,
+        lambda: stratamod.detect_ripples(ctx["bins"], int(channel), mk, p))
 
 
 def _strata_triggered(ctx, mk, kind, channel):
     key = stratamod.derived_key("trig", kind, ctx["bins"].meta.get("stamp"),
                                 ctx["states"], ctx["params"], int(channel),
                                 ctx["order"], ctx["bad"])
-    hit = stratamod.derived_get(ctx["gid"], "trig-" + kind, key)
-    if hit is not None:
-        return hit
+    return stratamod.derived(ctx["gid"], "trig-" + kind, key,
+                             lambda: _strata_triggered_work(ctx, mk, kind,
+                                                            channel))
+
+
+def _strata_triggered_work(ctx, mk, kind, channel):
     if kind == "ripple":
         rip = _strata_ripples(ctx, mk, channel)
         times = [e["t"] for e in rip.get("events") or []]
@@ -13831,9 +13887,8 @@ def _strata_triggered(ctx, mk, kind, channel):
     tr = stratamod.triggered(ctx["bins"], times, ctx["order"], ctx["bad"],
                              float(ctx["params"]["spacing_um"]),
                              half_ms=half)
-    out = dict(stratamod.triggered_public(tr), kind=kind,
-               channel=int(channel))
-    return stratamod.derived_put(ctx["gid"], "trig-" + kind, key, out)
+    return dict(stratamod.triggered_public(tr), kind=kind,
+                channel=int(channel))
 
 
 def _strata_ref(ctx, mk, prof=None):
@@ -13841,6 +13896,16 @@ def _strata_ref(ctx, mk, prof=None):
     ref = ctx["params"].get("ref_channel")
     if ref is not None and int(ref) in ctx["bins"].row:
         return int(ref)
+    # Once Step 1 is accepted, CA1 pyramidal is where it was accepted: the
+    # middle of the sheet's CA1 SP channels. A pyramidal layer moved by a
+    # vote used to fall back to Step 1's own pick on the next load, which
+    # moved the phase curves and missed the ICA cached against it.
+    if ((ctx["strata"].get("steps") or {}).get("1") or {}).get("status") == "done":
+        labels = ctx["rec"].get("labels") or {}
+        sp = [c for c in ctx["order"]
+              if labels.get(str(c)) == "ca1_sp" and c in ctx["bins"].row]
+        if sp:
+            return sp[len(sp) // 2]
     if prof is None:
         prof = stratamod.profile(ctx["bins"], mk, ctx["order"], ctx["bad"])
     s1 = stratamod.suggest_ca1(prof, ctx["params"])
@@ -13904,7 +13969,13 @@ def api_strata_ica(gid):
         if hit is not None and not body.get("force"):
             return jsonify({"ok": True, "cached": True, "ica": hit})
         if body.get("peek"):
-            return jsonify({"ok": True, "cached": False, "ica": None})
+            return jsonify({"ok": True, "cached": False, "ica": None,
+                            "job": (lambda j: j.snapshot() if j else None)(
+                                _strata_job(gid, "ica"))})
+        going = _strata_job(gid, "ica")
+        if going is not None:
+            return jsonify({"ok": True, "cached": False, "joined": True,
+                            "job": going.snapshot()})
     except Exception as exc:                             # noqa: BLE001
         return _strata_fail("ica", exc, gid)
     params = {k: ctx["params"].get("ica_" + k)
@@ -13917,9 +13988,11 @@ def api_strata_ica(gid):
         return stratamod.derived_put(gid, "ica", key, out)
 
     job = cfcmod.start({"path": body.get("path"), "gid": gid,
-                        "tool": "strata-ica"},
+                        "tool": "strata-ica",
+                        "label": _strata_label(ctx, _sess)},
                        [(stratamod.STAGE_ICA, len(ctx["order"]) + 3)], work,
                        1.0)
+    _strata_job_keep(gid, "ica", job)
     STORE.record_activity([{"action": "strata.ica",
                             "detail": {"gid": gid, "walk_s": mk["walk_s"]}}])
     return jsonify({"ok": True, "cached": False, "job": job.snapshot()})
