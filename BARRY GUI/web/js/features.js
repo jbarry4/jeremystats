@@ -217,6 +217,21 @@ BARRY.palette = (function () {
       out.push({ kind: 'action', label, sub, hay: label + ' ' + sub, run });
     }
 
+    /* The name and the mark (js/jarvis.js). Worded for the state it is in,
+       and findable by the name either way: somebody looking for the switch
+       while the name is hidden will still type it. */
+    if (BARRY.jarvis) {
+      const on = BARRY.jarvis.shown();
+      out.push({
+        kind: 'action',
+        label: on ? 'Hide the name and logo' : 'Activate',
+        sub: on ? 'take Jarvis off everything until it is switched back on'
+                : 'bring the name and logo back, with the reveal',
+        hay: 'jarvis name logo brand mark hide show activate reveal',
+        run: () => BARRY.jarvis.toggle(),
+      });
+    }
+
     /* The Arc's five steps, each reachable by name.
      *
      * By name is the point: "Coupling" and "Circuit" are what somebody will

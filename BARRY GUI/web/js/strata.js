@@ -293,9 +293,10 @@ BARRY.strata = (function () {
       sess: () => sess,
       sheet: () => sheet,
       channels: () => channels(),
+      allChannels: () => allChannels(),
       regions: () => regions,
       render: () => render(),
-      redraw: () => { if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw(); },
+      redraw: () => repaint(),
       adoptSheet: (next) => {
         if (!next || !sheet) return;
         sheet = next;
@@ -323,9 +324,54 @@ BARRY.strata = (function () {
   let painting = false;
   window.addEventListener('mouseup', () => { painting = false; });
 
-  const channels = () => (sess && sess.info.channels) || [];
+  /* Every channel of the recording: what the sheet covers, what progress
+     counts and what fill-down walks. */
+  const allChannels = () => (sess && sess.info.channels) || [];
+
+  /* The channels the main pane draws, in lane order -- the rail sits on
+     those lanes, so it lists exactly those. With the even channels ticked,
+     or a raster in the pane, that is not every channel, and listing every
+     channel put each row over somebody else's lane (2026-10-12). */
+  function lanes() {
+    const xp = BARRY.views.xplore;
+    return (xp && xp.laneRows) ? xp.laneRows(0) : null;
+  }
+  const channels = () => {
+    const all = allChannels();
+    const got = lanes();
+    if (!got || !got.numbers.length) return all;
+    const by = new Map(all.map((c) => [c.number, c]));
+    const list = got.numbers.map((n) => by.get(n)).filter(Boolean);
+    return list.length ? list : all;
+  };
+  /* Which lanes the rail was built for. A pane that starts drawing a
+     different set -- channels ticked, a panel switched -- rebuilds it. */
+  let railSig = '';
+  let railCheck = null;
+  function followLanes() {
+    if (railCheck) return;
+    railCheck = setTimeout(() => {
+      railCheck = null;
+      if (!sheet) return;
+      const sig = channels().map((c) => c.number).join(',');
+      if (sig !== railSig) render();
+      else alignRail();
+    }, 60);
+  }
   const labelOf = (num) => (sheet && sheet.labels[String(num)]) || null;
+
+  /* Not part of the step that is open, so greyed on the rail. */
+  function outOfStep(num) {
+    const st = BARRY.strataSteps;
+    if (!st || !st.active) return false;
+    const aff = st.affected();
+    return !!aff && !aff.has(num);
+  }
   const regionOf = (id) => regions.find((r) => r.id === id) || null;
+  /* What a person can label with: every layer, not the retired
+     placeholders (CA1, DG, DG2), which only remain so channels already
+     labelled with them still say so. */
+  const offered = () => regions.filter((r) => !r.retired);
 
   /* Say what the sheet is, to whoever else is looking at this recording.
 
@@ -359,7 +405,22 @@ BARRY.strata = (function () {
     rail();
     share();
     if (BARRY.strataSteps && BARRY.strataSteps.active) BARRY.strataSteps.sheetChanged();
-    if (BARRY.views.xplore.redraw) BARRY.views.xplore.redraw();
+    repaint();
+  }
+
+  /* Every pane in this window, rasters included, once per turn of the
+     event loop however many times it is asked for -- a drag asks once per
+     channel it crosses. */
+  let repaintQueued = false;
+  function repaint() {
+    if (repaintQueued) return;
+    repaintQueued = true;
+    setTimeout(() => {
+      repaintQueued = false;
+      const xp = BARRY.views.xplore;
+      if (xp.repaint) xp.repaint();
+      else if (xp.redraw) xp.redraw();
+    }, 0);
   }
 
   function bar() {
@@ -410,10 +471,13 @@ BARRY.strata = (function () {
         ? picked.size + ' selected — pick a layer'
         : (brush ? 'drag the rail to paint' : 'click a channel, or pick a layer to paint with'),
     }));
-    regions.forEach((r, i) => {
+    const stepRegions = (BARRY.strataSteps && BARRY.strataSteps.active)
+      ? BARRY.strataSteps.focusRegions() : null;
+    offered().forEach((r, i) => {
       brushes.appendChild(el('button', {
         class: 'strata-brush' + (brush === r.id ? ' on' : '')
-             + (picked.size ? ' arm' : ''),
+             + (picked.size ? ' arm' : '')
+             + (stepRegions && !stepRegions.has(r.id) ? ' out' : ''),
         style: '--cat:' + r.color,
         title: (picked.size
                  ? 'Label the ' + picked.size + ' selected channel'
@@ -606,6 +670,7 @@ BARRY.strata = (function () {
       if (body) body.classList.add('strata-on');
     }
     r.innerHTML = '';
+    railSig = channels().map((c) => c.number).join(',');
 
     /* Which channel the cursor is on, said out loud. At 64 channels three
        quarters of the rows have no number of their own, and "which one am I
@@ -613,7 +678,11 @@ BARRY.strata = (function () {
     r.appendChild(el('div', { class: 'strata-head' }, [
       el('span', { text: 'Layer' }),
       el('span', { class: 'strata-at', id: 'strataAt', text: '' }),
-      el('span', { class: 'strata-n', text: channels().length + ' ch' }),
+      el('span', { class: 'strata-n',
+                   text: channels().length === allChannels().length
+                     ? channels().length + ' ch'
+                     : channels().length + ' of ' + allChannels().length
+                       + ' ch' }),
     ]));
     const idle = brush ? 'drag to paint' : 'pick a layer below';
     const readout = (t) => {
@@ -628,7 +697,9 @@ BARRY.strata = (function () {
       const reg = regionOf(id);
       const row = el('div', {
         class: 'strata-row' + (id ? ' has' : '') + (hover === i ? ' hl' : '')
-             + (picked.has(c.number) ? ' picked' : ''),
+             + (picked.has(c.number) ? ' picked' : '')
+             + (outOfStep(c.number) ? ' out' : '')
+             + (reg && reg.retired ? ' ph' : ''),
         style: reg ? '--cat:' + reg.color : '',
         // The row shrinks with the lane, so at 64 channels the tooltip is
         // where the layer name actually lives.
@@ -683,8 +754,10 @@ BARRY.strata = (function () {
       while (j < chans.length && labelOf(chans[j].number) === id) j += 1;
       const reg = regionOf(id);
       const n = j - i;
+      let outRun = true;
+      for (let k = i; k < j; k++) if (!outOfStep(chans[k].number)) outRun = false;
       box.appendChild(el('div', {
-        class: 'strata-span' + (reg ? '' : ' none'),
+        class: 'strata-span' + (reg ? '' : ' none') + (outRun ? ' out' : ''),
         style: 'top: calc(var(--lane, 14px) * ' + i + ');'
              + 'height: calc(var(--lane, 14px) * ' + n + ');'
              + (reg ? '--cat:' + reg.color + ';' : ''),
@@ -707,9 +780,15 @@ BARRY.strata = (function () {
      a cropped PNG could survive. */
   function alignRail() {
     const r = $('#strataRail');
+    /* Any pane's drawing surface, not only the traces': a raster has no
+       .pane-canvas-host, and requiring one returned early on every raster,
+       leaving the rows wherever the traces had last put them -- 84 px off
+       on a CSD (web/_dev/strataalign.html). */
     const canvas = document.querySelector(
-      '#paneGrid .pane .pane-canvas-host');
-    if (!r || !canvas) return;
+      '#paneGrid .pane .pane-canvas-host, #paneGrid .pane .pane-body, '
+      + '#paneGrid .pane');
+    const got = lanes();
+    if (!r || !(canvas || got)) return;
     const rows = r.querySelector('.strata-rows');
     if (!rows) return;
     /* Stop the rail above the bar. Both are in #xfBody, the rail absolutely
@@ -724,12 +803,14 @@ BARRY.strata = (function () {
        CSV whenever anything is saved. */
     document.documentElement.style.setProperty('--bottom-bar', barH + 'px');
 
-    const box = canvas.getBoundingClientRect();
+    const box = canvas ? canvas.getBoundingClientRect() : { top: 0, height: 0 };
     const railBox = r.getBoundingClientRect();
-    // The raster's plot area, as drawPane lays it out.
-    const padTop = 8, padBottom = 22;
-    const top = box.top - railBox.top + padTop;
-    const height = Math.max(1, box.height - padTop - padBottom);
+    /* The lanes as the pane drew them -- the traces' plot box, or a
+       raster's image -- measured off the canvas they were drawn on. The
+       fallback is the traces' own insets (xplore.js PAD: 8 top, 24 bottom)
+       for the moment before the pane has drawn anything. */
+    const top = got ? got.top - railBox.top : box.top - railBox.top + 8;
+    const height = Math.max(1, got ? got.height : box.height - 8 - 24);
     rows.style.top = top + 'px';
     rows.style.height = height + 'px';
     const n = channels().length || 1;
@@ -843,7 +924,9 @@ BARRY.strata = (function () {
       const id = labelOf(c.number);
       const reg = regionOf(id);
       row.className = 'strata-row' + (id ? ' has' : '') + (hover === i ? ' hl' : '')
-                    + (picked.has(c.number) ? ' picked' : '');
+                    + (picked.has(c.number) ? ' picked' : '')
+                    + (outOfStep(c.number) ? ' out' : '')
+                    + (reg && reg.retired ? ' ph' : '');
       if (reg) row.style.setProperty('--cat', reg.color);
       else row.style.removeProperty('--cat');
       row.title = c.label + (reg ? '  —  ' + reg.name : '  —  unlabelled')
@@ -860,11 +943,13 @@ BARRY.strata = (function () {
     if (old) list.replaceChild(fresh, old);
     else list.appendChild(fresh);
     alignRail();
+    // The bands on the panes in this window, rasters included.
+    repaint();
   }
 
   function recount() {
-    const total = channels().length;
-    const done = channels().filter((c) => labelOf(c.number)).length;
+    const total = allChannels().length;
+    const done = allChannels().filter((c) => labelOf(c.number)).length;
     sheet.progress = {
       total, labelled: done, left: total - done,
       percent: total ? Math.round(1000 * done / total) / 10 : 0,
@@ -875,7 +960,7 @@ BARRY.strata = (function () {
     try {
       const res = await apiPost('/api/layers/' + encodeURIComponent(gid)
                                 + '/fill',
-                                { channels: channels().map((c) => c.number) });
+                                { channels: allChannels().map((c) => c.number) });
       sheet = res.sheet;
       if (sess) sess.strata.labels = sheet.labels;
       toast('Filled ' + res.filled + ' channel(s) downward.', 'ok');
@@ -918,14 +1003,14 @@ BARRY.strata = (function () {
       return;
     }
     const i = parseInt(k, 10);
-    if (i >= 1 && i <= 9 && regions[i - 1]) {
+    if (i >= 1 && i <= 9 && offered()[i - 1]) {
       e.preventDefault();
       /* With a selection the number labels it; without one it arms the
          brush, which is what the number always did. The same key doing the
          obvious thing in both states is worth more than two keys each
          doing one. */
-      if (picked.size) { labelPicked(regions[i - 1].id); return; }
-      brush = brush === regions[i - 1].id ? null : regions[i - 1].id;
+      if (picked.size) { labelPicked(offered()[i - 1].id); return; }
+      brush = brush === offered()[i - 1].id ? null : offered()[i - 1].id;
       render();
     }
   }
@@ -966,6 +1051,8 @@ BARRY.strata = (function () {
        the recording being the one under the sheet. */
     const mine = s.identity && s.identity.gid === gid;
     if (!s.strata && !mine) return;
+    // The labelling window: keep the rail on whatever lanes were just drawn.
+    if (sheet && (mine || (s.strata && s.strata.gid === gid))) followLanes();
     /* Off the session being drawn, not the module's: in a pop-out the module
        has no session at all, and channels() would answer with an empty
        list. They are the same object in the labelling window. */
@@ -1014,10 +1101,19 @@ BARRY.strata = (function () {
        mode's setting. */
     const alpha = (opts && typeof opts.alpha === 'number')
       ? opts.alpha : washAlpha();
+    /* A step open in this window (stratasteps.js): only what the step is
+       about is in colour. `live` is the channels Accept would write; the
+       rest keep their lines, in grey, under a veil (2026-10-12: "way too
+       many lines and colours at one time"). */
+    const steps = (sheet && BARRY.strataSteps && BARRY.strataSteps.active)
+      ? BARRY.strataSteps : null;
+    const aff = steps ? steps.affected() : null;
+    const live = (num) => !aff || aff.has(num);
     ctx.save();
     if (alpha > 0) {
       ctx.globalAlpha = alpha;
       for (let i = 0; i < chans.length; i++) {
+        if (!live(chans[i].number)) continue;
         const reg = regAt(labelAt(chans[i].number));
         if (!reg) continue;
         ctx.fillStyle = reg.color;
@@ -1059,8 +1155,9 @@ BARRY.strata = (function () {
         if (!reg) continue;
         const top = y0 + run.from * lane;
         const hgt = Math.max(1, Math.ceil((run.to - run.from + 1) * lane));
-        ctx.globalAlpha = 0.96;
-        ctx.fillStyle = reg.color;
+        const on = live(chans[run.from].number) || live(chans[run.to].number);
+        ctx.globalAlpha = on ? 0.96 : 0.35;
+        ctx.fillStyle = on ? reg.color : (P.dim || '#6f8c7d');
         ctx.fillRect(spineX, top, spineW, hgt);
       }
       /* One dark edge down the inside of the spine, drawn once for the
@@ -1134,6 +1231,15 @@ BARRY.strata = (function () {
         ctx.beginPath();
         ctx.moveTo(x0, y);
         ctx.lineTo(x0 + plotW, y);
+        if (!live(chans[run.from].number)
+            && !live(chans[runs[r - 1].to].number)) {
+          // Outside the step: still there, in grey and thin.
+          ctx.globalAlpha = 0.45;
+          ctx.strokeStyle = P.dim || '#6f8c7d';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          continue;
+        }
         ctx.globalAlpha = 0.72;
         ctx.strokeStyle = '#000';
         ctx.lineWidth = BOUND_HALO;
@@ -1158,6 +1264,9 @@ BARRY.strata = (function () {
         for (const run of runs) {
           const reg = regAt(run.id);
           if (!reg) continue;
+          if (!live(chans[run.from].number) && !live(chans[run.to].number)) {
+            continue;
+          }
           const hgt = (run.to - run.from + 1) * lane;
           if (hgt < NAME_MIN_H) continue;
           const mid = y0 + (run.from + run.to + 1) / 2 * lane;
@@ -1173,13 +1282,59 @@ BARRY.strata = (function () {
         }
       }
     }
-    /* The open step's proposed lines, dashed. Only where this module has
-       the sheet open: the aid window draws its own from the same payload. */
-    if (sheet && (mine || (s.strata && s.strata.gid === gid))
-        && BARRY.strataSteps && BARRY.strataSteps.active) {
-      BARRY.strataSteps.drawGhost(ctx, chans, x0, plotW, y0, lane);
+    if (steps && (mine || (s.strata && s.strata.gid === gid))) {
+      /* What Accept would write, before it is written: each lane in the
+         step's span hatched faintly in the colour it would become. The
+         accepted bands stay as they are underneath, so the two can be
+         compared lane by lane. */
+      const prop = steps.proposedLabels();
+      if (prop && prop.size) {
+        for (let i = 0; i < chans.length; i++) {
+          const reg = regAt(prop.get(chans[i].number));
+          if (!reg) continue;
+          ctx.globalAlpha = 0.55;
+          ctx.fillStyle = hatch(ctx, reg.color);
+          ctx.fillRect(x0, y0 + i * lane, plotW, Math.ceil(lane));
+        }
+        ctx.globalAlpha = 1;
+      }
+      /* Outside the step, a veil: the lanes are still there to read
+         against, but they are not what is being decided. */
+      if (aff) {
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = P.bg || '#0a1310';
+        for (let i = 0; i < chans.length; i++) {
+          if (!live(chans[i].number)) {
+            ctx.fillRect(x0, y0 + i * lane, plotW, Math.ceil(lane));
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+      // The open step's proposed lines, dashed by how sure they are.
+      steps.drawGhost(ctx, chans, x0, plotW, y0, lane);
     }
     ctx.restore();
+  }
+
+  /* Diagonal hatching in one colour, for a proposal that is not a label
+     yet. One small tile per colour, kept. */
+  const hatchTiles = new Map();
+  function hatch(ctx, color) {
+    let tile = hatchTiles.get(color);
+    if (!tile) {
+      tile = document.createElement('canvas');
+      tile.width = tile.height = 10;
+      const g = tile.getContext('2d');
+      g.strokeStyle = color;
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(-2, 12); g.lineTo(12, -2);
+      g.moveTo(-2, 2); g.lineTo(2, -2);
+      g.moveTo(8, 12); g.lineTo(12, 8);
+      g.stroke();
+      hatchTiles.set(color, tile);
+    }
+    return ctx.createPattern(tile, 'repeat');
   }
 
   return {

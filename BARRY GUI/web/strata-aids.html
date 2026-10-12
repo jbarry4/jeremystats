@@ -11,6 +11,15 @@
      /api/link (channel strata-steps:<gid>) and asks /api/strata/<gid>/* for
      the numbers itself. Behaviour: js/strataaids.js. -->
 <link rel="icon" type="image/svg+xml" href="img/jarvis.svg">
+<!-- The name hidden on this machine (js/jarvis.js). The tab icon is the
+     one place this standalone page wears it; the live panes are the app. -->
+<script>
+  try {
+    if (localStorage.getItem('barry.jarvis') === 'off') {
+      document.querySelector('link[rel="icon"]').href = 'img/workbench.svg';
+    }
+  } catch (e) { /* private window: the default, which is shown */ }
+</script>
 <link rel="stylesheet" href="app.css">
 <style>
   html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); }
@@ -46,6 +55,7 @@
   .sa-comp b { color: var(--text); }
   .sa-comp.slow { border-color: var(--c2); }
   .sa-comp.fast { border-color: var(--warn); }
+  .sa-comp.picked { box-shadow: 0 0 0 2px var(--accent); }
   .sa-checks li { margin: 3px 0; }
   .sa-checks li.warn { color: var(--warn); }
 </style>

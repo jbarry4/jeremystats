@@ -122,12 +122,13 @@
     }
     state = v;
     if (v.path) path = v.path;
-    const key = JSON.stringify([v.step, v.overrides, v.states_n,
+    const key = JSON.stringify([v.step, v.overrides, v.states_n, v.ica_ready,
                                 (v.channels || []).length,
                                 Object.keys(v.labels || {}).length]);
     if (v.step && v.step !== '0' && key !== fetchedFor) {
       fetchedFor = key;
       load();
+      return;
     }
     show();
   }
@@ -139,7 +140,7 @@
       data = await post('/api/strata/' + encodeURIComponent(GID) + '/suggest',
                         { path, channels: state.channels,
                           overrides: state.overrides || {} });
-      if (state.step === '3') {
+      if (state.step === '3' || state.step === '4') {
         const r = await post('/api/strata/' + encodeURIComponent(GID) + '/ica',
                              { path, channels: state.channels, peek: true,
                                overrides: state.overrides || {} });
@@ -204,14 +205,70 @@
     return id ? (state.regions || []).find((r) => r.id === id) || null : null;
   }
 
-  /* The sheet's boundaries and the proposal's lines, over a panel whose
-     rows are `chans` (channel numbers) laid from y0 with `lane` each. */
+  /* What the open step is about, from the labelling window's payload: the
+     channels Accept would write (`affected`), the layers it writes
+     (`focus`), and what it would write there (`proposed`). Everything else
+     is drawn grey or veiled (2026-10-12). */
+  const inStep = (ch) => !state || !state.affected
+    || state.affected.indexOf(ch) >= 0;
+  const inFocus = (id) => !state || !state.focus || state.focus.indexOf(id) >= 0;
+  const DASH = { sure: [], likely: [7, 4], guess: [2, 4] };
+
+  const hatchTiles = new Map();
+  function hatch(ctx, color) {
+    let tile = hatchTiles.get(color);
+    if (!tile) {
+      tile = document.createElement('canvas');
+      tile.width = tile.height = 10;
+      const g = tile.getContext('2d');
+      g.strokeStyle = color; g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(-2, 12); g.lineTo(12, -2);
+      g.moveTo(-2, 2); g.lineTo(2, -2);
+      g.moveTo(8, 12); g.lineTo(12, 8);
+      g.stroke();
+      hatchTiles.set(color, tile);
+    }
+    return ctx.createPattern(tile, 'repeat');
+  }
+
+  /* The sheet's boundaries, the proposal (hatched) and its lines, over a
+     panel whose rows are `chans` (channel numbers) laid from y0 with `lane`
+     each. Outside the open step everything is veiled and grey. */
   function overlay(ctx, chans, x0, w, y0, lane, withNames) {
     const pos = new Map(chans.map((c, i) => [c, i]));
+    const prop = (state && state.proposed) || null;
+    if (prop) {
+      for (let i = 0; i < chans.length; i++) {
+        const id = prop[String(chans[i])];
+        const r = id && (state.regions || []).find((x) => x.id === id);
+        if (!r) continue;
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = hatch(ctx, r.color);
+        ctx.fillRect(x0, y0 + i * lane, w, Math.ceil(lane));
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (state && state.affected) {
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = tok('--bg');
+      for (let i = 0; i < chans.length; i++) {
+        if (!inStep(chans[i])) ctx.fillRect(x0, y0 + i * lane, w, Math.ceil(lane));
+      }
+      ctx.globalAlpha = 1;
+    }
     for (let i = 1; i < chans.length; i++) {
       const a = regionOf(chans[i - 1]), b = regionOf(chans[i]);
       if ((a && a.id) === (b && b.id)) continue;
       const y = Math.round(y0 + i * lane) + 0.5;
+      const on = (inStep(chans[i]) || inStep(chans[i - 1]))
+        && (inFocus(a && a.id) || inFocus(b && b.id));
+      if (!on) {
+        ctx.globalAlpha = 0.45; ctx.strokeStyle = tok('--text-3'); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
+        ctx.globalAlpha = 1;
+        continue;
+      }
       ctx.globalAlpha = 0.7; ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
       ctx.globalAlpha = 1; ctx.strokeStyle = (b || a).color; ctx.lineWidth = 1.5;
@@ -225,7 +282,7 @@
         const r = regionOf(chans[i]);
         let j = i + 1;
         while (j < chans.length && regionOf(chans[j]) === r) j++;
-        if (r && (j - i) * lane >= 12) {
+        if (r && (j - i) * lane >= 12 && inStep(chans[i]) && inFocus(r.id)) {
           const y = y0 + (i + j) / 2 * lane;
           const t = r.name;
           const tw = ctx.measureText(t).width;
@@ -238,15 +295,16 @@
       }
     }
     const lines = (state && state.lines) || [];
-    ctx.setLineDash([6, 4]);
     for (const ln of lines) {
       if (ln.at == null || !data) continue;
-      const ch = data.channels[ln.at];
-      let i = pos.get(ch);
-      if (i == null) {
-        if (ln.at >= data.channels.length) i = chans.length; else continue;
+      // The first drawn row at or after the line's channel.
+      let i = null;
+      for (let r = ln.at; r < data.channels.length && i == null; r++) {
+        if (pos.has(data.channels[r])) i = pos.get(data.channels[r]);
       }
+      if (i == null) i = chans.length;
       const y = Math.round(y0 + i * lane) + 0.5;
+      ctx.setLineDash(DASH[ln.confidence] || DASH.likely);
       ctx.globalAlpha = 0.85; ctx.strokeStyle = '#000'; ctx.lineWidth = 3.5;
       ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
       ctx.globalAlpha = 1; ctx.strokeStyle = tok('--accent'); ctx.lineWidth = 1.6;
@@ -322,41 +380,85 @@
     ['mua', 'MUA', '--c1'], ['ripple', 'Ripple', '--event'],
     ['theta', 'Theta', '--c3'], ['theta_phase', 'Phase', '--c4'],
     ['theta_coherence', 'Coherence', '--c5'],
-    ['slow_gamma', 'Slow γ', '--c2'], ['mid_gamma', 'Mid γ', '--warn'],
+    ['slow_gamma', 'Slow \u03b3', '--c2'], ['mid_gamma', 'Mid \u03b3', '--warn'],
   ];
+  /* The curves each step is decided from: the lead full, the votes faint.
+     Same as the labelling window's strip (stratasteps.js FOCUS). */
+  const FOCUS = {
+    1: { lead: ['ripple', 'theta'], votes: ['mua', 'theta_phase'] },
+    2: { lead: ['mua'], votes: ['theta'] },
+    3: { lead: ['mua', 'theta'], votes: [] },
+    // Sign off: everything.
+    4: { lead: ['mua', 'ripple', 'theta', 'theta_phase', 'theta_coherence',
+                'slow_gamma', 'mid_gamma'], votes: [] },
+  };
+
+  /* A curve through points, some missing: solid where neighbours are both
+     there, a faint dotted bridge across a missing (bad) channel. */
+  function curve(ctx, pts) {
+    let run = [];
+    let lastEnd = null;
+    const flush = () => {
+      if (run.length) {
+        if (lastEnd) {
+          ctx.save();
+          ctx.setLineDash([2, 3]);
+          ctx.globalAlpha *= 0.6;
+          ctx.beginPath();
+          ctx.moveTo(lastEnd[0], lastEnd[1]);
+          ctx.lineTo(run[0][0], run[0][1]);
+          ctx.stroke();
+          ctx.restore();
+        }
+        ctx.beginPath();
+        ctx.moveTo(run[0][0], run[0][1]);
+        for (let k = 1; k < run.length; k++) ctx.lineTo(run[k][0], run[k][1]);
+        ctx.stroke();
+        lastEnd = run[run.length - 1];
+      }
+      run = [];
+    };
+    for (const p of pts) {
+      if (p) run.push(p); else flush();
+    }
+    flush();
+  }
+  const stepCurves = () => {
+    const f = FOCUS[(state && state.step) || 4] || FOCUS[4];
+    return f.lead.concat(f.votes);
+  };
 
   function curvesPanel(canvas, prof, which) {
     const chans = prof.channels;
     const H = Math.max(260, Math.min(620, chans.length * 8));
     const { ctx, w } = prep(canvas, H + 8);
     const left = 26, top = 4, pw = w - left - 6, lane = H / chans.length;
+    const f = FOCUS[(state && state.step) || 4] || FOCUS[4];
+    which = which || stepCurves();
     ctx.fillStyle = tok('--line-soft');
     for (let i = 0; i < chans.length; i += 4) ctx.fillRect(left, top + i * lane, pw, 1);
     for (const [id, , t] of CURVES) {
-      if (which && !which.includes(id)) continue;
+      if (!which.includes(id)) continue;
       const v = prof.curves[id] || [];
       const fin = v.filter((x) => x != null);
       if (!fin.length) continue;
       let lo = Math.min(...fin), hi = Math.max(...fin);
       if (hi <= lo) hi = lo + 1;
-      ctx.strokeStyle = tok(t); ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      let pen = false;
-      v.forEach((x, i) => {
-        if (x == null) { pen = false; return; }
-        const px = left + 4 + (x - lo) / (hi - lo) * (pw - 8);
-        const py = top + (i + 0.5) * lane;
-        if (pen) ctx.lineTo(px, py); else { ctx.moveTo(px, py); pen = true; }
-      });
-      ctx.stroke();
+      const strong = f.lead.includes(id);
+      ctx.globalAlpha = strong ? 1 : 0.45;
+      ctx.strokeStyle = tok(t); ctx.lineWidth = strong ? 1.8 : 1;
+      curve(ctx, v.map((x, i) => (x == null ? null
+        : [left + 4 + (x - lo) / (hi - lo) * (pw - 8), top + (i + 0.5) * lane])));
     }
+    ctx.globalAlpha = 1;
     overlay(ctx, chans, left, pw, top, lane, true);
     axisChannels(ctx, chans, top, lane, left - 3);
   }
 
   function legend(which) {
+    which = which || stepCurves();
     return el('div', { class: 'sa-legend' }, CURVES.filter(
-      ([id]) => !which || which.includes(id)).map(([, name, t]) =>
+      ([id]) => which.includes(id)).map(([, name, t]) =>
       el('span', {}, [el('i', { style: 'background:var(' + t + ')' }), name])));
   }
 
@@ -380,11 +482,12 @@
     axisChannels(ctx, chans, top, cell, left - 3);
   }
 
+  /* `legendWhich`: undefined for the step's own curves, null for none. */
   function card(title, blurb, build, legendWhich) {
     const cv = el('canvas');
     const c = el('div', { class: 'sa-card' }, [
       el('h3', { text: title }), blurb ? el('p', { text: blurb }) : null, cv,
-      legendWhich !== undefined ? legend(legendWhich) : null,
+      legendWhich === null ? null : legend(legendWhich),
     ]);
     requestAnimationFrame(() => build(cv));
     return c;
@@ -400,57 +503,81 @@
     return [
       card(what + ' — LFP', 'Average of every channel around ' + n
            + ' events on ch ' + tr.channel + '.',
-           (cv) => heat(cv, tr.lfp, tr.t_ms, chans)),
+           (cv) => heat(cv, tr.lfp, tr.t_ms, chans), null),
       card(what + ' — CSD', 'Sinks blue, sources red (the app’s '
-           + 'CSD convention).', (cv) => heat(cv, tr.csd, tr.t_ms, chans)),
+           + 'CSD convention).', (cv) => heat(cv, tr.csd, tr.t_ms, chans), null),
     ];
   }
+
+  /* Each step shows the few pictures its lines are read off; the rest are
+     behind "More evidence", closed by default (2026-10-12: "only relevant
+     information"). */
+  let moreOpen = false;
 
   function render() {
     const body = $('#saBody');
     body.innerHTML = '';
     if (!data || !state) {
-      body.appendChild(el('p', { class: 'sa-say', text: 'Working…' }));
+      body.appendChild(el('p', { class: 'sa-say', text: 'Working\u2026' }));
       return;
     }
     const prof = data.profile;
     const grid = el('div', { class: 'sa-grid' });
+    const extra = [];
     const step = state.step;
     if (step === '1') {
+      // sp: the sharp wave reverses there; sr: its sink; the fissure: the
+      // theta-trough CSD changes sharply across it.
       trigCards(data.ripple_tr, 'Ripple-triggered').forEach((c) => grid.appendChild(c));
-      trigCards(data.theta_tr, 'Theta-trough-triggered').forEach((c) => grid.appendChild(c));
-      grid.appendChild(card('Depth curves', 'Each curve scaled to its own '
-        + 'range. Phase and coherence are against the reference channel.',
-        (cv) => curvesPanel(cv, prof), null));
-      grid.appendChild(card('Theta coherence, channel by channel', 'Blocks '
-        + 'are layers; their edges are boundaries.',
-        (cv) => matrixPanel(cv, prof)));
-    } else if (step === '2') {
-      grid.appendChild(card('Multiunit, theta and slow gamma', 'The granule '
-        + 'layers: multiunit peaks, and theta dips where it reverses.',
-        (cv) => curvesPanel(cv, prof, ['mua', 'theta', 'slow_gamma']),
-        ['mua', 'theta', 'slow_gamma']));
       trigCards(data.theta_tr, 'Theta-trough-triggered').slice(1)
         .forEach((c) => grid.appendChild(c));
-      grid.appendChild(card('Theta coherence, channel by channel', null,
-        (cv) => matrixPanel(cv, prof)));
-      grid.appendChild(card('Every depth curve', null,
-        (cv) => curvesPanel(cv, prof), null));
+      grid.appendChild(card('What Step 1 is placed by', 'Ripple and theta '
+        + 'full; multiunit and phase faint. Hatched: what Accept would '
+        + 'write.', (cv) => curvesPanel(cv, prof), undefined));
+      extra.push(...trigCards(data.theta_tr, 'Theta-trough-triggered').slice(0, 1));
+      extra.push(card('Theta coherence, channel by channel', 'Blocks are '
+        + 'layers; their edges are boundaries.', (cv) => matrixPanel(cv, prof), null));
+    } else if (step === '2') {
+      grid.appendChild(card('What Step 2 is placed by', 'Multiunit full: it '
+        + 'peaks in the granule layers. Theta faint: it dips where it '
+        + 'reverses across them.', (cv) => curvesPanel(cv, prof), undefined));
+      trigCards(data.theta_tr, 'Theta-trough-triggered').slice(1)
+        .forEach((c) => grid.appendChild(c));
+      extra.push(card('Theta coherence, channel by channel', null,
+        (cv) => matrixPanel(cv, prof), null));
     } else if (step === '3') {
       grid.appendChild(methodA());
       grid.appendChild(methodB());
     } else if (step === '4') {
+      // Sign off: everything, so the whole sheet can be read at once.
       const ul = el('ul', { class: 'sa-checks' });
       for (const c of data.checks || []) {
         ul.appendChild(el('li', { class: c.ok ? 'ok' : 'warn',
-                                  text: (c.ok ? '✓ ' : '! ') + c.text }));
+                                  text: (c.ok ? '\u2713 ' : '! ') + c.text }));
       }
       grid.appendChild(el('div', { class: 'sa-card' }, [
         el('h3', { text: 'Checks' }), ul]));
       grid.appendChild(card('The sheet, with every curve', null,
-        (cv) => curvesPanel(cv, prof), null));
+        (cv) => curvesPanel(cv, prof), undefined));
+      trigCards(data.ripple_tr, 'Ripple-triggered').forEach((c) => grid.appendChild(c));
+      trigCards(data.theta_tr, 'Theta-trough-triggered').forEach((c) => grid.appendChild(c));
+      grid.appendChild(card('Theta coherence, channel by channel', null,
+        (cv) => matrixPanel(cv, prof), null));
+      if (ica) grid.appendChild(methodB());
     }
     body.appendChild(grid);
+    if (extra.length) {
+      body.appendChild(el('button', {
+        class: 'mini', style: 'margin:12px 0 8px',
+        text: (moreOpen ? '\u25be' : '\u25b8') + ' More evidence',
+        onclick: () => { moreOpen = !moreOpen; render(); },
+      }));
+      if (moreOpen) {
+        const g2 = el('div', { class: 'sa-grid' });
+        extra.forEach((c) => g2.appendChild(c));
+        body.appendChild(g2);
+      }
+    }
   }
 
   function methodA() {
@@ -467,7 +594,7 @@
     const cv = el('canvas');
     c.appendChild(cv);
     c.appendChild(legend(['mua', 'theta']));
-    requestAnimationFrame(() => curvesPanel(cv, data.profile, ['mua', 'theta']));
+    requestAnimationFrame(() => curvesPanel(cv, data.profile));
     return c;
   }
 
@@ -489,7 +616,9 @@
     const grid = el('div', { class: 'sa-ica' });
     for (const cm of (ica.components || []).slice(0, 10)) {
       const cv = el('canvas');
-      grid.appendChild(el('div', { class: 'sa-comp ' + (cm.kind || '') }, [
+      const picked = state && state.ica_pick === cm.index;
+      grid.appendChild(el('div', { class: 'sa-comp ' + (cm.kind || '')
+                                   + (picked ? ' picked' : '') }, [
         el('div', {}, [el('b', { text: (cm.kind === 'slow' ? 'slow γ'
           : cm.kind === 'fast' ? 'fast γ' : '?') + ' · '
           + cm.peak_hz + ' Hz' })]),
@@ -515,14 +644,8 @@
       if (!fin.length) return;
       const lim = Math.max(...fin.map(Math.abs)) || 1;
       ctx.strokeStyle = color; ctx.lineWidth = width;
-      ctx.beginPath();
-      let pen = false;
-      vals.forEach((x, i) => {
-        if (x == null) { pen = false; return; }
-        const px = w / 2 + (x / lim) * (w / 2 - 4), py = (i + 0.5) * lane;
-        if (pen) ctx.lineTo(px, py); else { ctx.moveTo(px, py); pen = true; }
-      });
-      ctx.stroke();
+      curve(ctx, vals.map((x, i) => (x == null ? null
+        : [w / 2 + (x / lim) * (w / 2 - 4), (i + 0.5) * lane])));
     };
     ctx.strokeStyle = tok('--line'); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, H); ctx.stroke();

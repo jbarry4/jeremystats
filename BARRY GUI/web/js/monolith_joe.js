@@ -737,11 +737,11 @@ window.MONO_JOE = (function () {
     }
     if (!window.MONO_STATIC) {
       kids.push(el('button', { type: 'button', class: 'more-btn', id: 'joescriptrun', disabled: P.scripting ? 'disabled' : null,
-                               text: P.scripting ? 'Running the script: ' + (P.scriptNote || 'starting') : 'Run it here and compare (about 30 minutes)',
+                               text: P.scripting ? 'Running the script: ' + (P.scriptNote || 'starting') : 'Run it here and compare (about 45 minutes)',
                                onclick: () => make('script') }));
       if (P.scriptErr) kids.push(el('p', { class: 'small warn', text: P.scriptErr }));
     }
-    kids.push(el('p', { class: 'small muted', text: 'Elsewhere: python joe_standalone.py --inputs joe_inputs.json --out <folder>. It needs Python 3, numpy and scipy, and the recordings at the paths in the inputs.' }));
+    kids.push(el('p', { class: 'small muted', text: 'Elsewhere: python joe_standalone.py --inputs joe_inputs.json --out <folder> --jobs 4 (four rat-days at once; the files do not depend on it). It needs Python 3, numpy and scipy, and the recordings at the paths in the inputs.' }));
     return section('joeexports', 'Take it away: SPSS, and a script that does it all again', 'joe.exports', kids);
   }
   function notesCard() {

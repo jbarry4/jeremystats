@@ -2,7 +2,7 @@
 # Jarvis -- macOS launcher. Double-click this file in Finder.
 #
 # If macOS refuses to run it, right-click and choose Open, or run once:
-#     chmod +x "Wake up Jarvis.command"
+#     chmod +x "Activate Jarvis.command"
 
 cd "$(dirname "$0")" || exit 1
 

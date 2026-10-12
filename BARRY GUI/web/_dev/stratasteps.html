@@ -108,6 +108,7 @@ const PATH = 'demo:ds-tutorial';
     // The mode's own aid window is not opened from a headless run: its
     // polling would hold virtual time to the wall clock.
     run('window.__aid = null; window.open = function (u) { window.__aid = u; return null; };');
+    run("window.__errs = []; window.addEventListener('error', function (e) { window.__errs.push(e.message + ' @' + (e.error && e.error.stack || '').split(String.fromCharCode(10))[1]); }); window.addEventListener('unhandledrejection', function (e) { window.__errs.push(String(e.reason && e.reason.stack || e.reason)); });");
     const entered = await run('BARRY.strata.enter(' + JSON.stringify(GID) + ')');
     const aidUrl = val('window.__aid');
     ck('it asks for the steps’ aid window, framing the live panes',
@@ -205,6 +206,54 @@ const PATH = 'demo:ds-tutorial';
          from + ' -> ' + line.at);
     } else ck('a line to drag', false);
 
+    /* With a CSD in the pane instead of the traces: dragging a line moves it
+       on the raster too, with no new fetch -- it used to stay where it was
+       until the raster was next loaded (2026-10-12). */
+    run("BARRY.views.xplore.setPanes([{ panel: 'csd' }])");
+    await untilN(() => {
+      const pn = val('BARRY.views.xplore._pane(0)');
+      return pn && pn._panelData && pn._panelData.rows && pn._panelData.rows.length;
+    }, 300);
+    await sleep(1200);
+    const stripR = D().querySelector('.ss-strip');
+    const lineR = SS()._state().ghost.lines.find((l) => l.at != null && l.at + 2 < 28);
+    if (stripR && lineR) {
+      let rasterCalls = 0;
+      const realG = SS().drawGhost;
+      const rows = val('BARRY.views.xplore._pane(0)._panelData.rows.length');
+      SS().drawGhost = function (ctx, chans) {
+        if (chans && chans.length === rows) rasterCalls += 1;
+        return realG.apply(this, arguments);
+      };
+      const r = stripR.getBoundingClientRect();
+      const lanes = val('BARRY.strata.state.channels.length');
+      const ln = r.height / lanes;
+      // The line's lane on the strip: the first drawn channel at or after
+      // its row (a CSD draws fewer rows than the probe has channels).
+      const laneNums = val('BARRY.strata.state.channels.map(function (c) { return c.number; })');
+      const all = SS()._state().sug.channels;
+      let li = laneNums.length;
+      for (let k = lineR.at; k < all.length; k++) {
+        const j = laneNums.indexOf(all[k]);
+        if (j >= 0) { li = j; break; }
+      }
+      const yA = r.top + li * ln;
+      const fire = (type, y, target) => (target || W()).dispatchEvent(
+        new (W().MouseEvent)(type, { bubbles: true, clientX: r.left + 40,
+                                     clientY: y, button: 0 }));
+      const before = lineR.at;
+      fire('mousedown', yA, stripR);
+      fire('mousemove', yA + 2 * ln);
+      fire('mouseup', yA + 2 * ln);
+      await sleep(300);
+      SS().drawGhost = realG;
+      ck('on a CSD, a dragged line is redrawn on the raster', rasterCalls > 0
+         && lineR.at !== before, rasterCalls + ' raster redraws, line '
+         + before + ' -> ' + lineR.at);
+    } else ck('a line to drag on the CSD', false);
+    run("BARRY.views.xplore.setPanes([{ panel: 'traces' }])");
+    await sleep(1200);
+
     // A vote becomes the lead.
     const vote = D().querySelector('.ss-anchor .ss-vote');
     if (vote) {
@@ -223,7 +272,41 @@ const PATH = 'demo:ds-tutorial';
     const accept = Array.from(D().querySelectorAll('.ss-anchors .btn'))
       .find((b) => /^Accept/.test(b.textContent));
     ck('there is an Accept button', !!accept);
+
+    // Only the step is in colour: rows it would not write are greyed, and
+    // the brushes for layers it does not write.
+    ck('rows outside the step are greyed on the rail',
+       D().querySelectorAll('.strata-rows .strata-row.out').length > 0
+       && D().querySelectorAll('.strata-rows .strata-row:not(.out)').length > 0);
+    ck('brushes for other layers are greyed',
+       D().querySelectorAll('.strata-brush.out').length > 0);
+    const names = Array.from(D().querySelectorAll('.strata-brush span'))
+      .map((x) => x.textContent.trim());
+    ck('CA1, DG and DG2 are not offered as labels',
+       !names.some((n) => n === 'CA1' || n === 'DG' || n === 'DG2'),
+       names.join(', '));
+    const refused = await post('/api/layers/' + GID + '/set',
+                               { labels: { 1: 'ca1_sr' } });
+    ck('and labelling with one is refused', refused && refused.ok === false,
+       JSON.stringify(refused).slice(0, 120));
+    ck('the proposal is there to hatch', (SS().proposedLabels() || new Map()).size > 0);
+
+    const sheet0 = (await W().fetch('/api/layers/' + GID).then((r) => r.json())).sheet;
     if (accept) accept.click();
+    await untilN(() => D().querySelector('.ss-confirm'), 50);
+    const conf = D().querySelector('.ss-confirm');
+    ck('Accept first says what it would change', !!conf);
+    ck('... and has written nothing yet',
+       JSON.stringify(((await W().fetch('/api/layers/' + GID).then((r) => r.json()))
+         .sheet || {}).labels || {}) === JSON.stringify(sheet0.labels || {}));
+    if (conf) {
+      ck('the change list names channels and both labels',
+         /Ch \d+/.test(conf.textContent) || /No channel changes/.test(conf.textContent),
+         conf.textContent.slice(0, 120));
+      const go = Array.from(conf.querySelectorAll('.btn'))
+        .find((b) => /Continue/.test(b.textContent));
+      if (go) go.click();
+    }
     await untilN(() => D().querySelectorAll('.ss-step')[1].classList
       .contains('done'), 100);
     await sleep(500);
@@ -252,10 +335,11 @@ const PATH = 'demo:ds-tutorial';
       const ev = (type, x, target) => (target || W()).dispatchEvent(
         new (W().MouseEvent)(type, { bubbles: true, clientX: x, clientY: y,
                                      button: 0 }));
-      ev('mousedown', r.left + 0.2 * r.width, tw);
-      ev('mousemove', r.left + 0.3 * r.width);
+      // Forty-odd seconds of it: Method B needs thirty.
+      ev('mousedown', r.left + 0.15 * r.width, tw);
       ev('mousemove', r.left + 0.4 * r.width);
-      ev('mouseup', r.left + 0.4 * r.width);
+      ev('mousemove', r.left + 0.55 * r.width);
+      ev('mouseup', r.left + 0.55 * r.width);
       await sleep(2500);
       const s0 = (await W().fetch('/api/layers/' + GID).then((r2) => r2.json())).sheet;
       const tw0 = ((s0.strata.states || {}).theta_walk || []);
@@ -270,12 +354,57 @@ const PATH = 'demo:ds-tutorial';
        D().querySelectorAll('.ss-step')[1].classList.contains('stale'),
        D().querySelectorAll('.ss-step')[1].className);
 
+    hd('Step 3: Method B');
+    D().querySelectorAll('.ss-step')[3].click();
+    await untilN(() => D().querySelector('.ss-drawer .ss-anchors'), 100);
+    const runBtn = Array.from(D().querySelectorAll('.ss-drawer .btn'))
+      .find((b) => /Run ICA/.test(b.textContent));
+    if (runBtn) {
+      // A small fit (2 s rather than 20 s on the demo): this checks the
+      // plumbing, not the decomposition. Put back with the rest of the
+      // sheet in the finally.
+      await post('/api/strata/' + GID + '/state',
+                 { patch: { params: { ica_max_fit: 50000, ica_n_components: 6 } } });
+      runBtn.click();
+      /* Waited on with real requests: the fit takes real seconds on the
+         server, and a timer here runs on the virtual clock, which gets
+         through a two-minute wait in a fraction of one. */
+      for (let k = 0; k < 2000; k++) {
+        if ((SS()._state().sug || {}).ica_ready) break;
+        await W().fetch('/api/cfc/job/none').catch(() => null);
+        await sleep(50);
+      }
+      await sleep(800);
+    }
+    ck('ICA runs from Step 3', !!(SS()._state().sug || {}).ica_ready);
+    const help = D().querySelector('.ss-drawer .ss-help');
+    ck('Method B has a ? to explain it', !!help);
+    if (help) {
+      help.click();
+      await sleep(300);
+      ck('... which says how it works',
+         /independent component analysis/.test(
+           (D().querySelector('.ss-drawer') || {}).textContent || ''));
+    }
+    const chip = D().querySelector('.ss-drawer .ss-chip-btn');
+    ck('each Method B check can be clicked', !!chip);
+    if (chip) {
+      chip.click();
+      await sleep(300);
+      const txt = (D().querySelector('.ss-drawer') || {}).textContent || '';
+      ck('... and says what it means against Method A',
+         /Method A puts|nothing reliable|no generator it can vouch for/.test(txt),
+         txt.slice(0, 80));
+    }
+
     hd('Step 4');
     D().querySelectorAll('.ss-step')[4].click();
     await untilN(() => D().querySelectorAll('.ss-checks li').length > 0
                        && SS()._state().checks, 150);
     ck('the checks are listed', D().querySelectorAll('.ss-checks li').length > 0,
        D().querySelectorAll('.ss-checks li').length);
+    ck('sign off shows everything: no channel greyed',
+       D().querySelectorAll('.strata-rows .strata-row.out').length === 0);
 
     hd('leaving');
     run('BARRY.strata.exit()');

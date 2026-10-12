@@ -3032,44 +3032,11 @@ function offerTour() {
 }
 
 function paintFavicon() {
-  const cs = getComputedStyle(document.documentElement);
-  const tok = (n, f) => (cs.getPropertyValue(n) || f).trim();
-  const bg = tok('--accent', '#154734');
-  const ink = tok('--on-accent', '#FFB81C');
-  /* A dentate spike, which is what this application is for.
-
-     A letter was tried twice and rendered twice, and rendering it is what
-     settled it: a flat baseline with a symmetric peak on it reads as a
-     capital A, because the baseline becomes the crossbar. Running the
-     peak's falling edge down into a stem fixed the A and shrank the spike
-     to a bump on an otherwise plain J -- a letter that has to be explained,
-     which is worse than no letter. The wordmark beside it says the name.
-
-     Drawn to read at 16 px, which is a browser tab: one confident stroke
-     and no glow. A glow under it was tried; it looks well at 120 px and
-     turns to mud at 16. `tools/make_icons.py` rasterises this exact path
-     for the desktop icon, so the tab and the shortcut cannot drift apart. */
-  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
-    + '<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1">'
-    + '<stop offset="0" stop-color="#fff" stop-opacity=".20"/>'
-    + '<stop offset=".55" stop-color="#fff" stop-opacity=".04"/>'
-    + '<stop offset="1" stop-color="#000" stop-opacity=".12"/>'
-    + '</linearGradient></defs>'
-    + '<rect width="32" height="32" rx="8" fill="' + bg + '"/>'
-    + '<rect width="32" height="32" rx="8" fill="url(#s)"/>'
-    + '<path d="M4.5 19.4 H10.2 L11.5 21 L13.5 6.3 L15.8 19.4'
-    + ' L18 15.3 L20.2 19.4 H27.5"'
-    + ' fill="none" stroke="' + ink + '" stroke-width="2.9"'
-    + ' stroke-linecap="round" stroke-linejoin="round"/>'
-    + '</svg>';
-  let link = document.querySelector('link[rel="icon"]');
-  if (!link) {
-    link = document.createElement('link');
-    link.rel = 'icon';
-    document.head.appendChild(link);
-  }
-  link.type = 'image/svg+xml';
-  link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  /* The tab icon and the rail badge are one mark in one light, and both are
+     drawn by js/jarvis.js -- which also knows whether the name is hidden on
+     this machine, when the tab gets the plain tile instead. Kept as a name
+     here because every path that changes a token already calls it. */
+  if (BARRY.jarvis) BARRY.jarvis.paint();
 }
 
 /* ==========================================================================
@@ -3340,6 +3307,9 @@ function showThemePicker() {
          t.swatch.map((c) => el('i', { style: 'background:' + c }))),
       el('span', { text: t.name }),
     ])).concat([
+      // The name and the mark, off or back on with the reveal. Here because
+      // it is how this screen looks, remembered the same way a theme is.
+      BARRY.jarvis ? BARRY.jarvis.pickerRow(closeThemePicker) : null,
       el('div', { class: 'theme-note',
                   text: 'Remembered for this computer only.' }),
     ]));
@@ -3679,6 +3649,7 @@ BARRY.init = async function init() {
   BARRY.radio.wire();
 
   $('#themeToggle').addEventListener('click', showThemePicker);
+  if (BARRY.jarvis) BARRY.jarvis.wire();
 
   const vaccBtn = $('#vaccToggle');
   if (vaccBtn) {
@@ -3805,6 +3776,10 @@ BARRY.init = async function init() {
     const mineVacc = vaccForThisMachine();
     if (mineVacc !== BARRY.state.vacc) applyVacc(mineVacc);
   }
+  // And whether the name is hidden here: the same per-host map, which may
+  // know better than this browser's localStorage. Quietly -- the reveal is
+  // for a person pressing the switch, not for a morning boot.
+  if (BARRY.jarvis) BARRY.jarvis.reconcile();
 
   BARRY.activity.init();
   // Asked once, here, rather than on a timer: a permanent poller for a

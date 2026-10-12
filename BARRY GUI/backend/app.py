@@ -1199,7 +1199,7 @@ def api_warm_state():
 def warm_start(window_s=warmcache.WINDOW_S):
     """Open the warm window and start recomputing behind it.
 
-    Called by start.py, which is to say by "Wake up Jarvis", and by nothing
+    Called by start.py, which is to say by "Activate Jarvis", and by nothing
     else. A server brought up by the harness suite, by vacc_run or by a
     script that imports this module never calls it, so those read the store
     live exactly as they always have -- a test that measures the cache when
@@ -13484,6 +13484,10 @@ def api_layers_start(gid):
 def api_layers_set(gid):
     body = request.get_json(force=True) or {}
     try:
+        # A person labelling: the retired placeholders (CA1, DG, DG2) are
+        # refused here, not in set_many, which sync also writes through.
+        layers.refuse_retired(list((body.get("labels") or {}).values())
+                              + [body.get("region")])
         if "labels" in body:
             rec = LAYERS.set_many(gid, body["labels"])
         else:
@@ -14048,9 +14052,10 @@ def api_strata_accept(gid):
         return jsonify({"ok": False, "error": "Which step?"}), 400
     who = (PROFILE.effective() or {}).get("user")
     patch = {
-        "steps": {step: {"status": "done", "at": time.strftime(
-            "%Y-%m-%dT%H:%M:%S%z"), "by": who,
-            "basis": body.get("basis")}},
+        # UTC to the microsecond: "needs a look" is a comparison of these
+        # stamps, and two steps accepted inside one second compared equal.
+        "steps": {step: {"status": "done", "at": shards._now(), "by": who,
+                         "basis": body.get("basis")}},
     }
     if body.get("confidence"):
         patch["confidence"] = body["confidence"]
@@ -14119,7 +14124,7 @@ def api_strata_signoff(gid):
             "signed": {"by": who, "at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                        "v": v},
             "steps": {"4": {"status": "done", "by": who,
-                            "at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}},
+                            "at": shards._now()}},
         })
     except Exception as exc:                             # noqa: BLE001
         return _strata_fail("signoff", exc, gid)
@@ -23437,7 +23442,7 @@ def _cloud_loop_lock():
     """Be the only sync loop on this computer, or say so.
 
     start.py takes the next free port when 8733 is busy, so a second
-    double-click on "Wake up Jarvis" is a second full server -- and it used
+    double-click on "Activate Jarvis" is a second full server -- and it used
     to be a second sync loop too, pushing and pulling the same GUI_logs.
     An OS lock on a file beside them settles which one syncs; it is released
     by the operating system when that process ends, however it ends, so a

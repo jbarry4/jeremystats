@@ -391,9 +391,9 @@ def main():
 
     if py_ok and pkg_ok:
         if os.name == "nt":
-            print('\n  Wake Jarvis by double-clicking "Wake up Jarvis.bat"')
+            print('\n  Activate Jarvis by double-clicking "Activate Jarvis.bat"')
         else:
-            print('\n  Wake Jarvis by double-clicking "Wake up Jarvis.command"')
+            print('\n  Activate Jarvis by double-clicking "Activate Jarvis.command"')
     print(c("=" * 66, "dim"))
     finish(0 if (py_ok and pkg_ok) else 1)
     return 0 if (py_ok and pkg_ok) else 1

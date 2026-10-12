@@ -80,7 +80,7 @@ COUNTS = [("DS#", "spike"), ("Garbage#", "garbage"),
           ("Flag#", "flag"), ("Deep Rev.", "review")]
 
 LOCATION_TO_REGION = {
-    "CA1": "ca1_sr", "CA1 SR": "ca1_sr", "CA1 SP": "ca1_sp",
+    "CA1": "ca1_sr", "CA1 SR": "ca1_rad", "CA1 SP": "ca1_sp",
     "CA1 SO": "ca1_so", "CA1 SLM": "ca1_slm", "DG OML1": "dg_oml1",
     "DG MML1": "dg_mml1", "DG GCL1": "dg_gcl1", "HIL": "hil",
     "DG GCL2": "dg_gcl2", "DG MML2": "dg_mml2", "DG OML2": "dg_oml2",

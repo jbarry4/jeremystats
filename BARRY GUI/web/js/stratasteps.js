@@ -78,6 +78,39 @@ BARRY.strataSteps = (function () {
          + 'molecular layer.' },
   ];
   const CONF = ['sure', 'likely', 'guess'];
+  const CONF_WHY = {
+    sure: 'You checked this line against the evidence and would defend it.',
+    likely: 'The evidence mostly agrees; you have not checked it closely.',
+    guess: 'Placed by geometry or a weak signal. Treat labels next to it '
+         + 'as uncertain.',
+  };
+  /* How a line is drawn says how sure it is, everywhere it is drawn. */
+  const CONF_DASH = { sure: [], likely: [7, 4], guess: [2, 4] };
+
+  /* What each step is about. Everything else is greyed out while it is
+     open (2026-10-12: "way too many lines and colours at one time"):
+
+       regions  the layers the step writes; boundaries of any other layer
+                go grey, and channels outside what Accept would write are
+                dimmed on the rail, the strip, the traces and the aid
+                window
+       lead     the curves the step's lines are placed by, drawn full
+       votes    the curves that vote, drawn faint
+     Every other curve is off until somebody turns it on. */
+  const FOCUS = {
+    0: { regions: [], lead: ['theta'], votes: [] },
+    1: { regions: ['ca1_so', 'ca1_sp', 'ca1_rad', 'ca1_slm', 'ca1_sr'],
+         lead: ['ripple', 'theta'], votes: ['mua', 'theta_phase'] },
+    2: { regions: ['dg_gcl1', 'hil', 'dg_gcl2', 'dg', 'dg2'],
+         lead: ['mua'], votes: ['theta'] },
+    3: { regions: ['dg_oml1', 'dg_mml1', 'dg_iml1', 'dg_gcl1', 'hil',
+                   'dg_gcl2', 'dg_iml2', 'dg_mml2', 'dg_oml2', 'dg', 'dg2'],
+         lead: ['mua', 'theta'], votes: [] },
+    // Sign off: everything, every layer in colour and every curve.
+    4: { regions: null, lead: ['mua', 'ripple', 'theta', 'theta_phase',
+                               'theta_coherence', 'slow_gamma', 'mid_gamma'],
+         votes: [] },
+  };
   const STRIP_W = 150;
 
   let H = null;            // the host: hooks strata.js hands over on enter
@@ -91,7 +124,7 @@ BARRY.strataSteps = (function () {
   let guide = null;        // the last /guide answer (Step 0)
   let ghost = null;        // {step, lines: [...]} -- the editable proposal
   let overrides = {};      // anchors moved by clicking a vote
-  let shown = new Set(['mua', 'ripple', 'theta', 'theta_phase']);
+  let shown = new Set(['mua', 'theta']);
   let checks = null;
   let ica = null;
   let busy = '';
@@ -132,8 +165,9 @@ BARRY.strataSteps = (function () {
 
   const sheet = () => (H && H.sheet()) || null;
   const strata = () => ((sheet() || {}).strata) || {};
+  const allChans = () => (H.allChannels ? H.allChannels() : H.channels());
   const body = (extra) => Object.assign({
-    path: H.path(), channels: H.channels().map((c) => c.number),
+    path: H.path(), channels: allChans().map((c) => c.number),
   }, extra || {});
   const url = (what) => '/api/strata/' + encodeURIComponent(H.gid) + '/' + what;
 
@@ -151,6 +185,7 @@ BARRY.strataSteps = (function () {
   /* Everything the steps show, in one request. */
   async function load(keepGhost) {
     if (!H) return;
+    confirming = null;            // it listed changes for the old lines
     const mine = ++loadSeq;
     busy = 'Working out the depth curves and proposals…';
     H.render();
@@ -226,7 +261,7 @@ BARRY.strataSteps = (function () {
         await load();
         if (open === '0') await loadGuide();
       } else if (kind === 'ica') {
-        ica = (await api('/api/cfc/result/' + snap.id).catch(() => null));
+        await peekIca();
         await load(true);
       }
       return;
@@ -258,6 +293,18 @@ BARRY.strataSteps = (function () {
   /* ==================================================================
      The bar: the step row, then whatever the open step needs
      ================================================================== */
+  /* Is stamp a after stamp b? As times, not strings: the stamps come from
+     the server (UTC, microseconds) and from this page (toISOString), and
+     older sheets carry local "-0400" ones. */
+  function later(a, b) {
+    const ta = Date.parse(a), tb = Date.parse(String(b).replace(
+      /([+-]\d\d)(\d\d)$/, '$1:$2'));
+    const ua = isFinite(ta) ? ta : Date.parse(String(a).replace(
+      /([+-]\d\d)(\d\d)$/, '$1:$2'));
+    if (isFinite(ua) && isFinite(tb) && ua !== tb) return ua > tb;
+    return String(a) > String(b);
+  }
+
   function stepState(id) {
     const steps = strata().steps || {};
     const me = steps[id];
@@ -266,7 +313,7 @@ BARRY.strataSteps = (function () {
     for (const s of STEPS) {
       if (s.id >= id) break;
       const other = steps[s.id];
-      if (other && other.at && me.at && String(other.at) > String(me.at)) {
+      if (other && other.at && me.at && later(other.at, me.at)) {
         return 'stale';
       }
     }
@@ -388,7 +435,12 @@ BARRY.strataSteps = (function () {
 
   async function openStep(id) {
     open = id;
+    confirming = null;
+    icaPick = null;
     more = false;
+    // Only what this step is decided from; the rest are a click away.
+    const f = FOCUS[id];
+    shown = new Set(f ? f.lead.concat(f.votes) : ['mua', 'theta']);
     resetGhost();
     if (id === '0' && !guide) await loadGuide();
     if (id === '4') await loadChecks();
@@ -737,11 +789,11 @@ BARRY.strataSteps = (function () {
     return ch == null ? '—' : 'ch ' + ch;
   }
 
-  /* The layers by the names the steps talk in. The sheet calls stratum
-     radiatum "CA1" (the lab's feeder sheet did), which reads as the whole
-     of CA1 in a step that is about all four of its layers. */
+  /* The layers by the short names the strip has room for. "CA1", "DG" and
+     "DG2" are the lab's placeholders for "in here, layer not decided" --
+     stratum radiatum is ca1_rad. */
   const SHORT = {
-    ca1_so: 'SO', ca1_sp: 'SP', ca1_sr: 'SR', ca1_slm: 'SLM',
+    ca1_so: 'SO', ca1_sp: 'SP', ca1_rad: 'SR', ca1_slm: 'SLM', ca1_sr: 'CA1',
     dg_oml1: 'OML1', dg_mml1: 'MML1', dg_iml1: 'IML1', dg_gcl1: 'GCL1',
     hil: 'HIL', dg_gcl2: 'GCL2', dg_iml2: 'IML2', dg_mml2: 'MML2',
     dg_oml2: 'OML2',
@@ -749,7 +801,6 @@ BARRY.strataSteps = (function () {
 
   function regionName(id) {
     if (!id) return 'below';
-    if (id === 'ca1_sr') return 'CA1 SR';
     const r = (H.regions() || []).find((x) => x.id === id);
     return r ? r.name : id;
   }
@@ -762,6 +813,8 @@ BARRY.strataSteps = (function () {
       el('strong', { text: st.title }),
       el('span', { class: 'ss-say', text: st.blurb }),
     ]));
+    if (confirming && confirming.id === id) box.appendChild(confirmCard());
+    box.appendChild(curveToggles());
     if (sug && sug.masks && sug.masks.theta_all_time && id !== '2') {
       box.appendChild(el('p', { class: 'ss-say warn', text: 'No Theta Walk '
         + 'is painted, so theta and gamma average the whole recording. '
@@ -787,8 +840,14 @@ BARRY.strataSteps = (function () {
           + ' | ' + regionName(ln.below) }),
         el('span', { class: 'ss-line-at', text: ln.at == null ? 'not placed'
           : 'above ' + chName(ln.at) }),
-        el('span', { class: 'ctl-seg' }, CONF.map((c) => el('button', {
+        el('span', { class: 'ctl-seg', title: 'How sure you are of this '
+          + 'line. Saved with the sheet when you accept, kept in the '
+          + 'version when you sign off, and exported. It moves nothing.' },
+        CONF.map((c) => el('button', {
           class: 'mini' + (ln.confidence === c ? ' on' : ''), text: c,
+          title: c + ': ' + CONF_WHY[c] + '\nDrawn ' + (c === 'sure'
+            ? 'solid' : c === 'likely' ? 'dashed' : 'dotted')
+            + ' on the strip, the traces and the aid window.',
           onclick: () => { ln.confidence = c; H.render(); publish(); },
         }))),
       ]));
@@ -1020,32 +1079,122 @@ BARRY.strataSteps = (function () {
       return row;
     }
     const chk = prop.ica_checks || [];
+    const helpBtn = () => el('button', {
+      class: 'ss-help' + (icaHelp ? ' on' : ''), text: '?',
+      title: 'How Method B works',
+      onclick: () => { icaHelp = !icaHelp; H.render(); },
+    });
     if (!sug.ica_ready) {
       row.appendChild(el('span', { class: 'ss-say', text: 'Method B has not '
         + 'run on these Theta Walk seconds yet.' }));
+      row.appendChild(helpBtn());
       row.appendChild(el('button', {
         class: 'btn ghost sm', text: 'Run ICA (Method B)',
         title: 'Unmix the 25-200 Hz field into its generators. Uses the '
-             + 'Theta Walk seconds; refits on each half to see which '
-             + 'components are stable. Takes a minute or two.',
+             + 'Theta Walk seconds (at least 30 s); refits on each half to '
+             + 'see which components are stable. Takes a minute or two.',
         onclick: runIca,
       }));
-      return row;
+      const box0 = el('div', { class: 'ss-ica-box' }, [row]);
+      if (icaHelp) box0.appendChild(icaExplain());
+      return box0;
     }
     row.appendChild(el('span', { class: 'section-label', text: 'Method B '
       + 'says' }));
+    row.appendChild(helpBtn());
     for (const c of chk) {
-      row.appendChild(el('span', {
-        class: 'ss-chip' + (c.row == null ? ' dim' : c.agree ? ' ok' : ' warn'),
-        title: c.why || ('Component ' + c.component + ', peak ' + c.peak_hz
-                         + ' Hz'),
-      }, [el('span', { text: (c.kind === 'slow' ? 'slow γ → '
-        : 'fast γ → ') + regionName(c.region) + ': '
-        + (c.row == null ? 'no stable sink'
+      const on = icaPick && icaPick.region === c.region
+        && icaPick.kind === c.kind;
+      row.appendChild(el('button', {
+        class: 'ss-chip ss-chip-btn' + (c.row == null ? ' dim'
+          : c.agree ? ' ok' : ' warn') + (on ? ' picked' : ''),
+        title: 'Click to see it against Method A\u2019s lines',
+        onclick: () => {
+          icaPick = on ? null : c;
+          H.render();
+          drawStrip();
+          H.redraw();
+        },
+      }, [el('span', { text: (c.kind === 'slow' ? 'slow \u03b3 \u2192 '
+        : 'fast \u03b3 \u2192 ') + regionName(c.region) + ': '
+        + (c.row == null ? 'nothing reliable'
           : chName(c.row) + (c.agree ? ', agrees'
             : ', ' + Math.abs(c.off) + ' ch off')) })]));
     }
-    return row;
+    const box = el('div', { class: 'ss-ica-box' }, [row]);
+    if (icaPick) box.appendChild(icaCompare(icaPick));
+    if (icaHelp) box.appendChild(icaExplain());
+    return box;
+  }
+
+  let icaHelp = false;
+  let icaPick = null;
+
+  /* What one check means, in a sentence, and where it is on the strip and
+     the traces (drawn while it is picked). */
+  function icaCompare(c) {
+    const lines = (ghost && ghost.lines) || [];
+    const top = lines.find((l) => l.below === c.region);
+    const bot = lines.find((l) => l.above === c.region);
+    const span = (top && top.at != null)
+      ? chName(top.at) + (bot && bot.at != null && bot.at - 1 > top.at
+        ? '\u2013' + (sug.channels[bot.at - 1] != null
+          ? sug.channels[bot.at - 1] : '') : '')
+      : 'nowhere yet';
+    const comp = (ica && ica.components || []).find((x) => x.index === c.component);
+    const kind = c.kind === 'slow' ? 'slow-gamma (LEC-like, 25-60 Hz)'
+                                   : 'fast-gamma (MEC-like, 60-180 Hz)';
+    let say;
+    if (c.row == null) {
+      say = 'No ' + kind + ' component that came back in both halves of '
+        + 'the walking has a sink inside ' + regionName(c.region)
+        + ' (' + span + ') at least 30% as strong as its own strongest '
+        + 'sink. So ICA found no generator it can vouch for in this layer: '
+        + 'not evidence against Method A\u2019s line, just no evidence '
+        + 'for it. Fast gamma is often too weak in mice for this.';
+    } else {
+      const dir = c.off > 0 ? 'deeper' : 'shallower';
+      say = 'Component ' + c.component + (comp ? ' (' + comp.peak_hz
+        + ' Hz, ' + (100 * comp.variance).toFixed(0) + '% of the gamma '
+        + 'field, came back in both halves at ' + comp.stability + ')' : '')
+        + ' sinks at ' + chName(c.row) + '. Method A puts '
+        + regionName(c.region) + ' at ' + span + (c.agree
+          ? ', so they agree.'
+          : ', so ICA puts it ' + Math.abs(c.off) + ' channel'
+            + (Math.abs(c.off) === 1 ? '' : 's') + ' ' + dir + '.')
+        + ' On the strip: the component\u2019s CSD (its sink is the dip), '
+        + 'the sink as a solid line, and the layer as a bracket.';
+    }
+    return el('p', { class: 'ss-more', text: say });
+  }
+
+  function icaExplain() {
+    return el('div', { class: 'ss-more' }, [
+      el('p', { text: 'Method B, in four steps.' }),
+      el('p', { text: '1. The gamma-band field (25-200 Hz) recorded during '
+        + 'Theta Walk is a mix of a few generators: groups of synapses '
+        + 'firing together, each felt on every contact with a different '
+        + 'strength. ICA (independent component analysis) unmixes them '
+        + 'into about ten sources that are statistically independent of '
+        + 'each other.' }),
+      el('p', { text: '2. Each source has a loading -- how strongly it '
+        + 'shows on each channel -- and a time course. The CSD of the '
+        + 'loading has a sink where the generator\u2019s synapses are; '
+        + 'that is the "where". The time course\u2019s spectrum says '
+        + 'which frequency it carries; that is the "what".' }),
+      el('p', { text: '3. In the dentate, slow gamma (25-60 Hz) comes from '
+        + 'the lateral entorhinal cortex and ends in the outer molecular '
+        + 'layer; fast gamma (60-180 Hz) from the medial entorhinal cortex, '
+        + 'in the middle molecular layer. So a slow source should sink in '
+        + 'OML, a fast one in MML -- an answer that never used Method A\u2019s '
+        + 'thirds.' }),
+      el('p', { text: '4. Every source is fitted again on the first and the '
+        + 'second half of the walking. Only sources that come back in both '
+        + '(their loadings correlate at 0.7 or more) are trusted. "Agrees" '
+        + 'means a trusted source sinks inside the layer Method A drew; '
+        + '"N ch off" means it sinks N channels outside it; "nothing '
+        + 'reliable" means no trusted source sinks there.' }),
+    ]);
   }
 
   async function runIca() {
@@ -1122,9 +1271,92 @@ BARRY.strataSteps = (function () {
         if (x && x.lead.row != null) anchors[k] = chOf(x.lead.row);
       }
     }
-    await accept(id, labels, confidence, anchors);
-    const next = String(+id + 1);
-    openStep(next);
+    /* Not written yet: first the drawer says, channel by channel, what
+       this would change, and waits for Continue (2026-10-12). */
+    confirming = { id, labels, confidence, anchors,
+                   changes: changeRuns(labels) };
+    H.render();
+    const d = document.querySelector('.ss-drawer');
+    if (d) d.scrollTop = 0;
+  }
+
+  let confirming = null;
+
+  /* What Accept would do to the sheet, as runs of neighbouring channels
+     going from the same label to the same label: "ch 6-9: CA1 -> CA1 SR". */
+  function changeRuns(labels) {
+    const cur = ((sheet() || {}).labels) || {};
+    const runs = [];
+    let same = 0;
+    for (const ch of sug.channels) {
+      if (!(ch in labels) && !(String(ch) in labels)) continue;
+      const now = labels[ch] || labels[String(ch)] || null;
+      const was = cur[String(ch)] || null;
+      if (now === was) { same += 1; continue; }
+      const last = runs[runs.length - 1];
+      if (last && last.was === was && last.now === now
+          && sug.channels.indexOf(last.to) === sug.channels.indexOf(ch) - 1) {
+        last.to = ch;
+        last.n += 1;
+      } else {
+        runs.push({ from: ch, to: ch, n: 1, was, now });
+      }
+    }
+    return { runs, same };
+  }
+
+  function confirmCard() {
+    const c = confirming;
+    const ch = (r) => (r.from === r.to ? 'Ch ' + r.from
+                                        : 'Ch ' + r.from + '\u2013' + r.to);
+    const name = (id) => (id ? regionName(id) : 'unlabelled');
+    const list = el('ul', { class: 'ss-changes' }, c.changes.runs.map((r) =>
+      el('li', {}, [
+        el('b', { text: ch(r) }),
+        el('span', { class: 'was', text: name(r.was) }),
+        el('span', { class: 'arrow', text: '\u2192' }),
+        el('span', { class: 'now', text: name(r.now) }),
+      ])));
+    const total = c.changes.runs.reduce((a, r) => a + r.n, 0);
+    return el('div', { class: 'ss-confirm' }, [
+      el('strong', { text: total
+        ? 'This will change ' + total + ' channel' + (total === 1 ? '' : 's')
+          + ':'
+        : 'No channel changes.' }),
+      total ? list : el('p', { class: 'ss-say', text: 'Accepting records '
+        + 'the step as done, with the confidence of each line.' }),
+      c.changes.same ? el('p', { class: 'ss-say', text: c.changes.same
+        + ' channel' + (c.changes.same === 1 ? '' : 's')
+        + ' in the step already say what it proposes.' }) : null,
+      el('div', { class: 'ss-actions' }, [
+        el('button', {
+          class: 'btn ghost sm', text: 'Back',
+          onclick: () => { confirming = null; H.render(); },
+        }),
+        el('div', { style: 'flex:1' }),
+        el('button', {
+          class: 'btn sm', text: 'Continue',
+          onclick: async () => {
+            const k = confirming;
+            confirming = null;
+            await accept(k.id, k.labels, k.confidence, k.anchors);
+            openStep(String(+k.id + 1));
+          },
+        }),
+      ]),
+    ].filter(Boolean));
+  }
+
+  /* What Accept would write in the open step: channel -> region. Drawn
+     hatched on the traces and the CSD until it is accepted. */
+  function proposedLabels() {
+    if (!open || open === '0' || open === '4' || !sug || !ghost
+        || ghost.step !== open) return null;
+    const [a, b] = stepSpan(open, ghost.lines);
+    const rows = labelsFromLines(ghost.lines, a, b);
+    const out = new Map();
+    for (const r in rows) out.set(sug.channels[r], rows[r]);
+    return out;
   }
 
   async function accept(id, labels, confidence, anchors) {
@@ -1203,6 +1435,42 @@ BARRY.strataSteps = (function () {
     H.render();
   }
 
+  /* The channels Accept would write in the open step, or null when every
+     channel is in play (no step, or Step 4). Step 0 writes no labels, so
+     every channel is out of it. */
+  function affected() {
+    if (!H || !open || open === '4') return null;
+    if (open === '0') return new Set();
+    if (!sug || !sug.channels || !ghost || ghost.step !== open) return null;
+    const [a, b] = stepSpan(open, ghost.lines);
+    return new Set(sug.channels.slice(Math.max(0, a), Math.max(0, b)));
+  }
+
+  function focusRegions() {
+    const f = open ? FOCUS[open] : null;
+    return f && f.regions ? new Set(f.regions) : null;
+  }
+
+  /* Profile rows (every channel, sheet order) against lanes (the channels
+     the traces draw). A line above profile row r sits above the first
+     drawn channel at or after r. */
+  function laneOfRow(row, chans) {
+    if (row == null || !sug || !sug.channels) return null;
+    const pos = new Map(chans.map((c, i) => [c.number, i]));
+    for (let r = Math.max(0, row); r < sug.channels.length; r++) {
+      const i = pos.get(sug.channels[r]);
+      if (i != null) return i;
+    }
+    return chans.length;
+  }
+
+  function rowOfLane(i, chans) {
+    if (!sug || !sug.channels) return null;
+    if (i >= chans.length) return sug.channels.length;
+    const r = sug.channels.indexOf(chans[Math.max(0, i)].number);
+    return r < 0 ? null : r;
+  }
+
   /* ==================================================================
      The depth strip, beside the rail
      ================================================================== */
@@ -1217,35 +1485,41 @@ BARRY.strataSteps = (function () {
       cv.addEventListener('mouseleave', () => { cv.style.cursor = ''; });
     }
     stripCanvas = cv;
-    /* Which curves are drawn, above the strip in the rail's spare height
-       rather than in the bar, which is the traces' height. */
-    let lg = rail.querySelector('.ss-legend');
-    if (lg) lg.remove();
-    lg = el('div', { class: 'ss-legend' }, CURVES.map((c) => el('button', {
-      class: 'ss-curve' + (shown.has(c.id) ? ' on' : ''),
+  }
+
+  /* Which curves the strip draws: the open step's, at the top of its
+     drawer. They used to sit in the rail above the strip, where there is
+     not always room -- on a short pane they covered the channel count. The
+     step's own curves first, full or faint as the strip draws them; the
+     others after a divider, off until clicked. */
+  function curveToggles() {
+    const f = open ? FOCUS[open] : null;
+    const mine = f ? f.lead.concat(f.votes) : ['mua', 'theta'];
+    const chip = (c) => el('button', {
+      class: 'ss-curve' + (shown.has(c.id) ? ' on' : '')
+           + (f && f.votes.includes(c.id) ? ' vote' : ''),
       style: '--cv:var(' + c.tok + ')',
       title: c.why + '\nClick to show or hide it on the strip.',
       onclick: () => {
         if (shown.has(c.id)) shown.delete(c.id); else shown.add(c.id);
         H.render();
       },
-    }, [el('i'), el('span', { text: c.name })])));
-    rail.appendChild(lg);
-    legendEl = lg;
+    }, [el('i'), el('span', { text: c.name })]);
+    const own = CURVES.filter((c) => mine.includes(c.id));
+    const rest = CURVES.filter((c) => !mine.includes(c.id));
+    return el('div', { class: 'ss-legend-row' }, [
+      el('span', { class: 'section-label', text: 'On the strip' }),
+      ...own.map(chip),
+      rest.length ? el('span', { class: 'ss-legend-gap', text: '\u00b7' }) : null,
+      ...rest.map(chip),
+    ].filter(Boolean));
   }
-  let legendEl = null;
 
   function stripWidth() { return H ? STRIP_W : 0; }
 
   /* Called by strata.js's alignRail with the lanes' geometry. */
   function layout(top, height, n) {
     strip = { top, height, n, lane: height / Math.max(1, n) };
-    if (legendEl && legendEl.isConnected) {
-      // Sits just above the strip, or at the rail's top when there is no
-      // room above it.
-      const h = legendEl.getBoundingClientRect().height;
-      legendEl.style.top = Math.max(52, top - h - 4) + 'px';
-    }
     if (!stripCanvas) return;
     stripCanvas.style.top = top + 'px';
     stripCanvas.style.height = height + 'px';
@@ -1289,29 +1563,42 @@ BARRY.strataSteps = (function () {
       ctx.fillStyle = BARRY.token('--text-3');
       ctx.font = '10.5px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      const say = (status && status.scanned) ? 'working…'
+      const say = (status && status.scanned) ? 'working\u2026'
                                              : 'not read yet';
       ctx.fillText(say, W / 2, Math.min(Hh / 2, 40));
       return;
     }
     const map = profileRows();
     const curves = sug.profile.curves;
+    const f = open ? FOCUS[open] : null;
+    const lead = new Set(f ? f.lead : []);
     // faint lane grid every 4 channels
     ctx.fillStyle = BARRY.token('--line-soft');
     for (let i = 0; i < n; i += 4) ctx.fillRect(0, Math.round(i * lane), W, 1);
     for (const c of CURVES) {
       if (!shown.has(c.id) || !curves[c.id]) continue;
       const v = norm(map.map((k) => (k == null ? null : curves[c.id][k])));
+      const strong = !f || lead.has(c.id);
+      ctx.globalAlpha = strong ? 1 : 0.45;
       ctx.strokeStyle = BARRY.token(c.tok);
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      let pen = false;
-      v.forEach((x, i) => {
-        if (x == null) { pen = false; return; }
-        const px = pad + x * (W - 2 * pad), py = (i + 0.5) * lane;
-        if (pen) ctx.lineTo(px, py); else { ctx.moveTo(px, py); pen = true; }
+      ctx.lineWidth = strong ? 1.8 : 1;
+      curve(ctx, v.map((x, i) => (x == null ? null
+        : [pad + x * (W - 2 * pad), (i + 0.5) * lane])));
+    }
+    ctx.globalAlpha = 1;
+    // A channel with no value (marked bad, or not read): a small cross at
+    // the edge, so the dotted stretch above says why it is dotted.
+    if (map) {
+      const bad = new Set((sug.bad || []).map(Number));
+      ctx.fillStyle = BARRY.token('--text-3');
+      ctx.font = '9px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      chans.forEach((c, i) => {
+        if (bad.has(c.number) || map[i] == null) {
+          ctx.fillText('\u00d7', 1, (i + 0.5) * lane);
+        }
       });
-      ctx.stroke();
     }
     // the reference channel: R
     if (sug.ref_channel != null) {
@@ -1324,15 +1611,38 @@ BARRY.strataSteps = (function () {
         ctx.fillText('R', 1, (i + 0.5) * lane);
       }
     }
-    // accepted boundaries: where the sheet's label changes
+    /* Out of the step: channels Accept would not write are veiled, so the
+       part of the probe the step is about is the only part in colour. */
+    const aff = affected();
+    if (aff) {
+      ctx.fillStyle = BARRY.token('--bg');
+      ctx.globalAlpha = 0.72;
+      chans.forEach((c, i) => {
+        if (!aff.has(c.number)) {
+          ctx.fillRect(0, Math.floor(i * lane), W, Math.ceil(lane) + 1);
+        }
+      });
+      ctx.globalAlpha = 1;
+    }
+    // accepted boundaries: the step's own layers in colour, the rest grey
     const sh = sheet();
     const lab = (c) => (sh && sh.labels ? sh.labels[String(c.number)] : null);
     const regs = H.regions() || [];
+    const fr = focusRegions();
     for (let i = 1; i < n; i++) {
       const a = lab(chans[i - 1]), b = lab(chans[i]);
       if (a === b) continue;
-      const reg = regs.find((r) => r.id === b) || regs.find((r) => r.id === a);
       const y = Math.round(i * lane) + 0.5;
+      const mineA = !fr || fr.has(a), mineB = !fr || fr.has(b);
+      if (!(mineA || mineB)) {
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = BARRY.token('--text-3');
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        ctx.globalAlpha = 1;
+        continue;
+      }
+      const reg = regs.find((r) => r.id === (mineB ? b : a));
       ctx.globalAlpha = 0.7;
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 3;
@@ -1344,21 +1654,19 @@ BARRY.strataSteps = (function () {
     }
     // the open step's anchors: lead as a filled mark, votes as rings
     const prop = open && sug.steps ? sug.steps[open] : null;
-    for (const a of (prop && prop.anchors) || []) {
+    for (const an of (prop && prop.anchors) || []) {
       const at = (row) => {
-        if (row == null) return null;
-        const ch = sug.channels[row];
-        const i = chans.findIndex((c) => c.number === ch);
-        return i < 0 ? null : (i + 0.5) * lane;
+        const i = laneOfRow(row, chans);
+        return i == null || i >= n ? null : (i + 0.5) * lane;
       };
-      const y = at(a.lead.row);
+      const y = at(an.lead.row);
       if (y != null) {
         ctx.fillStyle = BARRY.token('--accent');
         ctx.beginPath();
         ctx.moveTo(W - 1, y); ctx.lineTo(W - 8, y - 4); ctx.lineTo(W - 8, y + 4);
         ctx.closePath(); ctx.fill();
       }
-      for (const v of a.votes || []) {
+      for (const v of an.votes || []) {
         const yy = at(v.row);
         if (yy == null) continue;
         ctx.strokeStyle = BARRY.token('--text-2');
@@ -1366,16 +1674,53 @@ BARRY.strataSteps = (function () {
         ctx.beginPath(); ctx.arc(W - 13, yy, 2.6, 0, Math.PI * 2); ctx.stroke();
       }
     }
-    // ghost lines
+    // a picked ICA check: the component's CSD, its sink, and the layer
+    if (icaPick && open === '3' && ica && ica.components) {
+      const comp = ica.components.find((x) => x.index === icaPick.component);
+      const col = BARRY.token(icaPick.kind === 'slow' ? '--c2' : '--warn');
+      if (comp && comp.csd) {
+        const idx = new Map((ica.channels || []).map((ch, k) => [ch, k]));
+        const vals = chans.map((c) => {
+          const k = idx.get(c.number);
+          return k == null ? null : comp.csd[k];
+        });
+        const fin = vals.filter((x) => x != null);
+        const lim = fin.length ? Math.max(...fin.map(Math.abs)) || 1 : 1;
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.6;
+        curve(ctx, vals.map((x, i) => (x == null ? null
+          : [W / 2 + (x / lim) * (W / 2 - pad), (i + 0.5) * lane])));
+      }
+      const top = ghost && ghost.lines.find((l) => l.below === icaPick.region);
+      const bot = ghost && ghost.lines.find((l) => l.above === icaPick.region);
+      if (top && top.at != null) {
+        const y0 = laneOfRow(top.at, chans) * lane;
+        const y1 = (bot && bot.at != null ? laneOfRow(bot.at, chans) : n) * lane;
+        const reg = (H.regions() || []).find((r) => r.id === icaPick.region);
+        ctx.fillStyle = reg ? reg.color : col;
+        ctx.fillRect(1, y0 + 1, 4, Math.max(2, y1 - y0 - 2));
+      }
+      if (icaPick.row != null) {
+        const i = laneOfRow(icaPick.row, chans);
+        if (i != null && i < n) {
+          const y = (i + 0.5) * lane;
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        }
+      }
+    }
+    // the proposal's lines, dashed by how sure they are
     if (ghost && ghost.step === open) {
       ctx.font = '9.5px system-ui, sans-serif';
       ctx.textBaseline = 'bottom';
       ctx.textAlign = 'right';
       for (const ln of ghost.lines) {
-        if (ln.at == null) continue;
-        const y = Math.round(ln.at * lane) + 0.5;
+        const i = laneOfRow(ln.at, chans);
+        if (i == null) continue;
+        const y = Math.round(i * lane) + 0.5;
         const hot = drag && drag.line === ln;
-        ctx.setLineDash([5, 3]);
+        ctx.setLineDash(CONF_DASH[ln.confidence] || CONF_DASH.likely);
         ctx.strokeStyle = BARRY.token(hot ? '--text' : '--accent');
         ctx.lineWidth = hot ? 2.5 : 1.8;
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
@@ -1388,6 +1733,40 @@ BARRY.strataSteps = (function () {
         ctx.fillText(txt, W - 16, y);
       }
     }
+  }
+
+  /* A curve through points, some missing. Solid where neighbours are both
+     there; across a missing channel (a bad one, usually) a faint dotted
+     bridge, so a curve does not stop dead and start again further down
+     looking like two curves (2026-10-12, "weird gap"). */
+  function curve(ctx, pts) {
+    let run = [];
+    let lastEnd = null;
+    const flush = () => {
+      if (run.length) {
+        if (lastEnd && run.length) {
+          ctx.save();
+          ctx.setLineDash([2, 3]);
+          ctx.globalAlpha *= 0.6;
+          ctx.beginPath();
+          ctx.moveTo(lastEnd[0], lastEnd[1]);
+          ctx.lineTo(run[0][0], run[0][1]);
+          ctx.stroke();
+          ctx.restore();
+        }
+        ctx.beginPath();
+        ctx.moveTo(run[0][0], run[0][1]);
+        for (let k = 1; k < run.length; k++) ctx.lineTo(run[k][0], run[k][1]);
+        ctx.stroke();
+        lastEnd = run[run.length - 1];
+      }
+      run = [];
+    };
+    for (const p of pts) {
+      if (p) run.push(p);
+      else flush();
+    }
+    flush();
   }
 
   function shortName(id) {
@@ -1407,9 +1786,11 @@ BARRY.strataSteps = (function () {
     const { y, lane } = stripRowAt(e);
     let best = null;
     if (ghost && ghost.step === open) {
+      const chans = H.channels();
       for (const ln of ghost.lines) {
-        if (ln.at == null) continue;
-        const d = Math.abs(ln.at * lane - y);
+        const i = laneOfRow(ln.at, chans);
+        if (i == null) continue;
+        const d = Math.abs(i * lane - y);
         if (d <= 6 && (!best || d < best.d)) best = { d, kind: 'ghost', line: ln };
       }
     }
@@ -1444,8 +1825,10 @@ BARRY.strataSteps = (function () {
       const { y, lane, n } = stripRowAt(ev);
       const row = Math.max(0, Math.min(n, Math.round(y / lane)));
       if (drag.kind === 'ghost') {
-        if (drag.line.at !== row) {
-          drag.line.at = row;
+        // Lanes on screen, rows of the whole probe in the proposal.
+        const at = rowOfLane(row, H.channels());
+        if (at != null && drag.line.at !== at) {
+          drag.line.at = at;
           drawStrip();
           H.redraw();
         }
@@ -1460,16 +1843,26 @@ BARRY.strataSteps = (function () {
       const d = drag;
       drag = null;
       if (d.kind === 'ghost') {
+        confirming = null;
         H.render();
         publish();
         return;
       }
       if (d.to == null || d.to === d.at) { drawStrip(); return; }
-      // Moving an accepted boundary relabels the channels it passes.
-      const chans = H.channels();
+      /* Moving an accepted boundary relabels the channels it passes -- all of
+         them, in the sheet's order, including any the traces are not
+         drawing just now. Relabelling only the drawn ones would leave every
+         hidden channel in between on the old side of the line. */
+      const lanes = H.channels();
+      const all = allChans().map((c) => c.number);
+      const idx = (laneI) => (laneI >= lanes.length ? all.length
+        : all.indexOf(lanes[laneI].number));
+      const from = idx(d.at), to = idx(d.to);
       const map = {};
-      if (d.to > d.at) for (let i = d.at; i < d.to; i++) map[chans[i].number] = d.above;
-      else for (let i = d.to; i < d.at; i++) map[chans[i].number] = d.below;
+      if (from >= 0 && to >= 0) {
+        if (to > from) for (let i = from; i < to; i++) map[all[i]] = d.above;
+        else for (let i = to; i < from; i++) map[all[i]] = d.below;
+      }
       await H.setLabels(map);
       drawStrip();
     };
@@ -1482,19 +1875,12 @@ BARRY.strataSteps = (function () {
      ================================================================== */
   function drawGhost(ctx, chans, x0, plotW, y0, lane) {
     if (!ghost || ghost.step !== open || !sug || !chans || !chans.length) return;
-    const pos = new Map(chans.map((c, i) => [c.number, i]));
     ctx.save();
-    ctx.setLineDash([7, 4]);
     for (const ln of ghost.lines) {
-      if (ln.at == null) continue;
-      // The line sits above channel `at` of the profile's order; find that
-      // channel's lane in this panel.
-      const ch = sug.channels[ln.at];
-      let i = pos.get(ch);
-      if (i == null) {
-        if (ln.at >= sug.channels.length) i = chans.length; else continue;
-      }
+      const i = laneOfRow(ln.at, chans);
+      if (i == null) continue;
       const y = Math.round(y0 + i * lane) + 0.5;
+      ctx.setLineDash(CONF_DASH[ln.confidence] || CONF_DASH.likely);
       ctx.globalAlpha = 0.85;
       ctx.strokeStyle = '#000';
       ctx.lineWidth = 3.5;
@@ -1503,6 +1889,24 @@ BARRY.strataSteps = (function () {
       ctx.strokeStyle = BARRY.token('--accent');
       ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + plotW, y); ctx.stroke();
+    }
+    // A picked ICA check: where its component sinks, solid, in its colour.
+    if (icaPick && open === '3' && icaPick.row != null) {
+      const i = laneOfRow(icaPick.row, chans);
+      if (i != null && i < chans.length) {
+        const y = Math.round(y0 + (i + 0.5) * lane) + 0.5;
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = BARRY.token(icaPick.kind === 'slow' ? '--c2' : '--warn');
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + plotW, y); ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.fillText('ICA ' + icaPick.kind + ' \u03b3 sink', x0 + 6, y - 2);
+      }
     }
     ctx.restore();
   }
@@ -1522,10 +1926,15 @@ BARRY.strataSteps = (function () {
     rev += 1;
     const value = (force && force.off) ? { off: true } : {
       gid: H.gid, path: H.path(), step: open, rev,
-      channels: H.channels().map((c) => c.number),
+      channels: allChans().map((c) => c.number),
       labels: (sheet() || {}).labels || {},
       regions: H.regions(),
       lines: ghost && ghost.step === open ? ghost.lines : [],
+      affected: (() => { const a = affected(); return a ? Array.from(a) : null; })(),
+      proposed: (() => { const m = proposedLabels(); return m ? Object.fromEntries(m) : null; })(),
+      ica_pick: icaPick ? icaPick.component : null,
+      ica_ready: !!(sug && sug.ica_ready),
+      focus: focusRegions() ? Array.from(focusRegions()) : null,
       overrides,
       states_n: walk().length,
       theme: (BARRY.state || {}).theme,
@@ -1567,6 +1976,9 @@ BARRY.strataSteps = (function () {
                      drag: drag ? { kind: drag.kind, at: drag.line ? drag.line.at : drag.at } : null,
                      paint }),
     _openStep: openStep,
+    proposedLabels,
+    affected,
+    focusRegions,
     _labelsFromLines: labelsFromLines,
   };
 })();

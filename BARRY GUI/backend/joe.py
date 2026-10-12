@@ -57,7 +57,9 @@ from scipy.signal import butter, filtfilt, hilbert
 from . import coupling, nlx, ratidentity, spark, sweep
 
 FS = coupling.ANALYSIS_FS
-SCHEMA = 2
+# 3: Spark's timed windows found again after a break in a recording's clock
+# (spark._record_at); every day file made before it is made again.
+SCHEMA = 3
 
 BANDS = (("theta", 5.0, 12.0), ("gamma", 30.0, 90.0))
 BAND_IDS = tuple(b[0] for b in BANDS)
@@ -1369,6 +1371,15 @@ def joe_work(worker, workers=None):
                     f.cancel()
                 raise
     worker.check()
+    # Day files made for anything else (an older schema, trials changed
+    # since) are never read again.
+    keep = {os.path.basename(p) for p in have.values()}
+    for f in os.listdir(joe_dir("days")):
+        if f.endswith(".npz") and f not in keep:
+            try:
+                os.remove(joe_dir("days", f))
+            except OSError:
+                pass
     day_data = {}
     for (rat, day), p in sorted(have.items()):
         arrs, fp, meta = load_day(p)
