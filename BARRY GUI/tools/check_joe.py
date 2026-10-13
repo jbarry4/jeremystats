@@ -286,11 +286,12 @@ def main():
     check("nor Noise vs Click, nor High vs Low, in theta: each pair of sounds opens the same cue in a rat", not snd_theta, snd_theta)
     check("but A/B/C/D does see the cue-1 change: A and C are cue 1", gate("c3", "theta") and top("c3", "theta") == pr01,
           (res[("c3", "theta", "welch")]["gate"], top("c3", "theta")))
-    f2 = res[("m2", "theta", "welch")].get("follow") or {}
+    f2 = res[("m2", "theta", "dickson")].get("follow") or {}
     check("the follow-ups run for the pair Holm keeps, with PLI, direction and PAC",
           [p["pair"] for p in f2.get("pairs", [])] == [pr01]
-          and all(k in f2["pairs"][0]["measures"] for k in ("pli", "icoh", "gc_ab", "gc_ba", "xlag", "pac_ab", "pac_aa")), f2.get("basis"))
-    check("no follow-ups where the gate stays shut", not res[("m3", "theta", "welch")].get("follow"))
+          and all(k in f2["pairs"][0]["measures"] for k in joe.FOLLOW_KEYS), f2.get("basis"))
+    check("no follow-ups where the gate stays shut, and none on Welch's results (the tab shows Dickson)",
+          not res[("m3", "theta", "dickson")].get("follow") and not any(r.get("follow") for r in out["results"] if r["method"] == "welch"))
     r2 = res[("m2", "theta", "welch")]
     check("no RM-ANOVA run; the rats it could have kept (those with every cell) said instead",
           not any("rm" in r for r in out["results"]) and set(r2["complete_rats"]) <= set(r2["rats"]) and len(r2["complete_rats"]) in (7, 8),
@@ -355,9 +356,9 @@ def main():
     Z = zipfile.ZipFile(zp)
     names = Z.namelist()
     R = "joe_tab8_spss/"
-    check("one zip: a README, a results summary and three folders, the main comparisons, the checks and the recreate files",
+    check("one zip: a README, a results summary and four folders, the main comparisons, the checks, the recreate files and the follow-ups",
           R + "README.txt" in names and R + "Results summary.csv" in names
-          and all(any(n.startswith(R + d + "/") for n in names) for d in (joe.MAIN_DIR, joe.CHECK_DIR, joe.REDO_DIR))
+          and all(any(n.startswith(R + d + "/") for n in names) for d in (joe.MAIN_DIR, joe.CHECK_DIR, joe.REDO_DIR, joe.FOLLOW_DIR))
           and got["downloads"] == ["joe_tab8_spss.zip", "joe_tab8_README.txt", "joe_tab8_results.csv"]
           and all(os.path.isfile(os.path.join(exp, f)) for f in got["downloads"]), names[:3])
     mains = [n for n in names if n.startswith(R + joe.MAIN_DIR + "/") or n.startswith(R + joe.CHECK_DIR + "/")]
@@ -399,9 +400,26 @@ def main():
     check("its .sps: the exact test (MIXED difference BY pair, the rat random) and the by-hand t-test, with tab 8's numbers to expect",
           "MIXED difference BY pair" in redo and "/RANDOM=INTERCEPT | SUBJECT(rat) COVTYPE(VC)" in redo and "T-TEST /TESTVAL=0 /VARIABLES=difference." in redo
           and ("tab 8: F = %.2f" % t2["F"]) in redo and ("t(%d) = %.2f" % (rq["quick"]["df"], rq["quick"]["t"])) in redo)
+    # The follow-ups: every line of the .sps's split t-test is the tab's.
+    fo = [x for x in got["positive"] if x.get("follow_files")]
+    fx_ = fo[0]
+    frows = pd.read_csv(io.BytesIO(Z.read(R + fx_["files"][0].replace(joe.REDO_DIR, joe.FOLLOW_DIR).replace("per rat and pair", "follow-ups"))))
+    fres = res[(fx_["model"], fx_["band"], "dickson")]
+    worst_t, n_t = 0.0, 0
+    for (pi, ki), g in frows.groupby(["pair", "measure"]):
+        meas = fres["follow"]["pairs"][pi - 1]["measures"][joe.FOLLOW_KEYS[ki - 1]]
+        if meas.get("t") is None:
+            continue
+        tt = ttest_1samp(g["difference"].to_numpy(), 0.0)
+        worst_t = max(worst_t, abs(float(tt.statistic) - meas["t"]), abs(float(tt.pvalue) - meas["p"]))
+        n_t += 1
+    fsps = Z.read(R + fx_["follow_files"][1]).decode("utf-8-sig")
+    check("the follow-ups for SPSS: a row per rat, pair and measure, and each pair and measure's t-test is the tab's to rounding (%d of them)" % n_t,
+          n_t == sum(1 for pr in fres["follow"]["pairs"] for k in joe.FOLLOW_KEYS if pr["measures"][k].get("t") is not None) and worst_t < 1e-6
+          and "SPLIT FILE LAYERED BY pair_name measure_name." in fsps and "T-TEST /TESTVAL=0 /VARIABLES=difference." in fsps, (n_t, worst_t))
     readme = Z.read(R + "README.txt").decode("utf-8")
     check("the README: the comparisons by number, why there is no repeated-measures ANOVA, how to run one, how to recreate each result",
-          all(h in readme for h in ("THE COMPARISONS", "WHY THERE IS NO REPEATED-MEASURES ANOVA", "HOW TO RUN ONE", "HOW TO RECREATE THE POSITIVE RESULTS"))
+          all(h in readme for h in ("THE COMPARISONS", "WHY THERE IS NO REPEATED-MEASURES ANOVA", "HOW TO RUN ONE", "HOW TO RECREATE THE POSITIVE RESULTS", "THE FOLLOW-UPS"))
           and " 2  Baseline (10 s) to cue 1" in readme and "WELCH" in readme)
     summ = Z.read(R + "Results summary.csv").decode("utf-8").splitlines()
     check("the results summary: a row a comparison and band, its words, its numbers and whether Welch agrees",

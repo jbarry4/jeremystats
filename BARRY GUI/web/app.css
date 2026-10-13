@@ -8181,6 +8181,20 @@ div.ss-more p { margin: 0; }
   font-size: var(--fs-9); text-transform: uppercase; letter-spacing: .04em;
   color: var(--err);
 }
+/* A typed list of channels to mark bad, above the list itself. The box
+   takes the room; the line under it says back what the list came to, so
+   "32-56" reads as twenty-five channels before anything is saved. */
+.bulk-bad { display: flex; align-items: center; gap: var(--sp-6); flex: 1; }
+.bulk-bad-in {
+  flex: 1; min-width: 12em; font-size: var(--fs-12); padding: 3px 6px;
+  font-family: var(--mono);
+}
+.bulk-bad-say {
+  margin: 0 4px 4px; font-size: var(--fs-105); color: var(--text-3);
+  overflow-wrap: anywhere;
+}
+.bulk-bad-say:empty { display: none; }
+.bulk-bad-say.warn { color: var(--warn); }
 /* Which of three jobs the profile dialog's Save is doing. On screen because
    it used to be worked out from string comparison, and getting it wrong
    rewrote this computer's identity. */

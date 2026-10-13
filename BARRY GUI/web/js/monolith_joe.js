@@ -239,6 +239,7 @@ window.MONO_JOE = (function () {
       el('li', { class: w.s3 === 'no evidence' ? 'no' : 'yes', text: w.each }),
       ws ? el('li', { class: 'jwelch ' + (welchSame(m, sel.band) === false ? 'differs' : 'same'), text: ws }) : null]));
     host.appendChild(el('div', { class: 'jpickfig' }, [plotOf(m, r, { plain: true })]));
+    if (m.kind === 'first' && m.unit === 'pair' && on) host.appendChild(followBlock(m, r));
     host.appendChild(X().more('the numbers', (body) => {
       body.appendChild(termsTable(m, r));
       body.appendChild(el('p', { class: 'small muted', text: 'The words above: strong evidence at p < .01, some evidence at p < .05 (uncorrected), no evidence otherwise. '
@@ -246,6 +247,59 @@ window.MONO_JOE = (function () {
       return null;
     }, { key: 'joe-num-' + kind }));
   }
+  // The follow-ups of a result that changed, on its face (the plan: PLI,
+  // imaginary coherence, direction and PAC for whatever changes): the pairs
+  // that moved most, a light per family of measures, lit where one of its
+  // measures changed, said in words on hover; every number one ▸ away.
+  const FOLLOW_KEYS = ['pli', 'icoh', 'gc_ab', 'gc_ba', 'xlag', 'xpeak', 'pac_ab', 'pac_ba', 'pac_aa', 'pac_bb'];
+  const FAM = [['Not volume conduction', ['pli', 'icoh'], 'PLI, imaginary coherence'],
+               ['Direction', ['gc_ab', 'gc_ba', 'xlag'], 'Granger both ways, the amplitude lag'],
+               ['Amplitudes together', ['xpeak'], 'the amplitude cross-correlation’s peak'],
+               ['Phase–amplitude', ['pac_ab', 'pac_ba', 'pac_aa', 'pac_bb'], 'PAC between and within']];
+  function followShort(k, pr) {
+    return { pli: 'PLI', icoh: 'imaginary coherence', gc_ab: 'Granger ' + pr.a + ' → ' + pr.b, gc_ba: 'Granger ' + pr.b + ' → ' + pr.a,
+             xlag: 'lag', xpeak: 'peak', pac_ab: 'PAC ' + pr.a + ' → ' + pr.b, pac_ba: 'PAC ' + pr.b + ' → ' + pr.a,
+             pac_aa: 'PAC in ' + pr.a, pac_bb: 'PAC in ' + pr.b }[k] || k;
+  }
+  function followBlock(m, r) {
+    const D = P.data;
+    const f = r.follow;
+    const box = el('div', { class: 'jfollowup', id: 'joefollow' + (m.kind === 'check' ? 'c' : '') });
+    box.appendChild(el('h4', { text: 'Looked at more closely: the follow-ups' }));
+    if (!f || !(f.pairs || []).length) {
+      box.appendChild(el('p', { class: 'small', text: 'No pair moved enough on its own to follow up: the change is all pairs together.' }));
+      return box;
+    }
+    let n = 0, on = 0;
+    for (const pr of f.pairs) for (const k of FOLLOW_KEYS) { const x = pr.measures[k] || {}; if (x.p != null) { n++; if (x.p < ALPHA) on++; } }
+    const [a, b] = m.levels.map((lv) => lv.label);
+    box.appendChild(el('p', { class: 'small jfsay', text: 'The ' + f.pairs.length + ' pair' + (f.pairs.length === 1 ? '' : 's') + ' that moved most'
+      + (/none survives/.test(f.basis) ? ' (none stands out on its own once all ' + (r.units || []).length + ' pairs are allowed for, so read these as leads)' : '')
+      + ', each measured the same way in the same windows: ' + on + ' of ' + n + ' follow-ups lit; chance alone lights about ' + (Math.round(ALPHA * n * 10) / 10) + '.' }));
+    const head = el('tr', {}, [el('th', { text: 'Pair' })].concat(FAM.map(([t, _k, sub]) => el('th', {}, [el('div', { text: t }), el('div', { class: 'small muted', text: sub })]))));
+    const rows = f.pairs.map((pr) => el('tr', { 'data-pair': pr.pair }, [el('th', { text: pr.pair + (pr.bilateral ? ' · left vs right' : '') })].concat(FAM.map(([_t, ks]) => {
+      const lk = ks.filter((k) => (pr.measures[k] || {}).p != null && pr.measures[k].p < ALPHA);
+      const say = lk.length ? lk.map((k) => (D.follow_say[k] || k).replace(/\bA\b/g, pr.a).replace(/\bB\b/g, pr.b) + ': the change from ' + a + ' to ' + b + ' was '
+        + (pr.measures[k].delta > 0 ? 'larger' : 'smaller') + ' on Precon4 than on Precon1 (' + strength(pr.measures[k].p) + ', ' + pr.measures[k].n + ' rats)').join('. ') + '.'
+        : 'No change in ' + ks.map((k) => followShort(k, pr)).join(', ') + '.';
+      return el('td', { class: 'jfcell', title: say, 'data-lit': String(lk.length) }, [el('span', { class: 'jlight sm' + (lk.length ? ' on' : '') }),
+        lk.length ? el('span', { class: 'jfwhat', text: lk.map((k) => followShort(k, pr) + (pr.measures[k].delta > 0 ? ' ↑' : ' ↓')).join(', ') }) : null]);
+    }))));
+    box.appendChild(el('div', { class: 'dtwrap' }, [el('table', { class: 'linetable jfol' }, [el('thead', {}, [head]), el('tbody', {}, rows)])]));
+    box.appendChild(el('p', { class: 'small muted', text: '↑: the change from ' + a + ' to ' + b + ' was larger on Precon4 than on Precon1; ↓: smaller. A negative lag means the pair’s first region leads. Hover a light for its words.' }));
+    // Left against right within one structure, the proposal's bilateral coherence.
+    const bl = new Set(D.bilateral || []);
+    const lr = (r.post || []).filter((x) => bl.has(x.unit) && x.p != null);
+    if (lr.length) {
+      const moved = lr.filter((x) => x.p < ALPHA);
+      box.appendChild(el('p', { class: 'small jbilat', text: 'Left against right of one structure: ' + (moved.length
+        ? moved.map((x) => x.unit + ' changed (' + strength(x.p) + ')').join('; ') + '; ' + (lr.length - moved.length) + ' other' + (lr.length - moved.length === 1 ? '' : 's') + ' did not.'
+        : 'none of the ' + lr.length + ' changed.') }));
+    }
+    box.appendChild(X().more('every follow-up number', (body) => { body.appendChild(followTable(m, r)); return null; }, { key: 'joe-fol' }));
+    return box;
+  }
+
   // Why the tab has no repeated-measures ANOVA, from this model's own rats.
   function noRmSay(m, r) {
     const all = (r.rats || []).length, full = r.complete_rats || [];
@@ -828,7 +882,7 @@ window.MONO_JOE = (function () {
     const D = P.data;
     const f = r.follow;
     if (!f || !f.pairs.length) return el('p', { class: 'small muted', text: 'No single pair passes on its own, so there is nothing to follow up.' });
-    const keys = ['pli', 'icoh', 'gc_ab', 'gc_ba', 'xlag', 'pac_ab', 'pac_ba', 'pac_aa', 'pac_bb'];
+    const keys = FOLLOW_KEYS;
     const kids = [el('p', { class: 'small', text: 'The pairs ' + f.basis + ' keeps, each measured the same way, in the same windows. Each row: the Day × '
       + m.factor.toLowerCase() + ' contrast of that measure, and its p across rats (uncorrected).' })];
     for (const pr of f.pairs) {
@@ -934,7 +988,8 @@ window.MONO_JOE = (function () {
     const SAY = { 'README.txt': 'start here: what everything is, how to run it, how to recreate each result',
                   'Results summary.csv': 'every comparison, its answer in words and its numbers' };
     const DSAY = (d) => (/^1 /.test(d) ? 'the 8 planned comparisons, theta and gamma'
-      : /^2 /.test(d) ? 'the 4 sound checks' : /^3 /.test(d) ? 'for each result that changed: its data, and syntax that gives tab 8’s numbers back' : '');
+      : /^2 /.test(d) ? 'the 4 sound checks' : /^3 /.test(d) ? 'for each result that changed: its data, and syntax that gives tab 8’s numbers back'
+      : /^4 /.test(d) ? 'for each result that changed: its follow-ups (PLI, imaginary coherence, Granger, cross-correlation, PAC), and syntax that runs every one' : '');
     return el('ul', { class: 'jtree', id: 'joetree' }, top.map((f) => el('li', {}, [el('b', { text: f }), el('span', { class: 'muted', text: ' · ' + (SAY[f] || '') })]))
       .concat(Array.from(dirs.entries()).map(([d, fs]) => el('li', { 'data-dir': d }, [el('b', { text: d + '/' }),
         el('span', { class: 'muted', text: ' · ' + DSAY(d) + ' (' + fs.length + ' files)' }),

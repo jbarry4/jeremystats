@@ -39,20 +39,71 @@ const post = (u, b) => fetch(u, { method: 'POST',
   const $ = (s) => D().querySelector(s);
   const $$ = (s) => Array.from(D().querySelectorAll(s));
 
-  /* A reachable recording to curate against. */
+  /* A reachable recording to curate against -- AND ONE NOBODY HAS CURATED.
+
+     This used to take the first reachable recording and "clean the slate"
+     by deleting its ied and ds curation sets, which is `book.erase`: every
+     machine's shard of both. It then banked into the real Event Bank and,
+     on the way out, deleted every curated entry for that recording. On a
+     recording somebody had curated, that is their work gone, and the
+     runner's git safety net only puts back committed files, at their
+     committed content (2026-10-13).
+
+     So the target is a reachable recording whose only curation sets, if
+     any, are this harness's own ("curate harness"), and which has no
+     curated bank entry of anybody else's. Only sets named "curate harness"
+     are ever deleted, only bank entries this run made are ever removed, and
+     both happen in a `finally`, so a run that stops early still cleans up. */
   const reg = await (await fetch('/api/registry?backfill=1')).json();
   const rows = (reg.tree || []).flatMap((p) => p.mice.flatMap((m) => m.sessions));
-  const target = rows.find((s) => s.reachable);
-  check('there is a reachable recording', !!target,
-        rows.map((s) => s.label + (s.reachable ? '*' : '')).join(', '));
+  const curList = await (await fetch('/api/curation')).json();
+  const bankList0 = await (await fetch('/api/bank')).json();
+  const OURS = 'curate harness';
+  const setsOf = (g) => (curList.sets || []).filter((s) => s.gid === g);
+  const othersCurated = (g) => setsOf(g).some((s) => s.name !== OURS);
+  /* And no IED entry in the bank at all, anybody's. A set's banked history
+     is every bank entry of its kind on its recording (`_cur_history`), and
+     a set with a history asks which version to work from when it is picked
+     up -- a real dialog, which this run would leave unanswered, and whose
+     default would restore somebody's banked pass into the set (measured
+     2026-10-13: KCNT1 m2 s2's leftover "spotter harness" entries did
+     exactly that, and "it lands on the bench" failed). */
+  const othersBanked = (g) => (bankList0.entries || []).some(
+    (e) => e.gid === g && (e.curation_label || e.type === 'ied'));
+  const target = rows.find((s) => s.reachable && !othersCurated(s.gid)
+                                  && !othersBanked(s.gid));
+  check('there is a reachable recording nobody has curated', !!target,
+        target ? '' : rows.filter((s) => s.reachable).length + ' reachable, '
+          + 'every one curated or banked by somebody');
   if (!target) { say('cannot continue', 'bad'); document.title = 'curate: FAILED'; return; }
   const gid = target.gid;
   say('curating against ' + target.label + '  (' + gid + ')', 'note');
+  // The bank entries for this recording before the run: nothing in this
+  // list is ever removed.
+  const bankedBefore = new Set((bankList0.entries || [])
+    .filter((e) => e.gid === gid).map((e) => e.id));
+  /* Deletes our set and nothing else: by name, so a set of somebody
+     else's that arrived since the target was chosen is left alone. */
+  const dropOurs = async () => {
+    const now = await (await fetch('/api/curation')).json();
+    for (const s of (now.sets || [])) {
+      if (s.gid === gid && s.name === OURS) {
+        await post('/api/curation/' + gid + '/' + s.kind + '/delete', {});
+      }
+    }
+  };
+  const dropOurBank = async () => {
+    const now = await (await fetch('/api/bank')).json();
+    for (const e of (now.entries || [])) {
+      if (e.gid === gid && !bankedBefore.has(e.id)) {
+        await fetch('/api/bank/' + e.id + '/delete', { method: 'POST' });
+      }
+    }
+  };
 
-  // Clean slate.
-  for (const k of ['ied', 'ds']) {
-    await post('/api/curation/' + gid + '/' + k + '/delete', {});
-  }
+  try {
+  // Clean slate: ours only.
+  await dropOurs();
 
   say('');
   say('=== candidates arrive unspecified ===', 'hd');
@@ -125,12 +176,26 @@ const post = (u, b) => fetch(u, { method: 'POST',
         (c) => /curate harness/.test(c.textContent)), 15000);
       await sleep(600);
       card = $$('.cur-set').find((c) => /curate harness/.test(c.textContent));
-      check('it lands on the bench', !!card,
-            $$('.cur-set').map((c) => c.textContent.slice(0, 24)).join(' | '));
+      // Said in full when it does not: the bench, any dialog left open,
+      // and what the server now says about the set.
+      let why = '';
+      if (!card) {
+        const modal = $('#bigModal:not(.hidden)') || $('.modal:not(.hidden)');
+        const confirmBox = $('.confirm-box, .bk-confirm, [role="dialog"]');
+        const srv = await (await fetch('/api/curation')).json();
+        const ours = (srv.sets || []).filter((s) => s.gid === gid);
+        why = 'bench: ' + $$('.cur-set').map((c) => c.textContent.slice(0, 24))
+          .join(' | ') + ' || dialog: ' + ((modal || confirmBox || {}).textContent
+          || 'none').slice(0, 160) + ' || server: ' + JSON.stringify(ours.map(
+          (s) => ({ kind: s.kind, name: s.name, open: s.open,
+                    archived: s.archived })));
+      }
+      check('it lands on the bench', !!card, why);
     }
   }
 
-  if (!card) { say('cannot continue without our own set', 'bad'); return; }
+  if (!card) { say('cannot continue without our own set', 'bad');
+               fails++; document.title = 'curate: ' + fails + ' FAILED'; return; }
   const inCard = (sel) => card.querySelector(sel);
   const allInCard = (sel) => Array.from(card.querySelectorAll(sel));
 
@@ -168,7 +233,8 @@ const post = (u, b) => fetch(u, { method: 'POST',
   check('the card offers a way in', !!goBtn,
         allInCard('.cur-set-acts button')
           .map((b) => b.textContent.trim()).join(' | '));
-  if (!goBtn) { say('cannot enter the mode', 'bad'); return; }
+  if (!goBtn) { say('cannot enter the mode', 'bad');
+                fails++; document.title = 'curate: ' + fails + ' FAILED'; return; }
   goBtn.click();
   const entered = await until(() => $('#curBar'), 40000);
   check('the curation bar appears', entered);
@@ -365,10 +431,12 @@ const post = (u, b) => fetch(u, { method: 'POST',
           k.labels.map((l) => l.keys.join('/')).join(' | '));
   }
 
-  // Clean up.
-  await post('/api/curation/' + gid + '/ied/delete', {});
-  for (const e of mine) {
-    await fetch('/api/bank/' + e.id + '/delete', { method: 'POST' });
+  } finally {
+    /* Clean up, however the run ended: our set, and the bank entries this
+       run made. Never an entry that was there before it started. */
+    try { if (ev('BARRY.curate.state')) ev('BARRY.curate.exit()'); } catch (e) { /* gone */ }
+    await dropOurs();
+    await dropOurBank();
   }
 
   say('');

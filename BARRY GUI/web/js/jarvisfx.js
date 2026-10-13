@@ -171,8 +171,10 @@
         lp.frequency.exponentialRampToValueAtTime(1400, t + dur);
         lp.Q.value = 0.7;
         const g = c.createGain();
+        // A bed, not the event: measured, at 0.11 this swell peaked louder
+        // than the bell it leads to. The bell and the chord are the moments.
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.linearRampToValueAtTime(0.11, t + dur);
+        g.gain.linearRampToValueAtTime(0.04, t + dur);
         g.gain.setTargetAtTime(0.0001, t + dur + 0.6, 0.9);
         lp.connect(g);
         g.connect(master);
@@ -218,7 +220,7 @@
     // The name forming: one music-box note per letter, up the scale.
     tick(i) {
       const notes = [A4, B4, CS5, E5, FS5, A5];
-      play((c, t) => chime(c, notes[Math.max(0, Math.min(notes.length - 1, i | 0))], t, 0.05));
+      play((c, t) => chime(c, notes[Math.max(0, Math.min(notes.length - 1, i | 0))], t, 0.09));
     },
     // The letters cycling is a picture, not a sound: kept as a call so
     // nothing that makes it has to change, and silent.
@@ -240,7 +242,7 @@
             o.frequency.value = f;
             o.detune.value = cents;
             const at = t + i * 0.07;
-            const peak = (i === 0 ? 0.05 : 0.03) * (k ? 0.6 : 1);
+            const peak = (i === 0 ? 0.062 : 0.038) * (k ? 0.6 : 1);
             g.gain.setValueAtTime(0.0001, at);
             g.gain.linearRampToValueAtTime(peak, at + 1.1);
             g.gain.setValueAtTime(peak, at + 1.8);

@@ -607,21 +607,26 @@ BARRY.doppler = (function () {
     return d;
   }
 
+  /* One channel is sent as a change, not as this panel's list with one
+     channel different: that list was read when the estimate was, and a
+     channel marked in the trace view since then was wiped by it. */
   function setBad(number, bad) {
     const now = new Set(((est && est.channels) || [])
       .filter((c) => c.bad).map((c) => Number(c.number)));
     if (bad) now.add(Number(number)); else now.delete(Number(number));
-    setBadSet(Array.from(now));
+    // The list too, for a Jarvis older than `add` / `remove`.
+    const n = [Number(number)];
+    setBadSet(Array.from(now), bad ? { add: n } : { remove: n });
   }
 
-  async function setBadSet(numbers) {
+  async function setBadSet(numbers, change) {
     if (!q.path || savingBad) return;
     savingBad = true; paint();
     try {
-      await apiPost('/api/session/bad-for-path', {
+      await apiPost('/api/session/bad-for-path', Object.assign({
         path: q.path,
         bad_channels: numbers.map(Number).sort((a, b) => a - b),
-      });
+      }, change || {}));
     } catch (e) {
       savingBad = false; paint();
       toast(e.message, 'err', 9000);

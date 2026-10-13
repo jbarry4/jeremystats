@@ -457,8 +457,9 @@ const PATH = 'demo:ds-tutorial';
       runBtn.click();
       /* Waited on with real requests: the fit takes real seconds on the
          server, and a timer here runs on the virtual clock, which gets
-         through a two-minute wait in a fraction of one. */
-      for (let k = 0; k < 2000; k++) {
+         through a two-minute wait in a fraction of one. Three runs since
+         2026-10-13 (25-200, 90-160, 55-90 Hz), so a longer wait. */
+      for (let k = 0; k < 8000; k++) {
         if ((SS()._state().sug || {}).ica_ready) break;
         await W().fetch('/api/cfc/job/none').catch(() => null);
         await sleep(50);
@@ -484,6 +485,50 @@ const PATH = 'demo:ds-tutorial';
       ck('... and says what it means against Method A',
          /Matches\.|Does not match\.|Nothing reliable means/.test(txt),
          txt.slice(0, 80));
+    }
+    // An off verdict offers to move the line that would take its sink in.
+    const ghostAts = () => JSON.stringify(((SS()._state().ghost || {}).lines || [])
+      .map((l) => l.at));
+    let moved = null;
+    const nOff = D().querySelectorAll('.ss-drawer .ss-verdict.off').length;
+    for (let k = 0; k < nOff && moved === null; k++) {
+      const offs = D().querySelectorAll('.ss-drawer .ss-verdict.off');
+      if (!offs[k]) break;
+      offs[k].click();
+      await sleep(300);
+      const mvb = D().querySelector('.ss-drawer .ss-move');
+      if (mvb) {
+        const before = ghostAts();
+        mvb.click();
+        await sleep(300);
+        moved = before !== ghostAts();
+      }
+    }
+    if (moved !== null) {
+      ck('an off Method B verdict moves its line from the drawer', moved);
+    } else {
+      /* The demo's sources happen to sit where Method A put them, so ask
+         about one that does not: a slow source two channels above OML1. */
+      const omlTop = ((SS()._state().ghost || {}).lines || [])
+        .find((l) => l.below === 'dg_oml1');
+      if (omlTop && omlTop.at >= 2) {
+        const at0 = omlTop.at;
+        const node = SS()._icaCompare({ row: at0 - 2, agree: false, off: -2,
+                                        region: 'dg_oml1', kind: 'slow',
+                                        blade: 'upper' });
+        const b = node && node.querySelector && node.querySelector('.ss-move');
+        ck('Method B’s explanation offers Move for a sink outside its layer',
+           !!b, node ? node.textContent.slice(0, 80) : 'nothing');
+        if (b) {
+          b.click();
+          await sleep(300);
+          ck('... which moves that line to take the sink in',
+             omlTop.at === at0 - 2, at0 + ' -> ' + omlTop.at);
+          omlTop.at = at0;               // put the proposal back as it was
+          SS()._openStep('3');
+          await sleep(300);
+        }
+      }
     }
     /* "ICA line recommendations line up with channel lines" (2026-10-12):
        every mark a check makes sits on lane edges, as the step's lines do. */

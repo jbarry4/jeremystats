@@ -530,15 +530,15 @@ BARRY.incisor = (function () {
     paint();
   }
 
-  async function setRowBad(r, numbers) {
+  async function setRowBad(r, numbers, change) {
     const st = chanOpen[r.gid];
     if (!st || st.busy) return;
     st.busy = true; paint();
     try {
-      await apiPost('/api/session/bad-for-path', {
+      await apiPost('/api/session/bad-for-path', Object.assign({
         path: st.path,
         bad_channels: numbers.map(Number).sort((a, b) => a - b),
-      });
+      }, change || {}));
       const got = await apiPost('/api/incisor/estimate',
                                 Object.assign({ path: st.path }, paramsBody()));
       chanOpen[r.gid] = { est: got, path: st.path };
@@ -565,10 +565,12 @@ BARRY.incisor = (function () {
     const bad = all.filter((c) => c.bad);
     const box = el('div', { class: 'inc-row-chans' });
     box.appendChild(chanGrid(all, bad, !!st.busy,
+      // A change, with the list for an older Jarvis. See setBad.
       (number, isBad) => {
         const now = new Set(bad.map((c) => Number(c.number)));
         if (isBad) now.add(Number(number)); else now.delete(Number(number));
-        setRowBad(r, Array.from(now));
+        const n = [Number(number)];
+        setRowBad(r, Array.from(now), isBad ? { add: n } : { remove: n });
       },
       () => setRowBad(r, [])));
     return box;
@@ -1270,21 +1272,26 @@ BARRY.incisor = (function () {
     return wrap;
   }
 
+  /* One channel is sent as a change, not as this panel's list with one
+     channel different: that list was read when the estimate was, and a
+     channel marked in the trace view since then was wiped by it. */
   function setBad(number, bad) {
     const now = new Set(((est && est.channels) || [])
       .filter((c) => c.bad).map((c) => Number(c.number)));
     if (bad) now.add(Number(number)); else now.delete(Number(number));
-    setBadSet(Array.from(now));
+    // The list too, for a Jarvis older than `add` / `remove`.
+    const n = [Number(number)];
+    setBadSet(Array.from(now), bad ? { add: n } : { remove: n });
   }
 
-  async function setBadSet(numbers) {
+  async function setBadSet(numbers, change) {
     if (!q.path || savingBad) return;
     savingBad = true; paint();
     try {
-      await apiPost('/api/session/bad-for-path', {
+      await apiPost('/api/session/bad-for-path', Object.assign({
         path: q.path,
         bad_channels: numbers.map(Number).sort((a, b) => a - b),
-      });
+      }, change || {}));
     } catch (e) {
       savingBad = false; paint();
       toast(e.message, 'err', 9000);

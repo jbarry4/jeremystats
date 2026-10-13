@@ -642,6 +642,7 @@
     // Where the fissure would sit for 2 : 1, between the same SP and GCL1.
     const at21 = Math.round(sp + (gcl - sp) * 2 / 3 + 0.5);
     const ch = data.channels[Math.max(0, Math.min(data.channels.length - 1, at21))];
+    const fisLine = stepLines().find((l) => l.below === 'dg_oml1');
     return el('div', { class: 'sa-verdict ' + (ok ? 'match' : 'off') }, [
       el('b', { text: ok ? '\u2713' : '\u2717' }),
       el('span', { text: 'CA1 SP to fissure : fissure to GCL1 is '
@@ -649,6 +650,7 @@
         + 'Paleologos et al. 2025). ' + (ok ? 'In range.'
           : 'Out of range: for 2 : 1 the fissure would sit above ch ' + ch
             + '.') }),
+      ok ? null : moveBtn(fisLine, at21),
     ]);
   }
 
@@ -683,12 +685,14 @@
     if (best && mml) {
       const ok = best.r >= mml[0] && best.r < mml[1];
       const off = best.r < mml[0] ? best.r - mml[0] : best.r - mml[1] + 1;
+      const mv = ok ? null : lineToTakeIn('dg_mml1', best.r);
       c.appendChild(el('div', { class: 'sa-verdict ' + (ok ? 'match' : 'off') }, [
         el('b', { text: ok ? '\u2713' : '\u2717' }),
         el('span', { text: 'Strongest theta sink between the fissure and '
           + 'GCL1: ch ' + best.ch + ', ' + (ok ? 'in MML1, as expected.'
             : Math.abs(off) + ' ch ' + (off < 0 ? 'above' : 'below')
               + ' MML1 (' + layerAt(best.r) + ').') }),
+        mv ? moveBtn(mv.line, mv.to) : null,
       ]));
     }
     c.appendChild(el('p', { text: 'Theta-trough CSD, sinks blue. The '
@@ -738,18 +742,21 @@
     }));
     if (allComps) {
       c.appendChild(el('p', { text: ica.walk_s + ' s of '
-        + (ica.theta_all_time ? 'recording' : 'Theta Walk') + ', 25-200 Hz. '
-        + 'Each: its CSD (the dip is its sink), peak frequency, share of '
-        + 'the gamma field, and how well it came back in both halves.' }));
+        + (ica.theta_all_time ? 'recording' : 'Theta Walk') + '. Three runs: '
+        + '25-200 Hz, then 90-160 and 55-90 Hz on their own. Each: its CSD '
+        + '(the dip is its sink), peak frequency, share of its run\u2019s '
+        + 'band, and how well it came back in both halves.' }));
       const grid = el('div', { class: 'sa-ica' });
-      for (const cm of (ica.components || []).slice(0, 12)) {
+      for (const cm of (ica.components || []).slice(0, 24)) {
         const cv = el('canvas');
         grid.appendChild(el('div', { class: 'sa-comp ' + (cm.kind || '')
             + (state && state.ica_pick === cm.index ? ' picked' : '')
             + ((cm.stability || 0) < TRUST ? ' weak' : '') }, [
           el('div', {}, [el('b', { text: ((KIND[cm.kind] || {}).short || '?')
             + ' \u00b7 ' + cm.peak_hz + ' Hz' })]),
-          el('div', { text: pct(cm.variance) + ' \u00b7 '
+          el('div', { text: pct(cm.variance) + ' of '
+            + (cm.band === 'fast' ? '90-160' : cm.band === 'mid' ? '55-90'
+              : '25-200') + ' Hz \u00b7 '
             + ((cm.stability || 0) >= TRUST ? 'trusted' : 'not trusted')
             + ' \u00b7 sink ch ' + cm.sink_channel }),
           cv,
@@ -875,8 +882,10 @@
           + (c.off > 0 ? 'below ' : 'above ') + layer + ' (ch '
           + data.channels[c.row] + ', ' + inLayer(c.row) + ')';
       }
+      const mv = cls === 'off' ? lineToTakeIn(c.region, c.row) : null;
       rows.appendChild(el('div', { class: 'sa-verdict ' + cls }, [
-        el('b', { text: icon }), el('span', { text: text })]));
+        el('b', { text: icon }), el('span', { text: text }),
+        mv ? moveBtn(mv.line, mv.to) : null]));
     }
     if (!checks.length) {
       rows.appendChild(el('div', { class: 'sa-verdict none' }, [
@@ -900,8 +909,8 @@
         el('figcaption', { class: 'sa-exp-why', text: (shown.length > 1
           ? (marks.map((m) => (m.blade === 'upper' ? 'Upper' : 'Lower'))
             .join(' and ') + ' blade: the ') : 'The ')
-          + cm.peak_hz + ' Hz source, ' + pct(cm.variance) + ' of the gamma '
-          + 'field, came back in both halves of the walking.'
+          + cm.peak_hz + ' Hz source, ' + pct(cm.variance) + ' '
+          + shareOf(cm) + ', came back in both halves of the walking.'
           + (elsewhere ? ' Its deepest dip is at ch ' + cm.sink_channel
             + ' (' + layerAt(cm.sink_row) + '); the mark is where it dips '
             + 'by the molecular layer.' : '') })]));
@@ -922,7 +931,7 @@
         const ok = (near.stability || 0) >= TRUST;
         card.appendChild(el('p', { class: 'sa-exp-why', text: 'Nearest thing '
           + 'it found: a ' + near.peak_hz + ' Hz source, ' + pct(near.variance)
-          + ' of the gamma field. ' + (ok
+          + ' ' + shareOf(near) + '. ' + (ok
             ? 'It came back in both halves, but ' + (near.sink_row != null
               ? 'it sinks at ch ' + near.sink_channel + ' ('
                 + layerAt(near.sink_row) + ') and does not dip in the '
@@ -949,6 +958,10 @@
     }
     return card;
   }
+
+  /* What a component's share is a share of: its own run's band. */
+  const shareOf = (cm) => (cm.band === 'fast' ? 'of the 90-160 Hz field'
+    : cm.band === 'mid' ? 'of the 55-90 Hz field' : 'of the 25-200 Hz field');
 
   const pct = (v) => {
     const x = 100 * (v || 0);
@@ -1349,6 +1362,37 @@
     if (ls.some((l) => l.below === 'dg_iml1')) layer('dg_iml1', 'mid', 'IML1');
     void ch;
     return out;
+  }
+
+  /* Move, wherever a verdict says where a line should be. Live only when
+     the labelling window has Step 3 open (this page follows it); in a
+     posed page it says why it cannot. */
+  const canMove = () => !!(state && state.step === '3' && state.lines
+                           && state.lines.length && !Q.get('step'));
+  function moveBtn(line, to) {
+    if (!line || to == null || to === line.at) return null;
+    const live = canMove();
+    const ch = to >= data.channels.length ? 'the end' : 'ch ' + data.channels[to];
+    const nm = (LAYER[line.above] || line.above) + ' | '
+      + (LAYER[line.below] || line.below || 'below');
+    return el('button', {
+      class: 'mini sa-move', text: 'Move',
+      disabled: live ? null : 'disabled',
+      title: live ? 'Move the ' + nm + ' line to above ' + ch + ' in the '
+        + 'labelling window. It stays a proposal until you Accept.'
+        : 'Open Step 3 in the labelling window to move lines from here.',
+      onclick: () => sendMove(line, to),
+    });
+  }
+  /* The line that would take row `row` into region `id`: its top line
+     pulled up to the row, or its bottom line pushed down past it. */
+  function lineToTakeIn(id, row) {
+    const ls = stepLines();
+    const top = ls.find((l) => l.below === id);
+    const bot = ls.find((l) => l.above === id);
+    if (top && top.at != null && row < top.at) return { line: top, to: row };
+    if (bot && bot.at != null && row >= bot.at) return { line: bot, to: row + 1 };
+    return null;
   }
 
   /* Ask the labelling window to move a line. It owns the lines; this page

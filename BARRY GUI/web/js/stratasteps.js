@@ -1376,9 +1376,10 @@ BARRY.strataSteps = (function () {
       row.appendChild(helpBtn());
       row.appendChild(el('button', {
         class: 'btn ghost sm', text: 'Run ICA (Method B)',
-        title: 'Unmix the 25-200 Hz field into its generators. Uses the '
-             + 'Theta Walk seconds (at least 30 s); refits on each half to '
-             + 'see which components are stable. Takes a minute or two.',
+        title: 'Unmix the gamma field into its generators: 25-200 Hz, '
+             + 'then 90-160 and 55-90 Hz on their own. Uses the Theta Walk '
+             + 'seconds (at least 30 s); refits on each half to see which '
+             + 'components are stable. Takes a minute or two.',
         onclick: runIca,
       }));
       const box0 = el('div', { class: 'ss-ica-box' }, [row]);
@@ -1515,7 +1516,29 @@ BARRY.strataSteps = (function () {
         + 'input. The strip and the traces mark where ' + layer + ' would '
         + 'reach to take it in.';
     }
-    return el('p', { class: 'ss-more', text: say });
+    /* Off: the line that would take the sink in, and a button to move it
+       there (the same as the evidence window's). */
+    let mv = null;
+    if (c.row != null && !c.agree && ghost && ghost.step === '3') {
+      const top = ghost.lines.find((l) => l.below === c.region);
+      const bot = ghost.lines.find((l) => l.above === c.region);
+      if (c.off < 0 && top && top.at != null && c.row < top.at) {
+        mv = { ln: top, to: c.row };
+      } else if (c.off > 0 && bot && bot.at != null && c.row >= bot.at) {
+        mv = { ln: bot, to: c.row + 1 };
+      }
+    }
+    if (!mv) return el('p', { class: 'ss-more', text: say });
+    return el('div', { class: 'ss-more' }, [
+      el('p', { text: say }),
+      el('button', {
+        class: 'btn ghost sm ss-move',
+        text: 'Move ' + layerShort(mv.ln.above) + ' | '
+          + layerShort(mv.ln.below) + ' to above ' + chName(mv.to),
+        title: 'It stays a proposal until you Accept.',
+        onclick: () => moveGhost(mv.ln, mv.to),
+      }),
+    ]);
   }
 
   function icaExplain() {
@@ -1526,7 +1549,10 @@ BARRY.strataSteps = (function () {
         + 'firing together, each felt on every contact with a different '
         + 'strength. ICA (independent component analysis) unmixes them '
         + 'into about ten sources that are statistically independent of '
-        + 'each other.' }),
+        + 'each other. Gamma power falls with frequency, so in that one '
+        + 'run slow gamma takes every source; ICA is run again on 90-160 Hz '
+        + 'and on 55-90 Hz alone, where fast and mid gamma are the biggest '
+        + 'thing there is.' }),
       el('p', { text: '2. Each source has a loading -- how strongly it '
         + 'shows on each channel -- and a time course. The CSD of the '
         + 'loading has a sink where the generator\u2019s synapses are; '
@@ -1537,8 +1563,10 @@ BARRY.strataSteps = (function () {
         + 'the lateral entorhinal cortex into the outer third of the '
         + 'molecular layer, fast (100-150 Hz) from the medial entorhinal '
         + 'cortex into the middle third, and mid (60-80 Hz) from the '
-        + 'commissural input into the inner third. A source is called by '
-        + 'its peak: under 55 Hz slow, 55-90 mid, 90 and up fast. So a slow '
+        + 'commissural input into the inner third. A source from the '
+        + '90-160 Hz run is fast and one from the 55-90 Hz run is mid; one '
+        + 'from the broad run is called by its peak (under 55 Hz slow, 55-90 '
+        + 'mid, 90 and up fast). So a slow '
         + 'source should sink in OML, a mid one in IML, a fast one in MML '
         + '-- an answer that never used Method A\u2019s thirds. Mid is only '
         + 'checked when IML is its own layer.' }),
@@ -2319,8 +2347,14 @@ BARRY.strataSteps = (function () {
     const ln = ghost.lines.find((l) => (v.id && l.id === v.id)
       || (l.above === v.above && l.below === v.below));
     if (!ln || v.to == null) return;
+    moveGhost(ln, v.to);
+  }
+
+  /* Move a proposed line, from a Move button here or in the evidence
+     window, and say so. */
+  function moveGhost(ln, to) {
     const was = ln.at;
-    ln.at = Math.max(0, Math.min(sug.channels.length, Number(v.to)));
+    ln.at = Math.max(0, Math.min(sug.channels.length, Number(to)));
     confirming = null;
     H.render();
     drawStrip();
@@ -2415,6 +2449,7 @@ BARRY.strataSteps = (function () {
     focusRegions,
     _labelsFromLines: labelsFromLines,
     _icaMark: (c) => (H ? icaMark(c, H.channels()) : null),
+    _icaCompare: (c) => icaCompare(c),
     fromLink,
     _jobs: () => ({ jobId, jobKind, jobsNow }),
   };

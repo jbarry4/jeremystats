@@ -935,11 +935,38 @@ def api_session_bad():
                      "across machines. Rename the folder to include m<N> and "
                      "s<N>, or mark channels per-session only."}), 400
     try:
-        rec = STORE.set_bad_channels(identity, body.get("bad_channels") or [],
-                                     body.get("note"))
+        rec = _write_bad(identity, body)
     except Exception as exc:
         return fail("session/bad", exc, 400, {"identity": identity})
-    return jsonify({"ok": True, "session": rec})
+    return jsonify({"ok": True, "session": rec,
+                    "bad_channels": (rec or {}).get("bad_channels") or []})
+
+
+@app.route("/api/session/bad/<gid>")
+def api_session_bad_read(gid):
+    """The bad channels on record, and nothing else.
+
+    For a window that has had a recording open a while: a channel marked in
+    Doppler, Incisor, Braces or on another machine since it opened is on
+    the record and not on screen. Cheap, so it can be asked every time the
+    trace view comes back into sight."""
+    rec, _how = STORE.get_session({"gid": gid})
+    return jsonify({"ok": bool(rec), "gid": gid,
+                    "bad_channels": (rec or {}).get("bad_channels") or []})
+
+
+def _write_bad(identity, body):
+    """A bad-channel write: `add` / `remove` when the caller is changing a
+    few, `bad_channels` when it means to replace the whole list.
+
+    The change is the safe one and what a click sends. See
+    `Store.change_bad_channels` for what replacing cost."""
+    if "add" in body or "remove" in body:
+        return STORE.change_bad_channels(identity, body.get("add") or [],
+                                         body.get("remove") or [],
+                                         body.get("note"))
+    return STORE.set_bad_channels(identity, body.get("bad_channels") or [],
+                                  body.get("note"))
 
 
 @app.route("/api/session/bad-for-path", methods=["POST"])
@@ -966,9 +993,7 @@ def api_session_bad_for_path():
                      "for it. Rename the folder to include m<N> and s<N>, "
                      "or mark them in the trace view."}), 400
     try:
-        rec = STORE.set_bad_channels(identity,
-                                     body.get("bad_channels") or [],
-                                     body.get("note"))
+        rec = _write_bad(identity, body)
     except Exception as exc:                             # noqa: BLE001
         return fail("session/bad-for-path", exc, 400,
                     {"path": sess.get("path")})
@@ -13923,14 +13948,14 @@ def api_layers_export(gid):
 # on the layer sheet (layers.py: strata_* fields). No dentate-spike evidence
 # is read anywhere in here -- see the top of stratasteps.py for why.
 
-STRATA_REFUSED_PROBES = {
-    "h10d": "StrataScope's steps are not developed for H10 probes yet: the "
-            "steps read depth down one column, and an H10-D steps across "
-            "three. Label this one by hand on the rail.",
-    "dewey32": "StrataScope's steps are not developed for the DEWEY 32 "
-               "montage: its channels are wires in separate structures, not "
-               "a column through the hippocampus.",
-}
+# Every recording is read as an H3 (2026-10-13): one line of contacts, the
+# recording's own channel order as depth order, and at most the first
+# STRATA_MAX_CHANNELS of them. A dual implant's hippocampal array is its
+# first 64; a 128-channel recording filed as H3 is read as its first 64; an
+# H10-D or a DEWEY montage is read as if it were one column -- which it is
+# not, and the steps will say what they see. Refusing them (as until
+# today) left those recordings with nothing at all.
+STRATA_MAX_CHANNELS = 64
 
 # Where the defaults come from. H3 contacts are 20 um apart, which is what
 # HippoCompass (Desktop/HippoCompass, PROBE_SPECS.H3) measures with; the
@@ -13965,9 +13990,7 @@ def _strata_context(gid, body, need_scan=True):
             "channel of the whole recording once, which needs a copy on this "
             "computer.")
     stored = _stored_for(sess)
-    probe_id = _probe_for(stored) or "h3"
-    if probe_id in STRATA_REFUSED_PROBES:
-        raise stratamod.StrataError(STRATA_REFUSED_PROBES[probe_id])
+    probe_filed = _probe_for(stored) or "h3"
     bad = sorted({int(b) for b in (stored.get("bad_channels") or [])})
     rec = LAYERS.get(gid) or {}
     st = LAYERS.strata_of(rec)
@@ -13978,12 +14001,12 @@ def _strata_context(gid, body, need_scan=True):
         params["gcl_half_um"] = stratamod.GCL_HALF_UM.get(
             params.get("species") or "mouse", 30.0)
     nums = [int(c["number"]) for c in (sess.get("channels") or [])]
+    first = set(nums[:STRATA_MAX_CHANNELS])
     order = [int(c) for c in (body.get("channels") or rec.get("channels")
                               or nums)]
-    if probe_id == "dual":
-        # The hippocampal array is CSC 1-64; the other 64 are in M2.
-        order = [c for c in order if 1 <= c <= probebook.DUAL_SIZE]
-    ctx = {"gid": gid, "stored": stored, "probe": probe_id, "bad": bad,
+    order = [c for c in order if c in first] or nums[:STRATA_MAX_CHANNELS]
+    ctx = {"gid": gid, "stored": stored, "probe": "h3",
+           "probe_filed": probe_filed, "bad": bad,
            "rec": rec, "strata": st, "params": params, "order": order,
            "states": st.get("states") or {}}
     if need_scan:
@@ -14059,8 +14082,9 @@ def api_strata_status(gid):
     try:
         sess, ctx = _strata_context(gid, body, need_scan=False)
         st = stratamod.status(gid, sess, ctx["bad"])
-        plan = stratamod.plan_for(sess, None, skip=ctx["bad"])
+        plan = stratamod.plan_for(sess, None, ctx["order"], skip=ctx["bad"])
         out = {"ok": True, "status": st, "probe": ctx["probe"],
+               "probe_filed": ctx["probe_filed"],
                "params": ctx["params"], "bad": ctx["bad"],
                "estimate_s": stratamod.estimate_seconds(plan),
                "plan": stratamod.plan_public(plan),
@@ -14082,9 +14106,9 @@ def api_strata_scan(gid):
         rep_ = None
         if sess.get("source") == "ncs":
             rep_ = _incisor_report(sess["path"])
-        # A dual implant reads its hippocampal array only: the other 64
-        # contacts are in M2 and no step asks anything of them.
-        only = ctx["order"] if ctx["probe"] == "dual" else None
+        # The channels the steps use and no others: at most the first 64
+        # (a dual implant's hippocampal array; the rest of anything bigger).
+        only = ctx["order"]
         plan = stratamod.plan_for(sess, rep_, only, skip=ctx["bad"])
     except Exception as exc:                             # noqa: BLE001
         return _strata_fail("scan", exc, gid)
@@ -14264,7 +14288,8 @@ def api_strata_triggered(gid):
 def _strata_ica_key(ctx, ref):
     keep = {k: ctx["params"].get("ica_" + k)
             for k in stratamod.ICA_DEFAULTS}
-    return stratamod.derived_key("ica", ctx["bins"].meta.get("stamp"),
+    return stratamod.derived_key("ica", stratamod.ICA_VERSION,
+                                 ctx["bins"].meta.get("stamp"),
                                  ctx["states"], ctx["order"], ctx["bad"],
                                  ctx["params"].get("spacing_um"), ref, keep)
 
@@ -14333,15 +14358,17 @@ def api_strata_ica(gid):
               for k in stratamod.ICA_DEFAULTS}
 
     def work(job):
-        out = stratamod.run_ica(ctx["bins"], mk, ctx["order"], ctx["bad"],
-                                float(ctx["params"]["spacing_um"]), ref,
-                                params, job)
+        out = stratamod.run_ica_all(ctx["bins"], mk, ctx["order"],
+                                    ctx["bad"],
+                                    float(ctx["params"]["spacing_um"]), ref,
+                                    params, job)
         return stratamod.derived_put(gid, "ica", key, out)
 
     job = cfcmod.start({"path": body.get("path"), "gid": gid,
                         "tool": "strata-ica",
                         "label": _strata_label(ctx, _sess)},
-                       [(stratamod.STAGE_ICA, len(ctx["order"]) + 3)], work,
+                       [(stratamod.STAGE_ICA, (len(ctx["order"]) + 3)
+                         * len(stratamod.ICA_BANDS))], work,
                        1.0)
     _strata_job_keep(gid, "ica", job)
     STORE.record_activity([{"action": "strata.ica",

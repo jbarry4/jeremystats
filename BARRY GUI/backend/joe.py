@@ -1071,6 +1071,18 @@ def follow_values(day_data, model, level, b, pair_index, a, bb, measure_id):
     return out
 
 
+#: The follow-ups, in the order the tab and the SPSS files list them.
+FOLLOW_KEYS = ("pli", "icoh", "gc_ab", "gc_ba", "xlag", "xpeak", "pac_ab", "pac_ba", "pac_aa", "pac_bb")
+
+
+def follow_name(k, a, b):
+    """A follow-up's name with its pair's regions in it."""
+    import re
+    t = re.sub(r"\bA\b", "@A@", FOLLOW_SAY.get(k, k))
+    t = re.sub(r"\bB\b", "@B@", t)
+    return t.replace("@A@", a).replace("@B@", b)
+
+
 def follow_test(day_data, model, b, pair_index, a, bb, measure_id):
     from scipy.stats import t as tdist
     levels = [lv for lv, _l in model[4]]
@@ -1086,13 +1098,19 @@ def follow_test(day_data, model, b, pair_index, a, bb, measure_id):
     if len(levels) != 2:
         return out
     dl = []
+    rows = {}
     for r in rats:
         try:
-            dl.append((per[levels[1]][(r, "Precon4")] - per[levels[0]][(r, "Precon4")])
-                      - (per[levels[1]][(r, "Precon1")] - per[levels[0]][(r, "Precon1")]))
+            four = [per[levels[0]][(r, "Precon1")], per[levels[1]][(r, "Precon1")],
+                    per[levels[0]][(r, "Precon4")], per[levels[1]][(r, "Precon4")]]
         except KeyError:
             continue
-    dl = np.array([x for x in dl if np.isfinite(x)])
+        x = (four[3] - four[2]) - (four[1] - four[0])
+        if np.isfinite(x):
+            dl.append(x)
+            rows[str(r)] = [float(v) for v in four] + [float(x)]
+    out["per_rat"] = rows
+    dl = np.array(dl)
     n = dl.size
     if n >= 2:
         se = dl.std(ddof=1) / math.sqrt(n)
@@ -1175,7 +1193,7 @@ def build(day_data, names, progress=None, check=None):
         # Follow-ups: first-pass coherence models whose gate passed; the
         # pairs Holm keeps, or, when none does, the pairs at raw p < .05,
         # said as such.
-        if res["gate"].get("passed") and mdl[2] == "first" and mdl[5] == "pair":
+        if res["gate"].get("passed") and mdl[2] == "first" and mdl[5] == "pair" and METHODS[mi] == SHOWN:
             ps = [r for r in res["post"] if r.get("p_holm") is not None and r["p_holm"] < ALPHA]
             basis = "Holm"
             if not ps:
@@ -1185,9 +1203,7 @@ def build(day_data, names, progress=None, check=None):
             for r in ps:
                 pi = pair_names.index(r["unit"])
                 a, bb = pr[pi]
-                meas = {k: follow_test(day_data, mdl, bi, pi, a, bb, k)
-                        for k in ("pli", "icoh", "gc_ab", "gc_ba", "xlag", "xpeak",
-                                  "pac_ab", "pac_ba", "pac_aa", "pac_bb")}
+                meas = {k: follow_test(day_data, mdl, bi, pi, a, bb, k) for k in FOLLOW_KEYS}
                 fol.append({"pair": r["unit"], "a": short(names[a]), "b": short(names[bb]),
                             "bilateral": (a, bb) in bil, "measures": meas})
             res["follow"] = {"basis": basis, "pairs": fol}
@@ -1420,6 +1436,49 @@ def recreate_sps(res, mdl, csv_name, folder):
     return "\r\n".join(lines)
 
 
+def follow_sps(res, mdl, csv_name, folder):
+    """Every follow-up of a result that changed: one one-sample t-test per
+    pair and measure on each rat's difference, as tab 8 ran them."""
+    no, title, _w = NAMES[mdl[0]]
+    (la, a), (lb, b) = mdl[4]
+    f = res["follow"]
+    n_lit = sum(1 for pr in f["pairs"] for k in FOLLOW_KEYS if (pr["measures"].get(k) or {}).get("p") is not None and pr["measures"][k]["p"] < ALPHA)
+    n_all = sum(1 for pr in f["pairs"] for k in FOLLOW_KEYS if (pr["measures"].get(k) or {}).get("p") is not None)
+    lines = ["* " + "=" * 72,
+             "* Tab 8, Joe's data. Follow-ups of comparison %d: %s, %s." % (no, ascii_(title), _band_say(res["band"])),
+             "* The pairs: %s (%d of them)." % (ascii_(f["basis"]), len(f["pairs"])),
+             "* For each pair, each measure, each rat: (Precon4 %s - Precon4 %s) - (Precon1 %s - Precon1 %s)," % (ascii_(b), ascii_(a), ascii_(b), ascii_(a)),
+             "* then a one-sample t-test of that difference against 0 across the rats that have it.",
+             "* Measures: PLI and imaginary coherence (coupling that volume conduction cannot make);",
+             "*   Granger both ways and the amplitude cross-correlation's lag and peak (direction;",
+             "*   a negative lag means the first region of the pair leads); PAC between and within.",
+             "* Tab 8: %d of %d tests at p < .05 (chance alone gives about %.1f). Uncorrected, and the" % (n_lit, n_all, ALPHA * n_all),
+             "* pairs themselves did not survive Holm on their own: read these as leads.",
+             "* Each t-test below gives tab 8's t and p for that line exactly.",
+             "* " + "=" * 72, ""]
+    lines += _cd(folder)
+    lines += ["GET DATA /TYPE=TXT /FILE=%s /ENCODING='UTF8' /DELCASE=LINE /DELIMITERS=','" % _q(csv_name),
+              "  /QUALIFIER='\"' /ARRANGEMENT=DELIMITED /FIRSTCASE=2 /VARIABLES=",
+              "  rat F4.0 pair F3.0 pair_name A24 measure F2.0 measure_name A60 p1_%s F16.10 p1_%s F16.10 p4_%s F16.10 p4_%s F16.10 difference F16.10." % (la, lb, la, lb),
+              "SORT CASES BY pair measure rat.",
+              "SPLIT FILE LAYERED BY pair_name measure_name.",
+              "T-TEST /TESTVAL=0 /VARIABLES=difference.",
+              "SPLIT FILE OFF.", ""]
+    return "\r\n".join(lines)
+
+
+def follow_rows(res):
+    """The follow-ups' rows: one per pair, measure and rat with all four values."""
+    rows = []
+    for pi, pr in enumerate(res["follow"]["pairs"]):
+        for ki, k in enumerate(FOLLOW_KEYS):
+            per = (pr["measures"].get(k) or {}).get("per_rat") or {}
+            for r in sorted(per, key=int):
+                v = per[r]
+                rows.append((int(r), pi + 1, ascii_(pr["pair"]), ki + 1, ascii_(follow_name(k, pr["a"], pr["b"])), v[0], v[1], v[2], v[3], v[4]))
+    return rows
+
+
 def _csv(header, rows):
     out = [",".join(header)]
     for r in rows:
@@ -1430,6 +1489,7 @@ def _csv(header, rows):
 MAIN_DIR = "1 Main comparisons"
 CHECK_DIR = "2 Checks, should show nothing"
 REDO_DIR = "3 Recreate the positive results"
+FOLLOW_DIR = "4 Follow-ups"
 ZIP_NAME = "joe_tab8_spss.zip"
 README_NAME = "joe_tab8_README.txt"
 SUMMARY_NAME = "joe_tab8_results.csv"
@@ -1453,6 +1513,8 @@ def readme_text(out, positive, welch, rows_summary):
     w("  %-33s the 4 sound checks, which should show nothing" % (CHECK_DIR + "\\"))
     w("  %-33s for each result that changed, a small file that gives" % (REDO_DIR + "\\"))
     w("  %-33s tab 8's numbers back exactly" % "")
+    w("  %-33s for each result that changed, the follow-ups (PLI, imaginary" % (FOLLOW_DIR + "\\"))
+    w("  %-33s coherence, Granger, cross-correlation, PAC) and their syntax" % "")
     w("  Each comparison is a .csv (the data) and a .sps (SPSS syntax that reads it and runs the test).")
     w("")
     w("THE COMPARISONS")
@@ -1525,11 +1587,33 @@ def readme_text(out, positive, welch, rows_summary):
                 q = x["quick"]
                 w("         Comparison %d, %s: t(%d) = %.2f, p %s." % (x["no"], x["band"], q["df"], q["t"],
                                                                      ("= " if not _p(q["p"]).startswith("<") else "") + _p(q["p"])))
+    w("")
+    w("THE FOLLOW-UPS")
+    if not any(x.get("follow_files") for x in positive):
+        w("  None: no result that changed had pairs to follow up.")
+    else:
+        w("  For each result that changed, the pairs that moved most were looked at more closely, in")
+        w("  the same windows and band: PLI and imaginary coherence (coupling that volume conduction")
+        w("  cannot make), Granger both ways and the amplitude cross-correlation's lag and peak")
+        w("  (direction; a negative lag means the pair's first region leads), and PAC between and")
+        w("  within the two regions. Each is a one-sample t-test of each rat's difference, the same")
+        w("  difference as in '%s'. They are uncorrected, and the pairs did not" % REDO_DIR)
+        w("  survive Holm on their own, so read them as leads, not results.")
+        for x in positive:
+            if not x.get("follow_files"):
+                continue
+            w("    %2d  %s, %s: %d of %d at p < .05 (chance alone gives about %.1f)" % (
+                x["no"], ascii_(x["title"]), x["band"], x["follow_lit"], x["follow_n"], ALPHA * x["follow_n"]))
+        w("  '%s' has, for each, the rows and a .sps that runs every t-test" % FOLLOW_DIR)
+        w("  (one per pair and measure, split by both); each gives tab 8's t and p for that line.")
+    w("")
     w("  The full model in '%s' estimates all its variances together," % MAIN_DIR)
     w("  so its day*phase F comes close to tab 8's but is not identical.")
     w("")
     w("WELCH")
-    w("  Tab 8 also computed coherence the circuits' way (Welch). %s" % welch)
+    import textwrap
+    for line in textwrap.wrap("Tab 8 also computed coherence the circuits' way (Welch). %s" % welch, 88):
+        w("  " + line)
     w("  These files are Dickson only.")
     w("")
     w("THE SAME NUMBERS WITHOUT JARVIS")
@@ -1638,10 +1722,22 @@ def write_exports(out, into):
                 files[root + REDO_DIR + "/" + rn + ".csv"] = _csv(
                     ["rat", u, u + "_name", "p1_" + la, "p1_" + lb, "p4_" + la, "p4_" + lb, "difference"], crow)
                 files[root + REDO_DIR + "/" + "%s - %s - recreate.sps" % (stem(mdl[0]), band)] = recreate_sps(res, mdl, rn + ".csv", REDO_DIR)
-                positive.append({"model": mdl[0], "band": band, "no": no, "title": title,
+                fol_files = []
+                if res.get("follow") and res["follow"].get("pairs"):
+                    fn = "%s - %s - follow-ups" % (stem(mdl[0]), band)
+                    files[root + FOLLOW_DIR + "/" + fn + ".csv"] = _csv(
+                        ["rat", u, u + "_name", "measure", "measure_name", "p1_" + la, "p1_" + lb, "p4_" + la, "p4_" + lb, "difference"],
+                        follow_rows(res))
+                    files[root + FOLLOW_DIR + "/" + fn + ".sps"] = follow_sps(res, mdl, fn + ".csv", FOLLOW_DIR)
+                    fol_files = [FOLLOW_DIR + "/" + fn + ".csv", FOLLOW_DIR + "/" + fn + ".sps"]
+                positive.append({"model": mdl[0], "band": band, "no": no, "title": title, "follow_files": fol_files,
                                  "two_say": "%s (%s)" % (_fp(t2), s2.split(": ")[1]),
                                  "three_say": "%s (%s)" % (_fp(t3), s3.split(": ")[1]),
                                  "quick": res.get("quick"), "two": t2, "three": t3,
+                                 "follow_n": sum(1 for pr in (res.get("follow") or {}).get("pairs", []) for k in FOLLOW_KEYS
+                                                 if (pr["measures"].get(k) or {}).get("p") is not None),
+                                 "follow_lit": sum(1 for pr in (res.get("follow") or {}).get("pairs", []) for k in FOLLOW_KEYS
+                                                   if (pr["measures"].get(k) or {}).get("p") is not None and pr["measures"][k]["p"] < ALPHA),
                                  "files": [REDO_DIR + "/" + rn + ".csv", REDO_DIR + "/" + "%s - %s - recreate.sps" % (stem(mdl[0]), band)]})
     head = ["number", "comparison", "kind", "band", "changed", "all together", "F", "df1", "df2", "p",
             "one by one", "F", "df1", "df2", "p", "Welch agrees", "rats", "pairs or regions", "syntax"]

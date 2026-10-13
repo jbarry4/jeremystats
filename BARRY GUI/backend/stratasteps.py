@@ -747,9 +747,13 @@ def derived_get(gid, kind, key):
         return None
     if kind == "ica" and isinstance(got, dict):
         # Kinds are read off the peak each time, so a run kept before the
-        # kinds changed is named by today's rule.
+        # kinds changed is named by today's rule -- except a band run's,
+        # which are that band's whatever their peak.
         for cm in got.get("components") or []:
-            cm["kind"] = ica_kind(cm.get("peak_hz"))
+            if cm.get("band") in ("fast", "mid"):
+                cm["kind"] = cm["band"]
+            else:
+                cm["kind"] = ica_kind(cm.get("peak_hz"))
     return got
 
 
@@ -1400,6 +1404,68 @@ def theta_troughs(b, channel, mk, max_n=2000):
 # ==========================================================================
 ICA_DEFAULTS = {"n_components": 10, "max_fit": 300000, "lo": 25.0,
                 "hi": 200.0, "max_walk_s": 900.0, "seed": 0}
+
+
+# The decompositions Method B runs, each on its own band (2026-10-13). One
+# 25-200 Hz run is all slow gamma: power falls with frequency, so the slow
+# generators take every component and the medial entorhinal input never
+# gets one. The fast and mid bands are each run again on their own, where
+# they are the biggest thing in the signal. A band run's components are
+# that band's kind whatever their peak; the broad run's are named by peak.
+ICA_BANDS = (
+    {"id": "broad", "lo": 25.0, "hi": 200.0, "n_components": None},
+    {"id": "fast", "lo": 90.0, "hi": 160.0, "n_components": 6},
+    {"id": "mid", "lo": 55.0, "hi": 90.0, "n_components": 6},
+)
+ICA_VERSION = 2          # in the cache key: v1 runs had no band runs
+
+
+class _JobPart:
+    """One of several runs reporting into one job's single stage."""
+
+    def __init__(self, job, k, n):
+        self.job, self.k, self.n, self.of = job, k, n, 1
+
+    def begin(self, name, of=None, unit=None):
+        self.of = max(1, int(of or 1))
+        if self.k == 0:
+            self.job.begin(name, of=self.of * self.n, unit=unit)
+
+    def tick(self, name, done):
+        self.job.tick(name, self.k * self.of + done)
+
+    def check(self):
+        if hasattr(self.job, "check"):
+            self.job.check()
+
+
+def run_ica_all(b, mk, order=None, bad=(), spacing_um=20.0, ref=None,
+                params=None, job=None):
+    """Every band's decomposition (ICA_BANDS), as one answer: the broad
+    run's fields, with every run's components in it. Each component says
+    which run it came from (`band`), and its `variance` is its share of
+    that run's band, not of all gamma."""
+    out = None
+    comps = []
+    for k, bd in enumerate(ICA_BANDS):
+        p = dict(params or {})
+        if bd["id"] != "broad":
+            p.update({"lo": bd["lo"], "hi": bd["hi"],
+                      "n_components": bd["n_components"]})
+        part = _JobPart(job, k, len(ICA_BANDS)) if job is not None else None
+        got = run_ica(b, mk, order, bad, spacing_um, ref, p, part)
+        for cm in got["components"]:
+            cm["band"] = bd["id"]
+            if bd["id"] != "broad":
+                cm["kind"] = bd["id"]
+            cm["index"] = len(comps)
+            comps.append(cm)
+        if out is None:
+            out = got
+    out["components"] = comps
+    out["bands"] = [dict(bd) for bd in ICA_BANDS]
+    out["version"] = ICA_VERSION
+    return out
 
 
 def _ica_fit(X, n_comp, seed):
@@ -2252,9 +2318,14 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
         kinds = ("slow", "mid", "fast") if use_iml else ("slow", "fast")
         for blade, z0, z1 in zones:
             for kind in kinds:
-                cands = [cm for cm in ica["components"]
-                         if cm.get("kind") == kind
-                         and (cm.get("stability") or 0) >= 0.7]
+                # The band's own run first (fast and mid have one), then
+                # the broad run's, each by its share of its run.
+                cands = sorted(
+                    [cm for cm in ica["components"]
+                     if cm.get("kind") == kind
+                     and (cm.get("stability") or 0) >= 0.7],
+                    key=lambda cm: (0 if cm.get("band") == kind else 1,
+                                    -(cm.get("variance") or 0)))
                 best = None
                 for cm in cands:
                     r = ica_zone_sinks(cm, z0, z1)
