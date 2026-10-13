@@ -8506,6 +8506,11 @@ BARRY.views.xplore = (function () {
     if (data.reset || seen < linkSeen) linkSeen = seen;
     else linkSeen = Math.max(linkSeen, seen);
     const channels = data.channels || {};
+    // StrataScope's evidence window asking for a line to move (strataaids.js
+    // "Move"); the steps own the lines.
+    if (BARRY.strataSteps && BARRY.strataSteps.fromLink) {
+      try { BARRY.strataSteps.fromLink(channels); } catch (e) { /* toasts its own */ }
+    }
 
     let touched = false;
 

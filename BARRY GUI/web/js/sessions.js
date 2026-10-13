@@ -264,9 +264,20 @@ BARRY.views.sessions = (function () {
          of it here would be a second copy to get wrong. */
       probe: r.probe || null,
       probe_state: r.probe_state || null,
-      stored: (r.bad_channels || []).length
-        ? { bad_channels: r.bad_channels } : null,
+      /* What somebody said about it. The quality flag and the notes used to
+         be left out here, so a "good" was saved, drawn from the local guess,
+         and gone from the card on the next refresh -- the write landed and
+         this translation dropped it on the way back in. */
+      stored: storedOf(r),
     };
+  }
+
+  function storedOf(r) {
+    const out = {};
+    if ((r.bad_channels || []).length) out.bad_channels = r.bad_channels;
+    if (r.quality) out.quality = r.quality;
+    if (r.notes) out.notes = r.notes;
+    return Object.keys(out).length ? out : null;
   }
 
   /* Everything Jarvis knows, as the starting list.

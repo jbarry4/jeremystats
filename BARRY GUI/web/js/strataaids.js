@@ -840,7 +840,9 @@
       : status === 'match' ? (got.length < checks.length
         ? '\u2713 Matches where it can tell' : '\u2713 Matches')
         : '\u2013 Can\u2019t tell';
-    const card = el('div', { class: 'sa-exp ' + kind + ' ' + status }, [
+    // Not checked (no IML to check mid gamma against) is not "can't tell".
+    const card = el('div', { class: 'sa-exp ' + kind + ' '
+                               + (noIml ? 'unchecked' : status) }, [
       el('h4', {}, [
         el('i', { class: 'sa-swatch', style: 'background:' + tok(col) }),
         el('span', { text: K.title }),
@@ -1056,6 +1058,7 @@
   let pmapErr = null;
   let pmapBusy = false;
   let pmView = 'csd';              // 'csd' | 'lfp'
+  let pmMaps = false;              // the maps themselves, folded
   let pmNorm = 'depth';            // 'depth' | 'map'
   // Where the papers put each gamma, CA1 theta, 0 = peak (Fernandez-Ruiz
   // et al. 2021, rats).
@@ -1098,6 +1101,51 @@
       if (!pmapErr) loadPhaseMap();
       return c;
     }
+    /* What it says, line by line: where the line is now, where the phase
+       map would put it, and a button to put it there. The pictures are a
+       click away. */
+    c.appendChild(el('p', { class: 'sa-pm-note', text: pmap.walk_s + ' s of '
+      + (pmap.theta_all_time ? 'recording' : 'Theta Walk') + ' \u00b7 theta '
+      + 'from ch ' + pmap.ref_channel + ' (CA1 SP)' }));
+    const live = !!(state && state.step === '3' && state.lines
+                    && state.lines.length && !Q.get('step'));
+    const list = el('div', { class: 'sa-sugg-list' });
+    const rows = pmSuggestions();
+    if (!rows.length) {
+      list.appendChild(el('p', { class: 'sa-exp-why', text: 'Nothing to say '
+        + 'yet: Step 3 needs its lines first.' }));
+    }
+    for (const r of rows) {
+      const ok = r.to == null || r.to === r.line.at;
+      const ch = (row) => (row >= data.channels.length ? 'the end'
+        : 'ch ' + data.channels[row]);
+      list.appendChild(el('div', { class: 'sa-sugg ' + (r.unsure ? 'unsure'
+                                     : ok ? 'match' : 'off') }, [
+        el('b', { class: 'sa-sugg-name', text: r.name }),
+        el('span', { class: 'sa-sugg-now', text: 'now above ' + ch(r.line.at) }),
+        el('span', { class: 'sa-sugg-math', text: r.unsure
+          ? '\u2013 the phase map can\u2019t tell'
+          : ok ? '\u2713 the phase map agrees'
+            : 'phase map: above ' + ch(r.to) }),
+        ok ? null : el('button', {
+          class: 'mini', text: 'Move',
+          disabled: live ? null : 'disabled',
+          title: live ? 'Move the ' + r.name + ' line to above ' + ch(r.to)
+            + ' in the labelling window. It stays a proposal until you '
+            + 'Accept.' : 'Open Step 3 in the labelling window to move lines '
+            + 'from here.',
+          onclick: () => sendMove(r.line, r.to),
+        }),
+        el('span', { class: 'sa-sugg-why', text: r.why }),
+      ]));
+    }
+    c.appendChild(list);
+    c.appendChild(el('button', {
+      class: 'mini', style: 'margin-top:8px',
+      text: (pmMaps ? '\u25be' : '\u25b8') + ' Show the maps',
+      onclick: () => { pmMaps = !pmMaps; render(); },
+    }));
+    if (!pmMaps) return c;
     const seg = (opts, cur, set) => el('span', { class: 'ctl-seg' },
       opts.map(([v, t, why]) => el('button', {
         class: 'mini' + (cur === v ? ' on' : ''), text: t, title: why,
@@ -1114,9 +1162,8 @@
              + 'the gamma is strongest. In the CSD a contact with a different '
              + 'gain shows as a stripe across every phase.']],
           pmNorm, (v) => { pmNorm = v; }),
-      el('span', { class: 'sa-pm-note', text: pmap.walk_s + ' s of '
-        + (pmap.theta_all_time ? 'recording' : 'Theta Walk') + ' \u00b7 theta '
-        + 'from ch ' + pmap.ref_channel + ' (CA1 SP), 0\u00b0 its peak' }),
+      el('span', { class: 'sa-pm-note', text: '0\u00b0 is the peak of CA1 '
+        + 'theta' }),
     ]));
     const row = el('div', { class: 'sa-pm-row' });
     for (const bd of pmap.bands || []) {
@@ -1130,7 +1177,6 @@
           el('span', { text: ' \u2192 ' + K.want }),
         ]),
         cv,
-        pmSummary(bd),
       ]));
       requestAnimationFrame(() => pmPanel(cv, bd));
     }
@@ -1235,6 +1281,87 @@
       if (!best || d < best.d) best = { d, l };
     }
     return best;
+  }
+
+  /* The lines the phase map has something to say about:
+       the fissure     where theta phase jumps going down (in mice the
+                       sharpest jump is across the fissure: Lasztoczi &
+                       Klausberger 2017)
+       OML             takes in the channel slow gamma (LEC) is most
+                       theta-locked on
+       MML             takes in the channel fast gamma (MEC) is most
+                       theta-locked on
+       IML             mid gamma (commissural), when IML is its own layer
+     Each: { name, line, to, why } -- `to` the row the line would sit
+     above, or null when the line already agrees. */
+  function pmSuggestions() {
+    const ls = stepLines().filter((l) => l.at != null);
+    if (!ls.length || !pmap) return [];
+    const bands = Object.fromEntries((pmap.bands || []).map((b) => [b.id, b]));
+    const ch = (row) => 'ch ' + data.channels[Math.min(row, data.channels.length - 1)];
+    const out = [];
+    const fis = ls.find((l) => l.below === 'dg_oml1');
+    let jump = null;
+    for (const id of ['slow', 'fast']) {
+      const j = bands[id] && pmJump(bands[id]);
+      if (j && (!jump || j.d > jump.d)) jump = Object.assign({ band: id }, j);
+    }
+    if (fis && jump) {
+      out.push({ name: 'Fissure', line: fis, to: jump.rBelow,
+                 why: KIND[jump.band].short + ' turns from '
+                   + Math.round(jump.from) + '\u00b0 to ' + Math.round(jump.to)
+                   + '\u00b0 between ' + 'ch ' + jump.chAbove + ' and ch '
+                   + jump.chBelow + '.' });
+    }
+    // A layer should take in the channel its gamma is most locked on: pull
+    // its top line up to it, or push its bottom line down past it.
+    const layer = (id, band, name) => {
+      const top = ls.find((l) => l.below === id);
+      const bot = ls.find((l) => l.above === id);
+      const b = bands[band] && pmPeak(bands[band]);
+      if (!top || !b) return;
+      const why = KIND[band].short + ' is most theta-locked at ch ' + b.ch
+        + ' (' + Math.round(b.phase) + '\u00b0).';
+      if (b.r < top.at) {
+        out.push({ name: name + ' top', line: top, to: b.r, why });
+      } else if (bot && b.r >= bot.at) {
+        out.push({ name: name + ' bottom', line: bot, to: b.r + 1, why });
+      } else {
+        out.push({ name: name, line: top, to: null,
+                   why: why.replace(/\.$/, '') + ', inside ' + name + '.' });
+      }
+    };
+    const ps = bands.slow && pmPeak(bands.slow);
+    const pf = bands.fast && pmPeak(bands.fast);
+    const omlMml = ls.find((l) => l.above === 'dg_oml1' && l.below === 'dg_mml1');
+    if (ps && pf && Math.abs(ps.r - pf.r) <= 1 && omlMml) {
+      // In mice both lean to the trough and can lock on one channel; then
+      // nothing here separates OML from MML.
+      out.push({ name: 'OML1 | MML1', line: omlMml, to: null, unsure: true,
+                 why: 'Slow and fast gamma are both most theta-locked at ch '
+                   + ps.ch + (pf.ch !== ps.ch ? '/' + pf.ch : '') + ', so the '
+                   + 'phase map cannot tell OML from MML here (common in '
+                   + 'mice). Method A and B decide this line.' });
+    } else {
+      layer('dg_oml1', 'slow', 'OML1');
+      layer('dg_mml1', 'fast', 'MML1');
+    }
+    if (ls.some((l) => l.below === 'dg_iml1')) layer('dg_iml1', 'mid', 'IML1');
+    void ch;
+    return out;
+  }
+
+  /* Ask the labelling window to move a line. It owns the lines; this page
+     only follows them. Over the same link it publishes on, the other way. */
+  async function sendMove(line, to) {
+    try {
+      await fetch('/api/link', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: 'strata-cmd:' + GID, origin: 'strata-aid',
+                               value: { at: Date.now(), id: line.id || null,
+                                        above: line.above, below: line.below,
+                                        to } }) });
+    } catch (e) { /* the labelling window says when a move lands */ }
   }
 
   function pmSummary(bd) {

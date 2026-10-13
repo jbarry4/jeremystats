@@ -424,19 +424,20 @@ const PATH = 'demo:ds-tutorial';
     await untilN(() => D().querySelector('.ss-drawer .ss-anchors'), 100);
     const imlIds = () => ((SS()._state().ghost || {}).lines || [])
       .filter((l) => /iml/.test(l.above + '|' + l.below)).length;
-    ck('Step 3 cuts in thirds, IML included, by default', imlIds() > 0, imlIds());
-    const noIml = Array.from(D().querySelectorAll('.ss-drawer button'))
-      .find((b) => /part of MML/.test(b.textContent));
-    ck('there is a switch to leave IML out', !!noIml);
-    if (noIml) {
-      noIml.click();
-      await untilN(() => imlIds() === 0, 200);
-      ck('... and with it off, no line names IML', imlIds() === 0, imlIds());
-      const back = Array.from(D().querySelectorAll('.ss-drawer button'))
-        .find((b) => /its own \(IML\)/.test(b.textContent));
-      if (back) back.click();
+    // IML is folded into the molecular layer unless asked for (2026-10-13).
+    ck('Step 3 leaves IML out by default (part of the MML)', imlIds() === 0, imlIds());
+    const ownIml = Array.from(D().querySelectorAll('.ss-drawer button'))
+      .find((b) => /its own \(IML\)/.test(b.textContent));
+    ck('there is a switch to give IML its own lines', !!ownIml);
+    if (ownIml) {
+      ownIml.click();
       await untilN(() => imlIds() > 0, 200);
-      ck('... and it comes back', imlIds() > 0, imlIds());
+      ck('... which draws IML', imlIds() > 0, imlIds());
+      const back = Array.from(D().querySelectorAll('.ss-drawer button'))
+        .find((b) => /part of MML/.test(b.textContent));
+      if (back) back.click();
+      await untilN(() => imlIds() === 0, 200);
+      ck('... and "part of MML" folds it back in', imlIds() === 0, imlIds());
     }
     // Fissure to hilus in equal thirds (OML, MML, GCL) was tried and taken
     // out the same day: no paper cuts it that way.
@@ -542,11 +543,22 @@ const PATH = 'demo:ds-tutorial';
       await W().fetch('/api/cfc/job/none').catch(() => null);
       await sleep(50);
     }
+    // Said line by line ("now above ch X, phase map: above ch Y, Move"),
+    // the maps folded away (2026-10-13: "too much going on").
+    const sug = A().querySelectorAll('.sa-pm .sa-sugg');
+    ck('the phase map says, line by line, where each line is and where it '
+       + 'would put it', sug.length >= 2
+         && Array.from(sug).every((r) => /now above/.test(r.textContent)),
+       ((A().querySelector('.sa-pm') || {}).textContent || '').slice(0, 200));
+    ck('... with the maps folded away', !A().querySelector('.sa-pm-fig'));
+    const showMaps = Array.from(A().querySelectorAll('.sa-pm button'))
+      .find((b) => /Show the maps/.test(b.textContent));
+    if (showMaps) showMaps.click();
+    for (let k = 0; k < 40 && A().querySelectorAll('.sa-pm-fig').length < 3; k++) {
+      await sleep(50);
+    }
     const figs = A().querySelectorAll('.sa-pm-fig');
-    ck('the phase map draws slow, mid and fast gamma', figs.length === 3,
-       ((A().querySelector('.sa-pm') || {}).textContent || '').slice(0, 160));
-    ck('... each with a reading of where it is most theta-locked',
-       Array.from(figs).every((f) => /theta-locked|Nothing to read/.test(f.textContent)));
+    ck('... which open to slow, mid and fast gamma', figs.length === 3, figs.length);
     const q = A().querySelector('.sa-pm .sa-q');
     ck('the phase map has a ?', !!q);
     if (q) {
@@ -567,6 +579,29 @@ const PATH = 'demo:ds-tutorial';
       if (x) x.click();
       await sleep(100);
       ck('... and \u00d7 closes it', !A().getElementById('saExplain'));
+    }
+
+    /* Move: the evidence window asks the labelling window to move a line,
+       over the link. Sent here as the evidence window sends it. */
+    const lines3 = (SS()._state().ghost || {}).lines || [];
+    const target = lines3.find((l) => l.below === 'dg_oml1');
+    if (target) {
+      const from = target.at;
+      const to = Math.max(1, from - 2);
+      await post('/api/link', { channel: 'strata-cmd:' + GID, origin: 'strata-aid',
+                                value: { at: Date.now(), above: target.above,
+                                         below: target.below, to } });
+      for (let k = 0; k < 400; k++) {
+        const l = ((SS()._state().ghost || {}).lines || [])
+          .find((x) => x.below === 'dg_oml1');
+        if (l && l.at === to) break;
+        await W().fetch('/api/cfc/job/none').catch(() => null);
+        await sleep(50);
+      }
+      const after = ((SS()._state().ghost || {}).lines || [])
+        .find((x) => x.below === 'dg_oml1');
+      ck('Move in the evidence window moves the line in the labelling window',
+         !!after && after.at === to, from + ' -> ' + (after && after.at));
     }
     af.src = 'about:blank';
     await sleep(100);

@@ -590,6 +590,7 @@ def api_discover_status(job_id):
                 "match": how,
                 "bad_channels": (rec or {}).get("bad_channels", []),
                 "notes": (rec or {}).get("notes"),
+                "quality": (rec or {}).get("quality") or "",
             } if rec else None
     return jsonify({"ok": True, "job": data})
 

@@ -15,6 +15,50 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.13.4 - StrataScope: the phase map in one line each, with Move; IML folded in by default
+
+### Changed
+
+- **The theta phase map says what it means in one line per boundary.**
+  Each row gives a line, where it is now, and where the phase map would put
+  it, for example "Fissure · now above ch 31 · phase map: above ch 26 ·
+  Move". Underneath, a short reason ("fast γ turns from 91° to 175° between
+  ch 25 and ch 26").
+  - The rows are the fissure (where theta phase jumps going down), OML1
+    (should hold the channel slow gamma is most locked on), MML1 (should
+    hold the channel fast gamma is most locked on), and IML1 when IML is
+    its own layer.
+  - When slow and fast gamma are both most locked on the same channel, the
+    card shows a single row: "OML1 | MML1 · the phase map can't tell". It
+    does this rather than suggest two moves that pull the same line in
+    opposite directions. This is common in mice, where both gammas lean to
+    the trough.
+  - The maps are folded under "Show the maps".
+- **Move moves the line in the labelling window.** The evidence window
+  sends the move across, and the labelling window confirms it with "Moved
+  CA1 SLM | OML1 from above ch 31 to above ch 26. It is a proposal until
+  you Accept." Move is greyed when the labelling window has no Step 3 open.
+- **IML is folded into the molecular layer by default** ("part of MML").
+  Papers that don't draw IML keep it in the molecular layer: it is
+  granule-cell dendrites taking the commissural input, not the cell layer.
+  "Its own (IML)" is still one click away, and a sheet that already chose
+  either keeps its choice.
+
+## 2026.10.13.3 - Sessions: good / review / exclude stay put
+
+### Fixed
+
+- **A quality flag no longer disappears when the page is refreshed.**
+  - Pressing good, review or exclude on a recording saved the flag, but the
+    list never read it back. The button lit up from what you had just
+    pressed, and on the next refresh the card showed no flag at all.
+  - The flags set before this were saved and come back now. Nothing has to
+    be pressed again.
+  - Notes had the same problem and are fixed with it: the "note" chip shows
+    on every recording that has one.
+  - "Marked good" and "Hide excluded" now act on every recording in the list.
+    Before, they only saw flags pressed since the page last loaded.
+
 ## 2026.10.13.2 - StrataScope: the read skips bad channels
 
 ### Changed

@@ -144,8 +144,12 @@ BARRY.strataSteps = (function () {
   /* ==================================================================
      In and out
      ================================================================== */
+  let enteredAt = 0;
+  let cmdSeen = 0;
+
   async function enter(host) {
     H = host;
+    enteredAt = Date.now();
     status = null; sug = null; guide = null; ghost = null; overrides = {};
     checks = null; ica = null; open = null; busy = '';
     jobId = null; jobKind = null; jobSnap = null; jobsNow = [];
@@ -2298,6 +2302,35 @@ BARRY.strataSteps = (function () {
     ctx.restore();
   }
 
+  /* A line moved from the evidence window ("Move" beside what the phase
+     map says). The command comes over /api/link, read by xplore's poll;
+     only one newer than this visit, and only once. */
+  function fromLink(channels) {
+    if (!H || !channels) return;
+    const slot = channels['strata-cmd:' + H.gid];
+    const v = slot && slot.value;
+    if (!v || !v.at || v.at <= cmdSeen) return;
+    cmdSeen = v.at;
+    if (v.at < enteredAt - 2000) return;
+    if (open !== '3' || !ghost || ghost.step !== '3') {
+      toast('Open Step 3 to move that line.', 'warn', 5000);
+      return;
+    }
+    const ln = ghost.lines.find((l) => (v.id && l.id === v.id)
+      || (l.above === v.above && l.below === v.below));
+    if (!ln || v.to == null) return;
+    const was = ln.at;
+    ln.at = Math.max(0, Math.min(sug.channels.length, Number(v.to)));
+    confirming = null;
+    H.render();
+    drawStrip();
+    H.redraw();
+    publish();
+    const nm = (layerShort(ln.above) || '') + ' | ' + (layerShort(ln.below) || '');
+    toast('Moved ' + nm + ' from above ' + chName(was) + ' to above '
+          + chName(ln.at) + '. It is a proposal until you Accept.', 'ok', 6000);
+  }
+
   /* Where a picked ICA check goes, in lanes: the sink channel's lane
      [a, b), and the boundary it would move -- the layer's top edge pulled
      up to the sink channel's top, or its bottom pushed down to the sink
@@ -2382,6 +2415,7 @@ BARRY.strataSteps = (function () {
     focusRegions,
     _labelsFromLines: labelsFromLines,
     _icaMark: (c) => (H ? icaMark(c, H.channels()) : null),
+    fromLink,
     _jobs: () => ({ jobId, jobKind, jobsNow }),
   };
 })();

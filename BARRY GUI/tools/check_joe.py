@@ -16,10 +16,12 @@ every session. Planted:
     rail through cue 2;
   * the sounds: nothing.
 
-Each must be found where it was planted and nowhere else; the mixed model's
-fixed effects are checked against least squares and the RM-ANOVA against a
-hand-made F; the SPSS files are read back; and the standalone script, run on
-the same folders, must give the same .csv files.
+Each must be found where it was planted and nowhere else; the mixed model
+is checked against the repeated-measures ANOVA on complete made-up data (the
+tab runs no RM-ANOVA itself: on the real data it would keep 3 of 8 rats); the
+SPSS package is read back, and its recreate files must give the tab's F
+exactly; and the standalone script, run on the same folders, must give the
+same values.
 
     python tools/check_joe.py [--keep]
 """
@@ -290,7 +292,9 @@ def main():
           and all(k in f2["pairs"][0]["measures"] for k in ("pli", "icoh", "gc_ab", "gc_ba", "xlag", "pac_ab", "pac_aa")), f2.get("basis"))
     check("no follow-ups where the gate stays shut", not res[("m3", "theta", "welch")].get("follow"))
     r2 = res[("m2", "theta", "welch")]
-    check("the RM-ANOVA beside it: every rat has every cell here except the clipped one's", r2["rm"].get("n_rats") in (7, 8), r2["rm"])
+    check("no RM-ANOVA run; the rats it could have kept (those with every cell) said instead",
+          not any("rm" in r for r in out["results"]) and set(r2["complete_rats"]) <= set(r2["rats"]) and len(r2["complete_rats"]) in (7, 8),
+          (r2.get("complete_rats"), r2.get("rats")))
 
     # The mixed model against the RM-ANOVA: on complete data, with a real
     # rat variance in every stratum, the two are the same test.
@@ -324,42 +328,84 @@ def main():
         part = joe.fit_mixed(dfm[~((dfm["rat"] == 2) & (dfm["unit"] == "u5"))], "Phase", "pair")
         check("and a rat missing one pair keeps its others there (%d levels)" % L,
               part.get("ok") and part["n_rats"] == 8 and part["n_obs"] == 8 * 6 - 1, (part.get("n_rats"), part.get("n_obs")))
+    # The check anyone can do by hand, on a positive result: each rat's mean
+    # difference over its pairs, a one-sample t, against the engine's.
+    from scipy.stats import ttest_1samp
+    rq = res[("m2", "theta", "dickson")]
     mdl = joe.MODEL_BY_ID["m2"]
-    tab = joe.model_table(day_data, mdl, 0, 0, out["pairs"], days=joe.TESTED)
+    tab = joe.model_table(day_data, mdl, 0, joe.METHODS.index("dickson"), out["pairs"], days=joe.TESTED)
     keepu = joe.included_units(tab, mdl, out["pairs"])
-    df = joe._frame(tab, mdl, keepu, out["pairs"])
-    full = df.groupby("rat").size()
-    dfb = df[df["rat"].isin(full[full == full.max()].index)]
-    # Hand two-way RM-ANOVA (day x level) on the per-rat means over units.
-    g = dfb.groupby(["rat", "day", "level"])["value"].mean().unstack(["day", "level"])
-    Y = g.values                                         # rats x 4 cells
-    n = Y.shape[0]
-    d1 = (Y[:, 2] + Y[:, 3] - Y[:, 0] - Y[:, 1]) / 2.0     # day effect per rat (cols: P1 base, P1 cue1, P4 base, P4 cue1)
-    i1 = (Y[:, 3] - Y[:, 2]) - (Y[:, 1] - Y[:, 0])         # day x level contrast per rat
-    F_int = n * i1.mean() ** 2 / (i1.var(ddof=1))
-    a2 = AnovaRM(dfb.groupby(["rat", "day", "level"], as_index=False)["value"].mean(), "value", "rat", within=["day", "level"]).fit().anova_table
-    check("the RM-ANOVA's Day × Phase F is the hand-made one (a paired contrast's t²)",
-          abs(float(a2.loc["day:level", "F Value"]) - F_int) < 1e-6 * max(1.0, F_int), (float(a2.loc["day:level", "F Value"]), F_int))
+    per = {}
+    for r in tab:
+        d = [(tab[r]["Precon4"]["cue1"][u] - tab[r]["Precon4"]["base"][u]) - (tab[r]["Precon1"]["cue1"][u] - tab[r]["Precon1"]["base"][u]) for u in keepu]
+        d = [x for x in d if np.isfinite(x)]
+        if d:
+            per[r] = float(np.mean(d))
+    th = ttest_1samp(list(per.values()), 0.0)
+    check("the by-hand check: each rat's mean difference, a one-sample t, is the engine's",
+          rq.get("quick") and abs(rq["quick"]["t"] - float(th.statistic)) < 1e-9 and rq["quick"]["df"] == len(per) - 1,
+          (rq.get("quick"), float(th.statistic)))
 
-    print("\nThe SPSS files")
+    print("\nThe SPSS package")
+    import io
+    import zipfile
     exp = os.path.join(root, "export")
-    files = joe.write_exports(out, exp)
-    name = "m2_theta_welch"
-    head = open(os.path.join(exp, name + ".csv"), encoding="utf-8").readline().strip().split(",")
-    sps = open(os.path.join(exp, name + ".sps"), encoding="utf-8").read()
-    K = r2["n_units"]
-    check("one wide row a rat, a column per Day × level × pair, day first and pair fastest (SPSS's order)",
-          head[0] == "rat" and len(head) == 1 + 2 * 2 * K and head[1].startswith("D1_base_") and head[1 + K].startswith("D1_cue1_")
-          and head[1 + 2 * K].startswith("D4_base_"), head[:4])
-    check("999 for the clipped cell", "999" in open(os.path.join(exp, "m2_theta_welch.csv"), encoding="utf-8").read()
-          or "999" in open(os.path.join(exp, "m3_theta_welch.csv"), encoding="utf-8").read())
-    check("the .sps declares 999 missing, runs the GLM, restructures and runs MIXED (Satterthwaite)",
-          "MISSING VALUES %s TO %s (999)." % (head[1], head[-1]) in sps and "/WSFACTOR=day 2 Polynomial phase 2 Polynomial pair %d Polynomial" % K in sps
-          and "VARSTOCASES /MAKE value FROM %s TO %s" % (head[1], head[-1]) in sps and "DFMETHOD(SATTERTHWAITE)" in sps
-          and "/RANDOM=INTERCEPT day phase pair day*phase day*pair phase*pair | SUBJECT(rat) COVTYPE(VC)" in sps)
-    check("and every variable it names is a column of its .csv, in order",
-          [l.strip().split()[0] for l in sps.split("/VARIABLES=")[1].split(".\n")[0].splitlines()[1:]] == head)
-    check("a zip of them all", os.path.isfile(os.path.join(exp, "joe_tab8_spss.zip")) and len(files) == 2 * sum(1 for r in out["results"] if r.get("units")))
+    got = joe.write_exports(out, exp)
+    zp = os.path.join(exp, "joe_tab8_spss.zip")
+    Z = zipfile.ZipFile(zp)
+    names = Z.namelist()
+    R = "joe_tab8_spss/"
+    check("one zip: a README, a results summary and three folders, the main comparisons, the checks and the recreate files",
+          R + "README.txt" in names and R + "Results summary.csv" in names
+          and all(any(n.startswith(R + d + "/") for n in names) for d in (joe.MAIN_DIR, joe.CHECK_DIR, joe.REDO_DIR))
+          and got["downloads"] == ["joe_tab8_spss.zip", "joe_tab8_README.txt", "joe_tab8_results.csv"]
+          and all(os.path.isfile(os.path.join(exp, f)) for f in got["downloads"]), names[:3])
+    mains = [n for n in names if n.startswith(R + joe.MAIN_DIR + "/") or n.startswith(R + joe.CHECK_DIR + "/")]
+    check("each comparison named by its number and name, in both bands, as a .csv and a .sps; no Welch file, no m1, m2",
+          len(mains) == 2 * 2 * len(joe.MODELS) and R + joe.MAIN_DIR + "/02 Baseline 10 s to cue 1 - theta.csv" in names
+          and R + joe.CHECK_DIR + "/11 A-B-C-D - gamma.sps" in names
+          and not any("welch" in n.lower() or "/m1" in n or "_m2" in n for n in names), [n for n in mains][:3])
+    csv2 = Z.read(R + joe.MAIN_DIR + "/02 Baseline 10 s to cue 1 - theta.csv").decode("utf-8").splitlines()
+    head2 = csv2[0].split(",")
+    allu = rq["all_units"]
+    n_vals = sum(1 for rr, perr in rq["table"].items() for d in joe.TESTED for lv, _l in mdl[4] for u in rq["units"]
+                 if perr[d][lv][allu.index(u)] is not None)
+    check("its .csv long: one row per rat, day (1 or 4), window and pair that has a value, nothing written in for a missing one",
+          head2 == ["rat", "day", "phase", "pair", "coherence", "day_name", "phase_name", "pair_name"] and len(csv2) - 1 == n_vals
+          and {r.split(",")[1] for r in csv2[1:]} == {"1", "4"} and "999" not in [r.split(",")[4] for r in csv2[1:]], (head2, len(csv2) - 1, n_vals))
+    sps2 = Z.read(R + joe.MAIN_DIR + "/02 Baseline 10 s to cue 1 - theta.sps").decode("utf-8-sig")
+    var2 = sps2.split("/VARIABLES=")[1].split(".\r\n")[0].split()
+    t2 = rq["mixed"]["terms"]["Day × Phase"]
+    check("its .sps: a CD line to change, the .csv read with every column in order, the full mixed model (Satterthwaite), no GLM, tab 8's F in its header",
+          "CD '" in sps2 and "/FILE='02 Baseline 10 s to cue 1 - theta.csv'" in sps2 and var2[0::2] == head2
+          and "MIXED coherence BY day phase pair" in sps2 and "/RANDOM=INTERCEPT day phase pair day*phase day*pair phase*pair | SUBJECT(rat) COVTYPE(VC)" in sps2
+          and "DFMETHOD(SATTERTHWAITE)" in sps2 and "GLM " not in sps2 and ("F(1, %d) = %.2f" % (t2["df2"], t2["F"])) in sps2, var2[:6])
+    pos = [x for x in got["positive"] if x["model"] == "m2" and x["band"] == "theta"]
+    check("every result that changed has its recreate files (and nothing else does)",
+          bool(pos) and all(R + f in names for x in got["positive"] for f in x["files"])
+          and len([n for n in names if n.startswith(R + joe.REDO_DIR + "/")]) == 2 * len(got["positive"])
+          and all(res[(x["model"], x["band"], "dickson" if joe.MODEL_BY_ID[x["model"]][5] == "pair" else "welch")]["gate"]["passed"] for x in got["positive"]),
+          [(x["model"], x["band"]) for x in got["positive"]][:6])
+    rc = pd.read_csv(io.BytesIO(Z.read(R + pos[0]["files"][0])))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        fit = joe._mlm("difference ~ C(pair, Sum)", rc, rc["rat"])
+    w = fit.wald_test_terms(skip_single=False, scalar=True).summary_frame()
+    t3 = rq["mixed"]["terms"]["Day × Phase × Pair"]
+    fi, fp_ = float(w.loc["Intercept", "chi2"]), float(w.loc["C(pair, Sum)", "chi2"]) / int(w.loc["C(pair, Sum)", "df constraint"])
+    check("the recreate file, fitted as its .sps fits it (difference by pair, the rat random), gives tab 8's two F exactly",
+          abs(fi - t2["F"]) < 1e-4 * max(1.0, t2["F"]) and abs(fp_ - t3["F"]) < 1e-4 * max(1.0, t3["F"]), (fi, t2["F"], fp_, t3["F"]))
+    redo = Z.read(R + pos[0]["files"][1]).decode("utf-8-sig")
+    check("its .sps: the exact test (MIXED difference BY pair, the rat random) and the by-hand t-test, with tab 8's numbers to expect",
+          "MIXED difference BY pair" in redo and "/RANDOM=INTERCEPT | SUBJECT(rat) COVTYPE(VC)" in redo and "T-TEST /TESTVAL=0 /VARIABLES=difference." in redo
+          and ("tab 8: F = %.2f" % t2["F"]) in redo and ("t(%d) = %.2f" % (rq["quick"]["df"], rq["quick"]["t"])) in redo)
+    readme = Z.read(R + "README.txt").decode("utf-8")
+    check("the README: the comparisons by number, why there is no repeated-measures ANOVA, how to run one, how to recreate each result",
+          all(h in readme for h in ("THE COMPARISONS", "WHY THERE IS NO REPEATED-MEASURES ANOVA", "HOW TO RUN ONE", "HOW TO RECREATE THE POSITIVE RESULTS"))
+          and " 2  Baseline (10 s) to cue 1" in readme and "WELCH" in readme)
+    summ = Z.read(R + "Results summary.csv").decode("utf-8").splitlines()
+    check("the results summary: a row a comparison and band, its words, its numbers and whether Welch agrees",
+          len(summ) - 1 == 2 * len(joe.MODELS) and "Welch agrees" in summ[0] and summ[1].startswith("1,Baseline (20 s) to both cues,main,theta,"), summ[:2])
 
     print("\nThe standalone script, on the same recordings")
     inputs = {"schema": joe.SCHEMA, "regions": REGIONS, "channels": CHAN,
@@ -380,8 +426,9 @@ def main():
     print("ran in %.0f s" % (time.time() - t0))
     check("the script ran", p.returncode == 0, p.stderr[-400:])
     worst, n_cells, bad = 0.0, 0, []
-    for f in sorted(x for x in os.listdir(exp) if x.endswith(".csv")):
-        A = [l.strip().split(",") for l in open(os.path.join(exp, f), encoding="utf-8")]
+    cmp_dir = os.path.join(exp, "compare")
+    for f in sorted(x for x in os.listdir(cmp_dir) if x.endswith(".csv")):
+        A = [l.strip().split(",") for l in open(os.path.join(cmp_dir, f), encoding="utf-8")]
         Bp = os.path.join(so, f)
         if not os.path.isfile(Bp):
             bad.append(f + ": missing")
@@ -405,14 +452,15 @@ def main():
     if "--fixture" in sys.argv:
         # The harness's tab 8 fixture: these made-up numbers, as the page reads them.
         fx = sys.argv[sys.argv.index("--fixture") + 1]
-        out["exports"] = files
+        out["exports"] = got["downloads"]
+        out["spss"] = got
         for r in out["results"]:
             r.pop("table", None)
             r.pop("all_units", None)
         out.update(rats=list(RATS), n_days=len(day_data), notes=["r4 Precon1 p02: a made-up clipped stretch"],
                    histology="made up", at="2026-10-09T12:00:00",
                    agreement={"files": [{"file": f, "ok": True, "cells": 100, "worst": 0.0, "missing_differs": 0}
-                                        for f in files if f.endswith(".csv")], "ok": True, "tol": 1e-6,
+                                        for f in sorted(os.listdir(cmp_dir))], "ok": True, "tol": 1e-6,
                               "ran_at": "2026-10-09T12:30:00"})
         joe._write(fx, out)
         print("fixture written to", fx)

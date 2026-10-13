@@ -361,12 +361,12 @@ window.MONO_HELP = (function () {
     },
     joe: {
       title: 'Joe’s data: did coherence change?',
-      plain: 'The comparisons Joe’s proposal names, and nothing more: coherence between regions (how much two regions’ rhythms rise and fall together), in theta (5–12 Hz) and gamma (30–90 Hz), Precon1 against Precon4. Each row is one comparison, each light one band with one way of computing coherence. Green: the change between the two days is unlikely to be chance (less than 1 in 20). Grey: no sign of a change.',
+      plain: 'The comparisons Joe’s proposal names, and nothing more: coherence between regions (how much two regions’ rhythms rise and fall together), in theta (5–12 Hz) and gamma (30–90 Hz), Precon1 against Precon4. Each row is one comparison, numbered as in the SPSS files; each light is one band. Green: the change between the two days is unlikely to be chance (less than 1 in 20). Grey: no sign of a change. Coherence is computed as Dickson 2022 does it (Jeremy’s mscohere); the circuits’ Welch way is computed too, and the line above the lights says whether it agrees.',
       steps: ['Each trial: coherence in each window, for every pair of regions.', 'Each rat and day: the mean over its trials.',
               'Each comparison: did the change between its two windows (baseline to cue 1, say) differ between Precon1 and Precon4, in all pairs together or in some pairs more than others?',
               'Click a light: its picture, and what changed in words.'],
-      look: 'A row lit in both of its theta or both of its gamma lights: the two ways of computing coherence agree.',
-      traps: 'There are 8 rows of 4 lights; a light now and then would come on by chance alone. The checks underneath show how often that happens when nothing should.',
+      look: 'A lit light that Welch agrees with, in a comparison the checks don’t share.',
+      traps: 'There are 8 rows of 2 lights; a light now and then would come on by chance alone. The checks underneath show how often that happens when nothing should.',
       cite: ['Dickson, Holmes & Barry (2022). eNeuro 9(2). The lab’s coherence method, Jeremy’s mscohere code.'],
     },
     'joe.checks': {
@@ -383,15 +383,15 @@ window.MONO_HELP = (function () {
     },
     'joe.models': {
       title: 'Every test, with its numbers',
-      plain: 'Each model, in the band and coherence method chosen. The plot: each day’s mean over rats (± SE) at each level, Precon1 dashed, Precon4 solid, Precon2 and Precon3 faint and never tested; the statistics in its legend. The strip: every pair’s own change, sorted, those Holm keeps in red.',
-      look: 'Lines that are parallel mean no Day × factor interaction; lines that cross or open apart mean one.',
-      traps: 'The plot averages over the pairs to show Day × factor; the model never does, it keeps Pair as a factor.',
+      plain: 'Each comparison in the band chosen, coherence by Dickson 2022. The plot: each day’s mean over rats (± SE) at each level, Precon1 dashed, Precon4 solid, Precon2 and Precon3 faint and never tested; the statistics in its legend. Beside it, every pair’s own change, sorted, those Holm keeps marked. One mixed model a comparison: Day × level × Pair with the rat random, each rat with the pairs it has. There is no repeated-measures ANOVA: it can only use a rat with every pair, and histology leaves too few of those.',
+      look: 'Lines that are parallel mean no Day × level interaction; lines that cross or open apart mean one.',
+      traps: 'The plot averages over the pairs to show Day × level; the model never does, it keeps Pair as a factor.',
     },
     'joe.exports': {
-      title: 'SPSS, and a script that does it all again',
-      plain: 'One wide .csv per model, band and method (one row per rat, one column per Day × level × pair, 999 for missing) and its .sps: SPSS reads the .csv, declares 999 missing, runs the repeated-measures GLM, restructures to long and runs MIXED. The standalone script reads the recordings with numpy and scipy only, nothing from Jarvis, and writes the same .csv files; the check here compares them cell by cell.',
-      look: '“Yes” on the agreement: two independent programs, one number.',
-      traps: 'SPSS’s GLM drops any rat missing a cell; MIXED keeps them. The two can disagree for that reason alone.',
+      title: 'Files for SPSS, and a script that does it all again',
+      plain: 'One zip that unzips to joe_tab8_spss: a README to start from, a results summary, and three folders. 1 Main comparisons and 2 Checks hold each comparison’s data (a long .csv: one row per rat, day, window and pair) and its .sps, which reads the .csv and runs the mixed model. 3 Recreate the positive results holds, for each result that changed, one row per rat and pair with its difference, and syntax that gives tab 8’s F back exactly, then a one-sample t-test anyone can check by hand. The standalone script reads the recordings with numpy and scipy only and writes every value again; the check here compares them cell by cell.',
+      look: '“Yes” on the agreement: two independent programs, one number. In SPSS, the recreate syntax’s Intercept F equal to tab 8’s.',
+      traps: 'Change the CD line at the top of each .sps to the folder it is in, or SPSS will not find its .csv. The full model in 1 Main comparisons estimates all its variances together, so its numbers come close to tab 8’s but are not identical; the recreate files are exact.',
     },
     'physical.sound': {
       title: 'Each sound on its own',

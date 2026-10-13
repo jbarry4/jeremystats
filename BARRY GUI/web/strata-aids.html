@@ -101,6 +101,22 @@
           border: 1px solid var(--accent-line); background: var(--accent-soft);
           color: var(--accent); font-weight: 700; cursor: pointer; }
   .sa-q:hover { background: var(--accent); color: var(--bg); }
+  .sa-sugg-list { display: flex; flex-direction: column; gap: 4px; }
+  .sa-sugg { display: grid; grid-template-columns: 110px 130px minmax(160px, 1fr) auto;
+             align-items: center; gap: 2px 10px; padding: 5px 8px;
+             border-radius: var(--radius-sm); background: var(--bg-hover);
+             font-size: var(--fs-115); }
+  .sa-sugg.match { border-left: 3px solid var(--ok); }
+  .sa-sugg.off { border-left: 3px solid var(--warn); }
+  .sa-sugg.unsure { border-left: 3px solid var(--line); }
+  .sa-sugg.unsure .sa-sugg-math { color: var(--text-3); }
+  .sa-sugg-now { color: var(--text-2); }
+  .sa-sugg.match .sa-sugg-math { color: var(--ok); }
+  .sa-sugg.off .sa-sugg-math { color: var(--warn); font-weight: 600; }
+  .sa-sugg-why { grid-column: 1 / -1; color: var(--text-3); font-size: var(--fs-105); }
+  @media (max-width: 560px) {
+    .sa-sugg { grid-template-columns: 1fr auto; }
+  }
   .sa-pm-ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
                margin: 4px 0 8px; }
   .sa-pm-note { color: var(--text-3); font-size: var(--fs-105); }

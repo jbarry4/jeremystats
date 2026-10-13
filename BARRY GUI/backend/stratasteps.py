@@ -2146,7 +2146,11 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     species = params.get("species") or "mouse"
     h = float(params.get("gcl_half_um") or GCL_HALF_UM.get(species, 30.0))
     scale = float(params.get("lower_ml_scale") or LOWER_ML_SCALE)
-    use_iml = params.get("use_iml", True) not in (False, "false", 0, "0")
+    # IML is folded into the molecular layer unless asked for (2026-10-13):
+    # the papers that do not draw it keep it in the molecular layer -- it is
+    # dendrites taking the commissural input, not granule cell bodies.
+    use_iml = params.get("use_iml", False) not in (False, "false", 0, "0",
+                                                   None)
     # How the blade is cut. 'iml': GCL at its thickness against the hilus,
     # the molecular layer above in thirds, OML / MML / IML. 'mml': the same,
     # the inner third part of the MML -- the lab's scheme, and the way to
