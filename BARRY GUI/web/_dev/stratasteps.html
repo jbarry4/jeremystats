@@ -438,28 +438,11 @@ const PATH = 'demo:ds-tutorial';
       await untilN(() => imlIds() > 0, 200);
       ck('... and it comes back', imlIds() > 0, imlIds());
     }
-    // No IML at all: fissure to hilus in three equal parts.
-    const thirds = Array.from(D().querySelectorAll('.ss-drawer button'))
-      .find((b) => /in thirds/.test(b.textContent));
-    ck('there is a choice of OML, MML, GCL in thirds', !!thirds);
-    if (thirds) {
-      thirds.click();
-      await untilN(() => imlIds() === 0, 200);
-      await sleep(300);
-      const ls = (SS()._state().ghost || {}).lines || [];
-      const at = (a, b) => (ls.find((l) => l.above === a && l.below === b) || {}).at;
-      const f = at('ca1_slm', 'dg_oml1'), m = at('dg_oml1', 'dg_mml1');
-      const g = at('dg_mml1', 'dg_gcl1'), h = at('dg_gcl1', 'hil');
-      const parts = [m - f, g - m, h - g];
-      ck('... which cuts the blade in three parts within a channel of each other',
-         imlIds() === 0 && parts.every((x) => isFinite(x) && x > 0)
-           && Math.max(...parts) - Math.min(...parts) <= 1,
-         JSON.stringify(parts));
-      const back2 = Array.from(D().querySelectorAll('.ss-drawer button'))
-        .find((b) => /its own \(IML\)/.test(b.textContent));
-      if (back2) back2.click();
-      await untilN(() => imlIds() > 0, 200);
-    }
+    // Fissure to hilus in equal thirds (OML, MML, GCL) was tried and taken
+    // out the same day: no paper cuts it that way.
+    ck('there is no "in thirds" choice',
+       !Array.from(D().querySelectorAll('.ss-drawer button'))
+         .some((b) => /in thirds/.test(b.textContent)));
 
     hd('Step 3: Method B');
     const runBtn = Array.from(D().querySelectorAll('.ss-drawer .btn'))
@@ -550,6 +533,41 @@ const PATH = 'demo:ds-tutorial';
     ck('Step 3 evidence shows theta\u2019s sink in the molecular layer',
        Array.from(A().querySelectorAll('.sa-card h3'))
          .some((h) => /sink in the molecular layer/.test(h.textContent)));
+
+    // The theta phase x depth gamma map (beta): worked out on the server
+    // in real seconds, so waited on with real requests.
+    for (let k = 0; k < 1200; k++) {
+      if (A().querySelectorAll('.sa-pm-fig').length >= 3
+          || /Could not draw it/.test((A().querySelector('.sa-pm') || {}).textContent || '')) break;
+      await W().fetch('/api/cfc/job/none').catch(() => null);
+      await sleep(50);
+    }
+    const figs = A().querySelectorAll('.sa-pm-fig');
+    ck('the phase map draws slow, mid and fast gamma', figs.length === 3,
+       ((A().querySelector('.sa-pm') || {}).textContent || '').slice(0, 160));
+    ck('... each with a reading of where it is most theta-locked',
+       Array.from(figs).every((f) => /theta-locked|Nothing to read/.test(f.textContent)));
+    const q = A().querySelector('.sa-pm .sa-q');
+    ck('the phase map has a ?', !!q);
+    if (q) {
+      q.click();
+      await sleep(200);
+      const ex = A().getElementById('saExplain');
+      ck('... which opens the animated explanation', !!ex
+         && !!ex.querySelector('canvas') && ex.querySelectorAll('.sa-ex-dot').length === 5,
+         ex ? ex.textContent.slice(0, 80) : 'nothing');
+      const t1 = (A().querySelector('.sa-ex-title') || {}).textContent;
+      const next = ex && Array.from(ex.querySelectorAll('button'))
+        .find((b) => /Next/.test(b.textContent));
+      if (next) next.click();
+      await sleep(100);
+      const t2 = (A().querySelector('.sa-ex-title') || {}).textContent;
+      ck('... and Next moves it on', !!t2 && t2 !== t1, t1 + ' -> ' + t2);
+      const x = ex && ex.querySelector('.sa-ex-x');
+      if (x) x.click();
+      await sleep(100);
+      ck('... and \u00d7 closes it', !A().getElementById('saExplain'));
+    }
     af.src = 'about:blank';
     await sleep(100);
     af.remove();

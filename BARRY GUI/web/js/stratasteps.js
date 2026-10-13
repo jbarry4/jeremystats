@@ -1202,7 +1202,8 @@ BARRY.strataSteps = (function () {
      (OML, then MML down to the granule layer -- the lab's own scheme). Saved
      with the sheet's parameters. */
   function imlRow(prop) {
-    const scheme = prop.ml_scheme || (prop.use_iml === false ? 'mml' : 'iml');
+    const scheme = prop.ml_scheme === 'iml' || prop.ml_scheme === 'mml'
+      ? prop.ml_scheme : (prop.use_iml === false ? 'mml' : 'iml');
     const set = async (v) => {
       if (v === scheme) return;
       await saveStrata({ params: { ml_scheme: v, use_iml: v === 'iml' } }, true);
@@ -1239,17 +1240,13 @@ BARRY.strataSteps = (function () {
                        onclick: () => set('iml') }),
         el('button', { class: 'mini' + (scheme === 'mml' ? ' on' : ''),
                        text: 'part of MML',
-                       title: 'As above, with the inner third part of the '
-                         + 'MML (the lab\u2019s scheme). The OML line does not '
-                         + 'move.',
+                       title: 'Leave IML out: the inner third is part of the '
+                         + 'MML (the lab\u2019s scheme). The OML line stays '
+                         + 'at a third, where the anatomy has it, and the GCL '
+                         + 'keeps its own thickness: the molecular layer is '
+                         + 'three bands of about equal width and the granule '
+                         + 'layer is not one of them.',
                        onclick: () => set('mml') }),
-        el('button', { class: 'mini' + (scheme === 'thirds' ? ' on' : ''),
-                       text: 'none: OML, MML, GCL in thirds',
-                       title: 'No IML and no set GCL thickness: fissure to '
-                         + 'hilus in three equal parts. Simple, but the GCL '
-                         + 'comes out thicker than the atlas has it (in a '
-                         + 'mouse about 90 \u00b5m against 60).',
-                       onclick: () => set('thirds') }),
       ]),
     ]);
     }

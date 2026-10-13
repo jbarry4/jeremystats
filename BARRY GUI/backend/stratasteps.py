@@ -1545,6 +1545,124 @@ def ica_kind(peak_hz):
     return next(k for k, hi in ICA_KINDS if f < hi)
 
 
+# ==========================================================================
+# Theta phase x depth gamma maps (beta, 2026-10-12)
+# ==========================================================================
+# Each input to the dentate brings its own gamma at its own moment of theta
+# (Schomburg et al. 2014, Neuron 84:470; Fernandez-Ruiz et al. 2021,
+# Science 372:eabf3119). With theta from CA1 pyramidale, 0 deg its peak and
+# 180 its trough, Fernandez-Ruiz et al. (rats) have slow gamma, 30-50 Hz,
+# in the outer molecular layer on the descending phase (~47 deg); fast
+# gamma, 100-150 Hz, in the middle molecular layer at the trough (~168);
+# mid gamma, 60-80 Hz, in the inner molecular layer on the ascending phase
+# (~284). In mice Lasztoczi & Klausberger (2017, Brain Struct Funct 222:3355)
+# found both dentate gammas, ~40 and ~110 Hz, nearer the trough -- so in
+# mice the depth may say more than the phase.
+#
+# So: for every channel, how strong each gamma is at each moment of theta.
+# Amplitude is the Hilbert envelope of the band, read on the CSD (complex
+# analytic signals go through the CSD as real and imaginary parts, so the
+# envelope is the CSD's own) or on the LFP. Theta Walk only. Each walking
+# run is filtered with a second and a half of recording either side, so the
+# filters' edges never land in the map, and every fourth sample is kept:
+# 312 a second is plenty to average an envelope by theta phase.
+PHASE_BANDS = (("slow", 30.0, 50.0), ("mid", 60.0, 80.0), ("fast", 100.0, 150.0))
+PHASE_THETA = (4.0, 12.0)              # Schomburg et al.'s theta band
+PHASE_BINS = 18                        # 20 degrees each
+PHASE_VERSION = 1
+
+
+def phase_map(b, mk, order=None, bad=(), spacing_um=20.0, ref=None,
+              max_walk_s=600.0, step=4):
+    rows = _order_rows(b, order)
+    nums = [b.channels[r] for r in rows]
+    badset = {int(x) for x in (bad or [])}
+    is_bad = np.array([n in badset for n in nums], dtype=bool)
+    if ref is None or int(ref) not in b.row:
+        raise StrataError("The phase map needs a theta reference (CA1 SP).")
+    r_ref = b.row[int(ref)]
+    lfs = float(b.meta["lfp_fs"])
+    n_samp = int(b.meta["n_samp"])
+    nyq = lfs / 2.0
+    walk = _sample_mask(b, mk["walk"])
+    starts, ends = _runs(walk)
+    keep = (ends - starts) >= int(lfs)            # runs of a second or more
+    starts, ends = starts[keep], ends[keep]
+    if not starts.size:
+        raise StrataError("No Theta Walk run of a second or more to map.")
+    pad = int(1.5 * lfs)
+    sos_t = _sig.butter(3, [PHASE_THETA[0] / nyq, PHASE_THETA[1] / nyq],
+                        btype="band", output="sos")
+    sos_b = {k: _sig.butter(3, [lo / nyq, min(hi, nyq * 0.9) / nyq],
+                            btype="band", output="sos")
+             for k, lo, hi in PHASE_BANDS}
+    nr = len(rows)
+    acc = {(k, w): np.zeros((nr, PHASE_BINS)) for k, _, _ in PHASE_BANDS
+           for w in ("csd", "lfp")}
+    count = np.zeros(PHASE_BINS)
+    used = 0
+    cap = int(max_walk_s * lfs)
+    # Long runs (all of a recording, when nothing is painted) in pieces of
+    # half a minute, each with its own padding, so a piece fits in memory.
+    piece = int(30 * lfs)
+    chunks = [(c, min(c + piece, z)) for a, z in zip(starts, ends)
+              for c in range(int(a), int(z), piece)]
+    from scipy import fft as _fft
+
+    def analytic(x, axis=-1):
+        n = x.shape[axis]
+        return np.take(_sig.hilbert(x, N=_fft.next_fast_len(n), axis=axis),
+                       np.arange(n), axis=axis)
+
+    for a, z in chunks:
+        if used >= cap:
+            break
+        z = min(z, a + (cap - used))
+        if z - a < int(lfs):
+            continue
+        i0, i1 = max(0, a - pad), min(n_samp, z + pad)
+        X = b.lfp_rows(rows, i0, i1)
+        X = _interp_rows(X, is_bad)
+        x_ref = b.lfp_rows([r_ref], i0, i1)[0].astype(np.float64)
+        sl = slice(a - i0, z - i0, step)
+        ph = np.angle(analytic(_sig.sosfiltfilt(sos_t, x_ref)))[sl]
+        k_bin = ((np.degrees(ph) % 360.0) // (360.0 / PHASE_BINS)).astype(int)
+        k_bin = np.clip(k_bin, 0, PHASE_BINS - 1)
+        count += np.bincount(k_bin, minlength=PHASE_BINS)
+        for k, _, _ in PHASE_BANDS:
+            F = _sig.sosfiltfilt(sos_b[k], X.astype(np.float64), axis=1)
+            Z = analytic(F, axis=1)[:, sl]
+            env = {"lfp": np.abs(Z),
+                   "csd": np.abs(csd_of(Z.real, spacing_um).astype(np.float64)
+                                 + 1j * csd_of(Z.imag, spacing_um))}
+            for w, E in env.items():
+                for i in range(nr):
+                    if np.isfinite(E[i]).all():
+                        acc[(k, w)][i] += np.bincount(k_bin, weights=E[i],
+                                                      minlength=PHASE_BINS)
+                    else:
+                        acc[(k, w)][i] = np.nan
+        used += z - a
+    with np.errstate(invalid="ignore", divide="ignore"):
+        maps = {key: v / np.maximum(count, 1)[None, :] for key, v in acc.items()}
+    for key in maps:
+        maps[key][is_bad] = np.nan
+    width = 360.0 / PHASE_BINS
+    return {
+        "version": PHASE_VERSION,
+        "channels": nums, "bad": [bool(x) for x in is_bad],
+        "ref_channel": int(ref), "walk_s": round(used / lfs, 1),
+        "theta_all_time": bool(mk.get("theta_all_time")),
+        "theta_band": list(PHASE_THETA),
+        "phase_deg": [round((i + 0.5) * width, 1) for i in range(PHASE_BINS)],
+        "phase_count": [int(c) for c in count],
+        "bands": [{"id": k, "lo": lo, "hi": hi,
+                   "csd": [_lst(r, 5) for r in maps[(k, "csd")]],
+                   "lfp": [_lst(r, 5) for r in maps[(k, "lfp")]]}
+                  for k, lo, hi in PHASE_BANDS],
+    }
+
+
 def ica_zone_sinks(comp, lo_row, hi_row, min_frac=0.3):
     """The component's deepest sink inside rows [lo_row, hi_row), if it is at
     least `min_frac` of the component's main sink -- a weak local dip in a
@@ -1996,11 +2114,16 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     use_iml = params.get("use_iml", True) not in (False, "false", 0, "0")
     # How the blade is cut. 'iml': GCL at its thickness against the hilus,
     # the molecular layer above in thirds, OML / MML / IML. 'mml': the same,
-    # the inner third part of the MML (the lab's scheme). 'thirds': no IML
-    # and no GCL thickness -- fissure to hilus in three equal parts, OML /
-    # MML / GCL (2026-10-12).
+    # the inner third part of the MML -- the lab's scheme, and the way to
+    # leave IML out that keeps to the anatomy: the molecular layer is three
+    # bands of about equal width, the perforant path filling the outer two
+    # and the commissural input the inner one, and the granule layer is not
+    # one of them. (A 'thirds' scheme -- fissure to hilus in three equal
+    # parts, OML / MML / GCL -- was tried on 2026-10-12 and taken out the
+    # same day: no paper divides it that way. A sheet that saved it is cut
+    # as 'mml'.)
     scheme = params.get("ml_scheme")
-    if scheme not in ("iml", "mml", "thirds"):
+    if scheme not in ("iml", "mml"):
         scheme = "iml" if use_iml else "mml"
     use_iml = scheme == "iml"
     below = params.get("below_lower") or "thal"
@@ -2022,15 +2145,10 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
                     "The fissure is within two contacts of the hilus, so "
                     "there is no molecular layer to divide. Check Steps 1 "
                     "and 2."]}
-    if scheme == "thirds":
-        gcl = U / 3.0
-        L = U - gcl                   # OML + MML, a third each
-        oml_frac = 0.5
-    else:
-        gcl = min(2.0 * h, U / 2.0)
-        L = U - gcl
-        oml_frac = 1.0 / 3.0
-    third = oml_frac * L              # the OML's thickness, either way
+    gcl = min(2.0 * h, U / 2.0)
+    L = U - gcl
+    oml_frac = 1.0 / 3.0
+    third = oml_frac * L              # the OML's thickness
     row = lambda d: _rows_for_depth(d, s)                     # noqa: E731
     up = [("ca1_slm", "dg_oml1", fissure_at),
           ("dg_oml1", "dg_mml1", row(F + third))]
@@ -2052,7 +2170,7 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     out_edge = None
     if hil_end < n:
         U2 = U * scale
-        gcl2 = U2 / 3.0 if scheme == "thirds" else gcl
+        gcl2 = gcl
         L2 = max(0.0, U2 - gcl2)
         low = [("hil", "dg_gcl2", hil_end)]
         if use_iml:
@@ -2134,9 +2252,6 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
                 if ln["above"] in ("dg_oml1", "dg_mml1") or \
                         ln["below"] in ("dg_mml1", "dg_iml1"):
                     ln["confidence"] = "guess"
-    if scheme == "thirds":
-        notes.append("No IML: fissure to hilus in three equal parts, OML, "
-                     "MML and GCL, each %.0f µm." % (U / 3.0))
     return {"step": 3, "lines": lines, "anchors": anchors, "notes": notes,
             "use_iml": use_iml, "ml_scheme": scheme, "below_lower": below,
             "upper_blade_um": round(U, 1),

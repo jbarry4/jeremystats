@@ -2878,34 +2878,103 @@ window.MONO_FIXTURE = {
   M.closeLeaf(); M.closeGhost(true);
   const JO = W().MONO_JOE;
   M.showTab('joe');
-  await until(() => D().getElementById('joeanswer'), 120);
+  await until(() => D().getElementById('joeanswer') && D().getElementById('joepick') && !D().getElementById('joepick').hidden, 120);
   const r8 = (mid, b, me) => JOE.results.find((r) => r.model === mid && r.band === b && (r.method === me || mid === 'm7'));
-  check('its own pane, the answer first: a row a model, theta and gamma × Welch and Dickson', !D().getElementById('joepane').hidden
-        && D().getElementById('narrowpane').hidden && D().querySelectorAll('#joeanswer tbody tr[data-model]').length === JOE.models.length
-        && D().querySelectorAll('#joeanswer thead th').length === 5, D().querySelectorAll('#joeanswer tbody tr[data-model]').length);
-  const cell8 = (mid, b, me) => D().querySelector('#joeanswer tr[data-model="' + mid + '"] td.jcell[data-band="' + b + '"][data-method="' + me + '"]');
-  const m2t = r8('m2', 'theta', 'welch');
-  check('a cell: the test of interest’s p from joe.json, and marked when its model opens follow-ups',
-        txt(cell8('m2', 'theta', 'welch').querySelector('.jp')) === 'p ' + M.fp(m2t.mixed.terms['Day × Phase × Pair'].p)
-        && cell8('m2', 'theta', 'welch').classList.contains('pass') === !!m2t.gate.passed && m2t.gate.passed,
-        txt(cell8('m2', 'theta', 'welch')));
-  const passFirst = JOE.results.filter((r) => JOE.models.find((m) => m.id === r.model).kind === 'first' && r.mixed && r.mixed.ok && r.gate.passed).length;
-  check('one line counts the first-pass fits that open, and the checks', new RegExp('^' + passFirst + ' of \\d+ first-pass model fits change from Precon1 to Precon4').test(txt(D().getElementById('joesay'))),
+  const lit8 = (r) => !!(r && r.mixed && r.mixed.ok && r.gate && r.gate.passed);
+  const first8 = JOE.models.filter((m) => m.kind === 'first'), checks8 = JOE.models.filter((m) => m.kind === 'check');
+  const BM8 = [['theta', 'welch'], ['theta', 'dickson'], ['gamma', 'welch'], ['gamma', 'dickson']];
+  const has8 = (m, me) => m.unit !== 'region' || me === 'welch';
+  check('its own pane, the answer first: lights, a row a comparison, theta and gamma × Welch and Dickson; the checks in a table of their own',
+        !D().getElementById('joepane').hidden && D().getElementById('narrowpane').hidden
+        && D().querySelectorAll('#joeanswer tbody tr[data-model]').length === first8.length && D().querySelectorAll('#joeanswer thead th').length === 5
+        && D().querySelectorAll('#joechecktbl tbody tr[data-model]').length === checks8.length
+        && D().getElementById('joeintro').compareDocumentPosition(D().getElementById('joechecks')) === Node.DOCUMENT_POSITION_FOLLOWING,
+        D().querySelectorAll('#joeanswer tbody tr[data-model]').length + ' + ' + D().querySelectorAll('#joechecktbl tbody tr[data-model]').length);
+  const cell8 = (tid, mid, b, me) => D().querySelector('#' + tid + ' tr[data-model="' + mid + '"] td.jcell[data-band="' + b + '"][data-method="' + me + '"]');
+  const wrong8 = [];
+  for (const [tid, ms] of [['joeanswer', first8], ['joechecktbl', checks8]]) {
+    for (const m of ms) {
+      for (const [b, me] of BM8) {
+        const c = cell8(tid, m.id, b, me);
+        if (!has8(m, me)) { if (c) wrong8.push(m.id + ' ' + b + ' ' + me + ' has a light'); continue; }
+        const on = lit8(r8(m.id, b, me));
+        if (!c || !!c.querySelector('.jlight.on') !== on || (m.kind === 'check' && on && !c.querySelector('.jlight.warn'))) wrong8.push(m.id + ' ' + b + ' ' + me);
+      }
+    }
+  }
+  check('every light lit exactly when its model passes in joe.json, a lit check amber, power with no Dickson light', wrong8.length === 0, wrong8.join(', '));
+  const STAT8 = /\bF\(|\bdf\b|Day ×|mixed model|Holm|RM-ANOVA|\bp [<=]|\bp \.\d/;
+  const face8 = txt(D().getElementById('joeintro')) + ' ' + txt(D().getElementById('joechecks'));
+  check('no statistics words on the face of the tab (F, df, Day ×, mixed model, Holm, a p)', !STAT8.test(face8), (face8.match(STAT8) || [''])[0]);
+  // The one line over the lights, from joe.json.
+  const rowsLit8 = (b) => first8.filter((m) => ['welch', 'dickson'].some((me) => has8(m, me) && lit8(r8(m.id, b, me)))).length;
+  const nT8 = rowsLit8('theta'), nG8 = rowsLit8('gamma');
+  const top8 = nG8 > nT8 ? ['Gamma', nG8] : ['Theta', nT8];
+  let split8 = 0;
+  for (const m of first8) for (const b of ['theta', 'gamma']) if (m.unit !== 'region' && lit8(r8(m.id, b, 'welch')) !== lit8(r8(m.id, b, 'dickson'))) split8++;
+  check('one line over the lights: how many comparisons changed in each band, and whether the two methods agree',
+        new RegExp('^' + top8[0] + ' changed in ' + top8[1] + ' of the ' + first8.length + ' comparisons').test(txt(D().getElementById('joesay')))
+        && (split8 ? txt(D().getElementById('joesay')).indexOf('disagree on ' + split8 + '.') >= 0 : /Both ways of computing coherence agree/.test(txt(D().getElementById('joesay')))),
         txt(D().getElementById('joesay')));
-  check('a check (Noise vs Click) is said to be expected null', /expected null/.test(txt(D().querySelector('#joeanswer tr[data-model="c1"] th'))));
-  // A check that reaches p < .05 (A/B/C/D sees the planted cue-1 change) is
-  // said so, and never claims the follow-ups only first-pass models open.
-  const c3c = cell8('c3', 'theta', 'welch');
-  check('a check at p < .05 says so, not “follow-ups” (checks open nothing)', r8('c3', 'theta', 'welch').gate.passed && c3c.classList.contains('pass')
-        && txt(c3c.querySelector('.jgate')) === 'p < .05' && !Array.from(D().querySelectorAll('#joeanswer tr.check .jgate')).some((g) => /follow/.test(txt(g))),
-        c3c && txt(c3c));
-  cell8('m4', 'gamma', 'dickson').click();
-  await until(() => JO.state.band === 'gamma' && JO.state.method === 'dickson' && D().getElementById('jm-m4'), 40);
+  // A picture at once: the first lit light's.
+  let fst8 = null;
+  for (const m of first8) { for (const [b, me] of BM8) { if (has8(m, me) && lit8(r8(m.id, b, me))) { fst8 = [m, b, me]; break; } } if (fst8) break; }
+  const pk8 = () => D().getElementById('joepick');
+  const strength8 = (p) => (p == null ? 'no evidence' : p < 0.01 ? 'strong evidence' : p < 0.05 ? 'some evidence' : 'no evidence');
+  const words8 = (m, r) => ['All pairs together: ' + strength8(r.mixed.terms['Day × ' + m.factor].p) + ' of a change.',
+    strength8(r.mixed.terms['Day × ' + m.factor + ' × Pair'].p) === 'no evidence' ? 'Pair by pair: none stands out.'
+      : 'Pair by pair: ' + strength8(r.mixed.terms['Day × ' + m.factor + ' × Pair'].p) + ' that some changed more than others.'];
+  check('a picture at once, for the first lit light: its name, the two days’ lines with no statistics in them, and what changed in words',
+        !!fst8 && pk8().dataset.model === fst8[0].id && pk8().dataset.band === fst8[1] && pk8().dataset.method === fst8[2]
+        && !!pk8().querySelector('svg.jplot') && txt(pk8().querySelector('svg.jplot')).indexOf('F(') < 0 && /Precon1.*Precon4/.test(txt(pk8().querySelector('svg.jplot')))
+        && cell8('joeanswer', fst8[0].id, fst8[1], fst8[2]).classList.contains('sel'),
+        pk8().dataset.model + ' ' + pk8().dataset.band + ' ' + pk8().dataset.method);
+  // Another light: its own picture and words, nothing else drawn again.
+  const tbl8 = D().getElementById('joeanswer');
+  cell8('joeanswer', 'm4', 'gamma', 'dickson').click();
+  await until(() => pk8().dataset.model === 'm4' && pk8().dataset.method === 'dickson', 40);
+  const m4m = JOE.models.find((m) => m.id === 'm4'), m4g = r8('m4', 'gamma', 'dickson');
+  const c4c = m4g.cells;
+  const w4 = words8(m4m, m4g);
+  check('a light clicked: its picture under the lights, the sentence with its own means, the evidence in words; the lights not drawn again',
+        tbl8.isConnected && pk8().dataset.band === 'gamma' && /^The switch/.test(txt(pk8().querySelector('h3')))
+        && ['Precon1', 'Precon4'].every((d) => m4m.levels.every((lv) => txt(pk8().querySelector('.jwhat')).indexOf(M.sig(c4c[d][lv.id].mean)) >= 0))
+        && txt(pk8().querySelector('.jverdict')) === w4.join('') && cell8('joeanswer', 'm4', 'gamma', 'dickson').classList.contains('sel')
+        && D().querySelectorAll('#joeanswer td.sel').length === 1 && pk8().querySelectorAll('svg.jplot circle.jpt[data-day="Precon4"]').length === 2,
+        txt(pk8().querySelector('.jwhat')) + ' | ' + txt(pk8().querySelector('.jverdict')));
+  const nm8 = pk8().querySelector('details.xmore[data-key="joe-num-first"]');
+  nm8.querySelector('summary').click();
+  await sleep(40);
+  check('its numbers one ▸ away: every term, both models, the RM-ANOVA saying how many rats it kept', nm8.querySelectorAll('table.jterms tbody tr').length === 7
+        && /RM-ANOVA \(\d of 8 rats\)/.test(txt(nm8.querySelector('table.jterms thead'))), txt(nm8.querySelector('table.jterms thead')));
+  nm8.querySelector('summary').click();
+  // The checks.
+  let nc8 = 0, on8 = 0;
+  for (const m of checks8) for (const [b, me] of BM8) { const r = r8(m.id, b, me); if (r && r.mixed && r.mixed.ok) { nc8++; if (lit8(r)) on8++; } }
+  check('the checks: their own title, and a line saying how many lit against what chance lights',
+        txt(D().querySelector('#joechecks h2')) === 'Checks: these should stay grey'
+        && new RegExp('^' + on8 + ' of ' + nc8 + ' lit; chance alone lights about ' + (Math.round(0.05 * nc8 * 10) / 10)).test(txt(D().getElementById('joechecksay'))),
+        txt(D().getElementById('joechecksay')));
+  check('a check’s picture is closed until a light is clicked', D().getElementById('joepickc').hidden);
+  cell8('joechecktbl', 'c3', 'theta', 'welch').click();
+  await until(() => !D().getElementById('joepickc').hidden, 40);
+  check('a check clicked (A/B/C/D, lit): its picture under the checks, each letter’s value on each day',
+        D().getElementById('joepickc').dataset.model === 'c3' && /^On Precon1: A /.test(txt(D().querySelector('#joepickc .jwhat')))
+        && D().querySelectorAll('#joepickc svg.jplot circle.jpt[data-day="Precon1"]').length === 4 && pk8().dataset.model === 'm4',
+        txt(D().querySelector('#joepickc .jwhat')));
+  check('and the separate script’s agreement in one plain line', /^A separate script, written with nothing from Jarvis, gets every one of these numbers/.test(txt(D().getElementById('joereal'))),
+        txt(D().getElementById('joereal')));
+  // Everything else, under one hood.
+  const hood8 = D().querySelector('#joehood details.xmore[data-key="joe-hood"]');
+  check('everything else under one hood, folded: how we measured, every test’s numbers, the files', !!hood8 && !hood8.open
+        && ['joedefs', 'joemodels', 'joeexports'].every((id) => hood8.contains(D().getElementById(id))));
+  hood8.querySelector('summary').click();
+  await sleep(40);
+  JO.band = 'gamma'; JO.method = 'dickson';
+  await until(() => JO.state.band === 'gamma' && JO.state.method === 'dickson' && D().getElementById('jm-m4') && D().querySelector('#joehood details.xmore[data-key="joe-hood"]').open, 40);
   const c4 = () => D().getElementById('jm-m4');
-  const m4g = r8('m4', 'gamma', 'dickson');
-  check('a cell clicked shows its band and method, and its model: the plot with F, df and p in its legend',
-        JO.state.band === 'gamma' && JO.state.method === 'dickson' && !!c4().querySelector('svg.jplot')
-        && txt(c4().querySelector('svg.jplot')).indexOf('F(' + m4g.mixed.terms['Day × Phase × Pair'].df1 + ', ' + m4g.mixed.terms['Day × Phase × Pair'].df2 + ')') >= 0,
+  check('under it, each model’s card: the plot with F, df and p in its legend',
+        !!c4().querySelector('svg.jplot') && txt(c4().querySelector('svg.jplot')).indexOf('F(' + m4g.mixed.terms['Day × Phase × Pair'].df1 + ', ' + m4g.mixed.terms['Day × Phase × Pair'].df2 + ')') >= 0,
         txt(c4().querySelector('svg.jplot')).slice(-160));
   check('a point a level for Precon1 and Precon4, Precon2 and 3 too when measured', c4().querySelectorAll('svg.jplot circle.jpt[data-day="Precon4"]').length === 2
         && c4().querySelectorAll('svg.jplot circle.jpt[data-day="Precon1"]').length === 2);
@@ -2926,6 +2995,8 @@ window.MONO_FIXTURE = {
         && /RM-ANOVA \(\d of 8 rats\)/.test(txt(tt8.querySelector('table.jterms thead'))), txt(tt8.querySelector('table.jterms thead')));
   JO.band = 'theta'; JO.method = 'welch';
   await sleep(40);
+  check('the picked lights survive the hood’s own band and method being changed', D().getElementById('joepick').dataset.model === 'm4'
+        && D().getElementById('joepickc').dataset.model === 'c3');
   const fol8 = D().querySelector('#jm-m2 details.xmore[data-key="jf-m2"]');
   check('a model its gate opened carries its follow-ups; one it kept shut, none', !!fol8 && !D().querySelector('#jm-m3 details.xmore[data-key="jf-m3"]'));
   fol8.querySelector('summary').click();
@@ -2980,22 +3051,23 @@ window.MONO_FIXTURE = {
   await sleep(300);
   const jw8p = figWords(D().getElementById('joepane'));
   check('and drawn again there, no figure word cut or on another', jw8p.length === 0, jw8p.slice(0, 4).join(' | '));
-  // A phone: the answer table a model a row with its four cells under it
-  // (no scrolling inside it), and every picture drawn about as wide as its
-  // box, so no word in one is smaller than about 8.5 px on screen.
+  // A phone: each comparison's name over its four lights (no scrolling
+  // inside the table), and every picture drawn about as wide as its box,
+  // so no word in one is smaller than about 8.5 px on screen.
   const ans8 = D().getElementById('joeanswer');
-  check('at 390 px the answer table fits its card, a model’s name over its four cells', ans8.scrollWidth <= ans8.parentElement.clientWidth + 1
+  check('at 390 px the lights fit their card, a comparison’s name over its four lights', ans8.scrollWidth <= ans8.parentElement.clientWidth + 1
         && getComputedStyle(ans8.querySelector('tbody tr[data-model]')).display === 'grid', ans8.scrollWidth + ' in ' + ans8.parentElement.clientWidth);
   const tiny8 = [];
   for (const g of D().querySelectorAll('#joepane svg.jplot, #joepane svg.jstrip, #joepane svg.jtime, #joepane svg.jharm, #joepane svg.jfp')) {
     const k = g.getBoundingClientRect().width / g.viewBox.baseVal.width;
+    if (!k) continue;                                    // folded away
     for (const t of g.querySelectorAll('text')) {
       const px = parseFloat(t.getAttribute('font-size')) * k;
       if (px < 8.5 && txt(t)) tiny8.push(g.getAttribute('class').split(' ').pop() + ' “' + txt(t) + '” ' + px.toFixed(1) + ' px');
     }
   }
   check('and every picture’s words at least 8.5 px there (the plot’s legend under it)', tiny8.length === 0
-        && Number(D().querySelector('#joepane svg.jplot text').closest('svg').querySelector('line[stroke-dasharray="5 3"]').getAttribute('y1')) > 178,
+        && Number(D().querySelector('#joepick svg.jplot').querySelector('line[stroke-dasharray="5 3"]').getAttribute('y1')) > 178,
         tiny8.slice(0, 4).join(' | '));
   if (STOP === 'joe') {
     const sa8 = new URLSearchParams(location.search);

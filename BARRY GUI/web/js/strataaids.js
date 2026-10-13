@@ -548,7 +548,12 @@
     } else if (step === '3') {
       grid.appendChild(methodA());
       grid.appendChild(thetaSink());
+      grid.appendChild(phaseCard());
       grid.appendChild(methodB());
+      if (!explainPosed) {
+        explainPosed = true;
+        setTimeout(() => explainer(true, Number(Q.get('explain')) || 0), 0);
+      }
     } else if (step === '4') {
       // Sign off: everything, so the whole sheet can be read at once.
       const ul = el('ul', { class: 'sa-checks' });
@@ -1035,6 +1040,643 @@
       }
     }
   }
+
+  /* ======================================================================
+     Theta phase x depth gamma maps (beta, 2026-10-12)
+     ======================================================================
+     For every channel, how strong each gamma is at each moment of CA1
+     theta (backend/stratasteps.py phase_map). After Schomburg et al. 2014
+     and Fernandez-Ruiz et al. 2021: each input to the dentate brings its
+     own gamma at its own moment of theta, into its own band of the
+     molecular layer, so going down the probe the hot spot moves -- and
+     where it moves is a boundary. Two cycles are drawn, as the papers do,
+     so a spot near 0/360 is not cut in half. */
+  let pmap = null;
+  let pmapFor = null;
+  let pmapErr = null;
+  let pmapBusy = false;
+  let pmView = 'csd';              // 'csd' | 'lfp'
+  let pmNorm = 'depth';            // 'depth' | 'map'
+  // Where the papers put each gamma, CA1 theta, 0 = peak (Fernandez-Ruiz
+  // et al. 2021, rats).
+  const PM_PHASE = { slow: 47, mid: 284, fast: 168 };
+
+  async function loadPhaseMap() {
+    const key = [GID, JSON.stringify(state.overrides || {}), state.states_n || 0]
+      .join('|');
+    if (pmapBusy || pmapFor === key) return;
+    pmapBusy = true;
+    pmapErr = null;
+    try {
+      const r = await post('/api/strata/' + encodeURIComponent(GID) + '/phasemap',
+                           { path, channels: state.channels,
+                             overrides: state.overrides || {} });
+      pmap = r.map;
+    } catch (e) {
+      pmapErr = e.message;
+      pmap = null;
+    }
+    pmapFor = key;
+    pmapBusy = false;
+    if (state && state.step === '3') render();
+  }
+
+  function phaseCard() {
+    const c = el('div', { class: 'sa-card sa-pm', style: 'grid-column: 1 / -1' }, [
+      el('h3', { class: 'sa-pm-head' }, [
+        el('span', { text: 'Theta phase \u00d7 depth: when each gamma comes, '
+          + 'and where' }),
+        el('span', { class: 'sa-beta', text: 'beta' }),
+        el('button', { class: 'sa-q', text: '?', title: 'How to read this',
+                       onclick: () => explainer(true) }),
+      ]),
+    ]);
+    if (!pmap) {
+      c.appendChild(el('p', { text: pmapErr ? 'Could not draw it: ' + pmapErr
+        : 'Working it out \u2014 half a minute the first time, then it is '
+          + 'kept.' }));
+      if (!pmapErr) loadPhaseMap();
+      return c;
+    }
+    const seg = (opts, cur, set) => el('span', { class: 'ctl-seg' },
+      opts.map(([v, t, why]) => el('button', {
+        class: 'mini' + (cur === v ? ' on' : ''), text: t, title: why,
+        onclick: () => { set(v); render(); } })));
+    c.appendChild(el('div', { class: 'sa-pm-ctl' }, [
+      seg([['csd', 'CSD', 'Gamma in the current source density: sharp in '
+             + 'depth, where the synapses are.'],
+           ['lfp', 'LFP', 'Gamma in the raw field: smoother, spread by '
+             + 'volume conduction.']], pmView, (v) => { pmView = v; }),
+      seg([['depth', 'Each depth', 'Each channel on its own scale: when in '
+             + 'theta each channel\u2019s gamma comes, however weak. A '
+             + 'channel with a different gain cannot take over the picture.'],
+           ['map', 'Whole map', 'One colour scale for every channel: where '
+             + 'the gamma is strongest. In the CSD a contact with a different '
+             + 'gain shows as a stripe across every phase.']],
+          pmNorm, (v) => { pmNorm = v; }),
+      el('span', { class: 'sa-pm-note', text: pmap.walk_s + ' s of '
+        + (pmap.theta_all_time ? 'recording' : 'Theta Walk') + ' \u00b7 theta '
+        + 'from ch ' + pmap.ref_channel + ' (CA1 SP), 0\u00b0 its peak' }),
+    ]));
+    const row = el('div', { class: 'sa-pm-row' });
+    for (const bd of pmap.bands || []) {
+      const K = KIND[bd.id] || KIND.fast;
+      const cv = el('canvas');
+      row.appendChild(el('figure', { class: 'sa-pm-fig' }, [
+        el('figcaption', {}, [
+          el('i', { class: 'sa-swatch', style: 'background:' + tok(K.tok) }),
+          el('b', { text: K.short.replace(/^./, (x) => x.toUpperCase()) + ' '
+            + bd.lo + '-' + bd.hi + ' Hz' }),
+          el('span', { text: ' \u2192 ' + K.want }),
+        ]),
+        cv,
+        pmSummary(bd),
+      ]));
+      requestAnimationFrame(() => pmPanel(cv, bd));
+    }
+    c.appendChild(row);
+    return c;
+  }
+
+  /* The map's values for one band, normalised as asked: rows x bins. */
+  function pmValues(bd) {
+    const raw = (bd[pmView] || []).map((r) => r.map((v) => (v == null ? null : v)));
+    if (pmNorm === 'depth') {
+      return raw.map((r) => {
+        const f = r.filter((v) => v != null);
+        if (!f.length) return r;
+        const lo = Math.min(...f), hi = Math.max(...f);
+        return r.map((v) => (v == null ? null : hi > lo ? (v - lo) / (hi - lo) : 0));
+      });
+    }
+    const all = [];
+    raw.forEach((r) => r.forEach((v) => { if (v != null) all.push(v); }));
+    all.sort((a, b) => a - b);
+    const lo = all.length ? all[Math.floor(all.length * 0.02)] : 0;
+    const hi = all.length ? all[Math.floor(all.length * 0.97)] : 1;
+    return raw.map((r) => r.map((v) => (v == null ? null
+      : Math.max(0, Math.min(1, (v - lo) / ((hi - lo) || 1))))));
+  }
+
+  /* Each channel's reading of one band: its preferred phase (the
+     amplitude-weighted circular mean, above the channel's own floor) and
+     how strongly theta locks it -- (max - min) / mean, which a contact's
+     gain cancels out of. */
+  const PM_LOCKED = 0.12;          // locked enough to have a phase
+  function pmRows(bd) {
+    const A = bd[pmView] || [];
+    const deg = pmap.phase_deg;
+    return A.map((row) => {
+      const f = (row || []).filter((v) => v != null);
+      if (f.length < deg.length) return null;
+      const lo = Math.min(...f), hi = Math.max(...f);
+      const mean = f.reduce((a, b) => a + b, 0) / f.length;
+      let x = 0, y = 0;
+      row.forEach((v, j) => {
+        const w = v - lo, a = deg[j] * Math.PI / 180;
+        x += w * Math.cos(a); y += w * Math.sin(a);
+      });
+      const phase = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+      return { phase, lock: mean > 0 ? (hi - lo) / mean : 0 };
+    });
+  }
+  const angDiff = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
+
+  /* The most theta-locked channel in the upper molecular layer. */
+  function pmPeak(bd, rows) {
+    rows = rows || pmRows(bd);
+    const rowOf = new Map(data.channels.map((ch, i) => [ch, i]));
+    const top = (layerRows('dg_oml1') || [])[0];
+    const g = layerRows('dg_gcl1');
+    let best = null;
+    pmap.channels.forEach((ch, k) => {
+      const r = rowOf.get(ch);
+      const q = rows[k];
+      if (r == null || !q) return;
+      if (top != null && g && (r < top || r >= g[0])) return;
+      if (!best || q.lock > best.lock) best = { k, r, ch, phase: q.phase, lock: q.lock };
+    });
+    return best;
+  }
+
+  /* Going down from a little above the fissure to the granule layer, the
+     biggest turn in preferred phase between neighbouring locked channels
+     -- a picture of where one input's gamma hands over to the next. */
+  function pmJump(bd, rows) {
+    rows = rows || pmRows(bd);
+    const rowOf = new Map(data.channels.map((ch, i) => [ch, i]));
+    const top = (layerRows('dg_oml1') || [])[0];
+    const g = layerRows('dg_gcl1');
+    const lo = top != null ? Math.max(0, top - 8) : 0;
+    const hi = g ? g[0] : data.channels.length;
+    let best = null, prev = null;
+    pmap.channels.forEach((ch, k) => {
+      const r = rowOf.get(ch);
+      const q = rows[k];
+      if (r == null || r < lo || r >= hi || !q || q.lock < PM_LOCKED) return;
+      if (prev) {
+        const d = angDiff(q.phase, prev.q.phase);
+        if (d >= 60 && (!best || d > best.d)) {
+          best = { d, kAbove: prev.k, kBelow: k, chAbove: prev.ch, chBelow: ch,
+                   rBelow: r, from: prev.q.phase, to: q.phase };
+        }
+      }
+      prev = { k, ch, q };
+    });
+    return best;
+  }
+
+  /* The nearest of the step's lines to a row edge, by name. */
+  function nearestLine(rEdge) {
+    let best = null;
+    for (const l of stepLines()) {
+      if (l.at == null) continue;
+      const d = Math.abs(l.at - rEdge);
+      if (!best || d < best.d) best = { d, l };
+    }
+    return best;
+  }
+
+  function pmSummary(bd) {
+    const K = KIND[bd.id] || KIND.fast;
+    const rows = pmRows(bd);
+    const b = pmPeak(bd, rows);
+    const out = el('div', { class: 'sa-verdicts' });
+    if (!b) {
+      out.appendChild(el('p', { class: 'sa-exp-why', text: 'Nothing to read '
+        + 'in the molecular layer yet.' }));
+      return out;
+    }
+    const where = layerAt(b.r);
+    const ok = where.indexOf(K.want) >= 0;
+    const lit = PM_PHASE[bd.id];
+    out.appendChild(el('div', { class: 'sa-verdict ' + (ok ? 'match' : 'off') }, [
+      el('b', { text: ok ? '\u2713' : '\u2717' }),
+      el('span', { text: 'Most theta-locked in the molecular layer: ch ' + b.ch
+        + ' (' + where + '), at ' + Math.round(b.phase) + '\u00b0. Expected '
+        + K.want + (lit != null ? ' (~' + lit + '\u00b0 in rats)' : '') + '.' }),
+    ]));
+    const j = pmJump(bd, rows);
+    if (j) {
+      const near = nearestLine(j.rBelow);
+      out.appendChild(el('div', { class: 'sa-verdict none' }, [
+        el('b', { text: '\u21c5' }),
+        el('span', { text: 'Its phase turns from ' + Math.round(j.from)
+          + '\u00b0 to ' + Math.round(j.to) + '\u00b0 between ch ' + j.chAbove
+          + ' and ch ' + j.chBelow + (near ? (near.d === 0 ? ', right on'
+            : ', ' + near.d + ' ch from') + ' the ' + (LAYER[near.l.above]
+              || near.l.above) + '|' + (LAYER[near.l.below] || near.l.below)
+            + ' line' : '') + '.' }),
+      ]));
+    }
+    return out;
+  }
+
+  function pmPanel(cv, bd) {
+    if (!cv.isConnected) return;
+    const chans = pmap.channels;
+    const n = chans.length, nb = pmap.phase_deg.length;
+    const H = Math.max(240, Math.min(460, n * 7));
+    const wave = 22;
+    const { ctx, w } = prep(cv, H + wave + 20);
+    const left = 26, right = 4, top = wave + 2;
+    const pw = w - left - right, lane = H / n;
+    const V = pmValues(bd);
+    // two cycles
+    const cols = nb * 2;
+    const img = ctx.createImageData(cols, n);
+    for (let i = 0; i < n; i++) {
+      for (let x = 0; x < cols; x++) {
+        const v = (V[i] || [])[x % nb];
+        const o = (i * cols + x) * 4;
+        if (v == null) { img.data[o + 3] = 0; continue; }
+        const c = jet(v);
+        img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2];
+        img.data[o + 3] = 255;
+      }
+    }
+    const off = document.createElement('canvas');
+    off.width = cols; off.height = n;
+    off.getContext('2d').putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, left, top, pw, H);
+    // theta, as a guide: 0 deg its peak
+    const X = (deg) => left + pw * deg / 720;
+    ctx.strokeStyle = tok('--c3'); ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let d = 0; d <= 720; d += 6) {
+      const y = 2 + (wave - 6) * (0.5 - 0.5 * Math.cos(d * Math.PI / 180));
+      if (d === 0) ctx.moveTo(X(d), y); else ctx.lineTo(X(d), y);
+    }
+    ctx.stroke();
+    // where the papers put this gamma (rats), twice
+    const lit = PM_PHASE[bd.id];
+    if (lit != null) {
+      ctx.fillStyle = tok((KIND[bd.id] || KIND.fast).tok);
+      for (const d of [lit, lit + 360]) {
+        ctx.beginPath();
+        ctx.moveTo(X(d) - 4, 0); ctx.lineTo(X(d) + 4, 0); ctx.lineTo(X(d), 6);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    overlay(ctx, chans, left, pw, top, lane, true);
+    axisChannels(ctx, chans, top, lane, left - 3);
+    // each locked channel's preferred phase: the path the eye follows down
+    const rows = pmRows(bd);
+    ctx.fillStyle = '#fff';
+    rows.forEach((q, k) => {
+      if (!q || q.lock < PM_LOCKED) return;
+      for (const d of [q.phase, q.phase + 360]) {
+        ctx.globalAlpha = Math.min(1, 0.35 + q.lock);
+        ctx.beginPath();
+        ctx.arc(X(d), top + (k + 0.5) * lane, Math.max(1.6, Math.min(3, lane * 0.35)),
+                0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    ctx.globalAlpha = 1;
+    const j = pmJump(bd, rows);
+    if (j) {
+      const y = Math.round(top + j.kBelow * lane) + 0.5;
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(left + pw, y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = '600 10px system-ui, sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      const txt = 'phase jump';
+      const tw = ctx.measureText(txt).width;
+      ctx.fillStyle = 'rgba(0,0,0,.6)';
+      ctx.fillRect(left + 3, y - 13, tw + 6, 12);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(txt, left + 6, y - 2);
+    }
+    const b = pmPeak(bd, rows);
+    if (b) {
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+      for (const d of [b.phase, b.phase + 360]) {
+        ctx.beginPath(); ctx.arc(X(d), top + (b.k + 0.5) * lane, 5.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = tok('--text-3');
+    ctx.font = '9.5px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (const d of [0, 180, 360, 540, 720]) {
+      ctx.fillText(d + '\u00b0', Math.min(w - 12, Math.max(left + 8, X(d))),
+                   top + H + 4);
+    }
+  }
+
+  /* ---------- "?": how to read it, animated ---------- */
+  const EXPLAIN = [
+    { title: 'Theta has a clock',
+      text: 'This is theta in CA1\u2019s pyramidal layer. Every moment gets a '
+        + 'phase: 0\u00b0 at the peak, 180\u00b0 in the trough, 360\u00b0 at '
+        + 'the next peak.' },
+    { title: 'Gamma rides on theta',
+      text: 'Gamma comes in short bursts on top of theta. Each input to the '
+        + 'dentate brings its own, into its own band of the molecular layer: '
+        + 'slow gamma from the lateral entorhinal cortex into the OML, fast '
+        + 'from the medial entorhinal cortex into the MML, mid from the other '
+        + 'hippocampus into the IML. Each tends to come at its own moment.' },
+    { title: 'Pour it into a grid',
+      text: 'For every channel, the strength of the gamma at each moment is '
+        + 'dropped into the column for that phase. Over thousands of theta '
+        + 'cycles a picture builds up: depth down, theta phase across.' },
+    { title: 'Read the picture',
+      text: 'A hot spot\u2019s row is the layer that gamma lives in; its column '
+        + 'is when in theta it comes. The white dots follow each channel\u2019s '
+        + 'favourite moment down the probe. Where they jump to another '
+        + 'phase you are crossing from one input\u2019s territory into the '
+        + 'next: that is a boundary, and the map marks the biggest jump.' },
+    { title: 'Mice are not rats',
+      text: 'The little triangles are where the papers put each gamma in rats '
+        + '(slow ~47\u00b0, fast ~168\u00b0, mid ~284\u00b0; Fern\u00e1ndez-Ruiz '
+        + 'et al. 2021). In mice the dentate\u2019s slow and fast gamma both '
+        + 'lean to the trough, while gamma in CA1\u2019s lacunosum-moleculare '
+        + 'comes near the peak (Laszt\u00f3czi & Klausberger 2017): there the '
+        + 'sharpest jump is often the fissure itself. So in mice, read OML '
+        + 'against MML from where each gamma is most locked, and a jump as a '
+        + 'check on the fissure. Beta: a picture to look at, not a vote.' },
+  ];
+  let exScene = 0;
+  let exAuto = true;
+  let exRaf = null;
+  let exT0 = 0;
+
+  function explainer(on, scene) {
+    let box = document.getElementById('saExplain');
+    if (!on) {
+      if (exRaf) cancelAnimationFrame(exRaf);
+      exRaf = null;
+      if (box) box.remove();
+      return;
+    }
+    if (box) box.remove();
+    exScene = 0; exAuto = true; exT0 = performance.now();
+    const cv = el('canvas', { class: 'sa-ex-cv' });
+    const title = el('h4', { class: 'sa-ex-title' });
+    const text = el('p', { class: 'sa-ex-text' });
+    const dots = el('div', { class: 'sa-ex-dots' });
+    const go = (k) => {
+      exScene = (k + EXPLAIN.length) % EXPLAIN.length;
+      exT0 = performance.now();
+      paintText();
+    };
+    const paintText = () => {
+      title.textContent = (exScene + 1) + ' / ' + EXPLAIN.length + ' \u00b7 '
+        + EXPLAIN[exScene].title;
+      text.textContent = EXPLAIN[exScene].text;
+      dots.innerHTML = '';
+      EXPLAIN.forEach((_, k) => dots.appendChild(el('button', {
+        class: 'sa-ex-dot' + (k === exScene ? ' on' : ''),
+        title: EXPLAIN[k].title,
+        onclick: () => { exAuto = false; go(k); } })));
+    };
+    box = el('div', { class: 'sa-explain', id: 'saExplain',
+                      onclick: (e) => { if (e.target === box) explainer(false); } }, [
+      el('div', { class: 'sa-ex-card' }, [
+        el('button', { class: 'sa-ex-x', text: '\u00d7', title: 'Close',
+                       onclick: () => explainer(false) }),
+        title, cv, text,
+        el('div', { class: 'sa-ex-nav' }, [
+          el('button', { class: 'mini', text: '\u2190 Back',
+                         onclick: () => { exAuto = false; go(exScene - 1); } }),
+          dots,
+          el('button', { class: 'mini', text: 'Next \u2192',
+                         onclick: () => { exAuto = false; go(exScene + 1); } }),
+        ]),
+      ]),
+    ]);
+    document.body.appendChild(box);
+    if (scene != null) { exAuto = false; exScene = scene % EXPLAIN.length; }
+    paintText();
+    const still = window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const frame = (now) => {
+      if (!cv.isConnected) { exRaf = null; return; }
+      const t = still ? 3.2 : (now - exT0) / 1000;
+      if (exAuto && !still && t > 9) { go(exScene + 1); }
+      drawScene(cv, exScene, t);
+      exRaf = requestAnimationFrame(frame);
+    };
+    // One still frame at once (a hidden tab, or a headless page, may never
+    // give a frame), then the animation.
+    drawScene(cv, exScene, 3.2);
+    exRaf = requestAnimationFrame(frame);
+  }
+  /* `?explain=N` opens the "?" at scene N once the step is drawn: a pose
+     for a screenshot. */
+  let explainPosed = Q.get('explain') == null;
+
+  /* The scenes. t is seconds into the scene. */
+  function drawScene(cv, k, t) {
+    const { ctx, w } = prep(cv, 260);
+    const h = 260;
+    ctx.clearRect(0, 0, w, h);
+    const C = { slow: tok('--c2'), mid: tok('--warn'), fast: tok('--c4'),
+                theta: tok('--c3'), text: tok('--text'), dim: tok('--text-3'),
+                line: tok('--line') };
+    const ease = (x) => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
+    const LAY = [['OML', 'slow', 47], ['MML', 'fast', 168], ['IML', 'mid', 284],
+                 ['GCL', null, null]];
+    // a theta wave across [x0, x1] at height y +- a, scrolling with t;
+    // returns the phase (deg) at x
+    const speed = 70;                      // degrees a second
+    const phaseAt = (x, x0, span) => ((x - x0) / span) * 720 + t * speed;
+    const thetaWave = (x0, x1, y, a) => {
+      ctx.strokeStyle = C.theta; ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let x = x0; x <= x1; x += 2) {
+        const d = phaseAt(x, x0, x1 - x0);
+        const yy = y - a * Math.cos(d * Math.PI / 180);
+        if (x === x0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      }
+      ctx.stroke();
+    };
+    const label = (txt, x, y, col, align, size) => {
+      ctx.fillStyle = col || C.text;
+      ctx.font = (size || 11) + 'px system-ui, sans-serif';
+      ctx.textAlign = align || 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(txt, x, y);
+    };
+    // the pattern the grid ends up with: 1 near each layer's phase
+    const hot = (li, deg) => {
+      const pref = LAY[li][2];
+      if (pref == null) return 0.05;
+      const dd = Math.abs((((deg - pref) % 360) + 540) % 360 - 180);
+      return Math.exp(-(dd * dd) / (2 * 45 * 45));
+    };
+    if (k === 0) {
+      const x0 = 20, x1 = w - 196, y = 130;
+      thetaWave(x0, x1, y, 60);
+      const nowX = x0 + (x1 - x0) * 0.4;
+      const d = phaseAt(nowX, x0, x1 - x0) % 360;
+      ctx.strokeStyle = C.dim; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(nowX, 40); ctx.lineTo(nowX, 220); ctx.stroke();
+      ctx.setLineDash([]);
+      const yy = y - 60 * Math.cos(d * Math.PI / 180);
+      ctx.fillStyle = C.text;
+      ctx.beginPath(); ctx.arc(nowX, yy, 6, 0, Math.PI * 2); ctx.fill();
+      // the dial
+      const cx = w - 80, cy = 130, R = 58;
+      ctx.strokeStyle = C.line; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+      label('0\u00b0 peak', cx, cy - R - 12, C.dim, 'center', 10);
+      label('180\u00b0 trough', cx, cy + R + 12, C.dim, 'center', 10);
+      label('90\u00b0', cx + R + 14, cy, C.dim, 'center', 10);
+      label('270\u00b0', cx - R - 16, cy, C.dim, 'center', 10);
+      const a = (d - 90) * Math.PI / 180;
+      ctx.strokeStyle = C.theta; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + R * 0.85 * Math.cos(a), cy + R * 0.85 * Math.sin(a));
+      ctx.stroke();
+      label(Math.round(d) + '\u00b0', cx, cy + 4, C.text, 'center', 13);
+      return;
+    }
+    if (k === 1 || k === 2) {
+      // a probe on the left, a lane per layer with its gamma riding theta
+      const px = 28, laneTop = 54, laneH = 44;
+      const x0 = 70, x1 = k === 1 ? w - 20 : w * 0.52;
+      thetaWave(x0, x1, 26, 14);
+      label('theta', x0 - 8, 26, C.theta, 'right', 10);
+      ctx.fillStyle = C.line;
+      ctx.fillRect(px - 5, laneTop - 6, 10, laneH * 4 + 12);
+      LAY.forEach(([name, kind, pref], li) => {
+        const yc = laneTop + li * laneH + laneH / 2;
+        label(name, px + 12, yc - laneH / 2 + 8, kind ? C[kind] : C.dim, 'left', 10);
+        if (!kind) {
+          ctx.strokeStyle = C.dim; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(x0, yc); ctx.lineTo(x1, yc); ctx.stroke();
+          return;
+        }
+        const f = kind === 'slow' ? 0.35 : kind === 'mid' ? 0.6 : 1.0;
+        ctx.strokeStyle = C[kind]; ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        for (let x = x0; x <= x1; x += 1) {
+          const d = phaseAt(x, x0, x1 - x0);
+          const env = hot(li, d);
+          const yy = yc - (laneH * 0.42) * env * Math.sin(x * f + t * 9);
+          if (x === x0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+        }
+        ctx.stroke();
+      });
+      if (k === 1) return;
+      // the grid, filling up
+      const gx = w * 0.58, gw = w - gx - 14, nb = 12;
+      const cw = gw / nb;
+      const fill = ease(t / 6);
+      LAY.forEach((_, li) => {
+        for (let j = 0; j < nb; j++) {
+          const deg = (j + 0.5) * 30;
+          const v = hot(li, deg) * fill;
+          const c = jet(0.08 + 0.9 * v);
+          ctx.fillStyle = 'rgb(' + c.map(Math.round).join(',') + ')';
+          ctx.fillRect(gx + j * cw, laneTop + li * laneH, cw - 1, laneH - 1);
+        }
+      });
+      label('0\u00b0', gx, laneTop + 4 * laneH + 10, C.dim, 'left', 9);
+      label('360\u00b0', gx + gw, laneTop + 4 * laneH + 10, C.dim, 'right', 9);
+      // drops flying from the lanes into their columns
+      for (let q = 0; q < 10; q++) {
+        const life = ((t * 0.9 + q * 0.37) % 1.6) / 1.6;
+        const li = q % 3;
+        const deg = (LAY[li][2] + (q * 23 % 60) - 30 + 360) % 360;
+        const sx = x1, sy = laneTop + li * laneH + laneH / 2;
+        const ex = gx + (deg / 30) * cw, ey = sy;
+        const e = ease(life);
+        ctx.globalAlpha = 1 - life;
+        ctx.fillStyle = C[LAY[li][1]];
+        ctx.beginPath();
+        ctx.arc(sx + (ex - sx) * e, sy - Math.sin(e * Math.PI) * 26, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      return;
+    }
+    // 3 and 4: the finished picture(s). rows: [name, colour, phase|null]
+    const drawGrid = (gx, gy, gw, gh, rowsIn, caption) => {
+      const rows = rowsIn || LAY.map(([n, kind, pref]) => [n, kind ? C[kind] : C.dim, pref]);
+      const nb = 24, rh = gh / rows.length, cw = gw / nb;
+      rows.forEach(([name, col, pref], li) => {
+        for (let j = 0; j < nb; j++) {
+          const deg = (j + 0.5) * 30;
+          let v = 0.05;
+          if (pref != null) {
+            const dd = Math.abs((((deg - pref) % 360) + 540) % 360 - 180);
+            v = Math.exp(-(dd * dd) / (2 * 45 * 45));
+          }
+          const pulse = 0.85 + 0.15 * Math.sin(t * 3 + li);
+          const c = jet(0.08 + 0.9 * v * pulse);
+          ctx.fillStyle = 'rgb(' + c.map(Math.round).join(',') + ')';
+          ctx.fillRect(gx + j * cw, gy + li * rh, cw - 0.5, rh - 1);
+        }
+        if (pref != null) {
+          ctx.fillStyle = '#fff';
+          for (const d of [pref, pref + 360]) {
+            ctx.beginPath();
+            ctx.arc(gx + gw * d / 720, gy + li * rh + rh / 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        label(name, gx - 6, gy + li * rh + rh / 2, col, 'right', 10);
+      });
+      label('0\u00b0', gx, gy + gh + 9, C.dim, 'left', 9);
+      label('360\u00b0', gx + gw / 2, gy + gh + 9, C.dim, 'center', 9);
+      label('720\u00b0', gx + gw, gy + gh + 9, C.dim, 'right', 9);
+      if (caption) label(caption, gx + gw / 2, gy - 10, C.text, 'center', 11);
+      return rh;
+    };
+    if (k === 3) {
+      const gx = 60, gy = 34, gw = w - 90, gh = 190;
+      const rh = drawGrid(gx, gy, gw, gh, null, null);
+      // the dots step from one phase to the next going down
+      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      LAY.slice(0, 3).forEach(([, , pref], li) => {
+        const x = gx + gw * pref / 720, yy = gy + li * rh + rh / 2;
+        if (li === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      });
+      ctx.stroke();
+      // the boundary between OML and MML: dashed, drawn in as t runs
+      const y = gy + rh;
+      const len = gw * ease((t - 1) / 1.5);
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(gx, y); ctx.lineTo(gx + len, y); ctx.stroke();
+      ctx.setLineDash([]);
+      if (t > 2.5) {
+        ctx.globalAlpha = ease((t - 2.5) / 0.8);
+        const txt = 'boundary: the hot spot changes phase here';
+        ctx.font = '600 11px system-ui, sans-serif';
+        const tw = ctx.measureText(txt).width;
+        ctx.fillStyle = 'rgba(0,0,0,.72)';
+        ctx.fillRect(gx + gw - tw - 12, y - 9, tw + 10, 18);
+        label(txt, gx + gw - 7, y, '#fff', 'right', 11);
+        ctx.globalAlpha = 1;
+      }
+      return;
+    }
+    // 4: rats vs mice
+    const half = (w - 90) / 2;
+    drawGrid(56, 40, half - 20, 170, [['SLM', C.theta, 350], ['OML', C.slow, 47],
+                                      ['MML', C.fast, 168], ['GCL', C.dim, null]],
+             'rats: each input its moment');
+    const mx = 86 + half;
+    const rh = drawGrid(mx, 40, half - 20, 170, [['SLM', C.theta, 350],
+                                                 ['OML', C.slow, 175],
+                                                 ['MML', C.fast, 185],
+                                                 ['GCL', C.dim, null]],
+                        'mice: the big jump is the fissure');
+    const y = 40 + rh;
+    const len = (half - 20) * ease((t - 0.8) / 1.2);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(mx, y); ctx.lineTo(mx + len, y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('saExplain')) explainer(false);
+  });
 
   window.addEventListener('resize', () => { if (document.body.classList.contains('steps')) render(); });
   /* `?step=1` (with gid and path) opens a step on its own, without a

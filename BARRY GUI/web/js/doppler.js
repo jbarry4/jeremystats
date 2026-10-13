@@ -18,9 +18,9 @@
    THE SHAPE OF THE PANEL
      1. pick a recording
      2. check the channels -- the ones marked bad arrive already unticked
-     3. settings, with NO FILTERING by default, so a first run reproduces
-        the numbers the lab's MATLAB produces and any difference from them
-        is something somebody chose
+     3. settings -- the validated Storm method by default (the IED detector
+        study's choice), and the lab's MATLAB exactly one switch away, for
+        comparing with runs made before it
      4. run it, and read the report
      5. bank it under a name, and take it to Spotter
 
@@ -43,13 +43,23 @@ BARRY.doppler = (function () {
     // session it belongs to or it files itself under "Unfiled" and is never
     // found again.
     row: null,
-    llw_s: 0.040,
+    /* THE VALIDATED DEFAULTS -- the Storm method. Every field is one of
+       backend/doppler.py's STORM, which the IED detector study chose: it
+       catches every hand-sorted Solid on the ten PTEN recordings with the
+       fewest other candidates. Legacy, the lab's MATLAB exactly, is one
+       click away in Settings. */
+    method: 'storm',
+    llw_s: 0.015,
     prc: 99.9,
-    // BOTH OFF. See the header: the default is the legacy answer.
-    notch_hz: null,
-    band_lo: 3,
-    band_hi: 70,
-    band_on: false,
+    notch_hz: 60,
+    band_lo: 20,
+    band_hi: 300,
+    band_on: true,
+    car: true,
+    min_channels: 7,
+    merge_s: 0.3,
+    min_event_s: 0.0125,
+    detect_on: 'even',
     /* Channels left out of THIS RUN ONLY, by CSC number. Not bad channels:
        a bad channel is a claim about the recording that every other tool
        acts on, and this is a question somebody is asking of one run --
@@ -61,18 +71,60 @@ BARRY.doppler = (function () {
     count: 'one',
   };
 
-  /* The .m file's own, named once so the "changed" tag and the reset cannot
-     drift apart from what the fields start at. */
-  const DEFAULTS = { llw_s: 0.040, prc: 99.9, notch_hz: null, band_on: false };
+  /* Each method's own, named once so the "changed" tag and the reset cannot
+     drift apart from what the fields start at. These mirror STORM and LEGACY
+     in backend/doppler.py; the server fills in the same values when a field
+     is not sent, so the two can only disagree about what is DISPLAYED. */
+  const METHODS = {
+    storm: { llw_s: 0.015, prc: 99.9, notch_hz: 60, band_on: true,
+             band_lo: 20, band_hi: 300, car: true, min_channels: 7,
+             merge_s: 0.3, min_event_s: 0.0125, detect_on: 'even' },
+    legacy: { llw_s: 0.040, prc: 99.9, notch_hz: null, band_on: false,
+              band_lo: 10, band_hi: 300, car: false, min_channels: 1,
+              merge_s: 0.3, min_event_s: 0.025, detect_on: 'all' },
+  };
+  const PARAM_FIELDS = Object.keys(METHODS.storm);
+
+  function useMethod(m) {
+    q.method = m;
+    Object.assign(q, METHODS[m]);
+  }
+
+  function isDefault() {
+    const d = METHODS[q.method] || METHODS.storm;
+    return PARAM_FIELDS.every((k) => q[k] === d[k]);
+  }
+
+  /* The Many picker's state. Nothing is ticked for you: the list is every
+     recording the cluster can read, hundreds of them, and one click sending
+     all of them is not a default. */
+  let vaccList = null;
+  let vaccListSeq = 0;
+  let vaccFilter = '';
+  const picked = new Set();
 
   let est = null;        // what a run would cost
-  let job = null;        // the run in flight
-  let poll = null;
-  let res = null;        // the finished run
+  let res = null;        // the run on screen
   let snips = null;      // the sample of raw waveforms, fetched once
   let reviews = null;    // runs that have already landed
-  let batch = null;      // a batch in flight
-  let batchPlan = null;
+
+  /* EVERY RUN ON THE CLUSTER, by job id -- {id, kind: 'one'|'many',
+     members: [{gid, label}], path, params, snap}. One map for single runs
+     and batches, filled from the server (`/api/doppler/inflight`) whenever
+     the panel is shown, so leaving the view or reloading the page does not
+     lose a run. The panel used to keep the run it had started in a
+     variable and nothing else: leave and come back and it was gone, or it
+     kept asking about a job the server had dropped and said "running"
+     beside the same run already landed. */
+  const flights = new Map();
+  let loop = null;       // the one timer that follows them
+  let attached = false;  // asked the server since this panel was last shown
+
+  let landedOpen = null; // key of the landed run on screen
+  const freshKeys = new Set();   // landed while this panel was watching
+  let landedAll = false; // the whole landed list, not the latest few
+  let revealNext = false;        // the next report drawn plays its reveal
+  let pickRev = 0;       // bumps when ticks change in bulk
   let editorOpen = false;
   /* Settings stays open across a repaint. Every change to it re-estimates
      and repaints, and `paint()` rebuilds the panel -- so a `<details>` that
@@ -97,9 +149,27 @@ BARRY.doppler = (function () {
 
   /* ---------------------------------------------------------------- paint */
 
+  /* A stable small number for an object, so "is this the same estimate /
+     the same result / the same list as last time" can go in a section's
+     signature without writing the whole thing out. */
+  const ids = new WeakMap();
+  let idn = 0;
+  function oid(o) {
+    if (!o || typeof o !== 'object') return String(o);
+    if (!ids.has(o)) ids.set(o, ++idn);
+    return ids.get(o);
+  }
+
   /* Fails CLOSED. Anything that repaints the toolkit calls this, and a
      guard written as `!==` let a stale timer paint Doppler's report over
-     whatever tool had since been opened. */
+     whatever tool had since been opened.
+
+     NOTHING IS REBUILT THAT HAS NOT CHANGED. The panel is a list of parts,
+     each with a signature of what it shows (`BARRY.ui.sections`); a poll,
+     an estimate landing or a tick rebuilds only the parts it touched. It
+     used to empty the host and build everything on every call -- the
+     batch poll did that every 1.5 s -- which is what "the UI keeps
+     reloading" was. */
   function paint() {
     if (!BARRY.views.toolkit || BARRY.views.toolkit.tool() !== 'doppler') {
       return;
@@ -107,48 +177,72 @@ BARRY.doppler = (function () {
     const host = document.getElementById('tkResult');
     if (!host) return;
     dark = !!(BARRY.state && BARRY.state.dark !== false);
-    host.innerHTML = '';
+    /* Shown afresh -- a reload, or back from another tool, which empties
+       the host -- so ask the server what is out on the cluster and what has
+       landed meanwhile. */
+    if (!host.querySelector(':scope > [data-sec="head"]')) attached = false;
+    if (!attached) { attached = true; attach(); }
+    if (q.count !== 'many' && !q.gid) openOnSomething();
 
-    host.appendChild(head());
-    /* Where and how many (constitution §6d). Doppler runs only on the
-       VACC, so there is no Where to choose -- the bar shows How many, and
-       says why nothing can run when the VACC is not set up. One recording
-       and many used to be on screen together, one under the other. */
-    host.appendChild(BARRY.ui.runBar({
-      modes: { vacc: ['one', 'many'] },
-      where: 'vacc', count: q.count,
-      onChange: (w, c) => { q.count = c; paint(); },
-    }));
+    const qs = JSON.stringify(paramsBody()) + '|' + q.exclude.join(',')
+             + '|' + q.preset;
+    const mine = myFlight();
+    const list = [
+      { key: 'head', sig: 'head', build: head },
+      /* Where and how many (constitution §6d). Doppler runs only on the
+         VACC, so there is no Where to choose -- the bar shows How many,
+         and says why nothing can run when the VACC is not set up. */
+      { key: 'bar', sig: [q.count, vaccOn()], build: () => BARRY.ui.runBar({
+          modes: { vacc: ['one', 'many'] },
+          where: 'vacc', count: q.count,
+          onChange: (w, c) => { q.count = c; paint(); },
+        }) },
+    ];
     if (q.count === 'many') {
-      host.appendChild(batchCard());
-      host.appendChild(reviewCard());
+      list.push({ key: 'mpick', sig: [oid(vaccList)], build: manyPickCard,
+                  update: manyPickUpdate });
+      list.push({ key: 'mrun', sig: 'mrun', build: manyRunShell,
+                  update: manyRunUpdate });
     } else {
-      if (!q.gid) openOnSomething();
-      host.appendChild(pickCard());
-      if (est) host.appendChild(planCard());
-      if (job) host.appendChild(stageCard());
-      if (res) host.appendChild(reportCard());
-      if (res) host.appendChild(bankCard());
-      host.appendChild(reviewCard());
+      list.push({ key: 'pick', sig: [q.gid, rows().length], build: pickCard });
+      if (est) {
+        list.push({ key: 'plan', sig: [q.gid], build: planShell,
+                    update: (node) => planUpdate(node, qs, mine) });
+      }
+      if (mine) {
+        list.push({ key: 'stages', sig: mine.id, build: stageCard,
+                    update: () => paintStages(mine.snap) });
+      }
+      if (res) {
+        list.push({ key: 'report', sig: [oid(res), (q.row || {}).label],
+                    build: reportCard });
+        list.push({ key: 'bank', sig: [oid(res), banking], build: bankCard });
+      }
     }
+    list.push({ key: 'runs', sig: 'runs', build: runsShell,
+                update: runsUpdate });
 
-    if (res) {
-      // Twice on purpose: now, so a repaint that is not a layout change
-      // draws immediately, and again next frame, when the canvases have
-      // been given their real width by the grid.
-      drawPlots();
-      requestAnimationFrame(drawPlots);
+    const built = BARRY.ui.sections(host, list);
+    if (built.report) {
+      /* Now, so a rebuild draws at once; and next frame, when the grid has
+         given the canvases their real width. The reveal plays once, on the
+         first of the two. */
+      const reveal = revealNext;
+      revealNext = false;
+      drawPlots(reveal);
+      requestAnimationFrame(() => { if (!reveal) drawPlots(false); });
     }
-    if (job && !poll) startPoll();
+    if (flights.size && !loop) startLoop();
   }
 
   function head() {
     return BARRY.ui.stepHeader({
       title: 'Doppler',
       step: BARRY.ui.stepOf('doppler'),
-      blurb: 'Interictal discharges by line length, on the cluster. The '
-           + 'detector is Kleen’s LLspikedetector, checked event for '
-           + 'event against the MATLAB it came from.',
+      blurb: 'Interictal discharges by line length, on the cluster. By '
+           + 'default the validated Storm settings, which caught every '
+           + 'hand-sorted IED on the PTEN recordings; the lab’s original '
+           + 'MATLAB is one click away in Settings.',
     });
   }
 
@@ -205,57 +299,74 @@ BARRY.doppler = (function () {
 
   /* ------------------------------------------- 2 and 3. channels, settings */
 
-  function planCard() {
-    const p = (est && est.plan) || {};
-    const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label',
-        text: '2. What it will read' }),
+  /* "2. What it will read": one card, three parts inside it that change
+     for different reasons -- the channels (the estimate, the exclusions),
+     the settings (the parameters) and the run line (the estimate and
+     whether a run is on the cluster). Reconciled inside the card, so a run
+     starting does not rebuild the settings somebody has open. */
+  function planShell() {
+    return el('div', { class: 'card' }, [
+      el('div', { class: 'section-label', text: '2. What it will read' }),
+      el('div', { class: 'dop-plan-parts' }),
     ]);
+  }
 
-    /* A recording in more than one piece, said before anything is
-       submitted. Reading only part one reports a rate for a third of a
-       recording and looks entirely healthy doing it. */
-    if (est && est.split) {
-      box.appendChild(el('p', { class: 'warn-line', text: est.split }));
-    }
+  function planUpdate(node, qs, mine) {
+    const inner = node.querySelector('.dop-plan-parts');
+    if (!inner) return;
+    BARRY.ui.sections(inner, [
+      { key: 'chans', enter: false,
+        sig: [oid(est), q.exclude.join(','), q.preset, savingBad],
+        build: () => el('div', {}, [
+          /* A recording in more than one piece, said before anything is
+             submitted. Reading only part one reports a rate for a third
+             of a recording and looks entirely healthy doing it. */
+          est && est.split ? el('p', { class: 'warn-line', text: est.split })
+                           : null,
+          selection(),
+        ].filter(Boolean)) },
+      { key: 'params', enter: false, sig: [qs], build: params },
+      { key: 'cont', enter: false, sig: [oid(est)], build: continuityNote },
+      { key: 'go', enter: false,
+        sig: [oid(est), mine ? mine.id : '', vaccOn(), qs],
+        build: () => el('div', { class: 'tk-actions dop-actions dop-go' }, [
+          vaccSentence(),
+          el('span', { class: 'spacer' }),
+          mine ? el('button', { class: 'btn ghost', text: 'Cancel',
+                                onclick: () => cancel(mine.id) }) : null,
+          runButton(mine),
+        ].filter(Boolean)) },
+    ]);
+  }
 
-    box.appendChild(selection());
-    box.appendChild(params());
-
+  function continuityNote() {
     const c = (est && est.continuity) || {};
     if (c.pending) {
       /* Only the cluster has this recording: the gaps, and whether it is
          in more than one piece, are checked there as part of the run. */
-      box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+      return el('p', { class: 'hint quiet', style: 'max-width:78ch',
         text: 'Not on this computer — read off the cluster. ' + (c.note || '')
             + ' A recording in pieces is refused there with the same '
-            + 'sentence it gets here.' }));
-    } else if (c.n_segments > 1) {
-      box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
+            + 'sentence it gets here.' });
+    }
+    if (c.n_segments > 1) {
+      return el('p', { class: 'hint quiet', style: 'max-width:78ch',
         text: 'This recording is in ' + c.n_segments + ' pieces with '
             + (Math.round((c.seconds_lost || 0) * 10) / 10) + ' s missing '
             + 'between them. Detection runs on the pieces joined end to '
             + 'end, which is what the line-length transform has always been '
             + 'given; the times that come back are converted to the '
             + 'recording’s own clock, so a gap never becomes a lie '
-            + 'about when something happened.' }));
+            + 'about when something happened.' });
     }
-
-    box.appendChild(el('div', { class: 'tk-actions' }, [
-      vaccSentence(),
-      el('span', { class: 'spacer' }),
-      job ? el('button', { class: 'btn ghost', text: 'Cancel',
-        onclick: cancel }) : null,
-      runButton(),
-    ].filter(Boolean)));
-    return box;
+    return el('div', {});
   }
 
   function vaccOn() {
     return !!(BARRY.vacc && (BARRY.vacc.last || {}).configured);
   }
 
-  function runButton() {
+  function runButton(mine) {
     const v = (est && est.vacc) || {};
     const why = !vaccOn()
       ? 'No cluster is configured on this computer.'
@@ -263,10 +374,10 @@ BARRY.doppler = (function () {
                 : ('Runs on ' + (v.remote || 'the cluster')));
     return el('button', {
       class: 'btn',
-      text: job ? 'Running…' : 'Run on the VACC',
+      text: mine ? 'On the cluster' : 'Run on the VACC',
       // Disabled with the reason ON it rather than hidden: a control that
       // vanishes teaches nothing.
-      disabled: (job || !vaccOn() || !v.can || (est && est.split))
+      disabled: (mine || !vaccOn() || !v.can || (est && est.split))
         ? 'disabled' : null,
       title: why,
       onclick: () => run(false),
@@ -291,11 +402,15 @@ BARRY.doppler = (function () {
     // the cluster has actually done.
     const how = v.measured ? ''
       : ' (estimated until the cluster has run one)';
+    const twice = ((est && est.plan) || {}).passes === 2;
     return el('div', { class: 'hint quiet vacc-why',
-      text: 'About ' + there + ' s on VACC' + qd + how
-          + '. It reads the recording twice — the threshold is a '
-          + 'percentile over every kept channel and is not knowable until '
-          + 'all of them have been transformed once.' });
+      text: 'About ' + human(there) + ' on VACC' + qd + how + '. '
+          + (twice
+            ? 'It reads the recording twice: the threshold is a percentile '
+              + 'over every kept channel and is not knowable until all of '
+              + 'them have been transformed once.'
+            : 'It reads the recording once, decimating as it goes, and takes '
+              + 'the threshold from every detection channel at the end.') });
   }
 
   /* What is being read, said out loud rather than left to be inferred from
@@ -482,7 +597,7 @@ BARRY.doppler = (function () {
       ]));
     }
     d.appendChild(grid);
-    d.appendChild(el('div', { class: 'tk-actions' }, [
+    d.appendChild(el('div', { class: 'tk-actions dop-actions' }, [
       el('button', { class: 'btn ghost sm', text: 'Put them all back',
         disabled: (savingBad || !bad.length) ? 'disabled' : null,
         onclick: () => setBadSet([]) }),
@@ -519,108 +634,157 @@ BARRY.doppler = (function () {
     paint();
   }
 
-  const FIELDS = [
-    { key: 'llw_s', label: 'Line-length window', unit: 's', step: 0.005,
-      mname: 'llw',
-      why: 'How much signal each line-length value is measured over. '
-         + 'Shorter favours sharper things.' },
-    { key: 'prc', label: 'Threshold', unit: 'percentile', step: 0.05,
-      mname: 'prc',
-      why: 'Where the bar sits in the distribution of line-length values, '
-         + 'pooled across every channel that is read.' },
-  ];
+  /* ---- settings ---------------------------------------------------------
+
+     Two methods, one switch. STORM is what the IED detector study chose:
+     every hand-sorted Solid on the ten PTEN recordings (169 of 169) in 2,595
+     candidates, where the lab's original settings catch 111 in 4,447 -- and
+     still all 169 one step stricter on either the threshold or the channel
+     count, which is why it was chosen over cheaper settings that sit on a
+     cliff. Its numbers are in `FOOOF Playgroun/IED detection and such/
+     README.md`, and each field says what it fixed. LEGACY is the MATLAB
+     exactly. */
+  function numField(label, key, step, unit, why, scale) {
+    const k = scale || 1;
+    return BARRY.ui.field({
+      label: label + (unit ? ' (' + unit + ')' : ''), hint: why,
+      control: el('input', {
+        type: 'number', class: 'num', step: step, 'data-fk': 'num-' + key,
+        value: q[key] == null ? '' : +(q[key] * k).toFixed(4),
+        onchange: (e) => {
+          const v = Number(e.target.value);
+          if (!isFinite(v) || v <= 0) return;
+          q[key] = v / k;
+          changedParams();
+        },
+      }),
+    });
+  }
+
+  function changedParams() {
+    reset();
+    if (q.count === 'many') loadVaccList();
+    else refreshEstimate().then(paint);
+    paint();
+  }
+
+  function toggle(label, key, onVal, offVal, why) {
+    return el('div', {}, [
+      el('label', { class: 'toggle' }, [
+        el('input', {
+          type: 'checkbox', checked: q[key] === onVal ? 'checked' : null,
+          onchange: (e) => { q[key] = e.target.checked ? onVal : offVal;
+                             changedParams(); },
+        }),
+        el('span', { text: label }),
+      ]),
+      why ? el('p', { class: 'hint quiet', style: 'max-width:78ch',
+                      text: why }) : null,
+    ].filter(Boolean));
+  }
 
   function params() {
-    const changed = q.llw_s !== DEFAULTS.llw_s || q.prc !== DEFAULTS.prc
-                 || !!q.notch_hz || q.band_on;
+    const changed = !isDefault();
     const d = el('details', {
       class: 'incisor-params', open: paramsOpen ? 'open' : null,
       ontoggle: (e) => { paramsOpen = e.target.open; },
     }, [
       el('summary', {}, [
-        el('span', { text: '3. Settings' }),
+        // Inside Many's "2. Detection" card the number would be a third
+        // step that is not one.
+        el('span', { text: q.count === 'many' ? 'Settings' : '3. Settings' }),
         el('span', { class: changed ? 'inc-param-tag on' : 'inc-param-tag',
-          text: changed ? 'changed' : 'the detector’s own defaults' }),
+          text: changed ? 'changed'
+            : (q.method === 'storm' ? 'the validated defaults'
+                                    : 'the lab’s MATLAB, exactly') }),
       ]),
     ]);
+
+    d.appendChild(BARRY.ui.field({
+      label: 'Method', inline: true,
+      control: BARRY.ui.seg([
+        ['storm', 'Validated', 'The Storm method: the settings that caught '
+         + 'every hand-sorted IED with the fewest other candidates'],
+        ['legacy', 'Legacy MATLAB', 'Kleen’s LLspikedetector exactly as the '
+         + 'lab ran it -- for comparing with old runs'],
+      ], q.method, (m) => { useMethod(m); changedParams(); }),
+    }));
+    d.appendChild(el('p', { class: 'hint', style: 'max-width:80ch',
+      text: q.method === 'storm'
+        ? 'Validated on the ten PTEN hand-sorts: it catches all 169 '
+          + 'confirmed IEDs with about 15 candidates per IED, and still '
+          + 'catches all of them one step stricter -- chosen for that margin, '
+          + 'not just the count. The lab’s original settings catch 111 of '
+          + 'them with 4,447 candidates. '
+          + 'Common-average referencing and the band-pass do most of the '
+          + 'work -- they stop one noisy channel, whole-probe movement and '
+          + 'fast unit or muscle activity from counting as discharges.'
+        : 'The original detector, exactly: raw signal at its native rate, '
+          + 'a 40 ms window, one pooled 99.9th percentile, every channel '
+          + 'read. Checked event for event against the MATLAB. Use it to '
+          + 'compare with runs made before the Storm method existed.' }));
+
     const grid = el('div', { class: 'wiz-grid' });
-    for (const f of FIELDS) {
-      grid.appendChild(BARRY.ui.field({
-        label: f.label + ' (' + f.unit + ')',
-        hint: f.why + '  MATLAB calls it ' + f.mname + '.',
-        control: el('input', {
-          type: 'number', class: 'num', step: f.step, value: q[f.key],
-          onchange: (e) => {
-            const v = Number(e.target.value);
-            if (!isFinite(v) || v <= 0) return;
-            q[f.key] = v;
-            reset();
-            refreshEstimate().then(paint);
-          },
-        }),
-      }));
+    grid.appendChild(numField('Line-length window', 'llw_s', 2.5, 'ms',
+      q.method === 'storm'
+        ? '15 ms was best; 10, 12.5, 20 and 30 cost more candidates.'
+        : 'MATLAB calls it llw.', 1000));
+    grid.appendChild(numField('Threshold', 'prc', 0.05, 'percentile',
+      'Where the bar sits in the line-length values, pooled over the '
+      + 'detection channels of this recording.'));
+    if (q.method === 'storm') {
+      grid.appendChild(numField('At least this many channels', 'min_channels',
+        1, '', 'An event has to show up on this many detection channels. '
+          + 'The lower half of the lab’s 5–10 rule; an upper limit never '
+          + 'helped.'));
+      grid.appendChild(numField('Merge events closer than', 'merge_s', 50,
+        'ms', 'Discharges this close together are one event -- the lab’s '
+          + 'own definition. Longer looks cheaper only because it folds '
+          + 'two IEDs into one candidate.', 1000));
+      grid.appendChild(numField('Shortest event', 'min_event_s', 2.5, 'ms',
+        'Shorter crossings are dropped.', 1000));
     }
     d.appendChild(grid);
 
-    /* FILTERING IS OFF BY DEFAULT, and the reason is on the control rather
-       than in a document nobody opens. The original detector does none, so
-       an unfiltered run is the one that can be held against it. */
-    d.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
-      text: 'The original detector does no filtering at all, so nothing is '
-          + 'filtered here unless you ask. An unfiltered run is the one '
-          + 'that reproduces the numbers the lab’s MATLAB produces; '
-          + 'anything else is a different question, worth asking, and '
-          + 'worth banking as its own run so the two can be compared.' }));
+    if (q.method === 'storm') {
+      d.appendChild(toggle('Common-average reference (per probe bank)', 'car',
+        true, false,
+        'The single biggest improvement. Subtracts each bank’s mean of its '
+        + 'good channels, so a noisy channel or the whole probe moving does '
+        + 'not read as a discharge. A bank marked not connected is left out.'));
+      d.appendChild(BARRY.ui.field({
+        label: 'Detect on', inline: true,
+        control: BARRY.ui.seg([
+          ['even', 'Even channels', 'What the study validated, and the '
+           + 'lab’s convention'],
+          ['all', 'Every channel', 'The channel-count rule was not validated '
+           + 'on this'],
+          ['odd', 'Odd channels', ''],
+        ], q.detect_on, (v) => { q.detect_on = v; changedParams(); }),
+      }));
+    }
 
-    d.appendChild(el('label', { class: 'toggle' }, [
-      el('input', {
-        type: 'checkbox', checked: q.notch_hz ? 'checked' : null,
-        onchange: (e) => {
-          q.notch_hz = e.target.checked ? 60 : null;
-          reset(); refreshEstimate().then(paint); paint();
-        },
-      }),
-      el('span', { text: 'Notch 60 Hz and its harmonics first' }),
-    ]));
-    d.appendChild(el('p', { class: 'hint quiet', style: 'max-width:78ch',
-      text: 'Mains sits inside the band a line-length transform is most '
-          + 'sensitive to, so a channel with more of it produces more '
-          + 'events for no physiological reason.' }));
-
-    d.appendChild(el('label', { class: 'toggle' }, [
-      el('input', {
-        type: 'checkbox', checked: q.band_on ? 'checked' : null,
-        onchange: (e) => {
-          q.band_on = e.target.checked;
-          reset(); refreshEstimate().then(paint); paint();
-        },
-      }),
-      el('span', { text: 'Band-pass before the transform' }),
-    ]));
+    d.appendChild(toggle('Notch 60 Hz and its harmonics', 'notch_hz', 60, null,
+      null));
+    d.appendChild(toggle('Band-pass before the transform', 'band_on', true,
+      false, q.method === 'storm'
+        ? '20–300 Hz. Raw line length counts fast unit and muscle activity, '
+          + 'which is most of what the original let through. The low edge '
+          + 'matters little -- 5, 10, 20 Hz or none are within a few percent '
+          + '-- and 20 Hz was the one with margin.' : null));
     if (q.band_on) {
       d.appendChild(el('div', { class: 'wiz-grid' }, [
-        BARRY.ui.field({ label: 'Low (Hz)', inline: true,
-          control: el('input', { type: 'number', class: 'num', step: 1,
-            value: q.band_lo,
-            onchange: (e) => { q.band_lo = Number(e.target.value);
-                               reset(); refreshEstimate().then(paint); } }) }),
-        BARRY.ui.field({ label: 'High (Hz)', inline: true,
-          control: el('input', { type: 'number', class: 'num', step: 5,
-            value: q.band_hi,
-            onchange: (e) => { q.band_hi = Number(e.target.value);
-                               reset(); refreshEstimate().then(paint); } }) }),
+        numField('Low', 'band_lo', 1, 'Hz', ''),
+        numField('High', 'band_hi', 5, 'Hz', ''),
       ]));
     }
 
     if (changed) {
-      d.appendChild(el('div', { class: 'tk-actions' }, [
+      d.appendChild(el('div', { class: 'tk-actions dop-actions' }, [
         el('button', { class: 'btn ghost sm',
-          text: 'Back to the detector’s defaults',
-          onclick: () => {
-            q.llw_s = DEFAULTS.llw_s; q.prc = DEFAULTS.prc;
-            q.notch_hz = null; q.band_on = false;
-            reset(); refreshEstimate().then(paint); paint();
-          } }),
+          text: q.method === 'storm' ? 'Back to the validated defaults'
+                                     : 'Back to the MATLAB’s own',
+          onclick: () => { useMethod(q.method); changedParams(); } }),
       ]));
     }
     return d;
@@ -629,13 +793,7 @@ BARRY.doppler = (function () {
   /* ------------------------------------------------------------ the run */
 
   function body(extra) {
-    const b = {
-      path: q.path,
-      llw_s: q.llw_s,
-      prc: q.prc,
-      notch_hz: q.notch_hz,
-      band: q.band_on ? [q.band_lo, q.band_hi] : null,
-    };
+    const b = Object.assign({ path: q.path }, paramsBody());
     /* Only when something is left out, and as INDICES because that is what
        the spec takes -- translated from the numbers here, at the last
        moment, from the channel list this recording actually has. The
@@ -652,9 +810,27 @@ BARRY.doppler = (function () {
     return Object.assign(b, extra || {});
   }
 
+  /* Every detection parameter, as backend/doppler.py's `params_from` reads
+     it. Sent in full, so the server never has to guess which default a
+     missing field meant. */
+  function paramsBody() {
+    return {
+      method: q.method,
+      llw_s: q.llw_s, prc: q.prc,
+      notch_hz: q.notch_hz,
+      band: q.band_on ? [q.band_lo, q.band_hi] : null,
+      car: q.car, min_channels: q.min_channels,
+      merge_s: q.merge_s, min_event_s: q.min_event_s,
+      detect_on: q.detect_on,
+    };
+  }
+
+  /* What is on screen is about to stop being true: a different recording,
+     different channels, different settings. The run on the cluster is NOT
+     touched -- it belongs to the cluster, and lands in the list whatever
+     the panel is showing by then. */
   function reset() {
-    res = null; snips = null; job = null; hoverEv = null;
-    if (poll) { clearInterval(poll); poll = null; }
+    res = null; snips = null; hoverEv = null; landedOpen = null;
   }
 
   async function refreshEstimate() {
@@ -667,8 +843,65 @@ BARRY.doppler = (function () {
     }
   }
 
+  /* ---- runs on the cluster -------------------------------------------- */
+
+  /* The single run started from THIS recording, if one is on the cluster:
+     the One panel shows its progress card. A run of another recording is
+     in the runs list, not here -- a stage card for a recording you are not
+     looking at reads as this one being busy. */
+  function myFlight() {
+    for (const f of flights.values()) {
+      if (f.kind === 'one' && (f.members[0] || {}).gid === q.gid) return f;
+    }
+    return null;
+  }
+  function batchFlight() {
+    let out = null;
+    for (const f of flights.values()) {
+      if (f.kind === 'many' && (!out || f.started > out.started)) out = f;
+    }
+    return out;
+  }
+
+  function track(snap, kind, members, extra) {
+    if (!snap || !snap.id) return;
+    const had = flights.get(snap.id);
+    flights.set(snap.id, Object.assign(had || {
+      id: snap.id, kind, members: members || [], started: Date.now() / 1000,
+    }, extra || {}, { snap }));
+    if (!had && BARRY.vaccBusy) BARRY.vaccBusy.start();
+    startLoop();
+  }
+
+  /* Whatever the server says is on the cluster, picked up again. Asked once
+     each time the panel is shown, so a run started before a reload, from
+     another view, or before the panel was last left is found where it is. */
+  async function attach() {
+    /* What landed while the panel was away, marked new; and the list read
+       again rather than trusted from before, which is how a run that had
+       landed went on being shown as running. */
+    const before = reviews ? new Set(reviews.map((r) => r.gid + '/' + r.key))
+                           : null;
+    let got = null;
+    try { got = await api('/api/doppler/inflight'); }
+    catch (e) { /* an older server, or none: nothing to pick up */ }
+    for (const it of ((got && got.jobs) || [])) {
+      const s = it.job || {};
+      if (s.status !== 'running' || flights.has(it.id)) continue;
+      track(s, it.kind, it.members, { path: it.path, params: it.params,
+                                      started: it.started });
+    }
+    await loadReviews(true);
+    if (before) {
+      for (const r of (reviews || [])) {
+        if (!before.has(r.gid + '/' + r.key)) freshKeys.add(r.key);
+      }
+    }
+    paint();
+  }
+
   async function run(force) {
-    if (!q.path || job) return;
+    if (!q.path || myFlight()) return;
     let started;
     try {
       started = await apiPost('/api/doppler/scan', body({ where: 'vacc',
@@ -677,56 +910,157 @@ BARRY.doppler = (function () {
       toast(e.message, 'err', 9000);
       return;
     }
-    if (started.cached) { adopt(started.result); paint(); return; }
-    job = started.job;
-    if (BARRY.vaccBusy) BARRY.vaccBusy.start();
+    if (started.cached) {
+      adopt(started.result, true);
+      paint();
+      return;
+    }
+    track(started.job, 'one',
+          [{ gid: q.gid, label: (q.row || {}).label || null }],
+          { path: q.path, params: paramsBody() });
     paint();
   }
 
-  function startPoll() {
-    poll = setInterval(async () => {
-      let got;
-      try {
-        got = await api('/api/cfc/job/' + job.id);
-      } catch (e) { return; }
-      job = got.job;
-      paintStages();
-      if (job.status === 'running') return;
-      clearInterval(poll); poll = null;
-      const done = job;
-      job = null;
-      if (BARRY.vaccBusy) BARRY.vaccBusy.stop();
-      if (done.status === 'done') {
-        try {
-          const r = await api('/api/cfc/result/' + done.id);
-          adopt(r.result);
-          /* Announced even when you are not looking at this tool. A cluster
-             job can sit in the queue long enough that nobody is watching
-             the tab it was started from. */
-          toast('Doppler found ' + (r.result || {}).n + ' IEDs on '
-                + ((q.row || {}).label || 'that recording') + '.', 'ok', 8000);
-        } catch (e) {
-          toast(e.message, 'err', 9000);
+  function startLoop() {
+    if (loop) return;
+    loop = setInterval(follow, 1000);
+  }
+  function stopLoop() {
+    if (loop) { clearInterval(loop); loop = null; }
+  }
+
+  /* One timer for every run on the cluster. A job the server no longer
+     knows -- it was restarted, or dropped it -- is let go of with a word,
+     rather than polled for ever beside its own landed result. */
+  let following = false;
+  async function follow() {
+    if (following) return;
+    if (!flights.size) { stopLoop(); return; }
+    following = true;
+    try {
+      for (const f of Array.from(flights.values())) {
+        let got;
+        try { got = await api('/api/cfc/job/' + f.id); }
+        catch (e) {
+          if (/No such run/.test(e.message || '')) {
+            flights.delete(f.id);
+            if (BARRY.vaccBusy) BARRY.vaccBusy.stop();
+            toast('Lost track of a Doppler run on ' + flightName(f)
+                  + ' — Jarvis was restarted while it ran. If it finished, '
+                  + 'it is in the landed list.', 'warn', 9000);
+            loadReviews(true).then(paint);
+          }
+          continue;
         }
-      } else if (done.status === 'canceled') {
-        toast('The run was cancelled.', 'warn', 5000);
-      } else {
-        toast(done.error || 'The run failed.', 'err', 12000);
+        f.snap = got.job;
+        if (f.kind === 'many') {
+          /* A recording of a batch that has landed goes in the landed list
+             as it lands, not when the last of them does. */
+          const n = (f.snap.members || []).filter((m) => m.status === 'done')
+            .length;
+          if (n > (f.doneSeen || 0)) {
+            f.doneSeen = n;
+            await refreshLanded();
+          }
+        }
+        if (f.snap.status === 'running') continue;
+        flights.delete(f.id);
+        if (BARRY.vaccBusy) BARRY.vaccBusy.stop();
+        await landed(f);
       }
-      loadReviews(true);
-      paint();
-    }, 700);
+    } finally {
+      following = false;
+    }
+    if (!flights.size) stopLoop();
+    paint();
   }
 
-  async function cancel() {
-    if (!job) return;
-    try { await apiPost('/api/cfc/job/' + job.id + '/cancel', {}); }
-    catch (e) { /* the poll will notice */ }
+  function flightName(f) {
+    const m = f.members || [];
+    if (f.kind === 'many') return m.length + ' recording' + (m.length === 1 ? '' : 's');
+    return (m[0] || {}).label || 'a recording';
   }
 
-  function adopt(out) {
+  /* A run has ended. Where it lands depends on what you are looking at: on
+     the recording it was for, the report opens with its reveal; anywhere
+     else it is announced, and marked new in the landed list. */
+  async function landed(f) {
+    const s = f.snap || {};
+    if (s.status === 'canceled') {
+      toast('The run on ' + flightName(f) + ' was cancelled.', 'warn', 5000);
+      return;
+    }
+    if (s.status !== 'done') {
+      toast((s.error || 'The run failed') + ' (' + flightName(f) + ')',
+            'err', 12000);
+      return;
+    }
+    const before = new Set((reviews || []).map((r) => r.gid + '/' + r.key));
+    if (f.kind === 'many') {
+      const ms = s.members || [];
+      const ok = ms.filter((m) => m.status === 'done').length;
+      const bad = ms.filter((m) => m.status === 'failed').length;
+      toast('The batch has landed: ' + ok + ' of ' + ms.length + ' done'
+            + (bad ? ', ' + bad + ' failed' : '') + '.', bad ? 'warn' : 'ok',
+            9000);
+      vaccList = null;            // "already run" marks have changed
+    } else {
+      let out = null;
+      try { out = (await api('/api/cfc/result/' + f.id)).result; }
+      catch (e) { toast(e.message, 'err', 9000); }
+      const gid = (f.members[0] || {}).gid;
+      if (out && gid === q.gid && q.count !== 'many') {
+        adopt(out, true);
+        landedOpen = out.key || null;
+      }
+      /* Announced even when you are not looking at this tool. A cluster
+         job can sit in the queue long enough that nobody is watching the
+         tab it was started from. */
+      toast('Doppler found ' + ((out || {}).n || 0).toLocaleString()
+            + ' IEDs on ' + flightName(f) + '.', 'ok', 8000);
+    }
+    chime();
+    await refreshLanded(before);
+    // The one just opened above is on screen; it is not "new".
+    if (landedOpen) freshKeys.delete(landedOpen);
+  }
+
+  /* The landed list read again, and whatever is in it that was not before
+     marked new. */
+  async function refreshLanded(before) {
+    const had = before || (reviews
+      ? new Set(reviews.map((r) => r.gid + '/' + r.key)) : null);
+    await loadReviews(true);
+    if (!had) return;
+    for (const r of (reviews || [])) {
+      if (!had.has(r.gid + '/' + r.key)) freshKeys.add(r.key);
+    }
+  }
+
+  /* The one sound Doppler makes: a soft low bell when a run lands, from
+     the reveal's own instrument (jarvisfx.js), and only through it -- so
+     the one mute switch silences this too. Nothing for a run opened from
+     the list: arriving is the event, looking is not. */
+  function chime() {
+    try {
+      const fx = BARRY.jarvisfx || window.JarvisFX;
+      if (fx && !fx.muted && fx.land) fx.land();
+    } catch (e) { /* a decoration never stops a result */ }
+  }
+
+  async function cancel(id) {
+    if (!id) return;
+    try { await apiPost('/api/cfc/job/' + id + '/cancel', {}); }
+    catch (e) { /* the loop will notice */ }
+  }
+
+  /* `reveal`: the report plays its arrival -- the count, the waveform
+     drawing itself in, the sweep across the raster. For a run that has
+     just come back; not for a redraw of one already on screen. */
+  function adopt(out, reveal) {
     res = out || null;
     snips = null;
+    revealNext = !!(res && reveal);
     if (res) fetchSnippets();
   }
 
@@ -750,21 +1084,46 @@ BARRY.doppler = (function () {
      read" twice over is not a repeat; it says so, because a bar that
      reaches half and starts again reads as a fault. */
   const STAGE_WORDS = {
-    'ied read': 'Read every channel, twice',
+    'ied read': 'Read every channel',
     'ied detect': 'Transform and threshold',
     'vacc stage': 'Send the code over',
     'vacc queue': 'Waiting for the cluster',
     'vacc fetch': 'Bring the answer back',
   };
 
-  /* Incisor's progress card, not a second one that measures the same.
-     The two tools do the same thing on the same cluster and a person
-     watching one should not have to learn the other. */
+  /* The radar. Doppler is the sweep that finds things, so while a run is
+     out the card shows one: rings, a turning beam, a blip now and then.
+     Slow and dim while the job waits in the queue; quicker once a node has
+     it. Pure CSS, stopped under reduced motion. */
+  function radar(extra) {
+    return el('div', { class: 'dop-radar' + (extra ? ' ' + extra : ''),
+                       'aria-hidden': 'true' }, [
+      el('span', { class: 'dop-radar-beam' }),
+      el('span', { class: 'dop-radar-blip b1' }),
+      el('span', { class: 'dop-radar-blip b2' }),
+      el('span', { class: 'dop-radar-blip b3' }),
+    ]);
+  }
+
+  /* Incisor's progress rows inside, so a person who has watched one
+     cluster run has watched them all; the radar and the words on top are
+     Doppler's own. */
   function stageCard() {
-    return el('div', { class: 'card comod-run' }, [
-      el('div', { class: 'comod-run-head' }, [
-        el('strong', { text: 'Running on the cluster' }),
-        el('div', { style: 'flex:1' }),
+    const f = myFlight();
+    // Said only when the estimate knows: a guess here would be a claim.
+    const st = est && est.vacc && est.vacc.state;
+    const where = st === 'native' ? 'netfiles, read in place'
+      : st === 'staged' ? 'a copy in VACC scratch' : null;
+    return el('div', { class: 'card comod-run dop-flight' }, [
+      el('div', { class: 'dop-flight-head' }, [
+        radar('queued'),
+        el('div', { class: 'dop-flight-words' }, [
+          el('strong', { class: 'dop-flight-title', text: 'Out on the cluster' }),
+          el('span', { class: 'hint quiet',
+            text: [(f && f.members[0] && f.members[0].label)
+                   || (q.row || {}).label || 'this recording', where]
+              .filter(Boolean).join(' · ') }),
+        ]),
       ]),
       el('div', { id: 'dopStages', class: 'comod-stages' }),
       el('div', { class: 'comod-total' }, [
@@ -775,13 +1134,16 @@ BARRY.doppler = (function () {
       ]),
       el('pre', { id: 'dopLog', class: 'dop-log', style: 'display:none' }),
       el('p', { class: 'hint quiet', style: 'max-width:78ch',
-        text: 'You can leave this view. The run is on the cluster and does '
-            + 'not belong to this page; come back to Doppler and it will '
-            + 'still be here, or find it under runs that have landed.' }),
+        text: 'You can leave this view, or reload the page. The run is on '
+            + 'the cluster and does not belong to this page; Doppler finds '
+            + 'it again when you come back, and it lands in the list below.' }),
     ]);
   }
 
-  function paintStages() {
+  /* The rows are rebuilt each second -- they are small, and every one can
+     change -- but the card around them, the radar and the bar are not, so
+     the bar slides rather than jumps and the beam keeps turning. */
+  function paintStages(job) {
     const host = document.getElementById('dopStages');
     if (!host || !job) return;
     host.innerHTML = '';
@@ -804,6 +1166,23 @@ BARRY.doppler = (function () {
                    && !nodeBusy;
     const onNode = nodeBusy || (!!qs && qs.status !== 'done' && qs.done >= 1);
     const inside = (name) => name === 'ied read' || name === 'ied detect';
+
+    const card = host.closest('.dop-flight');
+    if (card) {
+      const r = card.querySelector('.dop-radar');
+      if (r) {
+        r.classList.toggle('queued', queued);
+        r.classList.toggle('live', !queued);
+      }
+      const t = card.querySelector('.dop-flight-title');
+      const fetching = stages.some((x) => x.name === 'vacc fetch'
+                                          && x.status === 'running');
+      if (t) {
+        t.textContent = queued ? 'Waiting in the cluster’s queue'
+          : fetching ? 'Bringing the answer back'
+            : onNode ? 'Sweeping on a cluster node' : 'Out on the cluster';
+      }
+    }
 
     for (const s of stages) {
       const w = WEIGHT[s.name] || 1;
@@ -879,28 +1258,37 @@ BARRY.doppler = (function () {
 
   function reportCard() {
     const p = res.params || {};
-    const box = el('div', { class: 'card dop-report' }, [
-      el('div', { class: 'section-label', text: 'What came in' }),
+    const label = (q.row || {}).label || '';
+    const open = landedOpen && (reviews || []).find((r) => r.key === landedOpen);
+    const at = open && open.computed && open.computed.at;
+    const box = el('div', { class: 'card dop-report' + (revealNext ? ' landing' : '') }, [
+      el('div', { class: 'dop-report-head' }, [
+        el('div', { class: 'section-label', text: 'What came in' }),
+        el('span', { class: 'dop-report-sub',
+          text: [label, p.method === 'storm' ? 'Validated method'
+                                              : 'Legacy MATLAB',
+                 at ? 'landed ' + whenWords(at) : null]
+            .filter(Boolean).join(' · ') }),
+      ]),
     ]);
 
-    box.appendChild(chips());
+    box.appendChild(stats());
 
     box.appendChild(el('div', { class: 'dop-two' }, [
-      el('div', {}, [
-        BARRY.ui.chip ? el('div', { class: 'section-label',
-          text: 'Average waveform' }) : null,
+      el('div', { class: 'dop-plot' }, [
+        el('div', { class: 'section-label', text: 'Average waveform' }),
         el('canvas', { id: 'dopProfile' }),
         el('p', { class: 'hint quiet',
           text: 'Mean ± SEM across every event, on the channel that '
               + 'carried the most of them.' }),
-      ].filter(Boolean)),
-      el('div', {}, [
+      ]),
+      el('div', { class: 'dop-plot' }, [
         el('div', { class: 'section-label',
           text: 'Per-channel participation' }),
         el('canvas', { id: 'dopPerCh' }),
         el('p', { class: 'hint quiet',
-          text: 'How many events each channel took part in. A channel on '
-              + 'nearly everything is suspect, not busy.' }),
+          text: 'How many events each detection channel took part in. A '
+              + 'channel on nearly everything is suspect, not busy.' }),
       ]),
     ]));
 
@@ -908,14 +1296,25 @@ BARRY.doppler = (function () {
       text: 'Where they are' }));
     box.appendChild(el('canvas', { id: 'dopRaster',
       onmousemove: rasterHover, onmouseleave: () => {
-        if (hoverEv) { hoverEv = null; drawRaster(); readout(''); }
+        if (hoverEv != null) { hoverEv = null; drawRaster(1); readout(''); }
       }, onclick: rasterClick }));
     box.appendChild(el('div', { id: 'dopRead', class: 'hint quiet',
-      text: 'One line per channel, one tick per event. Click a tick to open '
-          + 'the recording there.' }));
+      text: READOUT }));
+    const gone = rasterRows().referenceOnly;
+    if (gone) {
+      box.appendChild(el('p', { class: 'hint quiet', style: 'max-width:88ch',
+        text: 'Detected on the ' + (p.detect_on || 'even') + ' channels. The '
+            + gone + ' other channel' + (gone === 1 ? ' was' : 's were')
+            + ' read and went into the common-average reference, but '
+            + 'detection does not run on ' + (gone === 1 ? 'it' : 'them')
+            + ', so ' + (gone === 1 ? 'it has' : 'they have')
+            + ' no row here. Not bad, not left out.' }));
+    }
 
-    for (const w of (res.warnings || [])) {
-      box.appendChild(el('p', { class: 'warn-line', text: w }));
+    const warns = realWarnings(res.warnings, res.n);
+    if (warns.length) {
+      box.appendChild(el('div', { class: 'dop-warns' },
+        warns.map((w) => el('p', { class: 'warn-line', text: w }))));
     }
 
     box.appendChild(paramsLine(p));
@@ -924,26 +1323,88 @@ BARRY.doppler = (function () {
     return box;
   }
 
-  function chips() {
+  /* The warnings worth reading. "CSCn took part in 100% of events" means
+     a broken channel when there are hundreds of events and nothing at all
+     when there is one -- runs filed before doppler.SUSPECT_MIN_EVENTS carry
+     one such warning per channel, so they are dropped here too. */
+  function realWarnings(list, n) {
+    return (list || []).filter((w) => (n || 0) >= 20
+                                      || !/took part in \d+% of events/.test(w));
+  }
+
+  const READOUT = 'One line per detection channel, one tick per event. '
+                + 'Point at a tick to read it; click to open the recording '
+                + 'there.';
+
+  /* "12 minutes ago", "yesterday", "3 Oct" -- in words, because this sits
+     in a sentence, where ui.when's "12m" would read as a size. */
+  function whenWords(at) {
+    const t = Date.parse(at || '');
+    if (!isFinite(t)) return '';
+    const s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) {
+      const m = Math.round(s / 60);
+      return m + ' minute' + (m === 1 ? '' : 's') + ' ago';
+    }
+    if (s < 86400) {
+      const h = Math.round(s / 3600);
+      return h + ' hour' + (h === 1 ? '' : 's') + ' ago';
+    }
+    if (s < 2 * 86400) return 'yesterday';
+    return new Date(t).toLocaleDateString(undefined,
+      { day: 'numeric', month: 'short' });
+  }
+
+  /* The numbers first, large. A count somebody reads in a glance rather
+     than a row of chips that all weigh the same; on arrival the count
+     runs up to its value. */
+  function stats() {
     const dur = res.duration_s || 1;
     const perMin = res.n / dur * 60;
     const meanCh = res.n
       ? (res.events || []).reduce((a, e) => a + e.n_channels, 0) / res.n
       : 0;
     const p = res.params || {};
-    const kept = (p.channels || []).length;
+    const det = (p.channels || []).length;
+    const read = (p.read_channels || p.channels || []).length;
     const excl = (p.excluded || []).length;
-    return BARRY.ui.chipRow([
-      BARRY.ui.chip(res.n.toLocaleString() + ' IEDs'),
-      BARRY.ui.chip((Math.round(perMin * 10) / 10) + ' /min'),
-      BARRY.ui.chip((Math.round(meanCh * 10) / 10) + ' channels each'),
-      BARRY.ui.chip(kept + ' of ' + (kept + excl) + ' channels read'),
-      BARRY.ui.chip(Math.round(dur) + ' s'),
+    const one = (k, value, label, title, big) => el('div', {
+      class: 'dop-stat' + (big ? ' big' : ''), 'data-k': k, title: title || null,
+    }, [
+      el('span', { class: 'dop-stat-v', text: value }),
+      el('span', { class: 'dop-stat-l', text: label }),
     ]);
+    const row = el('div', { class: 'dop-stats' }, [
+      one('n', res.n.toLocaleString(), res.n === 1 ? 'IED' : 'IEDs',
+          'Events the detector kept', true),
+      one('rate', String(Math.round(perMin * 10) / 10), 'per minute'),
+      one('each', String(Math.round(meanCh * 10) / 10), 'channels each',
+          'How many detection channels an event spans, on average'),
+      one('det', String(det), det === read ? 'channels read'
+                                             : 'detection channels',
+          det === read ? null : (read + ' read; detection runs on ' + det)),
+      excl ? one('bad', String(excl), 'marked bad', 'Not read at all')
+           : null,
+      one('dur', human(dur), 'recorded'),
+    ].filter(Boolean));
+    if (revealNext) {
+      const v = row.querySelector('[data-k="n"] .dop-stat-v');
+      if (v) {
+        v.textContent = '0';
+        // Next frame, so the count runs on screen rather than off it.
+        requestAnimationFrame(() => BARRY.ui.countUp(v, res.n, { ms: 900 }));
+      }
+    }
+    return row;
   }
 
   function paramsLine(p) {
+    const storm = p.method === 'storm';
     const bits = [
+      storm ? 'the validated Storm method' : 'the lab’s MATLAB, exactly',
+      storm ? (p.car ? 'common-average referenced per probe bank'
+                     : 'not re-referenced') : null,
       p.band ? ('band-pass ' + p.band[0] + '–' + p.band[1] + ' Hz')
              : 'no band-pass',
       p.notch_hz ? ('notched at ' + p.notch_hz + ' Hz') : 'no notch',
@@ -953,10 +1414,28 @@ BARRY.doppler = (function () {
       'stamped at the ' + p.stamp,
       'events closer than ' + (p.merge_s * 1000) + ' ms merged',
       'shorter than ' + (p.min_event_s * 1000) + ' ms dropped',
+      storm ? ('detected on ' + (p.detect_on || 'even') + ' channels, kept '
+               + 'when ' + (p.min_channels || 1) + ' or more took part')
+            : null,
+      storm && p.fs_work ? ('worked at ' + Math.round(p.fs_work) + ' Hz')
+                         : null,
+      (p.not_connected || []).length
+        ? (p.not_connected.length + ' channels on a bank marked not '
+           + 'connected left out') : null,
+    ].filter(Boolean);
+    /* The summary is a sentence of its own, not the first three items of
+       the list with an ellipsis after them -- nothing in this interface is
+       cut short to fit. */
+    const brief = [
+      storm ? 'Validated method' : 'Legacy MATLAB',
+      p.band ? (p.band[0] + '–' + p.band[1] + ' Hz') : 'unfiltered',
+      (p.llw_s * 1000) + ' ms window',
+      storm ? ('at least ' + (p.min_channels || 1) + ' of '
+               + (p.channels || []).length + ' ' + (p.detect_on || 'even')
+               + ' channels') : ((p.channels || []).length + ' channels'),
     ];
-    const d = el('details', { class: 'dop-params' }, [
-      el('summary', { text: 'Ran with: ' + bits.slice(0, 3).join(' · ')
-                          + ' …' }),
+    const d = el('details', { class: 'dop-params', 'data-keep': 'ran-with' }, [
+      el('summary', { text: 'How it was run: ' + brief.join(', ') }),
     ]);
     d.appendChild(el('p', { class: 'hint', style: 'max-width:88ch',
       text: bits.join('. ') + '.' }));
@@ -1017,16 +1496,44 @@ BARRY.doppler = (function () {
     return { cv, g, W: w, H: h };
   }
 
-  function drawPlots() {
+  /* `reveal`: the arrival. The waveform draws itself left to right, the
+     bars rise, and a sweep crosses the raster leaving each event behind it
+     -- about a second in all, the three a beat apart. Anything else draws
+     the finished picture at once. The last frame is drawn on a timer as
+     well as by the animation, so under reduced motion, in a background tab
+     or under the harness runner's virtual time the picture is still whole. */
+  let animSeq = 0;
+  function drawPlots(reveal) {
     if (!res) return;
-    try { drawProfile(); drawPerCh(); drawRaster(); }
-    catch (e) { reportClientError('doppler.draw', e.message, q.path); }
+    const mine = ++animSeq;
+    const all = (k) => {
+      try {
+        drawProfile(clamp01((k - 0.0) / 0.55));
+        drawPerCh(clamp01((k - 0.12) / 0.55));
+        drawRaster(clamp01((k - 0.25) / 0.75));
+      } catch (e) { reportClientError('doppler.draw', e.message, q.path); }
+    };
+    if (!reveal || BARRY.ui.reducedMotion()) { all(1); return; }
+    const ms = 1300;
+    const t0 = performance.now();
+    const step = (now) => {
+      if (mine !== animSeq) return;
+      const k = Math.min(1, (now - t0) / ms);
+      all(k);
+      if (k < 1) requestAnimationFrame(step);
+    };
+    all(0);
+    requestAnimationFrame(step);
+    setTimeout(() => { if (mine === animSeq) { animSeq++; all(1); } }, ms + 80);
   }
+  const clamp01 = (x) => Math.max(0, Math.min(1, x));
+  const easeOut = (x) => 1 - Math.pow(1 - clamp01(x), 3);
 
   /* Mean +/- SEM, the band SHADED rather than the trace cropped to it --
      the same idiom X-ray uses, and for the same reason: a picture of only
      the middle of the spread cannot answer how wide the spread is. */
-  function drawProfile() {
+  function drawProfile(k) {
+    const kk = k == null ? 1 : k;
     const c = canvasFor('dopProfile', 190);
     if (!c) return;
     const prof = res.profile || {};
@@ -1041,7 +1548,7 @@ BARRY.doppler = (function () {
     const m = mean[best] || [], s = sem[best] || [];
     if (!m.length) { empty(c, 'No events to average.'); return; }
 
-    const P = { l: 46, r: 10, t: 8, b: 24 };
+    const P = PAD;
     const plotW = Math.max(10, c.W - P.l - P.r);
     const plotH = Math.max(10, c.H - P.t - P.b);
     let lo = Infinity, hi = -Infinity;
@@ -1059,13 +1566,15 @@ BARRY.doppler = (function () {
     // zero on the time axis -- where the stamp is
     const g = c.g;
     const mid = sx((m.length - 1) / 2);
-    g.strokeStyle = tok('--border', '#555');
+    g.strokeStyle = tok('--line', '#555');
     g.setLineDash([3, 3]);
     g.beginPath(); g.moveTo(mid, P.t); g.lineTo(mid, P.t + plotH); g.stroke();
     g.setLineDash([]);
 
     const col = tok('--accent', '#E5A823');
-    g.fillStyle = col; g.globalAlpha = 0.20;
+    // The band comes up as the line draws; the line runs left to right.
+    const upto = Math.max(1, Math.round(easeOut(kk) * (m.length - 1)));
+    g.fillStyle = col; g.globalAlpha = 0.20 * easeOut(kk);
     g.beginPath();
     for (let i = 0; i < m.length; i++) g.lineTo(sx(i), sy(m[i] + (s[i] || 0)));
     for (let i = m.length - 1; i >= 0; i--) {
@@ -1074,27 +1583,35 @@ BARRY.doppler = (function () {
     g.closePath(); g.fill(); g.globalAlpha = 1;
 
     g.strokeStyle = col; g.lineWidth = 2;
+    g.lineJoin = 'round';
     g.beginPath();
-    for (let i = 0; i < m.length; i++) g.lineTo(sx(i), sy(m[i]));
+    for (let i = 0; i <= upto; i++) g.lineTo(sx(i), sy(m[i]));
     g.stroke(); g.lineWidth = 1;
 
     g.fillStyle = tok('--text-3', '#888');
     g.font = '10px system-ui';
-    g.textAlign = 'center';
-    g.fillText(ms[0] + ' ms', P.l + 16, c.H - 8);
-    g.fillText(ms[ms.length - 1] + ' ms', P.l + plotW - 16, c.H - 8);
+    g.textBaseline = 'alphabetic';
     g.textAlign = 'left';
+    g.fillText(ms[0] + ' ms', P.l, c.H - 8);
+    g.textAlign = 'center';
+    g.fillText('0', mid, c.H - 8);
+    g.textAlign = 'right';
+    g.fillText(ms[ms.length - 1] + ' ms', P.l + plotW, c.H - 8);
+    // Which channel and how many, top right -- the unit owns top left.
     const lab = ((res.per_channel || [])[best] || {}).label
              || ('CSC' + ((prof.channels || [])[best]));
-    g.fillText(lab + ', n=' + (prof.n || 0), P.l + 4, P.t + 12);
+    g.fillText(lab + ' · n = ' + (prof.n || 0).toLocaleString(),
+               P.l + plotW, 11);
+    g.textAlign = 'left';
   }
 
-  function drawPerCh() {
+  function drawPerCh(k) {
+    const kk = k == null ? 1 : k;
     const c = canvasFor('dopPerCh', 190);
     if (!c) return;
     const rows = res.per_channel || [];
     if (!rows.length) { empty(c, 'Nothing was read.'); return; }
-    const P = { l: 46, r: 10, t: 8, b: 24 };
+    const P = PAD;
     const plotW = Math.max(10, c.W - P.l - P.r);
     const plotH = Math.max(10, c.H - P.t - P.b);
     const hi = Math.max(1, ...rows.map((r) => r.n));
@@ -1103,34 +1620,78 @@ BARRY.doppler = (function () {
     const step = plotW / rows.length;
     const suspect = 0.90 * (res.n || 1);
     rows.forEach((r, i) => {
-      const h = (r.n / hi) * plotH;
+      // Left to right, each a moment after its neighbour.
+      const grow = easeOut((kk - 0.5 * i / rows.length) / 0.5);
+      const h = (r.n / hi) * plotH * grow;
       // A suspect channel is coloured as a warning, not as a winner: the
       // tallest bar here is the thing you should distrust first.
       g.fillStyle = r.n >= suspect ? tok('--warn', '#E5A823')
                                    : tok('--accent', '#3b82f6');
+      g.globalAlpha = 0.85;
       g.fillRect(P.l + i * step + 1, P.t + plotH - h,
                  Math.max(1, step - 2), h);
     });
+    g.globalAlpha = 1;
     g.fillStyle = tok('--text-3', '#888');
     g.font = '10px system-ui';
-    g.textAlign = 'center';
-    g.fillText(rows[0].label || ('CSC' + rows[0].number), P.l + step / 2,
-               c.H - 8);
+    g.textBaseline = 'alphabetic';
+    g.textAlign = 'left';
+    g.fillText(rows[0].label || ('CSC' + rows[0].number), P.l, c.H - 8);
     const last = rows[rows.length - 1];
-    g.fillText(last.label || ('CSC' + last.number),
-               P.l + plotW - step / 2, c.H - 8);
+    g.textAlign = 'right';
+    g.fillText(last.label || ('CSC' + last.number), P.l + plotW, c.H - 8);
     g.textAlign = 'left';
   }
 
+  /* Room for the unit ABOVE the axis, so it never sits on the top value:
+     "events" and "273" were drawn into the same 40 pixels at the same
+     height, and read as "evens273" (2026-10-13). */
+  const PAD = { l: 46, r: 10, t: 20, b: 24 };
+
   const RASTER_ROW = 13;
 
-  /* One line per channel, one tick per event on the channels that took
-     part. An EXCLUDED channel keeps its row and draws a dimmed rule saying
-     so, rather than vanishing: a missing row and a silent row are different
-     facts and a reader cannot tell them apart from a gap. */
-  function drawRaster() {
-    const all = (est && est.channels) || [];
-    const rows = all.length ? all : (res.per_channel || []);
+  /* Which channels get a row, and why the absent ones are absent.
+
+     A row per DETECTION channel: on the Storm method that is the even (or
+     odd) channels; every other channel was read for the common-average
+     reference only and has no row -- the report says so in a sentence. The
+     raster used to give every channel on the probe a row and call the
+     reference-only ones "bad", which they are not. A detection channel
+     that is marked bad, or left out of this run, keeps its row as a
+     dashed rule saying which: a missing row and a silent row are different
+     facts. From the result itself, not the estimate, so a run opened from
+     the list draws right before -- or without -- a fresh estimate. */
+  function rasterRows() {
+    const p = res.params || {};
+    const storm = p.method === 'storm';
+    const rule = storm ? (p.detect_on || 'even') : 'all';
+    const takes = (n) => rule === 'all' || (rule === 'even' ? n % 2 === 0
+                                                            : n % 2 === 1);
+    const byNum = new Map();
+    for (const r of (res.per_channel || [])) {
+      byNum.set(Number(r.number), { number: Number(r.number),
+        label: r.label || ('CSC' + r.number), read: true });
+    }
+    const absent = (list, why) => {
+      for (const c of (list || [])) {
+        const n = Number(c.number != null ? c.number : c);
+        if (!isFinite(n) || byNum.has(n) || !takes(n)) continue;
+        byNum.set(n, { number: n, label: c.label || ('CSC' + n),
+                       read: false, why });
+      }
+    };
+    absent(p.excluded, 'bad');
+    absent(p.left_out, 'left out of this run');
+    const rows = Array.from(byNum.values()).sort((a, b) => a.number - b.number);
+    const read = (p.read_channels || []).map(Number);
+    const referenceOnly = storm && rule !== 'all'
+      ? read.filter((n) => !takes(n)).length : 0;
+    return { rows, referenceOnly };
+  }
+
+  function drawRaster(k) {
+    const kk = k == null ? 1 : k;
+    const rows = rasterRows().rows;
     const h = Math.max(80, rows.length * RASTER_ROW + 34);
     const c = canvasFor('dopRaster', h);
     if (!c) return;
@@ -1138,30 +1699,29 @@ BARRY.doppler = (function () {
     const plotW = Math.max(10, c.W - P.l - P.r);
     const g = c.g;
     const dur = res.duration_s || 1;
-    const byNum = {};
-    for (const r of (res.per_channel || [])) byNum[Number(r.number)] = r;
+    const sweep = P.l + easeOut(kk) * plotW;   // how far the reveal has got
 
     g.font = '9px system-ui';
     g.textBaseline = 'middle';
+    const ground = tok('--bg-2', '#0f1e18');
     rows.forEach((r, i) => {
       const y = P.t + i * RASTER_ROW + RASTER_ROW / 2;
-      const num = Number(r.number);
-      const read = !!byNum[num];
       g.fillStyle = tok('--text-3', '#6f8c7d');
       g.textAlign = 'right';
-      g.fillText(r.label || ('CSC' + num), P.l - 6, y);
-      g.strokeStyle = tok('--border', '#333');
-      if (!read) {
+      g.fillText(r.label, P.l - 6, y);
+      g.strokeStyle = tok('--line', '#333');
+      if (!r.read) {
         g.setLineDash([3, 4]);
         g.beginPath(); g.moveTo(P.l, y); g.lineTo(P.l + plotW, y); g.stroke();
         g.setLineDash([]);
+        // On the row, at its right end, on a patch of the ground so the
+        // dashes do not run through it -- never between two rows, where
+        // it reads as belonging to either.
+        const tw = g.measureText(r.why).width;
+        g.fillStyle = ground;
+        g.fillRect(P.l + plotW - tw - 10, y - 6, tw + 10, 12);
         g.fillStyle = tok('--text-3', '#6f8c7d');
-        g.textAlign = 'left';
-        // WHICH kind of absent. A bad channel is a fact about the
-        // recording; a left-out one is a choice about this run.
-        const lo = ((res.params || {}).left_out || [])
-          .some((c) => Number(c.number) === num);
-        g.fillText(lo ? 'left out of this run' : 'bad', P.l + 6, y - 5);
+        g.fillText(r.why, P.l + plotW - 2, y);
         return;
       }
       g.globalAlpha = 0.35;
@@ -1170,14 +1730,16 @@ BARRY.doppler = (function () {
     });
 
     const rowOf = {};
-    rows.forEach((r, i) => { rowOf[Number(r.number)] = i; });
+    rows.forEach((r, i) => { if (r.read) rowOf[r.number] = i; });
     const evs = res.events || [];
-    g.strokeStyle = tok('--accent', '#E5A823');
-    for (let k = 0; k < evs.length; k++) {
-      const e = evs[k];
+    for (let j = 0; j < evs.length; j++) {
+      const e = evs[j];
       const x = P.l + (e.start / dur) * plotW;
-      const on = (hoverEv === k);
-      g.globalAlpha = on ? 1 : 0.6;
+      if (x > sweep) continue;
+      const on = (hoverEv === j);
+      // Just behind the sweep a tick is bright and settles: the trail.
+      const fresh_ = kk < 1 ? clamp01(1 - (sweep - x) / 60) : 0;
+      g.globalAlpha = on ? 1 : 0.6 + 0.4 * fresh_;
       g.strokeStyle = on ? tok('--ok', '#2f9e6e') : tok('--accent', '#E5A823');
       g.lineWidth = on ? 2 : 1;
       for (const num of (e.channels || [])) {
@@ -1192,7 +1754,22 @@ BARRY.doppler = (function () {
     }
     g.globalAlpha = 1; g.lineWidth = 1;
 
+    if (kk < 1) {
+      // The beam: a bright line with a fading wash behind it.
+      const top = P.t, bot = P.t + rows.length * RASTER_ROW;
+      const wash = g.createLinearGradient(sweep - 70, 0, sweep, 0);
+      wash.addColorStop(0, 'rgba(0,0,0,0)');
+      wash.addColorStop(1, tok('--accent-soft', 'rgba(255,184,28,.15)'));
+      g.fillStyle = wash;
+      g.fillRect(sweep - 70, top, 70, bot - top);
+      g.strokeStyle = tok('--accent', '#E5A823');
+      g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(sweep, top); g.lineTo(sweep, bot); g.stroke();
+      g.lineWidth = 1;
+    }
+
     g.fillStyle = tok('--text-3', '#888');
+    g.textBaseline = 'alphabetic';
     g.textAlign = 'left';
     g.fillText('0 s', P.l, c.H - 9);
     g.textAlign = 'right';
@@ -1222,8 +1799,8 @@ BARRY.doppler = (function () {
   function readout(text) {
     const n = document.getElementById('dopRead');
     if (n) {
-      n.textContent = text || 'One line per channel, one tick per event. '
-                    + 'Click a tick to open the recording there.';
+      n.textContent = text || READOUT;
+      n.classList.toggle('on', !!text);
     }
   }
 
@@ -1231,7 +1808,7 @@ BARRY.doppler = (function () {
     const i = rasterAt(e);
     if (i === hoverEv) return;
     hoverEv = i;
-    drawRaster();
+    drawRaster(1);
     if (i == null) { readout(''); return; }
     const ev = res.events[i];
     readout('IED ' + (i + 1) + ' of ' + res.n + ' at '
@@ -1250,20 +1827,32 @@ BARRY.doppler = (function () {
     }).catch((err) => toast(err.message, 'err', 8000));
   }
 
+  /* The axes, the two end values beside the axis, a faint line at the
+     top value, and the unit ABOVE the plot on its own line -- the unit
+     and the top value used to share a row and overprint. */
   function frame(c, P, plotW, plotH, lo, hi, ylab) {
     const g = c.g;
-    g.strokeStyle = tok('--border', '#444');
+    g.strokeStyle = tok('--line', '#444');
+    g.globalAlpha = 0.45;
+    g.setLineDash([2, 4]);
     g.beginPath();
-    g.moveTo(P.l, P.t); g.lineTo(P.l, P.t + plotH);
-    g.lineTo(P.l + plotW, P.t + plotH);
+    g.moveTo(P.l, P.t + 0.5); g.lineTo(P.l + plotW, P.t + 0.5);
+    g.stroke();
+    g.setLineDash([]);
+    g.globalAlpha = 1;
+    g.beginPath();
+    g.moveTo(P.l + 0.5, P.t); g.lineTo(P.l + 0.5, P.t + plotH);
+    g.lineTo(P.l + plotW, P.t + plotH + 0.5);
     g.stroke();
     g.fillStyle = tok('--text-3', '#888');
     g.font = '10px system-ui';
+    g.textBaseline = 'middle';
     g.textAlign = 'right';
-    g.fillText(fmt(hi), P.l - 5, P.t + 9);
-    g.fillText(fmt(lo), P.l - 5, P.t + plotH);
+    g.fillText(fmt(hi), P.l - 6, P.t);
+    g.fillText(fmt(lo), P.l - 6, P.t + plotH);
+    g.textBaseline = 'alphabetic';
     g.textAlign = 'left';
-    g.fillText(ylab, 4, P.t + 9);
+    g.fillText(ylab, P.l, 11);
   }
 
   function fmt(v) {
@@ -1292,7 +1881,7 @@ BARRY.doppler = (function () {
             + 'can be compared. Versions inside an entry then mean only '
             + 'what a person did to that list — confirmed in Spotter, '
             + 'reviewed again, lined up in Eye.' }),
-      el('div', { class: 'tk-actions' }, [
+      el('div', { class: 'tk-actions dop-actions' }, [
         el('span', { class: 'spacer' }),
         el('button', { class: 'btn', text: banking ? 'Banking…'
                                                    : 'Bank them',
@@ -1386,11 +1975,22 @@ BARRY.doppler = (function () {
 
   function bankNote() {
     const p = res.params || {};
+    const storm = p.method === 'storm';
     return 'Detected by Doppler on the VACC, ' + p.detector + '. '
+      + (storm ? ('Validated on the PTEN hand-sorts (every confirmed IED '
+                  + 'caught). Decimated to ' + Math.round(p.fs_work || 2000)
+                  + ' Hz, '
+                  + (p.car ? 'common-average referenced per probe bank, '
+                           : '')
+                  + 'detected on ' + (p.detect_on || 'even') + ' channels, '
+                  + 'kept when ' + (p.min_channels || 1) + ' or more took '
+                  + 'part. ') : '')
       + (p.band ? ('Band-passed ' + p.band[0] + '–' + p.band[1] + ' Hz'
                    + (p.notch_hz ? ' after a ' + p.notch_hz + ' Hz notch'
                                  : '') + '. ')
-                : 'No filtering, which is what the original detector does. ')
+                : (storm ? 'No band-pass. '
+                         : 'No filtering, which is what the original '
+                           + 'detector does. '))
       + 'Line-length window ' + (p.llw_s * 1000) + ' ms, threshold at the '
       + p.prc + 'th percentile of the line-length values pooled over the '
       + (p.channels || []).length + ' channels that were read'
@@ -1420,174 +2020,652 @@ BARRY.doppler = (function () {
     } catch (e) { reviews = []; }
   }
 
-  function reviewCard() {
-    const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', text: 'Runs that have landed' }),
+  /* ---- the runs: out on the cluster, and landed ------------------------
+
+     One card, two groups, and a run is in exactly one of them: out on the
+     cluster while its job runs, landed once it is in the vault. The panel
+     used to keep the run it had started in a variable, and could say
+     "running" beside the same run already landed -- and the landed list
+     opened a run by asking for it again, which could start a new one. */
+  function runsShell() {
+    return el('div', { class: 'card dop-runs' }, [
+      el('div', { class: 'section-label', text: 'Runs' }),
+      el('div', { class: 'dop-runs-parts' }),
     ]);
+  }
+
+  const LANDED_FEW = 8;
+
+  function runsUpdate(node) {
+    const inner = node.querySelector('.dop-runs-parts');
+    if (!inner) return;
+    if (reviews === null) loadReviews().then(paint);
+    const out = Array.from(flights.values())
+      .sort((a, b) => b.started - a.started);
+    const parts = [];
+    if (out.length) {
+      parts.push({ key: 'fh', sig: 'fh', build: () => el('div',
+        { class: 'dop-runs-h', text: 'Out on the cluster' }) });
+      for (const f of out) {
+        parts.push({ key: 'f-' + f.id, sig: flightSig(f),
+                     build: () => flightRow(f) });
+      }
+    }
+    parts.push({ key: 'lh', sig: [reviews ? reviews.length : -1],
+      build: () => el('div', { class: 'dop-runs-h' }, [
+        el('span', { text: 'Landed' }),
+        reviews && reviews.length
+          ? el('span', { class: 'dop-runs-n',
+                         text: reviews.length.toLocaleString() }) : null,
+      ].filter(Boolean)) });
+    parts.push({ key: 'll', enter: false,
+      sig: [oid(reviews), landedOpen, Array.from(freshKeys).join(','),
+            landedAll, Math.floor(Date.now() / 60000)],
+      build: landedList });
+    BARRY.ui.sections(inner, parts);
+  }
+
+  /* What a flight row shows, coarse enough that it is rebuilt when a word
+     on it changes and not on every poll -- the seconds tick in place. */
+  function flightSig(f) {
+    const s = f.snap || {};
+    const ms = (s.members || []).map((m) => m.status).join(',');
+    return [f.id, s.status, s.stage, ms, Math.floor((s.elapsed || 0) / 10)];
+  }
+
+  function flightWords(f) {
+    const s = f.snap || {};
+    if (f.kind === 'many') {
+      const ms = s.members || [];
+      const n = (st) => ms.filter((m) => m.status === st).length;
+      const parts = [
+        n('done') ? n('done') + ' landed' : null,
+        n('running') ? n('running') + ' running' : null,
+        (n('queued') + n('waiting')) ? (n('queued') + n('waiting'))
+                                       + ' waiting' : null,
+        n('failed') ? n('failed') + ' failed' : null,
+      ].filter(Boolean);
+      return parts.join(' · ') || 'starting';
+    }
+    const st = s.stages || [];
+    const qs = st.find((x) => x.name === 'vacc queue');
+    const node_ = st.some((x) => (x.name === 'ied read' || x.name === 'ied detect')
+                                 && x.status === 'running');
+    if (qs && qs.status !== 'done' && !(qs.done >= 1) && !node_) {
+      return 'waiting in the queue';
+    }
+    if (st.some((x) => x.name === 'vacc fetch' && x.status === 'running')) {
+      return 'bringing the answer back';
+    }
+    return node_ || (qs && qs.done >= 1) ? 'sweeping on a node'
+                                         : 'getting ready';
+  }
+
+  function flightRow(f) {
+    const s = f.snap || {};
+    const el_s = Number(s.elapsed || 0);
+    const since = el_s < 90 ? Math.round(el_s) + ' s'
+                            : Math.round(el_s / 60) + ' min';
+    const queued = /queue/.test(flightWords(f));
+    const name = f.kind === 'many'
+      ? 'A batch of ' + f.members.length + ' recording'
+        + (f.members.length === 1 ? '' : 's')
+      : ((f.members[0] || {}).label || 'A recording');
+    return el('button', {
+      class: 'dop-run flying',
+      title: f.kind === 'many' ? 'Show the batch' : 'Show this run',
+      onclick: () => {
+        if (f.kind === 'many') { q.count = 'many'; paint(); return; }
+        const gid = (f.members[0] || {}).gid;
+        const r = rows().find((x) => x.gid === gid);
+        q.count = 'one';
+        if (r && gid !== q.gid) { choose(r); refreshEstimate().then(paint); }
+        paint();
+      },
+    }, [
+      radar('mini ' + (queued ? 'queued' : 'live')),
+      el('span', { class: 'dop-run-main' }, [
+        el('span', { class: 'dop-run-name', text: name }),
+        el('span', { class: 'dop-run-sub',
+                     text: flightWords(f) + ' · ' + since + ' so far' }),
+      ]),
+      f.kind === 'one' && !queued ? el('span', { class: 'dop-run-bar' }, [
+        el('span', { style: 'width:' + Math.round(100 * flightFrac(s)) + '%' }),
+      ]) : null,
+    ].filter(Boolean));
+  }
+
+  /* The share of a single run that is done, by the same weights as the
+     progress card -- the queue counted, so a queued job is not at 2%. */
+  function flightFrac(s) {
+    let total = 0, done = 0;
+    for (const st of (s.stages || [])) {
+      const w = WEIGHT[st.name] || 1;
+      total += w;
+      const frac = st.of ? Math.min(1, (st.done || 0) / st.of) : 0;
+      done += w * (st.status === 'done' ? 1 : frac);
+    }
+    return total ? done / total : 0;
+  }
+
+  function landedList() {
+    const box = el('div', { class: 'dop-landed' });
     if (reviews === null) {
-      loadReviews().then(paint);
       BARRY.skeleton.into(box, 'row', 3);
       return box;
     }
     if (!reviews.length) {
       box.appendChild(el('div', { class: 'empty-state',
-        text: 'Nothing has been run yet. Pick a recording above and send it '
-            + 'to the cluster — a batch of them is at the bottom.' }));
+        text: 'Nothing has landed yet. Pick a recording and run it on the '
+            + 'cluster, or send a batch from Many; each run lands here, and '
+            + 'opens from here.' }));
       return box;
     }
-    const list = el('div', { class: 'dop-reviews' });
-    for (const r of reviews) {
-      list.appendChild(el('button', {
-        class: 'dop-review', onclick: () => openReview(r),
-      }, [
-        el('strong', { text: r.label || r.gid }),
-        el('span', { text: (r.n || 0).toLocaleString() + ' IEDs' }),
-        (r.banked || []).length
-          ? BARRY.ui.chip('banked', { kind: 'ok' })
-          : BARRY.ui.chip('not banked'),
-        (r.warnings || []).length
-          ? BARRY.ui.chip(r.warnings.length + ' to look at', { kind: 'warn' })
-          : null,
-      ].filter(Boolean)));
+    const shown = landedAll ? reviews : reviews.slice(0, LANDED_FEW);
+    for (const r of shown) box.appendChild(landedRow(r));
+    if (reviews.length > LANDED_FEW) {
+      box.appendChild(el('button', { class: 'btn ghost sm dop-landed-more',
+        text: landedAll ? 'Show the latest ' + LANDED_FEW
+                        : 'Show all ' + reviews.length.toLocaleString(),
+        onclick: () => { landedAll = !landedAll; paint(); } }));
     }
-    box.appendChild(list);
     return box;
   }
 
-  async function openReview(r) {
-    /* This computer's copy when it has one, else the cluster's: the run is
-       in the vault either way, and a recording only VACC has opens over the
-       link (`r.path` is then `vacc:<gid>`). It used to refuse those. */
-    const path = r.local || r.path;
-    if (!path) {
-      toast('None of that recording’s paths are reachable from this '
-            + 'computer, and VACC cannot read it either.', 'warn', 9000);
+  function landedRow(r) {
+    const sp = r.spec || {};
+    const storm = sp.method === 'storm';
+    const at = (r.computed || {}).at;
+    const open = landedOpen === r.key;
+    const isNew = freshKeys.has(r.key);
+    const bits = [
+      storm ? 'Validated' : 'Legacy MATLAB',
+      sp.band ? (sp.band[0] + '–' + sp.band[1] + ' Hz') : 'unfiltered',
+      sp.llw_s ? Math.round(sp.llw_s * 10000) / 10 + ' ms' : null,
+      storm && sp.min_channels ? 'at least ' + sp.min_channels + ' channels'
+                               : null,
+      at ? whenWords(at) : null,
+    ].filter(Boolean);
+    const warns = realWarnings(r.warnings, r.n);
+    const warn = warns.length;
+    return el('button', {
+      class: 'dop-run' + (open ? ' open' : '') + (isNew ? ' fresh' : ''),
+      title: open ? 'On screen above' : 'Open this run',
+      'aria-current': open ? 'true' : null,
+      onclick: () => openRun(r),
+    }, [
+      el('span', { class: 'dop-run-dot', 'aria-hidden': 'true' }),
+      el('span', { class: 'dop-run-main' }, [
+        el('span', { class: 'dop-run-name', text: r.label || r.gid }),
+        el('span', { class: 'dop-run-sub', text: bits.join(' · ') }),
+      ]),
+      el('span', { class: 'dop-run-tags' }, [
+        isNew ? BARRY.ui.chip('new', { kind: 'ok' }) : null,
+        open ? BARRY.ui.chip('open') : null,
+        (r.banked || []).length
+          ? BARRY.ui.chip('banked', { kind: 'ok',
+              title: r.banked.map((b) => b.name).filter(Boolean).join(', ') })
+          : BARRY.ui.chip('not banked'),
+        warn ? BARRY.ui.chip(warn + ' to look at', { kind: 'warn',
+                  title: warns.join('\n') }) : null,
+      ].filter(Boolean)),
+      el('span', { class: 'dop-run-n' }, [
+        el('strong', { text: (r.n || 0).toLocaleString() }),
+        el('span', { text: (r.n === 1 ? 'IED' : 'IEDs') }),
+      ]),
+    ]);
+  }
+
+  /* Opening a landed run READS it -- by recording and key, from the vault,
+     the cache or the run directory on the cluster -- and never asks for a
+     run. It used to post the same question to /api/doppler/scan and hope
+     for a cache hit; a run filed with channels left out, or a recording
+     opened by another path, was not one, and that quietly submitted a new
+     cluster job whose answer the panel threw away. And from Many it set
+     the result and painted the Many view, which has no report: the click
+     did nothing at all. */
+  let opening = null;
+  async function openRun(r) {
+    if (!r || !r.key || opening === r.key) return;
+    if (landedOpen === r.key && res && q.count !== 'many') {
+      scrollToReport();
       return;
     }
-    q.gid = r.gid; q.path = path; q.row = r.row || null;
-    const sp = r.spec || {};
-    if (sp.llw_s) q.llw_s = sp.llw_s;
-    if (sp.prc) q.prc = sp.prc;
+    opening = r.key;
+    let got;
+    try {
+      got = await api('/api/doppler/run?gid=' + encodeURIComponent(r.gid)
+                      + '&key=' + encodeURIComponent(r.key));
+    } catch (e) {
+      opening = null;
+      toast(e.message, 'err', 9000);
+      return;
+    }
+    opening = null;
+    q.count = 'one';
+    q.gid = r.gid;
+    q.path = got.path || r.local || r.path;
+    q.row = got.row || r.row || null;
+    /* The settings on screen become the ones the report was made with: a
+       report under settings it was not made with is the thing that gets
+       banked by mistake. */
+    const sp = got.spec || r.spec || {};
+    useMethod(sp.method === 'storm' ? 'storm' : 'legacy');
+    for (const k of ['llw_s', 'prc', 'min_channels', 'merge_s',
+                     'min_event_s', 'detect_on']) {
+      if (sp[k] != null) q[k] = sp[k];
+    }
+    if ('car' in sp) q.car = !!sp.car;
     q.notch_hz = sp.notch_hz || null;
     q.band_on = !!sp.band;
     if (sp.band) { q.band_lo = sp.band[0]; q.band_hi = sp.band[1]; }
-    reset();
-    await refreshEstimate();
-    // The answer is already in the vault, so this is a cache hit and not a
-    // second way to render a run.
-    try {
-      const got = await apiPost('/api/doppler/scan', body());
-      if (got.cached) adopt(got.result);
-    } catch (e) { toast(e.message, 'err', 9000); }
+    q.exclude = (sp.left_out || []).map((c) => Number(
+      c && c.number != null ? c.number : c)).filter(isFinite);
+    q.preset = sp.preset || (q.exclude.length ? 'custom' : 'all');
+    est = null;
+    adopt(got.result, true);
+    landedOpen = r.key;
+    freshKeys.delete(r.key);
+    /* The estimate is for the plan card above the report; a moment is
+       given for it so the card is there before the report draws, rather
+       than arriving after and pushing the report down the page. */
+    await Promise.race([refreshEstimate(),
+                        new Promise((ok) => setTimeout(ok, 1200))]);
     paint();
+    scrollToReport();
+    if (!est) refreshEstimate().then(paint);
+  }
+
+  function scrollToReport() {
+    requestAnimationFrame(() => {
+      const n = document.querySelector('#tkResult [data-sec="report"]');
+      if (n && n.scrollIntoView) {
+        n.scrollIntoView({ block: 'start',
+          behavior: BARRY.ui.reducedMotion() ? 'auto' : 'smooth' });
+      }
+    });
   }
 
   /* --------------------------------------------------------------- batch */
 
-  function batchCard() {
-    const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', text: 'Many recordings at once' }),
-      el('p', { class: 'hint', style: 'max-width:78ch',
-        text: 'One array job, so the cluster runs them side by side rather '
-            + 'than this computer running them one after another. A '
-            + 'recording already answered with these settings is skipped in '
-            + 'milliseconds, so a batch that dies halfway costs nothing to '
-            + 'start again.' }),
-    ]);
-    if (batchPlan) {
-      box.appendChild(BARRY.ui.chipRow([
-        BARRY.ui.chip(batchPlan.n + ' to run'),
-        BARRY.ui.chip((batchPlan.already || []).length + ' already done'),
-        (batchPlan.blocked || []).length
-          ? BARRY.ui.chip(batchPlan.blocked.length + ' cannot',
-                          { kind: 'warn' }) : null,
-      ].filter(Boolean)));
-      for (const b of (batchPlan.blocked || []).slice(0, 6)) {
-        box.appendChild(el('p', { class: 'inc-blocked',
-          text: (b.label || b.gid) + ' — ' + b.why }));
-      }
-      /* The ones only missing from the cluster can be sent, and this
-         is the same upload Sessions runs. Re-plans afterwards, so a
-         recording that has just gone up stops being listed as one that
-         cannot. */
-      if (BARRY.vacc && BARRY.vacc.uploadMissing) {
-        const offer = BARRY.vacc.uploadMissing(batchPlan.blocked, () => {
-          batchPlan = null;
-          paint();
-        });
-        if (offer) box.appendChild(offer);
-      }
-    }
-    if (batch) {
-      const rows = el('div', { class: 'inc-batch' });
-      for (const m of (batch.members || [])) {
-        rows.appendChild(el('div', { class: 'inc-batch-row ' + (m.status || '') }, [
-          el('span', { text: m.label || m.id }),
-          el('span', { class: 'hint quiet',
-            text: m.error || m.step || m.status || '' }),
-        ]));
-      }
-      box.appendChild(rows);
-    }
-    box.appendChild(el('div', { class: 'tk-actions' }, [
-      el('span', { class: 'spacer' }),
-      /* The primary is last and names what it will do (§6d), with the
-         count once it is known. It was a second ghost button, "Run the
-         batch", beside the first. */
-      el('button', { class: 'btn ghost', text: 'Check what it would run',
-        disabled: !vaccOn() ? 'disabled' : null,
-        onclick: planBatch }),
-      el('button', { class: 'btn',
-        text: batch ? 'Running…'
-              : (batchPlan && batchPlan.n
-                   ? 'Submit ' + batchPlan.n + ' to VACC' : 'Submit to VACC'),
-        disabled: (batch || !batchPlan || !batchPlan.n) ? 'disabled' : null,
-        onclick: runBatch }),
-    ]));
-    return box;
-  }
+  /* ---- Many --------------------------------------------------------------
 
-  async function planBatch() {
+     Incisor's picker, for Doppler: every recording the cluster can read --
+     on the lab's netfiles share, read in place, or as a copy in scratch --
+     whether or not this computer has it too. Search, tick, see the cost,
+     send. A recording already run with these exact settings says so and is
+     skipped unless asked again; one the cluster cannot read is named with
+     its reason, and one only missing from the cluster can be uploaded from
+     here. */
+  async function loadVaccList() {
+    const mine = ++vaccListSeq;
     try {
-      batchPlan = await apiPost('/api/doppler/batch/plan', body());
-    } catch (e) { toast(e.message, 'err', 9000); }
+      const got = await apiPost('/api/doppler/batch/plan', paramsBody());
+      if (mine !== vaccListSeq) return;
+      vaccList = got;
+      // What stays ticked is what is still runnable.
+      const runnable = new Set((got.todo || []).map((r) => r.gid));
+      for (const g of Array.from(picked)) {
+        if (!runnable.has(g)) picked.delete(g);
+      }
+    } catch (e) {
+      if (mine !== vaccListSeq) return;
+      vaccList = { todo: [], blocked: [], error: e.message };
+    }
     paint();
   }
 
-  async function runBatch() {
+  function rowMatches(r) {
+    if (!vaccFilter) return true;
+    const hay = [r.label, r.project, r.mouse != null ? 'm' + r.mouse : '',
+                 r.session != null ? 's' + r.session : '', r.start,
+                 r.remote, r.state === 'native' ? 'netfiles' : 'scratch']
+      .join(' ').toLowerCase();
+    return vaccFilter.toLowerCase().split(/\s+/).filter(Boolean)
+      .every((w) => hay.includes(w));
+  }
+
+  function rowSub(r) {
+    const bad = r.bad_channels || [];
+    // The folder itself, because a recording's id can hold several: a DEWEY
+    // day is one id across FP1, SPC and FP2, and this is the one that runs.
+    const folder = String(r.remote || '').split('/').filter(Boolean)
+      .slice(-2).join('/');
+    return (r.state === 'native' ? 'netfiles, read in place'
+                                 : 'a copy in VACC scratch')
+      + (folder ? ' · ' + folder : '')
+      + ' · ' + (r.n_channels ? r.n_channels + ' channels'
+                              : 'channels read on the cluster')
+      + (r.duration_s ? ' · ' + Math.round(r.duration_s / 60) + ' min' : '')
+      + (bad.length ? ' · ' + bad.length + ' marked bad' : '')
+      + (r.here ? ' · also on this computer' : '');
+  }
+
+  function human(sec) {
+    const s_ = Math.max(0, Math.round(sec || 0));
+    if (s_ < 90) return s_ + ' s';
+    if (s_ < 5400) return Math.round(s_ / 60) + ' min';
+    return (Math.round(s_ / 360) / 10) + ' h';
+  }
+
+  /* "1. Which recordings". The card, the sentence and the search box are
+     built once per list; what changes as you type and tick -- the counts,
+     the rows, the left-out ones -- is reconciled inside it, so the search
+     box keeps its cursor and the list keeps its scroll. It used to rebuild
+     the whole card on every letter and every tick. */
+  function manyPickCard() {
+    const box = el('div', { class: 'card' }, [
+      el('div', { class: 'section-label', text: '1. Which recordings' }),
+    ]);
+    if (!vaccList) {
+      box.appendChild(loader('Asking what the cluster can read',
+        'the registry, the lab’s netfiles share and scratch -- about '
+        + 'half a minute'));
+      loadVaccList();
+      return box;
+    }
+    if (vaccList.error) {
+      box.appendChild(el('p', { class: 'warn-line', text: vaccList.error }));
+      return box;
+    }
+    const todo = vaccList.todo || [];
+    const nNative = todo.filter((r) => r.state === 'native').length;
+    box.appendChild(el('p', { class: 'hint', style: 'max-width:80ch',
+      text: todo.length.toLocaleString() + ' recordings are VACC loaded: '
+          + nNative.toLocaleString() + ' on the lab’s netfiles share, read '
+          + 'in place, and ' + (todo.length - nNative).toLocaleString()
+          + ' as copies in scratch. Whether this computer has them does '
+          + 'not matter: the run happens where the data is and comes back '
+          + 'here. Ones already run with these settings are marked.' }));
+
+    const search = el('input', {
+      type: 'search', class: 'inc-search', value: vaccFilter,
+      placeholder: 'Type a mouse, session, date, project or “netfiles”',
+      'aria-label': 'Search the recordings', 'data-fk': 'many-search',
+    });
+    let t = null;
+    search.addEventListener('input', () => {
+      clearTimeout(t);
+      t = setTimeout(() => { vaccFilter = search.value; paint(); }, 160);
+    });
+    box.appendChild(search);
+    box.appendChild(el('div', { class: 'dop-many-parts' }));
+    return box;
+  }
+
+  function manyPickUpdate(node) {
+    const inner = node.querySelector('.dop-many-parts');
+    if (!inner || !vaccList || vaccList.error) return;
+    const todo = vaccList.todo || [];
+    const shown = todo.filter(rowMatches);
+    BARRY.ui.sections(inner, [
+      { key: 'tools', enter: false,
+        sig: [oid(vaccList), vaccFilter, picked.size, pickRev],
+        build: () => pickTools(todo, shown) },
+      { key: 'list', enter: false, sig: [oid(vaccList), vaccFilter, pickRev],
+        build: () => pickList(todo, shown) },
+      { key: 'blocked', enter: false, sig: [oid(vaccList)],
+        build: blockedPart },
+    ]);
+  }
+
+  function pickTools(todo, shown) {
+    const bulk = (fn) => () => { fn(); pickRev++; paint(); };
+    return el('div', { class: 'tk-actions inc-pick-tools' }, [
+      el('button', { class: 'btn ghost sm',
+        text: 'Tick the ' + shown.length.toLocaleString() + ' shown',
+        onclick: bulk(() => shown.forEach((r) => picked.add(r.gid))) }),
+      el('button', { class: 'btn ghost sm', text: 'Only the ones not yet run',
+        onclick: bulk(() => shown.forEach((r) => {
+          if (r.answered) picked.delete(r.gid); else picked.add(r.gid);
+        })) }),
+      el('button', { class: 'btn ghost sm', text: 'Clear',
+        disabled: picked.size ? null : 'disabled',
+        onclick: bulk(() => picked.clear()) }),
+      el('span', { class: 'hint quiet',
+        text: picked.size.toLocaleString() + ' ticked · '
+            + shown.length.toLocaleString() + ' of '
+            + todo.length.toLocaleString() + ' shown' }),
+    ]);
+  }
+
+  function pickList(todo, shown) {
+    const list = el('div', { class: 'inc-pick-list',
+                             'data-keep-scroll': 'many-list' });
+    if (!shown.length) {
+      list.appendChild(el('div', { class: 'empty-state',
+        text: todo.length ? 'Nothing matches that. Clear the search to see '
+                            + 'all ' + todo.length + '.'
+          : 'Nothing is VACC loaded yet. In Sessions ▸ Everything VACC '
+            + 'knows, add the recordings found on VACC or on netfiles, or '
+            + 'upload some.' }));
+    }
+    for (const r of shown) {
+      const on = picked.has(r.gid);
+      const row = el('label', { class: 'inc-pick' + (r.answered ? ' done' : '')
+                                         + (on ? ' on' : '') }, [
+        el('input', {
+          type: 'checkbox', checked: on ? 'checked' : null,
+          'aria-label': 'Send ' + r.label,
+          /* One tick changes one row, in place; only the counts and the
+             cost line are rebuilt. */
+          onchange: (e) => {
+            if (e.target.checked) picked.add(r.gid); else picked.delete(r.gid);
+            row.classList.toggle('on', e.target.checked);
+            paint();
+          },
+        }),
+        el('div', { class: 'ip-main' }, [
+          el('span', { class: 'ip-name', text: r.label }),
+          el('span', { class: 'ip-sub', text: rowSub(r) }),
+        ]),
+        // THE cluster mark (§6c): one renderer, never a chip of its own.
+        BARRY.vacc.mark({ gid: r.gid }, { compact: true }) || el('span', {}),
+        el('span', { class: 'ip-done',
+                     text: r.answered ? 'already run' : '' }),
+      ]);
+      list.appendChild(row);
+    }
+    return list;
+  }
+
+  function blockedPart() {
+    const box = el('div', {});
+    const blocked = vaccList.blocked || [];
+    const nBlocked = vaccList.blocked_total != null
+      ? vaccList.blocked_total : blocked.length;
+    if (!nBlocked) return box;
+    box.appendChild(el('details', { class: 'inc-blocked',
+                                    'data-keep': 'many-blocked' }, [
+      el('summary', { text: nBlocked.toLocaleString()
+                            + ' not VACC loaded, so left out' }),
+      el('div', {}, blocked.map((b) => el('div', { class: 'hint quiet',
+        text: b.label + ' — ' + b.why }))
+        .concat(nBlocked > blocked.length
+          ? [el('div', { class: 'hint quiet',
+              text: 'and ' + (nBlocked - blocked.length) + ' more.' })]
+          : [])),
+    ]));
+    /* The ones only missing from the cluster can be sent -- the same
+       upload Sessions runs, re-planned afterwards. */
+    if (BARRY.vacc && BARRY.vacc.uploadMissing) {
+      const offer = BARRY.vacc.uploadMissing(blocked, () => {
+        vaccList = null;
+        paint();
+      }, vaccList.upload_gids);
+      if (offer) box.appendChild(offer);
+    }
+    return box;
+  }
+
+  /* "2. Detection, for every recording sent": the settings once for the
+     whole batch, the cost before the primary (§6d: say the cost before it
+     is spent; the primary is last and names what it does), and -- while a
+     batch is out -- its recordings, each saying where it is. */
+  function manyRunShell() {
+    return el('div', { class: 'card' }, [
+      el('div', { class: 'section-label',
+                  text: '2. Detection, for every recording sent' }),
+      el('div', { class: 'dop-many-run' }),
+    ]);
+  }
+
+  function manyRunUpdate(node) {
+    const inner = node.querySelector('.dop-many-run');
+    if (!inner) return;
+    const qs = JSON.stringify(paramsBody());
+    const b = batchFlight();
+    const pick = Array.from(picked).sort().join(',');
+    BARRY.ui.sections(inner, [
+      { key: 'params', enter: false, sig: [qs], build: params },
+      { key: 'cost', enter: false,
+        sig: [qs, pick, oid(vaccList), b ? b.id : '', b ? flightWords(b) : ''],
+        build: () => costLine(b) },
+      b ? { key: 'batch', sig: [b.id, batchRowsSig(b)],
+            build: () => batchRows(b) } : null,
+      { key: 'go', enter: false,
+        sig: [qs, pick, oid(vaccList), b ? b.id : '', vaccOn()],
+        build: () => manyGo(b) },
+    ]);
+  }
+
+  function chosenRows() {
+    const todo = (vaccList && vaccList.todo) || [];
+    const chosen = todo.filter((r) => picked.has(r.gid));
+    return { chosen, fresh: chosen.filter((r) => !r.answered) };
+  }
+
+  function costLine(b) {
+    if (b) {
+      return el('p', { class: 'hint', style: 'max-width:80ch',
+        text: 'A batch of ' + b.members.length + ' is on the cluster: '
+            + flightWords(b) + '. Each recording lands in the list below as '
+            + 'it finishes; you can leave this view, or reload, and it '
+            + 'carries on.' });
+    }
+    const { chosen, fresh } = chosenRows();
+    const secs = fresh.reduce((a, r) => a + ((r.plan || {}).seconds || 0), 0);
+    const guessed = fresh.filter((r) => !(r.plan || {}).size_known).length;
+    const native = fresh.some((r) => r.state === 'native');
+    const cap = (vaccList && vaccList.cap) || 8;
+    const queued = vaccList && vaccList.queued;
+    return el('p', { class: 'hint', style: 'max-width:80ch',
+      text: chosen.length
+        ? (fresh.length.toLocaleString() + ' to run'
+           + (chosen.length > fresh.length
+             ? ', ' + (chosen.length - fresh.length) + ' already run with '
+               + 'these settings and skipped' : '')
+           + ' · as one array job, side by side on the cluster'
+           + ' · about ' + human(secs) + ' of cluster time asked for in all'
+           + (guessed ? ' (' + guessed + ' with no recorded length, sized as '
+                        + 'an hour of 64 channels so they are not cut off)'
+                      : '')
+           + ' · ' + ((vaccList && vaccList.partition) || 'general')
+           + ' partition'
+           + (queued ? ' · ' + queued + ' ahead in the queue' : '')
+           + (native ? ' · at most ' + cap + ' at once, because the netfiles '
+                       + 'share slows under many readers' : '')
+           + '.')
+        : 'Tick the recordings to send, above.' });
+  }
+
+  function batchRowsSig(b) {
+    return ((b.snap || {}).members || [])
+      .map((m) => m.status + ':' + (m.step || '') + ':' + (m.error || ''))
+      .join('|');
+  }
+
+  const MEMBER_WORDS = {
+    waiting: 'waiting its turn', queued: 'in the cluster’s queue',
+    running: 'on a node', done: 'landed', failed: 'failed',
+  };
+
+  function batchRows(b) {
+    const ms = (b.snap || {}).members
+      || b.members.map((m) => ({ id: m.gid, label: m.label, status: 'waiting' }));
+    const box = el('div', { class: 'dop-batch' });
+    for (const m of ms) {
+      const st = m.status || 'waiting';
+      const done = st === 'done';
+      const r = done && (reviews || []).find((x) => x.gid === m.id);
+      box.appendChild(el(r ? 'button' : 'div', {
+        class: 'dop-batch-row ' + st,
+        title: r ? 'Open this run' : null,
+        onclick: r ? () => openRun(r) : null,
+      }, [
+        el('span', { class: 'dop-batch-dot', 'aria-hidden': 'true' }),
+        el('span', { class: 'dop-batch-name', text: m.label || m.id }),
+        el('span', { class: 'dop-batch-state',
+          text: m.error ? ('failed: ' + m.error)
+            : (m.cached ? 'already answered' : (MEMBER_WORDS[st] || st)) }),
+        r ? el('span', { class: 'dop-batch-n',
+                         text: (r.n || 0).toLocaleString() + ' IEDs' })
+          : null,
+      ].filter(Boolean)));
+    }
+    return box;
+  }
+
+  function manyGo(b) {
+    if (b) {
+      return el('div', { class: 'tk-actions dop-actions' }, [
+        el('button', { class: 'btn ghost', text: 'Stop the batch',
+          onclick: () => cancel(b.id) }),
+        el('span', { class: 'spacer' }),
+        el('button', { class: 'btn', text: 'On the cluster',
+                       disabled: 'disabled' }),
+      ]);
+    }
+    const { chosen, fresh } = chosenRows();
+    return el('div', { class: 'tk-actions dop-actions' }, [
+      chosen.length > fresh.length ? el('button', {
+        class: 'btn ghost sm', text: 'Run the ones already run again too',
+        title: 'Send every ticked recording, including the ones already run '
+             + 'with these settings',
+        onclick: () => runBatch(true),
+      }) : null,
+      el('span', { class: 'spacer' }),
+      el('button', {
+        class: 'btn',
+        text: fresh.length ? 'Submit ' + fresh.length.toLocaleString()
+                             + ' to VACC' : 'Nothing new to submit',
+        disabled: (!fresh.length || !vaccOn()) ? 'disabled' : null,
+        onclick: () => runBatch(false),
+      }),
+    ].filter(Boolean));
+  }
+
+  async function runBatch(force) {
+    if (batchFlight()) return;
+    const todo = (vaccList && vaccList.todo) || [];
+    const send = todo.filter((r) => picked.has(r.gid)
+                                    && (force || !r.answered));
+    if (!send.length) return;
     try {
-      const started = await apiPost('/api/doppler/batch', body());
-      batch = started.job;
-      if (BARRY.vaccBusy) BARRY.vaccBusy.start();
-      pollBatch();
+      const started = await apiPost('/api/doppler/batch',
+        Object.assign({ gids: send.map((r) => r.gid), force: !!force },
+                      paramsBody()));
+      track(started.job, 'many',
+            send.map((r) => ({ gid: r.gid, label: r.label })),
+            { params: paramsBody() });
+      if ((started.blocked || []).length) {
+        toast(started.blocked.length + ' of them could not be sent: '
+              + started.blocked.map((x) => x.label + ' (' + x.why + ')')
+                .join('; '), 'warn', 12000);
+      }
     } catch (e) { toast(e.message, 'err', 12000); }
     paint();
   }
 
-  function pollBatch() {
-    const t = setInterval(async () => {
-      let got;
-      try { got = await api('/api/cfc/job/' + batch.id); }
-      catch (e) { return; }
-      batch = got.job;
-      paint();
-      if (batch.status === 'running') return;
-      clearInterval(t);
-      if (BARRY.vaccBusy) BARRY.vaccBusy.stop();
-      const done = batch; batch = null;
-      toast(done.status === 'done'
-        ? 'The batch finished.' : (done.error || 'The batch failed.'),
-        done.status === 'done' ? 'ok' : 'err', 9000);
-      loadReviews(true).then(paint);
-    }, 1500);
-  }
-
-  /* A poll belongs to the view that started it. Leaving Doppler must not
-     leave a timer behind asking the server about a job nobody is looking
-     at -- but the JOB is not cancelled, because it is on the cluster and
-     does not belong to this page. */
+  /* For a host that says when Doppler is put away. ToolKit does not today
+     (core.js calls a VIEW's onHide, not a tool's), and that is deliberate
+     for this timer: it follows runs on the cluster while you are elsewhere,
+     so a run that lands is announced wherever you are, and it stops by
+     itself when nothing is out. Stopping it cancels no run; showing the
+     panel again asks the server what is out there. */
   function onHide() {
-    if (poll) { clearInterval(poll); poll = null; }
+    stopLoop();
+    attached = false;
   }
 
   return {
@@ -1597,10 +2675,16 @@ BARRY.doppler = (function () {
     // without waiting forty minutes for the cluster to prove a canvas has
     // ink on it. The detector's own arithmetic is checked against the
     // MATLAB by tools/check_doppler_parity.py, which is where it belongs.
-    _adopt: (out) => { res = out || null; snips = null; },
+    _adopt: (out) => { res = out || null; snips = null; revealNext = false; },
     _res: () => res,
-    _draw: drawPlots,
+    _draw: () => drawPlots(false),
     _rasterAt: rasterAt,
+    _rasterRows: () => (res ? rasterRows() : null),
     _bankNote: bankNote,
+    _flights: () => Array.from(flights.values()).map((f) => ({
+      id: f.id, kind: f.kind, status: (f.snap || {}).status })),
+    _track: track,
+    _follow: follow,
+    _openRun: openRun,
   };
 })();

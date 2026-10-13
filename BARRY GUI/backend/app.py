@@ -2484,6 +2484,34 @@ def _local_path_of(rec):
     return None
 
 
+def _local_copy_of(rec, remote):
+    """This computer's copy of the folder the cluster will read, or None.
+
+    `_local_path_of` answers for the RECORDING, and a recording's id can
+    hold several folders: a DEWEY day is one id across its FP1, SPC and FP2
+    folders. Preparing a batch member from the first one this computer has
+    reads another folder's channel list and gap map and files the answer
+    under the wrong folder -- measured: J10 Precon3 ran FP2 on the cluster
+    and was filed as having read SPC. When the cluster's folder is named by
+    its acquisition time, the local copy has to end the same way; if none
+    does, None, and the node prepares it from the registry as it does for a
+    recording this computer does not have.
+    """
+    leaf = (remote or "").rstrip("/").rsplit("/", 1)[-1]
+    here = _local_path_of(rec)
+    if not _ACQ_LEAF.match(leaf):
+        return here
+
+    def leaf_of(p):
+        return _re.split(r"[\\/]+", p.rstrip("\\/"))[-1]
+    if here and leaf_of(here) == leaf:
+        return here
+    for p in ((rec or {}).get("paths") or []):
+        if isinstance(p, str) and leaf_of(p) == leaf and sessreg.is_here(p):
+            return p
+    return None
+
+
 def _pn_opener(member):
     """Open one recording for the bulk worker.
 
@@ -4526,6 +4554,16 @@ def _braces_vacc_run(rec, spec, use_chans, events, stamp_times, align_ids,
 # no local branch -- see `api_doppler_scan`.
 # ==========================================================================
 
+def _doppler_steps(plan):
+    """The progress stages a run declares. Legacy reads the recording twice
+    (the threshold is not knowable until every channel has been transformed
+    once); Storm reads it once."""
+    n = max(1, int(plan.get("n_channels") or 1))
+    passes = int(plan.get("passes") or 2)
+    return [("ied read", int(float(plan.get("span_s") or 0) * n * passes)),
+            ("ied detect", n)]
+
+
 def _doppler_public(out):
     """The answer without the snippets.
 
@@ -4622,9 +4660,16 @@ DOPPLER_REQ_FIELDS = ("invert", "bad_channels", "llw_s", "prc", "notch_hz",
 
 
 def _doppler_request_hash(gid, spec):
+    """The question, hashed. A Legacy request hashes exactly the fields it
+    always did, so every run filed before Storm existed is still recognised
+    as answered; a Storm request adds every field Storm has."""
     import hashlib
     body = {"gid": str(gid)}
-    for k in DOPPLER_REQ_FIELDS:
+    fields = DOPPLER_REQ_FIELDS
+    if ((spec or {}).get("method") or "legacy") != "legacy":
+        fields = tuple(DOPPLER_REQ_FIELDS) + tuple(
+            k for k in dopplermod.PARAM_KEYS if k not in DOPPLER_REQ_FIELDS)
+    for k in fields:
         v = (spec or {}).get(k)
         if k == "bad_channels":
             v = sorted(int(b) for b in (v or []))
@@ -4655,15 +4700,13 @@ def _doppler_spec_vacc(gid, body, rec):
         "excluded": [], "left_out": [], "preset": None,
         "probe": probe_id,
         "probe_name": (probebook.get(probe_id) or {}).get("name") or probe_id,
+        # Which bank is which, so the node can reference each probe to itself
+        # and leave out a bank somebody marked as not connected.
+        "banks": list((rec or {}).get("banks") or []),
     }
-    for key, default in (("llw_s", dopplermod.LLW_S),
-                         ("prc", dopplermod.PRC)):
-        v = body.get(key)
-        spec[key] = float(default if v is None else v)
-    notch = body.get("notch_hz")
-    spec["notch_hz"] = float(notch) if notch else None
-    band = body.get("band")
-    spec["band"] = [float(band[0]), float(band[1])] if band else None
+    # Every detection parameter from the one table both builders read, with
+    # the validated Storm method as the default (doppler.STORM).
+    spec.update(dopplermod.params_from(body))
     return spec
 
 
@@ -4714,9 +4757,13 @@ def _doppler_spec(body, sess):
 
     probe_id = _probe_for(stored)
     probe = probebook.get(probe_id) or {}
+    reg_row = _incisor_registry_index().get(sess.get("gid")) or {}
     spec = {
         "path": sess.get("path"),
         "channels": kept,
+        # See `_doppler_spec_vacc`: per-bank referencing, and no bank that
+        # is marked as not connected.
+        "banks": list(reg_row.get("banks") or []),
         "invert": bool(sess.get("invert", True)),
         "bad_channels": sorted(bad),
         "excluded": [{"index": i, "number": int(by_index[i]["number"]),
@@ -4727,18 +4774,11 @@ def _doppler_spec(body, sess):
         "probe": probe_id,
         "probe_name": probe.get("name") or probe_id,
     }
-    for key, default in (("llw_s", dopplermod.LLW_S),
-                         ("prc", dopplermod.PRC)):
-        v = body.get(key)
-        spec[key] = float(default if v is None else v)
-
-    # BOTH FILTERS OFF UNLESS ASKED FOR. A first run reproduces the numbers
-    # the lab's MATLAB produces, so a difference from them is always
-    # something somebody chose rather than something this rewrite did.
-    notch = body.get("notch_hz")
-    spec["notch_hz"] = float(notch) if notch else None
-    band = body.get("band")
-    spec["band"] = [float(band[0]), float(band[1])] if band else None
+    # THE VALIDATED DEFAULTS. Every detection parameter comes from
+    # doppler.params_from, which fills in the Storm method unless the
+    # request asks for Legacy -- the MATLAB-identical run, which is still
+    # one click away and is what tools/check_doppler_parity.py checks.
+    spec.update(dopplermod.params_from(body))
     return spec
 
 
@@ -4841,8 +4881,7 @@ def _doppler_scan_vacc(body, sess):
         vaccmod.push_code(cfg, APP_DIR)
     except Exception as exc:                             # noqa: BLE001
         return fail("doppler/scan-vacc", exc, 400, {"gid": gid})
-    steps = [("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
-             ("ied detect", plan["n_channels"])]
+    steps = _doppler_steps(plan)
     where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
              else "vacc:scratch")
     run = vaccrunmod.VaccRun(
@@ -4858,6 +4897,8 @@ def _doppler_scan_vacc(body, sess):
 
     job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
                        max(0.001, plan["megasamples"]), where)
+    _doppler_track(job, "one", [{"gid": gid, "label": label}],
+                   path=sess.get("path"), spec=spec)
     STORE.record_activity([{
         "action": "doppler.scan",
         "detail": {"channels": len(spec["channels"]), "where": where,
@@ -4990,15 +5031,18 @@ def api_doppler_scan():
         return jsonify({"ok": True, "cached": True,
                         "result": _doppler_public(hit)})
 
-    # Twice the span: the threshold is a percentile over every kept channel
-    # and is not knowable until all of them have been transformed once.
-    steps = [("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
-             ("ied detect", plan["n_channels"])]
+    steps = _doppler_steps(plan)
 
     def finish(out):
         dopplermod.cache_put(key, out)
-        _doppler_remember(sess, spec, key, out)
-        return _doppler_public(out)
+        # The request's hash on every record, so the Many picker can say
+        # "already run" for this exact question whichever way it was run.
+        _doppler_remember(sess, spec, key, out, extra={
+            "request_hash": _doppler_request_hash(sess.get("gid"), spec)})
+        # With its key, as a run of a recording only the cluster has comes
+        # back: the panel asks for the snippets, and opens it again from
+        # the landed list, by recording and key.
+        return dict(_doppler_public(out), key=key)
 
     try:
         run, where = _vacc_run_for("doppler", sess, spec, plan, rep, steps)
@@ -5010,6 +5054,10 @@ def api_doppler_scan():
 
     job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
                        max(0.001, plan["megasamples"]), where)
+    _doppler_track(job, "one",
+                   [{"gid": sess.get("gid"),
+                     "label": (sess.get("identity") or {}).get("label")}],
+                   path=sess.get("path"), spec=spec)
     STORE.record_activity([{
         "action": "doppler.scan",
         "detail": {"channels": len(spec["channels"]), "where": where,
@@ -5020,6 +5068,98 @@ def api_doppler_scan():
     return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
                     "plan": plan, "where": where,
                     "remote": run.spec_remote.get("path")})
+
+
+#: Doppler's runs on the cluster, by job id: what the panel finds again when
+#: it is opened. The panel used to hold the job only in its own memory, so
+#: leaving the view, or reloading the page, lost it -- the run went on, and
+#: the panel either forgot it or kept polling a job id the server had
+#: dropped and said "running" beside the same run already landed. Kept for
+#: ten minutes after a run ends, so a panel that comes back in time sees
+#: how it ended rather than nothing.
+_DOPPLER_INFLIGHT = {}
+_DOPPLER_INFLIGHT_LOCK = threading.Lock()
+DOPPLER_INFLIGHT_KEEP_S = 600.0
+
+
+def _doppler_track(job, kind, members, path=None, spec=None):
+    """Remember a run the panel will want to find again. `members` is
+    [{"gid", "label"}] -- one for a single run, every recording for a
+    batch -- and `spec` the detection parameters it was asked with."""
+    keep = {k: (spec or {}).get(k) for k in dopplermod.PARAM_KEYS}
+    with _DOPPLER_INFLIGHT_LOCK:
+        _DOPPLER_INFLIGHT[job.id] = {
+            "id": job.id, "kind": kind, "members": list(members or []),
+            "path": path, "params": keep, "started": time.time()}
+
+
+@app.route("/api/doppler/inflight")
+def api_doppler_inflight():
+    """Every Doppler run still on the cluster, and any that ended in the
+    last ten minutes, each with its job's own snapshot."""
+    now = time.time()
+    with _DOPPLER_INFLIGHT_LOCK:
+        items = list(_DOPPLER_INFLIGHT.values())
+    out, gone = [], []
+    for it in items:
+        job = cfcmod.get(it["id"])
+        if job is None:
+            gone.append(it["id"])
+            continue
+        snap = job.snapshot()
+        if snap["status"] != "running" and \
+                now - float(job.ended or now) > DOPPLER_INFLIGHT_KEEP_S:
+            gone.append(it["id"])
+            continue
+        out.append(dict(it, job=snap))
+    if gone:
+        with _DOPPLER_INFLIGHT_LOCK:
+            for jid in gone:
+                _DOPPLER_INFLIGHT.pop(jid, None)
+    out.sort(key=lambda r: r["started"], reverse=True)
+    return jsonify({"ok": True, "jobs": out})
+
+
+@app.route("/api/doppler/run")
+def api_doppler_run():
+    """One landed run, opened by recording and key. NEVER starts one.
+
+    The landed list used to open a run by asking /api/doppler/scan the same
+    question again and hoping it came back cached. It did not always -- a run
+    filed with channels left out, or a recording opened by a different path,
+    is a different cache key -- and a scan that is not a hit SUBMITS A NEW
+    CLUSTER JOB, whose answer the panel then ignored. Opening is reading:
+    memory, this machine's cache, or the run directory on the cluster.
+    """
+    gid = (request.args.get("gid") or "").strip()
+    key = (request.args.get("key") or "").strip()
+    if not gid or not key:
+        return jsonify({"ok": False, "error": "Which run?"}), 400
+    rec = DOPPLER_VAULT.get(gid, key)
+    if not rec:
+        return jsonify({"ok": False,
+                        "error": "That run is not on record."}), 404
+    try:
+        full = _doppler_full(gid, key)
+    except LookupError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 409
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/run", exc, 400, {"gid": gid})
+    row = _incisor_registry_index().get(gid) or {}
+    used = rec.get("path_used")
+    # The folder it was run on when this computer has it -- a DEWEY day is
+    # one id across three folders -- else any copy here, else the cluster's.
+    if used and isinstance(used, str) and sessreg.is_here(used):
+        path = used
+    else:
+        path = _local_path_of(row) or incisorvaccmod.path_of(gid)
+    return jsonify({
+        "ok": True, "key": key,
+        "result": dict(_doppler_public(full), key=key),
+        "spec": rec.get("spec"), "path": path, "row": row or None,
+        "label": rec.get("session_label") or row.get("label"),
+        "computed": rec.get("computed"),
+    })
 
 
 @app.route("/api/doppler/reviews")
@@ -5057,6 +5197,8 @@ def api_doppler_reviews():
                 "label": rec.get("session_label") or row.get("label"),
                 "n": rec.get("n_events"),
                 "params_hash": rec.get("params_hash"),
+                # What /api/doppler/run opens it by, with the gid.
+                "key": rec.get("params_hash"),
                 # What a review opens by when this computer has no copy:
                 # the run by its key, and the recording off the cluster.
                 "path": local or incisorvaccmod.path_of(gid),
@@ -5115,9 +5257,7 @@ def _doppler_prepare(member, body, force):
         # is not already in the run record (see _resume_vacc_batches).
         "resume": {"key": key},
         "spec_remote": dict(spec, path=member["remote"]),
-        "tool_steps": [
-            ("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
-            ("ied detect", plan["n_channels"])],
+        "tool_steps": _doppler_steps(plan),
         "seconds": float((dopplermod.estimate(sess, spec, rep) or {})
                          .get("seconds") or 0),
         "megasamples": max(0.001, plan.get("megasamples") or 1.0),
@@ -5137,12 +5277,18 @@ def _doppler_members(wanted):
     verdicts = {str(k).rstrip("/"): v for k, v in
                 ((vaccmod.status().get("roots") or {}).items())}
     members, blocked = [], []
+    seen = set()
     for rec in (REG.all() or []):
         gid = rec.get("gid")
         if not gid or rec.get("retired"):
             continue
         if wanted and gid not in wanted:
             continue
+        # One member per RECORDING, as the picker lists them: a gid held by
+        # two records (DEWEY J9 Precon2 is) was otherwise sent twice.
+        if gid in seen:
+            continue
+        seen.add(gid)
         label = rec.get("label") or gid
         # The same rule Incisor's batch reads (`vacc.resolve_gid`): on a
         # share the cluster mounts and this account can open, or a copy in
@@ -5172,7 +5318,7 @@ def _doppler_members(wanted):
         if listed.get("conflict") or listed.get("path") != got.get("remote"):
             listed = None
         members.append({"gid": gid, "label": label,
-                        "local": _local_path_of(rec),
+                        "local": _local_copy_of(rec, got.get("remote")),
                         "remote": got.get("remote"),
                         "state": got.get("state"), "listed": listed})
     return members, blocked
@@ -5191,31 +5337,168 @@ def _doppler_prepare_vacc(member, body, force):
         return None
     facts = incisorvaccmod.plan_for(rec, spec, 0.0, 0.0,
                                     found=member.get("listed"))
-    span, fs, n = facts["span_s"], facts["fs"], max(1, facts["n_channels"])
+    storm = (spec.get("method") or "legacy") == "storm"
+    # `doppler.plan_for`'s own seed -- twenty channel-seconds read per second
+    # of wall, once for Storm and twice for Legacy -- and an hour of 64
+    # channels when nothing says how long it is (`_doppler_size`). The same
+    # figure the picker showed, so the panel and slurm cannot disagree.
+    span, n, secs, _known = _doppler_size(facts, storm)
+    fs = facts["fs"]
     plan = {"span_s": span, "fs": fs, "n_channels": n,
             "megasamples": span * fs * n / 1e6,
-            # `doppler.plan_for`'s own seed: twenty channel-seconds read per
-            # second of wall, twice over. Same figure, so the panel and slurm
-            # cannot disagree.
-            "seconds": max(120.0, span * n * 2 / 20.0)}
+            "passes": 1 if storm else 2,
+            "seconds": secs}
     return {
         "gid": gid, "label": member["label"],
         "sess": None, "report": None, "key": None,
         "spec_local": spec, "plan": plan,
         "spec_remote": dict(spec, path=member["remote"]),
         "resume": {"vacc_only": True, "request": rh},
-        "tool_steps": [("ied read", int(span * n * 2)), ("ied detect", n)],
+        "tool_steps": _doppler_steps(plan),
         "seconds": plan["seconds"],
         "megasamples": max(0.001, plan["megasamples"]),
     }
 
 
+#: What a Doppler run is sized as when nothing says how long the recording
+#: is -- neither the registry nor the cluster's listing of the folder. An
+#: hour of 64 channels: generous on purpose, because a job that asks for too
+#: little is killed at its limit and reports a failure with no answer, and
+#: one that asks for too much only waits a little longer in the queue.
+DOPPLER_UNKNOWN_SPAN_S = 3600.0
+DOPPLER_UNKNOWN_CHANNELS = 64
+
+
+def _doppler_size(facts, storm):
+    """(span, channels, seconds, known) for one recording's run."""
+    span = float(facts.get("span_s") or 0.0)
+    n = int(facts.get("n_channels") or 0)
+    known = span > 0 and n > 1
+    if not known:
+        span = max(span, DOPPLER_UNKNOWN_SPAN_S)
+        n = max(n, DOPPLER_UNKNOWN_CHANNELS)
+    secs = max(120.0, span * n * (1.2 if storm else 2.0) / 20.0)
+    return span, n, secs, known
+
+
+def _doppler_vacc_rows(body=None):
+    """Every recording the cluster can read, as the Many picker lists it.
+
+    Incisor's list, for Doppler: on a share the cluster mounts and this
+    account can open -- the lab's netfiles, read in place -- or a copy in
+    scratch. Whether THIS computer has it too does not matter; a recording
+    only the cluster can read has its channels resolved on the node. Each
+    row says whether this exact question is already answered, by the
+    request's hash, so "only the ones not yet run" is one click.
+
+    Cheap on purpose: no recording is opened. The plan for each comes from
+    the cluster's own listing of the folder when it has one, else the
+    registry (`incisorvacc.plan_for`).
+    """
+    body = body or {}
+    staged, _unknown = _vacc_staged()
+    cfg = vaccmod.load_config(LOGS_DIR)
+    drives = vaccmod.drive_map()
+    verdicts = {str(k).rstrip("/"): v for k, v in
+                ((vaccmod.status().get("roots") or {}).items())}
+    asked = {}
+    for r in (DOPPLER_VAULT.all() or []):
+        if r.get("request_hash"):
+            asked[(r.get("gid"), r.get("request_hash"))] = r.get("params_hash")
+    params = dopplermod.params_from(body)
+    storm = params["method"] == "storm"
+    todo, blocked = [], []
+    seen = set()
+    for rec in (REG.all() or []):
+        gid = rec.get("gid")
+        if not gid or rec.get("retired"):
+            continue
+        # One row per RECORDING. Some gids are held by more than one record
+        # -- the same recording written twice, once with paths and once
+        # without -- and walking records listed it two or three times.
+        if gid in seen:
+            continue
+        seen.add(gid)
+        label = rec.get("label") or rec.get("key") or gid
+        got = vaccmod.resolve_gid(gid, rec.get("paths") or [], cfg,
+                                  drives=drives, staged=staged)
+        state = got.get("state")
+        if got.get("conflict"):
+            blocked.append({"gid": gid, "label": label, "can_upload": False,
+                            "why": "two folders on the cluster both claim "
+                                   "to be this recording"})
+            continue
+        if state == vaccmod.NATIVE:
+            rule = vaccmod.native_rule_of(cfg, got.get("remote")) or {}
+            if verdicts.get(str(rule.get("vacc") or "").rstrip("/")) \
+                    == "denied":
+                blocked.append({"gid": gid, "label": label,
+                                "can_upload": False,
+                                "why": "on %s, which this account (%s) "
+                                       "cannot read -- ask Shahriar to have "
+                                       "it added to jarvis_writes"
+                                       % (rule.get("vacc"),
+                                          cfg.get("netid") or "?")})
+                continue
+        elif state != vaccmod.STAGED:
+            blocked.append(_vacc_missing(rec, label))
+            continue
+        spec = _doppler_spec_vacc(gid, body, rec)
+        listed = staged.get(gid) or {}
+        if listed.get("conflict") or listed.get("path") != got.get("remote"):
+            listed = None
+        facts = incisorvaccmod.plan_for(rec, spec, 0.0, 0.0, found=listed)
+        span, n, secs, known = _doppler_size(facts, storm)
+        todo.append({
+            "gid": gid, "label": label, "remote": got.get("remote"),
+            "state": state,
+            "where": "vacc:netfiles" if state == vaccmod.NATIVE
+            else "vacc:scratch",
+            "here": _local_copy_of(rec, got.get("remote")),
+            "project": rec.get("project"), "mouse": rec.get("mouse"),
+            "session": rec.get("session"), "start": rec.get("start"),
+            "n_channels": (facts.get("n_all") or rec.get("n_channels"))
+            if known else None,
+            "duration_s": (span or rec.get("duration_s")) if known else None,
+            "bad_channels": spec["bad_channels"],
+            "plan": {"span_s": span, "n_channels": n, "seconds": secs,
+                     # Said, so the panel does not quote an hour as a fact.
+                     "size_known": known},
+            "answered": asked.get((gid, _doppler_request_hash(gid, spec))),
+            "row": {k: rec.get(k) for k in
+                    ("project", "mouse", "session", "key", "loose_key",
+                     "label", "duration_s", "cohort")},
+        })
+    todo.sort(key=lambda r: (str(r.get("project") or ""),
+                             str(r.get("mouse") or ""),
+                             str(r.get("session") or ""),
+                             str(r.get("start") or "")))
+    return todo, blocked, cfg
+
+
 @app.route("/api/doppler/batch/plan", methods=["GET", "POST"])
 def api_doppler_batch_plan():
-    """Which recordings a batch would do, and why the rest are left out."""
+    """Which recordings a batch would do, and why the rest are left out.
+
+    With no `gids` this is the Many picker's list: every recording the
+    cluster can read, each saying whether this question is already answered
+    -- nothing is opened and nothing is ticked for you. With `gids` it is
+    the plan for exactly those, prepared as the run will prepare them.
+    """
     body = (request.get_json(force=True) or {}) if request.method == "POST" \
         else {}
     force = bool(body.get("force"))
+    if not body.get("gids"):
+        try:
+            todo, blocked, cfg = _doppler_vacc_rows(body)
+        except Exception as exc:                         # noqa: BLE001
+            return fail("doppler/batch-plan", exc, 400)
+        st = vaccmod.status()
+        out = {"ok": True, "todo": todo, "n": len(todo),
+               "partition": cfg.get("partition"), "queued": st.get("queued"),
+               "cap": INCISOR_NETFILES_CAP}
+        out.update(_vacc_blocked_payload(blocked))
+        return jsonify(out)
     try:
         members, blocked = _doppler_members(body.get("gids"))
         todo, done = [], []
@@ -5260,6 +5543,12 @@ def api_doppler_batch():
     """
     body = request.get_json(force=True) or {}
     force = bool(body.get("force"))
+    # Never "every recording the cluster can read" -- that is fifteen
+    # hundred of them since netfiles became readable, and one click
+    # submitting all of them is not a default anything should have.
+    if not body.get("gids"):
+        return jsonify({"ok": False,
+                        "error": "Tick the recordings to send first."}), 400
     try:
         cfg = vaccmod.load_config(LOGS_DIR)
         vaccmod.push_code(cfg, APP_DIR)
@@ -5271,6 +5560,10 @@ def api_doppler_batch():
                         "error": "Nothing on the cluster to run."}), 400
 
     concurrency = body.get("concurrency")
+    if concurrency is None and any(m.get("state") == vaccmod.NATIVE
+                                   for m in members):
+        # The netfiles share slows under many readers, and it is everybody's.
+        concurrency = INCISOR_NETFILES_CAP
 
     def work(job):
         job.members_init([{"id": m["gid"], "label": m["label"]}
@@ -5301,7 +5594,9 @@ def api_doppler_batch():
                                    t["spec_local"], out)
                 return
             dopplermod.cache_put(t["key"], out)
-            _doppler_remember(t["sess"], t["spec_local"], t["key"], out)
+            _doppler_remember(t["sess"], t["spec_local"], t["key"], out,
+                              extra={"request_hash": _doppler_request_hash(
+                                  t["gid"], t["spec_local"])})
 
         done = 0
         if tasks:
@@ -5317,6 +5612,9 @@ def api_doppler_batch():
     steps = [("panorama pool", len(members))]
     job = cfcmod.start({"path": members[0].get("local") or ""}, steps, work,
                        1.0, "vacc:scratch")
+    _doppler_track(job, "many",
+                   [{"gid": m["gid"], "label": m["label"]} for m in members],
+                   spec=dopplermod.params_from(body))
     STORE.record_activity([{"action": "doppler.batch",
                             "detail": {"n": len(members),
                                        "blocked": len(blocked)}}])
@@ -13947,6 +14245,37 @@ def _strata_ica_key(ctx, ref):
     return stratamod.derived_key("ica", ctx["bins"].meta.get("stamp"),
                                  ctx["states"], ctx["order"], ctx["bad"],
                                  ctx["params"].get("spacing_um"), ref, keep)
+
+
+@app.route("/api/strata/<gid>/phasemap", methods=["POST"])
+def api_strata_phasemap(gid):
+    """Theta phase x depth gamma maps (beta): for every channel, how strong
+    slow, mid and fast gamma are at each moment of CA1 theta, on Theta Walk.
+    Worked out once per walk and reference and kept beside the scan."""
+    body = request.get_json(force=True) or {}
+    try:
+        _sess, ctx = _strata_context(gid, body)
+        mk = _strata_masks(ctx)
+        sp_over = (body.get("overrides") or {}).get("sp")
+        if ctx["params"].get("ref_channel") is not None:
+            ref = int(ctx["params"]["ref_channel"])
+        elif sp_over is not None and 0 <= int(sp_over) < len(ctx["order"]):
+            ref = ctx["order"][int(sp_over)]
+        else:
+            ref = _strata_ref(ctx, mk)
+        key = stratamod.derived_key("phasemap", stratamod.PHASE_VERSION,
+                                    ctx["bins"].meta.get("stamp"),
+                                    ctx["states"], ctx["order"], ctx["bad"],
+                                    ctx["params"].get("spacing_um"), ref)
+        out = stratamod.derived(
+            gid, "phasemap", key,
+            lambda: stratamod.phase_map(ctx["bins"], mk, ctx["order"],
+                                        ctx["bad"],
+                                        float(ctx["params"]["spacing_um"]),
+                                        ref))
+        return jsonify({"ok": True, "map": out})
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("phasemap", exc, gid)
 
 
 @app.route("/api/strata/<gid>/ica", methods=["POST"])
@@ -24173,8 +24502,13 @@ def _vacc_staged(force=False, wait=True):
         reg_sig = STORE.sessions.signature()
     except Exception:                                    # noqa: BLE001
         reg_sig = None
+    # What each folder holds is in it too, not only where it is: whether two
+    # folders are copies of one recording is decided from their contents, and
+    # a copy still uploading changes them without changing its path.
     sig = None if reg_sig is None else (
-        len(found), hash(tuple(r["path"] for r in found)), reg_sig)
+        len(found), hash(tuple((r["path"], r.get("n_channels"),
+                                r.get("first_ncs_bytes"), r.get("header"))
+                               for r in found)), reg_sig)
     if sig is not None and _STAGED_MEMO.get("sig") == sig:
         staged, unknown = _STAGED_MEMO["out"]
         return dict(staged), list(unknown)
@@ -24209,6 +24543,23 @@ def _vacc_staged(force=False, wait=True):
         pool = native or rows
         exact = [r for r in pool if r["how"] == "exact"]
         best = exact or pool
+        if len(best) > 1 and _vacc_same_copies(best):
+            # Copies, not rivals: the same recording kept in more than one
+            # place -- netfiles holds most PTEN sessions under
+            # ProcessedPtenData, Jeremy3/HeadfixPilot and Data4FarrellLab,
+            # and those 226 were all refused as ambiguous, which shut every
+            # one of them out of the cluster. Which copy is read does not
+            # change the answer, so one is chosen by a fixed rule (the one
+            # still named by its acquisition time, then by path) and the
+            # others are kept on the row so the choice can be shown.
+            best = sorted(best, key=lambda r: (
+                not _ACQ_LEAF.match(r["path"].rstrip("/").rsplit("/", 1)[-1]),
+                r["path"]))
+            staged[gid] = dict(best[0], copies=[r["path"] for r in best[1:]])
+            for r in rows:
+                if r is not best[0]:
+                    unknown.append(r)
+            continue
         if len(best) > 1:
             # Two folders on the cluster both claiming to be this recording.
             # Nothing here can tell which, and picking one silently is how
@@ -24226,6 +24577,31 @@ def _vacc_staged(force=False, wait=True):
 
 
 _STAGED_MEMO = {"sig": None, "out": None}
+
+
+def _vacc_same_copies(rows):
+    """Are these cluster folders one recording kept in several places?
+
+    Yes only when the listing can say so for every one of them: the same
+    header line (the acquisition's own TimeCreated, to the second, and its
+    rate), the same number of channel files, and the same size of CSC1 to
+    the byte. Anything missing or different stays a conflict -- of the 280
+    on netfiles, six differ (one copy of M13 s17 has 128 channel files and
+    the other 64), and those are exactly the ones a person has to look at.
+    """
+    sig = set()
+    for r in rows:
+        key = (r.get("header"), r.get("n_channels"), r.get("first_ncs_bytes"))
+        if not all(key):
+            return False
+        sig.add(key)
+    return len(sig) == 1
+
+
+import re as _re                                                # noqa: E402
+
+# A folder named by its acquisition time, the way Neuralynx names them.
+_ACQ_LEAF = _re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
 
 
 def _vacc_estimate(sess, spec, plan):
@@ -24312,7 +24688,7 @@ def _vacc_remote_for(sess):
 
     got = vaccmod.resolve_gid(gid, paths, cfg, staged=staged)
     if got.get("state") in (vaccmod.NATIVE, vaccmod.STAGED) and got.get("remote"):
-        return got["remote"], got["state"]
+        return _vacc_same_folder(sess.get("path"), got["remote"], got["state"])
 
     denied = vaccmod.status().get("denied_roots") or []
     why = got.get("why") or "the cluster has no copy of it"
@@ -24320,6 +24696,44 @@ def _vacc_remote_for(sess):
         why += ("; and the share it maps onto (%s) is mounted but this "
                 "account cannot read it" % ", ".join(denied))
     raise RuntimeError("VACC cannot reach this recording: " + why)
+
+
+def _vacc_same_folder(local, remote, state):
+    """The cluster's copy of THIS folder, not merely of this recording's id.
+
+    A gid can hold more than one folder: a DEWEY day is one gid across its
+    FP1, SPC and FP2 folders, and a session recorded in two parts is one gid
+    across both. `resolve_gid` answers per gid, so a run opened from one of
+    them went to whichever the cluster's listing matched -- measured: J9
+    Precon2 opened from its FP2 folder ran on SPC, and reported the result
+    under FP2's name. When both folders are named by their acquisition time
+    and the times differ, the cluster's listing is searched for the folder
+    that ends the way the open one does; anything but exactly one is refused,
+    because analysing a different folder under this one's name is the worst
+    answer available.
+    """
+    mine = [p for p in _re.split(r"[\\/]+", local or "") if p]
+    theirs = [p for p in (remote or "").split("/") if p]
+    if (len(mine) < 2 or not theirs or mine[-1] == theirs[-1]
+            or not (_ACQ_LEAF.match(mine[-1]) and _ACQ_LEAF.match(theirs[-1]))):
+        return remote, state
+    tail = "/" + "/".join(mine[-2:]).lower()
+    try:
+        rows = _vacc_walk(wait=False)
+    except Exception:                                    # noqa: BLE001
+        rows = []
+    hits = [r for r in rows
+            if (r.get("path") or "").rstrip("/").lower().endswith(tail)]
+    if len(hits) == 1:
+        return (hits[0]["path"].rstrip("/"),
+                vaccmod.NATIVE if hits[0].get("native") else vaccmod.STAGED)
+    raise RuntimeError(
+        "VACC cannot reach this recording: the cluster folder filed under "
+        "this recording is %s, which is a different folder from the one open "
+        "here (%s), and %s. Upload this folder, or open the one the cluster "
+        "has." % (remote, "/".join(mine[-2:]),
+                  "no folder on the cluster ends the same way" if not hits else
+                  "%d folders on the cluster end the same way" % len(hits)))
 
 
 def _vacc_place_for_gid(gid):

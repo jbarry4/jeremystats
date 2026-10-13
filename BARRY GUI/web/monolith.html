@@ -580,6 +580,29 @@ table.jans tr.check td.jcell.pass { background: color-mix(in srgb, var(--focus) 
   table.jans thead th { text-align: center; }
 }
 .chip.jgate.warn { background: color-mix(in srgb, var(--focus) 26%, transparent); color: var(--ink); }
+/* The face of tab 8: traffic lights, a picked light's picture and words. */
+.jlight { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line-2); vertical-align: middle; flex: none; }
+.jlight.on { background: var(--ok); border-color: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+.jlight.on.warn { background: var(--focus); border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent); }
+table.jlights td.jcell, table.jlights td.jnone { text-align: center; padding: 7px 6px; }
+table.jlights td.jcell.pass, table.jlights tr.check td.jcell.pass { background: none; }
+table.jlights td.jcell.sel, table.jlights tr.check td.jcell.pass.sel { background: var(--chip); box-shadow: inset 0 0 0 2px var(--focus); }
+table.jlights tbody th { font-weight: 500; color: var(--ink); font-size: 13px; }
+table.jlights thead th:first-child { font-size: 12.5px; color: var(--ink-2); }
+.jlegend { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0 0; }
+.jlegend .jlight { width: 12px; height: 12px; box-shadow: none; }
+.jpick { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 10px; }
+.jpick[hidden] { display: none; }
+.jpick .hrow { gap: 8px; align-items: center; }
+.jpick h3 { margin: 0; font-size: 15px; }
+.jpick .jwhat { margin: 6px 0 4px; max-width: 80ch; overflow-wrap: anywhere; }
+.jverdict { list-style: none; margin: 0 0 6px; padding: 0; font-size: 13.5px; }
+.jverdict li::before { content: '○ '; color: var(--ink-3); }
+.jverdict li.yes::before { content: '● '; color: var(--ok); }
+.jpickfig { max-width: 480px; }
+.jsub { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 12px; }
+.jsub:first-child { border-top: 0; margin-top: 0; }
+.jsub > .hrow h3 { margin: 0; font-size: 16px; }
 table.jans tr.jsep th { padding-top: 10px; text-align: left; }
 table.jans tr.check th { font-weight: 500; }
 .jmodel { border-top: 1px solid var(--line); padding: 10px 0 4px; }

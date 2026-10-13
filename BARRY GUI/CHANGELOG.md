@@ -15,6 +15,191 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.13.1 - Braces: the span you set stays as you move
+
+### Fixed
+
+- **Moving to the next flagged stamp no longer resets the trace view's
+  span.**
+  - Every move used to set it again to eight windows across: 1.6 s at
+    ±200 ms, whatever the view had been zoomed to. A 1 s view became
+    1.6 s at every step.
+  - Now a move centres the stamp and leaves the width alone. Whatever the
+    view shows is the span, kept from one stamp to the next (next, back,
+    or a jump from the list).
+  - It is remembered between reviews too, on this machine only
+    (`braces_span`, kept local the way Checkup's span is).
+  - Eight windows across is now only where the very first review opens.
+- **Restart Jarvis** for the span to stay this machine's own. Until then
+  it still works, but is filed as a shared preference.
+
+### Checked
+
+- New `bracesspan.html` 8. It enters a real review: PTEN m8 s2, 224 stamps.
+  - The first review opens eight windows across.
+  - A 1 s width stays through next, next and back.
+  - It is remembered.
+  - Leaving and entering again opens at 1 s.
+  - Every preference write and every session write the page makes is held,
+    and the aid pop-out is blocked. The one write left is the server's own
+    touch of the session record when a recording opens, as any open does.
+    That file was put back byte for byte after each run.
+- Bite-tested: the old eight-windows-every-move code fails 6 of its 8
+  checks.
+- `braces.html` 21, `bracesbad.html` 15.
+
+## 2026.10.12.9 - Tab 8 for someone who does not read statistics: traffic lights, words, one picture
+
+From Shahriar: "Restructure it for someone who has no idea how stats work
+or what these numbers mean and has the attention span of a fish." His ten
+answers set the shape: the reader is him; traffic lights first; words
+instead of numbers, the numbers one ▸ away; one short scroll; one light per
+band and method, lit when either test passes; Welch and Dickson side by
+side; the checks in their own small table; a click opening the
+before/after picture; everything else under one hood; lab words kept, no
+statistics words on the face. No restart needed: the page only.
+
+### Changed
+
+- **The face of tab 8 is now three things:**
+  - **A sentence and the lights.** For example: "Gamma changed in 2 of the
+    8 comparisons; theta in none. Both ways of computing coherence agree.
+    Each time it is all pairs together; no single pair stands out."
+    - Under it, a row for each comparison: Baseline → both cues, Baseline
+      → cue 1, Baseline → cue 2, the switch, Cue 1 → cue 2, Trials vs FP
+      (20 s and 10 s), and Power.
+    - Four lights in each row: theta and gamma, by Welch and by Dickson.
+      Green means it changed; an empty circle means it did not.
+  - **The picked light's picture.** It opens under the lights. The first
+    lit light is shown at once, and clicking another light swaps the
+    picture without redrawing anything else.
+    - Above the picture, one sentence from joe.json's own means. For
+      example: "From Baseline (20 s) to Cue 1 + Cue 2 (20 s), coherence
+      went down on Precon1 (0.153 → 0.144) and stayed level on Precon4
+      (0.173 → 0.173)."
+    - Then two lines in words. "All pairs together: some evidence of a
+      change." "Pair by pair: none stands out."
+    - The picture itself shows the two days' lines, scaled to the means,
+      with no statistics in its legend.
+    - The F, df and p of every term sit behind "▸ the numbers".
+  - **Checks: these should stay grey.** The four sound checks in a table of
+    their own, with a lit one in amber. The line above it says how many
+    are lit against how many chance alone would light: "1 of 16 lit;
+    chance alone lights about 0.8." Under it, the separate script's
+    agreement in one line.
+- **Under the hood**, in one folded ▸: how we measured (the timeline,
+  mains and its harmonics, the old Minus FP against this), every test's
+  card with its numbers, the follow-ups, the files for SPSS and the script,
+  and the notes from the recordings. Nothing in it changed.
+- The evidence words are fixed: "strong evidence" below p = .01, "some
+  evidence" below p = .05 (uncorrected), and "no evidence" otherwise. A
+  light is lit when either of its two tests is below .05, as before.
+- The ? help for tab 8 is in plain words. There is a new ? for the checks,
+  with its own entry in the Guide.
+
+### Checked
+
+- `web/_dev/monolith.html`: 533 passed. The tab 8 checks now cover:
+  - every light against joe.json (a lit check amber, no Dickson light for
+    power);
+  - no statistics words on the face;
+  - the sentence's counts and whether the two methods agree;
+  - the first lit light's picture at once;
+  - a click giving its own sentence and words with nothing redrawn;
+  - the numbers behind ▸;
+  - the checks' line and picture;
+  - the hood folded, and the picked lights kept when the hood's band
+    changes;
+  - the phone layout.
+- `tools/check_review.py`: 54 passed (the copy opens tab 8 with its
+  picture).
+- On the real data, at desktop and in a 390 px frame.
+
+## 2026.10.12.8 - StrataScope: bouts with handles, a tunable auto painter, three gammas, a theta phase map (beta)
+
+### Fixed
+
+- **"StrataScope could not work out the steps: [WinError 32] ... ripples-....json".**
+  When a vote was clicked in Step 1, the labelling window and the evidence
+  window asked for the same ripples at the same moment. Both wrote the same
+  temporary file, and Windows (and OneDrive) will not replace a file that
+  something has open. Now each result is worked out once while the other
+  window waits for it, each write gets its own temporary file, and a write
+  that still fails is retried and then skipped. It is a cache, so the
+  answer still comes back.
+- **Stop said "Interface error: No such run."** Leaving a recording while
+  it was being read kept the read's progress bar but lost its run, so Stop
+  on the next recording had nothing to stop. Now:
+  - coming back to a recording picks up its read where it is;
+  - a read still going on another recording shows in the step row ("Still
+    reading M6 s8 · 40%"), with its own Stop;
+  - asking to read a recording that is already being read joins that read
+    instead of starting a second one into the same folder;
+  - Stop on a run that has already ended does nothing.
+
+### Added
+
+- **Theta Walk bouts can be resized.** Drag a painted bout's edge; the time
+  shows beside it as you drag.
+- **The auto painter has settings**, beside "Paint them": shortest bout
+  (2 s), join gaps under (1 s), the theta/delta level (empty: picked from
+  the recording), and the channel it reads. Changing one redraws the ghost
+  bouts. The settings are kept with the sheet.
+- **Theta phase x depth gamma maps (beta), in Step 3's evidence.** These
+  follow Schomburg et al. 2014 and Fernández-Ruiz et al. 2021. For every
+  channel, the map shows how strong slow (30-50 Hz), mid (60-80) and fast
+  (100-150) gamma are at each moment of CA1 theta during Theta Walk, two
+  cycles across.
+  - You can show it in the CSD or the LFP, with each depth on its own
+    colour scale (the default) or one scale for the whole map.
+  - White dots follow each channel's preferred phase down the probe. The
+    biggest jump in that phase is marked, along with the step's line
+    nearest to it.
+  - Each map also says which channel is most theta-locked, compared with
+    the layer that gamma is expected in.
+  - A **?** opens a five-part animated explanation of how to read it. In
+    mice the dentate's slow and fast gamma both lean to the theta trough,
+    while CA1 lacunosum-moleculare gamma comes near the peak (Lasztóczi &
+    Klausberger 2017), so the biggest jump is often the fissure itself.
+  - The map is worked out once per walk (half a minute on a 105 s walk)
+    and kept.
+  - On PTEN M6 s8 the jump falls one or two channels from Step 3's
+    fissure line.
+- **Mid gamma.** Fernández-Ruiz et al. 2021 found three gamma inputs in the
+  dentate, each in its own third of the molecular layer: slow 30-50 Hz
+  (lateral entorhinal, OML), fast 100-150 Hz (medial entorhinal, MML) and
+  mid 60-80 Hz (commissural, IML). Method B used to call everything from
+  60 Hz up "fast" and judge it against the MML. A component is now named
+  by its peak (under 55 slow, 55-90 mid, 90 and up fast), and mid is
+  checked against the IML when there is one. Runs already saved are
+  renamed by the new rule when read.
+- **Step 3's evidence: theta's sink in the molecular layer.** The
+  theta-trough CSD with its strongest sink between the fissure and GCL1,
+  marked against MML1. It is a third look at the MML that uses neither the
+  thirds nor gamma.
+- **Step 3's evidence: the SP-fissure-GCL proportion.** From CA1 SP to the
+  fissure, compared with the fissure to GCL1. In mice this is about 2:1
+  (1.5-2.8; Paleologos et al. 2025). Method A's card says whether this
+  recording is in range, and where the fissure would be for 2:1.
+
+### Changed
+
+- **Leaving IML out keeps to the anatomy.** For a few hours Step 3 had a
+  third choice: "none: OML, MML, GCL in thirds", which cut fissure to hilus
+  into three equal parts. It is gone, because no paper divides the blade
+  that way. The molecular layer is three bands of about equal width (the
+  perforant path fills the outer two, the commissural input the inner one),
+  and the granule layer is not one of them. Papers that leave IML out
+  either keep the molecular layer whole (Lasztóczi & Klausberger 2017) or
+  mark only the OML and MML (Tarcsay et al. 2025). "Part of MML" does the
+  same here: the OML line stays at a third and the GCL keeps its own
+  thickness. A sheet that saved "thirds" is now cut as "part of MML".
+- **ICA marks sit on channel edges.** A picked Method B check used to draw
+  a line through the middle of a channel, between two boundaries. Now the
+  channel it sinks on is shaded edge to edge. When that channel is outside
+  the layer, a dashed line marks where the layer would have to start or
+  end to include it, on the same edges as every other line.
+
 ## 2026.10.12.7 - The reveal holds, with sound, four ways on, and who Jarvis is
 
 ### Added

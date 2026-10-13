@@ -1,0 +1,205 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bracesspan: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Braces' review keeps the span you set (2026-10-13).
+
+   Each step to the next flagged stamp used to set the trace view's span
+   again, to eight windows across -- 1.6 s at ±200 ms -- so a view zoomed to
+   1 s was undone by every move. This enters a REAL review, on an open
+   proposal whose recording can be read here, zooms the pane to a width of
+   its own, steps, and checks the width stayed; then leaves and comes back,
+   and checks the review opens at that width too.
+
+   IT WRITES NOTHING OF ITS OWN. Every preference write is held in memory
+   for the run (entering a review lays out the panes and opens a recording,
+   both of which would write this machine's preferences), and so is every
+   write the page makes to the recording's session record (its view on
+   every move, its event classes); the aid pop-out, which would save from a
+   window of its own, is blocked. No stamp is decided, and the review is
+   left by its own way out. ONE WRITE REMAINS, and it is the server's:
+   opening any recording touches its session record (`Registry.ensure`
+   writes the merged record back with a new `updated`), exactly as opening
+   it by hand does. Measured 2026-10-13: nothing else in sessions/, prefs/
+   or braces/ changed. With no open proposal whose recording is here, it
+   says so and checks nothing it cannot reach.
+
+   Run under PowerShell. Under Bash, Edge dumps nothing and every suite
+   reads clean. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const near = (a, b, tol) => a != null && b != null && Math.abs(a - b) <= tol;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  // BARRY is a const in the app's scope: reached through the frame's eval.
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.braces)'), 10000, 'the modules');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+  const BR = 'BARRY.braces';
+
+  /* Every preference write held for the run. `braces_span` reads as never
+     set, so the first review opens the way a first review does whatever
+     this machine already holds. */
+  ev('(function(){ var P = BARRY.prefs; window.__bsSet = P.set;'
+     + ' window.__bsGet = P.get; window.__bsMem = {}; window.__bsWrites = [];'
+     + ' P.set = function(k, v) { window.__bsWrites.push(k);'
+     + '   window.__bsMem[k] = v; return v; };'
+     + ' P.get = function(k, d) { if (k in window.__bsMem) return window.__bsMem[k];'
+     + '   if (k === "braces_span") return d;'
+     + '   return window.__bsGet.apply(P, arguments); }; })()');
+  /* And the recording's session record. Opening a recording and moving
+     about in it writes that record -- where it is looking (t0, span) on
+     every move, its event classes on opening -- and a write rewrites this
+     machine's shard of it with whatever the merged record holds, other
+     machines' values included. Every such write is answered here instead:
+     state, events, notes, bookmarks, bad channels. */
+  ev('(function(){ var W = window; if (W.__bsFetch) return; W.__bsFetch = W.fetch;'
+     + ' W.__bsHeld = []; var hold = ["state", "events", "note", "bookmarks",'
+     + '   "bad", "bad-for-path"]; var at = "/api/session/";'
+     + ' W.fetch = function(u, o) { var s = String(u).split("?")[0];'
+     + ' var i = s.indexOf(at); var tail = i >= 0 ? s.slice(i + at.length) : null;'
+     + ' if (tail !== null && hold.indexOf(tail) >= 0 && o && o.method === "POST") {'
+     + '   W.__bsHeld.push(tail);'
+     + '   return Promise.resolve(new Response(JSON.stringify({ ok: true, saved: false }),'
+     + '     { status: 200, headers: { "Content-Type": "application/json" } })); }'
+     + ' return W.__bsFetch.apply(this, arguments); }; })()');
+  /* And no second window. The review pops its aid panels out into a
+     window of their own, which runs Xplorefinder on the same recording
+     with its own, unstubbed, saves -- that is what wrote the recording's
+     view state when only this page's were held. Blocked, the review puts
+     the aids in this window instead, which is a path it has for a blocked
+     pop-up anyway. */
+  ev('(function(){ window.__bsOpen = window.open; window.open = function() {'
+     + ' return null; }; })()');
+  const shown = () => ev('(function(){ var XF = BARRY.views.xplore.state;'
+    + ' var p = (XF.panes || [])[0]; var v = ' + BR + '._view();'
+    + ' var s = (XF.linkMode === "none" && p && p.t0 != null) ? p : (v && v.sess);'
+    + ' return s ? { t0: s.t0, span: s.span } : null; })()');
+  const at = () => (ev(BR + '._view()') || {}).at;
+  const inReview = () => !!ev(BR + '._view()') && !!(ev(BR + '._view()') || {}).spanSet;
+
+  let entered = false;
+  try {
+    head('AN OPEN PROPOSAL WHOSE RECORDING IS HERE');
+    const sets = await get('/api/braces/sets');
+    const open = (sets.sets || []).filter((s) => !s.committed);
+    let win = null;
+    for (const s of open.slice(0, 4)) {
+      const one = await get('/api/braces/set/' + encodeURIComponent(s.set_id));
+      if (!((one.set || {}).rows || []).length || one.set.rows.length < 3) continue;
+      await ev(BR + '._open(' + JSON.stringify(s.set_id) + ')');
+      await until(() => (ev(BR + '._state()').set || {}).set, 9000, 'the proposal');
+      const st = ev(BR + '._state()').set || {};
+      if (!st.session_path) continue;
+      say('       entering ' + (st.set.set_id || s.set_id) + ', '
+          + st.set.rows.length + ' stamps', 'dim');
+      const went = await ev(BR + '._enter()');
+      if (!went) continue;
+      entered = true;
+      win = ((st.set.params || {}).window_ms || 100) / 1000;
+      break;
+    }
+    if (!entered) {
+      say('       no open proposal with a recording readable here, so the '
+          + 'review is not entered and nothing below is checked', 'dim');
+    } else {
+      await until(() => inReview() && shown(), 60000, 'the review');
+      const first = Math.max(0.4, win * 8);
+      ok('the very first review opens eight windows across',
+         near((shown() || {}).span, first, 0.01),
+         'span ' + JSON.stringify(shown()) + ', wanted ' + first);
+
+      head('A WIDTH OF YOUR OWN STAYS AS YOU MOVE');
+      const mine = Math.abs(first - 1.0) > 0.05 ? 1.0 : 0.75;
+      const s0 = shown();
+      ev('BARRY.views.xplore.setWindow(0, ' + Math.max(0, s0.t0 + s0.span / 2 - mine / 2)
+         + ', ' + mine + ')');
+      await until(() => near((shown() || {}).span, mine, 0.002), 5000, 'the zoom');
+      const a0 = at();
+      ev(BR + '._goTo(' + (a0 + 1) + ')');
+      await until(() => at() === a0 + 1, 5000, 'the next stamp');
+      ok('stepping to the next stamp keeps the width you set',
+         at() === a0 + 1 && near((shown() || {}).span, mine, 0.01),
+         'span ' + JSON.stringify(shown()) + ', wanted ' + mine);
+      ev(BR + '._goTo(' + (a0 + 2) + ')');
+      await until(() => at() === a0 + 2, 5000, 'the one after');
+      ok('and the one after that', near((shown() || {}).span, mine, 0.01),
+         JSON.stringify(shown()));
+      ev(BR + '._goTo(' + a0 + ')');
+      await until(() => at() === a0, 5000, 'back');
+      ok('and going back', near((shown() || {}).span, mine, 0.01),
+         JSON.stringify(shown()));
+      const kept = ev('window.__bsMem.braces_span');
+      ok('it is remembered, as this screen’s own setting',
+         near(kept, mine, 0.01), 'kept ' + kept);
+
+      head('LEFT AND COME BACK TO, IT OPENS AT THAT WIDTH');
+      ev(BR + '._exitView()');
+      await until(() => !ev(BR + '._view()'), 9000, 'the way out');
+      ok('the review is left by its own way out', !ev(BR + '._view()'));
+      entered = false;
+      const back = await ev(BR + '._enter()');
+      entered = !!back;
+      await until(() => inReview() && shown(), 60000, 'the review again');
+      ok('entered again, it opens at the width you last had, not eight '
+         + 'windows across', near((shown() || {}).span, mine, 0.01),
+         'span ' + JSON.stringify(shown()) + ', wanted ' + mine);
+    }
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  } finally {
+    try {
+      if (entered || ev(BR + '._view()')) ev(BR + '._exitView()');
+    } catch (e) { /* the frame may be gone */ }
+    /* THE STUBS ARE NEVER TAKEN AWAY: the page is unloaded below with
+       them still in place. Xplorefinder saves the view 1.2 s after a move
+       and leaving the review moves it again, so a stub removed "after the
+       last save" let one through to the recording's session file. */
+    await sleep(2000);
+    try {
+      say('       session writes held, never sent: '
+          + ev('JSON.stringify(window.__bsHeld || [])'), 'dim');
+      say('       preference writes held, never sent: '
+          + ev('JSON.stringify(window.__bsWrites || [])'), 'dim');
+    } catch (e) { /* the frame may be gone */ }
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'bracesspan: ' + pass + ' ok, ' + fail + ' fail';
+  // Unloaded, or the app's polling keeps the runner waiting.
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

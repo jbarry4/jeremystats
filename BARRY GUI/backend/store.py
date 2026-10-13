@@ -97,6 +97,8 @@ PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
                # How wide somebody likes the curation window. About this
                # screen and this pair of eyes, not about the project.
                "curate_span",
+               # And Braces' trace view, the same way (2026-10-13).
+               "braces_span",
                "chrome", "fullscreen", "zoom",
                "recent_scripts", "recent_bookmarks", "pipeline_folders",
                "scratch_draft")

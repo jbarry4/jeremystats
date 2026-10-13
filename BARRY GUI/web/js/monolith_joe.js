@@ -8,10 +8,13 @@
    where those pass; the SPSS files and a standalone script that reproduces
    them without Jarvis. backend/joe.py makes the numbers (joe.json).
 
-   One line a card, then ▸ More, with something to play with in place of
-   paragraphs: the windows on a trial, the mains and its harmonics, and the
-   old Minus FP against this tab's FP comparison. Load order: after
-   monolith.js and monolith_explain.js.
+   Its face is for someone who does not read statistics (2026-10-12):
+   traffic lights a comparison a row, a sentence over them, the checks in
+   their own small table, and a light clicked opening its before/after
+   picture with what changed in words. Everything else -- the windows, the
+   mains and its harmonics, the old Minus FP against this, every model's
+   numbers, the follow-ups, the SPSS files and the script -- is under one
+   hood. Load order: after monolith.js and monolith_explain.js.
    ========================================================================== */
 'use strict';
 
@@ -19,7 +22,7 @@ window.MONO_JOE = (function () {
   const M = () => window.MONO;
   const X = () => window.MONO_EXPLAIN;
   const NS = 'http://www.w3.org/2000/svg';
-  const P = { data: null, err: null, loading: false, band: 'theta', method: 'welch', seq: 0,
+  const P = { data: null, err: null, loading: false, band: 'theta', method: 'welch', seq: 0, pick: { first: null, check: null },
               making: false, makeNote: '', makeErr: null, scripting: false, scriptNote: '', scriptErr: null };
   const $ = (id) => document.getElementById(id);
   const el = (...a) => M().el(...a);
@@ -40,6 +43,10 @@ window.MONO_JOE = (function () {
 
   function section(id, title, help, kids) {
     return el('div', { class: 'card', id }, [el('div', { class: 'hrow' }, [el('h2', { text: title }), help ? M().qh(help) : null])].concat(kids));
+  }
+  // A part of the hood: a heading, its ?, its contents (no card of its own).
+  function sub(id, title, help, kids) {
+    return el('div', { class: 'jsub', id }, [el('div', { class: 'hrow' }, [el('h3', { text: title }), help ? M().qh(help) : null])].concat(kids));
   }
   function seg(list, cur, pick, id) {
     const g = M().seg(list, cur, pick, id);
@@ -98,63 +105,214 @@ window.MONO_JOE = (function () {
     return m.kind === 'check' ? 'p < .05 (' + r.gate.by + '): a check, so nothing follows' : 'opens follow-ups (' + r.gate.by + ')';
   }
 
-  /* ---------------- the answer ---------------- */
-  // Every model x band x method: the test of interest's p, and Day x factor's
-  // beneath it; a cell that opens follow-ups is marked.
-  function answerTable() {
+  /* ---------------- the answer: lights, words, one picture ---------------- */
+  // Shahriar, 2026-10-12: for someone who does not read statistics and gives
+  // it a few seconds. Traffic lights first (a row a comparison; theta and
+  // gamma, Welch and Dickson side by side), words instead of numbers, the
+  // checks in their own small table, a click opening the before/after
+  // picture, and everything else under one hood. Lab words stay (coherence,
+  // theta, gamma, Precon, FP, A/B/C/D); statistics words (F, df, Day ×
+  // Phase, mixed model, Holm) never reach the face of the tab.
+  const ROW = { m1: 'Baseline → both cues', m2: 'Baseline → cue 1', m3: 'Baseline → cue 2',
+                m4: 'The switch: end of cue 1 → start of cue 2', m5: 'Cue 1 → cue 2', m6a: 'Trials vs FP, 20 s',
+                m6b: 'Trials vs FP, 10 s', m7: 'Power in each region, baseline → both cues', c1: 'Noise vs Click',
+                c2: 'All four sounds', c3: 'A/B/C/D', c4: 'High vs Low tone' };
+  const rowName = (m) => ROW[m.id] || m.label;
+  const bandName = (b) => (b.label || b.id).split(' ')[0];
+  const methodName = (id) => (id === 'welch' ? 'Welch' : 'Dickson');
+  const VAL = (m) => (m.unit === 'region' ? 'power' : 'coherence');
+  const lit = (r) => !!(r && r.mixed && r.mixed.ok && r.gate && r.gate.passed);
+  const hasMethod = (m, me) => m.unit !== 'region' || me === 'welch';
+  // How strong the evidence is, said in words; the p itself is one ▸ away.
+  const strength = (p) => (p == null ? 'no evidence' : p < 0.01 ? 'strong evidence' : p < ALPHA ? 'some evidence' : 'no evidence');
+  function verdict(m, r) {
+    const t2 = r.mixed.terms[two(m)], t3 = r.mixed.terms[three(m)];
+    const u = m.unit === 'pair' ? 'pair' : 'region';
+    const s2 = strength(t2 && t2.p), s3 = strength(t3 && t3.p);
+    return {
+      avg: 'All ' + u + 's together: ' + s2 + ' of a change.',
+      each: s3 === 'no evidence' ? cap(u) + ' by ' + u + ': none stands out.' : cap(u) + ' by ' + u + ': ' + s3 + ' that some changed more than others.',
+      s2, s3,
+    };
+  }
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  // a → b, in words: level when the move is small beside the other day's.
+  function moved(a, b, other) {
+    const d = b - a, big = Math.max(Math.abs(d), Math.abs(other || 0));
+    if (Math.abs(d) < 0.15 * big || Math.abs(d) < 1e-4) return 'stayed level';
+    return d > 0 ? 'went up' : 'went down';
+  }
+  // What the picture shows, in one sentence, from joe.json's own means.
+  function describe(m, r) {
+    const c = r.cells || {};
+    const [d1, d4] = P.data.tested;
+    const v = (d, lv) => (((c[d] || {})[lv] || {}).mean);
+    const n = (x) => (x == null ? '—' : sig(x));
+    const L = m.levels;
+    if (m.kind === 'check' || L.length !== 2) {
+      return [d1, d4].map((d) => 'On ' + d + ': ' + L.map((lv) => lv.label + ' ' + n(v(d, lv.id))).join(', ') + '.').join(' ')
+        + ' Lines that run side by side mean nothing changed between the days.';
+    }
+    const [a, b] = L;
+    const a1 = v(d1, a.id), b1 = v(d1, b.id), a4 = v(d4, a.id), b4 = v(d4, b.id);
+    if ([a1, b1, a4, b4].some((x) => x == null)) return 'Not measured on both days.';
+    if (m.factor === 'Source') {
+      return 'From ' + d1 + ' to ' + d4 + ', the trials’ ' + VAL(m) + ' ' + moved(a1, a4, b4 - b1) + ' (' + n(a1) + ' → ' + n(a4) + ') and FP’s '
+        + moved(b1, b4, a4 - a1) + ' (' + n(b1) + ' → ' + n(b4) + ').';
+    }
+    return 'From ' + a.label + ' to ' + b.label + ', ' + VAL(m) + ' ' + moved(a1, b1, b4 - a4) + ' on ' + d1 + ' (' + n(a1) + ' → ' + n(b1) + ') and '
+      + moved(a4, b4, b1 - a1) + ' on ' + d4 + ' (' + n(a4) + ' → ' + n(b4) + ').';
+  }
+
+  // The lights: a row a comparison, a light a band and method.
+  function lightTable(models, id, kind) {
     const D = P.data;
     const cols = [];
-    for (const b of D.bands) for (const m of D.methods) cols.push([b, m]);
-    const head = el('tr', {}, [el('th', { text: 'Model' })].concat(cols.map(([b, m]) => el('th', {}, [
-      el('div', { text: b.label }), el('div', { class: 'small muted', text: m.id === 'welch' ? 'Welch' : 'Dickson' })]))));
-    const row = (m) => el('tr', { 'data-model': m.id, class: m.kind }, [el('th', {}, [el('div', { text: m.label }),
-      el('div', { class: 'small muted', text: m.kind === 'check' ? 'check · expected null' : (m.unit === 'region' ? 'power, per region' : 'coherence, per pair') })])]
-      .concat(cols.map(([b, me]) => {
-        if (m.unit === 'region' && me.id !== 'welch') return el('td', { class: 'muted small', text: 'power has one method' });
-        const r = resOf(m.id, b.id, me.id);
-        if (!r || !r.mixed || !r.mixed.ok) return el('td', { class: 'muted small', text: r && r.mixed ? (r.mixed.why || 'not fitted') : '—' });
-        const t3 = (r.mixed.terms || {})[three(m)], t2 = (r.mixed.terms || {})[two(m)];
-        const pass = r.gate && r.gate.passed;
-        const td = el('td', { class: 'jcell' + (pass ? ' pass' : ''), tabindex: '0', 'data-band': b.id, 'data-method': me.id,
-                              title: three(m) + ': ' + fmtF(t3) + '\n' + two(m) + ': ' + fmtF(t2) + (pass ? '\n' + gateSay(m, r) : '') },
-        [el('div', { class: 'jp', text: t3 ? 'p ' + fp(t3.p) : '—' }), el('div', { class: 'small muted', text: t2 ? two(m).replace('Day × ', 'Day×') + ' p ' + fp(t2.p) : '' }),
-          pass ? el('span', { class: 'chip jgate' + (m.kind === 'check' ? ' warn' : ''), text: m.kind === 'check' ? 'p < .05' : 'follow-ups' }) : null]);
-        const go = () => { P.band = b.id; P.method = me.id; render(); const c = $('jm-' + m.id); if (c) c.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
-        td.addEventListener('click', go);
-        td.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
-        return td;
-      })));
-    const first = D.models.filter((m) => m.kind === 'first'), checks = D.models.filter((m) => m.kind === 'check');
-    return el('div', { class: 'dtwrap' }, [el('table', { class: 'linetable jans', id: 'joeanswer' }, [el('thead', {}, [head]),
-      el('tbody', {}, first.map(row).concat([el('tr', { class: 'jsep' }, [el('th', { colspan: String(cols.length + 1), class: 'small muted', text: 'Checks: these should show nothing' })])],
-        checks.map(row)))])]);
+    for (const b of D.bands) for (const me of D.methods) cols.push([b, me]);
+    const head = el('tr', {}, [el('th', { text: kind === 'check' ? 'Should stay grey' : 'Did it change from ' + D.tested[0] + ' to ' + D.tested[1] + '?' })]
+      .concat(cols.map(([b, me]) => el('th', {}, [el('div', { text: bandName(b) }), el('div', { class: 'small muted', text: methodName(me.id) })]))));
+    const row = (m) => el('tr', { 'data-model': m.id, class: m.kind }, [el('th', { text: rowName(m) })].concat(cols.map(([b, me]) => {
+      if (!hasMethod(m, me.id)) return el('td', { class: 'muted small jnone', text: '–', title: 'Power has one method.' });
+      const r = resOf(m.id, b.id, me.id);
+      if (!r || !r.mixed || !r.mixed.ok) return el('td', { class: 'muted small jnone', text: '–', title: r && r.mixed ? (r.mixed.why || 'Not fitted.') : 'Not measured.' });
+      const on = lit(r), w = verdict(m, r);
+      const say = bandName(b) + ', ' + methodName(me.id) + ': ' + (on ? (m.kind === 'check' ? 'lit (it should not be)' : 'changed') : 'no change') + '. ' + w.avg + ' ' + w.each;
+      const td = el('td', { class: 'jcell' + (on ? ' pass' : ''), tabindex: '0', role: 'button', 'data-band': b.id, 'data-method': me.id,
+                            'aria-label': rowName(m) + '. ' + say, title: say },
+        [el('span', { class: 'jlight' + (on ? (m.kind === 'check' ? ' on warn' : ' on') : '') })]);
+      const go = () => pick(kind, { model: m.id, band: b.id, method: me.id });
+      td.addEventListener('click', go);
+      td.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+      return td;
+    })));
+    return el('div', { class: 'dtwrap' }, [el('table', { class: 'linetable jans jlights', id }, [el('thead', {}, [head]),
+      el('tbody', {}, models.map(row))])]);
   }
+  // A light clicked: its picture and words under its table, nothing else redrawn.
+  function pick(kind, sel, hostEl, tableEl) {
+    P.pick[kind] = sel;
+    const host = hostEl || $(kind === 'check' ? 'joepickc' : 'joepick');
+    if (host) fillPick(host, kind);
+    const tb = tableEl || $(kind === 'check' ? 'joechecktbl' : 'joeanswer');
+    if (tb) {
+      for (const td of tb.querySelectorAll('td.jcell')) {
+        const on = sel && td.closest('tr').dataset.model === sel.model && td.dataset.band === sel.band && td.dataset.method === sel.method;
+        td.classList.toggle('sel', !!on);
+      }
+    }
+  }
+  function fillPick(host, kind) {
+    host.innerHTML = '';
+    const sel = P.pick[kind];
+    const m = sel && modelOf(sel.model);
+    const r = m && resOf(sel.model, sel.band, sel.method);
+    if (!m || !r || !r.mixed || !r.mixed.ok) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    host.dataset.model = m.id; host.dataset.band = sel.band; host.dataset.method = sel.method;
+    const b = P.data.bands.find((x) => x.id === sel.band);
+    const w = verdict(m, r);
+    const on = lit(r);
+    host.appendChild(el('div', { class: 'hrow' }, [el('h3', { text: rowName(m) }),
+      el('span', { class: 'chip', text: bandName(b) + (m.unit === 'region' ? '' : ' · ' + methodName(sel.method)) }),
+      el('span', { class: 'jlight' + (on ? (m.kind === 'check' ? ' on warn' : ' on') : '') })]));
+    host.appendChild(el('p', { class: 'jwhat', text: describe(m, r) }));
+    host.appendChild(el('ul', { class: 'jverdict' }, [el('li', { class: w.s2 === 'no evidence' ? 'no' : 'yes', text: w.avg }),
+      el('li', { class: w.s3 === 'no evidence' ? 'no' : 'yes', text: w.each })]));
+    host.appendChild(el('div', { class: 'jpickfig' }, [plotOf(m, r, { plain: true })]));
+    host.appendChild(X().more('the numbers', (body) => {
+      body.appendChild(termsTable(m, r));
+      body.appendChild(el('p', { class: 'small muted', text: 'The words above: strong evidence at p < .01, some evidence at p < .05 (uncorrected), no evidence otherwise. '
+        + 'A light is lit when either of its two tests reaches p < .05.' }));
+      return null;
+    }, { key: 'joe-num-' + kind }));
+  }
+  // The one line over the lights.
   function summaryLine() {
     const D = P.data;
-    let nf = 0, nfp = 0, nc = 0, ncp = 0;
-    for (const r of D.results || []) {
-      const m = modelOf(r.model);
-      if (!r.mixed || !r.mixed.ok) continue;
-      if (m.kind === 'first') { nf++; if (r.gate && r.gate.passed) nfp++; } else { nc++; if (r.gate && r.gate.passed) ncp++; }
+    const first = D.models.filter((m) => m.kind === 'first');
+    const per = D.bands.map((b) => ({ b, rows: first.filter((m) => D.methods.some((me) => hasMethod(m, me.id) && lit(resOf(m.id, b.id, me.id)))) }))
+      .sort((x, y) => y.rows.length - x.rows.length);
+    const n = first.length;
+    if (!per.some((x) => x.rows.length)) return 'Neither ' + per.map((x) => bandName(x.b).toLowerCase()).join(' nor ') + ' coherence changed in any of the ' + n + ' comparisons.';
+    const say = per.map((x, i) => (i === 0 ? bandName(x.b) + ' changed in ' + x.rows.length + ' of the ' + n + ' comparisons'
+      : bandName(x.b).toLowerCase() + (x.rows.length ? ' in ' + x.rows.length : ' in none'))).join('; ') + '.';
+    let split = 0, each = 0;
+    for (const x of per) {
+      for (const m of x.rows) {
+        const rs = D.methods.filter((me) => hasMethod(m, me.id)).map((me) => resOf(m.id, x.b.id, me.id));
+        if (rs.length > 1 && rs.some(lit) && !rs.every(lit)) split++;
+        if (rs.some((r) => lit(r) && verdict(m, r).s3 !== 'no evidence')) each++;
+      }
     }
-    return nfp + ' of ' + nf + ' first-pass model fits change from Precon1 to Precon4 at p < .05, and ' + ncp + ' of ' + nc
-      + ' checks (which should show nothing).';
+    const agree = split ? ' The two ways of computing coherence disagree on ' + split + '.' : ' Both ways of computing coherence agree.';
+    const pairs = each ? ' In ' + each + ', some pairs changed more than others.' : ' Each time it is all pairs together; no single pair stands out.';
+    return say + agree + pairs;
+  }
+  function checksLine() {
+    const D = P.data;
+    let n = 0, on = 0;
+    for (const m of D.models.filter((x) => x.kind === 'check')) {
+      for (const b of D.bands) for (const me of D.methods) {
+        const r = resOf(m.id, b.id, me.id);
+        if (!r || !r.mixed || !r.mixed.ok) continue;
+        n++;
+        if (lit(r)) on++;
+      }
+    }
+    const chance = ALPHA * n;
+    return on + ' of ' + n + ' lit; chance alone lights about ' + (Math.round(chance * 10) / 10) + '. '
+      + (on <= Math.max(1, Math.ceil(2 * chance)) ? 'So the sounds themselves don’t explain the changes above.'
+        : 'More than chance: the sound itself may matter. Click a lit one.');
+  }
+  function realLine() {
+    const A = P.data.agreement;
+    if (!A) return el('p', { class: 'small muted', id: 'joereal', text: 'The separate script, written with nothing from Jarvis, has not been run on these yet (under the hood).' });
+    const bad = A.files.filter((x) => !x.ok).length;
+    return el('p', { class: 'physanswer ' + (A.ok ? 'ok' : 'warn'), id: 'joereal' }, [el('span', { class: 'head', text: A.ok
+      ? 'A separate script, written with nothing from Jarvis, gets every one of these numbers from the recordings.'
+      : 'The separate script disagrees in ' + bad + ' of ' + A.files.length + ' files: see under the hood.' })]);
   }
   function intro() {
     const D = P.data;
-    return section('joeintro', '8 · Joe’s data: the proposal’s tests', 'joe', [
+    const first = D.models.filter((m) => m.kind === 'first');
+    if (!P.pick.first) {
+      // The first lit light, or the first light, so there is a picture at once.
+      outer: for (const m of first) {
+        for (const b of D.bands) {
+          for (const me of D.methods) {
+            if (hasMethod(m, me.id) && lit(resOf(m.id, b.id, me.id))) { P.pick.first = { model: m.id, band: b.id, method: me.id }; break outer; }
+          }
+        }
+      }
+      if (!P.pick.first && first.length) P.pick.first = { model: first[0].id, band: D.bands[0].id, method: D.methods[0].id };
+    }
+    const host = el('div', { class: 'jpick', id: 'joepick' });
+    const lights = lightTable(first, 'joeanswer', 'first');
+    const card = section('joeintro', '8 · Joe’s data', 'joe', [
       el('p', { class: 'takeaway', id: 'joesay', text: summaryLine() }),
-      answerTable(),
-      el('p', { class: 'xfacts', id: 'joefacts' }, [el('span', { text: (D.rats || []).length + ' rats' }), el('span', { text: (D.pairs || []).length + ' region pairs' }),
-        el('span', { text: 'Precon1 vs Precon4 tested; 2 and 3 drawn' }), el('span', { text: 'mixed model, RM-ANOVA beside it' }),
-        el('span', { text: 'p uncorrected, except the post hocs (Holm)' })]),
-      X().more('what each cell is', (body) => {
-        body.appendChild(el('p', { class: 'small', text: 'Each cell is one model fitted in one band with one way of computing coherence. The big p is the test of interest, '
-          + 'Day × factor × Pair: did the change from Precon1 to Precon4 differ between the levels in some pairs more than others? Beneath it, Day × factor: did it '
-          + 'differ on average over the pairs? A model whose either one passes p < .05 opens its follow-ups. Click a cell for its plot.' }));
-        return null;
-      }, { key: 'joe-cell', eager: true }),
+      lights,
+      el('p', { class: 'small muted jlegend' }, [el('span', { class: 'jlight on' }), ' changed  ', el('span', { class: 'jlight' }),
+        ' no change  ·  click a light for its picture']),
+      host,
     ]);
+    pick('first', P.pick.first, host, lights.querySelector('table'));
+    return card;
+  }
+  function checksCard() {
+    const D = P.data;
+    const host = el('div', { class: 'jpick', id: 'joepickc', hidden: 'hidden' });
+    const lights = lightTable(D.models.filter((m) => m.kind === 'check'), 'joechecktbl', 'check');
+    const card = section('joechecks', 'Checks: these should stay grey', 'joe.checks', [
+      el('p', { class: 'takeaway', id: 'joechecksay', text: checksLine() }),
+      lights,
+      host,
+      realLine(),
+    ]);
+    if (P.pick.check) pick('check', P.pick.check, host, lights.querySelector('table'));
+    return card;
   }
 
   // A phone: each picture is drawn about as wide as its box (narrower
@@ -449,7 +607,7 @@ window.MONO_JOE = (function () {
   function defsCard() {
     const D = P.data;
     const tl = el('div', { id: 'joetimeline' });
-    const card = section('joedefs', 'What is measured', 'joe.defs', [
+    const card = sub('joedefs', 'How we measured', 'joe.defs', [
       el('p', { class: 'takeaway', text: 'Seven windows a trial, two bands, coherence computed two ways, and random FP snippets.' }),
       tl,
       X().more('mains and its harmonics', (body) => {
@@ -490,19 +648,22 @@ window.MONO_JOE = (function () {
   }
 
   /* ---------------- each model ---------------- */
-  function plotOf(m, r) {
+  function plotOf(m, r, opts) {
     const D = P.data;
     const levels = m.levels;
+    // `plain`: the face of the tab's picture, its legend the days only.
+    const plain = !!(opts && opts.plain);
     // On a phone the legend and statistics go under the plot, so the picture
     // is drawn about as wide as its box and its words stay their size.
     const narrow = phone();
     const VW = narrow ? 330 : 480, L = narrow ? 46 : 52, R = narrow ? 316 : 300, T = 22, B = 178;
-    const VH = narrow ? B + 34 + 104 : 230;
+    const VH = narrow ? B + 34 + (plain ? 52 : 104) : (plain ? 200 : 230);
     const lgX = narrow ? 8 : R + 14, lgY = narrow ? B + 34 : T + 6, stX = narrow ? 168 : R + 14, stY = narrow ? B + 38 : T + 64;
     const vals = [];
     for (const d of D.days) for (const lv of levels) {
       const c = ((r.cells || {})[d] || {})[lv.id];
-      if (c && c.mean != null) { vals.push(c.mean - (c.se || 0), c.mean + (c.se || 0)); }
+      // The plain picture is scaled to the means (the rats' spread is under the hood).
+      if (c && c.mean != null) { if (plain) vals.push(c.mean); else vals.push(c.mean - (c.se || 0), c.mean + (c.se || 0)); }
     }
     const svg = sv('svg', { viewBox: '0 0 ' + VW + ' ' + VH, width: '100%', class: 'mfig jplot', role: 'img', style: 'max-width:' + VW + 'px',
                             'aria-label': m.label + ': Precon1 and Precon4 at each ' + m.factor.toLowerCase(), 'data-model': m.id });
@@ -535,7 +696,7 @@ window.MONO_JOE = (function () {
         if (!c || c.mean == null) return;
         const x = Xl(i) + dx;
         path += (path ? 'L' : 'M') + x.toFixed(1) + ',' + Y(c.mean).toFixed(1);
-        if (c.se != null && D.tested.includes(d)) {
+        if (!plain && c.se != null && D.tested.includes(d)) {
           svg.appendChild(sv('line', { x1: x, x2: x, y1: Y(c.mean - c.se), y2: Y(c.mean + c.se), stroke: col, 'stroke-width': 1.2, opacity: op }));
           for (const e of [c.mean - c.se, c.mean + c.se]) svg.appendChild(sv('line', { x1: x - 3, x2: x + 3, y1: Y(e), y2: Y(e), stroke: col, 'stroke-width': 1.2, opacity: op }));
         }
@@ -551,6 +712,7 @@ window.MONO_JOE = (function () {
       svg.appendChild(sv('line', { x1: lgX, x2: lgX + 20, y1: y, y2: y, stroke: c, 'stroke-width': 2.2, 'stroke-dasharray': dash }));
       svg.appendChild(sv('text', { x: lgX + 24, y: y + 3.5, 'font-size': 10, fill: css('--ink-2') }, t));
     });
+    if (plain) return svg;
     const stats = [three(m).replace(' × ', '×').replace(' × ', '×') + ':', t3 ? 'F(' + t3.df1 + ', ' + t3.df2 + ') = ' + t3.F.toFixed(2) : '—', t3 ? 'p ' + fp(t3.p) : '',
       two(m).replace(' × ', '×') + ':', t2 ? 'F(' + t2.df1 + ', ' + t2.df2 + ') = ' + t2.F.toFixed(2) : '—', t2 ? 'p ' + fp(t2.p) : ''];
     stats.forEach((s, i) => svg.appendChild(sv('text', { x: stX, y: stY + i * 14, 'font-size': 10, fill: css(i % 3 === 0 ? '--ink-2' : '--ink'),
@@ -696,7 +858,12 @@ window.MONO_JOE = (function () {
   function modelsCard() {
     const D = P.data;
     const body = [
-      el('p', { class: 'takeaway', text: 'Each model, Precon1 against Precon4, in the band and coherence method chosen here.' }),
+      el('p', { class: 'xfacts', id: 'joefacts' }, [el('span', { text: (D.rats || []).length + ' rats' }), el('span', { text: (D.pairs || []).length + ' region pairs' }),
+        el('span', { text: 'Precon1 vs Precon4 tested; 2 and 3 drawn' }), el('span', { text: 'mixed model, RM-ANOVA beside it' }),
+        el('span', { text: 'p uncorrected, except the post hocs (Holm)' })]),
+      el('p', { class: 'small', text: 'Each model, Precon1 against Precon4, in the band and coherence method chosen here. A light on the face of the tab is one '
+        + 'model in one band and one method: lit when Day × level × Pair (did some pairs change more than others?) or Day × level (did all pairs '
+        + 'together?) reaches p < .05.' }),
       el('div', { class: 'hrow' }, [seg(D.bands.map((b) => [b.id, b.label]), P.band, (id) => { P.band = id; render(); }, 'joeband'),
         seg(D.methods.map((m) => [m.id, m.id === 'welch' ? 'Welch' : 'Dickson 2022']), P.method, (id) => { P.method = id; render(); }, 'joemethod')]),
     ];
@@ -704,7 +871,7 @@ window.MONO_JOE = (function () {
     for (const m of D.models.filter((x) => x.kind === 'first')) body.push(modelCard(m));
     body.push(el('h3', { class: 'jgroup', text: 'Checks: these should show nothing' }));
     for (const m of D.models.filter((x) => x.kind === 'check')) body.push(modelCard(m));
-    return section('joemodels', 'The models', 'joe.models', body);
+    return sub('joemodels', 'Every test, with its numbers', 'joe.models', body);
   }
 
   /* ---------------- take it away ---------------- */
@@ -742,12 +909,12 @@ window.MONO_JOE = (function () {
       if (P.scriptErr) kids.push(el('p', { class: 'small warn', text: P.scriptErr }));
     }
     kids.push(el('p', { class: 'small muted', text: 'Elsewhere: python joe_standalone.py --inputs joe_inputs.json --out <folder> --jobs 4 (four rat-days at once; the files do not depend on it). It needs Python 3, numpy and scipy, and the recordings at the paths in the inputs.' }));
-    return section('joeexports', 'Take it away: SPSS, and a script that does it all again', 'joe.exports', kids);
+    return sub('joeexports', 'Files for SPSS, and a script that does it all again', 'joe.exports', kids);
   }
   function notesCard() {
     const D = P.data;
     if (!(D.notes || []).length) return null;
-    return el('div', { class: 'card', id: 'joenotes' }, [X().more('notes from the recordings (' + D.notes.length + ')', (body) => {
+    return el('div', { class: 'jsub', id: 'joenotes' }, [X().more('notes from the recordings (' + D.notes.length + ')', (body) => {
       body.appendChild(el('ul', { class: 'small' }, D.notes.map((n) => el('li', { text: n }))));
       return null;
     }, { key: 'joe-notes' })]);
@@ -759,8 +926,8 @@ window.MONO_JOE = (function () {
     pane.innerHTML = '';
     if (P.loading && !P.data) { pane.appendChild(el('p', { class: 'loading', text: 'Reading tab 8…' })); return; }
     if (!P.data) {
-      pane.appendChild(section('joemissing', '8 · Joe’s data: the proposal’s tests', 'joe', [
-        el('p', { class: 'takeaway', text: 'Coherence between regions, theta and gamma, Precon1 against Precon4: the tests Joe’s proposal names. Not worked out yet.' }),
+      pane.appendChild(section('joemissing', '8 · Joe’s data', 'joe', [
+        el('p', { class: 'takeaway', text: 'Did coherence between regions change from Precon1 to Precon4, in theta and gamma? Not worked out yet.' }),
         el('p', { class: 'small', text: 'It is worked out here, from the recordings: about 20 minutes the first time (every trial of every rat, four days), seconds after that.' }),
         window.MONO_STATIC ? el('p', { class: 'small muted', text: 'Not in this copy: it opens in Jarvis.' })
           : el('button', { type: 'button', class: 'more-btn', id: 'joemake', disabled: P.making ? 'disabled' : null,
@@ -770,11 +937,17 @@ window.MONO_JOE = (function () {
       return;
     }
     pane.appendChild(intro());
-    pane.appendChild(defsCard());
-    pane.appendChild(modelsCard());
-    pane.appendChild(exportsCard());
-    const nc = notesCard();
-    if (nc) pane.appendChild(nc);
+    pane.appendChild(checksCard());
+    // Everything else, under one hood: built with the page (folded), so a
+    // search finds it and the review copy carries its links.
+    pane.appendChild(el('div', { class: 'card', id: 'joehood' }, [X().more('under the hood: how we measured, every test’s numbers, the follow-ups and the files', (body) => {
+      body.appendChild(defsCard());
+      body.appendChild(modelsCard());
+      body.appendChild(exportsCard());
+      const nc = notesCard();
+      if (nc) body.appendChild(nc);
+      return null;
+    }, { key: 'joe-hood', eager: true })]));
     if (!window.MONO_STATIC) {
       pane.appendChild(el('p', { class: 'small muted' }, ['Worked out ' + (P.data.at || '') + ' from ' + P.data.n_days + ' rat-days. ',
         el('button', { type: 'button', class: 'linkish', id: 'joemake', disabled: P.making ? 'disabled' : null,
@@ -786,7 +959,7 @@ window.MONO_JOE = (function () {
   }
   return {
     show, render, load, make, timeline, harmonics, fpCompare,
-    get state() { return { band: P.band, method: P.method, data: P.data, err: P.err, making: P.making, scripting: P.scripting }; },
+    get state() { return { band: P.band, method: P.method, data: P.data, err: P.err, making: P.making, scripting: P.scripting, pick: P.pick }; },
     set band(v) { P.band = v; render(); },
     set method(v) { P.method = v; render(); },
   };

@@ -12116,6 +12116,26 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dp-pca .dp-canvas { flex: 1 1 auto; }
 
 /* ==========================================================================
+   Arrivals -- BARRY.ui.sections (js/ui.js).
+
+   A part of a panel that is NEW comes in with a short rise and fade, each
+   a beat after the one above it; a part rebuilt in place does not, because
+   it was already there. The class is taken off again by script, on
+   `animationend` and on a timer (virtual time never fires the first).
+   ========================================================================== */
+.ui-enter {
+  animation: uiEnter .42s var(--ease-out) both;
+  animation-delay: calc(var(--enter-i, 0) * 60ms);
+}
+@keyframes uiEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-enter { animation: none; }
+}
+
+/* ==========================================================================
    The Storm -- Doppler's report, Spotter's raster, Eye's comparison.
 
    Only the shapes that are genuinely new are here. Doppler's progress card
@@ -12144,7 +12164,7 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   width: 100%;
   display: block;
   background: var(--bg-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--r-6);
 }
 #dopRaster { cursor: pointer; margin-bottom: var(--sp-6); }
@@ -12156,26 +12176,269 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   padding: var(--sp-6) 0;
 }
 
-/* Runs that have landed. A row, not a card: what you want off it is which
-   recording and whether it is banked yet, and a card's worth of furniture
-   for two facts is furniture. */
-.dop-reviews { display: flex; flex-direction: column; gap: var(--sp-4); }
-.dop-review {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-10);
-  width: 100%;
-  text-align: left;
-  padding: var(--sp-8) var(--sp-10);
-  background: var(--bg-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-6);
-  color: var(--text);
-  font-size: var(--fs-115);
+/* The report's head: what it is, and which run -- the recording, the
+   method, when it landed -- on one line beside it. */
+.dop-report { position: relative; }
+.dop-report-head {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-10);
 }
-.dop-review:hover { background: var(--bg-hover); border-color: var(--accent-line); }
-.dop-review strong { flex: 1 1 auto; font-weight: 600; }
+.dop-report-head .section-label { margin: 0; }
+.dop-report-sub { font-size: var(--fs-11); color: var(--text-2); }
+/* A run arriving: the card's edge lights and the light spreads and goes,
+   once. On a pseudo-element so it never fights the card's own entrance. */
+.dop-report.landing::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit;
+  pointer-events: none; border: 1px solid var(--accent);
+  animation: dopLand 1.9s var(--ease-out) forwards;
+}
+@keyframes dopLand {
+  0%   { opacity: 1; box-shadow: 0 0 0 0 var(--accent-line); }
+  100% { opacity: 0; box-shadow: 0 0 0 16px transparent; }
+}
+
+/* The numbers, large, before anything else on the report. */
+.dop-stats {
+  display: flex; flex-wrap: wrap; gap: var(--sp-8);
+  margin: var(--sp-12) 0 var(--sp-4);
+}
+.dop-stat {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  min-width: 92px; padding: var(--sp-8) var(--sp-12);
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--r-8);
+}
+.dop-stat-v {
+  font-size: var(--fs-17); font-weight: 600; color: var(--text);
+  font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+.dop-stat-l { font-size: var(--fs-105); color: var(--text-3); }
+.dop-stat.big { background: var(--accent-soft); border-color: var(--accent-line); }
+.dop-stat.big .dop-stat-v { font-size: var(--fs-20); color: var(--accent); }
+
+.dop-warns { display: flex; flex-direction: column; gap: var(--sp-4); margin: var(--sp-8) 0; }
+/* The primary at the right end (constitution §2): `.tk-actions` gives a
+   `.spacer` nothing to grow into on its own, so Doppler's rows say so. */
+.dop-actions > .spacer { flex: 1 1 auto; }
+/* Two lines that are not paragraphs, so `.card p` does not size them: the
+   raster's readout, and the cost sentence beside the run button. */
+#dopRead, .dop-go .vacc-why {
+  font-size: var(--fs-12); line-height: 1.55; color: var(--text-2);
+}
+#dopRead { min-height: 1.6em; transition: color var(--ease-dur) var(--ease-out); }
+#dopRead.on { color: var(--text); }
+.dop-go .vacc-why { flex: 1 1 320px; max-width: 78ch; margin: 0; }
+
+/* ---- the radar ----
+   Doppler's own picture of waiting: rings, a turning beam, a blip now and
+   then. Slow and dim while the job waits in the cluster's queue, quicker
+   once a node has it. */
+.dop-radar {
+  position: relative; flex: none;
+  width: 46px; height: 46px; border-radius: 50%; overflow: hidden;
+  background:
+    radial-gradient(circle, transparent 0 31%, var(--line-soft) 32% 34%,
+                    transparent 35% 63%, var(--line-soft) 64% 66%,
+                    transparent 67%),
+    var(--bg);
+  border: 1px solid var(--accent-line);
+}
+.dop-radar::after {
+  content: ''; position: absolute; inset: 0;
+  background:
+    linear-gradient(var(--line-soft), var(--line-soft)) center / 1px 100% no-repeat,
+    linear-gradient(var(--line-soft), var(--line-soft)) center / 100% 1px no-repeat;
+}
+.dop-radar-beam {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 260deg,
+                             var(--accent-soft) 320deg, var(--accent) 360deg);
+  opacity: .6;
+  animation: dopSweep 2.6s linear infinite;
+}
+.dop-radar.queued .dop-radar-beam { animation-duration: 6s; opacity: .3; }
+.dop-radar.live .dop-radar-beam { animation-duration: 1.8s; opacity: .75; }
+.dop-radar-blip {
+  position: absolute; width: 4px; height: 4px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 6px var(--accent);
+  opacity: 0; animation: dopBlip 1.8s ease-out infinite;
+}
+.dop-radar-blip.b1 { left: 64%; top: 28%; animation-delay: .25s; }
+.dop-radar-blip.b2 { left: 70%; top: 62%; animation-delay: .7s; }
+.dop-radar-blip.b3 { left: 30%; top: 70%; animation-delay: 1.15s; }
+.dop-radar.queued .dop-radar-blip { display: none; }
+.dop-radar.mini { width: 22px; height: 22px; }
+.dop-radar.mini .dop-radar-blip { width: 3px; height: 3px; }
+@keyframes dopSweep { to { transform: rotate(360deg); } }
+@keyframes dopBlip {
+  0%, 55% { opacity: 0; transform: scale(.4); }
+  62%     { opacity: 1; transform: scale(1.3); }
+  100%    { opacity: 0; transform: scale(1); }
+}
+
+/* The run card: the radar beside what is happening, Incisor's stage rows
+   under it, and a bar that slides rather than jumps. */
+.dop-flight-head {
+  display: flex; align-items: center; gap: var(--sp-12);
+  margin-bottom: var(--sp-10);
+}
+.dop-flight-words { display: flex; flex-direction: column; gap: var(--sp-2); }
+.dop-flight-title { font-size: var(--fs-135); }
+.dop-flight .comod-bar-fill { transition: width .8s var(--ease-out); }
+
+/* ---- the runs: out on the cluster, and landed ----
+   A run is in one group or the other, never both. Each is a button that
+   lifts a little under the pointer; the one on screen is marked, and one
+   that landed while you were watching carries a soft pulse until opened. */
+.dop-runs-parts { display: flex; flex-direction: column; gap: var(--sp-4); }
+.dop-runs-h {
+  display: flex; align-items: center; gap: var(--sp-6);
+  margin: var(--sp-8) 0 var(--sp-2);
+  font-size: var(--fs-105); font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-3);
+}
+.dop-runs-n {
+  padding: 0 var(--sp-6); border-radius: var(--r-pill);
+  background: var(--bg-3); color: var(--text-2);
+  font-variant-numeric: tabular-nums; letter-spacing: 0;
+}
+.dop-landed { display: flex; flex-direction: column; gap: var(--sp-6); }
+.dop-landed-more { align-self: flex-start; margin-top: var(--sp-4); }
+.dop-run {
+  display: flex; align-items: center; gap: var(--sp-12);
+  width: 100%; text-align: left; cursor: pointer;
+  padding: var(--sp-10) var(--sp-12);
+  background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--r-8);
+  transition: background var(--ease-dur) var(--ease-out),
+              border-color var(--ease-dur) var(--ease-out),
+              transform var(--ease-dur) var(--ease-out),
+              box-shadow var(--ease-dur) var(--ease-out);
+}
+.dop-run:hover {
+  background: var(--bg-hover); border-color: var(--accent-line);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -12px var(--accent-line);
+}
+.dop-run:active { transform: translateY(0); }
+.dop-run:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dop-run.open { border-color: var(--accent); background: var(--accent-soft); }
+.dop-run.flying { border-style: dashed; }
+.dop-run-dot {
+  flex: none; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-3); opacity: .45;
+}
+.dop-run.open .dop-run-dot { background: var(--accent); opacity: 1; }
+.dop-run.fresh .dop-run-dot {
+  background: var(--ok); opacity: 1;
+  animation: dopFresh 2.4s ease-in-out infinite;
+}
+@keyframes dopFresh {
+  0%, 100% { box-shadow: 0 0 0 0 var(--ok-soft); }
+  50%      { box-shadow: 0 0 0 6px var(--ok-soft); }
+}
+.dop-run-main {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; flex-direction: column; gap: var(--sp-2);
+}
+/* Wrapped, never cut: the end of a label is often what tells two runs
+   apart. */
+.dop-run-name { font-weight: 600; font-size: var(--fs-125); overflow-wrap: anywhere; }
+.dop-run-sub { font-size: var(--fs-11); color: var(--text-2); overflow-wrap: anywhere; }
+.dop-run-tags {
+  display: flex; flex-wrap: wrap; gap: var(--sp-4); justify-content: flex-end;
+}
+.dop-run-tags .stat-chip { margin: 0; }
+.dop-run-n {
+  flex: none; min-width: 64px;
+  display: flex; flex-direction: column; align-items: flex-end;
+}
+.dop-run-n strong { font-size: var(--fs-17); font-variant-numeric: tabular-nums; }
+.dop-run-n span { font-size: var(--fs-10); color: var(--text-3); }
+.dop-run-bar {
+  flex: none; width: 120px; height: 4px; overflow: hidden;
+  border-radius: var(--r-pill); background: var(--bg-3);
+}
+.dop-run-bar > span {
+  display: block; height: 100%; background: var(--accent);
+  transition: width .8s var(--ease-out);
+}
+@media (max-width: 760px) {
+  .dop-run { flex-wrap: wrap; }
+  .dop-run-tags { justify-content: flex-start; }
+}
+
+/* Spotter's step page lists its sets with this row (toolkit.js,
+   renderSpotter): the same look and the same lift as Doppler's runs,
+   without their inner layout -- a name, what is decided, a chip. */
+.dop-review {
+  display: flex; align-items: center; gap: var(--sp-10);
+  width: 100%; text-align: left; cursor: pointer;
+  padding: var(--sp-10) var(--sp-12); margin-bottom: var(--sp-6);
+  background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--r-8);
+  font-size: var(--fs-115);
+  transition: background var(--ease-dur) var(--ease-out),
+              border-color var(--ease-dur) var(--ease-out),
+              transform var(--ease-dur) var(--ease-out);
+}
+.dop-review:hover {
+  background: var(--bg-hover); border-color: var(--accent-line);
+  transform: translateY(-1px);
+}
+.dop-review strong { flex: 1 1 auto; font-weight: 600; overflow-wrap: anywhere; }
 .dop-review > span { color: var(--text-2); font-size: var(--fs-11); }
+
+/* A plot column of the report's grid: allowed to be narrower than its
+   canvas's last drawn width, so the grid can give it back on a resize. */
+.dop-plot { min-width: 0; }
+
+/* ---- a batch on the cluster, a row per recording ---- */
+.dop-batch { display: flex; flex-direction: column; gap: var(--sp-4); margin: var(--sp-8) 0; }
+.dop-batch-row {
+  display: flex; align-items: center; gap: var(--sp-10);
+  width: 100%; text-align: left;
+  padding: var(--sp-6) var(--sp-10);
+  background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--r-6);
+  font-size: var(--fs-115);
+  transition: background var(--ease-dur) var(--ease-out),
+              border-color var(--ease-dur) var(--ease-out);
+}
+button.dop-batch-row { cursor: pointer; }
+button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--accent-line); }
+.dop-batch-dot {
+  flex: none; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-3); opacity: .5;
+}
+.dop-batch-row.queued .dop-batch-dot { background: var(--accent); opacity: .5; }
+.dop-batch-row.running .dop-batch-dot {
+  background: var(--accent); opacity: 1;
+  animation: dopPulse 1.4s ease-in-out infinite;
+}
+.dop-batch-row.done .dop-batch-dot { background: var(--ok); opacity: 1; }
+.dop-batch-row.failed .dop-batch-dot { background: var(--err); opacity: 1; }
+.dop-batch-row.running { border-color: var(--accent-line); }
+.dop-batch-name { flex: 1 1 auto; font-weight: 600; overflow-wrap: anywhere; }
+.dop-batch-state { color: var(--text-2); font-size: var(--fs-11); }
+.dop-batch-row.failed .dop-batch-state { color: var(--err); }
+.dop-batch-n { font-variant-numeric: tabular-nums; }
+@keyframes dopPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.5); opacity: .55; }
+}
+
+/* Reduced motion keeps every state and loses the movement: the radar's
+   beam stands still, nothing pulses, nothing lifts, and the report arrives
+   whole (doppler.js draws its last frame at once). */
+@media (prefers-reduced-motion: reduce) {
+  .dop-radar-beam, .dop-radar-blip { animation: none; }
+  .dop-radar-blip { display: none; }
+  .dop-run, .dop-batch-row, .dop-review { transition: none; }
+  .dop-run:hover, .dop-review:hover { transform: none; }
+  .dop-run.fresh .dop-run-dot, .dop-batch-row.running .dop-batch-dot { animation: none; }
+  .dop-report.landing::after { animation: none; opacity: 0; }
+  .dop-flight .comod-bar-fill, .dop-run-bar > span { transition: none; }
+}
 
 /* Spotter: the whole recording under the panes, one line per channel.
 
@@ -12186,7 +12449,7 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   display: block;
   width: 100%;
   background: var(--bg);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line);
   cursor: pointer;
 }
 
@@ -12205,7 +12468,7 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .eye-one {
   padding: var(--sp-10);
   background: var(--bg-2);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--r-8);
   cursor: pointer;
 }
@@ -12233,7 +12496,7 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .eye-group-head {
   display: flex; align-items: baseline; gap: var(--sp-8);
   padding: var(--sp-4) 0; margin-bottom: var(--sp-4);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
   font-size: var(--fs-12);
 }
 .eye-set {
@@ -12241,7 +12504,7 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   width: 100%; text-align: left;
   padding: var(--sp-8) var(--sp-10); margin-bottom: var(--sp-4);
   background: var(--bg-2); color: var(--text);
-  border: 1px solid var(--border); border-radius: var(--r-6);
+  border: 1px solid var(--line); border-radius: var(--r-6);
   cursor: pointer;
 }
 .eye-set:hover { background: var(--bg-hover); border-color: var(--accent-line); }
@@ -12262,7 +12525,7 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
   max-height: 9em;
   overflow: auto;
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--r-4);
   color: var(--text-3);
   font: var(--fs-105)/1.45 var(--mono);
@@ -12276,7 +12539,7 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 .dop-exclude {
   margin-top: var(--sp-12);
   padding-top: var(--sp-10);
-  border-top: 1px dashed var(--border);
+  border-top: 1px dashed var(--line);
 }
 .dop-presets { margin: var(--sp-6) 0 var(--sp-8); }
 /* Left out is not bad: struck through rather than dimmed like a bad one. */
