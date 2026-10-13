@@ -1,21 +1,29 @@
 {
   "_at": {
-    "created": "2026-09-25T16:52:59.158952+00:00",
-    "gid": "2026-09-25T20:24:43.594287+00:00",
+    "created": "2026-09-24T19:25:44.712731+00:00",
+    "duration_s": "2026-09-24T19:58:25.702482+00:00",
+    "first_seen_by": "2026-09-24T19:25:44.712731+00:00",
+    "fs": "2026-09-24T19:25:44.712731+00:00",
+    "gid": "2026-09-24T19:25:44.712731+00:00",
     "group": "2026-09-25T16:52:59.158952+00:00",
+    "has_video": "2026-09-24T19:25:44.712731+00:00",
     "key": "2026-09-25T16:52:59.158952+00:00",
-    "label": "2026-09-25T20:24:43.594287+00:00",
+    "label": "2026-10-12T14:03:44.865612+00:00",
     "loose_key": "2026-09-25T16:52:59.158952+00:00",
     "mouse": "2026-09-25T16:52:59.158952+00:00",
+    "n_channels": "2026-09-24T19:25:44.712731+00:00",
+    "phase": "2026-09-24T19:25:44.712731+00:00",
+    "phase_n": "2026-09-24T19:25:44.712731+00:00",
     "probe": "2026-09-25T16:52:59.158952+00:00",
     "probe_source": "2026-09-25T16:52:59.158952+00:00",
     "project": "2026-09-25T16:52:59.158952+00:00",
     "project_source": "2026-09-25T16:52:59.158952+00:00",
     "retired": "2026-09-25T16:52:59.158952+00:00",
+    "run": "2026-09-24T19:25:44.712731+00:00",
     "schema": "2026-09-25T16:52:59.158952+00:00",
     "session": "2026-09-25T16:52:59.158952+00:00",
     "start": "2026-09-25T16:52:59.158952+00:00",
-    "updated": "2026-09-25T20:24:43.594287+00:00"
+    "updated": "2026-10-12T14:03:44.865612+00:00"
   },
   "_keys": {
     "paths": {
@@ -25,52 +33,76 @@
       ],
       "E:\\Joe Multisite 2026 data\\J11\\J11_Con3\\J11_Con3_FP2\\2026-08-19_18-43-39": [
         "set",
-        "2026-09-25T16:53:56.188705+00:00"
+        "2026-09-25T18:32:44.838145+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J11\\J11_Con3\\J11_Con3_SPC\\2026-08-19_17-11-04": [
         "set",
-        "2026-09-25T16:53:56.188705+00:00"
+        "2026-09-25T18:32:44.838145+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-25T20:23:28.305791+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T20:24:43.594287+00:00",
+    "at": "2026-10-12T14:03:44.865612+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
   "created": {
-    "app_version": "2026.09.23.8",
-    "at": "2026-09-25T12:52:59-04:00",
-    "commit": "cd809b2",
-    "email": "Isabella.Piatek@uvm.edu",
-    "host": "LCOM549913",
-    "machine": "Blackbarry",
+    "app_version": "2026.09.24.6",
+    "at": "2026-09-24T15:25:44-04:00",
+    "commit": "0fc4943",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Isabella Piatek"
+    "user": "Shahriar Tafti"
   },
-  "gid": "sc1851da63351",
+  "duration_s": 306.048,
+  "first_seen_by": "scan",
+  "fs": 32000.0,
+  "gid": "s983897f387ec",
   "group": null,
+  "has_video": true,
   "key": "r011_s013_2026-08-19_17-02-59",
-  "label": "DEWEY r11 s13 Con3 SPC 2026-08-19",
+  "label": "DEWEY r11 s13 Con3 FP1 2026-08-19",
   "loose_key": "r011_s013",
   "mouse": 11,
+  "n_channels": 32,
   "paths": [
     "E:\\Joe Multisite 2026 data\\J11\\J11_Con3\\J11_Con3_SPC\\2026-08-19_17-11-04",
     "E:\\Joe Multisite 2026 data\\J11\\J11_Con3\\J11_Con3_FP1\\2026-08-19_17-02-59",
     "E:\\Joe Multisite 2026 data\\J11\\J11_Con3\\J11_Con3_FP2\\2026-08-19_18-43-39"
   ],
+  "phase": "Con",
+  "phase_n": 3,
   "probe": "dewey32",
   "probe_source": "manual",
   "project": "DEWEY",
   "project_source": "guessed",
   "retired": false,
+  "run": "FP1",
   "schema": 1,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-25T16:23:28-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "E:\\Joe Multisite 2026 data\\J11\\J11_Con3\\J11_Con3_FP1\\2026-08-19_17-02-59",
+      "root": "E:/Joe Multisite 2026 data",
+      "scan": "scan_f60458f16f"
+    }
+  },
   "session": 13,
   "start": "2026-08-19T21:02:59+00:00",
   "updated": {
-    "app_version": "2026.09.23.8",
-    "at": "2026-09-25T16:24:43-04:00",
-    "commit": "cd809b2",
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:03:44-04:00",
+    "commit": "021cb243",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
