@@ -920,9 +920,16 @@ def _panel_tf(session, spec, method):
         combined = powers[0]
         rows_meta = None
     elif tf_mode == "stack":
-        # Pad each block to the same width, then stack top-to-bottom.
+        # Pad each block to the same width, then stack them -- LAST channel
+        # first. The image is flipped once, below, so that each block's low
+        # frequency sits at its bottom as MATLAB draws it; that flip also
+        # reverses the ORDER of the blocks. Stacked in channel order, the
+        # first channel's spectrogram was drawn in the bottom row while the
+        # client labelled rows top-down from `rows` -- every row carried the
+        # label of its mirror image, so a discharge on CSC57 read as CSC1
+        # (2026-10-13). Reversed here, the flip leaves channel 1 on top.
         width = min(p.shape[1] for p in powers)
-        combined = np.vstack([p[:, :width] for p in powers])
+        combined = np.vstack([p[:, :width] for p in powers[::-1]])
         times = times[:width]
         rows_meta = [{"label": c["label"], "number": c["number"]} for c in sel]
     else:

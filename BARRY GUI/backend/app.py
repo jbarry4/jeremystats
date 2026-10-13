@@ -14057,8 +14057,8 @@ def api_strata_status(gid):
     body = request.get_json(force=True) or {}
     try:
         sess, ctx = _strata_context(gid, body, need_scan=False)
-        st = stratamod.status(gid, sess)
-        plan = stratamod.plan_for(sess, None)
+        st = stratamod.status(gid, sess, ctx["bad"])
+        plan = stratamod.plan_for(sess, None, skip=ctx["bad"])
         out = {"ok": True, "status": st, "probe": ctx["probe"],
                "params": ctx["params"], "bad": ctx["bad"],
                "estimate_s": stratamod.estimate_seconds(plan),
@@ -14075,7 +14075,7 @@ def api_strata_scan(gid):
     body = request.get_json(force=True) or {}
     try:
         sess, ctx = _strata_context(gid, body, need_scan=False)
-        st = stratamod.status(gid, sess)
+        st = stratamod.status(gid, sess, ctx["bad"])
         if st.get("scanned") and st.get("current") and not body.get("force"):
             return jsonify({"ok": True, "cached": True, "status": st})
         rep_ = None
@@ -14084,7 +14084,7 @@ def api_strata_scan(gid):
         # A dual implant reads its hippocampal array only: the other 64
         # contacts are in M2 and no step asks anything of them.
         only = ctx["order"] if ctx["probe"] == "dual" else None
-        plan = stratamod.plan_for(sess, rep_, only)
+        plan = stratamod.plan_for(sess, rep_, only, skip=ctx["bad"])
     except Exception as exc:                             # noqa: BLE001
         return _strata_fail("scan", exc, gid)
     # Already being read: join that read. Two reads of one recording write
@@ -14097,12 +14097,13 @@ def api_strata_scan(gid):
 
     spec = {"path": sess.get("path"), "gid": gid, "tool": "strata",
             "label": _strata_label(ctx, sess)}
-    steps = [(stratamod.STAGE_READ, plan["n_channels"])]
+    steps = [(stratamod.STAGE_READ, plan["n_read"])]
+    bad = list(ctx["bad"])
 
     def work(job):
         meta = stratamod.scan(sess, rep_, gid, job=job, workers=6,
-                              channels=only)
-        return {"status": stratamod.status(gid, sess), "meta": {
+                              channels=only, skip=bad)
+        return {"status": stratamod.status(gid, sess, bad), "meta": {
             k: meta.get(k) for k in ("n_bins", "channels", "end_s",
                                      "scanned_at", "lfp_fs")}}
 
@@ -14189,11 +14190,30 @@ def _strata_triggered_work(ctx, mk, kind, channel):
                 channel=int(channel))
 
 
+def _strata_hand_ref(ctx):
+    """The reference channel set by hand in Parameters, if it is one that
+    can be used: a bad channel is not read (its row is zeros), so it is
+    not one."""
+    ref = ctx["params"].get("ref_channel")
+    if ref in (None, ""):
+        return None
+    try:
+        ref = int(ref)
+    except (TypeError, ValueError):
+        return None
+    if ref in {int(x) for x in ctx["bad"]}:
+        return None
+    b = ctx.get("bins")
+    if b is not None and ref not in b.row:
+        return None
+    return ref
+
+
 def _strata_ref(ctx, mk, prof=None):
     """The reference channel: what was chosen, else CA1 pyramidal."""
-    ref = ctx["params"].get("ref_channel")
-    if ref is not None and int(ref) in ctx["bins"].row:
-        return int(ref)
+    ref = _strata_hand_ref(ctx)
+    if ref is not None:
+        return ref
     # Once Step 1 is accepted, CA1 pyramidal is where it was accepted: the
     # middle of the sheet's CA1 SP channels. A pyramidal layer moved by a
     # vote used to fall back to Step 1's own pick on the next load, which
@@ -14201,7 +14221,8 @@ def _strata_ref(ctx, mk, prof=None):
     if ((ctx["strata"].get("steps") or {}).get("1") or {}).get("status") == "done":
         labels = ctx["rec"].get("labels") or {}
         sp = [c for c in ctx["order"]
-              if labels.get(str(c)) == "ca1_sp" and c in ctx["bins"].row]
+              if labels.get(str(c)) == "ca1_sp" and c in ctx["bins"].row
+              and c not in {int(x) for x in ctx["bad"]}]
         if sp:
             return sp[len(sp) // 2]
     if prof is None:
@@ -14257,8 +14278,8 @@ def api_strata_phasemap(gid):
         _sess, ctx = _strata_context(gid, body)
         mk = _strata_masks(ctx)
         sp_over = (body.get("overrides") or {}).get("sp")
-        if ctx["params"].get("ref_channel") is not None:
-            ref = int(ctx["params"]["ref_channel"])
+        if _strata_hand_ref(ctx) is not None:
+            ref = _strata_hand_ref(ctx)
         elif sp_over is not None and 0 <= int(sp_over) < len(ctx["order"]):
             ref = ctx["order"][int(sp_over)]
         else:
@@ -14287,8 +14308,8 @@ def api_strata_ica(gid):
         mk = _strata_masks(ctx)
         # The same reference the proposals use: sp moved by hand counts.
         sp_over = (body.get("overrides") or {}).get("sp")
-        if ctx["params"].get("ref_channel") is not None:
-            ref = int(ctx["params"]["ref_channel"])
+        if _strata_hand_ref(ctx) is not None:
+            ref = _strata_hand_ref(ctx)
         elif sp_over is not None and 0 <= int(sp_over) < len(ctx["order"]):
             ref = ctx["order"][int(sp_over)]
         else:
@@ -14403,8 +14424,8 @@ def _strata_proposals(ctx, body=None):
     # moved to, else Step 1's own sp. The profile is redrawn against it, so
     # the phase curve and the proposal can never be about two different
     # channels.
-    if p.get("ref_channel") is not None and int(p["ref_channel"]) in row_of:
-        ref = int(p["ref_channel"])
+    if _strata_hand_ref(ctx) is not None and _strata_hand_ref(ctx) in row_of:
+        ref = _strata_hand_ref(ctx)
     elif over.get("sp") is not None and 0 <= int(over["sp"]) < n:
         ref = nums[int(over["sp"])]
     else:

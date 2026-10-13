@@ -7567,10 +7567,18 @@ BARRY.views.xplore = (function () {
     if (res.channel) {
       bits.unshift(res.channel.label);
     } else if ((res.channels_used || []).length) {
+      /* Said whole, never cut off with an ellipsis. A stack says its ORDER
+         -- which row is which is the thing to check, and its rows were once
+         drawn upside down under their labels -- and an average names its
+         channels when they fit, else says how many and where the list is. */
       const used = res.channels_used;
-      bits.unshift(used.length + ' ch (' + res.tf_mode + '): '
-        + used.slice(0, 6).map((c) => c.label).join(', ')
-        + (used.length > 6 ? '…' : ''));
+      const first = used[0].label, last = used[used.length - 1].label;
+      bits.unshift(res.tf_mode === 'stack'
+        ? used.length + ' ch stacked, ' + first + ' at the top to ' + last
+          + ' at the bottom'
+        : used.length + ' ch averaged' + (used.length <= 8
+          ? ': ' + used.map((c) => c.label).join(', ')
+          : ', listed under Channels in the panel menu'));
     }
     pane._readout.textContent = bits.join('  ');
     pane._readout.classList.add('on');

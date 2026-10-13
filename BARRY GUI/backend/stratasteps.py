@@ -171,8 +171,9 @@ def segments_for(session, report):
     return [{"index": 0, "t0": 0.0, "t1": dur}]
 
 
-def plan_for(session, report, channels=None):
-    """The shape of a scan, without doing any of it."""
+def plan_for(session, report, channels=None, skip=()):
+    """The shape of a scan, without doing any of it. `skip`: channels kept
+    as rows but not read -- the recording's bad channels."""
     fs = float(session.get("fs") or 30000.0)
     q = max(1, int(round(fs / LFP_FS)))
     lfs = fs / q
@@ -187,13 +188,16 @@ def plan_for(session, report, channels=None):
     n_bins = int(starts.size)
     chans = [c for c in (session.get("channels") or [])
              if channels is None or int(c["number"]) in set(channels)]
+    skipset = {int(x) for x in (skip or ())}
+    skipped = [int(c["number"]) for c in chans if int(c["number"]) in skipset]
+    n_read = len(chans) - len(skipped)
     span = sum(s["t1"] - s["t0"] for s in segs)
     return {
         "fs": fs, "q": q, "lfp_fs": lfs, "segments": segs, "end_s": end,
         "span_s": span, "n_samp": n_samp, "nper": nper, "n_bins": n_bins,
         "bin_starts": starts, "channels": chans,
-        "n_channels": len(chans),
-        "megasamples": span * fs * max(1, len(chans)) / 1e6,
+        "n_channels": len(chans), "skipped": skipped, "n_read": n_read,
+        "megasamples": span * fs * max(1, n_read) / 1e6,
         "lfp_bytes": n_samp * 2 * max(1, len(chans)),
     }
 
@@ -391,16 +395,25 @@ def _bin_features(lfp, plan):
 
 
 def scan(session, report, gid, job=None, workers=4, channels=None,
-         on_progress=None, line_hz=LINE_HZ):
+         on_progress=None, line_hz=LINE_HZ, skip=()):
     """Read every channel once and keep what the steps need.
 
     Channels go through a small pool. Reading is disk-bound and the filters
     and FFTs drop the GIL for most of their time, so four at once is about
     three times one -- measured, see the module tests.
+
+    `skip` (the recording's bad channels) are not read (2026-10-13). Each
+    keeps its row -- zeros in the 1250 Hz copy, NaN in the bins -- so the
+    probe's geometry is whole for the CSD and for interpolating across
+    them, and none of them has a say in which seconds are valid.
     """
-    plan = plan_for(session, report, channels)
+    plan = plan_for(session, report, channels, skip)
     if not plan["channels"]:
         raise StrataError("No channels to read.")
+    if not plan["n_read"]:
+        raise StrataError("Every channel is marked bad, so there is nothing "
+                          "to read.")
+    skipset = set(plan["skipped"])
     if plan["n_bins"] < 10:
         raise StrataError("This recording is shorter than ten seconds; "
                           "there is nothing to average.")
@@ -415,8 +428,11 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
     lfp_mm = np.lib.format.open_memmap(
         os.path.join(tmp, "lfp.npy"), mode="w+", dtype=np.int16,
         shape=(n_ch, plan["n_samp"]))
-    scale = np.zeros(n_ch, dtype=np.float32)
-    lfp_valid = np.zeros(plan["n_samp"], dtype=bool)
+    scale = np.ones(n_ch, dtype=np.float32)       # a skipped row: zeros at 1
+    # And'ed over the channels read, in whatever order they finish. (It
+    # used to be set by row 0 and and'ed by the rest, so when row 0 finished
+    # after another channel it overwrote that channel's say.)
+    lfp_valid = np.ones(plan["n_samp"], dtype=bool)
     nb = plan["n_bins"]
     out = {
         "power": np.full((n_ch, nb, len(BANDS)), np.nan, np.float32),
@@ -447,10 +463,7 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
         lfp_mm[i] = np.rint(np.nan_to_num(lfp, nan=0.0) / sc).astype(np.int16)
         with lock:
             scale[i] = sc
-            if i == 0:
-                lfp_valid[:] = fin
-            else:
-                lfp_valid[:] &= fin
+            lfp_valid[:] &= fin
             out["power"][i] = feats["power"]
             if out["theta_x"].shape[2] == 0:
                 out["theta_x"] = np.zeros(
@@ -469,11 +482,12 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
             if job is not None:
                 job.tick("strata read", done[0])
 
+    read = [(i, ch) for i, ch in enumerate(plan["channels"])
+            if int(ch["number"]) not in skipset]
     if job is not None:
-        job.begin("strata read", of=n_ch)
+        job.begin("strata read", of=len(read))
     with ThreadPoolExecutor(max_workers=max(1, int(workers))) as pool:
-        futs = [pool.submit(one, i, ch)
-                for i, ch in enumerate(plan["channels"])]
+        futs = [pool.submit(one, i, ch) for i, ch in read]
         for f in futs:
             f.result()
     lfp_mm.flush()
@@ -493,10 +507,11 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
         "bands": [list(b) for b in BANDS],
         "invert": bool(session.get("invert", True)),
         "line_hz": line_hz,
+        "skipped": plan["skipped"],
         "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "seconds": None,
     }
-    bin_valid = out["valid"].all(axis=0)
+    bin_valid = out["valid"][[i for i, _ch in read]].all(axis=0)
     np.savez(os.path.join(tmp, "bins.npz"),
              power=out["power"], theta_x=out["theta_x"], rms=out["rms"],
              mua=out["mua"], valid=bin_valid, spec=out["spec"],
@@ -632,8 +647,12 @@ class Bins:
         return out
 
 
-def status(gid, session=None):
-    """Whether a scan exists for this recording, and whether it is current."""
+def status(gid, session=None, bad=None):
+    """Whether a scan exists for this recording, and whether it is current.
+
+    With `bad` (the recording's bad channels now), a scan that skipped a
+    channel which is no longer bad is not current: that channel was never
+    read, and the steps would be reading its zeros."""
     d = _dir(gid)
     mp = os.path.join(d, "meta.json")
     if not os.path.exists(mp):
@@ -650,10 +669,25 @@ def status(gid, session=None):
         "n_bins": meta.get("n_bins"),
         "lfp": os.path.exists(os.path.join(d, "lfp.npy")),
         "schema": meta.get("schema"),
+        "skipped": meta.get("skipped") or [],
     }
     if session is not None:
         out["current"] = (meta.get("stamp") == source_stamp(session)
                           and meta.get("schema") == SCHEMA)
+        if not out["current"]:
+            out["why"] = ("The recording or the way it is read changed "
+                          "since it was read.")
+    if bad is not None and out.get("current", True):
+        back = sorted(set(out["skipped"]) - {int(x) for x in bad})
+        if back:
+            out["current"] = False
+            out["why"] = ("Ch %s %s skipped as bad when it was read and %s "
+                          "not marked bad any more: read it again to "
+                          "include %s." % (
+                              ", ".join(str(c) for c in back),
+                              "was" if len(back) == 1 else "were",
+                              "is" if len(back) == 1 else "are",
+                              "it" if len(back) == 1 else "them"))
     return out
 
 
@@ -790,7 +824,8 @@ def estimate_seconds(plan, workers=6):
     for 64 channels with six readers (2026-10-09, local disk), scaled by
     channel count."""
     return round(max(5.0, 0.1 * plan["span_s"]
-                     * plan["n_channels"] / 64.0 * 6.0 / max(1, workers)), 0)
+                     * plan.get("n_read", plan["n_channels"]) / 64.0
+                     * 6.0 / max(1, workers)), 0)
 
 
 # ==========================================================================

@@ -117,6 +117,7 @@ BARRY.strataSteps = (function () {
   let H = null;            // the host: hooks strata.js hands over on enter
   let status = null;       // whether this recording has been read
   let estimate = null;     // seconds a read would take here
+  let readPlan = null;     // what a read would do: channels, bad ones skipped
   let jobId = null;        // a read or an ICA running
   let jobKind = null;
   let jobSnap = null;
@@ -240,6 +241,7 @@ BARRY.strataSteps = (function () {
       const res = await apiPost(url('status'), body());
       status = res.status;
       estimate = res.estimate_s;
+      readPlan = res.plan || null;
       status.probe = res.probe;
       jobsNow = res.jobs || [];
     } catch (e) {
@@ -351,8 +353,10 @@ BARRY.strataSteps = (function () {
     const st = ((jobSnap && jobSnap.stages) || [])[0] || {};
     if (jobKind === 'ica') return 'Unmixing the gamma field — '
       + jobPct() + '%';
-    return 'Reading every channel — ' + (st.done || 0) + ' of '
-      + (st.of || '?') + ' done';
+    const skip = (readPlan && readPlan.skipped) || [];
+    return 'Reading the channels — ' + (st.done || 0) + ' of '
+      + (st.of || '?') + ' done'
+      + (skip.length ? ' (' + skip.length + ' bad skipped)' : '');
   }
 
   /* ==================================================================
@@ -497,16 +501,29 @@ BARRY.strataSteps = (function () {
     }
     const mins = estimate ? Math.max(1, Math.round(estimate / 60)) : null;
     const stale = status && status.scanned && !status.current;
+    /* Bad channels are not read (2026-10-13): they keep their place on the
+       probe and are filled in from their neighbours wherever a picture
+       needs them. */
+    const skip = (readPlan && readPlan.skipped) || [];
+    const skipTxt = skip.length ? skip.length + ' bad channel'
+      + (skip.length === 1 ? '' : 's') + ' skipped' : '';
     wrap.appendChild(el('button', {
       class: 'btn sm', text: (stale ? 'Read it again' : 'Read the recording')
-        + (mins ? ' · about ' + mins + ' min' : ''),
-      title: (stale ? 'The files changed since this recording was last '
-                      + 'read.\n' : '')
+        + (mins ? ' · about ' + mins + ' min' : '')
+        + (skipTxt ? ' · ' + skipTxt : ''),
+      title: (stale ? (status.why || 'The files changed since this '
+                       + 'recording was last read.') + '\n' : '')
            + 'The steps need every channel read once: ripples, theta, gamma '
            + 'and multiunit power, second by second. After that every '
-           + 'answer comes back at once.',
+           + 'answer comes back at once.'
+           + (skip.length ? '\nNot read, because they are marked bad: ch '
+             + skip.join(', ') + '. They keep their place on the probe and '
+             + 'are filled in from their neighbours.' : ''),
       onclick: () => scan(true),
     }));
+    if (stale && status.why) {
+      wrap.appendChild(el('span', { class: 'ss-say warn', text: status.why }));
+    }
     return wrap;
   }
 

@@ -15,6 +15,41 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.13.2 - StrataScope: the read skips bad channels
+
+### Changed
+
+- **Reading a recording for StrataScope skips its bad channels.** These are
+  the channels on the recording's bad list. Skipping them saves their share
+  of the time, and the button says how many are skipped ("Read the
+  recording · about 3 min · 3 bad channels skipped"). Its tooltip names
+  them.
+  - A skipped channel keeps its place on the probe, and every picture that
+    needs it (the CSDs, ICA, the phase map) fills it in from its
+    neighbours, as before. A probe with the gap closed up would put every
+    channel below it one contact too high.
+  - Bad channels no longer have a say in which seconds count as valid.
+    Before, a bad channel with a gap in it removed those seconds for every
+    channel.
+  - If a skipped channel is taken off the bad list, the read is out of
+    date. The bar says so ("Ch 11 was skipped as bad when it was read and
+    is not marked bad any more: read it again to include it.") and offers
+    "Read it again". Marking another channel bad needs no new read: the
+    channel was read, and is now left out.
+  - Recordings read before this were read whole and stay current. Read
+    one again to stop its bad channels counting towards valid seconds.
+
+### Fixed
+
+- **A read could forget part of what made a second valid.** Each channel
+  narrows down which samples count as valid, and the read was meant to
+  combine all of them. Channel 1's answer replaced the combined result
+  instead of joining it, so if channel 1 finished after the others, their
+  share was lost.
+- **A reference channel set by hand in Parameters can no longer be a bad
+  channel.** Its row is empty, so StrataScope ignores it and falls back to
+  CA1 SP. The same goes for the middle of an accepted CA1 SP.
+
 ## 2026.10.13.1 - Braces: the span you set stays as you move
 
 ### Fixed
