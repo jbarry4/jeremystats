@@ -26,7 +26,7 @@
     "schema": "2026-09-04T15:57:01.575592+00:00",
     "session": "2026-09-04T15:57:01.575592+00:00",
     "start": "2026-09-04T15:57:01.575592+00:00",
-    "updated": "2026-10-13T14:21:58.207456+00:00",
+    "updated": "2026-10-14T17:17:39.395339+00:00",
     "view_state": "2026-10-13T14:21:58.207456+00:00"
   },
   "_keys": {
@@ -54,6 +54,10 @@
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M2_s8_CNO": [
         "set",
         "2026-09-04T15:57:01.575592+00:00"
+      ],
+      "vacc:sddf3e5010ff2": [
+        "set",
+        "2026-10-14T17:17:39.395339+00:00"
       ]
     },
     "seen": {
@@ -79,12 +83,12 @@
       ],
       "lcom549913-e62b": [
         "set",
-        "2026-09-23T18:06:23.879468+00:00"
+        "2026-10-12T14:05:11.033629+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-10-13T14:21:58.207456+00:00",
+    "at": "2026-10-14T17:17:39.395339+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -119,7 +123,8 @@
     "G:\\PTEN\\M2_s8\\timestamps.mat",
     "Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M2_s8_CNO",
-    "D:\\Data\\Archive\\PTEN Project\\Control\\M2_s8\\2024-01-26_17-48-00"
+    "D:\\Data\\Archive\\PTEN Project\\Control\\M2_s8\\2024-01-26_17-48-00",
+    "vacc:sddf3e5010ff2"
   ],
   "probe": "h3",
   "probe_source": "manual",
@@ -166,20 +171,20 @@
       "scan": null
     },
     "lcom549913-e62b": {
-      "at": "2026-09-23T14:06:23-04:00",
+      "at": "2026-10-12T10:05:10-04:00",
       "by": "Isabella Piatek",
       "machine": "Blackbarry",
       "path": "D:\\Data\\Archive\\PTEN Project\\Control\\M2_s8\\2024-01-26_17-48-00",
-      "root": "D:/Data/Archive/PTEN Project/Control",
-      "scan": "scan_32b06421c0"
+      "root": null,
+      "scan": null
     }
   },
   "session": 8,
   "start": "2024-01-26T17:48:00",
   "updated": {
-    "app_version": "2026.10.12.5",
-    "at": "2026-10-13T10:21:58-04:00",
-    "commit": "071b8c13",
+    "app_version": "2026.10.13.11",
+    "at": "2026-10-14T13:17:39-04:00",
+    "commit": "8855eda1",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",

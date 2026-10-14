@@ -2,6 +2,10 @@
   "_at": {},
   "_keys": {
     "added": {
+      "Avery (AI)": [
+        "set",
+        "2026-10-03T22:28:06.173649+00:00"
+      ],
       "Fatima": [
         "set",
         "2026-09-09T14:22:50.713703+00:00"
@@ -20,7 +24,7 @@
       ],
       "Rain Younger": [
         "set",
-        "2026-09-23T12:27:50.035078+00:00"
+        "2026-09-29T18:04:01.579153+00:00"
       ],
       "Shahriar": [
         "set",
@@ -28,7 +32,7 @@
       ],
       "Shahriar Tafti": [
         "set",
-        "2026-09-16T16:22:08.432525+00:00"
+        "2026-09-29T18:04:06.301891+00:00"
       ],
       "Sylvia Clouse": [
         "set",
@@ -37,6 +41,10 @@
       "TEST": [
         "set",
         "2026-09-13T16:42:18.856562+00:00"
+      ],
+      "Tooth Fairy (AI)": [
+        "set",
+        "2026-10-14T18:48:29.066690+00:00"
       ],
       "a colleague": [
         "set",
@@ -52,7 +60,7 @@
       ],
       "eye harness": [
         "set",
-        "2026-09-25T21:10:24.823225+00:00"
+        "2026-09-25T21:10:32.434298+00:00"
       ],
       "harness": [
         "set",
@@ -97,7 +105,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-25T21:10:24.823225+00:00",
+    "at": "2026-10-14T18:48:29.066690+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -210,9 +218,9 @@
         "theexaminedexistence@gmail.com"
       ],
       "at": "2026-09-08T21:24:21.570229+00:00",
-      "by": "zz probe person",
-      "edited_at": "2026-09-16T16:22:08.432145+00:00",
-      "email": "sakhava1@uvm.edu",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-09-29T18:04:06.301890+00:00",
+      "email": "Shahriar.Akhavan-Tafti@uvm.edu",
       "id": "Shahriar Tafti",
       "initials": "ST",
       "name": "Shahriar Tafti",
@@ -230,9 +238,9 @@
       "aliases": [
         "rain"
       ],
-      "at": "2026-09-23T12:27:49.955061+00:00",
+      "at": "2026-09-29T18:04:01.532204+00:00",
       "by": "Shahriar Tafti",
-      "edited_at": "2026-09-23T12:27:50.034233+00:00",
+      "edited_at": "2026-09-29T18:04:01.578747+00:00",
       "email": "rain.younger@uvm.edu",
       "id": "Rain Younger",
       "initials": "RY",
@@ -261,11 +269,25 @@
       "name": "spotter harness"
     },
     {
-      "at": "2026-09-25T21:10:24.823223+00:00",
-      "by": "Rain Younger",
-      "edited_at": "2026-09-25T21:10:24.823224+00:00",
+      "at": "2026-09-25T21:10:32.434296+00:00",
+      "by": "Isabella Piatek",
+      "edited_at": "2026-09-25T21:10:32.434297+00:00",
       "id": "eye harness",
       "name": "eye harness"
+    },
+    {
+      "at": "2026-10-03T22:28:06.172120+00:00",
+      "by": "Shahriar Tafti",
+      "edited_at": "2026-10-03T22:28:06.172154+00:00",
+      "id": "Avery (AI)",
+      "name": "Avery (AI)"
+    },
+    {
+      "at": "2026-10-14T18:48:29.062434+00:00",
+      "by": "Rain Younger",
+      "edited_at": "2026-10-14T18:48:29.062435+00:00",
+      "id": "Tooth Fairy (AI)",
+      "name": "Tooth Fairy (AI)"
     }
   ]
 }
