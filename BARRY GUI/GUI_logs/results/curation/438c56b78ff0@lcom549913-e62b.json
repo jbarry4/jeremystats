@@ -1,0 +1,26 @@
+{
+  "_at": {
+    "key": "2026-10-13T17:11:15.609521+00:00",
+    "rel": "2026-10-13T17:11:15.609521+00:00",
+    "starred": "2026-10-13T17:11:15.609521+00:00",
+    "updated": "2026-10-13T17:11:15.609521+00:00"
+  },
+  "_shard": {
+    "at": "2026-10-13T17:11:15.609521+00:00",
+    "machine": "lcom549913-e62b",
+    "schema": 1
+  },
+  "key": "layers/layers_s9a8f6138b49e_20261013_123030.csv",
+  "rel": "Layers/layers_s9a8f6138b49e_20261013_123030.csv",
+  "starred": false,
+  "updated": {
+    "app_version": "2026.10.12.5",
+    "at": "2026-10-13T13:11:15-04:00",
+    "commit": "db69a59a",
+    "email": "Isabella.Piatek@uvm.edu",
+    "host": "LCOM549913",
+    "machine": "Blackbarry",
+    "os": "Windows",
+    "user": "Isabella Piatek"
+  }
+}
