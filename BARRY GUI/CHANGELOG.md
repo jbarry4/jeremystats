@@ -15,6 +15,125 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.14.2 - Braces: every alignment can be found, and a set aligned before is opened, not read again
+
+**Restart Jarvis.**
+
+### Fixed
+
+- **The Alignments list showed only the newest twelve.**
+  - Nothing was ever deleted, and an alignment never had to be banked to
+    be kept. But every one past the twelfth could not be reached, and the
+    only way back to it was to run the set again. On this desktop that hid
+    75 of 87.
+  - Now every one is listed, grouped by the set it aligns. Each set shows
+    its newest alignment, with the earlier ones folded under it.
+  - A search finds a set by name, mouse or session.
+  - "Still to answer" leaves out the accepted ones.
+  - Each line says when and by whom, what it was read with (measure,
+    window, channels) and where it stands.
+- **An alignment belongs to its set.**
+  - A set's own panel now lists every alignment made of it, under "What
+    it will read". Each opens without reading anything.
+  - In "Align many sets", every row of a set already aligned offers "Open
+    the newest of N".
+
+### Added
+
+- **The same question opens the alignment that answered it, as Incisor
+  does.**
+  - Every new alignment records the question it answers: the set, the
+    version and the stamps, the kind, every setting of the read (measure,
+    window, band, mains, smoothing, bad channels, probe), the channels and
+    the depth band. The drive path is not part of the question.
+  - "Line them up" with a question already answered opens that alignment
+    at once, without a job. It says it was aligned before with exactly
+    these settings, and offers "Read it again". Reading again makes a new
+    alignment beside the old one, which is kept.
+  - "Align many sets" does the same per row: "aligned before with these
+    settings, nothing read again". A box reads every set again anyway.
+- **Before today:** alignments made before this release do not record
+  their question, so they are not matched automatically. They are listed,
+  on the set's panel and in the list, and open without reading.
+- **Eye** still reads each of its three measures every time
+  (`force: true`): it is a comparison run whole.
+
+### Checked
+
+- New `braceslist.html` 16, on this machine's real 87 alignments of 52
+  sets.
+  - Every alignment has a row, and the groups and folds are right.
+  - The count, the search finding the oldest one, and "Still to answer".
+  - A set's own panel lists its alignments, and each "many sets" row
+    offers its newest.
+  - "Already answered" (with the run intercepted) opens the named
+    alignment with no job, says so, and "Read it again" asks with
+    `force`.
+- `braces.html` 21, `bracesbad.html` 15.
+- **On a real recording** (PTEN_DKO m44 s5, 189 stamps), into a
+  throwaway alignment store, 11 of 11 passed:
+
+  | Run | What happened | Time |
+  |---|---|---|
+  | First | Read, filing an alignment that records its question | 76.5 s |
+  | Same settings again | Opened that alignment, with no job | 1.2 s |
+  | A different window | Read, as a different question | — |
+  | "Read it again" | A third alignment beside the first, which is kept | — |
+  | Same settings once more | Opened the newest of the two | — |
+
+  The set's list and the whole list held all three, newest first. The
+  real alignments and the bank were unchanged.
+
+## 2026.10.14.1 - Incisor: scan the first half, the second half, the even or odd channels, or a range
+
+**Restart Jarvis.**
+
+### Added
+
+- **Step 2, "Scan every channel", has a row of choices for which channels
+  this scan reads:** All · First half · Second half · Even · Odd ·
+  Range….
+  - Range… takes CSC numbers and ranges, such as `1-64`, `1-32, 65-96` or
+    `CSC5, 9-12`.
+  - The halves are by CSC number over every channel the recording has, so
+    the first half of 128 is CSC1–64 whatever is marked bad.
+  - Channels marked bad stay out inside every choice. A choice never puts
+    one back and never marks one.
+- **Why.** A 128-channel recording is often two probes. The only way to
+  scan one of them was to untick the other 64 channels, which marks them
+  bad for that session in every tool.
+- **What it shows.**
+  - The count at the top is the server's own count, and says what was
+    chosen: "63 of 128 channels will be read: the first half
+    (CSC1–CSC64), less the ones marked bad".
+  - In the channel grid, the channels a choice leaves out are dimmed and
+    stay ticked. Struck through still means bad.
+- **What it changes.**
+  - Changing the choice puts away the scan on screen, as changing a bad
+    channel does: a scan of other channels is not this one's answer.
+  - A new recording starts at All.
+  - Reopening a scan brings back the choice it was made with, which is
+    recorded in its parameters.
+  - A choice with nothing left in it is refused in a sentence, and so is
+    one that is not a choice.
+
+### Checked
+
+- New `incisorpick.html` 32, on KCNT1 m6 s1 (53 channels).
+  - For each choice, the server's count matches one worked out
+    independently, and nothing is marked bad.
+  - Every channel says whether the choice takes it.
+  - The words are right, and the refusals happen.
+  - In the panel: the six choices, the count and words at the top, the
+    grid dimming without striking, and a typed range.
+  - Back to All, no bad-channel write sent, and the record unchanged.
+- `check_incisor_vacc.py`: new rules section.
+  - Each choice, less the bad ones, on six channels with two marked bad.
+  - Only the bad channels inside a choice are listed as left out.
+  - The halves count the bad channels.
+  - The refusals, and the words.
+- `incisorsel.html` 28.
+
 ## 2026.10.13.11 - Tab 8: the follow-ups are back on its face, and in the SPSS package
 
 From Shahriar: "We had a bunch of cross coupling and PLI and such planned

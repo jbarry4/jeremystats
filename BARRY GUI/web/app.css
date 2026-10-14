@@ -8730,6 +8730,16 @@ div.ss-more p { margin: 0; }
    You cannot put back what you cannot see. */
 .inc-chan.bad { color: var(--text-3); }
 .inc-chan.bad span { text-decoration: line-through; }
+/* Outside this scan's pick, and not bad: dimmed, never struck through --
+   the strike means "bad", and these are not (2026-10-14). */
+.inc-chan.out { color: var(--text-3); opacity: 0.55; }
+.inc-pick { display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-6) var(--sp-8); margin: 4px 0 8px; }
+.inc-pick-l { font-size: var(--fs-115); font-weight: 600; color: var(--text-2); }
+.inc-pick-in { width: 18ch; font: inherit; font-size: var(--fs-115);
+  padding: 2px 6px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--bg-2); color: var(--text); }
+.inc-pick-why { flex: 1 1 32ch; min-width: 0; }
 /* The three per-channel plots, side by side the way Toothy draws them --
    count, amplitude, height above surround read as one picture and separating
    them costs the comparison. `auto-fit` with a floor rather than three fixed
@@ -11209,6 +11219,21 @@ div.cir-m, .cir-m > summary {
 .br-recent-row:hover { background: var(--bg-hover); }
 .br-recent-row span { font-size: var(--fs-11); color: var(--text-3); }
 .br-recent-row.done { opacity: .72; }
+/* Every alignment, by set (2026-10-14). */
+.br-recent-bar { display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-6) var(--sp-8); margin: 0 0 var(--sp-8); }
+.br-recent-search { flex: 1 1 24ch; min-width: 0; font: inherit;
+  font-size: var(--fs-115); padding: 3px 8px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--bg-2); color: var(--text); }
+.br-recent-grp { display: flex; flex-direction: column; gap: 3px; }
+.br-recent-older > summary { cursor: pointer; font-size: var(--fs-11);
+  color: var(--text-3); padding: 2px 10px; }
+.br-recent-older[open] { display: flex; flex-direction: column; gap: 3px; }
+.br-reused { display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--sp-8); }
+.br-reused > span { flex: 1 1 40ch; min-width: 0; }
+.br-bulk-force { display: inline-flex; align-items: center; gap: var(--sp-4);
+  font-size: var(--fs-115); color: var(--text-2); }
 .br-head { display: flex; align-items: center; gap: var(--sp-12); }
 .br-head strong { display: block; font-size: var(--fs-14); }
 .br-sub {
@@ -12556,6 +12581,52 @@ button.dop-batch-row:hover { background: var(--bg-hover); border-color: var(--ac
   border-top: 1px dashed var(--line);
 }
 .dop-presets { margin: var(--sp-6) 0 var(--sp-8); }
+/* Outside the channel range: there, and not read. Dimmer than a bad one,
+   because it is not a fault in the channel, only not asked about. */
+.dop-exclude .inc-chan.beyond { opacity: .35; }
+
+/* The channel range: "CSC [1] to CSC [64]", on one line with its label,
+   and its sentence under both. */
+.dop-range-field { margin: var(--sp-10) 0 var(--sp-4); }
+/* Its own line under the boxes. A capped width let it fit beside them,
+   since a flex item's basis is clamped by its max-width; so no cap here. */
+.dop-range-field > .hint { flex: 0 0 100%; max-width: none; }
+.dop-range { display: flex; align-items: center; gap: var(--sp-6); flex-wrap: wrap; }
+.dop-range .num { width: 72px; }
+.dop-range-w { font-size: var(--fs-115); color: var(--text-2); }
+
+/* "What goes in": every channel the run will read, by name and by role,
+   above the run button. A group per role, each a row of small chips. */
+.dop-feed {
+  margin: var(--sp-12) 0 var(--sp-4); padding: var(--sp-10) var(--sp-12);
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-8);
+}
+.dop-feed-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-10); }
+.dop-feed-top .section-label { margin: 0; }
+.dop-feed-g { margin-top: var(--sp-10); }
+.dop-feed-h {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-8);
+  font-size: var(--fs-12); margin-bottom: var(--sp-4);
+}
+.dop-feed-n {
+  padding: 0 var(--sp-6); border-radius: var(--r-pill);
+  background: var(--bg-3); color: var(--text-2);
+  font-size: var(--fs-105); font-variant-numeric: tabular-nums;
+}
+.dop-feed-why { font-size: var(--fs-11); color: var(--text-3); }
+.dop-feed-chips { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+.dop-feed-chip {
+  padding: 1px var(--sp-6); border-radius: var(--r-4);
+  font: var(--fs-105)/1.5 var(--mono); color: var(--text-2);
+  background: var(--bg); border: 1px solid var(--line-soft);
+}
+.dop-feed-g.det .dop-feed-chip {
+  color: var(--text); border-color: var(--accent-line); background: var(--accent-soft);
+}
+.dop-feed-g.bad .dop-feed-chip { color: var(--warn); border-color: var(--warn-soft); }
+.dop-feed-g.left .dop-feed-chip,
+.dop-feed-g.out .dop-feed-chip,
+.dop-feed-g.nc .dop-feed-chip { opacity: .7; }
 /* Left out is not bad: struck through rather than dimmed like a bad one. */
 .dop-exclude .inc-chan.off span { text-decoration: line-through; opacity: .6; }
 

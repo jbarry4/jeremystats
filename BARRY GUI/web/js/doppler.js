@@ -60,6 +60,13 @@ BARRY.doppler = (function () {
     merge_s: 0.3,
     min_event_s: 0.0125,
     detect_on: 'even',
+    /* A channel RANGE, by CSC number, applied before everything else: a
+       128-channel recording run on CSC1 to CSC64 only. Null is every
+       channel. A setting, not a choice about one recording -- it stays
+       when the recording changes, and a batch runs every recording with
+       it. */
+    ch_lo: null,
+    ch_hi: null,
     /* Channels left out of THIS RUN ONLY, by CSC number. Not bad channels:
        a bad channel is a claim about the recording that every other tool
        acts on, and this is a question somebody is asking of one run --
@@ -78,10 +85,12 @@ BARRY.doppler = (function () {
   const METHODS = {
     storm: { llw_s: 0.015, prc: 99.9, notch_hz: 60, band_on: true,
              band_lo: 20, band_hi: 300, car: true, min_channels: 7,
-             merge_s: 0.3, min_event_s: 0.0125, detect_on: 'even' },
+             merge_s: 0.3, min_event_s: 0.0125, detect_on: 'even',
+             ch_lo: null, ch_hi: null },
     legacy: { llw_s: 0.040, prc: 99.9, notch_hz: null, band_on: false,
               band_lo: 10, band_hi: 300, car: false, min_channels: 1,
-              merge_s: 0.3, min_event_s: 0.025, detect_on: 'all' },
+              merge_s: 0.3, min_event_s: 0.025, detect_on: 'all',
+              ch_lo: null, ch_hi: null },
   };
   const PARAM_FIELDS = Object.keys(METHODS.storm);
 
@@ -327,6 +336,7 @@ BARRY.doppler = (function () {
         ].filter(Boolean)) },
       { key: 'params', enter: false, sig: [qs], build: params },
       { key: 'cont', enter: false, sig: [oid(est)], build: continuityNote },
+      { key: 'feed', enter: false, sig: [oid(est)], build: feedPart },
       { key: 'go', enter: false,
         sig: [oid(est), mine ? mine.id : '', vaccOn(), qs],
         build: () => el('div', { class: 'tk-actions dop-actions dop-go' }, [
@@ -337,6 +347,71 @@ BARRY.doppler = (function () {
           runButton(mine),
         ].filter(Boolean)) },
     ]);
+  }
+
+  /* "Before I run it I want to see the list of channels fed in." Every
+     channel by name, in the role the run gives it, right above the run
+     button. From the estimate's `feed`, which the server works out by the
+     engine's own rules (doppler.feed) from the spec the run will be sent
+     -- so this list and what the cluster reads cannot disagree. */
+  function feedPart() {
+    const f = est && est.feed;
+    if (!f) return el('div', {});
+    const box = el('div', { class: 'dop-feed' }, [
+      el('div', { class: 'dop-feed-top' }, [
+        el('div', { class: 'section-label', text: 'What goes in' }),
+        el('span', { class: 'hint quiet',
+          text: [f.range ? rangeWords(f.range) + ' only' : 'every channel',
+                 f.rule === 'all' ? 'detection on every channel read'
+                                  : 'detection on the ' + f.rule + ' ones',
+                 'bad ones left out'].join(' · ') }),
+      ]),
+    ]);
+    const group = (kind, title, why, labels, chipText) => {
+      if (!labels || !labels.length) return;
+      box.appendChild(el('div', { class: 'dop-feed-g ' + kind }, [
+        el('div', { class: 'dop-feed-h' }, [
+          el('strong', { text: title }),
+          el('span', { class: 'dop-feed-n', text: String(labels.length) }),
+          why ? el('span', { class: 'dop-feed-why', text: why }) : null,
+        ].filter(Boolean)),
+        el('div', { class: 'dop-feed-chips' },
+          (chipText || labels).map((t) => el('span', { class: 'dop-feed-chip',
+                                                         text: t }))),
+      ]));
+    };
+    group('det', 'Detected on',
+          f.rule === 'all' ? 'every channel read'
+                           : 'the ' + f.rule + '-numbered channels read',
+          f.detect);
+    group('ref', f.car ? 'Read for the common reference only'
+                       : 'Read, not detected on',
+          f.car ? 'averaged into their probe bank’s reference; detection '
+                  + 'does not run on them' : null,
+          f.reference);
+    group('bad', 'Marked bad, not read', 'on this recording, for every tool',
+          f.bad);
+    group('left', 'Left out of this run', 'your choice, this run only',
+          f.left_out);
+    group('nc', 'On a bank marked not connected', 'not read', f.not_connected);
+    group('out', 'Outside the range, not read', rangeWords(f.range) + ' only',
+          f.out_of_range, runsOf(f.out_of_range));
+    return box;
+  }
+
+  /* Labels as runs: CSC65 to CSC128 is one chip, not sixty-four. Every
+     channel is still in it -- a run is written out, never cut short. */
+  function runsOf(labels) {
+    const nums = (labels || []).map((l) => Number(String(l).replace(/\D+/g, '')))
+      .filter(isFinite).sort((a, b) => a - b);
+    const out = [];
+    for (let i = 0; i < nums.length;) {
+      let j = i;
+      while (j + 1 < nums.length && nums[j + 1] === nums[j] + 1) j++;
+      out.push(j > i ? 'CSC' + nums[i] + ' to CSC' + nums[j] : 'CSC' + nums[i]);
+      i = j + 1;
+    }
+    return out;
   }
 
   function continuityNote() {
@@ -525,19 +600,25 @@ BARRY.doppler = (function () {
     wrap.appendChild(segBox);
 
     const grid = el('div', { class: 'inc-chan-grid' });
+    const rng = chRange();
     for (const c of all) {
       const n = Number(c.number);
       const isBad = bad.has(n);
+      // Outside the channel range: not read whatever is ticked here.
+      const beyond = !!rng && (n < rng[0] || n > rng[1]);
       grid.appendChild(el('label', {
-        class: 'inc-chan' + (isBad ? ' bad' : '') + (out.has(n) ? ' off' : ''),
-        title: isBad ? c.label + ' is marked bad, so it is not read anyway'
+        class: 'inc-chan' + (isBad ? ' bad' : '') + (out.has(n) ? ' off' : '')
+               + (beyond ? ' beyond' : ''),
+        title: beyond ? c.label + ' is outside ' + rangeWords(rng)
+                        + ', so it is not read'
+          : isBad ? c.label + ' is marked bad, so it is not read anyway'
           : (out.has(n) ? c.label + ' is left out of this run'
                         : c.label + ' is read in this run'),
       }, [
         el('input', {
           type: 'checkbox',
-          checked: (!isBad && !out.has(n)) ? 'checked' : null,
-          disabled: isBad ? 'disabled' : null,
+          checked: (!isBad && !out.has(n) && !beyond) ? 'checked' : null,
+          disabled: (isBad || beyond) ? 'disabled' : null,
           onchange: () => toggleExclude(n),
         }),
         el('span', { text: c.label }),
@@ -666,6 +747,51 @@ BARRY.doppler = (function () {
     });
   }
 
+  /* The channel range: two CSC numbers, either blank. A box that only takes
+     positive numbers could not be emptied again (numField refuses 0), so
+     this one takes blank as "no limit at that end". */
+  function rangeField() {
+    const box = (key, ph) => el('input', {
+      type: 'number', class: 'num', min: '1', step: '1', placeholder: ph,
+      'data-fk': 'range-' + key,
+      'aria-label': key === 'ch_lo' ? 'First channel' : 'Last channel',
+      value: q[key] == null ? '' : String(q[key]),
+      onchange: (e) => {
+        const raw = String(e.target.value || '').trim();
+        const v = raw === '' ? null : Math.round(Number(raw));
+        if (v != null && !(isFinite(v) && v >= 1)) {
+          e.target.value = q[key] == null ? '' : String(q[key]);
+          return;
+        }
+        q[key] = v;
+        if (q.ch_lo != null && q.ch_hi != null && q.ch_hi < q.ch_lo) {
+          const t = q.ch_lo; q.ch_lo = q.ch_hi; q.ch_hi = t;
+        }
+        changedParams();
+      },
+    });
+    const set = q.ch_lo != null || q.ch_hi != null;
+    return BARRY.ui.field({
+      label: 'Channels', inline: true, extra: 'dop-range-field',
+      hint: 'By CSC number, and applied first: a channel outside the range '
+          + 'is not read at all, and everything else runs inside it -- '
+          + (q.method === 'storm' ? 'the channels detected on, ' : '')
+          + 'the bad ones left out'
+          + (q.method === 'storm' ? ', the common reference' : '')
+          + '. Blank is every channel. For a 128-channel recording where '
+          + 'only the first probe is wanted: 1 to 64.',
+      control: el('div', { class: 'dop-range' }, [
+        el('span', { class: 'dop-range-w', text: 'CSC' }),
+        box('ch_lo', 'first'),
+        el('span', { class: 'dop-range-w', text: 'to CSC' }),
+        box('ch_hi', 'last'),
+        set ? el('button', { class: 'mini', text: 'Every channel',
+          onclick: () => { q.ch_lo = null; q.ch_hi = null; changedParams(); } })
+            : null,
+      ].filter(Boolean)),
+    });
+  }
+
   function changedParams() {
     reset();
     if (q.count === 'many') loadVaccList();
@@ -751,6 +877,8 @@ BARRY.doppler = (function () {
     }
     d.appendChild(grid);
 
+    d.appendChild(rangeField());
+
     if (q.method === 'storm') {
       d.appendChild(toggle('Common-average reference (per probe bank)', 'car',
         true, false,
@@ -827,7 +955,21 @@ BARRY.doppler = (function () {
       car: q.car, min_channels: q.min_channels,
       merge_s: q.merge_s, min_event_s: q.min_event_s,
       detect_on: q.detect_on,
+      channel_range: chRange(),
     };
+  }
+
+  /* [first, last] by CSC number, or null for every channel. "From 65" with
+     no end runs to the last channel there is. */
+  function chRange() {
+    if (q.ch_lo == null && q.ch_hi == null) return null;
+    return [q.ch_lo || 1, q.ch_hi || 9999];
+  }
+
+  function rangeWords(r) {
+    if (!r) return null;
+    return 'CSC' + r[0] + ' to ' + (r[1] >= 9999 ? 'the last channel'
+                                                  : 'CSC' + r[1]);
   }
 
   /* What is on screen is about to stop being true: a different recording,
@@ -1433,6 +1575,7 @@ BARRY.doppler = (function () {
        cut short to fit. */
     const brief = [
       storm ? 'Validated method' : 'Legacy MATLAB',
+      p.channel_range ? rangeWords(p.channel_range) + ' only' : null,
       p.band ? (p.band[0] + '–' + p.band[1] + ' Hz') : 'unfiltered',
       (p.llw_s * 1000) + ' ms window',
       storm ? ('at least ' + (p.min_channels || 1) + ' of '
@@ -1440,10 +1583,13 @@ BARRY.doppler = (function () {
                + ' channels') : ((p.channels || []).length + ' channels'),
     ];
     const d = el('details', { class: 'dop-params', 'data-keep': 'ran-with' }, [
-      el('summary', { text: 'How it was run: ' + brief.join(', ') }),
+      el('summary', { text: 'How it was run: '
+                            + brief.filter(Boolean).join(', ') }),
     ]);
     d.appendChild(el('p', { class: 'hint', style: 'max-width:88ch',
       text: bits.join('. ') + '.' }));
+    d.appendChild(el('p', { class: 'hint', style: 'max-width:88ch',
+      text: channelsSentence(p) }));
     if ((p.left_out || []).length) {
       d.appendChild(el('p', { class: 'hint quiet', style: 'max-width:88ch',
         text: 'Left out of this run by choice: '
@@ -2012,7 +2158,53 @@ BARRY.doppler = (function () {
       + '. Each stamp is the largest deflection inside the detector’s '
       + 'window, measured only on the channels that took part. Times are '
       + 'seconds from the start of the recording, converted from the joined '
-      + 'signal through this recording’s gap map.';
+      + 'signal through this recording’s gap map. '
+      + channelsSentence(p);
+  }
+
+  /* The channels a run was given, written out for the notes and the
+     report: the range, then every channel by role, whole lists by name. A
+     note is what somebody reads six months later to know what was detected
+     on, and "31 channels" does not answer that. */
+  function channelsSentence(p) {
+    const storm = p.method === 'storm';
+    const num = (x) => Number(x && x.number != null ? x.number : x);
+    const csc = (n) => 'CSC' + n;
+    const label = (x) => (x && x.label) || csc(num(x));
+    const det = (p.channels || []).map(Number);
+    const read = (p.read_channels || p.channels || []).map(Number);
+    const detSet = new Set(det);
+    const ref = read.filter((n) => !detSet.has(n));
+    const parts = [];
+    if (p.channel_range) {
+      const out = (p.out_of_range || []).map(num).filter(isFinite);
+      parts.push('Channels ' + rangeWords(p.channel_range) + ' only'
+        + (out.length ? ' (' + runsOf(out.map(csc)).join(', ')
+                        + ' not read)' : '') + '.');
+    }
+    parts.push('Detected on '
+      + (storm && p.detect_on && p.detect_on !== 'all'
+        ? 'the ' + det.length + ' ' + p.detect_on + ' channels'
+        : det.length + ' channel' + (det.length === 1 ? '' : 's'))
+      + ': ' + det.map(csc).join(', ') + '.');
+    if (ref.length) {
+      parts.push((storm && p.car ? 'Read for the common reference only'
+                                 : 'Read, not detected on')
+        + ' (' + ref.length + '): ' + ref.map(csc).join(', ') + '.');
+    }
+    if ((p.excluded || []).length) {
+      parts.push('Marked bad and not read: '
+        + p.excluded.map(label).join(', ') + '.');
+    }
+    if ((p.left_out || []).length) {
+      parts.push('Left out of this run by choice: '
+        + p.left_out.map(label).join(', ') + '.');
+    }
+    if ((p.not_connected || []).length) {
+      parts.push('On a bank marked not connected, not read: '
+        + p.not_connected.map((n) => csc(num(n))).join(', ') + '.');
+    }
+    return parts.join(' ');
   }
 
   /* ------------------------------------------------- runs that have landed */
@@ -2185,6 +2377,7 @@ BARRY.doppler = (function () {
     const isNew = freshKeys.has(r.key);
     const bits = [
       storm ? 'Validated' : 'Legacy MATLAB',
+      sp.channel_range ? rangeWords(sp.channel_range) + ' only' : null,
       sp.band ? (sp.band[0] + '–' + sp.band[1] + ' Hz') : 'unfiltered',
       sp.llw_s ? Math.round(sp.llw_s * 10000) / 10 + ' ms' : null,
       storm && sp.min_channels ? 'at least ' + sp.min_channels + ' channels'
@@ -2264,6 +2457,9 @@ BARRY.doppler = (function () {
     q.notch_hz = sp.notch_hz || null;
     q.band_on = !!sp.band;
     if (sp.band) { q.band_lo = sp.band[0]; q.band_hi = sp.band[1]; }
+    const rng = sp.channel_range || null;
+    q.ch_lo = rng ? rng[0] : null;
+    q.ch_hi = rng ? (rng[1] >= 9999 ? null : rng[1]) : null;
     q.exclude = (sp.left_out || []).map((c) => Number(
       c && c.number != null ? c.number : c)).filter(isFinite);
     q.preset = sp.preset || (q.exclude.length ? 'custom' : 'all');
@@ -2523,6 +2719,7 @@ BARRY.doppler = (function () {
     const pick = Array.from(picked).sort().join(',');
     BARRY.ui.sections(inner, [
       { key: 'params', enter: false, sig: [qs], build: params },
+      { key: 'rule', enter: false, sig: [qs], build: manyRule },
       { key: 'cost', enter: false,
         sig: [qs, pick, oid(vaccList), b ? b.id : '', b ? flightWords(b) : ''],
         build: () => costLine(b) },
@@ -2532,6 +2729,24 @@ BARRY.doppler = (function () {
         sig: [qs, pick, oid(vaccList), b ? b.id : '', vaccOn()],
         build: () => manyGo(b) },
     ]);
+  }
+
+  /* What each recording of a batch is given, in words. The channel lists
+     themselves differ from recording to recording -- each has its own bad
+     channels -- so they are written into each run's report and bank note,
+     by name, and here the rule is said once. */
+  function manyRule() {
+    const r = chRange();
+    const storm = q.method === 'storm';
+    return el('p', { class: 'hint dop-many-rule', style: 'max-width:80ch',
+      text: 'Channels, for each recording: '
+          + (r ? rangeWords(r) + ' only' : 'every channel')
+          + (storm && q.detect_on !== 'all'
+            ? ', detection on the ' + q.detect_on + ' ones'
+            : ', detection on every channel read')
+          + ', its own bad channels left out'
+          + (storm && q.car ? ', the rest read for the common reference' : '')
+          + '. Each run’s report and bank note list every channel by name.' });
   }
 
   function chosenRows() {

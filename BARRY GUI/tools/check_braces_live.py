@@ -216,7 +216,9 @@ else:
 
     print("\nTHE RUN")
     print("-" * 68)
-    started = call("/api/braces/run", {"entry_id": cand["id"]})
+    # `force`: this is a check of the read, so it reads, whether or not
+    # the same question was answered before.
+    started = call("/api/braces/run", {"entry_id": cand["id"], "force": True})
     truthy("the run starts as a job", started.get("job"))
     if started.get("job"):
         jid = started["job"]["id"]
