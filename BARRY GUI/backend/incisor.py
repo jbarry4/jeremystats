@@ -119,7 +119,96 @@ CACHE_MAX = 8
 _CACHE_LOCK = threading.Lock()
 
 
-def resolve_channels(session, bad=(), chans=None):
+PICK_MODES = ("first", "second", "even", "odd", "ranges")
+PICK_WORDS = {"first": "the first half", "second": "the second half",
+              "even": "the even channels", "odd": "the odd channels"}
+
+
+def channel_pick(raw):
+    """A channel pick as asked for, checked; None for "every channel".
+
+    Asked for 2026-10-14: a 128-channel recording is often two probes, and
+    the only way to scan one of them was to mark the other 64 channels bad
+    -- which marks them bad for this session everywhere, for every tool.
+    A pick says which channels THIS scan reads and nothing else:
+
+      first / second   the first or second half, by CSC number, of every
+                       channel the recording has (bad ones counted, so the
+                       first half of 128 is CSC1-64 whatever is marked)
+      even / odd       by CSC number
+      ranges           [[lo, hi], ...] by CSC number, inclusive
+
+    Channels marked bad are still left out inside the pick; the pick never
+    puts one back.
+    """
+    if not raw:
+        return None
+    if isinstance(raw, str):
+        raw = {"mode": raw}
+    mode = str(raw.get("mode") or "").strip().lower()
+    if mode in ("", "all"):
+        return None
+    if mode not in PICK_MODES:
+        raise ValueError("%r is not a channel pick: it is one of all, first, "
+                         "second, even, odd or ranges." % (mode,))
+    if mode != "ranges":
+        return {"mode": mode}
+    out = []
+    for r in raw.get("ranges") or []:
+        try:
+            lo, hi = int(r[0]), int(r[1])
+        except (TypeError, ValueError, IndexError):
+            raise ValueError("A channel range is two CSC numbers, such as "
+                             "1-64; %r is not." % (r,))
+        if lo < 1 or hi < 1:
+            raise ValueError("CSC numbers start at 1; %d-%d is not a "
+                             "range of them." % (lo, hi))
+        out.append([min(lo, hi), max(lo, hi)])
+    if not out:
+        raise ValueError("A custom range needs at least one CSC number or "
+                         "range, such as 1-64.")
+    return {"mode": "ranges", "ranges": sorted(out)}
+
+
+def pick_numbers(numbers, pick):
+    """The CSC numbers a pick takes from a recording's channel numbers."""
+    nums = sorted({int(n) for n in numbers})
+    if not pick:
+        return set(nums)
+    mode = pick["mode"]
+    if mode == "first":
+        return set(nums[:(len(nums) + 1) // 2])
+    if mode == "second":
+        return set(nums[(len(nums) + 1) // 2:])
+    if mode == "even":
+        return {n for n in nums if n % 2 == 0}
+    if mode == "odd":
+        return {n for n in nums if n % 2 == 1}
+    return {n for n in nums
+            if any(lo <= n <= hi for lo, hi in pick.get("ranges") or [])}
+
+
+def pick_words(pick, numbers=None):
+    """A pick in words: "the first half (CSC1-CSC64)"."""
+    if not pick:
+        return "every channel"
+    if pick["mode"] == "ranges":
+        # A range open at the top (the panel sends 9999 for "to the last")
+        # says so rather than naming a channel nobody has.
+        return "CSC " + ", ".join(
+            ("%d" % lo) if lo == hi
+            else ("%d to the last" % lo) if hi >= 9999
+            else ("%d-%d" % (lo, hi))
+            for lo, hi in pick["ranges"])
+    words = PICK_WORDS[pick["mode"]]
+    if numbers and pick["mode"] in ("first", "second"):
+        got = sorted(pick_numbers(numbers, pick))
+        if got:
+            words += " (CSC%d-CSC%d)" % (got[0], got[-1])
+    return words
+
+
+def resolve_channels(session, bad=(), chans=None, pick=None):
     """Which of a recording's channels a scan reads: (indices, excluded).
 
     Every channel, or the ones asked for, less the ones marked bad -- bad by
@@ -137,6 +226,12 @@ def resolve_channels(session, bad=(), chans=None):
     if not chans:
         chans = [c["index"] for c in all_ch]
     chans = [int(c) for c in chans if int(c) in by_index]
+    # The pick first, over every channel the recording has; then the bad
+    # ones come out of what it took. A channel outside the pick is not
+    # "excluded" -- it was not asked for -- so it is not listed as bad.
+    if pick:
+        want = pick_numbers([c["number"] for c in all_ch], pick)
+        chans = [i for i in chans if int(by_index[i]["number"]) in want]
     kept = [i for i in chans if int(by_index[i]["number"]) not in bad]
     excluded = [{"index": i, "number": int(by_index[i]["number"]),
                  "label": by_index[i].get("label")}
@@ -1182,6 +1277,8 @@ def _params(spec, plan):
         "invert": bool(spec.get("invert", True)),
         "bad_channels_excluded": list(spec.get("bad_channels") or []),
         "n_channels_scanned": int(plan.get("n_channels") or 0),
+        # Which channels the scan was asked to read, when not every one.
+        "channel_pick": spec.get("channel_pick"),
         "probe": spec.get("probe") or "h3",
         "notes": [
             "Filtered per segment and pooled for the threshold, so the "

@@ -293,7 +293,55 @@ def sessions_side():
         vacc._INVS.clear()
 
 
+def env_side():
+    """The cluster's Python: the account's own environment, else the lab's
+    (2026-10-14). Offline; proven on the cluster itself by hand that day."""
+    print("\nthe cluster's Python")
+    shared = json.load(open(os.path.join(APP, "vacc.json"), encoding="utf-8"))
+    check("the lab's environment and its module are lab-wide facts",
+          shared.get("lab_env") and shared.get("modules"),
+          (shared.get("lab_env"), shared.get("modules")))
+    cfg = {"modules": ["miniforge/26.7.2-py3.14"], "env": "",
+           "workspace": "/users/i/p/ipiatek/jarvis",
+           "lab_env": "/users/s/a/sakhava1/jarvis/env"}
+    pre = vacc.activate(cfg)
+    own = pre.find("/users/i/p/ipiatek/jarvis/env")
+    lab = pre.find("/users/s/a/sakhava1/jarvis/env")
+    check("a colleague's own environment is tried first, the lab's second",
+          0 <= own < lab, pre)
+    check("whichever is found goes first on PATH, conda or not",
+          'export PATH="$E/bin:$PATH"' in pre and "break" in pre, pre)
+    check("and where it looked is named, for the error",
+          "export JARVIS_ENVS=/users/i/p/ipiatek/jarvis/env:"
+          "/users/s/a/sakhava1/jarvis/env" in pre, pre)
+    mine = vacc.activate(dict(cfg, workspace="/users/s/a/sakhava1/jarvis"))
+    check("the account that built the lab's looks once, not twice",
+          mine.count("/users/s/a/sakhava1/jarvis/env") == 2, mine)
+    from backend import vaccserve
+    keep = {k: os.environ.get(k) for k in ("JARVIS_ENV", "JARVIS_ENVS")}
+    try:
+        os.environ.pop("JARVIS_ENV", None)
+        os.environ["JARVIS_ENVS"] = "/a/env:/b/env"
+        none = vaccserve.missing_words("numpy")
+        os.environ["JARVIS_ENV"] = "/b/env"
+        old = vaccserve.missing_words("statsmodels")
+    finally:
+        for k, v in keep.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    check("no environment found: it says so, where it looked, and who to "
+          "ask -- not 'install into /usr'",
+          none.startswith("No Jarvis environment was found")
+          and "/a/env and then /b/env" in none and "pi-jbarry4" in none
+          and "into /usr" not in none, none)
+    check("an environment found but behind: it names that one",
+          "(/b/env) does not have statsmodels" in old, old)
+
+
 def main():
+    env_side()
     braces_side()
     doppler_side()
     sessions_side()

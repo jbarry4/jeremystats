@@ -186,6 +186,9 @@ def load_config(logs_dir):
         "partition": cfg.get("partition") or "general",
         "modules": list(cfg.get("modules") or []),
         "env": cfg.get("env") or "",
+        # The lab's environment, used when this account has none of its own
+        # (2026-10-14). Lab-wide, so from the tracked vacc.json.
+        "lab_env": cfg.get("lab_env") or "",
         # Lab-wide: [{"unc": "//server/share", "vacc": "/netfiles/share"}].
         "path_map": list(cfg.get("path_map") or []),
         "host_fingerprint": cfg.get("host_fingerprint") or "",
@@ -1242,10 +1245,31 @@ def activate(cfg):
     lines = []
     for mod in (cfg.get("modules") or []):
         lines.append("module load %s" % mod)
-    env = env_path(cfg)
-    if env:
-        lines.append('source activate %s 2>/dev/null || '
-                     'conda activate %s 2>/dev/null || true' % (q(env), q(env)))
+    # THIS ACCOUNT'S ENVIRONMENT, ELSE THE LAB'S (2026-10-14).
+    #
+    # It activated `<workspace>/env` and carried on silently when there was
+    # none -- which, for every account but the one that built it, was always.
+    # The shell then ran the cluster's system Python (3.9, no numpy), and the
+    # first thing that needed numpy said so, with advice to install into
+    # /usr. So: the account's own if it exists, else the lab's (built once,
+    # readable by everyone in pi-jbarry4), and whichever is used goes FIRST
+    # on PATH, so `python` is that one whether or not conda's activation
+    # script ran. `JARVIS_ENVS` names where it looked, for the error a
+    # process gives when it found neither.
+    envs = []
+    for e in (env_path(cfg), cfg.get("lab_env") or ""):
+        if e and e not in envs:
+            envs.append(e)
+    if envs:
+        lines.append("for E in %s; do" % " ".join(q(e) for e in envs))
+        lines.append('  if [ -x "$E/bin/python" ]; then')
+        lines.append('    source activate "$E" 2>/dev/null || '
+                     'conda activate "$E" 2>/dev/null || true')
+        lines.append('    export PATH="$E/bin:$PATH"; export JARVIS_ENV="$E"; '
+                     'break')
+        lines.append('  fi')
+        lines.append('done')
+        lines.append("export JARVIS_ENVS=%s" % q(":".join(envs)))
     return "\n".join(lines)
 
 

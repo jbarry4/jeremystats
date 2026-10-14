@@ -274,6 +274,61 @@ const post = (u, b) => fetch(u, { method: 'POST',
             est.split === null || typeof est.split === 'string',
             JSON.stringify(est.split));
     }
+
+    /* THE CHANNEL RANGE. Applied first, by CSC number: outside it nothing
+       is read, and inside it everything else runs as before -- the even
+       ones detected on, the bad ones left out. And the channels that go in
+       are listed, by name and role, before anything is run. */
+    if (est.ok) {
+      const nums = (est.channels || []).map((c) => c.number)
+        .sort((a, b) => a - b);
+      const half = nums[Math.floor(nums.length / 2) - 1];
+      const r = await post('/api/doppler/estimate',
+                           { path, channel_range: [nums[0], half] });
+      const f = r.feed || {};
+      const byIdx = {};
+      for (const c of (est.channels || [])) byIdx[c.index] = c.number;
+      const read = (r.spec && r.spec.channels || []).map((i) => byIdx[i]);
+      check('the estimate lists what goes in', !!est.feed
+            && Array.isArray(est.feed.detect) && est.feed.detect.length > 0,
+            JSON.stringify(est.feed || null).slice(0, 120));
+      check('with a range, nothing outside it is read',
+            r.ok && read.length > 0 && read.every((n) => n <= half),
+            r.error || read.join(','));
+      check('and what is outside it is listed as such, every one',
+            (f.out_of_range || []).length === nums.filter((n) => n > half).length,
+            (f.out_of_range || []).length + ' vs '
+            + nums.filter((n) => n > half).length);
+      check('detection inside the range is on the even channels only',
+            (f.detect || []).length > 0 && (f.detect || []).every((l) => {
+              const n = Number(String(l).replace(/\D+/g, ''));
+              return n <= half && n % 2 === 0; }),
+            (f.detect || []).join(','));
+      check('a bad channel outside the range is not listed as bad',
+            (f.bad || []).every((l) =>
+              Number(String(l).replace(/\D+/g, '')) <= half),
+            (f.bad || []).join(','));
+      const empty = await post('/api/doppler/estimate',
+                               { path, channel_range: [9000, 9001] });
+      check('a range with nothing in it is refused with a sentence',
+            !empty.ok && /Widen the range/.test(empty.error || ''),
+            empty.error || 'it was not refused');
+
+      /* The panel shows the list above the run button. */
+      ev('BARRY.views.toolkit.pick("doppler")');
+      await until(() => $('#tkResult .step-head'));
+      ev('(function(){var s=BARRY.doppler._state();s.count="one";'
+         + 's.ch_lo=' + nums[0] + ';s.ch_hi=' + half + ';})()');
+      ev('BARRY.doppler.paint()');
+      const shown = await until(() => {
+        const g = $('#tkResult .dop-feed .dop-feed-g.out');
+        return g && $('#tkResult .dop-feed .dop-feed-g.det');
+      }, 15000);
+      check('"What goes in" shows the detection channels and the range',
+            !!shown, shown ? '' : ($('#tkResult .dop-feed') || {}).textContent);
+      ev('(function(){var s=BARRY.doppler._state();'
+         + 's.ch_lo=null;s.ch_hi=null;})()');
+    }
   }
 
   /* ---------------------------------------------------------------- */
@@ -457,6 +512,28 @@ const post = (u, b) => fetch(u, { method: 'POST',
           /not read at all/.test(note));
     check('the bank note says times are recording seconds',
           /seconds from the start of the recording/.test(note));
+    /* And the channels themselves, by name -- "31 channels" does not say
+       which were detected on. */
+    check('the bank note lists the channels detected on, by name',
+          /Detected on 2 channels: CSC2, CSC4\./.test(note), note.slice(-300));
+    check('and the bad ones, by name',
+          /Marked bad and not read: CSC6/.test(note), note.slice(-300));
+    const ranged = JSON.parse(JSON.stringify(fake));
+    ranged.params = Object.assign({}, fake.params, {
+      method: 'storm', detect_on: 'even', car: true,
+      channels: [2, 4], read_channels: [1, 2, 3, 4],
+      channel_range: [1, 32],
+      out_of_range: [33, 34, 35, 36].map((n) => ({ number: n,
+                                                     label: 'CSC' + n })) });
+    ev('BARRY.doppler._adopt(' + JSON.stringify(ranged) + ')');
+    const rnote = ev('BARRY.doppler._bankNote()');
+    check('a run with a channel range says so in its note',
+          /Channels CSC1 to CSC32 only \(CSC33 to CSC36 not read\)/.test(rnote),
+          rnote.slice(-400));
+    check('and names the channels read for the reference only',
+          /Read for the common reference only \(2\): CSC1, CSC3/.test(rnote),
+          rnote.slice(-400));
+    ev('BARRY.doppler._adopt(window.__stormFake)');
   }
 
   /* ---------------------------------------------------------------- */
@@ -552,15 +629,24 @@ const post = (u, b) => fetch(u, { method: 'POST',
   const ied = (kinds.kinds || []).find((k) => k.id === 'ied');
   check('there is an IED vocabulary', !!ied);
   if (ied) {
-    const ids = ied.labels.map((l) => l.id).join(',');
+    /* The built-in four, first and in order. Categories added in Spotter
+       come after them (curation.Categories), so they are left out here --
+       this machine may well have some. */
+    const own = ied.labels.filter((l) => !l.custom);
+    const ids = own.map((l) => l.id).join(',');
     check('solid, sputter, garbage, flag',
           ids === 'solid,sputter,garbage,flag', ids);
+    check('the built-in four come first',
+          ied.labels.slice(0, 4).map((l) => l.id).join(',') === ids);
     check('every label a person assigns has a key',
-          ied.labels.filter((l) => !l.computed)
+          own.filter((l) => !l.computed)
             .every((l) => (l.keys || []).length > 0));
+    check('an added category never takes a built-in key',
+          ied.labels.filter((l) => l.custom).every((l) =>
+            (l.keys || []).every((k) => '1234stgf'.indexOf(String(k)) < 0)));
     /* The mockup's numbering IS the vocabulary's. If these ever stop being
        the first key, Spotter's buttons and its keyboard come apart. */
-    const firsts = ied.labels.map((l) => (l.keys || [])[0]).join(',');
+    const firsts = own.map((l) => (l.keys || [])[0]).join(',');
     check('1 2 3 4 are the first keys, as the mockup has them',
           firsts === '1,2,3,4', firsts);
     const reserved = ['n', 'p', 'u', 'escape', 'backspace',
@@ -568,6 +654,52 @@ const post = (u, b) => fetch(u, { method: 'POST',
     check('the vocabulary takes none of the navigation keys',
           ied.labels.every((l) => (l.keys || []).every(
             (k) => reserved.indexOf(String(k).toLowerCase()) < 0)));
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('a new category arrives');
+
+  /* The ceremony's own mechanics, on a stand-in button -- never a real
+     category: one added is added for good, in everybody's Spotter. That
+     half is tools/test_categories.py, on a throwaway store. What is checked
+     here is that the ceremony ENDS: it is driven by timers, because under
+     this runner's virtual time `finish` and `animationend` never fire. */
+  check('chipforge is loaded', ev('typeof BARRY.chipForge') === 'object');
+  if (ev('typeof BARRY.chipForge') === 'object') {
+    ev('(function(){var b=document.createElement("button");'
+       + 'b.className="cur-cat cf-arriving";b.id="cfHarness";'
+       + 'b.style.cssText="position:fixed;left:40px;bottom:40px;--cat:#7b3fa0";'
+       + 'b.textContent="Polyspike";document.body.appendChild(b);'
+       + 'window.__cfLanded=0;'
+       + 'BARRY.chipForge.play({label:{name:"Polyspike",color:"#7b3fa0",'
+       + 'keys:["5"]},target:function(){return document.getElementById('
+       + '"cfHarness");},onLand:function(){window.__cfLanded++;}});})()');
+    check('it takes the stage', !!$('.cf-stage'));
+    check('the chip it shows carries the name and the key',
+          /Polyspike/.test(($('.cf-stage .cf-chip') || {}).textContent || '')
+          && /5/.test(($('.cf-stage .cf-chip kbd') || {}).textContent || ''));
+    const total = ev('BARRY.chipForge._T.land');
+    await sleep(total + 400);
+    check('it ends by itself, on its timers', !$('.cf-stage')
+          && ev('window.__cfLanded') === 1,
+          'stage ' + !!$('.cf-stage') + ', landed ' + ev('window.__cfLanded'));
+    const btn = D().getElementById('cfHarness');
+    check('the button it lands on is shown, ringed and says it is ready',
+          !!btn && !btn.classList.contains('cf-arriving')
+          && btn.classList.contains('cf-landed')
+          && /Ready · key 5/.test(btn.textContent), btn ? btn.className : '');
+    /* A click skips straight to the end -- and only once. */
+    ev('window.__cfLanded=0;BARRY.chipForge.play({label:{name:"Again",'
+       + 'color:"#0ea5e9",keys:[]},target:function(){return document.'
+       + 'getElementById("cfHarness");},onLand:function(){window.__cfLanded++;}});');
+    await sleep(150);
+    const st = $('.cf-stage');
+    if (st) st.click();
+    await sleep(150);
+    check('a click skips to the end, landing once',
+          !$('.cf-stage') && ev('window.__cfLanded') === 1,
+          String(ev('window.__cfLanded')));
+    ev('var b=document.getElementById("cfHarness"); if (b) b.remove();');
   }
 
   /* ---------------------------------------------------------------- */

@@ -218,10 +218,16 @@ def run_tool(tool, spec, bundle, job, csc):
             # The channel list only exists here, so the one rule for which
             # channels a scan reads runs here too -- every channel less the
             # bad ones, by CSC number. The answer echoes what it chose.
+            pick = incisor.channel_pick(spec.get("channel_pick"))
             kept, excluded = incisor.resolve_channels(
-                session, spec.get("bad_channels") or [])
+                session, spec.get("bad_channels") or [], None, pick)
             if not kept:
-                raise ValueError("Every channel in this recording is marked "
+                raise ValueError(
+                    "Nothing is left to scan in %s: every channel there is "
+                    "marked bad, or there is none."
+                    % incisor.pick_words(pick, [c["number"] for c in
+                                                session.get("channels") or []])
+                    if pick else "Every channel in this recording is marked "
                                  "bad, so there is nothing to scan.")
             spec = dict(spec, channels=kept, excluded=excluded)
         out = incisor.run(session, spec, report, job)
@@ -266,7 +272,12 @@ def run_tool(tool, spec, bundle, job, csc):
             if not kept:
                 raise ValueError("Every channel in this recording is marked "
                                  "bad, so there is nothing to read.")
-            spec = dict(spec, channels=kept, excluded=excluded)
+            # And the channel range, by the desk's own rule: outside it is
+            # not read, and everything else applies inside it.
+            kept, excluded, outside = doppler.restrict(
+                session, kept, excluded, spec.get("channel_range"))
+            spec = dict(spec, channels=kept, excluded=excluded,
+                        out_of_range=outside)
         out = doppler.run(session, spec, report, job)
         out["spec_channels"] = list(spec.get("channels") or [])
         out["spec_excluded"] = list(spec.get("excluded") or [])

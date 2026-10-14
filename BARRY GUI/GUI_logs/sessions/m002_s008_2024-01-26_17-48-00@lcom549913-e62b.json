@@ -26,8 +26,8 @@
     "schema": "2026-09-04T15:57:01.575592+00:00",
     "session": "2026-09-04T15:57:01.575592+00:00",
     "start": "2026-09-04T15:57:01.575592+00:00",
-    "updated": "2026-10-12T14:27:59.698064+00:00",
-    "view_state": "2026-10-12T14:27:59.698064+00:00"
+    "updated": "2026-10-14T16:24:14.262629+00:00",
+    "view_state": "2026-10-13T14:21:58.207456+00:00"
   },
   "_keys": {
     "paths": {
@@ -54,6 +54,10 @@
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M2_s8_CNO": [
         "set",
         "2026-09-04T15:57:01.575592+00:00"
+      ],
+      "vacc:sddf3e5010ff2": [
+        "set",
+        "2026-10-14T16:24:14.262629+00:00"
       ]
     },
     "seen": {
@@ -71,11 +75,11 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-10-09T15:47:14.128306+00:00"
+        "2026-10-13T14:21:18.470027+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
-        "2026-10-10T00:37:02.381465+00:00"
+        "2026-10-12T18:12:56.582795+00:00"
       ],
       "lcom549913-e62b": [
         "set",
@@ -84,7 +88,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-12T14:27:59.698064+00:00",
+    "at": "2026-10-14T16:24:14.262629+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
@@ -119,7 +123,8 @@
     "G:\\PTEN\\M2_s8\\timestamps.mat",
     "Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\rejects\\M2_s8_CNO",
-    "D:\\Data\\Archive\\PTEN Project\\Control\\M2_s8\\2024-01-26_17-48-00"
+    "D:\\Data\\Archive\\PTEN Project\\Control\\M2_s8\\2024-01-26_17-48-00",
+    "vacc:sddf3e5010ff2"
   ],
   "probe": "h3",
   "probe_source": "manual",
@@ -150,7 +155,7 @@
       "scan": null
     },
     "barrylab-d8e8": {
-      "at": "2026-10-09T11:47:13-04:00",
+      "at": "2026-10-13T10:21:16-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
@@ -158,7 +163,7 @@
       "scan": null
     },
     "desktop-4h65ai7-d565": {
-      "at": "2026-10-09T20:37:02-04:00",
+      "at": "2026-10-12T14:12:56-04:00",
       "by": "Shahriar Tafti",
       "machine": "Bluebarry",
       "path": "D:\\PTEN\\CTL\\M2_CTL\\M2s8jan26\\2024-01-26_17-48-00",
@@ -177,9 +182,9 @@
   "session": 8,
   "start": "2024-01-26T17:48:00",
   "updated": {
-    "app_version": "2026.10.09.6",
-    "at": "2026-10-12T10:27:59-04:00",
-    "commit": "021cb243",
+    "app_version": "2026.10.14.5",
+    "at": "2026-10-14T12:24:14-04:00",
+    "commit": "917483c9",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
@@ -233,9 +238,9 @@
     "notch": 60,
     "probe": "h3",
     "spacing": 50,
-    "span": 0.4,
+    "span": 1,
     "stft_mode": null,
-    "t0": 432.745181,
-    "ylim": null
+    "t0": 202.191149,
+    "ylim": 896.7700805664062
   }
 }

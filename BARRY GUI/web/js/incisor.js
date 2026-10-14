@@ -56,6 +56,17 @@ BARRY.incisor = (function () {
     // never found again.
     row: null,
     channels: null,       // null means every channel
+    /* Which channels THIS scan reads (2026-10-14): null for every one, or
+       { mode: 'first' | 'second' | 'even' | 'odd' } or
+       { mode: 'ranges', ranges: [[lo, hi], ...] } by CSC number. Never a
+       bad mark: bad channels stay out inside any pick, and a pick marks
+       nothing bad. Back to every channel for each new recording. */
+    pick: null,
+    /* A batch's channel range, by CSC number (2026-10-14): first and last,
+       either blank for no limit at that end. The same for every recording
+       sent, with each one's bad channels left out inside it -- as Doppler's
+       is. */
+    batch_lo: null, batch_hi: null,
     height_sd: 4.5,
     abs_uv: 300,
     dist_ms: 100,
@@ -142,6 +153,7 @@ BARRY.incisor = (function () {
     return Object.assign({
       path: q.path,
       channels: q.channels,
+      channel_pick: q.pick,
       height_sd: q.height_sd,
       abs_uv: q.abs_uv,
       dist_ms: q.dist_ms,
@@ -467,7 +479,58 @@ BARRY.incisor = (function () {
     return {
       height_sd: q.height_sd, abs_uv: q.abs_uv, dist_ms: q.dist_ms,
       wlen_ms: q.wlen_ms, estimator: q.estimator,
+      channel_pick: batchPick(),
     };
+  }
+
+  /* The batch's range as a channel pick: blank at the bottom is CSC1, blank
+     at the top "to the last" (9999, which the server words that way). */
+  function batchPick() {
+    if (q.batch_lo == null && q.batch_hi == null) return null;
+    return { mode: 'ranges', ranges: [[q.batch_lo || 1, q.batch_hi || 9999]] };
+  }
+
+  /* First and last, by CSC number -- Doppler's field, for every recording
+     in the batch. A blank box is no limit at that end. */
+  function batchRangeField() {
+    const box = (key, ph) => el('input', {
+      type: 'number', class: 'num', min: '1', step: '1', placeholder: ph,
+      'aria-label': key === 'batch_lo' ? 'First channel' : 'Last channel',
+      value: q[key] == null ? '' : String(q[key]),
+      disabled: batchJob ? 'disabled' : null,
+      onchange: (e) => {
+        const raw = String(e.target.value || '').trim();
+        const v = raw === '' ? null : Math.round(Number(raw));
+        if (v != null && !(isFinite(v) && v >= 1)) {
+          e.target.value = q[key] == null ? '' : String(q[key]);
+          return;
+        }
+        q[key] = v;
+        if (q.batch_lo != null && q.batch_hi != null && q.batch_hi < q.batch_lo) {
+          const t = q.batch_lo; q.batch_lo = q.batch_hi; q.batch_hi = t;
+        }
+        paramsChanged();
+      },
+    });
+    const set = q.batch_lo != null || q.batch_hi != null;
+    return BARRY.ui.field({
+      label: 'Channels', inline: true, extra: 'dop-range-field inc-batch-range',
+      hint: 'By CSC number, for every recording sent: a channel outside the '
+          + 'range is not read at all, and each recording\u2019s bad channels '
+          + 'are left out inside it. Blank is every channel. For 128-channel '
+          + 'recordings where only the first probe is wanted: 1 to 64. '
+          + 'Nothing is marked bad by this.',
+      control: el('div', { class: 'dop-range' }, [
+        el('span', { class: 'dop-range-w', text: 'CSC' }),
+        box('batch_lo', 'first'),
+        el('span', { class: 'dop-range-w', text: 'to CSC' }),
+        box('batch_hi', 'last'),
+        set ? el('button', { class: 'mini', text: 'Every channel',
+          disabled: batchJob ? 'disabled' : null,
+          onclick: () => { q.batch_lo = null; q.batch_hi = null;
+                           paramsChanged(); } }) : null,
+      ].filter(Boolean)),
+    });
   }
 
   /* Asked again whenever the parameters change, because "already scanned"
@@ -721,6 +784,7 @@ BARRY.incisor = (function () {
     box.appendChild(el('div', { class: 'section-label',
                                 text: 'Detection, for every recording sent' }));
     box.appendChild(params());
+    box.appendChild(batchRangeField());
     const todo = (vaccList && vaccList.todo) || [];
     const chosen = todo.filter((r) => picked.has(r.gid));
     const fresh = chosen.filter((r) => !r.answered);
@@ -849,6 +913,8 @@ BARRY.incisor = (function () {
     q.gid = r.gid;
     q.row = got.row || r.row || null;
     q.path = got.path;
+    // The channels it was scanned on, so the estimate is of the same scan.
+    q.pick = (((got.result || {}).params) || {}).channel_pick || null;
     est = { known: got.known || {} };
     adopt(got.result);
     paint();
@@ -912,6 +978,38 @@ BARRY.incisor = (function () {
     return wrap;
   }
 
+  /* WHICH PROJECT, AND WHICH SCAN (2026-10-14). "KCNT1 m11 s6" is a
+     different animal in KCNT1 and in KCNT1 Urethane, and a recording
+     scanned twice was two identical rows. So each row says its project
+     (and cohort, where the folders name one), and under its name what the
+     scan read and when: its channel count, the range it was given, the bad
+     channels it left out, any detection setting off Toothy's default, and
+     the day it ran. */
+  function reviewProject(r) {
+    const row = r.row || {};
+    const p = row.project || '';
+    if (!p || p === 'Unfiled') return 'project not known';
+    return p + (row.cohort && row.cohort !== p ? ' \u00b7 ' + row.cohort : '');
+  }
+
+  function reviewScan(r) {
+    const sp = r.spec || {};
+    const bad = sp.bad_channels || [];
+    const at = String((r.computed || {}).at || '').slice(0, 16).replace('T', ' ');
+    return [
+      r.n_channels != null ? r.n_channels + ' channels' : null,
+      r.pick_words || null,
+      bad.length ? (bad.length <= 3 ? 'CSC' + bad.join(', CSC') : bad.length
+                    + ' channels') + ' left out as bad' : null,
+      sp.height_sd != null && Number(sp.height_sd) !== 4.5
+        ? 'height ' + sp.height_sd + ' S.D.' : null,
+      sp.abs_uv != null && Number(sp.abs_uv) !== 300
+        ? 'floor ' + sp.abs_uv + ' \u00b5V' : null,
+      sp.estimator === 'mad' ? 'noise by MAD' : null,
+      at ? 'scanned ' + at : null,
+    ].filter(Boolean).join('  \u00b7  ');
+  }
+
   function reviewRow(r) {
     const hil = (r.picked || {}).hilus || {};
     const k = r.gid + '/' + r.params_hash;
@@ -920,7 +1018,14 @@ BARRY.incisor = (function () {
       class: 'inc-review' + (on ? ' on' : '') + (r.banked ? ' banked' : ''),
       onclick: () => toggleReview(r),
     }, [
-      el('span', { class: 'ir-name', text: r.label || r.gid }),
+      el('span', { class: 'ir-who' }, [
+        el('span', { class: 'ir-name', text: r.label || r.gid }),
+        el('span', { class: 'ir-proj' + ((r.row || {}).project
+                                         && (r.row || {}).project !== 'Unfiled'
+                                         ? '' : ' none'),
+                     text: reviewProject(r) }),
+        el('span', { class: 'ir-sub', text: reviewScan(r) }),
+      ]),
       el('span', { class: 'ir-pick',
         text: hil.label ? ('hilus ' + hil.label) : 'no hilus pick' }),
       /* A small margin is the interesting case, not a defect: the two top
@@ -1038,6 +1143,7 @@ BARRY.incisor = (function () {
         q.gid = r.gid;
         q.row = r;
         q.path = g.path;
+        q.pick = null; pickOpen = false;
         reset();
         refreshEstimate();
         paint();
@@ -1183,7 +1289,11 @@ BARRY.incisor = (function () {
 
     box.appendChild(el('p', { class: 'inc-sel-head',
       text: p.n_channels + ' of ' + total + ' channel'
-          + (total === 1 ? '' : 's') + ' will be read' }));
+          + (total === 1 ? '' : 's') + ' will be read'
+          + (est && est.pick ? ': ' + est.pick_words
+             + (bad.some((c) => c.picked !== false)
+                ? ', less the ones marked bad' : '') : '') }));
+    box.appendChild(pickRow());
 
     /* Both ways round. "None are marked" is a fact about this recording
        too, and a panel that only speaks when something was removed leaves
@@ -1212,6 +1322,96 @@ BARRY.incisor = (function () {
 
     box.appendChild(chanEditor(all, bad));
     return box;
+  }
+
+  /* WHICH CHANNELS THIS SCAN READS (asked for 2026-10-14).
+
+     A 128-channel recording is often two probes, and the only way to scan
+     one of them was to untick the other 64 -- which marks them bad for this
+     session everywhere, in every tool, for a reason that has nothing to do
+     with the wires. A pick says which channels this one scan reads and
+     nothing else. Bad channels stay out inside any pick; a pick never puts
+     one back and never marks one. The halves are by CSC number over every
+     channel the recording has, so the first half of 128 is CSC1-64
+     whatever is marked. The server applies the rule (`incisor.channel_pick`),
+     so the count above and the scan cannot disagree. */
+  let pickOpen = false;          // the custom range field is showing
+  const PICKS = [
+    ['all', 'All', 'Every channel not marked bad'],
+    ['first', 'First half', 'The first half by CSC number, less the bad ones'],
+    ['second', 'Second half', 'The second half by CSC number, less the bad ones'],
+    ['even', 'Even', 'The even CSC numbers, less the bad ones'],
+    ['odd', 'Odd', 'The odd CSC numbers, less the bad ones'],
+    ['ranges', 'Range\u2026', 'CSC numbers and ranges of your own, such as '
+                         + '1-64, or 1-32, 65-96'],
+  ];
+
+  function pickText(pick) {
+    return ((pick && pick.ranges) || []).map((r) => (r[0] === r[1]
+      ? String(r[0]) : r[0] + '-' + r[1])).join(', ');
+  }
+
+  /* "1-64", "1-32, 65-96", "CSC5, 9-12": ranges by CSC number, or null
+     with the reason. */
+  function parseRanges(text) {
+    const parts = String(text || '').split(/[,;\s]+/).filter(Boolean);
+    if (!parts.length) return { why: 'Type CSC numbers or ranges, such as 1-64.' };
+    const out = [];
+    for (const raw of parts) {
+      const t = raw.replace(/^csc/i, '').replace(/[\u2013\u2014]/g, '-');
+      const m = /^(\d+)(?:-(?:csc)?(\d+))?$/i.exec(t);
+      if (!m) return { why: '\u201c' + raw + '\u201d is not a CSC number or '
+                            + 'a range such as 1-64.' };
+      const lo = Number(m[1]), hi = Number(m[2] || m[1]);
+      if (lo < 1 || hi < 1) return { why: 'CSC numbers start at 1.' };
+      out.push([Math.min(lo, hi), Math.max(lo, hi)]);
+    }
+    return { ranges: out };
+  }
+
+  function setPick(pick) {
+    q.pick = pick;
+    reset();            // a scan of other channels is not this one's answer
+    refreshEstimate();
+    paint();
+  }
+
+  function pickRow() {
+    const cur = (q.pick && q.pick.mode) || 'all';
+    const row = el('div', { class: 'inc-pick' });
+    row.appendChild(el('span', { class: 'inc-pick-l', text: 'Scan' }));
+    row.appendChild(el('div', { class: 'seg sm inc-pick-seg' }, PICKS.map(
+      ([id, label, why]) => el('button', {
+        class: (id === cur || (id === 'ranges' && pickOpen)) ? 'active' : '',
+        title: why, disabled: (job || savingBad) ? 'disabled' : null,
+        onclick: () => {
+          if (id === 'ranges') { pickOpen = true; paint(); return; }
+          pickOpen = false;
+          if (id === cur) return;
+          setPick(id === 'all' ? null : { mode: id });
+        },
+        text: label,
+      }))));
+    if (pickOpen || cur === 'ranges') {
+      const inp = el('input', { type: 'text', class: 'inc-pick-in',
+        'aria-label': 'CSC numbers and ranges',
+        placeholder: 'e.g. 1-64, or 1-32, 65-96',
+        value: pickText(q.pick) });
+      const go = () => {
+        const got = parseRanges(inp.value);
+        if (!got.ranges) { toast(got.why, 'warn', 7000); return; }
+        setPick({ mode: 'ranges', ranges: got.ranges });
+      };
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+      row.appendChild(inp);
+      row.appendChild(el('button', { class: 'btn ghost sm inc-pick-go',
+        text: 'Use these', disabled: (job || savingBad) ? 'disabled' : null,
+        onclick: go }));
+    }
+    row.appendChild(el('span', { class: 'hint quiet inc-pick-why', text:
+      'Which channels this scan reads. Channels marked bad stay out of any '
+      + 'of these, and choosing one marks nothing bad.' }));
+    return row;
   }
 
   /* Putting a channel back, or taking one out, and generating the times
@@ -1249,10 +1449,15 @@ BARRY.incisor = (function () {
     const wrap = el('div', {});
     const grid = el('div', { class: 'inc-chan-grid' });
     for (const c of all) {
+      // `picked` is false only where a pick leaves the channel out; a grid
+      // drawn without one (VACC mode's) has no such field.
+      const out = c.picked === false && !c.bad;
       grid.appendChild(el('label', {
-        class: 'inc-chan' + (c.bad ? ' bad' : ''),
+        class: 'inc-chan' + (c.bad ? ' bad' : '') + (out ? ' out' : ''),
         title: c.bad ? c.label + ' is marked bad and is not read'
-                     : c.label + ' is read',
+          : out ? c.label + ' is not in this scan’s channels (' + ((est
+              && est.pick_words) || 'the pick') + '). It is not marked bad.'
+          : c.label + ' is read',
       }, [
         el('input', {
           type: 'checkbox', checked: c.bad ? null : 'checked',

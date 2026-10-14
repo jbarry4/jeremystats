@@ -184,7 +184,27 @@ async function until(fn, ms) {
 
   say('');
   say('=== opening one puts it in the ordinary panel ===');
-  if (one && one.local) {
+  /* Only if the scan is still the answer to today's question. A channel
+     marked bad since it was scanned -- KCNT1 m11 s6's CSC59, on 2026-10-14
+     -- changes the question, so "opening" it starts a real scan of every
+     channel: minutes, read here as "did not come back", and a scan left
+     running when the page went. Asked first, with the estimate's own
+     `cached`, rather than found out. */
+  let stillAnswered = false;
+  let open1 = null;
+  for (const r of [one].concat(rows.filter((x) => x.local && x !== one)).slice(0, 4)) {
+    if (!r || !r.local) continue;
+    try {
+      const est0 = await (await fetch('/api/incisor/estimate', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: r.local }) })).json();
+      if (est0 && est0.cached) { stillAnswered = true; open1 = r; break; }
+    } catch (e) { /* the next */ }
+    say('  note  ' + r.local + ' has been marked differently since it was '
+        + 'scanned, so opening it would read it again; not this one', 'note');
+  }
+  if (open1 && stillAnswered) {
+    const one = open1;
     await ev('BARRY.views.toolkit && BARRY.views.toolkit.onShow && '
              + 'BARRY.views.toolkit.onShow()');
     await sleep(400);
@@ -199,11 +219,11 @@ async function until(fn, ms) {
     check('the stored scan came back without recomputing', res === 'true',
           String(res));
     check('and it has the three plots’ data',
-          ev('(BARRY.incisor._state().res.channels||[]).length') > 0,
-          String(ev('(BARRY.incisor._state().res.channels||[]).length')));
+          ev('((BARRY.incisor._state().res || {}).channels || []).length') > 0,
+          String(ev('((BARRY.incisor._state().res || {}).channels || []).length')));
   } else {
     check('the stored scan came back without recomputing', true,
-          'no locally-openable review; skipped');
+          'no locally-openable review still answering today’s question; skipped');
     check('and it has the three plots’ data', true, 'skipped');
   }
 
@@ -274,7 +294,26 @@ async function until(fn, ms) {
          + '   headers: { "Content-Type": "application/json" } })); }'
          + ' return window.__realFetch(u, o); };');
       ev('BARRY.incisor._state().q.height_sd = 5');
-      prim.click();
+      /* The channel range for every recording sent (2026-10-14): first and
+         last, by CSC number, bad channels left out inside it. Typed into
+         the field the way a person would. */
+      const rng = () => Array.from(tk().querySelectorAll('.inc-batch-range input'));
+      check('the detection card has a channel range, first and last',
+            rng().length === 2
+            && /left out inside it/.test((tk().querySelector('.inc-batch-range')
+                                          || {}).textContent || ''),
+            rng().length + ' boxes');
+      if (rng().length === 2) {
+        rng()[0].value = '1';
+        rng()[0].dispatchEvent(new Event('change', { bubbles: true }));
+        await sleep(300);
+        rng()[1].value = '64';
+        rng()[1].dispatchEvent(new Event('change', { bubbles: true }));
+        await sleep(600);
+      }
+      const prim2 = Array.from(tk().querySelectorAll('button.btn'))
+        .find((b) => /^Submit \d+ to VACC$/.test(b.textContent));
+      (prim2 || prim).click();
       await until(() => ev('!!window.__incSent'), 4000);
       const sent = JSON.parse(ev('JSON.stringify(window.__incSent)') || 'null');
       ev('window.fetch = window.__realFetch; '
@@ -282,8 +321,14 @@ async function until(fn, ms) {
       check('the batch is sent the ticked recording and the parameters shown',
             sent && JSON.stringify(sent.gids) === JSON.stringify([target.gid])
             && sent.height_sd === 5, JSON.stringify(sent));
+      check('and with the channel range: CSC1 to CSC64, for every one',
+            sent && JSON.stringify(sent.channel_pick)
+              === JSON.stringify({ mode: 'ranges', ranges: [[1, 64]] }),
+            JSON.stringify(sent && sent.channel_pick));
       check('and with no batch in flight after a refusal',
             !ev('BARRY.incisor._vacc().batchJob'));
+      ev('BARRY.incisor._state().q.batch_lo = null; '
+         + 'BARRY.incisor._state().q.batch_hi = null');
       ev('BARRY.incisor._pick([])');
     } else {
       say('  note  every runnable recording already answered', 'note');
@@ -308,6 +353,37 @@ async function until(fn, ms) {
       await until(() => tk().querySelectorAll('.inc-role').length >= 3, 8000);
       check('the three picks and the plots are drawn under its row',
             tk().querySelectorAll('.inc-drop .inc-role').length >= 3);
+      /* Which project each scan is, and which scan it is (2026-10-14):
+         "KCNT1 m11 s6" is a different animal in KCNT1 and KCNT1 Urethane,
+         and one recording scanned twice was two identical rows. */
+      const revRows = Array.from(tk().querySelectorAll('.inc-review'));
+      const projOf = (r) => { const p = (r.row || {}).project || '';
+        return (!p || p === 'Unfiled') ? 'project not known' : p; };
+      const byLabel = new Map();
+      for (const r of (rv2.reviews || [])) {
+        if (!byLabel.has(r.label)) byLabel.set(r.label, []);
+        byLabel.get(r.label).push(r);
+      }
+      check('every review row says its project',
+            revRows.length > 0 && revRows.every((n) => {
+              const nm = (n.querySelector('.ir-name') || {}).textContent;
+              const pj = (n.querySelector('.ir-proj') || {}).textContent || '';
+              return (byLabel.get(nm) || []).some((r) => pj.indexOf(projOf(r)) === 0);
+            }), revRows.length + ' rows');
+      check('and what the scan read and when, under its name',
+            revRows.every((n) => /channels/.test((n.querySelector('.ir-sub') || {})
+              .textContent || '') && /scanned \d{4}-\d\d-\d\d/.test(
+              (n.querySelector('.ir-sub') || {}).textContent || '')),
+            (revRows[0] && revRows[0].querySelector('.ir-sub') || {}).textContent);
+      const twice = Array.from(byLabel.values()).find((rs) => rs.length > 1);
+      if (twice) {
+        const subs = revRows.filter((n) => (n.querySelector('.ir-name') || {})
+          .textContent === twice[0].label)
+          .map((n) => (n.querySelector('.ir-sub') || {}).textContent);
+        check('so two scans of one recording are told apart',
+              subs.length >= 2 && new Set(subs).size === subs.length,
+              subs.join(' | '));
+      }
       await until(() => { const u = ev('BARRY.incisor._union().unionRes');
                           return u && (u.ok || u.error); }, 30000);
       const u = JSON.parse(ev('JSON.stringify(BARRY.incisor._union().unionRes'

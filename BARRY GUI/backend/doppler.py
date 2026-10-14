@@ -222,6 +222,10 @@ def params_from(body):
     out["min_channels"] = max(1, int(out["min_channels"] or 1))
     if out["detect_on"] not in ("even", "odd", "all"):
         out["detect_on"] = "even"
+    # Not one of PARAM_KEYS, on purpose: adding a key there would rename
+    # every run already in the vault. It goes into a run's key and its
+    # request hash only when it is set (see `_spec_fingerprint`).
+    out["channel_range"] = channel_range(body.get("channel_range"))
     return out
 
 
@@ -231,6 +235,97 @@ def detects_on(rule, number):
     if rule == "odd":
         return int(number) % 2 == 1
     return True
+
+
+# --------------------------------------------------------------------------
+# Which channels go in: the range, then everything else inside it
+# --------------------------------------------------------------------------
+#
+# Some recordings carry 128 channels where only the first 64 are wanted --
+# a second headstage, another region, or nothing connected. The range is
+# applied FIRST and by CSC number: a channel outside it is not read at all,
+# and every other rule runs inside it unchanged -- detect on the even ones,
+# leave the bad ones out, reference each probe bank to itself. It is not a
+# list of "left out" channels: those are a choice about one run of one
+# recording, and a range is a rule that applies to every recording it is
+# run on, One or Many, so it is said once in the notes, as a range.
+
+def channel_range(value):
+    """`[first, last]`, CSC numbers inclusive, or None for every channel."""
+    if not value:
+        return None
+    try:
+        lo, hi = int(value[0]), int(value[1])
+    except (TypeError, ValueError, IndexError):
+        raise ValueError("A channel range is two CSC numbers: the first and "
+                         "the last.")
+    if lo < 1 or hi < lo:
+        raise ValueError("CSC%d to CSC%d is not a range of channels." % (lo, hi))
+    return [lo, hi]
+
+
+def in_range(rng, number):
+    return rng is None or rng[0] <= int(number) <= rng[1]
+
+
+def restrict(session, kept, excluded, rng):
+    """The range applied to a channel list resolved on a compute node, where
+    the desk could not open the recording and the list only exists there.
+    Returns (kept, excluded, out_of_range) -- the same three the desk's
+    `_doppler_spec` makes, so both say the same thing about the same run."""
+    rng = channel_range(rng)
+    if rng is None:
+        return list(kept), list(excluded or []), []
+    chans = session.get("channels") or []
+    by_index = {int(c["index"]): c for c in chans}
+    kept = [i for i in kept
+            if i in by_index and in_range(rng, by_index[i]["number"])]
+    excluded = [x for x in (excluded or []) if in_range(rng, x["number"])]
+    outside = [{"index": int(c["index"]), "number": int(c["number"]),
+                "label": c.get("label")}
+               for c in chans if not in_range(rng, c["number"])]
+    if not kept:
+        raise ValueError("Nothing is left to read in CSC%d to CSC%d: every "
+                         "channel there is marked bad, or there is none."
+                         % (rng[0], rng[1]))
+    return kept, excluded, outside
+
+
+def feed(session, spec):
+    """Which channels a run reads, in which role, by label -- the list shown
+    before anything is submitted, and the one the bank note writes out.
+
+    From the spec the run will be given and by the engine's own rules: the
+    channels read (range and bad channels already applied), less any on a
+    bank marked not connected (`run_storm` drops those), split into the ones
+    detection runs on and the ones read for the common reference only.
+    """
+    chans = session.get("channels") or []
+    by_index = {int(c["index"]): c for c in chans}
+    storm = (spec.get("method") or "legacy") != "legacy"
+    rule = (spec.get("detect_on") or "even") if storm else "all"
+    nc = not_connected(spec.get("banks")) if storm else set()
+
+    def label(c):
+        return c.get("label") or "CSC%d" % int(c["number"])
+
+    def labels(rows):
+        return [label(c) for c in sorted(rows, key=lambda c: int(c["number"]))]
+    read = [by_index[i] for i in (spec.get("channels") or []) if i in by_index]
+    on_nc = [c for c in read if int(c["number"]) in nc]
+    read = [c for c in read if int(c["number"]) not in nc]
+    return {
+        "rule": rule,
+        "range": spec.get("channel_range"),
+        "car": bool(spec.get("car")) if storm else False,
+        "detect": labels([c for c in read if detects_on(rule, c["number"])]),
+        "reference": labels([c for c in read
+                             if not detects_on(rule, c["number"])]),
+        "bad": labels(spec.get("excluded") or []),
+        "left_out": labels(spec.get("left_out") or []),
+        "out_of_range": labels(spec.get("out_of_range") or []),
+        "not_connected": labels(on_nc),
+    }
 
 
 def not_connected(banks):
@@ -523,6 +618,9 @@ def _spec_fingerprint(spec):
             out[k] = spec.get(k)
         out["banks"] = [[b.get("first"), b.get("last"), b.get("region")]
                         for b in (spec.get("banks") or [])]
+    # Only when set, so every run made without one keeps its name.
+    if spec.get("channel_range"):
+        out["channel_range"] = list(spec["channel_range"])
     return out
 
 
@@ -1221,6 +1319,8 @@ def _summarise(session, spec, report, plan, want, ets, ech, stamps, traces,
             "bad_channels": list(spec.get("bad_channels") or []),
             "excluded": list(spec.get("excluded") or []),
             "left_out": list(spec.get("left_out") or []),
+            "channel_range": spec.get("channel_range"),
+            "out_of_range": list(spec.get("out_of_range") or []),
             "preset": spec.get("preset"),
             "stamp": "peak",
             "method": spec.get("method") or "legacy",

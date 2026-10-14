@@ -15,6 +15,259 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.14.5 - Reading off the VACC works on every lab account, not only the one that built it
+
+**Pull and restart Jarvis on every machine.** The cluster side updates
+itself: its code is pushed with the next read or run.
+
+### Fixed
+
+- **"The cluster's analysis environment does not have numpy … rebuild it
+  … into /usr"** appeared on a colleague's laptop whenever a recording was
+  read off the VACC: Braces' "What it will read", the trace view, and any
+  tool reading over the link. Jobs sent to the cluster would have failed
+  the same way.
+  - **Cause:** the Python environment Jarvis uses on the cluster was built
+    once, for one account (`/users/s/a/sakhava1/jarvis/env`). Every other
+    account looked for its own `<workspace>/env`, found none, and went on
+    silently with the cluster's system Python, 3.9 with no numpy. The
+    `/usr` in the message was that Python.
+  - **Fix:** the cluster now uses the account's own environment if it has
+    one, and the lab's otherwise. The lab's environment is now a lab-wide
+    setting in `vacc.json` (`lab_env`, with its miniforge module).
+    Whichever is found goes first on PATH, so `python` is that one even if
+    conda's activation does not run.
+  - **Measured:** the lab's environment is readable and enterable by the
+    whole VACC group pi-jbarry4, which is jbarry4, sakhava1, syounger,
+    epoon, mmassad, awoychos, ipiatek, slsahagi and seclouse. Every file
+    and directory is group-readable, and the home directory is
+    group-enterable.
+- **The message, when no environment is found at all,** now says so and
+  says where it looked. It names the group to be in, and who to ask, or
+  where to build an account's own. An environment that was found but is
+  missing a package is named, rather than `/usr`.
+
+### Checked
+
+- **On the real cluster, through the link**, with the server's own
+  `hello`:
+
+  | Case | Result |
+  |---|---|
+  | This account | its environment: numpy 2.5.3, Python 3.14.7 |
+  | An account with no environment of its own | the lab's, the same numpy |
+  | Neither found | the new message, naming both places it looked |
+
+- `check_vacc_tools.py`, new environment section: the order own then lab,
+  PATH, where it looked, no duplicate for the account that built it, and
+  both messages. Every `test_vacc*.py` and `check_incisor_vacc.py` pass.
+
+## 2026.10.14.4 - Incisor's scans to review say their project, and which scan each is
+
+**Restart Jarvis.**
+
+### Changed
+
+- **Every row in "Look at them, then bank" now shows the project** (and
+  the cohort, where the folders name one) beside the recording's name.
+  "KCNT1 m11 s6" is a different animal in KCNT1 and in KCNT1 Urethane. A
+  recording with no project on record says "project not known".
+- **Under the name, what that scan read and when:**
+  - its channel count, and the channel range it was given;
+  - the bad channels it left out;
+  - any detection setting that differs from Toothy's defaults;
+  - the date it ran.
+
+  So a recording scanned twice is no longer two identical rows. For
+  example, KCNT1 m11 s6 reads as:
+  - "63 channels · CSC 1-64 · CSC59 left out as bad · scanned
+    2026-10-14 11:32";
+  - "128 channels · scanned 2026-09-28 14:16".
+- **The list is ordered by project, then recording, with each
+  recording's newest scan first.**
+
+### Checked
+
+- `vaccbatch.html` passes, across 143 rows:
+  - every row's project matches its review's;
+  - every row says its channels and when it was scanned;
+  - two scans of one recording read differently.
+
+## 2026.10.14.3 - Incisor on many recordings: a channel range for every one sent
+
+**Restart Jarvis.** The cluster picks up the node's side by itself: the
+code is pushed with the next batch.
+
+### Added
+
+- **"Channels: CSC [first] to CSC [last]"** in "Detection, for every
+  recording sent", the same field as Doppler's.
+  - It works by CSC number, for every recording in the batch. A channel
+    outside the range is not read at all.
+  - Each recording's own bad channels are still left out inside it.
+  - A blank box means no limit at that end. "Every channel" clears both.
+  - For 128-channel recordings where only the first probe is wanted, enter
+    1 to 64.
+  - Nothing is marked bad by it.
+- **The cluster applies it by the desk's own rule.** A recording the desk
+  cannot open has its channel list resolved on the node; the range now
+  travels in the spec, and `vacc_run.py` applies it there with the same
+  `incisor.resolve_channels`.
+- **A range is a different question.**
+  - A batch with one does not count a whole-recording scan as already
+    answered.
+  - A batch without one hashes exactly as before, so every recording
+    already scanned is still found.
+- **The cost counts only the range's channels** (less its bad ones): for a
+  128-channel recording at 1 to 64, about half.
+
+### Checked
+
+- `check_incisor_vacc.py`, new batch section, all passing.
+  - The range travels in the spec, and there is none when none is asked
+    for.
+  - A question with no range hashes as it did before; a range is a
+    different question.
+  - The cost is 63 channels at CSC1–64 with CSC3 bad, against 126 for the
+    whole recording, and about half the time.
+  - "CSC 65 to the last" is said in words.
+  - The node, given CSC1–4 with CSC2 and CSC5 bad, reads CSC1, 3 and 4,
+    and echoes what it read for the desk's key.
+- **`vaccbatch.html`** now passes. The range is typed into the two boxes,
+  and the intercepted batch is sent `{mode: ranges, ranges: [[1, 64]]}`.
+- **Fixed in `vaccbatch.html` itself:** "opening one" used to start a real
+  scan.
+  - It opened the first review it could, and its recording (KCNT1 m11 s6)
+    has had CSC59 marked bad since it was scanned. That is a different
+    question, so opening it began reading all 127 channels, was reported
+    as "the stored scan did not come back", and crashed the page before
+    the batch checks.
+  - Now it asks the estimate first and opens only a scan that still
+    answers today's question. Here none of the four tried still does, so
+    it says so and skips.
+  - Recomputed with their own bad channels, those scans' keys are exactly
+    the stored ones (KCNT1 m11 s6 and m13 s3). So the miss is the CSC59
+    mark, not this change.
+
+## 2026.10.14.2 - Braces: every alignment can be found, and a set aligned before is opened, not read again
+
+**Restart Jarvis.**
+
+### Fixed
+
+- **The Alignments list showed only the newest twelve.**
+  - Nothing was ever deleted, and an alignment never had to be banked to
+    be kept. But every one past the twelfth could not be reached, and the
+    only way back to it was to run the set again. On this desktop that hid
+    75 of 87.
+  - Now every one is listed, grouped by the set it aligns. Each set shows
+    its newest alignment, with the earlier ones folded under it.
+  - A search finds a set by name, mouse or session.
+  - "Still to answer" leaves out the accepted ones.
+  - Each line says when and by whom, what it was read with (measure,
+    window, channels) and where it stands.
+- **An alignment belongs to its set.**
+  - A set's own panel now lists every alignment made of it, under "What
+    it will read". Each opens without reading anything.
+  - In "Align many sets", every row of a set already aligned offers "Open
+    the newest of N".
+
+### Added
+
+- **The same question opens the alignment that answered it, as Incisor
+  does.**
+  - Every new alignment records the question it answers: the set, the
+    version and the stamps, the kind, every setting of the read (measure,
+    window, band, mains, smoothing, bad channels, probe), the channels and
+    the depth band. The drive path is not part of the question.
+  - "Line them up" with a question already answered opens that alignment
+    at once, without a job. It says it was aligned before with exactly
+    these settings, and offers "Read it again". Reading again makes a new
+    alignment beside the old one, which is kept.
+  - "Align many sets" does the same per row: "aligned before with these
+    settings, nothing read again". A box reads every set again anyway.
+- **Before today:** alignments made before this release do not record
+  their question, so they are not matched automatically. They are listed,
+  on the set's panel and in the list, and open without reading.
+- **Eye** still reads each of its three measures every time
+  (`force: true`): it is a comparison run whole.
+
+### Checked
+
+- New `braceslist.html` 16, on this machine's real 87 alignments of 52
+  sets.
+  - Every alignment has a row, and the groups and folds are right.
+  - The count, the search finding the oldest one, and "Still to answer".
+  - A set's own panel lists its alignments, and each "many sets" row
+    offers its newest.
+  - "Already answered" (with the run intercepted) opens the named
+    alignment with no job, says so, and "Read it again" asks with
+    `force`.
+- `braces.html` 21, `bracesbad.html` 15.
+- **On a real recording** (PTEN_DKO m44 s5, 189 stamps), into a
+  throwaway alignment store, 11 of 11 passed:
+
+  | Run | What happened | Time |
+  |---|---|---|
+  | First | Read, filing an alignment that records its question | 76.5 s |
+  | Same settings again | Opened that alignment, with no job | 1.2 s |
+  | A different window | Read, as a different question | — |
+  | "Read it again" | A third alignment beside the first, which is kept | — |
+  | Same settings once more | Opened the newest of the two | — |
+
+  The set's list and the whole list held all three, newest first. The
+  real alignments and the bank were unchanged.
+
+## 2026.10.14.1 - Incisor: scan the first half, the second half, the even or odd channels, or a range
+
+**Restart Jarvis.**
+
+### Added
+
+- **Step 2, "Scan every channel", has a row of choices for which channels
+  this scan reads:** All · First half · Second half · Even · Odd ·
+  Range….
+  - Range… takes CSC numbers and ranges, such as `1-64`, `1-32, 65-96` or
+    `CSC5, 9-12`.
+  - The halves are by CSC number over every channel the recording has, so
+    the first half of 128 is CSC1–64 whatever is marked bad.
+  - Channels marked bad stay out inside every choice. A choice never puts
+    one back and never marks one.
+- **Why.** A 128-channel recording is often two probes. The only way to
+  scan one of them was to untick the other 64 channels, which marks them
+  bad for that session in every tool.
+- **What it shows.**
+  - The count at the top is the server's own count, and says what was
+    chosen: "63 of 128 channels will be read: the first half
+    (CSC1–CSC64), less the ones marked bad".
+  - In the channel grid, the channels a choice leaves out are dimmed and
+    stay ticked. Struck through still means bad.
+- **What it changes.**
+  - Changing the choice puts away the scan on screen, as changing a bad
+    channel does: a scan of other channels is not this one's answer.
+  - A new recording starts at All.
+  - Reopening a scan brings back the choice it was made with, which is
+    recorded in its parameters.
+  - A choice with nothing left in it is refused in a sentence, and so is
+    one that is not a choice.
+
+### Checked
+
+- New `incisorpick.html` 32, on KCNT1 m6 s1 (53 channels).
+  - For each choice, the server's count matches one worked out
+    independently, and nothing is marked bad.
+  - Every channel says whether the choice takes it.
+  - The words are right, and the refusals happen.
+  - In the panel: the six choices, the count and words at the top, the
+    grid dimming without striking, and a typed range.
+  - Back to All, no bad-channel write sent, and the record unchanged.
+- `check_incisor_vacc.py`: new rules section.
+  - Each choice, less the bad ones, on six channels with two marked bad.
+  - Only the bad channels inside a choice are listed as left out.
+  - The halves count the bad channels.
+  - The refusals, and the words.
+- `incisorsel.html` 28.
+
 ## 2026.10.13.11 - Tab 8: the follow-ups are back on its face, and in the SPSS package
 
 From Shahriar: "We had a bunch of cross coupling and PLI and such planned

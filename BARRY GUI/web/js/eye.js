@@ -511,6 +511,10 @@ BARRY.eye = (function () {
           from_version: q.from_version,
           window_ms: q.window_ms,
           measure: m.id,
+          /* Read every time. Braces opens an alignment already made for
+             the same question (2026-10-14); Eye's three measures are a
+             comparison it runs whole, and it waits on a job for each. */
+          force: true,
         });
         wait.job = started.job;
         const out = await waitFor(started.job.id, (job) => {

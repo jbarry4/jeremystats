@@ -1,0 +1,209 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>braceslist: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Braces keeps every alignment findable, and a question already answered
+   is opened rather than read again (2026-10-14).
+
+   WHAT WENT WRONG: the Alignments list showed the newest twelve. On the
+   desktop where this was built that hid 75 of 87, and the only way back
+   to a hidden one was to run it again -- a minute or more of reading for an
+   answer already on disk.
+
+   On this machine's REAL list it checks that every alignment is reachable
+   (grouped by set, the earlier ones folded), that the search and the "still
+   to answer" filter work, and that a set's own panel lists its alignments.
+   The "already answered" path is driven with the run INTERCEPTED: the
+   server's "existing" answer names a real alignment, which is opened (a
+   read of it, nothing more); "Read it again" is refused by the stub.
+
+   IT WRITES NOTHING: no run reaches the server, no decision is made, and
+   preference writes are held. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state')
+              && ev('!!(BARRY.braces && BARRY.prefs)'), 25000, 'the app');
+  ev('(function(){ var P = BARRY.prefs; P.set = function(k, v) { return v; }; })()');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+  const BR = 'BARRY.braces';
+  try {
+    const all = (await get('/api/braces/sets')).sets || [];
+    const byEntry = new Map();
+    for (const s of all) {
+      const k = s.entry_id || s.set_id;
+      if (!byEntry.has(k)) byEntry.set(k, []);
+      byEntry.get(k).push(s);
+    }
+    say('       ' + all.length + ' alignment(s) of ' + byEntry.size + ' set(s) here', 'dim');
+
+    head('EVERY ALIGNMENT IS IN THE LIST');
+    ev('setView("toolkit")');
+    await until(() => D().querySelectorAll('.tk-step').length, 15000, 'the ToolKit');
+    const step = [...D().querySelectorAll('.tk-step')]
+      .find((x) => /Braces/.test(x.textContent));
+    if (step) step.click();
+    await until(() => D().querySelector('.br-recent .br-recent-list')
+                      || (all.length === 0 && D().querySelector('.br-recent')),
+                30000, 'the list');
+    const rows = () => [...D().querySelectorAll('.br-recent .br-recent-row')];
+    ok('every one of them has a row, none hidden past twelve',
+       rows().length === all.length, rows().length + ' rows for ' + all.length);
+    ok('one group per set, its newest alignment first',
+       D().querySelectorAll('.br-recent .br-recent-grp').length === byEntry.size,
+       D().querySelectorAll('.br-recent .br-recent-grp').length + ' vs ' + byEntry.size);
+    const multi = [...byEntry.values()].find((ss) => ss.length > 1);
+    if (multi) {
+      const grp = [...D().querySelectorAll('.br-recent .br-recent-grp')]
+        .find((g) => g.querySelector('.br-recent-row').dataset.set === multi[0].set_id);
+      ok('a set aligned more than once folds its earlier ones under its newest',
+         !!grp && grp.querySelectorAll('.br-recent-older .br-recent-row').length
+           === multi.length - 1, multi.length + ' alignments');
+    }
+    ok('and the count says how many, of how many sets',
+       new RegExp('^' + all.length + ' alignments? of ' + byEntry.size + ' sets?$')
+         .test((D().querySelector('.br-recent-n') || {}).textContent || ''),
+       (D().querySelector('.br-recent-n') || {}).textContent);
+
+    head('FINDING ONE');
+    const target = all[all.length - 1];                 // the oldest
+    const word = String(target.name || '').split(/\s+/).slice(0, 3).join(' ');
+    const srch = D().querySelector('.br-recent-search');
+    srch.value = word;
+    srch.dispatchEvent(new Event('input', { bubbles: true }));
+    await sleep(200);
+    ok('the oldest alignment is found by its set’s name',
+       rows().some((r) => r.dataset.set === target.set_id), word);
+    ok('and only sets with that name are shown',
+       [...D().querySelectorAll('.br-recent .br-recent-grp strong')].every((n) =>
+         word.toLowerCase().split(/\s+/).every((w) => n.textContent.toLowerCase().indexOf(w) >= 0)));
+    srch.value = '';
+    srch.dispatchEvent(new Event('input', { bubbles: true }));
+    const openB = [...D().querySelectorAll('.br-recent-show button')]
+      .find((b) => /Still to answer/.test(b.textContent));
+    openB.click();
+    await sleep(200);
+    ok('“Still to answer” leaves out the accepted ones',
+       rows().length === all.filter((s) => !s.committed).length
+       && rows().every((r) => !r.classList.contains('done')),
+       rows().length + ' vs ' + all.filter((s) => !s.committed).length);
+    [...D().querySelectorAll('.br-recent-show button')]
+      .find((b) => b.textContent === 'All').click();
+
+    head('A SET’S OWN PANEL LISTS ITS ALIGNMENTS');
+    if (multi) {
+      ev(BR + '._state().q.entry = ' + JSON.stringify(multi[0].entry_id));
+      ev(BR + '.paint && ' + BR + '.paint()');
+      await until(() => D().querySelector('.br-entry-sets .br-recent-row'), 20000,
+                  'the set’s alignments');
+      ok('every alignment of the set, to open without reading',
+         D().querySelectorAll('.br-entry-sets .br-recent-row').length === multi.length,
+         D().querySelectorAll('.br-entry-sets .br-recent-row').length + ' vs ' + multi.length);
+    } else {
+      say('       no set here was aligned twice, so its panel is not checked', 'dim');
+    }
+
+    head('MANY SETS: EACH ROW REACHES ITS OWN ALIGNMENTS');
+    {
+      ev(BR + '._state().q.entry = null');
+      ev(BR + '.paint()');
+      const manyB = await until(() => [...D().querySelectorAll('.br-mode .seg button')]
+        .find((b) => /many/i.test(b.textContent)), 15000, 'the one/many switch');
+      const mb = [...D().querySelectorAll('.br-mode .seg button')]
+        .find((b) => /many/i.test(b.textContent));
+      if (mb) mb.click();
+      await until(() => D().querySelectorAll('.br-bulk-row').length > 0, 20000, 'the table');
+      await until(() => D().querySelector('.br-bulk-had'), 15000, 'the alignments');
+      const withHad = [...D().querySelectorAll('.br-bulk-row')].filter((r) =>
+        (byEntry.get(r.dataset.id) || []).length);
+      ok('every row of a set already aligned offers its newest alignment, '
+         + 'with how many there are',
+         withHad.length > 0 && withHad.every((r) => {
+           const b = r.querySelector('.br-bulk-had');
+           return b && b.textContent === 'Open the newest of '
+             + byEntry.get(r.dataset.id).length;
+         }), withHad.length + ' rows');
+      const oneB = [...D().querySelectorAll('.br-mode .seg button')]
+        .find((b) => /one/i.test(b.textContent));
+      if (oneB) oneB.click();
+      await sleep(300);
+    }
+
+    head('ASKED AGAIN: OPENED, NOT READ (THE RUN INTERCEPTED)');
+    const ex = all[0];
+    if (!ex) {
+      say('       no alignment on this machine, so this is not checked', 'dim');
+    } else {
+      ev('(function(){ var W = window; W.__blSent = []; var f = W.fetch;'
+         + ' W.fetch = function(u, o) { if (String(u).indexOf("/api/braces/run") >= 0) {'
+         + '   var b = JSON.parse((o && o.body) || "{}"); W.__blSent.push(b);'
+         + '   var r = b.force ? { ok: false, error: "harness: not read" }'
+         + '     : { ok: true, existing: ' + JSON.stringify(ex) + ', request_hash: "h" };'
+         + '   return Promise.resolve(new Response(JSON.stringify(r), { status: b.force ? 400 : 200,'
+         + '     headers: { "Content-Type": "application/json" } })); }'
+         + ' return f.apply(this, arguments); }; })()');
+      ev(BR + '._state().q.entry = ' + JSON.stringify(ex.entry_id));
+      await ev(BR + '._run(false)');
+      await until(() => D().querySelector('.br-reused'), 20000, 'the alignment');
+      const sent = JSON.parse(ev('JSON.stringify(window.__blSent)'));
+      ok('it asked once, not forcing a read', sent.length === 1 && sent[0].force === false,
+         JSON.stringify(sent));
+      ok('no read started: there is no job', !ev(BR + '._state().job'));
+      ok('the alignment already made is the one open',
+         (ev(BR + '._state().set') || {}).set && ev(BR + '._state().set').set.set_id === ex.set_id);
+      ok('and it says so, and that nothing was read again',
+         /Aligned before with exactly these settings/.test(D().querySelector('.br-reused').textContent)
+         && /nothing was read/.test(D().querySelector('.br-reused').textContent),
+         D().querySelector('.br-reused').textContent.slice(0, 160));
+      const again = D().querySelector('.br-reused .br-read-again');
+      ok('with a way to read it again anyway', !!again);
+      if (again) {
+        again.click();
+        await until(() => JSON.parse(ev('JSON.stringify(window.__blSent)')).length === 2,
+                    8000, 'the second ask');
+        const s2 = JSON.parse(ev('JSON.stringify(window.__blSent)'))[1] || {};
+        ok('which asks to read it, by force', s2.force === true, JSON.stringify(s2));
+      }
+    }
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'braceslist: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

@@ -3254,11 +3254,22 @@ def _incisor_spec(body, sess):
     else:
         bad = {int(b) for b in body["bad_channels"]}
 
+    # Which channels this scan reads (2026-10-14): every one, or a half,
+    # the even or odd ones, or CSC ranges -- this scan only, never a bad
+    # mark. Bad channels still come out of whatever it takes.
+    pick = incisormod.channel_pick(body.get("channel_pick"))
+
     # The rule itself is `incisor.resolve_channels`, which a compute node
     # runs too when the recording is only on the cluster.
     kept, excluded = incisormod.resolve_channels(sess, bad,
-                                                 body.get("channels"))
+                                                 body.get("channels"), pick)
     if not kept:
+        if pick:
+            raise ValueError(
+                "Nothing is left to scan in %s: every channel there is "
+                "marked bad, or there is none. Pick other channels, or put "
+                "one back." % incisormod.pick_words(
+                    pick, [c["number"] for c in sess.get("channels") or []]))
         raise ValueError(
             "Every channel in this recording is marked bad, so there is "
             "nothing to scan. Put at least one back and run it again.")
@@ -3284,6 +3295,9 @@ def _incisor_spec(body, sess):
         # read as leaves the reader to guess.
         "probe": probe_id,
         "probe_name": probe.get("name") or probe_id,
+        # What was asked for, so the answer can say it was not every
+        # channel -- and so a reopened scan brings its pick back.
+        "channel_pick": pick,
     }
     return _incisor_params(spec, body)
 
@@ -3366,11 +3380,29 @@ def api_incisor_estimate():
         # to let somebody change that -- and it is the full list, including
         # the ones being skipped, because you cannot put a channel back from
         # a list it is not in.
+        **_incisor_channel_rows(sess, spec),
+    })
+
+
+def _incisor_channel_rows(sess, spec):
+    """Every channel of the recording for the panel: bad or not, and whether
+    this scan's pick takes it (apart from being bad) -- plus the pick and
+    its words, so the panel says "the first half (CSC1-CSC64)" rather than
+    leaving a count to be read as "every channel"."""
+    pick = spec.get("channel_pick")
+    chans = sess.get("channels") or []
+    numbers = [c["number"] for c in chans]
+    want = incisormod.pick_numbers(numbers, pick)
+    bad = set(spec.get("bad_channels") or [])
+    return {
         "channels": [{"index": int(c["index"]), "number": int(c["number"]),
                       "label": c.get("label"),
-                      "bad": int(c["number"]) in set(spec["bad_channels"])}
-                     for c in (sess.get("channels") or [])],
-    })
+                      "bad": int(c["number"]) in bad,
+                      "picked": int(c["number"]) in want}
+                     for c in chans],
+        "pick": pick,
+        "pick_words": incisormod.pick_words(pick, numbers),
+    }
 
 
 def _incisor_estimate_vacc(body, sess):
@@ -3424,10 +3456,7 @@ def _incisor_estimate_vacc(body, sess):
         "known": {k: rec.get(k) for k in
                   ("hilus_channel", "fissure_channel", "ripple_channel")
                   if rec.get(k) is not None},
-        "channels": [{"index": int(c["index"]), "number": int(c["number"]),
-                      "label": c.get("label"),
-                      "bad": int(c["number"]) in set(spec["bad_channels"])}
-                     for c in (sess.get("channels") or [])],
+        **_incisor_channel_rows(sess, spec),
     })
 
 
@@ -3916,8 +3945,21 @@ def api_incisor_reviews():
                 "computed": rec.get("computed") or {},
                 "where": (rec.get("computed") or {}).get("where"),
                 "banked": banked,
+                # Which channels it was asked to read, in words, when not
+                # every one -- two scans of one recording are told apart by
+                # this, its bad channels and when it ran (2026-10-14).
+                "pick_words": (incisormod.pick_words(
+                    (rec.get("spec") or {}).get("channel_pick"))
+                    if (rec.get("spec") or {}).get("channel_pick") else None),
             })
-        rows.sort(key=lambda r: str(r.get("label") or ""))
+        # By project, then by recording, the newest scan of each first: the
+        # list mixes projects, and "KCNT1 m11 s6" is a different animal in
+        # KCNT1 and in KCNT1 Urethane.
+        rows.sort(key=lambda r: str((r.get("computed") or {}).get("at") or ""),
+                  reverse=True)
+        rows.sort(key=lambda r: (str((r.get("row") or {}).get("project")
+                                     or "~ not known"),
+                                 str(r.get("label") or "")))
     except Exception as exc:                             # noqa: BLE001
         return fail("incisor/reviews", exc, 400)
     return jsonify({"ok": True, "reviews": rows, "n": len(rows)})
@@ -4700,6 +4742,10 @@ def _doppler_request_hash(gid, spec):
         if k == "bad_channels":
             v = sorted(int(b) for b in (v or []))
         body[k] = v
+    # Only when set: a run asked without one keeps the hash it always had,
+    # so "already run" still finds it.
+    if (spec or {}).get("channel_range"):
+        body["channel_range"] = list(spec["channel_range"])
     raw = json.dumps(body, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
 
@@ -4758,14 +4804,24 @@ def _doppler_spec(body, sess):
 
     all_ch = sess.get("channels") or []
     by_index = {int(c["index"]): c for c in all_ch}
+    # THE RANGE FIRST (doppler.channel_range): a channel outside it is not
+    # read at all, and everything below -- bad channels, left out, which
+    # are detected on -- happens inside it, exactly as it would on a
+    # recording that only had those channels.
+    rng = dopplermod.channel_range(body.get("channel_range"))
+    inside = (lambda c: dopplermod.in_range(rng, c["number"]))
+    outside = [c for c in all_ch if not inside(c)]
     chans = body.get("channels") or [c["index"] for c in all_ch]
-    chans = [int(c) for c in chans if int(c) in by_index]
+    chans = [int(c) for c in chans
+             if int(c) in by_index and inside(by_index[int(c)])]
     kept = [i for i in chans if int(by_index[i]["number"]) not in bad]
     # EVERY bad channel on the recording, not only the ones that were asked
     # for. A run over the evens still has to say that CSC59 is bad: left out
     # of the question and bad are two different reasons it was not read,
     # and a channel that fits neither list is one the report cannot explain.
-    dropped = [int(c["index"]) for c in all_ch if int(c["number"]) in bad]
+    # Inside the range: one outside it is explained by the range.
+    dropped = [int(c["index"]) for c in all_ch
+               if int(c["number"]) in bad and inside(c)]
     # Left out of THIS RUN by choice -- every channel the caller did not ask
     # for that is not already bad. Recorded so the answer can say so: a run
     # over the odd channels alone that does not say it was is a run whose
@@ -4774,8 +4830,14 @@ def _doppler_spec(body, sess):
     asked = set(chans)
     left_out = [c for c in all_ch
                 if int(c["index"]) not in asked
-                and int(c["number"]) not in bad]
+                and int(c["number"]) not in bad and inside(c)]
     if not kept:
+        if rng and not any(inside(c) and int(c["number"]) not in bad
+                           for c in all_ch):
+            raise ValueError(
+                "Nothing is left to read in CSC%d to CSC%d: every channel "
+                "there is marked bad, or this recording has none. Widen the "
+                "range." % (rng[0], rng[1]))
         raise ValueError(
             "Nothing is left to read: every channel asked for is marked bad "
             "on this recording. Put one back, or choose a different set to "
@@ -4796,6 +4858,8 @@ def _doppler_spec(body, sess):
                       "label": by_index[i].get("label")} for i in dropped],
         "left_out": [{"index": int(c["index"]), "number": int(c["number"]),
                       "label": c.get("label")} for c in left_out],
+        "out_of_range": [{"index": int(c["index"]), "number": int(c["number"]),
+                          "label": c.get("label")} for c in outside],
         "preset": (body.get("preset") if left_out else None),
         "probe": probe_id,
         "probe_name": probe.get("name") or probe_id,
@@ -4830,6 +4894,8 @@ def api_doppler_estimate():
     split = dopplermod.check_parts(sess.get("path"))
     return jsonify({
         "ok": True, "plan": plan, "spec": spec, "split": split,
+        # The channels that go in, and in which role -- shown before a run.
+        "feed": dopplermod.feed(sess, spec),
         "cached": (dopplermod.cache_get(key) is not None
                    or _doppler_recall(sess, key) is not None),
         "vacc": _vacc_estimate(sess, spec, plan),
@@ -4865,6 +4931,7 @@ def _doppler_estimate_vacc(body, sess):
     done = _doppler_answered(gid, _doppler_request_hash(gid, spec))
     return jsonify({
         "ok": True, "plan": plan, "spec": spec, "split": None,
+        "feed": dopplermod.feed(sess, spec),
         "vacc_only": True, "gid": gid, "cached": bool(done), "key": done,
         "vacc": {"can": bool(st.get("configured")),
                  "state": place.get("state"), "remote": place.get("remote"),
@@ -5112,7 +5179,8 @@ def _doppler_track(job, kind, members, path=None, spec=None):
     """Remember a run the panel will want to find again. `members` is
     [{"gid", "label"}] -- one for a single run, every recording for a
     batch -- and `spec` the detection parameters it was asked with."""
-    keep = {k: (spec or {}).get(k) for k in dopplermod.PARAM_KEYS}
+    keep = {k: (spec or {}).get(k)
+            for k in dopplermod.PARAM_KEYS + ("channel_range",)}
     with _DOPPLER_INFLIGHT_LOCK:
         _DOPPLER_INFLIGHT[job.id] = {
             "id": job.id, "kind": kind, "members": list(members or []),
@@ -5368,7 +5436,7 @@ def _doppler_prepare_vacc(member, body, force):
     # of wall, once for Storm and twice for Legacy -- and an hour of 64
     # channels when nothing says how long it is (`_doppler_size`). The same
     # figure the picker showed, so the panel and slurm cannot disagree.
-    span, n, secs, _known = _doppler_size(facts, storm)
+    span, n, secs, _known = _doppler_size(facts, storm, spec.get("channel_range"))
     fs = facts["fs"]
     plan = {"span_s": span, "fs": fs, "n_channels": n,
             "megasamples": span * fs * n / 1e6,
@@ -5395,14 +5463,17 @@ DOPPLER_UNKNOWN_SPAN_S = 3600.0
 DOPPLER_UNKNOWN_CHANNELS = 64
 
 
-def _doppler_size(facts, storm):
-    """(span, channels, seconds, known) for one recording's run."""
+def _doppler_size(facts, storm, rng=None):
+    """(span, channels, seconds, known) for one recording's run. `rng` is
+    the channel range, which caps how many channels are read."""
     span = float(facts.get("span_s") or 0.0)
     n = int(facts.get("n_channels") or 0)
     known = span > 0 and n > 1
     if not known:
         span = max(span, DOPPLER_UNKNOWN_SPAN_S)
         n = max(n, DOPPLER_UNKNOWN_CHANNELS)
+    if rng:
+        n = max(1, min(n, int(rng[1]) - int(rng[0]) + 1))
     secs = max(120.0, span * n * (1.2 if storm else 2.0) / 20.0)
     return span, n, secs, known
 
@@ -5474,7 +5545,7 @@ def _doppler_vacc_rows(body=None):
         if listed.get("conflict") or listed.get("path") != got.get("remote"):
             listed = None
         facts = incisorvaccmod.plan_for(rec, spec, 0.0, 0.0, found=listed)
-        span, n, secs, known = _doppler_size(facts, storm)
+        span, n, secs, known = _doppler_size(facts, storm, spec.get("channel_range"))
         todo.append({
             "gid": gid, "label": label, "remote": got.get("remote"),
             "state": state,
@@ -5741,6 +5812,68 @@ def api_braces_plan():
     })
 
 
+# THE SAME QUESTION, ANSWERED ONCE (2026-10-14).
+#
+# Braces used to read the recording again for a question it had already
+# answered: an alignment was a row in a list, and the list showed the newest
+# twelve, so the thirteenth run hid the oldest and the only way back to it was
+# to run it again. Incisor never had this problem -- a scan is filed by what
+# was asked, and asking again opens the answer. This is the same for Braces:
+# a proposal records the question it answers, and a run of the same question
+# opens it instead (`force` reads it again anyway).
+#
+# The question is everything that decides the answer: the set, the version
+# its stamps come from and the stamps themselves (a live set can change), the
+# kind, every setting of the read (measure, window, band, mains, smoothing,
+# the bad channels and the probe), the channels asked for, and the depth
+# band. Not the path: the same recording on another drive, or off the
+# cluster, is the same question.
+_BRACES_NOT_QUESTION = ("path", "excluded", "probe_name", "channel_pick")
+
+
+def _braces_question(rec, src_v, spec, want, depth_n, stamp_times):
+    """(hash, question) of one alignment request."""
+    import hashlib
+    stamps = hashlib.sha1(json.dumps(
+        [round(float(t), 6) for t in sorted(stamp_times)]).encode()
+    ).hexdigest()[:12]
+    q = {"entry_id": rec.get("id"), "kind": rec.get("type") or "ds",
+         "from_version": src_v, "stamps": stamps,
+         "spec": {k: v for k, v in sorted(spec.items())
+                  if k not in _BRACES_NOT_QUESTION},
+         "channels": sorted(int(x) for x in want),
+         "depth_band": int(depth_n)}
+    h = hashlib.sha1(json.dumps(q, sort_keys=True, default=str)
+                     .encode()).hexdigest()[:16]
+    return h, q
+
+
+def _braces_set_row(rec):
+    """One alignment as the lists show it."""
+    _moves, _flags, counts, _rej = brsetmod.resolve(rec)
+    p = rec.get("params") or {}
+    return {
+        "set_id": rec["set_id"], "entry_id": rec.get("entry_id"),
+        "gid": rec.get("gid"), "name": rec.get("name"),
+        "created": rec.get("created"),
+        "from_version": rec.get("from_version"),
+        "params": p,
+        "summary": rec.get("summary"),
+        "committed": rec.get("committed"),
+        "n": len(rec.get("rows") or []),
+        "counts": counts,
+        "request_hash": p.get("request_hash"),
+    }
+
+
+def _braces_answered(rq_hash):
+    """The newest alignment that answers this question, or None."""
+    for rec in BRACES.all():                     # newest first
+        if (rec.get("params") or {}).get("request_hash") == rq_hash:
+            return rec
+    return None
+
+
 @app.route("/api/braces/run", methods=["POST"])
 def api_braces_run():
     """Read the channel, find its peaks, and propose where each stamp goes.
@@ -5871,9 +6004,22 @@ def api_braces_run():
                    if e.get("start") is not None]
     depth_n = int(body.get("depth_band") or bracesmod.DEPTH_BAND)
 
+    # Asked before? Then the answer is the alignment already made, opened
+    # rather than read again -- unless somebody asked to read it again.
+    rq_hash, rq = _braces_question(rec, src_v, spec, want, depth_n,
+                                   stamp_times)
+    if not body.get("force"):
+        had = _braces_answered(rq_hash)
+        if had:
+            return jsonify({"ok": True, "existing": _braces_set_row(had),
+                            "request_hash": rq_hash})
+
     def file_set(got, computed_on=None):
         """File one alignment as a proposal, wherever it was computed."""
         out, rows, params = got["out"], got["rows"], got["params"]
+        # The question it answers, so asking it again opens this.
+        params["request_hash"] = rq_hash
+        params["request"] = {k: v for k, v in rq.items() if k != "spec"}
         if computed_on:
             # Where it was computed, on the set itself: a proposal made on a
             # compute node is the same proposal, and says so.
@@ -5932,24 +6078,19 @@ def api_braces_run():
 
 @app.route("/api/braces/sets")
 def api_braces_sets():
-    """Every alignment on this machine, accepted or still being reviewed."""
+    """Every alignment on this machine and pulled from the others, accepted
+    or still being reviewed, newest first. `gid` or `entry_id` narrows it to
+    one recording or one set: an alignment belongs to its set, and the set's
+    panel lists every one made of it."""
     gid = request.args.get("gid")
+    entry_id = request.args.get("entry_id")
     out = []
     for rec in BRACES.all():
         if gid and rec.get("gid") != gid:
             continue
-        _moves, _flags, counts, _rej = brsetmod.resolve(rec)
-        out.append({
-            "set_id": rec["set_id"], "entry_id": rec.get("entry_id"),
-            "gid": rec.get("gid"), "name": rec.get("name"),
-            "created": rec.get("created"),
-            "from_version": rec.get("from_version"),
-            "params": rec.get("params"),
-            "summary": rec.get("summary"),
-            "committed": rec.get("committed"),
-            "n": len(rec.get("rows") or []),
-            "counts": counts,
-        })
+        if entry_id and rec.get("entry_id") != entry_id:
+            continue
+        out.append(_braces_set_row(rec))
     return jsonify({"ok": True, "sets": out, "n": len(out)})
 
 
@@ -14696,6 +14837,32 @@ def _cur_session(gid):
             "No recording with the id %s. Open it once so it is registered."
             % gid)
     return rec
+
+
+@app.route("/api/curation/categories/<kind>", methods=["GET", "POST"])
+def api_curation_categories(kind):
+    """A kind's whole vocabulary, and adding a category to it.
+
+    A category added here is a category of EVERY set of that kind, on every
+    recording (curation.Categories) -- Spotter's "new category" chip.
+    """
+    if kind not in curation.KINDS:
+        return jsonify({"ok": False, "error": "Unknown kind %r." % kind}), 404
+    if request.method == "GET":
+        return jsonify({"ok": True, "labels": curation.vocabulary(kind)})
+    body = request.get_json(force=True) or {}
+    try:
+        lab = CURATE.add_category(kind, body.get("name"), body.get("color"),
+                                  bool(body.get("good")))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("curation/category", exc, 400, {"kind": kind})
+    STORE.record_activity([{"action": "curation.category",
+                            "detail": {"kind": kind, "name": lab["name"],
+                                       "label": lab["id"]}}])
+    return jsonify({"ok": True, "label": lab,
+                    "labels": curation.vocabulary(kind)})
 
 
 @app.route("/api/curation/kinds")

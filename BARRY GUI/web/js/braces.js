@@ -57,8 +57,16 @@ BARRY.braces = (function () {
   const bulk = {
     on: false, pick: {}, want: {}, state: {},
     running: false, stop: false, now: null,
+    // Read again even where these settings were run before.
+    force: false,
   };
   let plan = null;      // what a run would read
+  /* The alignment a run opened instead of reading again, so its page can
+     say so and offer to read it again (2026-10-14). */
+  let reused = null;
+  /* The Alignments list: every one, grouped by set, searchable. */
+  let allSets = null;
+  const recentQ = { text: '', show: 'all' };
   let job = null;       // the read, while it is happening
   let set_ = null;      // the proposal being looked at
   let filter = 'flag';  // which rows the table is showing
@@ -157,7 +165,7 @@ BARRY.braces = (function () {
   /* ==================================================================
      Running
      ================================================================== */
-  async function run() {
+  async function run(force) {
     if (!q.entry || job) return;
     let started;
     try {
@@ -168,11 +176,24 @@ BARRY.braces = (function () {
         from_version: q.from_version,
         window_ms: q.window_ms,
         estimator: q.estimator,
+        force: !!force,
       });
     } catch (e) {
       toast(e.message, 'err', 9000);
       return;
     }
+    /* Asked before, with exactly these settings: the alignment already
+       made is the answer, and nothing is read again. */
+    if (started.existing) {
+      reused = { set_id: started.existing.set_id,
+                 line: setLine(started.existing) };
+      await openSet(started.existing.set_id);
+      toast('Aligned before with exactly these settings (' + reused.line
+            + '), so that alignment is open and nothing was read again.',
+            'ok', 9000);
+      return;
+    }
+    reused = null;
     job = started.job;
     render();
     const poll = setInterval(async () => {
@@ -608,6 +629,9 @@ BARRY.braces = (function () {
     /* What it would read. */
     box.appendChild(planCard());
 
+    /* And every alignment already made of it, to open without reading. */
+    if (q.entry) box.appendChild(entryAlignments());
+
     /* Settings. */
     const set = el('div', { class: 'card' });
     set.appendChild(el('div', { class: 'section-label',
@@ -657,8 +681,10 @@ BARRY.braces = (function () {
       go.appendChild(el('button', {
         class: 'btn', text: 'Line them up',
         disabled: ready ? null : 'disabled',
-        title: ready ? '' : 'This set cannot be read here',
-        onclick: run,
+        title: ready ? 'If this set has been aligned with exactly these '
+          + 'settings before, that alignment opens instead of the recording '
+          + 'being read again.' : 'This set cannot be read here',
+        onclick: () => run(false),
       }));
     }
     box.appendChild(go);
@@ -956,6 +982,14 @@ BARRY.braces = (function () {
   }
 
   function bulkCard() {
+    // The alignments already made, for each row's "open the newest".
+    if (allSets === null) {
+      allSets = [];
+      api('/api/braces/sets').then((got) => {
+        allSets = got.sets || [];
+        if (bulk.on && !bulk.running) render();
+      }).catch(() => {});
+    }
     const card = el('div', { class: 'card br-bulk' });
     card.appendChild(el('div', { class: 'br-chans-head' }, [
       el('label', { text: 'Align many sets' }),
@@ -965,6 +999,15 @@ BARRY.braces = (function () {
     ]));
     /* The same settings as one set, for every set in the queue. */
     const sets = el('div', { class: 'br-bulk-settings' }, [settingsFields(bulk.running)]);
+    sets.appendChild(el('label', { class: 'br-bulk-force',
+      title: 'A set already aligned with exactly these settings is opened '
+           + 'from that alignment rather than read again. Tick this to read '
+           + 'every one again anyway.' }, [
+      el('input', { type: 'checkbox', checked: bulk.force ? 'checked' : null,
+        disabled: bulk.running ? 'disabled' : null,
+        onchange: (e) => { bulk.force = e.target.checked; } }),
+      el('span', { text: 'read again even where these settings were run' }),
+    ]));
     sets.appendChild(el('span', { class: 'br-hint', text: 'Every set in '
       + 'this run is read with these, and its proposal records them. They '
       + 'are the one-set panel\u2019s too: changing them here changes them '
@@ -1113,6 +1156,19 @@ BARRY.braces = (function () {
           class: 'mini', text: 'Open',
           onclick: () => openSet(st.set_id),
         }) : null,
+        /* What this set already has, so its alignments are reached from
+           its own row rather than by remembering when it was run. */
+        (() => {
+          if (st.set_id) return null;
+          const had = (allSets || []).filter((x) => x.entry_id === c.id);
+          if (!had.length) return null;
+          return el('button', { class: 'mini br-bulk-had',
+            text: 'Open the newest of ' + had.length,
+            title: 'Aligned ' + had.length + ' time'
+                 + (had.length === 1 ? '' : 's') + ' already. The newest: '
+                 + setLine(had[0]) + '. Opening it reads nothing.',
+            onclick: () => { reused = null; openSet(had[0].set_id); } });
+        })(),
       ].filter(Boolean));
     }
   }
@@ -1220,7 +1276,8 @@ BARRY.braces = (function () {
     bulk.running = true;
     bulk.stop = false;
     // The settings as they stood when the run was asked for, for every set.
-    const conf = { measure: q.measure, window_ms: q.window_ms };
+    const conf = { measure: q.measure, window_ms: q.window_ms,
+                   force: !!bulk.force };
     for (const c of queue) bulk.state[c.id] = { state: 'queued',
                                                 msg: 'waiting' };
     render();
@@ -1239,7 +1296,18 @@ BARRY.braces = (function () {
           from_version: bulk.pick[c.id] || null,
           measure: conf.measure,
           window_ms: conf.window_ms,
+          force: !!conf.force,
         });
+        if (started.existing) {
+          // Answered before with these settings: opened, not read.
+          const ex = started.existing;
+          bulk.state[c.id] = { state: 'done', set_id: ex.set_id,
+            msg: 'aligned before with these settings (' + setLine(ex)
+                 + '), nothing read again' };
+          paintBulkRow(c.id, true);
+          paintBulkBar();
+          continue;
+        }
         const id = (started.job || {}).id;
         if (!id) throw new Error('the read did not start');
         const res = await waitForJob(id, (j) => {
@@ -1339,41 +1407,151 @@ BARRY.braces = (function () {
                                       : String(v).replace(/["\\]/g, '\\$&');
   }
 
+  /* AN ALIGNMENT, IN ONE LINE: when, who, what it was read with, and where
+     it stands. Said in full because a set aligned twice has two of these
+     side by side, and "which one is the ±200 ms one" is the question. */
+  const MEASURE_WORDS = { csd: 'CSD', voltage: 'voltage', slope: 'slope' };
+  function setLine(s) {
+    const p = s.params || {};
+    const c = s.counts || {};
+    const at = String((s.created || {}).at || '').slice(0, 16).replace('T', ' ');
+    const by = (s.created || {}).by;
+    return [at + (by ? ' by ' + by : ''),
+            (MEASURE_WORDS[p.measure] || p.measure || 'CSD') + ', \u00b1'
+              + (p.window_ms != null ? p.window_ms : '?') + ' ms, '
+              + (p.n_channels != null ? p.n_channels : '?') + ' channels'
+              + (s.from_version == null ? '' : ', an earlier version'),
+            s.committed ? 'accepted as v' + s.committed.version
+              : (c.waiting || 0) + ' still to answer \u00b7 ' + s.n + ' stamps']
+      .filter(Boolean).join('  \u00b7  ');
+  }
+
+  function setRow(s, withName) {
+    return el('button', {
+      class: 'br-recent-row' + (s.committed ? ' done' : ''),
+      'data-set': s.set_id,
+      onclick: () => { reused = null; openSet(s.set_id); },
+    }, [
+      withName ? el('strong', { text: s.name || s.entry_id }) : null,
+      el('span', { text: setLine(s) }),
+      /* Whether it has reached the shared database, so a set reviewed
+         here can be picked up on another machine (2026-10-06). */
+      BARRY.syncState ? BARRY.syncState.mark('braces', s.set_id) : null,
+    ].filter(Boolean));
+  }
+
+  /* EVERY ALIGNMENT, BY SET (2026-10-14).
+
+     It showed the newest twelve, so a thirteenth run hid the oldest -- on
+     this machine that was 75 of 87 -- and the only way back to one was to
+     run it again. Nothing was ever deleted; it just could not be reached.
+     Now every one is listed, grouped by the set it aligns with that set's
+     newest first and the earlier ones folded under it, and there is a
+     search. A set's own panel lists its alignments too
+     (`entryAlignments`). */
   function recentSets() {
     const box = el('div', { class: 'card br-recent' });
     box.appendChild(el('div', { class: 'section-label',
                                 text: 'Alignments' }));
-    box.appendChild(el('p', { class: 'hint', id: 'brRecent',
-                              text: 'Looking…' }));
+    const count = el('span', { class: 'br-hint br-recent-n' });
+    const listHost = el('div', { class: 'br-recent-body' }, [
+      el('p', { class: 'hint', text: 'Looking\u2026' })]);
+    const search = el('input', { type: 'search', class: 'br-recent-search',
+      'aria-label': 'Find an alignment by set', value: recentQ.text,
+      placeholder: 'Find a set, a mouse, a session',
+      oninput: (e) => { recentQ.text = e.target.value;
+                        fillRecent(listHost, count); } });
+    const show = el('div', { class: 'seg sm br-recent-show' }, [
+      ['all', 'All'], ['open', 'Still to answer'],
+    ].map(([id, label]) => el('button', {
+      class: recentQ.show === id ? 'active' : '',
+      onclick: (e) => {
+        recentQ.show = id;
+        for (const b of e.target.parentNode.children) b.classList.remove('active');
+        e.target.classList.add('active');
+        fillRecent(listHost, count);
+      },
+      text: label,
+    })));
+    box.appendChild(el('div', { class: 'br-recent-bar' }, [search, show, count]));
+    box.appendChild(listHost);
     api('/api/braces/sets').then((got) => {
-      const n = document.getElementById('brRecent');
-      if (!n) return;
+      allSets = got.sets || [];
+      fillRecent(listHost, count);
+    }).catch((e) => {
+      listHost.replaceChildren(el('p', { class: 'hint br-warn',
+        text: 'The alignments could not be listed: ' + e.message }));
+    });
+    return box;
+  }
+
+  function fillRecent(host, count) {
+    const list = allSets || [];
+    if (!list.length) {
+      host.replaceChildren(el('p', { class: 'hint', text:
+        'None yet. One appears here as soon as you run it, and every one is '
+        + 'kept -- accepted or not -- so reviewing the flags does not have '
+        + 'to happen in one sitting, and running another never hides one.' }));
+      count.textContent = '';
+      return;
+    }
+    const groups = new Map();
+    for (const one of list) {                    // newest first already
+      const k = one.entry_id || one.set_id;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(one);
+    }
+    const words = recentQ.text.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const out = [];
+    let nSets = 0, nAl = 0;
+    for (const ss of groups.values()) {
+      const name = String(ss[0].name || ss[0].entry_id || '').toLowerCase();
+      if (words.some((w) => name.indexOf(w) < 0)) continue;
+      const pick = recentQ.show === 'open' ? ss.filter((x) => !x.committed) : ss;
+      if (!pick.length) continue;
+      nSets += 1;
+      nAl += pick.length;
+      const grp = el('div', { class: 'br-recent-grp' }, [setRow(pick[0], true)]);
+      if (pick.length > 1) {
+        const older = pick.slice(1);
+        grp.appendChild(el('details', { class: 'br-recent-older' }, [
+          el('summary', { text: older.length + ' earlier alignment'
+            + (older.length === 1 ? '' : 's') + ' of this set' }),
+        ].concat(older.map((x) => setRow(x, false)))));
+      }
+      out.push(grp);
+    }
+    count.textContent = nAl + ' alignment' + (nAl === 1 ? '' : 's') + ' of '
+      + nSets + ' set' + (nSets === 1 ? '' : 's')
+      + (nAl < list.length ? ', of ' + list.length + ' in all' : '');
+    host.replaceChildren(out.length ? el('div', { class: 'br-recent-list' }, out)
+      : el('p', { class: 'hint', text: 'Nothing matches that.' }));
+  }
+
+  /* The alignments already made of the set this panel is on: each opens
+     without the recording being read. */
+  function entryAlignments() {
+    const box = el('div', { class: 'card br-entry-sets' });
+    box.appendChild(el('div', { class: 'section-label',
+                                text: 'Alignments of this set' }));
+    const host = el('div', {}, [el('p', { class: 'hint quiet',
+                                          text: 'Looking\u2026' })]);
+    box.appendChild(host);
+    const entry = q.entry;
+    api('/api/braces/sets?entry_id=' + encodeURIComponent(entry)).then((got) => {
+      if (q.entry !== entry) return;
       const list = got.sets || [];
-      if (!list.length) {
-        n.textContent = 'None yet. One appears here as soon as you run it, '
-                      + 'and stays until you accept it — so reviewing '
-                      + 'the flags does not have to happen in one sitting.';
-        return;
-      }
-      const wrap = el('div', { class: 'br-recent-list' });
-      for (const s of list.slice(0, 12)) {
-        const c = s.counts || {};
-        wrap.appendChild(el('button', {
-          class: 'br-recent-row' + (s.committed ? ' done' : ''),
-          onclick: () => openSet(s.set_id),
-        }, [
-          el('strong', { text: s.name || s.entry_id }),
-          el('span', { text: s.committed
-            ? 'accepted as v' + s.committed.version
-            : (c.waiting || 0) + ' still to answer · ' + s.n
-              + ' stamps' }),
-          /* Whether it has reached the shared database, so a set reviewed
-             here can be picked up on another machine (2026-10-06). */
-          BARRY.syncState ? BARRY.syncState.mark('braces', s.set_id) : null,
-        ].filter(Boolean)));
-      }
-      n.replaceWith(wrap);
-    }).catch(() => {});
+      host.replaceChildren(...(list.length ? [
+        el('p', { class: 'hint quiet', text: list.length + ' made already. '
+          + 'Open one to review or bank it; nothing is read again. Running '
+          + 'it again with settings already used opens that alignment '
+          + 'instead of reading the recording.' }),
+        el('div', { class: 'br-recent-list' }, list.map((x) => setRow(x, false))),
+      ] : [el('p', { class: 'hint quiet', text: 'None yet.' })]));
+    }).catch((e) => {
+      host.replaceChildren(el('p', { class: 'hint br-warn',
+        text: 'Could not be listed: ' + e.message }));
+    });
     return box;
   }
 
@@ -1402,6 +1580,20 @@ BARRY.braces = (function () {
                                            + 'version') }),
       ]),
     ]));
+
+    if (reused && reused.set_id === s.set_id) {
+      box.appendChild(el('div', { class: 'card br-reused' }, [
+        el('span', { text: 'Aligned before with exactly these settings ('
+          + reused.line + '). This is that alignment: nothing was read '
+          + 'again.' }),
+        el('button', { class: 'btn ghost sm br-read-again',
+          text: 'Read it again',
+          title: 'Read the recording again with these settings and make a '
+               + 'new alignment beside this one. This one is kept.',
+          onclick: () => { set_ = null; bench = null; reused = null;
+                           render(); run(true); } }),
+      ]));
+    }
 
     if (s.committed) {
       box.appendChild(el('div', { class: 'card br-done', text:
@@ -3786,6 +3978,8 @@ BARRY.braces = (function () {
     drawStrip,
     _enter: enter,
     _view: () => view,
+    _reused: () => reused,
+    _allSets: () => allSets,
     _goTo: (n) => vGoTo(n),
     _exitView: () => exitView(),
     _reset: () => { set_ = null; bench = null; cands = null; },

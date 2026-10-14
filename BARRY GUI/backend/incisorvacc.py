@@ -70,6 +70,11 @@ def request_hash(gid, spec):
         if k == "band" and v:
             v = [round(float(x), 6) for x in v]
         body[k] = v
+    # Which channels, when not every one (2026-10-14). Only when set, so the
+    # hash of every question asked before there was a choice is unchanged
+    # and a batch still finds those answered.
+    if (spec or {}).get("channel_pick"):
+        body["channel_pick"] = spec["channel_pick"]
     raw = json.dumps(body, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
 
@@ -96,6 +101,10 @@ def spec_for(gid, body, rec, probe_id, probe_name, fill):
         "excluded": [],
         "probe": probe_id,
         "probe_name": probe_name or probe_id,
+        # Which channels to read, resolved on the node by the same rule as
+        # on the desk (`incisor.resolve_channels`): the range first, then
+        # the bad ones out of it.
+        "channel_pick": incisor.channel_pick(body.get("channel_pick")),
     }
     return fill(spec, body)
 
@@ -140,6 +149,13 @@ def plan_for(rec, spec, rate_read, rate_detect, found=None):
             src["n_channels"] = found["n_channels"]
     n_all = int(src.get("n_channels") or 0)
     n = max(1, n_all - len(spec.get("bad_channels") or [])) if n_all else 0
+    # Inside a channel range, only its channels -- counted as CSC1..n, which
+    # is what the cluster's listing and the registry both count.
+    pick = spec.get("channel_pick")
+    if pick and n_all:
+        want = incisor.pick_numbers(range(1, n_all + 1), pick)
+        n = max(1, len(want - {int(b) for b in
+                               (spec.get("bad_channels") or [])}))
     span = float(src.get("duration_s") or 0.0)
     fs = float(src.get("fs") or 30000.0)
     seconds = rate_read * span * max(1, n) + rate_detect * max(1, n)
