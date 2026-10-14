@@ -934,7 +934,156 @@ BARRY.ui = (function () {
       });
   }
 
+  /* ---------- a panel that does not rebuild itself ---------- */
+
+  /* Every tool panel was a `paint()` that emptied its host and built all of
+     it again, and every poll called it. On Doppler that was a batch's 1.5 s
+     poll rebuilding a 666-row picker, the settings and the landed list: the
+     panel visibly reloaded, the scroll jumped, an open <details> shut, the
+     cursor left the search box, and a canvas flashed blank (2026-10-13).
+
+     `sections(host, list)` keeps each part of a panel as a node of its own
+     and rebuilds a part only when what it shows has changed. `list` is
+     [{ key, sig, build, update }] in screen order:
+
+       sig     everything the part shows, as a string or anything JSON can
+               write. The SAME sig keeps the node -- its scroll, its focus,
+               its open <details>, its canvas -- and build() is not called.
+       build   makes the part's node. Called when the part is new or its
+               sig changed.
+       update  optional; called on every pass with the node, built or kept.
+               For a shell whose insides are reconciled by a nested
+               `sections` call, or for numbers that tick every second and
+               should not cost a rebuild.
+
+     A part that is new ENTERS (`.ui-enter`, staggered); one rebuilt in
+     place does not, because it was already there. One no longer listed is
+     removed. What survives a rebuild by its own markings: focus and caret
+     of an element with `data-fk`, the open state of a <details> with
+     `data-keep`, and the scroll of an element with `data-keep-scroll`.
+     Returns { key: node } for the parts that were built this pass.
+
+     IT TOUCHES ONLY ITS OWN PARTS. A node in the host without `data-sec`
+     belongs to somebody else and is left exactly where it is: ToolKit
+     mounts the Activity feed inside the same host, and the first version
+     of this removed it on every pass -- ToolKit then mounted a new one,
+     "Reading…" and a request each time, once a second while a run was out,
+     with the page jumping as its height came and went (2026-10-13). */
+  function sections(host, list) {
+    const want = (list || []).filter(Boolean);
+    const keys = new Set(want.map((s) => s.key));
+    for (const n of Array.from(host.children)) {
+      if (n.dataset && n.dataset.sec && !keys.has(n.dataset.sec)) n.remove();
+    }
+    const built = {};
+    let prev = null;
+    let entering = 0;
+    for (const s of want) {
+      const sig = typeof s.sig === 'string' ? s.sig : JSON.stringify(s.sig);
+      let node = null;
+      for (const n of host.children) {
+        if (n.dataset && n.dataset.sec === s.key) { node = n; break; }
+      }
+      if (!node || node.__sig !== sig) {
+        const fresh = s.build();
+        fresh.dataset.sec = s.key;
+        fresh.__sig = sig;
+        if (node) {
+          carry(node, fresh);
+          node.replaceWith(fresh);
+        } else if (s.enter !== false) {
+          enter(fresh, entering++);
+        }
+        node = fresh;
+        built[s.key] = fresh;
+      }
+      const at = prev ? prev.nextSibling : host.firstChild;
+      if (at !== node) host.insertBefore(node, at);
+      if (s.update) s.update(node);
+      prev = node;
+    }
+    return built;
+  }
+
+  /* What a rebuilt part takes over from the one it replaces. */
+  function carry(old, fresh) {
+    const act = document.activeElement;
+    if (act && old.contains(act) && act.dataset && act.dataset.fk) {
+      const twin = fresh.querySelector('[data-fk="' + act.dataset.fk + '"]');
+      if (twin) {
+        let at = null;
+        try { at = [act.selectionStart, act.selectionEnd]; } catch (e) { /* type */ }
+        requestAnimationFrame(() => {
+          twin.focus();
+          if (at && at[0] != null) {
+            try { twin.setSelectionRange(at[0], at[1]); } catch (e) { /* type */ }
+          }
+        });
+      }
+    }
+    for (const d of old.querySelectorAll('details[data-keep]')) {
+      const twin = fresh.querySelector('details[data-keep="' + d.dataset.keep + '"]');
+      if (twin) twin.open = d.open;
+    }
+    for (const s of old.querySelectorAll('[data-keep-scroll]')) {
+      const twin = fresh.querySelector('[data-keep-scroll="'
+                                       + s.dataset.keepScroll + '"]');
+      if (twin && s.scrollTop) {
+        const top = s.scrollTop;
+        requestAnimationFrame(() => { twin.scrollTop = top; });
+      }
+    }
+  }
+
+  /* The entrance: a short rise and fade, each new part a beat after the
+     one above it. Ended on a timer as well as on `animationend`, because
+     under the harness runner's virtual time `animationend` never fires and
+     a part would keep the class -- and its transform -- for ever. */
+  function enter(node, i) {
+    if (reducedMotion()) return;
+    node.classList.add('ui-enter');
+    node.style.setProperty('--enter-i', String(Math.min(i, 6)));
+    const done = () => {
+      node.classList.remove('ui-enter');
+      node.style.removeProperty('--enter-i');
+    };
+    node.addEventListener('animationend', done, { once: true });
+    setTimeout(done, 900);
+  }
+
+  function reducedMotion() {
+    try {
+      return !!(window.matchMedia
+                && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) { return false; }
+  }
+
+  /* A number that arrives, rather than appears: from where it was to where
+     it is, over `ms`, easing out. The final text is set by a timer too, for
+     the same reason as `enter`. */
+  function countUp(node, to, o) {
+    const opt = o || {};
+    const fmt = opt.fmt || ((v) => Math.round(v).toLocaleString());
+    const from = Number(opt.from || 0);
+    const ms = opt.ms || 700;
+    if (reducedMotion() || !isFinite(to)) { node.textContent = fmt(to); return; }
+    const t0 = performance.now();
+    let over = false;
+    const step = (now) => {
+      if (over) return;
+      const k = Math.min(1, (now - t0) / ms);
+      const e = 1 - Math.pow(1 - k, 3);
+      node.textContent = fmt(from + (to - from) * e);
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+    setTimeout(() => { over = true; node.textContent = fmt(to); }, ms + 60);
+  }
+
   return {
+    sections: sections,
+    countUp: countUp,
+    reducedMotion: reducedMotion,
     when: when,
     versionLabel: versionLabel,
     versionNext: versionNext,

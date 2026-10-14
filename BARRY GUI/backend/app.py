@@ -590,6 +590,7 @@ def api_discover_status(job_id):
                 "match": how,
                 "bad_channels": (rec or {}).get("bad_channels", []),
                 "notes": (rec or {}).get("notes"),
+                "quality": (rec or {}).get("quality") or "",
             } if rec else None
     return jsonify({"ok": True, "job": data})
 
@@ -934,11 +935,38 @@ def api_session_bad():
                      "across machines. Rename the folder to include m<N> and "
                      "s<N>, or mark channels per-session only."}), 400
     try:
-        rec = STORE.set_bad_channels(identity, body.get("bad_channels") or [],
-                                     body.get("note"))
+        rec = _write_bad(identity, body)
     except Exception as exc:
         return fail("session/bad", exc, 400, {"identity": identity})
-    return jsonify({"ok": True, "session": rec})
+    return jsonify({"ok": True, "session": rec,
+                    "bad_channels": (rec or {}).get("bad_channels") or []})
+
+
+@app.route("/api/session/bad/<gid>")
+def api_session_bad_read(gid):
+    """The bad channels on record, and nothing else.
+
+    For a window that has had a recording open a while: a channel marked in
+    Doppler, Incisor, Braces or on another machine since it opened is on
+    the record and not on screen. Cheap, so it can be asked every time the
+    trace view comes back into sight."""
+    rec, _how = STORE.get_session({"gid": gid})
+    return jsonify({"ok": bool(rec), "gid": gid,
+                    "bad_channels": (rec or {}).get("bad_channels") or []})
+
+
+def _write_bad(identity, body):
+    """A bad-channel write: `add` / `remove` when the caller is changing a
+    few, `bad_channels` when it means to replace the whole list.
+
+    The change is the safe one and what a click sends. See
+    `Store.change_bad_channels` for what replacing cost."""
+    if "add" in body or "remove" in body:
+        return STORE.change_bad_channels(identity, body.get("add") or [],
+                                         body.get("remove") or [],
+                                         body.get("note"))
+    return STORE.set_bad_channels(identity, body.get("bad_channels") or [],
+                                  body.get("note"))
 
 
 @app.route("/api/session/bad-for-path", methods=["POST"])
@@ -965,9 +993,7 @@ def api_session_bad_for_path():
                      "for it. Rename the folder to include m<N> and s<N>, "
                      "or mark them in the trace view."}), 400
     try:
-        rec = STORE.set_bad_channels(identity,
-                                     body.get("bad_channels") or [],
-                                     body.get("note"))
+        rec = _write_bad(identity, body)
     except Exception as exc:                             # noqa: BLE001
         return fail("session/bad-for-path", exc, 400,
                     {"path": sess.get("path")})
@@ -2484,6 +2510,34 @@ def _local_path_of(rec):
     return None
 
 
+def _local_copy_of(rec, remote):
+    """This computer's copy of the folder the cluster will read, or None.
+
+    `_local_path_of` answers for the RECORDING, and a recording's id can
+    hold several folders: a DEWEY day is one id across its FP1, SPC and FP2
+    folders. Preparing a batch member from the first one this computer has
+    reads another folder's channel list and gap map and files the answer
+    under the wrong folder -- measured: J10 Precon3 ran FP2 on the cluster
+    and was filed as having read SPC. When the cluster's folder is named by
+    its acquisition time, the local copy has to end the same way; if none
+    does, None, and the node prepares it from the registry as it does for a
+    recording this computer does not have.
+    """
+    leaf = (remote or "").rstrip("/").rsplit("/", 1)[-1]
+    here = _local_path_of(rec)
+    if not _ACQ_LEAF.match(leaf):
+        return here
+
+    def leaf_of(p):
+        return _re.split(r"[\\/]+", p.rstrip("\\/"))[-1]
+    if here and leaf_of(here) == leaf:
+        return here
+    for p in ((rec or {}).get("paths") or []):
+        if isinstance(p, str) and leaf_of(p) == leaf and sessreg.is_here(p):
+            return p
+    return None
+
+
 def _pn_opener(member):
     """Open one recording for the bulk worker.
 
@@ -3200,11 +3254,22 @@ def _incisor_spec(body, sess):
     else:
         bad = {int(b) for b in body["bad_channels"]}
 
+    # Which channels this scan reads (2026-10-14): every one, or a half,
+    # the even or odd ones, or CSC ranges -- this scan only, never a bad
+    # mark. Bad channels still come out of whatever it takes.
+    pick = incisormod.channel_pick(body.get("channel_pick"))
+
     # The rule itself is `incisor.resolve_channels`, which a compute node
     # runs too when the recording is only on the cluster.
     kept, excluded = incisormod.resolve_channels(sess, bad,
-                                                 body.get("channels"))
+                                                 body.get("channels"), pick)
     if not kept:
+        if pick:
+            raise ValueError(
+                "Nothing is left to scan in %s: every channel there is "
+                "marked bad, or there is none. Pick other channels, or put "
+                "one back." % incisormod.pick_words(
+                    pick, [c["number"] for c in sess.get("channels") or []]))
         raise ValueError(
             "Every channel in this recording is marked bad, so there is "
             "nothing to scan. Put at least one back and run it again.")
@@ -3230,6 +3295,9 @@ def _incisor_spec(body, sess):
         # read as leaves the reader to guess.
         "probe": probe_id,
         "probe_name": probe.get("name") or probe_id,
+        # What was asked for, so the answer can say it was not every
+        # channel -- and so a reopened scan brings its pick back.
+        "channel_pick": pick,
     }
     return _incisor_params(spec, body)
 
@@ -3312,11 +3380,29 @@ def api_incisor_estimate():
         # to let somebody change that -- and it is the full list, including
         # the ones being skipped, because you cannot put a channel back from
         # a list it is not in.
+        **_incisor_channel_rows(sess, spec),
+    })
+
+
+def _incisor_channel_rows(sess, spec):
+    """Every channel of the recording for the panel: bad or not, and whether
+    this scan's pick takes it (apart from being bad) -- plus the pick and
+    its words, so the panel says "the first half (CSC1-CSC64)" rather than
+    leaving a count to be read as "every channel"."""
+    pick = spec.get("channel_pick")
+    chans = sess.get("channels") or []
+    numbers = [c["number"] for c in chans]
+    want = incisormod.pick_numbers(numbers, pick)
+    bad = set(spec.get("bad_channels") or [])
+    return {
         "channels": [{"index": int(c["index"]), "number": int(c["number"]),
                       "label": c.get("label"),
-                      "bad": int(c["number"]) in set(spec["bad_channels"])}
-                     for c in (sess.get("channels") or [])],
-    })
+                      "bad": int(c["number"]) in bad,
+                      "picked": int(c["number"]) in want}
+                     for c in chans],
+        "pick": pick,
+        "pick_words": incisormod.pick_words(pick, numbers),
+    }
 
 
 def _incisor_estimate_vacc(body, sess):
@@ -3370,10 +3456,7 @@ def _incisor_estimate_vacc(body, sess):
         "known": {k: rec.get(k) for k in
                   ("hilus_channel", "fissure_channel", "ripple_channel")
                   if rec.get(k) is not None},
-        "channels": [{"index": int(c["index"]), "number": int(c["number"]),
-                      "label": c.get("label"),
-                      "bad": int(c["number"]) in set(spec["bad_channels"])}
-                     for c in (sess.get("channels") or [])],
+        **_incisor_channel_rows(sess, spec),
     })
 
 
@@ -4526,6 +4609,16 @@ def _braces_vacc_run(rec, spec, use_chans, events, stamp_times, align_ids,
 # no local branch -- see `api_doppler_scan`.
 # ==========================================================================
 
+def _doppler_steps(plan):
+    """The progress stages a run declares. Legacy reads the recording twice
+    (the threshold is not knowable until every channel has been transformed
+    once); Storm reads it once."""
+    n = max(1, int(plan.get("n_channels") or 1))
+    passes = int(plan.get("passes") or 2)
+    return [("ied read", int(float(plan.get("span_s") or 0) * n * passes)),
+            ("ied detect", n)]
+
+
 def _doppler_public(out):
     """The answer without the snippets.
 
@@ -4622,13 +4715,24 @@ DOPPLER_REQ_FIELDS = ("invert", "bad_channels", "llw_s", "prc", "notch_hz",
 
 
 def _doppler_request_hash(gid, spec):
+    """The question, hashed. A Legacy request hashes exactly the fields it
+    always did, so every run filed before Storm existed is still recognised
+    as answered; a Storm request adds every field Storm has."""
     import hashlib
     body = {"gid": str(gid)}
-    for k in DOPPLER_REQ_FIELDS:
+    fields = DOPPLER_REQ_FIELDS
+    if ((spec or {}).get("method") or "legacy") != "legacy":
+        fields = tuple(DOPPLER_REQ_FIELDS) + tuple(
+            k for k in dopplermod.PARAM_KEYS if k not in DOPPLER_REQ_FIELDS)
+    for k in fields:
         v = (spec or {}).get(k)
         if k == "bad_channels":
             v = sorted(int(b) for b in (v or []))
         body[k] = v
+    # Only when set: a run asked without one keeps the hash it always had,
+    # so "already run" still finds it.
+    if (spec or {}).get("channel_range"):
+        body["channel_range"] = list(spec["channel_range"])
     raw = json.dumps(body, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
 
@@ -4655,15 +4759,13 @@ def _doppler_spec_vacc(gid, body, rec):
         "excluded": [], "left_out": [], "preset": None,
         "probe": probe_id,
         "probe_name": (probebook.get(probe_id) or {}).get("name") or probe_id,
+        # Which bank is which, so the node can reference each probe to itself
+        # and leave out a bank somebody marked as not connected.
+        "banks": list((rec or {}).get("banks") or []),
     }
-    for key, default in (("llw_s", dopplermod.LLW_S),
-                         ("prc", dopplermod.PRC)):
-        v = body.get(key)
-        spec[key] = float(default if v is None else v)
-    notch = body.get("notch_hz")
-    spec["notch_hz"] = float(notch) if notch else None
-    band = body.get("band")
-    spec["band"] = [float(band[0]), float(band[1])] if band else None
+    # Every detection parameter from the one table both builders read, with
+    # the validated Storm method as the default (doppler.STORM).
+    spec.update(dopplermod.params_from(body))
     return spec
 
 
@@ -4689,14 +4791,24 @@ def _doppler_spec(body, sess):
 
     all_ch = sess.get("channels") or []
     by_index = {int(c["index"]): c for c in all_ch}
+    # THE RANGE FIRST (doppler.channel_range): a channel outside it is not
+    # read at all, and everything below -- bad channels, left out, which
+    # are detected on -- happens inside it, exactly as it would on a
+    # recording that only had those channels.
+    rng = dopplermod.channel_range(body.get("channel_range"))
+    inside = (lambda c: dopplermod.in_range(rng, c["number"]))
+    outside = [c for c in all_ch if not inside(c)]
     chans = body.get("channels") or [c["index"] for c in all_ch]
-    chans = [int(c) for c in chans if int(c) in by_index]
+    chans = [int(c) for c in chans
+             if int(c) in by_index and inside(by_index[int(c)])]
     kept = [i for i in chans if int(by_index[i]["number"]) not in bad]
     # EVERY bad channel on the recording, not only the ones that were asked
     # for. A run over the evens still has to say that CSC59 is bad: left out
     # of the question and bad are two different reasons it was not read,
     # and a channel that fits neither list is one the report cannot explain.
-    dropped = [int(c["index"]) for c in all_ch if int(c["number"]) in bad]
+    # Inside the range: one outside it is explained by the range.
+    dropped = [int(c["index"]) for c in all_ch
+               if int(c["number"]) in bad and inside(c)]
     # Left out of THIS RUN by choice -- every channel the caller did not ask
     # for that is not already bad. Recorded so the answer can say so: a run
     # over the odd channels alone that does not say it was is a run whose
@@ -4705,8 +4817,14 @@ def _doppler_spec(body, sess):
     asked = set(chans)
     left_out = [c for c in all_ch
                 if int(c["index"]) not in asked
-                and int(c["number"]) not in bad]
+                and int(c["number"]) not in bad and inside(c)]
     if not kept:
+        if rng and not any(inside(c) and int(c["number"]) not in bad
+                           for c in all_ch):
+            raise ValueError(
+                "Nothing is left to read in CSC%d to CSC%d: every channel "
+                "there is marked bad, or this recording has none. Widen the "
+                "range." % (rng[0], rng[1]))
         raise ValueError(
             "Nothing is left to read: every channel asked for is marked bad "
             "on this recording. Put one back, or choose a different set to "
@@ -4714,31 +4832,30 @@ def _doppler_spec(body, sess):
 
     probe_id = _probe_for(stored)
     probe = probebook.get(probe_id) or {}
+    reg_row = _incisor_registry_index().get(sess.get("gid")) or {}
     spec = {
         "path": sess.get("path"),
         "channels": kept,
+        # See `_doppler_spec_vacc`: per-bank referencing, and no bank that
+        # is marked as not connected.
+        "banks": list(reg_row.get("banks") or []),
         "invert": bool(sess.get("invert", True)),
         "bad_channels": sorted(bad),
         "excluded": [{"index": i, "number": int(by_index[i]["number"]),
                       "label": by_index[i].get("label")} for i in dropped],
         "left_out": [{"index": int(c["index"]), "number": int(c["number"]),
                       "label": c.get("label")} for c in left_out],
+        "out_of_range": [{"index": int(c["index"]), "number": int(c["number"]),
+                          "label": c.get("label")} for c in outside],
         "preset": (body.get("preset") if left_out else None),
         "probe": probe_id,
         "probe_name": probe.get("name") or probe_id,
     }
-    for key, default in (("llw_s", dopplermod.LLW_S),
-                         ("prc", dopplermod.PRC)):
-        v = body.get(key)
-        spec[key] = float(default if v is None else v)
-
-    # BOTH FILTERS OFF UNLESS ASKED FOR. A first run reproduces the numbers
-    # the lab's MATLAB produces, so a difference from them is always
-    # something somebody chose rather than something this rewrite did.
-    notch = body.get("notch_hz")
-    spec["notch_hz"] = float(notch) if notch else None
-    band = body.get("band")
-    spec["band"] = [float(band[0]), float(band[1])] if band else None
+    # THE VALIDATED DEFAULTS. Every detection parameter comes from
+    # doppler.params_from, which fills in the Storm method unless the
+    # request asks for Legacy -- the MATLAB-identical run, which is still
+    # one click away and is what tools/check_doppler_parity.py checks.
+    spec.update(dopplermod.params_from(body))
     return spec
 
 
@@ -4764,6 +4881,8 @@ def api_doppler_estimate():
     split = dopplermod.check_parts(sess.get("path"))
     return jsonify({
         "ok": True, "plan": plan, "spec": spec, "split": split,
+        # The channels that go in, and in which role -- shown before a run.
+        "feed": dopplermod.feed(sess, spec),
         "cached": (dopplermod.cache_get(key) is not None
                    or _doppler_recall(sess, key) is not None),
         "vacc": _vacc_estimate(sess, spec, plan),
@@ -4799,6 +4918,7 @@ def _doppler_estimate_vacc(body, sess):
     done = _doppler_answered(gid, _doppler_request_hash(gid, spec))
     return jsonify({
         "ok": True, "plan": plan, "spec": spec, "split": None,
+        "feed": dopplermod.feed(sess, spec),
         "vacc_only": True, "gid": gid, "cached": bool(done), "key": done,
         "vacc": {"can": bool(st.get("configured")),
                  "state": place.get("state"), "remote": place.get("remote"),
@@ -4841,8 +4961,7 @@ def _doppler_scan_vacc(body, sess):
         vaccmod.push_code(cfg, APP_DIR)
     except Exception as exc:                             # noqa: BLE001
         return fail("doppler/scan-vacc", exc, 400, {"gid": gid})
-    steps = [("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
-             ("ied detect", plan["n_channels"])]
+    steps = _doppler_steps(plan)
     where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
              else "vacc:scratch")
     run = vaccrunmod.VaccRun(
@@ -4858,6 +4977,8 @@ def _doppler_scan_vacc(body, sess):
 
     job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
                        max(0.001, plan["megasamples"]), where)
+    _doppler_track(job, "one", [{"gid": gid, "label": label}],
+                   path=sess.get("path"), spec=spec)
     STORE.record_activity([{
         "action": "doppler.scan",
         "detail": {"channels": len(spec["channels"]), "where": where,
@@ -4990,15 +5111,18 @@ def api_doppler_scan():
         return jsonify({"ok": True, "cached": True,
                         "result": _doppler_public(hit)})
 
-    # Twice the span: the threshold is a percentile over every kept channel
-    # and is not knowable until all of them have been transformed once.
-    steps = [("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
-             ("ied detect", plan["n_channels"])]
+    steps = _doppler_steps(plan)
 
     def finish(out):
         dopplermod.cache_put(key, out)
-        _doppler_remember(sess, spec, key, out)
-        return _doppler_public(out)
+        # The request's hash on every record, so the Many picker can say
+        # "already run" for this exact question whichever way it was run.
+        _doppler_remember(sess, spec, key, out, extra={
+            "request_hash": _doppler_request_hash(sess.get("gid"), spec)})
+        # With its key, as a run of a recording only the cluster has comes
+        # back: the panel asks for the snippets, and opens it again from
+        # the landed list, by recording and key.
+        return dict(_doppler_public(out), key=key)
 
     try:
         run, where = _vacc_run_for("doppler", sess, spec, plan, rep, steps)
@@ -5010,6 +5134,10 @@ def api_doppler_scan():
 
     job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
                        max(0.001, plan["megasamples"]), where)
+    _doppler_track(job, "one",
+                   [{"gid": sess.get("gid"),
+                     "label": (sess.get("identity") or {}).get("label")}],
+                   path=sess.get("path"), spec=spec)
     STORE.record_activity([{
         "action": "doppler.scan",
         "detail": {"channels": len(spec["channels"]), "where": where,
@@ -5020,6 +5148,99 @@ def api_doppler_scan():
     return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
                     "plan": plan, "where": where,
                     "remote": run.spec_remote.get("path")})
+
+
+#: Doppler's runs on the cluster, by job id: what the panel finds again when
+#: it is opened. The panel used to hold the job only in its own memory, so
+#: leaving the view, or reloading the page, lost it -- the run went on, and
+#: the panel either forgot it or kept polling a job id the server had
+#: dropped and said "running" beside the same run already landed. Kept for
+#: ten minutes after a run ends, so a panel that comes back in time sees
+#: how it ended rather than nothing.
+_DOPPLER_INFLIGHT = {}
+_DOPPLER_INFLIGHT_LOCK = threading.Lock()
+DOPPLER_INFLIGHT_KEEP_S = 600.0
+
+
+def _doppler_track(job, kind, members, path=None, spec=None):
+    """Remember a run the panel will want to find again. `members` is
+    [{"gid", "label"}] -- one for a single run, every recording for a
+    batch -- and `spec` the detection parameters it was asked with."""
+    keep = {k: (spec or {}).get(k)
+            for k in dopplermod.PARAM_KEYS + ("channel_range",)}
+    with _DOPPLER_INFLIGHT_LOCK:
+        _DOPPLER_INFLIGHT[job.id] = {
+            "id": job.id, "kind": kind, "members": list(members or []),
+            "path": path, "params": keep, "started": time.time()}
+
+
+@app.route("/api/doppler/inflight")
+def api_doppler_inflight():
+    """Every Doppler run still on the cluster, and any that ended in the
+    last ten minutes, each with its job's own snapshot."""
+    now = time.time()
+    with _DOPPLER_INFLIGHT_LOCK:
+        items = list(_DOPPLER_INFLIGHT.values())
+    out, gone = [], []
+    for it in items:
+        job = cfcmod.get(it["id"])
+        if job is None:
+            gone.append(it["id"])
+            continue
+        snap = job.snapshot()
+        if snap["status"] != "running" and \
+                now - float(job.ended or now) > DOPPLER_INFLIGHT_KEEP_S:
+            gone.append(it["id"])
+            continue
+        out.append(dict(it, job=snap))
+    if gone:
+        with _DOPPLER_INFLIGHT_LOCK:
+            for jid in gone:
+                _DOPPLER_INFLIGHT.pop(jid, None)
+    out.sort(key=lambda r: r["started"], reverse=True)
+    return jsonify({"ok": True, "jobs": out})
+
+
+@app.route("/api/doppler/run")
+def api_doppler_run():
+    """One landed run, opened by recording and key. NEVER starts one.
+
+    The landed list used to open a run by asking /api/doppler/scan the same
+    question again and hoping it came back cached. It did not always -- a run
+    filed with channels left out, or a recording opened by a different path,
+    is a different cache key -- and a scan that is not a hit SUBMITS A NEW
+    CLUSTER JOB, whose answer the panel then ignored. Opening is reading:
+    memory, this machine's cache, or the run directory on the cluster.
+    """
+    gid = (request.args.get("gid") or "").strip()
+    key = (request.args.get("key") or "").strip()
+    if not gid or not key:
+        return jsonify({"ok": False, "error": "Which run?"}), 400
+    rec = DOPPLER_VAULT.get(gid, key)
+    if not rec:
+        return jsonify({"ok": False,
+                        "error": "That run is not on record."}), 404
+    try:
+        full = _doppler_full(gid, key)
+    except LookupError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 409
+    except Exception as exc:                             # noqa: BLE001
+        return fail("doppler/run", exc, 400, {"gid": gid})
+    row = _incisor_registry_index().get(gid) or {}
+    used = rec.get("path_used")
+    # The folder it was run on when this computer has it -- a DEWEY day is
+    # one id across three folders -- else any copy here, else the cluster's.
+    if used and isinstance(used, str) and sessreg.is_here(used):
+        path = used
+    else:
+        path = _local_path_of(row) or incisorvaccmod.path_of(gid)
+    return jsonify({
+        "ok": True, "key": key,
+        "result": dict(_doppler_public(full), key=key),
+        "spec": rec.get("spec"), "path": path, "row": row or None,
+        "label": rec.get("session_label") or row.get("label"),
+        "computed": rec.get("computed"),
+    })
 
 
 @app.route("/api/doppler/reviews")
@@ -5057,6 +5278,8 @@ def api_doppler_reviews():
                 "label": rec.get("session_label") or row.get("label"),
                 "n": rec.get("n_events"),
                 "params_hash": rec.get("params_hash"),
+                # What /api/doppler/run opens it by, with the gid.
+                "key": rec.get("params_hash"),
                 # What a review opens by when this computer has no copy:
                 # the run by its key, and the recording off the cluster.
                 "path": local or incisorvaccmod.path_of(gid),
@@ -5115,9 +5338,7 @@ def _doppler_prepare(member, body, force):
         # is not already in the run record (see _resume_vacc_batches).
         "resume": {"key": key},
         "spec_remote": dict(spec, path=member["remote"]),
-        "tool_steps": [
-            ("ied read", int(plan["span_s"] * plan["n_channels"] * 2)),
-            ("ied detect", plan["n_channels"])],
+        "tool_steps": _doppler_steps(plan),
         "seconds": float((dopplermod.estimate(sess, spec, rep) or {})
                          .get("seconds") or 0),
         "megasamples": max(0.001, plan.get("megasamples") or 1.0),
@@ -5137,12 +5358,18 @@ def _doppler_members(wanted):
     verdicts = {str(k).rstrip("/"): v for k, v in
                 ((vaccmod.status().get("roots") or {}).items())}
     members, blocked = [], []
+    seen = set()
     for rec in (REG.all() or []):
         gid = rec.get("gid")
         if not gid or rec.get("retired"):
             continue
         if wanted and gid not in wanted:
             continue
+        # One member per RECORDING, as the picker lists them: a gid held by
+        # two records (DEWEY J9 Precon2 is) was otherwise sent twice.
+        if gid in seen:
+            continue
+        seen.add(gid)
         label = rec.get("label") or gid
         # The same rule Incisor's batch reads (`vacc.resolve_gid`): on a
         # share the cluster mounts and this account can open, or a copy in
@@ -5172,7 +5399,7 @@ def _doppler_members(wanted):
         if listed.get("conflict") or listed.get("path") != got.get("remote"):
             listed = None
         members.append({"gid": gid, "label": label,
-                        "local": _local_path_of(rec),
+                        "local": _local_copy_of(rec, got.get("remote")),
                         "remote": got.get("remote"),
                         "state": got.get("state"), "listed": listed})
     return members, blocked
@@ -5191,31 +5418,171 @@ def _doppler_prepare_vacc(member, body, force):
         return None
     facts = incisorvaccmod.plan_for(rec, spec, 0.0, 0.0,
                                     found=member.get("listed"))
-    span, fs, n = facts["span_s"], facts["fs"], max(1, facts["n_channels"])
+    storm = (spec.get("method") or "legacy") == "storm"
+    # `doppler.plan_for`'s own seed -- twenty channel-seconds read per second
+    # of wall, once for Storm and twice for Legacy -- and an hour of 64
+    # channels when nothing says how long it is (`_doppler_size`). The same
+    # figure the picker showed, so the panel and slurm cannot disagree.
+    span, n, secs, _known = _doppler_size(facts, storm, spec.get("channel_range"))
+    fs = facts["fs"]
     plan = {"span_s": span, "fs": fs, "n_channels": n,
             "megasamples": span * fs * n / 1e6,
-            # `doppler.plan_for`'s own seed: twenty channel-seconds read per
-            # second of wall, twice over. Same figure, so the panel and slurm
-            # cannot disagree.
-            "seconds": max(120.0, span * n * 2 / 20.0)}
+            "passes": 1 if storm else 2,
+            "seconds": secs}
     return {
         "gid": gid, "label": member["label"],
         "sess": None, "report": None, "key": None,
         "spec_local": spec, "plan": plan,
         "spec_remote": dict(spec, path=member["remote"]),
         "resume": {"vacc_only": True, "request": rh},
-        "tool_steps": [("ied read", int(span * n * 2)), ("ied detect", n)],
+        "tool_steps": _doppler_steps(plan),
         "seconds": plan["seconds"],
         "megasamples": max(0.001, plan["megasamples"]),
     }
 
 
+#: What a Doppler run is sized as when nothing says how long the recording
+#: is -- neither the registry nor the cluster's listing of the folder. An
+#: hour of 64 channels: generous on purpose, because a job that asks for too
+#: little is killed at its limit and reports a failure with no answer, and
+#: one that asks for too much only waits a little longer in the queue.
+DOPPLER_UNKNOWN_SPAN_S = 3600.0
+DOPPLER_UNKNOWN_CHANNELS = 64
+
+
+def _doppler_size(facts, storm, rng=None):
+    """(span, channels, seconds, known) for one recording's run. `rng` is
+    the channel range, which caps how many channels are read."""
+    span = float(facts.get("span_s") or 0.0)
+    n = int(facts.get("n_channels") or 0)
+    known = span > 0 and n > 1
+    if not known:
+        span = max(span, DOPPLER_UNKNOWN_SPAN_S)
+        n = max(n, DOPPLER_UNKNOWN_CHANNELS)
+    if rng:
+        n = max(1, min(n, int(rng[1]) - int(rng[0]) + 1))
+    secs = max(120.0, span * n * (1.2 if storm else 2.0) / 20.0)
+    return span, n, secs, known
+
+
+def _doppler_vacc_rows(body=None):
+    """Every recording the cluster can read, as the Many picker lists it.
+
+    Incisor's list, for Doppler: on a share the cluster mounts and this
+    account can open -- the lab's netfiles, read in place -- or a copy in
+    scratch. Whether THIS computer has it too does not matter; a recording
+    only the cluster can read has its channels resolved on the node. Each
+    row says whether this exact question is already answered, by the
+    request's hash, so "only the ones not yet run" is one click.
+
+    Cheap on purpose: no recording is opened. The plan for each comes from
+    the cluster's own listing of the folder when it has one, else the
+    registry (`incisorvacc.plan_for`).
+    """
+    body = body or {}
+    staged, _unknown = _vacc_staged()
+    cfg = vaccmod.load_config(LOGS_DIR)
+    drives = vaccmod.drive_map()
+    verdicts = {str(k).rstrip("/"): v for k, v in
+                ((vaccmod.status().get("roots") or {}).items())}
+    asked = {}
+    for r in (DOPPLER_VAULT.all() or []):
+        if r.get("request_hash"):
+            asked[(r.get("gid"), r.get("request_hash"))] = r.get("params_hash")
+    params = dopplermod.params_from(body)
+    storm = params["method"] == "storm"
+    todo, blocked = [], []
+    seen = set()
+    for rec in (REG.all() or []):
+        gid = rec.get("gid")
+        if not gid or rec.get("retired"):
+            continue
+        # One row per RECORDING. Some gids are held by more than one record
+        # -- the same recording written twice, once with paths and once
+        # without -- and walking records listed it two or three times.
+        if gid in seen:
+            continue
+        seen.add(gid)
+        label = rec.get("label") or rec.get("key") or gid
+        got = vaccmod.resolve_gid(gid, rec.get("paths") or [], cfg,
+                                  drives=drives, staged=staged)
+        state = got.get("state")
+        if got.get("conflict"):
+            blocked.append({"gid": gid, "label": label, "can_upload": False,
+                            "why": "two folders on the cluster both claim "
+                                   "to be this recording"})
+            continue
+        if state == vaccmod.NATIVE:
+            rule = vaccmod.native_rule_of(cfg, got.get("remote")) or {}
+            if verdicts.get(str(rule.get("vacc") or "").rstrip("/")) \
+                    == "denied":
+                blocked.append({"gid": gid, "label": label,
+                                "can_upload": False,
+                                "why": "on %s, which this account (%s) "
+                                       "cannot read -- ask Shahriar to have "
+                                       "it added to jarvis_writes"
+                                       % (rule.get("vacc"),
+                                          cfg.get("netid") or "?")})
+                continue
+        elif state != vaccmod.STAGED:
+            blocked.append(_vacc_missing(rec, label))
+            continue
+        spec = _doppler_spec_vacc(gid, body, rec)
+        listed = staged.get(gid) or {}
+        if listed.get("conflict") or listed.get("path") != got.get("remote"):
+            listed = None
+        facts = incisorvaccmod.plan_for(rec, spec, 0.0, 0.0, found=listed)
+        span, n, secs, known = _doppler_size(facts, storm, spec.get("channel_range"))
+        todo.append({
+            "gid": gid, "label": label, "remote": got.get("remote"),
+            "state": state,
+            "where": "vacc:netfiles" if state == vaccmod.NATIVE
+            else "vacc:scratch",
+            "here": _local_copy_of(rec, got.get("remote")),
+            "project": rec.get("project"), "mouse": rec.get("mouse"),
+            "session": rec.get("session"), "start": rec.get("start"),
+            "n_channels": (facts.get("n_all") or rec.get("n_channels"))
+            if known else None,
+            "duration_s": (span or rec.get("duration_s")) if known else None,
+            "bad_channels": spec["bad_channels"],
+            "plan": {"span_s": span, "n_channels": n, "seconds": secs,
+                     # Said, so the panel does not quote an hour as a fact.
+                     "size_known": known},
+            "answered": asked.get((gid, _doppler_request_hash(gid, spec))),
+            "row": {k: rec.get(k) for k in
+                    ("project", "mouse", "session", "key", "loose_key",
+                     "label", "duration_s", "cohort")},
+        })
+    todo.sort(key=lambda r: (str(r.get("project") or ""),
+                             str(r.get("mouse") or ""),
+                             str(r.get("session") or ""),
+                             str(r.get("start") or "")))
+    return todo, blocked, cfg
+
+
 @app.route("/api/doppler/batch/plan", methods=["GET", "POST"])
 def api_doppler_batch_plan():
-    """Which recordings a batch would do, and why the rest are left out."""
+    """Which recordings a batch would do, and why the rest are left out.
+
+    With no `gids` this is the Many picker's list: every recording the
+    cluster can read, each saying whether this question is already answered
+    -- nothing is opened and nothing is ticked for you. With `gids` it is
+    the plan for exactly those, prepared as the run will prepare them.
+    """
     body = (request.get_json(force=True) or {}) if request.method == "POST" \
         else {}
     force = bool(body.get("force"))
+    if not body.get("gids"):
+        try:
+            todo, blocked, cfg = _doppler_vacc_rows(body)
+        except Exception as exc:                         # noqa: BLE001
+            return fail("doppler/batch-plan", exc, 400)
+        st = vaccmod.status()
+        out = {"ok": True, "todo": todo, "n": len(todo),
+               "partition": cfg.get("partition"), "queued": st.get("queued"),
+               "cap": INCISOR_NETFILES_CAP}
+        out.update(_vacc_blocked_payload(blocked))
+        return jsonify(out)
     try:
         members, blocked = _doppler_members(body.get("gids"))
         todo, done = [], []
@@ -5260,6 +5627,12 @@ def api_doppler_batch():
     """
     body = request.get_json(force=True) or {}
     force = bool(body.get("force"))
+    # Never "every recording the cluster can read" -- that is fifteen
+    # hundred of them since netfiles became readable, and one click
+    # submitting all of them is not a default anything should have.
+    if not body.get("gids"):
+        return jsonify({"ok": False,
+                        "error": "Tick the recordings to send first."}), 400
     try:
         cfg = vaccmod.load_config(LOGS_DIR)
         vaccmod.push_code(cfg, APP_DIR)
@@ -5271,6 +5644,10 @@ def api_doppler_batch():
                         "error": "Nothing on the cluster to run."}), 400
 
     concurrency = body.get("concurrency")
+    if concurrency is None and any(m.get("state") == vaccmod.NATIVE
+                                   for m in members):
+        # The netfiles share slows under many readers, and it is everybody's.
+        concurrency = INCISOR_NETFILES_CAP
 
     def work(job):
         job.members_init([{"id": m["gid"], "label": m["label"]}
@@ -5301,7 +5678,9 @@ def api_doppler_batch():
                                    t["spec_local"], out)
                 return
             dopplermod.cache_put(t["key"], out)
-            _doppler_remember(t["sess"], t["spec_local"], t["key"], out)
+            _doppler_remember(t["sess"], t["spec_local"], t["key"], out,
+                              extra={"request_hash": _doppler_request_hash(
+                                  t["gid"], t["spec_local"])})
 
         done = 0
         if tasks:
@@ -5317,6 +5696,9 @@ def api_doppler_batch():
     steps = [("panorama pool", len(members))]
     job = cfcmod.start({"path": members[0].get("local") or ""}, steps, work,
                        1.0, "vacc:scratch")
+    _doppler_track(job, "many",
+                   [{"gid": m["gid"], "label": m["label"]} for m in members],
+                   spec=dopplermod.params_from(body))
     STORE.record_activity([{"action": "doppler.batch",
                             "detail": {"n": len(members),
                                        "blocked": len(blocked)}}])
@@ -5415,6 +5797,68 @@ def api_braces_plan():
                   "estimator", "window_ms", "edge_frac",
                   "same_ms", "invert")},
     })
+
+
+# THE SAME QUESTION, ANSWERED ONCE (2026-10-14).
+#
+# Braces used to read the recording again for a question it had already
+# answered: an alignment was a row in a list, and the list showed the newest
+# twelve, so the thirteenth run hid the oldest and the only way back to it was
+# to run it again. Incisor never had this problem -- a scan is filed by what
+# was asked, and asking again opens the answer. This is the same for Braces:
+# a proposal records the question it answers, and a run of the same question
+# opens it instead (`force` reads it again anyway).
+#
+# The question is everything that decides the answer: the set, the version
+# its stamps come from and the stamps themselves (a live set can change), the
+# kind, every setting of the read (measure, window, band, mains, smoothing,
+# the bad channels and the probe), the channels asked for, and the depth
+# band. Not the path: the same recording on another drive, or off the
+# cluster, is the same question.
+_BRACES_NOT_QUESTION = ("path", "excluded", "probe_name", "channel_pick")
+
+
+def _braces_question(rec, src_v, spec, want, depth_n, stamp_times):
+    """(hash, question) of one alignment request."""
+    import hashlib
+    stamps = hashlib.sha1(json.dumps(
+        [round(float(t), 6) for t in sorted(stamp_times)]).encode()
+    ).hexdigest()[:12]
+    q = {"entry_id": rec.get("id"), "kind": rec.get("type") or "ds",
+         "from_version": src_v, "stamps": stamps,
+         "spec": {k: v for k, v in sorted(spec.items())
+                  if k not in _BRACES_NOT_QUESTION},
+         "channels": sorted(int(x) for x in want),
+         "depth_band": int(depth_n)}
+    h = hashlib.sha1(json.dumps(q, sort_keys=True, default=str)
+                     .encode()).hexdigest()[:16]
+    return h, q
+
+
+def _braces_set_row(rec):
+    """One alignment as the lists show it."""
+    _moves, _flags, counts, _rej = brsetmod.resolve(rec)
+    p = rec.get("params") or {}
+    return {
+        "set_id": rec["set_id"], "entry_id": rec.get("entry_id"),
+        "gid": rec.get("gid"), "name": rec.get("name"),
+        "created": rec.get("created"),
+        "from_version": rec.get("from_version"),
+        "params": p,
+        "summary": rec.get("summary"),
+        "committed": rec.get("committed"),
+        "n": len(rec.get("rows") or []),
+        "counts": counts,
+        "request_hash": p.get("request_hash"),
+    }
+
+
+def _braces_answered(rq_hash):
+    """The newest alignment that answers this question, or None."""
+    for rec in BRACES.all():                     # newest first
+        if (rec.get("params") or {}).get("request_hash") == rq_hash:
+            return rec
+    return None
 
 
 @app.route("/api/braces/run", methods=["POST"])
@@ -5547,9 +5991,22 @@ def api_braces_run():
                    if e.get("start") is not None]
     depth_n = int(body.get("depth_band") or bracesmod.DEPTH_BAND)
 
+    # Asked before? Then the answer is the alignment already made, opened
+    # rather than read again -- unless somebody asked to read it again.
+    rq_hash, rq = _braces_question(rec, src_v, spec, want, depth_n,
+                                   stamp_times)
+    if not body.get("force"):
+        had = _braces_answered(rq_hash)
+        if had:
+            return jsonify({"ok": True, "existing": _braces_set_row(had),
+                            "request_hash": rq_hash})
+
     def file_set(got, computed_on=None):
         """File one alignment as a proposal, wherever it was computed."""
         out, rows, params = got["out"], got["rows"], got["params"]
+        # The question it answers, so asking it again opens this.
+        params["request_hash"] = rq_hash
+        params["request"] = {k: v for k, v in rq.items() if k != "spec"}
         if computed_on:
             # Where it was computed, on the set itself: a proposal made on a
             # compute node is the same proposal, and says so.
@@ -5608,24 +6065,19 @@ def api_braces_run():
 
 @app.route("/api/braces/sets")
 def api_braces_sets():
-    """Every alignment on this machine, accepted or still being reviewed."""
+    """Every alignment on this machine and pulled from the others, accepted
+    or still being reviewed, newest first. `gid` or `entry_id` narrows it to
+    one recording or one set: an alignment belongs to its set, and the set's
+    panel lists every one made of it."""
     gid = request.args.get("gid")
+    entry_id = request.args.get("entry_id")
     out = []
     for rec in BRACES.all():
         if gid and rec.get("gid") != gid:
             continue
-        _moves, _flags, counts, _rej = brsetmod.resolve(rec)
-        out.append({
-            "set_id": rec["set_id"], "entry_id": rec.get("entry_id"),
-            "gid": rec.get("gid"), "name": rec.get("name"),
-            "created": rec.get("created"),
-            "from_version": rec.get("from_version"),
-            "params": rec.get("params"),
-            "summary": rec.get("summary"),
-            "committed": rec.get("committed"),
-            "n": len(rec.get("rows") or []),
-            "counts": counts,
-        })
+        if entry_id and rec.get("entry_id") != entry_id:
+            continue
+        out.append(_braces_set_row(rec))
     return jsonify({"ok": True, "sets": out, "n": len(out)})
 
 
@@ -13624,14 +14076,14 @@ def api_layers_export(gid):
 # on the layer sheet (layers.py: strata_* fields). No dentate-spike evidence
 # is read anywhere in here -- see the top of stratasteps.py for why.
 
-STRATA_REFUSED_PROBES = {
-    "h10d": "StrataScope's steps are not developed for H10 probes yet: the "
-            "steps read depth down one column, and an H10-D steps across "
-            "three. Label this one by hand on the rail.",
-    "dewey32": "StrataScope's steps are not developed for the DEWEY 32 "
-               "montage: its channels are wires in separate structures, not "
-               "a column through the hippocampus.",
-}
+# Every recording is read as an H3 (2026-10-13): one line of contacts, the
+# recording's own channel order as depth order, and at most the first
+# STRATA_MAX_CHANNELS of them. A dual implant's hippocampal array is its
+# first 64; a 128-channel recording filed as H3 is read as its first 64; an
+# H10-D or a DEWEY montage is read as if it were one column -- which it is
+# not, and the steps will say what they see. Refusing them (as until
+# today) left those recordings with nothing at all.
+STRATA_MAX_CHANNELS = 64
 
 # Where the defaults come from. H3 contacts are 20 um apart, which is what
 # HippoCompass (Desktop/HippoCompass, PROBE_SPECS.H3) measures with; the
@@ -13666,9 +14118,7 @@ def _strata_context(gid, body, need_scan=True):
             "channel of the whole recording once, which needs a copy on this "
             "computer.")
     stored = _stored_for(sess)
-    probe_id = _probe_for(stored) or "h3"
-    if probe_id in STRATA_REFUSED_PROBES:
-        raise stratamod.StrataError(STRATA_REFUSED_PROBES[probe_id])
+    probe_filed = _probe_for(stored) or "h3"
     bad = sorted({int(b) for b in (stored.get("bad_channels") or [])})
     rec = LAYERS.get(gid) or {}
     st = LAYERS.strata_of(rec)
@@ -13679,12 +14129,12 @@ def _strata_context(gid, body, need_scan=True):
         params["gcl_half_um"] = stratamod.GCL_HALF_UM.get(
             params.get("species") or "mouse", 30.0)
     nums = [int(c["number"]) for c in (sess.get("channels") or [])]
+    first = set(nums[:STRATA_MAX_CHANNELS])
     order = [int(c) for c in (body.get("channels") or rec.get("channels")
                               or nums)]
-    if probe_id == "dual":
-        # The hippocampal array is CSC 1-64; the other 64 are in M2.
-        order = [c for c in order if 1 <= c <= probebook.DUAL_SIZE]
-    ctx = {"gid": gid, "stored": stored, "probe": probe_id, "bad": bad,
+    order = [c for c in order if c in first] or nums[:STRATA_MAX_CHANNELS]
+    ctx = {"gid": gid, "stored": stored, "probe": "h3",
+           "probe_filed": probe_filed, "bad": bad,
            "rec": rec, "strata": st, "params": params, "order": order,
            "states": st.get("states") or {}}
     if need_scan:
@@ -13708,18 +14158,65 @@ def _masks_public(mk):
                                 "all_s")}
 
 
+# The reads and ICA runs going on, by recording. A run keeps going when
+# somebody leaves its recording, so coming back has to find it, a second
+# read of the same recording has to join the first rather than race it into
+# the same folder, and a run on another recording has to stay stoppable
+# (2026-10-12: Stop on the next recording answered "No such run").
+_STRATA_JOBS = {}                       # gid -> {"scan": job id, "ica": ...}
+_STRATA_JOBS_LOCK = threading.Lock()
+
+
+def _strata_job(gid, kind):
+    with _STRATA_JOBS_LOCK:
+        jid = (_STRATA_JOBS.get(gid) or {}).get(kind)
+    job = cfcmod.get(jid) if jid else None
+    return job if job is not None and job.status == "running" else None
+
+
+def _strata_job_keep(gid, kind, job):
+    with _STRATA_JOBS_LOCK:
+        _STRATA_JOBS.setdefault(gid, {})[kind] = job.id
+
+
+def _strata_jobs_public():
+    with _STRATA_JOBS_LOCK:
+        items = [(g, k, j) for g, d in _STRATA_JOBS.items()
+                 for k, j in d.items()]
+    out = []
+    for g, k, jid in items:
+        job = cfcmod.get(jid)
+        if job is None or job.status != "running":
+            continue
+        snap = job.snapshot()
+        st = (snap.get("stages") or [{}])[0]
+        out.append({"gid": g, "kind": k, "id": jid,
+                    "label": (snap.get("spec") or {}).get("label") or g,
+                    "done": st.get("done") or 0, "of": st.get("of") or 0})
+    return out
+
+
+def _strata_label(ctx, sess):
+    rec = ctx.get("rec") or {}
+    path = (sess.get("path") or "").rstrip("\\/")
+    return (rec.get("session_label") or os.path.basename(path)
+            or ctx.get("gid"))
+
+
 @app.route("/api/strata/<gid>/status", methods=["POST"])
 def api_strata_status(gid):
     """Whether this recording has been read, and what a read would cost."""
     body = request.get_json(force=True) or {}
     try:
         sess, ctx = _strata_context(gid, body, need_scan=False)
-        st = stratamod.status(gid, sess)
-        plan = stratamod.plan_for(sess, None)
+        st = stratamod.status(gid, sess, ctx["bad"])
+        plan = stratamod.plan_for(sess, None, ctx["order"], skip=ctx["bad"])
         out = {"ok": True, "status": st, "probe": ctx["probe"],
+               "probe_filed": ctx["probe_filed"],
                "params": ctx["params"], "bad": ctx["bad"],
                "estimate_s": stratamod.estimate_seconds(plan),
-               "plan": stratamod.plan_public(plan)}
+               "plan": stratamod.plan_public(plan),
+               "jobs": _strata_jobs_public()}
         return jsonify(out)
     except Exception as exc:                             # noqa: BLE001
         return _strata_fail("status", exc, gid)
@@ -13731,30 +14228,40 @@ def api_strata_scan(gid):
     body = request.get_json(force=True) or {}
     try:
         sess, ctx = _strata_context(gid, body, need_scan=False)
-        st = stratamod.status(gid, sess)
+        st = stratamod.status(gid, sess, ctx["bad"])
         if st.get("scanned") and st.get("current") and not body.get("force"):
             return jsonify({"ok": True, "cached": True, "status": st})
         rep_ = None
         if sess.get("source") == "ncs":
             rep_ = _incisor_report(sess["path"])
-        # A dual implant reads its hippocampal array only: the other 64
-        # contacts are in M2 and no step asks anything of them.
-        only = ctx["order"] if ctx["probe"] == "dual" else None
-        plan = stratamod.plan_for(sess, rep_, only)
+        # The channels the steps use and no others: at most the first 64
+        # (a dual implant's hippocampal array; the rest of anything bigger).
+        only = ctx["order"]
+        plan = stratamod.plan_for(sess, rep_, only, skip=ctx["bad"])
     except Exception as exc:                             # noqa: BLE001
         return _strata_fail("scan", exc, gid)
+    # Already being read: join that read. Two reads of one recording write
+    # the same folder.
+    going = _strata_job(gid, "scan")
+    if going is not None:
+        return jsonify({"ok": True, "cached": False, "joined": True,
+                        "job": going.snapshot(),
+                        "estimate_s": stratamod.estimate_seconds(plan)})
 
-    spec = {"path": sess.get("path"), "gid": gid, "tool": "strata"}
-    steps = [(stratamod.STAGE_READ, plan["n_channels"])]
+    spec = {"path": sess.get("path"), "gid": gid, "tool": "strata",
+            "label": _strata_label(ctx, sess)}
+    steps = [(stratamod.STAGE_READ, plan["n_read"])]
+    bad = list(ctx["bad"])
 
     def work(job):
         meta = stratamod.scan(sess, rep_, gid, job=job, workers=6,
-                              channels=only)
-        return {"status": stratamod.status(gid, sess), "meta": {
+                              channels=only, skip=bad)
+        return {"status": stratamod.status(gid, sess, bad), "meta": {
             k: meta.get(k) for k in ("n_bins", "channels", "end_s",
                                      "scanned_at", "lfp_fs")}}
 
     job = cfcmod.start(spec, steps, work, max(0.001, plan["megasamples"]))
+    _strata_job_keep(gid, "scan", job)
     STORE.record_activity([{
         "action": "strata.scan",
         "detail": {"gid": gid, "channels": plan["n_channels"],
@@ -13803,20 +14310,21 @@ def _strata_ripples(ctx, mk, channel):
     key = stratamod.derived_key("ripples", ctx["bins"].meta.get("stamp"),
                                 ctx["states"], ctx["params"].get(
                                     "still_buffer_s"), int(channel), p)
-    hit = stratamod.derived_get(ctx["gid"], "ripples", key)
-    if hit is not None:
-        return hit
-    got = stratamod.detect_ripples(ctx["bins"], int(channel), mk, p)
-    return stratamod.derived_put(ctx["gid"], "ripples", key, got)
+    return stratamod.derived(
+        ctx["gid"], "ripples", key,
+        lambda: stratamod.detect_ripples(ctx["bins"], int(channel), mk, p))
 
 
 def _strata_triggered(ctx, mk, kind, channel):
     key = stratamod.derived_key("trig", kind, ctx["bins"].meta.get("stamp"),
                                 ctx["states"], ctx["params"], int(channel),
                                 ctx["order"], ctx["bad"])
-    hit = stratamod.derived_get(ctx["gid"], "trig-" + kind, key)
-    if hit is not None:
-        return hit
+    return stratamod.derived(ctx["gid"], "trig-" + kind, key,
+                             lambda: _strata_triggered_work(ctx, mk, kind,
+                                                            channel))
+
+
+def _strata_triggered_work(ctx, mk, kind, channel):
     if kind == "ripple":
         rip = _strata_ripples(ctx, mk, channel)
         times = [e["t"] for e in rip.get("events") or []]
@@ -13831,16 +14339,45 @@ def _strata_triggered(ctx, mk, kind, channel):
     tr = stratamod.triggered(ctx["bins"], times, ctx["order"], ctx["bad"],
                              float(ctx["params"]["spacing_um"]),
                              half_ms=half)
-    out = dict(stratamod.triggered_public(tr), kind=kind,
-               channel=int(channel))
-    return stratamod.derived_put(ctx["gid"], "trig-" + kind, key, out)
+    return dict(stratamod.triggered_public(tr), kind=kind,
+                channel=int(channel))
+
+
+def _strata_hand_ref(ctx):
+    """The reference channel set by hand in Parameters, if it is one that
+    can be used: a bad channel is not read (its row is zeros), so it is
+    not one."""
+    ref = ctx["params"].get("ref_channel")
+    if ref in (None, ""):
+        return None
+    try:
+        ref = int(ref)
+    except (TypeError, ValueError):
+        return None
+    if ref in {int(x) for x in ctx["bad"]}:
+        return None
+    b = ctx.get("bins")
+    if b is not None and ref not in b.row:
+        return None
+    return ref
 
 
 def _strata_ref(ctx, mk, prof=None):
     """The reference channel: what was chosen, else CA1 pyramidal."""
-    ref = ctx["params"].get("ref_channel")
-    if ref is not None and int(ref) in ctx["bins"].row:
-        return int(ref)
+    ref = _strata_hand_ref(ctx)
+    if ref is not None:
+        return ref
+    # Once Step 1 is accepted, CA1 pyramidal is where it was accepted: the
+    # middle of the sheet's CA1 SP channels. A pyramidal layer moved by a
+    # vote used to fall back to Step 1's own pick on the next load, which
+    # moved the phase curves and missed the ICA cached against it.
+    if ((ctx["strata"].get("steps") or {}).get("1") or {}).get("status") == "done":
+        labels = ctx["rec"].get("labels") or {}
+        sp = [c for c in ctx["order"]
+              if labels.get(str(c)) == "ca1_sp" and c in ctx["bins"].row
+              and c not in {int(x) for x in ctx["bad"]}]
+        if sp:
+            return sp[len(sp) // 2]
     if prof is None:
         prof = stratamod.profile(ctx["bins"], mk, ctx["order"], ctx["bad"])
     s1 = stratamod.suggest_ca1(prof, ctx["params"])
@@ -13879,9 +14416,41 @@ def api_strata_triggered(gid):
 def _strata_ica_key(ctx, ref):
     keep = {k: ctx["params"].get("ica_" + k)
             for k in stratamod.ICA_DEFAULTS}
-    return stratamod.derived_key("ica", ctx["bins"].meta.get("stamp"),
+    return stratamod.derived_key("ica", stratamod.ICA_VERSION,
+                                 ctx["bins"].meta.get("stamp"),
                                  ctx["states"], ctx["order"], ctx["bad"],
                                  ctx["params"].get("spacing_um"), ref, keep)
+
+
+@app.route("/api/strata/<gid>/phasemap", methods=["POST"])
+def api_strata_phasemap(gid):
+    """Theta phase x depth gamma maps (beta): for every channel, how strong
+    slow, mid and fast gamma are at each moment of CA1 theta, on Theta Walk.
+    Worked out once per walk and reference and kept beside the scan."""
+    body = request.get_json(force=True) or {}
+    try:
+        _sess, ctx = _strata_context(gid, body)
+        mk = _strata_masks(ctx)
+        sp_over = (body.get("overrides") or {}).get("sp")
+        if _strata_hand_ref(ctx) is not None:
+            ref = _strata_hand_ref(ctx)
+        elif sp_over is not None and 0 <= int(sp_over) < len(ctx["order"]):
+            ref = ctx["order"][int(sp_over)]
+        else:
+            ref = _strata_ref(ctx, mk)
+        key = stratamod.derived_key("phasemap", stratamod.PHASE_VERSION,
+                                    ctx["bins"].meta.get("stamp"),
+                                    ctx["states"], ctx["order"], ctx["bad"],
+                                    ctx["params"].get("spacing_um"), ref)
+        out = stratamod.derived(
+            gid, "phasemap", key,
+            lambda: stratamod.phase_map(ctx["bins"], mk, ctx["order"],
+                                        ctx["bad"],
+                                        float(ctx["params"]["spacing_um"]),
+                                        ref))
+        return jsonify({"ok": True, "map": out})
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("phasemap", exc, gid)
 
 
 @app.route("/api/strata/<gid>/ica", methods=["POST"])
@@ -13893,8 +14462,8 @@ def api_strata_ica(gid):
         mk = _strata_masks(ctx)
         # The same reference the proposals use: sp moved by hand counts.
         sp_over = (body.get("overrides") or {}).get("sp")
-        if ctx["params"].get("ref_channel") is not None:
-            ref = int(ctx["params"]["ref_channel"])
+        if _strata_hand_ref(ctx) is not None:
+            ref = _strata_hand_ref(ctx)
         elif sp_over is not None and 0 <= int(sp_over) < len(ctx["order"]):
             ref = ctx["order"][int(sp_over)]
         else:
@@ -13904,22 +14473,32 @@ def api_strata_ica(gid):
         if hit is not None and not body.get("force"):
             return jsonify({"ok": True, "cached": True, "ica": hit})
         if body.get("peek"):
-            return jsonify({"ok": True, "cached": False, "ica": None})
+            return jsonify({"ok": True, "cached": False, "ica": None,
+                            "job": (lambda j: j.snapshot() if j else None)(
+                                _strata_job(gid, "ica"))})
+        going = _strata_job(gid, "ica")
+        if going is not None:
+            return jsonify({"ok": True, "cached": False, "joined": True,
+                            "job": going.snapshot()})
     except Exception as exc:                             # noqa: BLE001
         return _strata_fail("ica", exc, gid)
     params = {k: ctx["params"].get("ica_" + k)
               for k in stratamod.ICA_DEFAULTS}
 
     def work(job):
-        out = stratamod.run_ica(ctx["bins"], mk, ctx["order"], ctx["bad"],
-                                float(ctx["params"]["spacing_um"]), ref,
-                                params, job)
+        out = stratamod.run_ica_all(ctx["bins"], mk, ctx["order"],
+                                    ctx["bad"],
+                                    float(ctx["params"]["spacing_um"]), ref,
+                                    params, job)
         return stratamod.derived_put(gid, "ica", key, out)
 
     job = cfcmod.start({"path": body.get("path"), "gid": gid,
-                        "tool": "strata-ica"},
-                       [(stratamod.STAGE_ICA, len(ctx["order"]) + 3)], work,
+                        "tool": "strata-ica",
+                        "label": _strata_label(ctx, _sess)},
+                       [(stratamod.STAGE_ICA, (len(ctx["order"]) + 3)
+                         * len(stratamod.ICA_BANDS))], work,
                        1.0)
+    _strata_job_keep(gid, "ica", job)
     STORE.record_activity([{"action": "strata.ica",
                             "detail": {"gid": gid, "walk_s": mk["walk_s"]}}])
     return jsonify({"ok": True, "cached": False, "job": job.snapshot()})
@@ -14001,8 +14580,8 @@ def _strata_proposals(ctx, body=None):
     # moved to, else Step 1's own sp. The profile is redrawn against it, so
     # the phase curve and the proposal can never be about two different
     # channels.
-    if p.get("ref_channel") is not None and int(p["ref_channel"]) in row_of:
-        ref = int(p["ref_channel"])
+    if _strata_hand_ref(ctx) is not None and _strata_hand_ref(ctx) in row_of:
+        ref = _strata_hand_ref(ctx)
     elif over.get("sp") is not None and 0 <= int(over["sp"]) < n:
         ref = nums[int(over["sp"])]
     else:
@@ -24100,8 +24679,13 @@ def _vacc_staged(force=False, wait=True):
         reg_sig = STORE.sessions.signature()
     except Exception:                                    # noqa: BLE001
         reg_sig = None
+    # What each folder holds is in it too, not only where it is: whether two
+    # folders are copies of one recording is decided from their contents, and
+    # a copy still uploading changes them without changing its path.
     sig = None if reg_sig is None else (
-        len(found), hash(tuple(r["path"] for r in found)), reg_sig)
+        len(found), hash(tuple((r["path"], r.get("n_channels"),
+                                r.get("first_ncs_bytes"), r.get("header"))
+                               for r in found)), reg_sig)
     if sig is not None and _STAGED_MEMO.get("sig") == sig:
         staged, unknown = _STAGED_MEMO["out"]
         return dict(staged), list(unknown)
@@ -24136,6 +24720,23 @@ def _vacc_staged(force=False, wait=True):
         pool = native or rows
         exact = [r for r in pool if r["how"] == "exact"]
         best = exact or pool
+        if len(best) > 1 and _vacc_same_copies(best):
+            # Copies, not rivals: the same recording kept in more than one
+            # place -- netfiles holds most PTEN sessions under
+            # ProcessedPtenData, Jeremy3/HeadfixPilot and Data4FarrellLab,
+            # and those 226 were all refused as ambiguous, which shut every
+            # one of them out of the cluster. Which copy is read does not
+            # change the answer, so one is chosen by a fixed rule (the one
+            # still named by its acquisition time, then by path) and the
+            # others are kept on the row so the choice can be shown.
+            best = sorted(best, key=lambda r: (
+                not _ACQ_LEAF.match(r["path"].rstrip("/").rsplit("/", 1)[-1]),
+                r["path"]))
+            staged[gid] = dict(best[0], copies=[r["path"] for r in best[1:]])
+            for r in rows:
+                if r is not best[0]:
+                    unknown.append(r)
+            continue
         if len(best) > 1:
             # Two folders on the cluster both claiming to be this recording.
             # Nothing here can tell which, and picking one silently is how
@@ -24153,6 +24754,31 @@ def _vacc_staged(force=False, wait=True):
 
 
 _STAGED_MEMO = {"sig": None, "out": None}
+
+
+def _vacc_same_copies(rows):
+    """Are these cluster folders one recording kept in several places?
+
+    Yes only when the listing can say so for every one of them: the same
+    header line (the acquisition's own TimeCreated, to the second, and its
+    rate), the same number of channel files, and the same size of CSC1 to
+    the byte. Anything missing or different stays a conflict -- of the 280
+    on netfiles, six differ (one copy of M13 s17 has 128 channel files and
+    the other 64), and those are exactly the ones a person has to look at.
+    """
+    sig = set()
+    for r in rows:
+        key = (r.get("header"), r.get("n_channels"), r.get("first_ncs_bytes"))
+        if not all(key):
+            return False
+        sig.add(key)
+    return len(sig) == 1
+
+
+import re as _re                                                # noqa: E402
+
+# A folder named by its acquisition time, the way Neuralynx names them.
+_ACQ_LEAF = _re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
 
 
 def _vacc_estimate(sess, spec, plan):
@@ -24239,7 +24865,7 @@ def _vacc_remote_for(sess):
 
     got = vaccmod.resolve_gid(gid, paths, cfg, staged=staged)
     if got.get("state") in (vaccmod.NATIVE, vaccmod.STAGED) and got.get("remote"):
-        return got["remote"], got["state"]
+        return _vacc_same_folder(sess.get("path"), got["remote"], got["state"])
 
     denied = vaccmod.status().get("denied_roots") or []
     why = got.get("why") or "the cluster has no copy of it"
@@ -24247,6 +24873,44 @@ def _vacc_remote_for(sess):
         why += ("; and the share it maps onto (%s) is mounted but this "
                 "account cannot read it" % ", ".join(denied))
     raise RuntimeError("VACC cannot reach this recording: " + why)
+
+
+def _vacc_same_folder(local, remote, state):
+    """The cluster's copy of THIS folder, not merely of this recording's id.
+
+    A gid can hold more than one folder: a DEWEY day is one gid across its
+    FP1, SPC and FP2 folders, and a session recorded in two parts is one gid
+    across both. `resolve_gid` answers per gid, so a run opened from one of
+    them went to whichever the cluster's listing matched -- measured: J9
+    Precon2 opened from its FP2 folder ran on SPC, and reported the result
+    under FP2's name. When both folders are named by their acquisition time
+    and the times differ, the cluster's listing is searched for the folder
+    that ends the way the open one does; anything but exactly one is refused,
+    because analysing a different folder under this one's name is the worst
+    answer available.
+    """
+    mine = [p for p in _re.split(r"[\\/]+", local or "") if p]
+    theirs = [p for p in (remote or "").split("/") if p]
+    if (len(mine) < 2 or not theirs or mine[-1] == theirs[-1]
+            or not (_ACQ_LEAF.match(mine[-1]) and _ACQ_LEAF.match(theirs[-1]))):
+        return remote, state
+    tail = "/" + "/".join(mine[-2:]).lower()
+    try:
+        rows = _vacc_walk(wait=False)
+    except Exception:                                    # noqa: BLE001
+        rows = []
+    hits = [r for r in rows
+            if (r.get("path") or "").rstrip("/").lower().endswith(tail)]
+    if len(hits) == 1:
+        return (hits[0]["path"].rstrip("/"),
+                vaccmod.NATIVE if hits[0].get("native") else vaccmod.STAGED)
+    raise RuntimeError(
+        "VACC cannot reach this recording: the cluster folder filed under "
+        "this recording is %s, which is a different folder from the one open "
+        "here (%s), and %s. Upload this folder, or open the one the cluster "
+        "has." % (remote, "/".join(mine[-2:]),
+                  "no folder on the cluster ends the same way" if not hits else
+                  "%d folders on the cluster end the same way" % len(hits)))
 
 
 def _vacc_place_for_gid(gid):

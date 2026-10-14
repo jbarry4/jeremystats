@@ -147,8 +147,8 @@ BARRY.strata = (function () {
     if (!sess) return false;
 
     // The channel order as it is right now: a missing file changes it, so it is sent on every visit rather than trusted from the
-    // first one.
-    const channels = sess.info.channels.map((c) => c.number);
+    // first one. The first 64, read as an H3 (h3Channels).
+    const channels = h3Channels(sess).map((c) => c.number);
     let started;
     try {
       started = await apiPost('/api/layers/' + encodeURIComponent(gid)
@@ -228,6 +228,11 @@ BARRY.strata = (function () {
     document.documentElement.style.removeProperty('--bottom-bar');
     window.removeEventListener('resize', alignRail);
     document.removeEventListener('keydown', keys, true);
+    // The pane read as an H3 (layout) gets every channel back.
+    if (h3Pane) {
+      h3Pane = false;
+      BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    }
     if (BARRY.views.xplore.refreshAll) BARRY.views.xplore.refreshAll();
   }
 
@@ -242,7 +247,21 @@ BARRY.strata = (function () {
   let aidWin = null;
 
   function layout() {
-    BARRY.views.xplore.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    /* One pane, the recording as an H3. A recording with more than 64
+       channels, or a probe template that splits it into columns or
+       regions, gets the pane's channel override: its first 64 in its own
+       order, one line, whatever the template says. */
+    const all = (sess && sess.info.channels) || [];
+    const asH3 = all.length > H3_MAX || (sess && sess.probe && sess.probe !== 'h3');
+    const spec = { panel: 'traces' };
+    h3Pane = !!asH3;
+    if (asH3) {
+      const first = h3Channels(sess);
+      spec.channels = first.map((c) => all.indexOf(c));
+      spec.colLabel = 'Read as an H3: CSC ' + first[0].number + '\u2013'
+        + first[first.length - 1].number;
+    }
+    BARRY.views.xplore.setPanes([spec], { col: 0.5, row: 0.5 });
     openAids();
   }
 
@@ -250,7 +269,7 @@ BARRY.strata = (function () {
     // Reuse the window if it is still up: re-entering the mode should focus
     // the aids, not litter the desktop with copies.
     if (aidWin && !aidWin.closed) { try { aidWin.focus(); } catch (e) {} return; }
-    const every8 = (sess.info.channels || [])
+    const every8 = h3Channels(sess)
       .filter((c, i) => i % 8 === 0).map((c) => c.index);
     const specs = [
       { panel: 'csd' },
@@ -259,6 +278,12 @@ BARRY.strata = (function () {
       { panel: 'spectrogram', tfChannels: every8, tfMode: 'stack',
         fmin: 1, fmax: 250 },
     ];
+    // The same first 64 as the labelling window's pane, read as an H3.
+    if (h3Pane) {
+      const all = sess.info.channels || [];
+      const only = h3Channels(sess).map((c) => all.indexOf(c));
+      specs.forEach((sp) => { sp.channels = only; });
+    }
     // Folded on arrival. These four are for glancing at: the headers,
     // control strips and channel lists cost more of a short pane than
     // they are worth, and every one of them has a sliver to bring it
@@ -324,9 +349,16 @@ BARRY.strata = (function () {
   let painting = false;
   window.addEventListener('mouseup', () => { painting = false; });
 
-  /* Every channel of the recording: what the sheet covers, what progress
-     counts and what fill-down walks. */
-  const allChannels = () => (sess && sess.info.channels) || [];
+  /* Every channel the sheet covers, what progress counts and what
+     fill-down walks: the recording read as an H3 -- its own channel order
+     as depth order, the first 64 at most (2026-10-13: "assume everything
+     is H3 and just read the first 64 channels, even if it's 128"). A dual
+     implant's hippocampal array is its first 64. */
+  const H3_MAX = 64;
+  const h3Channels = (s) => ((s && s.info && s.info.channels) || [])
+    .slice(0, H3_MAX);
+  const allChannels = () => h3Channels(sess);
+  let h3Pane = false;          // the pane is showing the first 64 only
 
   /* The channels the main pane draws, in lane order -- the rail sits on
      those lanes, so it lists exactly those. With the even channels ticked,
@@ -392,11 +424,20 @@ BARRY.strata = (function () {
   function share() {
     if (!sess) return;
     const pub = BARRY.views.xplore && BARRY.views.xplore.publishStrata;
-    if (!pub) return;
-    pub(sess, sheet
-      ? { gid, labels: sheet.labels, regions,
-          picked: Array.from(picked), wash }
-      : { off: true });
+    if (pub) {
+      pub(sess, sheet
+        ? { gid, labels: sheet.labels, regions,
+            picked: Array.from(picked), wash }
+        : { off: true });
+    }
+    /* And the steps, whose channel the evidence window follows: a label
+       painted on the rail used to reach the live panes but not the
+       evidence, which kept its old layer lines (2026-10-13). The steps
+       coalesce their own sends, so a drag across forty channels is not
+       forty posts. */
+    if (sheet && BARRY.strataSteps && BARRY.strataSteps.active) {
+      BARRY.strataSteps.sheetChanged();
+    }
   }
 
   function render() {
@@ -404,7 +445,6 @@ BARRY.strata = (function () {
     bar();
     rail();
     share();
-    if (BARRY.strataSteps && BARRY.strataSteps.active) BARRY.strataSteps.sheetChanged();
     repaint();
   }
 

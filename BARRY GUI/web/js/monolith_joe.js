@@ -8,10 +8,13 @@
    where those pass; the SPSS files and a standalone script that reproduces
    them without Jarvis. backend/joe.py makes the numbers (joe.json).
 
-   One line a card, then ▸ More, with something to play with in place of
-   paragraphs: the windows on a trial, the mains and its harmonics, and the
-   old Minus FP against this tab's FP comparison. Load order: after
-   monolith.js and monolith_explain.js.
+   Its face is for someone who does not read statistics (2026-10-12):
+   traffic lights a comparison a row, a sentence over them, the checks in
+   their own small table, and a light clicked opening its before/after
+   picture with what changed in words. Everything else -- the windows, the
+   mains and its harmonics, the old Minus FP against this, every model's
+   numbers, the follow-ups, the SPSS files and the script -- is under one
+   hood. Load order: after monolith.js and monolith_explain.js.
    ========================================================================== */
 'use strict';
 
@@ -19,7 +22,7 @@ window.MONO_JOE = (function () {
   const M = () => window.MONO;
   const X = () => window.MONO_EXPLAIN;
   const NS = 'http://www.w3.org/2000/svg';
-  const P = { data: null, err: null, loading: false, band: 'theta', method: 'welch', seq: 0,
+  const P = { data: null, err: null, loading: false, band: 'theta', method: 'dickson', seq: 0, pick: { first: null, check: null },
               making: false, makeNote: '', makeErr: null, scripting: false, scriptNote: '', scriptErr: null };
   const $ = (id) => document.getElementById(id);
   const el = (...a) => M().el(...a);
@@ -40,6 +43,10 @@ window.MONO_JOE = (function () {
 
   function section(id, title, help, kids) {
     return el('div', { class: 'card', id }, [el('div', { class: 'hrow' }, [el('h2', { text: title }), help ? M().qh(help) : null])].concat(kids));
+  }
+  // A part of the hood: a heading, its ?, its contents (no card of its own).
+  function sub(id, title, help, kids) {
+    return el('div', { class: 'jsub', id }, [el('div', { class: 'hrow' }, [el('h3', { text: title }), help ? M().qh(help) : null])].concat(kids));
   }
   function seg(list, cur, pick, id) {
     const g = M().seg(list, cur, pick, id);
@@ -98,63 +105,302 @@ window.MONO_JOE = (function () {
     return m.kind === 'check' ? 'p < .05 (' + r.gate.by + '): a check, so nothing follows' : 'opens follow-ups (' + r.gate.by + ')';
   }
 
-  /* ---------------- the answer ---------------- */
-  // Every model x band x method: the test of interest's p, and Day x factor's
-  // beneath it; a cell that opens follow-ups is marked.
-  function answerTable() {
-    const D = P.data;
-    const cols = [];
-    for (const b of D.bands) for (const m of D.methods) cols.push([b, m]);
-    const head = el('tr', {}, [el('th', { text: 'Model' })].concat(cols.map(([b, m]) => el('th', {}, [
-      el('div', { text: b.label }), el('div', { class: 'small muted', text: m.id === 'welch' ? 'Welch' : 'Dickson' })]))));
-    const row = (m) => el('tr', { 'data-model': m.id, class: m.kind }, [el('th', {}, [el('div', { text: m.label }),
-      el('div', { class: 'small muted', text: m.kind === 'check' ? 'check · expected null' : (m.unit === 'region' ? 'power, per region' : 'coherence, per pair') })])]
-      .concat(cols.map(([b, me]) => {
-        if (m.unit === 'region' && me.id !== 'welch') return el('td', { class: 'muted small', text: 'power has one method' });
-        const r = resOf(m.id, b.id, me.id);
-        if (!r || !r.mixed || !r.mixed.ok) return el('td', { class: 'muted small', text: r && r.mixed ? (r.mixed.why || 'not fitted') : '—' });
-        const t3 = (r.mixed.terms || {})[three(m)], t2 = (r.mixed.terms || {})[two(m)];
-        const pass = r.gate && r.gate.passed;
-        const td = el('td', { class: 'jcell' + (pass ? ' pass' : ''), tabindex: '0', 'data-band': b.id, 'data-method': me.id,
-                              title: three(m) + ': ' + fmtF(t3) + '\n' + two(m) + ': ' + fmtF(t2) + (pass ? '\n' + gateSay(m, r) : '') },
-        [el('div', { class: 'jp', text: t3 ? 'p ' + fp(t3.p) : '—' }), el('div', { class: 'small muted', text: t2 ? two(m).replace('Day × ', 'Day×') + ' p ' + fp(t2.p) : '' }),
-          pass ? el('span', { class: 'chip jgate' + (m.kind === 'check' ? ' warn' : ''), text: m.kind === 'check' ? 'p < .05' : 'follow-ups' }) : null]);
-        const go = () => { P.band = b.id; P.method = me.id; render(); const c = $('jm-' + m.id); if (c) c.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
-        td.addEventListener('click', go);
-        td.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
-        return td;
-      })));
-    const first = D.models.filter((m) => m.kind === 'first'), checks = D.models.filter((m) => m.kind === 'check');
-    return el('div', { class: 'dtwrap' }, [el('table', { class: 'linetable jans', id: 'joeanswer' }, [el('thead', {}, [head]),
-      el('tbody', {}, first.map(row).concat([el('tr', { class: 'jsep' }, [el('th', { colspan: String(cols.length + 1), class: 'small muted', text: 'Checks: these should show nothing' })])],
-        checks.map(row)))])]);
+  /* ---------------- the answer: lights, words, one picture ---------------- */
+  // Shahriar, 2026-10-12: for someone who does not read statistics and gives
+  // it a few seconds. Traffic lights first (a row a comparison, a light a
+  // band), words instead of numbers, the checks in their own small table, a
+  // click opening the before/after picture, and everything else under one
+  // hood. Lab words stay (coherence, theta, gamma, Precon, FP, A/B/C/D);
+  // statistics words (F, df, Day × Phase, mixed model, Holm) never reach the
+  // face of the tab. 2026-10-13: Dickson only (Jeremy's mscohere, the lab's
+  // published method); Welch, the circuits' way, is said only as agreeing or
+  // not. No repeated-measures ANOVA (it would keep 3 of the 8 rats).
+  const SHOWN = () => (P.data && P.data.shown) || 'dickson';
+  const rowName = (m) => (m.no ? m.no + '. ' : '') + (m.title || m.label);
+  const bandName = (b) => (b.label || b.id).split(' ')[0];
+  const bandRange = (b) => (b.label || '').split(' ').slice(1).join(' ');
+  const VAL = (m) => (m.unit === 'region' ? 'power' : 'coherence');
+  const lit = (r) => !!(r && r.mixed && r.mixed.ok && r.gate && r.gate.passed);
+  // The result a light shows, and Welch's beside it (power has one way).
+  const shownOf = (mid, band) => resOf(mid, band, SHOWN());
+  const welchOf = (m, band) => (m.unit === 'region' ? null : resOf(m.id, band, 'welch'));
+  // Whether Welch lights the same as Dickson: true, false, or null (no Welch).
+  function welchSame(m, band) {
+    const w = welchOf(m, band), r = shownOf(m.id, band);
+    if (!w || !w.mixed || !w.mixed.ok || !r || !r.mixed || !r.mixed.ok) return null;
+    return lit(w) === lit(r);
   }
+  // How strong the evidence is, said in words; the p itself is one ▸ away.
+  const strength = (p) => (p == null ? 'no evidence' : p < 0.01 ? 'strong evidence' : p < ALPHA ? 'some evidence' : 'no evidence');
+  function verdict(m, r) {
+    const t2 = r.mixed.terms[two(m)], t3 = r.mixed.terms[three(m)];
+    const u = m.unit === 'pair' ? 'pair' : 'region';
+    const s2 = strength(t2 && t2.p), s3 = strength(t3 && t3.p);
+    return {
+      avg: 'All ' + u + 's together: ' + s2 + ' of a change.',
+      each: s3 === 'no evidence' ? cap(u) + ' by ' + u + ': none stands out.' : cap(u) + ' by ' + u + ': ' + s3 + ' that some changed more than others.',
+      s2, s3,
+    };
+  }
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  // a → b, in words: level when the move is small beside the other day's.
+  function moved(a, b, other) {
+    const d = b - a, big = Math.max(Math.abs(d), Math.abs(other || 0));
+    if (Math.abs(d) < 0.15 * big || Math.abs(d) < 1e-4) return 'stayed level';
+    return d > 0 ? 'went up' : 'went down';
+  }
+  // What the picture shows, in one sentence, from joe.json's own means.
+  function describe(m, r) {
+    const c = r.cells || {};
+    const [d1, d4] = P.data.tested;
+    const v = (d, lv) => (((c[d] || {})[lv] || {}).mean);
+    const n = (x) => (x == null ? '—' : sig(x));
+    const L = m.levels;
+    if (m.kind === 'check' || L.length !== 2) {
+      return [d1, d4].map((d) => 'On ' + d + ': ' + L.map((lv) => lv.label + ' ' + n(v(d, lv.id))).join(', ') + '.').join(' ')
+        + ' Lines that run side by side mean nothing changed between the days.';
+    }
+    const [a, b] = L;
+    const a1 = v(d1, a.id), b1 = v(d1, b.id), a4 = v(d4, a.id), b4 = v(d4, b.id);
+    if ([a1, b1, a4, b4].some((x) => x == null)) return 'Not measured on both days.';
+    if (m.factor === 'Source') {
+      return 'From ' + d1 + ' to ' + d4 + ', the trials’ ' + VAL(m) + ' ' + moved(a1, a4, b4 - b1) + ' (' + n(a1) + ' → ' + n(a4) + ') and FP’s '
+        + moved(b1, b4, a4 - a1) + ' (' + n(b1) + ' → ' + n(b4) + ').';
+    }
+    return 'From ' + a.label + ' to ' + b.label + ', ' + VAL(m) + ' ' + moved(a1, b1, b4 - a4) + ' on ' + d1 + ' (' + n(a1) + ' → ' + n(b1) + ') and '
+      + moved(a4, b4, b1 - a1) + ' on ' + d4 + ' (' + n(a4) + ' → ' + n(b4) + ').';
+  }
+  // Welch beside a light, in words.
+  function welchSay(m, band) {
+    const same = welchSame(m, band);
+    if (same == null) return m.unit === 'region' ? null : 'Welch, the circuits’ way: not fitted here.';
+    if (same) return 'Welch, the circuits’ way: the same answer.';
+    return 'Welch, the circuits’ way: ' + (lit(welchOf(m, band)) ? 'changed here, where Dickson did not.' : 'no change here, where Dickson changed.');
+  }
+
+  // The lights: a row a comparison, a light a band.
+  function lightTable(models, id, kind) {
+    const D = P.data;
+    const me = SHOWN();
+    const head = el('tr', {}, [el('th', { text: kind === 'check' ? 'Should stay grey' : 'Did it change from ' + D.tested[0] + ' to ' + D.tested[1] + '?' })]
+      .concat(D.bands.map((b) => el('th', {}, [el('div', { text: bandName(b) }), el('div', { class: 'small muted', text: bandRange(b) })]))));
+    const row = (m) => el('tr', { 'data-model': m.id, class: m.kind }, [el('th', {}, [el('span', { class: 'jno', text: m.no ? String(m.no) : '' }),
+      el('span', { text: m.title || m.label })])].concat(D.bands.map((b) => {
+      const r = shownOf(m.id, b.id);
+      if (!r || !r.mixed || !r.mixed.ok) return el('td', { class: 'muted small jnone', text: '–', title: r && r.mixed ? (r.mixed.why || 'Not fitted.') : 'Not measured.' });
+      const on = lit(r), w = verdict(m, r), ws = welchSay(m, b.id);
+      const say = bandName(b) + ': ' + (on ? (m.kind === 'check' ? 'lit (it should not be)' : 'changed') : 'no change') + '. ' + w.avg + ' ' + w.each + (ws ? ' ' + ws : '');
+      const td = el('td', { class: 'jcell' + (on ? ' pass' : ''), tabindex: '0', role: 'button', 'data-band': b.id, 'data-method': r.method,
+                            'aria-label': rowName(m) + '. ' + say, title: say },
+        [el('span', { class: 'jlight' + (on ? (m.kind === 'check' ? ' on warn' : ' on') : '') }),
+          welchSame(m, b.id) === false ? el('span', { class: 'jwdiff', text: 'Welch differs' }) : null]);
+      const go = () => pick(kind, { model: m.id, band: b.id, method: r.method });
+      td.addEventListener('click', go);
+      td.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+      return td;
+    })));
+    return el('div', { class: 'dtwrap' }, [el('table', { class: 'linetable jans jlights', id, 'data-method': me }, [el('thead', {}, [head]),
+      el('tbody', {}, models.map(row))])]);
+  }
+  // A light clicked: its picture and words under its table, nothing else redrawn.
+  function pick(kind, sel, hostEl, tableEl) {
+    P.pick[kind] = sel;
+    const host = hostEl || $(kind === 'check' ? 'joepickc' : 'joepick');
+    if (host) fillPick(host, kind);
+    const tb = tableEl || $(kind === 'check' ? 'joechecktbl' : 'joeanswer');
+    if (tb) {
+      for (const td of tb.querySelectorAll('td.jcell')) {
+        const on = sel && td.closest('tr').dataset.model === sel.model && td.dataset.band === sel.band;
+        td.classList.toggle('sel', !!on);
+      }
+    }
+  }
+  function fillPick(host, kind) {
+    host.innerHTML = '';
+    const sel = P.pick[kind];
+    const m = sel && modelOf(sel.model);
+    const r = m && shownOf(sel.model, sel.band);
+    if (!m || !r || !r.mixed || !r.mixed.ok) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    host.dataset.model = m.id; host.dataset.band = sel.band; host.dataset.method = r.method;
+    const b = P.data.bands.find((x) => x.id === sel.band);
+    const w = verdict(m, r);
+    const on = lit(r);
+    host.appendChild(el('div', { class: 'hrow' }, [el('h3', { text: rowName(m) }),
+      el('span', { class: 'chip', text: b.label }),
+      el('span', { class: 'jlight' + (on ? (m.kind === 'check' ? ' on warn' : ' on') : '') })]));
+    if (m.what) host.appendChild(el('p', { class: 'small muted jwhy', text: m.what }));
+    host.appendChild(el('p', { class: 'jwhat', text: describe(m, r) }));
+    const ws = welchSay(m, sel.band);
+    host.appendChild(el('ul', { class: 'jverdict' }, [el('li', { class: w.s2 === 'no evidence' ? 'no' : 'yes', text: w.avg }),
+      el('li', { class: w.s3 === 'no evidence' ? 'no' : 'yes', text: w.each }),
+      ws ? el('li', { class: 'jwelch ' + (welchSame(m, sel.band) === false ? 'differs' : 'same'), text: ws }) : null]));
+    host.appendChild(el('div', { class: 'jpickfig' }, [plotOf(m, r, { plain: true })]));
+    if (m.kind === 'first' && m.unit === 'pair' && on) host.appendChild(followBlock(m, r));
+    host.appendChild(X().more('the numbers', (body) => {
+      body.appendChild(termsTable(m, r));
+      body.appendChild(el('p', { class: 'small muted', text: 'The words above: strong evidence at p < .01, some evidence at p < .05 (uncorrected), no evidence otherwise. '
+        + 'A light is lit when either of its two tests reaches p < .05. ' + noRmSay(m, r) }));
+      return null;
+    }, { key: 'joe-num-' + kind }));
+  }
+  // The follow-ups of a result that changed, on its face (the plan: PLI,
+  // imaginary coherence, direction and PAC for whatever changes): the pairs
+  // that moved most, a light per family of measures, lit where one of its
+  // measures changed, said in words on hover; every number one ▸ away.
+  const FOLLOW_KEYS = ['pli', 'icoh', 'gc_ab', 'gc_ba', 'xlag', 'xpeak', 'pac_ab', 'pac_ba', 'pac_aa', 'pac_bb'];
+  const FAM = [['Not volume conduction', ['pli', 'icoh'], 'PLI, imaginary coherence'],
+               ['Direction', ['gc_ab', 'gc_ba', 'xlag'], 'Granger both ways, the amplitude lag'],
+               ['Amplitudes together', ['xpeak'], 'the amplitude cross-correlation’s peak'],
+               ['Phase–amplitude', ['pac_ab', 'pac_ba', 'pac_aa', 'pac_bb'], 'PAC between and within']];
+  function followShort(k, pr) {
+    return { pli: 'PLI', icoh: 'imaginary coherence', gc_ab: 'Granger ' + pr.a + ' → ' + pr.b, gc_ba: 'Granger ' + pr.b + ' → ' + pr.a,
+             xlag: 'lag', xpeak: 'peak', pac_ab: 'PAC ' + pr.a + ' → ' + pr.b, pac_ba: 'PAC ' + pr.b + ' → ' + pr.a,
+             pac_aa: 'PAC in ' + pr.a, pac_bb: 'PAC in ' + pr.b }[k] || k;
+  }
+  function followBlock(m, r) {
+    const D = P.data;
+    const f = r.follow;
+    const box = el('div', { class: 'jfollowup', id: 'joefollow' + (m.kind === 'check' ? 'c' : '') });
+    box.appendChild(el('h4', { text: 'Looked at more closely: the follow-ups' }));
+    if (!f || !(f.pairs || []).length) {
+      box.appendChild(el('p', { class: 'small', text: 'No pair moved enough on its own to follow up: the change is all pairs together.' }));
+      return box;
+    }
+    let n = 0, on = 0;
+    for (const pr of f.pairs) for (const k of FOLLOW_KEYS) { const x = pr.measures[k] || {}; if (x.p != null) { n++; if (x.p < ALPHA) on++; } }
+    const [a, b] = m.levels.map((lv) => lv.label);
+    box.appendChild(el('p', { class: 'small jfsay', text: 'The ' + f.pairs.length + ' pair' + (f.pairs.length === 1 ? '' : 's') + ' that moved most'
+      + (/none survives/.test(f.basis) ? ' (none stands out on its own once all ' + (r.units || []).length + ' pairs are allowed for, so read these as leads)' : '')
+      + ', each measured the same way in the same windows: ' + on + ' of ' + n + ' follow-ups lit; chance alone lights about ' + (Math.round(ALPHA * n * 10) / 10) + '.' }));
+    const head = el('tr', {}, [el('th', { text: 'Pair' })].concat(FAM.map(([t, _k, sub]) => el('th', {}, [el('div', { text: t }), el('div', { class: 'small muted', text: sub })]))));
+    const rows = f.pairs.map((pr) => el('tr', { 'data-pair': pr.pair }, [el('th', { text: pr.pair + (pr.bilateral ? ' · left vs right' : '') })].concat(FAM.map(([_t, ks]) => {
+      const lk = ks.filter((k) => (pr.measures[k] || {}).p != null && pr.measures[k].p < ALPHA);
+      const say = lk.length ? lk.map((k) => (D.follow_say[k] || k).replace(/\bA\b/g, pr.a).replace(/\bB\b/g, pr.b) + ': the change from ' + a + ' to ' + b + ' was '
+        + (pr.measures[k].delta > 0 ? 'larger' : 'smaller') + ' on Precon4 than on Precon1 (' + strength(pr.measures[k].p) + ', ' + pr.measures[k].n + ' rats)').join('. ') + '.'
+        : 'No change in ' + ks.map((k) => followShort(k, pr)).join(', ') + '.';
+      return el('td', { class: 'jfcell', title: say, 'data-lit': String(lk.length) }, [el('span', { class: 'jlight sm' + (lk.length ? ' on' : '') }),
+        lk.length ? el('span', { class: 'jfwhat', text: lk.map((k) => followShort(k, pr) + (pr.measures[k].delta > 0 ? ' ↑' : ' ↓')).join(', ') }) : null]);
+    }))));
+    box.appendChild(el('div', { class: 'dtwrap' }, [el('table', { class: 'linetable jfol' }, [el('thead', {}, [head]), el('tbody', {}, rows)])]));
+    box.appendChild(el('p', { class: 'small muted', text: '↑: the change from ' + a + ' to ' + b + ' was larger on Precon4 than on Precon1; ↓: smaller. A negative lag means the pair’s first region leads. Hover a light for its words.' }));
+    // Left against right within one structure, the proposal's bilateral coherence.
+    const bl = new Set(D.bilateral || []);
+    const lr = (r.post || []).filter((x) => bl.has(x.unit) && x.p != null);
+    if (lr.length) {
+      const moved = lr.filter((x) => x.p < ALPHA);
+      box.appendChild(el('p', { class: 'small jbilat', text: 'Left against right of one structure: ' + (moved.length
+        ? moved.map((x) => x.unit + ' changed (' + strength(x.p) + ')').join('; ') + '; ' + (lr.length - moved.length) + ' other' + (lr.length - moved.length === 1 ? '' : 's') + ' did not.'
+        : 'none of the ' + lr.length + ' changed.') }));
+    }
+    box.appendChild(X().more('every follow-up number', (body) => { body.appendChild(followTable(m, r)); return null; }, { key: 'joe-fol' }));
+    return box;
+  }
+
+  // Why the tab has no repeated-measures ANOVA, from this model's own rats.
+  function noRmSay(m, r) {
+    const all = (r.rats || []).length, full = r.complete_rats || [];
+    return 'No repeated-measures ANOVA (SPSS’s GLM): it can only use a rat with every ' + (m.unit === 'pair' ? 'pair' : 'region')
+      + ' on both days, and histology rules regions out for some rats, so it would keep ' + full.length + ' of the ' + all + ' rats'
+      + (full.length ? ' (' + full.join(', ') + ')' : '') + '. The mixed model keeps all ' + all + ', each with the ' + (m.unit === 'pair' ? 'pairs' : 'regions') + ' it has.';
+  }
+  // Welch against Dickson over some models, in one sentence.
+  function welchLine(models) {
+    const D = P.data;
+    let n = 0;
+    const differ = [];
+    for (const m of models) {
+      for (const b of D.bands) {
+        const s = welchSame(m, b.id);
+        if (s == null) continue;
+        n++;
+        if (!s) differ.push(m.no + ' ' + bandName(b).toLowerCase());
+      }
+    }
+    if (!n) return '';
+    return differ.length ? ' Welch, the circuits’ way of computing coherence, lights ' + differ.length + ' of these ' + n + ' lights differently (' + differ.join(', ') + ').'
+      : ' Welch, the circuits’ way of computing coherence, lights all ' + n + ' of these lights the same.';
+  }
+  // The one line over the lights.
   function summaryLine() {
     const D = P.data;
-    let nf = 0, nfp = 0, nc = 0, ncp = 0;
-    for (const r of D.results || []) {
-      const m = modelOf(r.model);
-      if (!r.mixed || !r.mixed.ok) continue;
-      if (m.kind === 'first') { nf++; if (r.gate && r.gate.passed) nfp++; } else { nc++; if (r.gate && r.gate.passed) ncp++; }
+    const first = D.models.filter((m) => m.kind === 'first');
+    const per = D.bands.map((b) => ({ b, rows: first.filter((m) => lit(shownOf(m.id, b.id))) }))
+      .sort((x, y) => y.rows.length - x.rows.length);
+    const n = first.length;
+    if (!per.some((x) => x.rows.length)) return 'Neither ' + per.map((x) => bandName(x.b).toLowerCase()).join(' nor ') + ' coherence changed in any of the ' + n + ' comparisons.' + welchLine(first);
+    const say = per.map((x, i) => (i === 0 ? bandName(x.b) + ' changed in ' + x.rows.length + ' of the ' + n + ' comparisons'
+      : bandName(x.b).toLowerCase() + (x.rows.length ? ' in ' + x.rows.length : ' in none'))).join('; ') + '.';
+    let each = 0;
+    for (const x of per) for (const m of x.rows) if (verdict(m, shownOf(m.id, x.b.id)).s3 !== 'no evidence') each++;
+    const pairs = each ? ' In ' + each + ', some pairs changed more than others.' : ' Each time it is all pairs together; no single pair stands out.';
+    return say + pairs + welchLine(first);
+  }
+  function checksLine() {
+    const D = P.data;
+    const checks = D.models.filter((x) => x.kind === 'check');
+    let n = 0, on = 0;
+    for (const m of checks) {
+      for (const b of D.bands) {
+        const r = shownOf(m.id, b.id);
+        if (!r || !r.mixed || !r.mixed.ok) continue;
+        n++;
+        if (lit(r)) on++;
+      }
     }
-    return nfp + ' of ' + nf + ' first-pass model fits change from Precon1 to Precon4 at p < .05, and ' + ncp + ' of ' + nc
-      + ' checks (which should show nothing).';
+    const chance = ALPHA * n;
+    return on + ' of ' + n + ' lit; chance alone lights about ' + (Math.round(chance * 10) / 10) + '. '
+      + (on <= Math.max(1, Math.ceil(2 * chance)) ? 'So the sounds themselves don’t explain the changes above.'
+        : 'More than chance: the sound itself may matter. Click a lit one.') + welchLine(checks);
+  }
+  function realLine() {
+    const A = P.data.agreement;
+    if (!A) return el('p', { class: 'small muted', id: 'joereal', text: 'The separate script, written with nothing from Jarvis, has not been run on these yet (under the hood).' });
+    const bad = A.files.filter((x) => !x.ok).length;
+    return el('p', { class: 'physanswer ' + (A.ok ? 'ok' : 'warn'), id: 'joereal' }, [el('span', { class: 'head', text: A.ok
+      ? 'A separate script, written with nothing from Jarvis, gets every one of these numbers from the recordings.'
+      : 'The separate script disagrees in ' + bad + ' of ' + A.files.length + ' files: see under the hood.' })]);
   }
   function intro() {
     const D = P.data;
-    return section('joeintro', '8 · Joe’s data: the proposal’s tests', 'joe', [
+    const first = D.models.filter((m) => m.kind === 'first');
+    if (!P.pick.first) {
+      // The first lit light, or the first light, so there is a picture at once.
+      outer: for (const m of first) {
+        for (const b of D.bands) {
+          if (lit(shownOf(m.id, b.id))) { P.pick.first = { model: m.id, band: b.id }; break outer; }
+        }
+      }
+      if (!P.pick.first && first.length) P.pick.first = { model: first[0].id, band: D.bands[0].id };
+    }
+    const host = el('div', { class: 'jpick', id: 'joepick' });
+    const lights = lightTable(first, 'joeanswer', 'first');
+    const card = section('joeintro', '8 · Joe’s data', 'joe', [
       el('p', { class: 'takeaway', id: 'joesay', text: summaryLine() }),
-      answerTable(),
-      el('p', { class: 'xfacts', id: 'joefacts' }, [el('span', { text: (D.rats || []).length + ' rats' }), el('span', { text: (D.pairs || []).length + ' region pairs' }),
-        el('span', { text: 'Precon1 vs Precon4 tested; 2 and 3 drawn' }), el('span', { text: 'mixed model, RM-ANOVA beside it' }),
-        el('span', { text: 'p uncorrected, except the post hocs (Holm)' })]),
-      X().more('what each cell is', (body) => {
-        body.appendChild(el('p', { class: 'small', text: 'Each cell is one model fitted in one band with one way of computing coherence. The big p is the test of interest, '
-          + 'Day × factor × Pair: did the change from Precon1 to Precon4 differ between the levels in some pairs more than others? Beneath it, Day × factor: did it '
-          + 'differ on average over the pairs? A model whose either one passes p < .05 opens its follow-ups. Click a cell for its plot.' }));
-        return null;
-      }, { key: 'joe-cell', eager: true }),
+      lights,
+      el('p', { class: 'small muted jlegend' }, [el('span', { class: 'jleg' }, [el('span', { class: 'jlight on' }), ' changed']),
+        el('span', { class: 'jleg' }, [el('span', { class: 'jlight' }), ' no change']),
+        el('span', { class: 'jlegt', text: '·  coherence by Dickson 2022 (Jeremy’s mscohere)' }), el('span', { class: 'jlegt', text: '·  click a light for its picture' })]),
+      host,
     ]);
+    pick('first', P.pick.first, host, lights.querySelector('table'));
+    return card;
+  }
+  function checksCard() {
+    const D = P.data;
+    const host = el('div', { class: 'jpick', id: 'joepickc', hidden: 'hidden' });
+    const lights = lightTable(D.models.filter((m) => m.kind === 'check'), 'joechecktbl', 'check');
+    const card = section('joechecks', 'Checks: these should stay grey', 'joe.checks', [
+      el('p', { class: 'takeaway', id: 'joechecksay', text: checksLine() }),
+      lights,
+      host,
+      realLine(),
+    ]);
+    if (P.pick.check) pick('check', P.pick.check, host, lights.querySelector('table'));
+    return card;
   }
 
   // A phone: each picture is drawn about as wide as its box (narrower
@@ -212,7 +458,7 @@ window.MONO_JOE = (function () {
     const chips = el('div', { class: 'xsteps' });
     const say = (m) => {
       const ws = MODEL_WINS[m.id];
-      return m.label + ': ' + ws.map((w) => WIN[w][2]).join(' against ') + (m.kind === 'check' ? ', each cue by what it was (the sound, or its letter)' : '') + '.';
+      return (m.no ? m.no + '. ' : '') + (m.title || m.label) + ': ' + ws.map((w) => WIN[w][2]).join(' against ') + (m.kind === 'check' ? ', each cue by what it was (the sound, or its letter)' : '') + '.';
     };
     let cur = null;
     const pick = (m) => {
@@ -232,8 +478,9 @@ window.MONO_JOE = (function () {
     const CHIP = { m1: 'Baseline vs both cues', m2: 'Baseline vs cue 1', m3: 'Baseline vs cue 2', m4: 'The switch', m5: 'Cue 1 vs cue 2',
                    m6a: 'Trials vs FP, 20 s', m6b: 'Trials vs FP, 10 s', m7: 'Power', c1: 'Noise vs Click', c2: 'Four sounds', c3: 'A/B/C/D',
                    c4: 'High vs Low' };
-    for (const m of D.models) chips.appendChild(el('button', { type: 'button', class: 'xstep', 'data-model': m.id, text: CHIP[m.id] || m.label,
-                                                            title: m.label, onclick: () => { run++; pick(m); } }));
+    for (const m of D.models) chips.appendChild(el('button', { type: 'button', class: 'xstep', 'data-model': m.id,
+                                                            text: (m.no ? m.no + ' · ' : '') + (CHIP[m.id] || m.label),
+                                                            title: m.title || m.label, onclick: () => { run++; pick(m); } }));
     let run = 0;
     async function play() {
       const tk = ++run;
@@ -449,8 +696,8 @@ window.MONO_JOE = (function () {
   function defsCard() {
     const D = P.data;
     const tl = el('div', { id: 'joetimeline' });
-    const card = section('joedefs', 'What is measured', 'joe.defs', [
-      el('p', { class: 'takeaway', text: 'Seven windows a trial, two bands, coherence computed two ways, and random FP snippets.' }),
+    const card = sub('joedefs', 'How we measured', 'joe.defs', [
+      el('p', { class: 'takeaway', text: 'Seven windows a trial, two bands, coherence by Dickson 2022, and random FP snippets.' }),
       tl,
       X().more('mains and its harmonics', (body) => {
         const h = el('div', { id: 'joeharm' });
@@ -460,8 +707,8 @@ window.MONO_JOE = (function () {
       X().more('FP: the old Minus FP and this', (body) => {
         const h = el('div', { id: 'joefp' });
         body.appendChild(h);
-        // The real numbers: trials vs FP (20 s), theta, Welch, mean over rats.
-        const r = resOf('m6a', 'theta', 'welch');
+        // The real numbers: trials vs FP (20 s), theta, Dickson, mean over rats.
+        const r = resOf('m6a', 'theta', SHOWN());
         const c = r && r.cells;
         const ex = c && c.Precon1 && c.Precon4 && c.Precon1.trials.mean != null && c.Precon1.fp.mean != null
           ? { c1: c.Precon1.trials.mean, c4: c.Precon4.trials.mean, f1: c.Precon1.fp.mean, f4: c.Precon4.fp.mean,
@@ -476,10 +723,10 @@ window.MONO_JOE = (function () {
           'Windows, from each trial’s own cue times: the 20 s and the 10 s before cue 1, cue 1, cue 2, both cues (20 s), the last 2 s of cue 1 (8–10 s) and the first 2 s of cue 2 (10–12 s). A baseline is as long as what it is compared with.',
           'FP snippets: random 10 s and 20 s pieces of the day’s FP1 and FP2 recordings, as many as the day has trials, 10 s from either end, seeded so they are the same every time.',
           'Bands: theta 5–12 Hz and gamma 30–90 Hz, from the proposal. Mains and its harmonics are notched; the notch’s own 59–61 Hz bins are left out of gamma.',
-          'Coherence, Welch: the circuits’ method (1 s Hann segments, half overlapping, FFT twice as long). Dickson: Jeremy’s MATLAB, a 59–61 Hz Butterworth notch, then mscohere with hanning(1024), 512 overlap, 2048 points.',
+          'Coherence: Dickson 2022, Jeremy’s MATLAB: a 59–61 Hz Butterworth notch, then mscohere with hanning(1024), 512 overlap, 2048 points. Welch, the circuits’ way (1 s Hann segments, half overlapping, FFT twice as long), is computed too, only to say whether it agrees.',
           'Pairs: every pair of the ' + (D.regions || []).length + ' regions, kept in a model when at least ' + D.min_rats + ' rats have it at every level on both days.',
           'Clipping: measured here for every window (the rail, or a flat top, for 16 samples or more), as Spark measures it; a clipped wire gives way to its region’s next.',
-          'Models: a mixed model, Day × factor × Pair, each term tested against the rats’ own spread in it (the rat random), a rat missing a pair keeping its others; and, beside it, the repeated-measures ANOVA on the rats with every cell. With every rat complete the two give the same F.',
+          'Models: a mixed model, Day × factor × Pair, each term tested against the rats’ own spread in it (the rat random), a rat missing a pair keeping its others. No repeated-measures ANOVA: it would keep only the rats with every pair (see Every test).',
         ];
         body.appendChild(el('ul', { class: 'small' }, lis.map((x) => el('li', { text: x }))));
         return null;
@@ -490,19 +737,22 @@ window.MONO_JOE = (function () {
   }
 
   /* ---------------- each model ---------------- */
-  function plotOf(m, r) {
+  function plotOf(m, r, opts) {
     const D = P.data;
     const levels = m.levels;
+    // `plain`: the face of the tab's picture, its legend the days only.
+    const plain = !!(opts && opts.plain);
     // On a phone the legend and statistics go under the plot, so the picture
     // is drawn about as wide as its box and its words stay their size.
     const narrow = phone();
     const VW = narrow ? 330 : 480, L = narrow ? 46 : 52, R = narrow ? 316 : 300, T = 22, B = 178;
-    const VH = narrow ? B + 34 + 104 : 230;
+    const VH = narrow ? B + 34 + (plain ? 52 : 104) : (plain ? 200 : 230);
     const lgX = narrow ? 8 : R + 14, lgY = narrow ? B + 34 : T + 6, stX = narrow ? 168 : R + 14, stY = narrow ? B + 38 : T + 64;
     const vals = [];
     for (const d of D.days) for (const lv of levels) {
       const c = ((r.cells || {})[d] || {})[lv.id];
-      if (c && c.mean != null) { vals.push(c.mean - (c.se || 0), c.mean + (c.se || 0)); }
+      // The plain picture is scaled to the means (the rats' spread is under the hood).
+      if (c && c.mean != null) { if (plain) vals.push(c.mean); else vals.push(c.mean - (c.se || 0), c.mean + (c.se || 0)); }
     }
     const svg = sv('svg', { viewBox: '0 0 ' + VW + ' ' + VH, width: '100%', class: 'mfig jplot', role: 'img', style: 'max-width:' + VW + 'px',
                             'aria-label': m.label + ': Precon1 and Precon4 at each ' + m.factor.toLowerCase(), 'data-model': m.id });
@@ -535,7 +785,7 @@ window.MONO_JOE = (function () {
         if (!c || c.mean == null) return;
         const x = Xl(i) + dx;
         path += (path ? 'L' : 'M') + x.toFixed(1) + ',' + Y(c.mean).toFixed(1);
-        if (c.se != null && D.tested.includes(d)) {
+        if (!plain && c.se != null && D.tested.includes(d)) {
           svg.appendChild(sv('line', { x1: x, x2: x, y1: Y(c.mean - c.se), y2: Y(c.mean + c.se), stroke: col, 'stroke-width': 1.2, opacity: op }));
           for (const e of [c.mean - c.se, c.mean + c.se]) svg.appendChild(sv('line', { x1: x - 3, x2: x + 3, y1: Y(e), y2: Y(e), stroke: col, 'stroke-width': 1.2, opacity: op }));
         }
@@ -551,6 +801,7 @@ window.MONO_JOE = (function () {
       svg.appendChild(sv('line', { x1: lgX, x2: lgX + 20, y1: y, y2: y, stroke: c, 'stroke-width': 2.2, 'stroke-dasharray': dash }));
       svg.appendChild(sv('text', { x: lgX + 24, y: y + 3.5, 'font-size': 10, fill: css('--ink-2') }, t));
     });
+    if (plain) return svg;
     const stats = [three(m).replace(' × ', '×').replace(' × ', '×') + ':', t3 ? 'F(' + t3.df1 + ', ' + t3.df2 + ') = ' + t3.F.toFixed(2) : '—', t3 ? 'p ' + fp(t3.p) : '',
       two(m).replace(' × ', '×') + ':', t2 ? 'F(' + t2.df1 + ', ' + t2.df2 + ') = ' + t2.F.toFixed(2) : '—', t2 ? 'p ' + fp(t2.p) : ''];
     stats.forEach((s, i) => svg.appendChild(sv('text', { x: stX, y: stY + i * 14, 'font-size': 10, fill: css(i % 3 === 0 ? '--ink-2' : '--ink'),
@@ -605,18 +856,17 @@ window.MONO_JOE = (function () {
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
   }
   function termsTable(m, r) {
-    const names = new Set(Object.keys(((r.mixed || {}).terms) || {}).concat(Object.keys(((r.rm || {}).terms) || {})));
+    const names = new Set(Object.keys(((r.mixed || {}).terms) || {}));
     const order = ['Day', m.factor, unitWord(m), two(m), 'Day × ' + unitWord(m), m.factor + ' × ' + unitWord(m), three(m)];
     const rows = order.filter((n) => names.has(n));
     return el('div', { class: 'dtwrap' }, [el('table', { class: 'linetable jterms' }, [
-      el('thead', {}, [el('tr', {}, ['Term', 'Mixed model', 'RM-ANOVA (' + ((r.rm || {}).n_rats != null ? r.rm.n_rats + ' of ' + r.rm.of + ' rats' : '—') + ')'].map((h) => el('th', { text: h })))]),
-      el('tbody', {}, rows.map((n) => el('tr', { class: n === three(m) ? 'jkey' : null }, [el('th', { text: n }),
-        el('td', { class: 'num', text: fmtF(((r.mixed || {}).terms || {})[n]) }),
-        el('td', { class: 'num', text: (r.rm || {}).ok ? fmtF(r.rm.terms[n]) : (n === rows[0] ? (r.rm || {}).why || '—' : '') })])))]),
+      el('thead', {}, [el('tr', {}, ['Term', 'Mixed model'].map((h) => el('th', { text: h })))]),
+      el('tbody', {}, rows.map((n) => el('tr', { class: n === three(m) || n === two(m) ? 'jkey' : null }, [el('th', { text: n }),
+        el('td', { class: 'num', text: fmtF(((r.mixed || {}).terms || {})[n]) })])))]),
       el('p', { class: 'small muted', text: 'Mixed model: ' + fmt((r.mixed || {}).n_obs) + ' rat × ' + (m.unit === 'pair' ? 'pair' : 'region')
-        + ' sets with every cell, from ' + ((r.mixed || {}).n_rats || 0) + ' rats, each term tested against the rats’ own spread in it (the rat random). '
-        + 'With every rat complete its F are the RM-ANOVA’s; a rat missing a ' + (m.unit === 'pair' ? 'pair' : 'region') + ' keeps its others. '
-        + 'SPSS MIXED (Satterthwaite), from the exported syntax, is the reference.' })]);
+        + ' sets with every cell, from ' + ((r.mixed || {}).n_rats || 0) + ' rats, each term tested against the rats’ own spread in it (the rat random); '
+        + 'a rat missing a ' + (m.unit === 'pair' ? 'pair' : 'region') + ' keeps its others. ' + two(m) + ' is “all ' + (m.unit === 'pair' ? 'pairs' : 'regions')
+        + ' together” on the face of the tab, ' + three(m) + ' is “' + (m.unit === 'pair' ? 'pair by pair' : 'region by region') + '”.' })]);
   }
   function postTable(m, r) {
     const two2 = m.levels.length === 2;
@@ -632,7 +882,7 @@ window.MONO_JOE = (function () {
     const D = P.data;
     const f = r.follow;
     if (!f || !f.pairs.length) return el('p', { class: 'small muted', text: 'No single pair passes on its own, so there is nothing to follow up.' });
-    const keys = ['pli', 'icoh', 'gc_ab', 'gc_ba', 'xlag', 'pac_ab', 'pac_ba', 'pac_aa', 'pac_bb'];
+    const keys = FOLLOW_KEYS;
     const kids = [el('p', { class: 'small', text: 'The pairs ' + f.basis + ' keeps, each measured the same way, in the same windows. Each row: the Day × '
       + m.factor.toLowerCase() + ' contrast of that measure, and its p across rats (uncorrected).' })];
     for (const pr of f.pairs) {
@@ -649,10 +899,11 @@ window.MONO_JOE = (function () {
     return el('div', {}, kids);
   }
   function modelCard(m) {
-    const r = resOf(m.id, P.band, m.unit === 'region' ? 'welch' : P.method);
+    const r = resOf(m.id, P.band, SHOWN());
     const card = el('div', { class: 'jmodel' + (m.kind === 'check' ? ' check' : ''), id: 'jm-' + m.id, 'data-model': m.id });
-    card.appendChild(el('div', { class: 'hrow' }, [el('h3', { text: m.label }), el('span', { class: 'chip' + (m.kind === 'check' ? '' : ' all'),
+    card.appendChild(el('div', { class: 'hrow' }, [el('h3', { text: rowName(m) }), el('span', { class: 'chip' + (m.kind === 'check' ? '' : ' all'),
       text: m.kind === 'check' ? 'check · expected null' : 'first pass' })]));
+    if (m.what) card.appendChild(el('p', { class: 'small muted jwhy', text: m.what }));
     if (!r || !r.mixed || !r.mixed.ok) {
       card.appendChild(el('p', { class: 'small muted', text: r && r.mixed ? 'Not fitted: ' + (r.mixed.why || 'too few rats') + '.' : 'Not measured.' }));
       return card;
@@ -662,12 +913,12 @@ window.MONO_JOE = (function () {
       r.gate && r.gate.passed ? el('span', { class: 'chip jgate' + (m.kind === 'check' ? ' warn' : ''), text: gateSay(m, r) }) : null]));
     const plot = plotOf(m, r), strip = stripOf(m, r);
     card.appendChild(el('div', { class: 'jfigs' }, [el('div', {}, [plot]), el('div', {}, [strip])]));
-    const nm = 'joe_' + m.id + '_' + P.band + '_' + r.method;
+    const nm = 'joe_' + (m.stem || m.id).replace(/[^A-Za-z0-9]+/g, '_') + '_' + P.band;
     card.appendChild(el('div', { class: 'hrow jexp' }, [
       el('button', { type: 'button', class: 'more-btn', text: 'SVG', onclick: () => exportFig(plot, nm, 'svg') }),
       el('button', { type: 'button', class: 'more-btn', text: 'PNG', onclick: () => exportFig(plot, nm, 'png') }),
       el('span', { class: 'small muted', text: r.n_units + ' ' + (m.unit === 'pair' ? 'pairs' : 'regions') + (r.left_out && r.left_out.length ? '; ' + r.left_out.length + ' left out (too few rats)' : '') })]));
-    card.appendChild(X().more('every term, both models', (body) => { body.appendChild(termsTable(m, r)); return null; }, { key: 'jt-' + m.id }));
+    card.appendChild(X().more('every term', (body) => { body.appendChild(termsTable(m, r)); return null; }, { key: 'jt-' + m.id }));
     card.appendChild(X().more('which ' + (m.unit === 'pair' ? 'pairs' : 'regions') + ' drive it', (body) => { body.appendChild(postTable(m, r)); return null; },
       { key: 'jp-' + m.id }));
     if (r.follow) {
@@ -693,35 +944,100 @@ window.MONO_JOE = (function () {
     }
     return card;
   }
+  // Why there is no repeated-measures ANOVA, with the rats each model has.
+  function noRmCard() {
+    const D = P.data;
+    const r = resOf('m1', P.band, SHOWN()) || (D.results || []).find((x) => x.complete_rats);
+    if (!r || !r.complete_rats) return null;
+    const all = (r.rats || []).length, full = r.complete_rats;
+    return el('div', { class: 'jnorm', id: 'joenorm' }, [el('h4', { text: 'Why there is no repeated-measures ANOVA' }),
+      el('p', { class: 'small', text: 'SPSS’s repeated-measures GLM can only use a rat that has every pair on both days. Histology rules regions out for some rats, '
+        + 'and every pair touching such a region is missing for that rat, so only ' + full.length + ' of the ' + all + ' rats (' + (full.join(', ') || 'none') + ') have '
+        + 'every pair. The GLM would drop the other ' + (all - full.length) + ' and rest on ' + Math.max(0, full.length - 1) + ' degree' + (full.length === 2 ? '' : 's')
+        + ' of freedom. The mixed model keeps all ' + all + ', each with the pairs it has; with every rat complete the two give the same F (tools/check_joe.py checks it).' })]);
+  }
   function modelsCard() {
     const D = P.data;
     const body = [
-      el('p', { class: 'takeaway', text: 'Each model, Precon1 against Precon4, in the band and coherence method chosen here.' }),
-      el('div', { class: 'hrow' }, [seg(D.bands.map((b) => [b.id, b.label]), P.band, (id) => { P.band = id; render(); }, 'joeband'),
-        seg(D.methods.map((m) => [m.id, m.id === 'welch' ? 'Welch' : 'Dickson 2022']), P.method, (id) => { P.method = id; render(); }, 'joemethod')]),
+      el('p', { class: 'xfacts', id: 'joefacts' }, [el('span', { text: (D.rats || []).length + ' rats' }), el('span', { text: (D.pairs || []).length + ' region pairs' }),
+        el('span', { text: 'Precon1 vs Precon4 tested; 2 and 3 drawn' }), el('span', { text: 'coherence by Dickson 2022' }), el('span', { text: 'mixed model' }),
+        el('span', { text: 'p uncorrected, except the post hocs (Holm)' })]),
+      el('p', { class: 'small', text: 'Each model, Precon1 against Precon4, in the band chosen here. A light on the face of the tab is one model in one band: '
+        + 'lit when Day × level × Pair (did some pairs change more than others?) or Day × level (did all pairs together?) reaches p < .05.' }),
+      el('div', { class: 'hrow' }, [seg(D.bands.map((b) => [b.id, b.label]), P.band, (id) => { P.band = id; render(); }, 'joeband')]),
+      noRmCard(),
     ];
     body.push(el('h3', { class: 'jgroup', text: 'First pass' }));
     for (const m of D.models.filter((x) => x.kind === 'first')) body.push(modelCard(m));
     body.push(el('h3', { class: 'jgroup', text: 'Checks: these should show nothing' }));
     for (const m of D.models.filter((x) => x.kind === 'check')) body.push(modelCard(m));
-    return section('joemodels', 'The models', 'joe.models', body);
+    return sub('joemodels', 'Every test, with its numbers', 'joe.models', body);
   }
 
   /* ---------------- take it away ---------------- */
+  // The zip as folders, each with what it holds; folded to a line a folder.
+  function treeOf(paths) {
+    const top = [], dirs = new Map();
+    for (const p of paths || []) {
+      const i = p.indexOf('/');
+      if (i < 0) { top.push(p); continue; }
+      const d = p.slice(0, i);
+      if (!dirs.has(d)) dirs.set(d, []);
+      dirs.get(d).push(p.slice(i + 1));
+    }
+    const SAY = { 'README.txt': 'start here: what everything is, how to run it, how to recreate each result',
+                  'Results summary.csv': 'every comparison, its answer in words and its numbers' };
+    const DSAY = (d) => (/^1 /.test(d) ? 'the 8 planned comparisons, theta and gamma'
+      : /^2 /.test(d) ? 'the 4 sound checks' : /^3 /.test(d) ? 'for each result that changed: its data, and syntax that gives tab 8’s numbers back'
+      : /^4 /.test(d) ? 'for each result that changed: its follow-ups (PLI, imaginary coherence, Granger, cross-correlation, PAC), and syntax that runs every one' : '');
+    return el('ul', { class: 'jtree', id: 'joetree' }, top.map((f) => el('li', {}, [el('b', { text: f }), el('span', { class: 'muted', text: ' · ' + (SAY[f] || '') })]))
+      .concat(Array.from(dirs.entries()).map(([d, fs]) => el('li', { 'data-dir': d }, [el('b', { text: d + '/' }),
+        el('span', { class: 'muted', text: ' · ' + DSAY(d) + ' (' + fs.length + ' files)' }),
+        X().more('the files', (body) => { body.appendChild(el('ul', { class: 'small jfiles' }, fs.map((f) => el('li', { text: f })))); return null; },
+          { key: 'joe-dir-' + d.charAt(0), eager: true })]))));
+  }
+  function recreateList() {
+    const S = P.data.spss || {};
+    const pos = S.positive || [];
+    if (!pos.length) return el('p', { class: 'small', id: 'joeredo', text: 'Nothing changed, so there is nothing to recreate.' });
+    const kids = [el('ol', { class: 'small jsteps' }, [
+      el('li', { text: 'Download the zip and unzip it.' }),
+      el('li', { text: 'In SPSS: File › Open › Syntax, then the result’s file in “3 Recreate the positive results”.' }),
+      el('li', { text: 'Change its CD line (near the top) to that folder, then Run › All.' }),
+      el('li', { text: 'In “Type III Tests of Fixed Effects”, the Intercept row is all pairs together and the pair row is pair by pair. F should be tab 8’s, to rounding; SPSS’s own df (Satterthwaite) can move p a little.' }),
+      el('li', { text: 'The same file then runs a check anyone can do by hand: each rat’s mean difference over its pairs, a one-sample t-test against 0. It comes close, not exactly, because rats have different numbers of pairs.' }),
+    ])];
+    for (const x of pos) {
+      const q = x.quick;
+      kids.push(el('div', { class: 'jredo', 'data-model': x.model, 'data-band': x.band }, [
+        el('div', { class: 'hrow' }, [el('b', { text: x.no + '. ' + x.title }), el('span', { class: 'chip', text: x.band })]),
+        el('p', { class: 'small' }, [el('span', { text: 'Expect: Intercept ' }), el('b', { text: 'F = ' + x.two.F.toFixed(2) }),
+          el('span', { text: ' (tab 8: F(' + x.two.df1 + ', ' + x.two.df2 + '), p ' + fp(x.two.p) + '); pair ' }), el('b', { text: 'F = ' + x.three.F.toFixed(2) }),
+          el('span', { text: ' (tab 8: F(' + x.three.df1 + ', ' + x.three.df2 + '), p ' + fp(x.three.p) + ')' + (q ? '; the t-test t(' + q.df + ') = ' + q.t.toFixed(2) + ', p ' + fp(q.p) : '') + '.' })]),
+        el('p', { class: 'small muted', text: x.files.join('  ·  ') }),
+      ]));
+    }
+    return el('div', { id: 'joeredo' }, kids);
+  }
   function exportsCard() {
     const D = P.data;
     const A = D.agreement;
-    const files = (D.exports || []).slice();
+    const S = D.spss || {};
     const kids = [
-      el('p', { class: 'takeaway', text: 'One .csv and one .sps per model, band and method. Open the .sps in SPSS: it reads the .csv, declares 999 as missing and runs both models.' }),
-      el('div', { class: 'hrow' }, [el('a', { class: 'more-btn', id: 'joezip', href: FILE('joe_tab8_spss.zip'), download: 'joe_tab8_spss.zip', text: 'Download everything (.zip)' }),
-        el('a', { class: 'more-btn', id: 'joescript', href: FILE('joe_standalone.py'), download: 'joe_standalone.py', text: 'The standalone script (.py)' }),
+      el('p', { class: 'takeaway', text: 'Everything SPSS needs, in one zip. Unzip it and start with README.txt.' }),
+      el('div', { class: 'hrow' }, [el('a', { class: 'more-btn', id: 'joezip', href: FILE('joe_tab8_spss.zip'), download: 'joe_tab8_spss.zip', text: 'Download for SPSS (.zip)' }),
+        el('a', { class: 'more-btn', id: 'joereadme', href: FILE('joe_tab8_README.txt'), download: 'joe_tab8_README.txt', text: 'The README (.txt)' }),
+        el('a', { class: 'more-btn', id: 'joesummary', href: FILE('joe_tab8_results.csv'), download: 'joe_tab8_results.csv', text: 'Results summary (.csv)' })]),
+      el('h4', { text: 'What is in the zip' }),
+      treeOf(S.tree),
+      el('p', { class: 'small muted', text: 'Each comparison is a .csv (one row per rat, day, window and pair: a long table, nothing missing written in) and a .sps that reads it and '
+        + 'runs the mixed model. Files are named by the comparison’s number and name, as on the lights. Coherence by Dickson 2022 only. '
+        + ((S.welch && S.welch.say) ? 'Welch, the circuits’ way: ' + S.welch.say.charAt(0).toLowerCase() + S.welch.say.slice(1) : '') }),
+      el('h4', { text: 'To recreate a result that changed' }),
+      recreateList(),
+      el('h4', { text: 'The same numbers without Jarvis' }),
+      el('div', { class: 'hrow' }, [el('a', { class: 'more-btn', id: 'joescript', href: FILE('joe_standalone.py'), download: 'joe_standalone.py', text: 'The standalone script (.py)' }),
         window.MONO_STATIC ? null : el('a', { class: 'more-btn', href: FILE('joe_inputs.json'), download: 'joe_inputs.json', text: 'Its inputs (.json)' })]),
-      X().more('every file', (body) => {
-        body.appendChild(el('ul', { class: 'small jfiles' }, files.map((f) => el('li', {}, [el('a', { href: FILE(f), download: f, text: f })]))));
-        return null;
-      }, { key: 'joe-files', eager: true }),
-      el('h3', { text: 'Does the standalone script agree?' }),
     ];
     if (A) {
       const bad = A.files.filter((x) => !x.ok);
@@ -733,7 +1049,7 @@ window.MONO_JOE = (function () {
           + (x.missing_differs ? ', ' + x.missing_differs + ' cells missing in one only' : ''))) }))));
       }
     } else {
-      kids.push(el('p', { class: 'small muted', id: 'joeagree', text: 'Not run yet. The script reads the recordings itself, with nothing from Jarvis, and writes the same files.' }));
+      kids.push(el('p', { class: 'small muted', id: 'joeagree', text: 'Not run yet. The script reads the recordings itself, with nothing from Jarvis, and writes the same values.' }));
     }
     if (!window.MONO_STATIC) {
       kids.push(el('button', { type: 'button', class: 'more-btn', id: 'joescriptrun', disabled: P.scripting ? 'disabled' : null,
@@ -741,13 +1057,13 @@ window.MONO_JOE = (function () {
                                onclick: () => make('script') }));
       if (P.scriptErr) kids.push(el('p', { class: 'small warn', text: P.scriptErr }));
     }
-    kids.push(el('p', { class: 'small muted', text: 'Elsewhere: python joe_standalone.py --inputs joe_inputs.json --out <folder> --jobs 4 (four rat-days at once; the files do not depend on it). It needs Python 3, numpy and scipy, and the recordings at the paths in the inputs.' }));
-    return section('joeexports', 'Take it away: SPSS, and a script that does it all again', 'joe.exports', kids);
+    kids.push(el('p', { class: 'small muted', text: 'Elsewhere: python joe_standalone.py --inputs joe_inputs.json --out <folder> --jobs 4 (four rat-days at once; the files do not depend on it). It needs Python 3, numpy and scipy, and the recordings at the paths in the inputs. It writes both ways of computing coherence, so the Welch comparison is checked too.' }));
+    return sub('joeexports', 'Files for SPSS, and a script that does it all again', 'joe.exports', kids);
   }
   function notesCard() {
     const D = P.data;
     if (!(D.notes || []).length) return null;
-    return el('div', { class: 'card', id: 'joenotes' }, [X().more('notes from the recordings (' + D.notes.length + ')', (body) => {
+    return el('div', { class: 'jsub', id: 'joenotes' }, [X().more('notes from the recordings (' + D.notes.length + ')', (body) => {
       body.appendChild(el('ul', { class: 'small' }, D.notes.map((n) => el('li', { text: n }))));
       return null;
     }, { key: 'joe-notes' })]);
@@ -759,8 +1075,8 @@ window.MONO_JOE = (function () {
     pane.innerHTML = '';
     if (P.loading && !P.data) { pane.appendChild(el('p', { class: 'loading', text: 'Reading tab 8…' })); return; }
     if (!P.data) {
-      pane.appendChild(section('joemissing', '8 · Joe’s data: the proposal’s tests', 'joe', [
-        el('p', { class: 'takeaway', text: 'Coherence between regions, theta and gamma, Precon1 against Precon4: the tests Joe’s proposal names. Not worked out yet.' }),
+      pane.appendChild(section('joemissing', '8 · Joe’s data', 'joe', [
+        el('p', { class: 'takeaway', text: 'Did coherence between regions change from Precon1 to Precon4, in theta and gamma? Not worked out yet.' }),
         el('p', { class: 'small', text: 'It is worked out here, from the recordings: about 20 minutes the first time (every trial of every rat, four days), seconds after that.' }),
         window.MONO_STATIC ? el('p', { class: 'small muted', text: 'Not in this copy: it opens in Jarvis.' })
           : el('button', { type: 'button', class: 'more-btn', id: 'joemake', disabled: P.making ? 'disabled' : null,
@@ -770,11 +1086,17 @@ window.MONO_JOE = (function () {
       return;
     }
     pane.appendChild(intro());
-    pane.appendChild(defsCard());
-    pane.appendChild(modelsCard());
-    pane.appendChild(exportsCard());
-    const nc = notesCard();
-    if (nc) pane.appendChild(nc);
+    pane.appendChild(checksCard());
+    // Everything else, under one hood: built with the page (folded), so a
+    // search finds it and the review copy carries its links.
+    pane.appendChild(el('div', { class: 'card', id: 'joehood' }, [X().more('under the hood: how we measured, every test’s numbers, the follow-ups and the files', (body) => {
+      body.appendChild(defsCard());
+      body.appendChild(modelsCard());
+      body.appendChild(exportsCard());
+      const nc = notesCard();
+      if (nc) body.appendChild(nc);
+      return null;
+    }, { key: 'joe-hood', eager: true })]));
     if (!window.MONO_STATIC) {
       pane.appendChild(el('p', { class: 'small muted' }, ['Worked out ' + (P.data.at || '') + ' from ' + P.data.n_days + ' rat-days. ',
         el('button', { type: 'button', class: 'linkish', id: 'joemake', disabled: P.making ? 'disabled' : null,
@@ -786,7 +1108,7 @@ window.MONO_JOE = (function () {
   }
   return {
     show, render, load, make, timeline, harmonics, fpCompare,
-    get state() { return { band: P.band, method: P.method, data: P.data, err: P.err, making: P.making, scripting: P.scripting }; },
+    get state() { return { band: P.band, method: P.method, data: P.data, err: P.err, making: P.making, scripting: P.scripting, pick: P.pick }; },
     set band(v) { P.band = v; render(); },
     set method(v) { P.method = v; render(); },
   };

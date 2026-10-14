@@ -266,7 +266,12 @@ def run_tool(tool, spec, bundle, job, csc):
             if not kept:
                 raise ValueError("Every channel in this recording is marked "
                                  "bad, so there is nothing to read.")
-            spec = dict(spec, channels=kept, excluded=excluded)
+            # And the channel range, by the desk's own rule: outside it is
+            # not read, and everything else applies inside it.
+            kept, excluded, outside = doppler.restrict(
+                session, kept, excluded, spec.get("channel_range"))
+            spec = dict(spec, channels=kept, excluded=excluded,
+                        out_of_range=outside)
         out = doppler.run(session, spec, report, job)
         out["spec_channels"] = list(spec.get("channels") or [])
         out["spec_excluded"] = list(spec.get("excluded") or [])

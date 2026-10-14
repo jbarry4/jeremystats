@@ -933,7 +933,7 @@ BARRY.spotter = (function () {
     // eighth otherwise -- the lab's probes are banked in eights and that is
     // the unit anybody reads a laminar picture in.
     const every = step >= 6 ? 1 : 8;
-    g.strokeStyle = BARRY.token('--border', '#333');
+    g.strokeStyle = BARRY.token('--line', '#333');
     g.lineWidth = 1;
     for (let i = 0; i <= n; i += every) {
       const y = Math.round(RP.t + i * step) + 0.5;

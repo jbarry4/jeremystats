@@ -178,14 +178,34 @@ const post = (u, b) => fetch(u, { method: 'POST',
             (est.channels || []).length >= (est.plan || {}).n_channels,
             (est.channels || []).length + ' vs '
             + (est.plan || {}).n_channels);
-      check('the plan says it reads twice',
-            (est.plan || {}).passes === 2, String((est.plan || {}).passes));
-      check('no filtering by default',
-            est.spec.notch_hz == null && est.spec.band == null,
-            JSON.stringify([est.spec.notch_hz, est.spec.band]));
-      check('the detector’s own defaults',
-            est.spec.llw_s === 0.04 && est.spec.prc === 99.9,
-            JSON.stringify([est.spec.llw_s, est.spec.prc]));
+      /* THE VALIDATED DEFAULTS. A request that names no method gets the
+         Storm settings the IED detector study chose (backend/doppler.py
+         STORM): read once, notch, common-average reference, 20-300 Hz,
+         15 ms, pooled 99.9th, even channels, at least 7 taking part. */
+      check('the default is the validated Storm method',
+            est.spec.method === 'storm', String(est.spec.method));
+      check('the plan says it reads once',
+            (est.plan || {}).passes === 1, String((est.plan || {}).passes));
+      check('Storm filters: notch, 20-300 Hz, common-average reference',
+            est.spec.notch_hz === 60 && est.spec.car === true
+            && JSON.stringify(est.spec.band) === '[20,300]',
+            JSON.stringify([est.spec.notch_hz, est.spec.band, est.spec.car]));
+      check('Storm numbers: 15 ms, 99.9th, at least 7 even channels',
+            est.spec.llw_s === 0.015 && est.spec.prc === 99.9
+            && est.spec.min_channels === 7 && est.spec.detect_on === 'even',
+            JSON.stringify([est.spec.llw_s, est.spec.prc,
+                            est.spec.min_channels, est.spec.detect_on]));
+      /* And Legacy is still the MATLAB, exactly -- what every run banked
+         before Storm was made with, and what the parity harness checks. */
+      const leg = await post('/api/doppler/estimate',
+                             { path, method: 'legacy' });
+      check('Legacy: no filtering, 40 ms, reads twice',
+            leg.ok && leg.spec.method === 'legacy' && leg.spec.band == null
+            && leg.spec.notch_hz == null && leg.spec.llw_s === 0.04
+            && (leg.plan || {}).passes === 2,
+            JSON.stringify([leg.spec && leg.spec.method,
+                            leg.spec && leg.spec.llw_s,
+                            (leg.plan || {}).passes]));
 
       /* Marking one bad has to drop it from the plan. A channel that is
          merely down-weighted still starts events in this detector, which
@@ -254,6 +274,61 @@ const post = (u, b) => fetch(u, { method: 'POST',
             est.split === null || typeof est.split === 'string',
             JSON.stringify(est.split));
     }
+
+    /* THE CHANNEL RANGE. Applied first, by CSC number: outside it nothing
+       is read, and inside it everything else runs as before -- the even
+       ones detected on, the bad ones left out. And the channels that go in
+       are listed, by name and role, before anything is run. */
+    if (est.ok) {
+      const nums = (est.channels || []).map((c) => c.number)
+        .sort((a, b) => a - b);
+      const half = nums[Math.floor(nums.length / 2) - 1];
+      const r = await post('/api/doppler/estimate',
+                           { path, channel_range: [nums[0], half] });
+      const f = r.feed || {};
+      const byIdx = {};
+      for (const c of (est.channels || [])) byIdx[c.index] = c.number;
+      const read = (r.spec && r.spec.channels || []).map((i) => byIdx[i]);
+      check('the estimate lists what goes in', !!est.feed
+            && Array.isArray(est.feed.detect) && est.feed.detect.length > 0,
+            JSON.stringify(est.feed || null).slice(0, 120));
+      check('with a range, nothing outside it is read',
+            r.ok && read.length > 0 && read.every((n) => n <= half),
+            r.error || read.join(','));
+      check('and what is outside it is listed as such, every one',
+            (f.out_of_range || []).length === nums.filter((n) => n > half).length,
+            (f.out_of_range || []).length + ' vs '
+            + nums.filter((n) => n > half).length);
+      check('detection inside the range is on the even channels only',
+            (f.detect || []).length > 0 && (f.detect || []).every((l) => {
+              const n = Number(String(l).replace(/\D+/g, ''));
+              return n <= half && n % 2 === 0; }),
+            (f.detect || []).join(','));
+      check('a bad channel outside the range is not listed as bad',
+            (f.bad || []).every((l) =>
+              Number(String(l).replace(/\D+/g, '')) <= half),
+            (f.bad || []).join(','));
+      const empty = await post('/api/doppler/estimate',
+                               { path, channel_range: [9000, 9001] });
+      check('a range with nothing in it is refused with a sentence',
+            !empty.ok && /Widen the range/.test(empty.error || ''),
+            empty.error || 'it was not refused');
+
+      /* The panel shows the list above the run button. */
+      ev('BARRY.views.toolkit.pick("doppler")');
+      await until(() => $('#tkResult .step-head'));
+      ev('(function(){var s=BARRY.doppler._state();s.count="one";'
+         + 's.ch_lo=' + nums[0] + ';s.ch_hi=' + half + ';})()');
+      ev('BARRY.doppler.paint()');
+      const shown = await until(() => {
+        const g = $('#tkResult .dop-feed .dop-feed-g.out');
+        return g && $('#tkResult .dop-feed .dop-feed-g.det');
+      }, 15000);
+      check('"What goes in" shows the detection channels and the range',
+            !!shown, shown ? '' : ($('#tkResult .dop-feed') || {}).textContent);
+      ev('(function(){var s=BARRY.doppler._state();'
+         + 's.ch_lo=null;s.ch_hi=null;})()');
+    }
   }
 
   /* ---------------------------------------------------------------- */
@@ -282,7 +357,9 @@ const post = (u, b) => fetch(u, { method: 'POST',
                sem: [[1, 1, 4, 1, 1], [1, 1, 2, 1, 1]] },
     snippets: { idx: [], data: [] },
     warnings: ['CSC4 took part in 100% of events, which is what a broken '
-               + 'channel looks like rather than a busy one.'],
+               + 'channel looks like rather than a busy one.',
+               '1 of 3 events sit within 125 ms of a break between two '
+               + 'pieces of the recording.'],
     params: { detector: 'LLspikedetector (line length)', llw_s: 0.04,
               prc: 99.9, threshold: 12.5, notch_hz: null, band: null,
               fs: 30000, channels: [2, 4], bad_channels: [6],
@@ -324,11 +401,91 @@ const post = (u, b) => fetch(u, { method: 'POST',
     check('no filtering is SAID, not left to be inferred',
           /no band-pass/.test(txt) && /no notch/.test(txt));
     check('the warning is on the report',
-          /broken channel looks like/.test(txt));
+          /within 125 ms of a break/.test(txt));
+    /* "CSC4 took part in 100% of events" means a broken channel over
+       hundreds of events and nothing over three: a run that found one IED
+       carried sixteen of them, one per channel that took part. */
+    check('a took-part-in-every-event warning over 3 events is not shown',
+          !/broken channel looks like/.test(txt));
     check('the excluded channel is named',
           /CSC6/.test(txt), '');
+    const nTile = $('#tkResult .dop-stat[data-k="n"] .dop-stat-v');
     check('the counts describe the list underneath them',
-          /3 IEDs/.test(txt), '');
+          !!nTile && nTile.textContent.trim() === '3'
+          && /IEDs/.test(($('#tkResult .dop-stat[data-k="n"]') || {}).textContent || ''),
+          nTile ? nTile.textContent : 'no count tile');
+    check('nothing on the report is cut short with an ellipsis',
+          !/…|\.\.\./.test(($('#tkResult .dop-params summary') || {})
+                                  .textContent || ''),
+          ($('#tkResult .dop-params summary') || {}).textContent);
+
+    /* THE PANEL DOES NOT REBUILD ITSELF. Every poll used to empty the host
+       and build it all again -- "the UI keeps reloading". A repaint with
+       nothing changed must keep the very same nodes. */
+    /* And what is not Doppler's is left alone. ToolKit mounts the Activity
+       feed in the same host; the first version of the reconciler removed it
+       on every pass, so ToolKit mounted a new one -- "Reading…" and a
+       request, once a second while a run was out, the page jumping. */
+    await until(() => $('#tkResult > .tf'), 8000);
+    ev('window.__tf = document.querySelector("#tkResult > .tf");');
+    ev('window.__secs = Array.from(document.querySelectorAll('
+       + '"#tkResult > [data-sec]"));');
+    ev('BARRY.doppler.paint(); BARRY.doppler.paint();');
+    await sleep(400);
+    if (ev('!!window.__tf')) {
+      check('the Activity feed survives a Doppler repaint, the same node',
+            ev('window.__tf === document.querySelector("#tkResult > .tf")'
+               + ' && window.__tf.isConnected') === true);
+      check('and it stays under the panel, not between its parts',
+            ev('(function(){var k=Array.from(document.querySelector('
+               + '"#tkResult").children);var f=k.indexOf(window.__tf);'
+               + 'return k.slice(f+1).every(function(n){return !n.dataset.sec;});'
+               + '})()') === true);
+    } else {
+      say('  note  no Activity feed was mounted; that check is skipped', 'note');
+    }
+    const kept = ev('(function(){var now=Array.from(document.querySelectorAll('
+      + '"#tkResult > [data-sec]"));return window.__secs.length>3 && '
+      + 'window.__secs.every(function(n){return now.indexOf(n)>=0;});})()');
+    check('a repaint with nothing changed keeps every part of the panel',
+          kept === true,
+          ev('window.__secs.map(function(n){return n.dataset.sec;}).join(",")'));
+    check('the report canvas survives a repaint with its ink on it',
+          ev('(function(){var c=document.getElementById("dopRaster");'
+             + 'return !!c && c.width>10;})()') === true);
+
+    /* THE RASTER'S ROWS. On the Storm method detection runs on the even
+       channels and the odd ones are read for the common reference only --
+       they used to be drawn as rows labelled "bad". */
+    const stormFake = JSON.parse(JSON.stringify(fake));
+    stormFake.params = Object.assign({}, fake.params, {
+      method: 'storm', detect_on: 'even', channels: [2, 4],
+      read_channels: [1, 2, 3, 4],
+      excluded: [{ index: 4, number: 5, label: 'CSC5' },
+                 { index: 5, number: 6, label: 'CSC6' }],
+      left_out: [{ index: 7, number: 8, label: 'CSC8' }] });
+    ev('window.__stormFake2 = ' + JSON.stringify(stormFake) + ';');
+    ev('BARRY.doppler._adopt(window.__stormFake2); BARRY.doppler.paint();');
+    await sleep(200);
+    const rr = JSON.parse(ev('JSON.stringify(BARRY.doppler._rasterRows())')
+                          || 'null') || { rows: [] };
+    const rowSay = rr.rows.map((r) => r.number + (r.read ? '' : ':' + r.why))
+      .join(',');
+    check('a row per detection channel, in number order',
+          rr.rows.filter((r) => r.read).map((r) => r.number).join(',') === '2,4',
+          rowSay);
+    check('an even channel marked bad keeps a row that says bad',
+          rr.rows.some((r) => r.number === 6 && r.why === 'bad'), rowSay);
+    check('an even channel left out says so, not bad',
+          rr.rows.some((r) => r.number === 8 && /left out/.test(r.why)), rowSay);
+    check('odd channels have no row -- not "bad", reference only',
+          !rr.rows.some((r) => r.number % 2 === 1), rowSay);
+    check('and the report says how many were reference only',
+          rr.referenceOnly === 2
+          && /reference/.test($('#tkResult').textContent),
+          String(rr.referenceOnly));
+    ev('BARRY.doppler._adopt(window.__stormFake); BARRY.doppler.paint();');
+    await sleep(150);
 
     /* Clicking a tick opens the recording there. Checked through the
        hit-test rather than by clicking, because opening a recording in this
@@ -355,6 +512,87 @@ const post = (u, b) => fetch(u, { method: 'POST',
           /not read at all/.test(note));
     check('the bank note says times are recording seconds',
           /seconds from the start of the recording/.test(note));
+    /* And the channels themselves, by name -- "31 channels" does not say
+       which were detected on. */
+    check('the bank note lists the channels detected on, by name',
+          /Detected on 2 channels: CSC2, CSC4\./.test(note), note.slice(-300));
+    check('and the bad ones, by name',
+          /Marked bad and not read: CSC6/.test(note), note.slice(-300));
+    const ranged = JSON.parse(JSON.stringify(fake));
+    ranged.params = Object.assign({}, fake.params, {
+      method: 'storm', detect_on: 'even', car: true,
+      channels: [2, 4], read_channels: [1, 2, 3, 4],
+      channel_range: [1, 32],
+      out_of_range: [33, 34, 35, 36].map((n) => ({ number: n,
+                                                     label: 'CSC' + n })) });
+    ev('BARRY.doppler._adopt(' + JSON.stringify(ranged) + ')');
+    const rnote = ev('BARRY.doppler._bankNote()');
+    check('a run with a channel range says so in its note',
+          /Channels CSC1 to CSC32 only \(CSC33 to CSC36 not read\)/.test(rnote),
+          rnote.slice(-400));
+    check('and names the channels read for the reference only',
+          /Read for the common reference only \(2\): CSC1, CSC3/.test(rnote),
+          rnote.slice(-400));
+    ev('BARRY.doppler._adopt(window.__stormFake)');
+  }
+
+  /* ---------------------------------------------------------------- */
+  head('runs: out on the cluster, and landed');
+
+  /* A job the server no longer knows -- Jarvis restarted under it -- is let
+     go of, rather than polled for ever beside its own landed result. */
+  if (ev('typeof BARRY.doppler._track') === 'function') {
+    ev('BARRY.doppler._track({id:"harness-gone",status:"running",stages:[]},'
+       + '"one",[{gid:"harness",label:"harness"}])');
+    check('a run can be followed', ev('BARRY.doppler._flights().some('
+          + 'function(f){return f.id==="harness-gone";})') === true);
+    await ev('BARRY.doppler._follow()');
+    await sleep(200);
+    check('a job the server has forgotten is let go of',
+          ev('BARRY.doppler._flights().some('
+             + 'function(f){return f.id==="harness-gone";})') === false,
+          ev('JSON.stringify(BARRY.doppler._flights())'));
+  } else {
+    check('doppler exports _track for this check', false);
+  }
+
+  const inflight = await (await fetch('/api/doppler/inflight')).json();
+  check('the server says what is in flight', inflight.ok === true
+        && Array.isArray(inflight.jobs), JSON.stringify(inflight).slice(0, 120));
+
+  /* OPENING A LANDED RUN READS IT. It used to post the question to
+     /api/doppler/scan and hope for a cache hit -- which, when it missed,
+     submitted a new cluster job -- and from Many it set the result and
+     painted a view with no report in it, so the click did nothing. */
+  const revs = await (await fetch('/api/doppler/reviews')).json();
+  const one = (revs.reviews || []).find((r) => r.local && r.key);
+  if (!one) {
+    say('  note  no landed run with a copy on this computer; the opening '
+        + 'check is skipped', 'note');
+  } else {
+    ev('window.__dopUrls = []; window.__dopFetch = window.fetch;'
+       + 'window.fetch = function(u, o){ window.__dopUrls.push(String(u));'
+       + ' return window.__dopFetch.apply(this, arguments); };');
+    ev('BARRY.doppler._state().count = "many"; BARRY.doppler.paint();');
+    try {
+      await ev('BARRY.doppler._openRun(' + JSON.stringify(one) + ')');
+      await until(() => $('#tkResult [data-sec="report"]'), 20000);
+      const urls = JSON.parse(ev('JSON.stringify(window.__dopUrls)') || '[]');
+      check('opening a landed run never asks for a run',
+            !urls.some((u) => /\/api\/doppler\/scan/.test(u)), urls.join(' '));
+      check('it reads the run by recording and key',
+            urls.some((u) => /\/api\/doppler\/run\?gid=/.test(u)), urls.join(' '));
+      check('from Many, it switches to One and shows the report',
+            ev('BARRY.doppler._state().count') === 'one'
+            && !!$('#tkResult [data-sec="report"]'));
+      check('the report is the run that was clicked',
+            ev('(BARRY.doppler._res()||{}).n') === one.n,
+            ev('(BARRY.doppler._res()||{}).n') + ' vs ' + one.n);
+      check('and it is marked open in the list',
+            !!$('#tkResult .dop-run.open'));
+    } finally {
+      ev('window.fetch = window.__dopFetch;');
+    }
   }
 
   /* ---------------------------------------------------------------- */

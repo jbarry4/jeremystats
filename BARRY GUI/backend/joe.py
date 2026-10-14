@@ -643,6 +643,33 @@ MODELS = (
     ("c4", "High vs Low tone", "check", "Sound", (("High", "High tone"), ("Low", "Low tone")), "pair"),
 )
 MODEL_BY_ID = {m[0]: m for m in MODELS}
+#: Each model's number, name and one line, for people: the tab, the SPSS
+#: files and their README all say these (m1, m2 ... are only ids).
+NAMES = {
+    "m1": (1, "Baseline (20 s) → both cues", "The 20 s before cue 1 against cue 1 and cue 2 together (20 s)."),
+    "m2": (2, "Baseline (10 s) → cue 1", "The 10 s before cue 1 against cue 1."),
+    "m3": (3, "Baseline (10 s) → cue 2", "The 10 s before cue 1 against cue 2."),
+    "m4": (4, "The switch: end of cue 1 → start of cue 2", "The last 2 s of cue 1 (8–10 s) against the first 2 s of cue 2 (10–12 s)."),
+    "m5": (5, "Cue 1 → cue 2", "Cue 1 against cue 2."),
+    "m6a": (6, "Trials vs FP, 20 s", "The Precon1 → Precon4 change in the trials (both cues, 20 s) against the same change in random 20 s FP snippets."),
+    "m6b": (7, "Trials vs FP, 10 s", "The same with each cue (10 s) against random 10 s FP snippets."),
+    "m7": (8, "Power, baseline (20 s) → both cues", "Power in each region instead of coherence between regions."),
+    "c1": (9, "Noise vs Click", "The cue windows sorted by the sound that played (Noise or Click), not by its place in the pair."),
+    "c2": (10, "All four sounds", "The cue windows sorted by sound: Click, Noise, High tone, Low tone."),
+    "c3": (11, "A/B/C/D", "The cue windows sorted by position in the pair, from the identity sheet."),
+    "c4": (12, "High vs Low tone", "The cue windows sorted by tone: high or low."),
+}
+#: The coherence the tab and the SPSS files show (Dickson 2022, Jeremy's
+#: mscohere). Welch, the circuits' way, is still computed, only to say
+#: whether it agrees (Shahriar, 2026-10-13).
+SHOWN = "dickson"
+
+
+def stem(mid):
+    """A model's name as a file name: "01 Baseline 20 s to both cues"."""
+    no, title, _w = NAMES[mid]
+    t = title.replace("→", "to").replace("–", "-").replace("/", "-").replace(":", ",").replace("(", "").replace(")", "")
+    return "%02d %s" % (no, " ".join(t.split()))
 ALPHA = 0.05
 
 
@@ -875,38 +902,6 @@ def _strata(scal, cont, factor, u, many, N, K, L, put):
             put(inter, float(w.loc["C(j):C(unit, Sum)", "chi2"]), (L - 1) * (K - 1), (N - 1) * (L - 1) * (K - 1))
 
 
-def fit_rm(df, factor, unit, n_units):
-    """The repeated-measures ANOVA SPSS's GLM would run: only the rats with
-    every cell."""
-    import warnings
-    from statsmodels.stats.anova import AnovaRM
-    L = df["level"].nunique()
-    cells = 2 * L * n_units
-    have = df.groupby("rat").size()
-    full = [r for r, n in have.items() if n == cells]
-    out = {"n_rats": len(full), "of": int(df["rat"].nunique()), "cells": cells}
-    if len(full) < 3:
-        out.update(ok=False, why="only %d rat%s every cell; SPSS's GLM would drop the rest"
-                   % (len(full), " has" if len(full) == 1 else "s have"))
-        return out
-    within = ["day", "level"] + (["unit"] if n_units > 1 else [])
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        try:
-            t = AnovaRM(df[df["rat"].isin(full)], "value", "rat", within=within).fit().anova_table
-        except Exception as exc:                         # noqa: BLE001
-            out.update(ok=False, why=str(exc))
-            return out
-    names = {"day": "C(day, Sum)", "level": "C(level, Sum)", "unit": "C(unit, Sum)"}
-    terms = {}
-    for name, row in t.iterrows():
-        key = ":".join(names[p] for p in name.split(":"))
-        terms[_term(key, factor, unit)] = {"F": float(row["F Value"]), "df1": int(row["Num DF"]),
-                                           "df2": int(row["Den DF"]), "p": float(row["Pr > F"])}
-    out.update(ok=True, terms=terms)
-    return out
-
-
 def holm(p):
     p = np.asarray(p, dtype=np.float64)
     out = np.full(p.shape, np.nan)
@@ -921,6 +916,41 @@ def holm(p):
         run = max(run, min(1.0, (m - k) * p[i]))
         out[i] = run
     return out
+
+
+def contrast_rows(tab, model, keep, unit_names):
+    """One row per rat and unit with all four values: (rat, unit index,
+    unit, Precon1 at the first level, Precon1 at the second, Precon4 at the
+    first, Precon4 at the second, the difference (P4 second - P4 first) -
+    (P1 second - P1 first)). Two-level models only. Fitted with the rat
+    random and the unit fixed, it is the stratum fit_mixed tests Day x
+    level and Day x level x unit in (the same rows, scaled by a constant)."""
+    a, b = [lv for lv, _l in model[4]]
+    rows = []
+    for r in sorted(tab, key=int):
+        per = tab[r]
+        for ui in keep:
+            v = [per["Precon1"][a][ui], per["Precon1"][b][ui], per["Precon4"][a][ui], per["Precon4"][b][ui]]
+            if all(np.isfinite(v)):
+                rows.append((int(r), ui, unit_names[ui], float(v[0]), float(v[1]), float(v[2]), float(v[3]),
+                             float((v[3] - v[2]) - (v[1] - v[0]))))
+    return rows
+
+
+def quick_check(tab, model, keep):
+    """The check anyone can do by hand: each rat's mean difference over the
+    units it has, then a one-sample t against 0. Close to the mixed model's
+    Day x level (not equal: rats have different numbers of units)."""
+    from scipy.stats import ttest_1samp
+    per = {}
+    for r, _ui, _u, _a, _b, _c, _d, dif in contrast_rows(tab, model, keep, [str(i) for i in range(max(keep) + 1)]):
+        per.setdefault(r, []).append(dif)
+    means = [float(np.mean(v)) for _r, v in sorted(per.items())]
+    if len(means) < 2:
+        return None
+    t = ttest_1samp(means, 0.0)
+    return {"t": float(t.statistic), "df": len(means) - 1, "p": float(t.pvalue), "n_rats": len(means),
+            "mean": float(np.mean(means)), "per_rat": {str(r): float(np.mean(v)) for r, v in sorted(per.items())}}
 
 
 def post_hocs(tab, model, keep, unit_names):
@@ -1041,6 +1071,18 @@ def follow_values(day_data, model, level, b, pair_index, a, bb, measure_id):
     return out
 
 
+#: The follow-ups, in the order the tab and the SPSS files list them.
+FOLLOW_KEYS = ("pli", "icoh", "gc_ab", "gc_ba", "xlag", "xpeak", "pac_ab", "pac_ba", "pac_aa", "pac_bb")
+
+
+def follow_name(k, a, b):
+    """A follow-up's name with its pair's regions in it."""
+    import re
+    t = re.sub(r"\bA\b", "@A@", FOLLOW_SAY.get(k, k))
+    t = re.sub(r"\bB\b", "@B@", t)
+    return t.replace("@A@", a).replace("@B@", b)
+
+
 def follow_test(day_data, model, b, pair_index, a, bb, measure_id):
     from scipy.stats import t as tdist
     levels = [lv for lv, _l in model[4]]
@@ -1056,13 +1098,19 @@ def follow_test(day_data, model, b, pair_index, a, bb, measure_id):
     if len(levels) != 2:
         return out
     dl = []
+    rows = {}
     for r in rats:
         try:
-            dl.append((per[levels[1]][(r, "Precon4")] - per[levels[0]][(r, "Precon4")])
-                      - (per[levels[1]][(r, "Precon1")] - per[levels[0]][(r, "Precon1")]))
+            four = [per[levels[0]][(r, "Precon1")], per[levels[1]][(r, "Precon1")],
+                    per[levels[0]][(r, "Precon4")], per[levels[1]][(r, "Precon4")]]
         except KeyError:
             continue
-    dl = np.array([x for x in dl if np.isfinite(x)])
+        x = (four[3] - four[2]) - (four[1] - four[0])
+        if np.isfinite(x):
+            dl.append(x)
+            rows[str(r)] = [float(v) for v in four] + [float(x)]
+    out["per_rat"] = rows
+    dl = np.array(dl)
     n = dl.size
     if n >= 2:
         se = dl.std(ddof=1) / math.sqrt(n)
@@ -1120,12 +1168,21 @@ def build(day_data, names, progress=None, check=None):
                "left_out": [units[i] for i in range(len(units)) if i not in keep]}
         if len(keep) < 1:
             res.update(mixed={"ok": False, "why": "no %s has %d rats on both days" % (mdl[5], MIN_RATS)},
-                       rm={"ok": False}, gate={"passed": False}, cells=cells(tab_all, mdl, keep), post=[])
+                       gate={"passed": False}, cells=cells(tab_all, mdl, keep), post=[])
             results.append(res)
             continue
         df = _frame(tab, mdl, keep, units)
         res["mixed"] = fit_mixed(df, mdl[3], mdl[5])
-        res["rm"] = fit_rm(df, mdl[3], mdl[5], len(keep))
+        # The rats with every cell: the ones a repeated-measures ANOVA
+        # (SPSS's GLM) could keep. Not run: with the pairs histology rules
+        # out, it would keep 3 of the 8 rats (2026-10-13); the mixed model
+        # keeps every rat with the pairs it has. Said so on the tab.
+        n_cells = 2 * len(mdl[4]) * len(keep)
+        full = df.groupby("rat").size()
+        res["rats"] = sorted(int(r) for r in full.index)
+        res["complete_rats"] = sorted(int(r) for r, n in full.items() if n == n_cells)
+        if len(mdl[4]) == 2:
+            res["quick"] = quick_check(tab, mdl, keep)
         res["gate"] = gate_of(res["mixed"], mdl[3], mdl[5])
         res["cells"] = cells(tab_all, mdl, keep)
         res["post"] = post_hocs(tab, mdl, keep, units)
@@ -1136,7 +1193,7 @@ def build(day_data, names, progress=None, check=None):
         # Follow-ups: first-pass coherence models whose gate passed; the
         # pairs Holm keeps, or, when none does, the pairs at raw p < .05,
         # said as such.
-        if res["gate"].get("passed") and mdl[2] == "first" and mdl[5] == "pair":
+        if res["gate"].get("passed") and mdl[2] == "first" and mdl[5] == "pair" and METHODS[mi] == SHOWN:
             ps = [r for r in res["post"] if r.get("p_holm") is not None and r["p_holm"] < ALPHA]
             basis = "Holm"
             if not ps:
@@ -1146,9 +1203,7 @@ def build(day_data, names, progress=None, check=None):
             for r in ps:
                 pi = pair_names.index(r["unit"])
                 a, bb = pr[pi]
-                meas = {k: follow_test(day_data, mdl, bi, pi, a, bb, k)
-                        for k in ("pli", "icoh", "gc_ab", "gc_ba", "xlag", "xpeak",
-                                  "pac_ab", "pac_ba", "pac_aa", "pac_bb")}
+                meas = {k: follow_test(day_data, mdl, bi, pi, a, bb, k) for k in FOLLOW_KEYS}
                 fol.append({"pair": r["unit"], "a": short(names[a]), "b": short(names[bb]),
                             "bilateral": (a, bb) in bil, "measures": meas})
             res["follow"] = {"basis": basis, "pairs": fol}
@@ -1160,25 +1215,80 @@ def build(day_data, names, progress=None, check=None):
                                                             for b, lo, hi in BANDS],
             "methods": [{"id": m, "label": METHOD_SAY[m]} for m in METHODS],
             "models": [{"id": m[0], "label": m[1], "kind": m[2], "factor": m[3],
-                        "levels": [{"id": a, "label": b} for a, b in m[4]], "unit": m[5]} for m in MODELS],
+                        "levels": [{"id": a, "label": b} for a, b in m[4]], "unit": m[5],
+                        "no": NAMES[m[0]][0], "title": NAMES[m[0]][1], "what": NAMES[m[0]][2], "stem": stem(m[0])}
+                       for m in MODELS],
+            "shown": SHOWN,
             "days": list(DAYS), "tested": list(TESTED), "min_rats": MIN_RATS, "alpha": ALPHA,
             "skip_hz": list(SKIP_HZ), "fp": {"seed": FP_SEED, "lengths": list(FP_LENGTHS), "edge_s": FP_EDGE_S},
             "results": results, "follow_say": FOLLOW_SAY}
 
 
 # --------------------------------------------------------------------------
-# Exports: SPSS-ready
+# Exports: the SPSS package, and the files the script is checked against
 # --------------------------------------------------------------------------
-MISSING = 999
+MISSING = 999                       # a missing cell in the wide files the script is checked against
 
 
-def export_name(res):
+def ascii_(text):
+    """For SPSS: its labels and paths, and a README any editor opens."""
+    for a, b in (("→", "to"), ("–", "-"), ("—", "-"), ("×", "x"), ("·", "-"), ("’", "'"), ("‘", "'"), ("“", '"'), ("”", '"'), ("−", "-")):
+        text = text.replace(a, b)
+    return text
+
+
+def _q(text):
+    """An SPSS quoted string."""
+    return "'" + ascii_(str(text)).replace("'", "''") + "'"
+
+
+def _p(p):
+    if p is None or not np.isfinite(p):
+        return "-"
+    return "< .001" if p < 0.001 else ("%.3f" % p).lstrip("0")
+
+
+def _fp(t):
+    if not t or t.get("F") is None:
+        return "-"
+    return "F(%d, %d) = %.2f, p %s%s" % (t["df1"], t["df2"], t["F"], "" if _p(t["p"]).startswith("<") else "= ", _p(t["p"]))
+
+
+def words(p):
+    """The tab's words for a p: strong evidence below .01, some below .05."""
+    if p is None or not np.isfinite(p):
+        return "no evidence"
+    return "strong evidence" if p < 0.01 else "some evidence" if p < ALPHA else "no evidence"
+
+
+def _lit(res):
+    return bool(res and res.get("mixed", {}).get("ok") and (res.get("gate") or {}).get("passed"))
+
+
+def _terms(res, mdl):
+    u = "Pair" if mdl[5] == "pair" else "Region"
+    t = res["mixed"]["terms"]
+    return t.get("Day × %s" % mdl[3]), t.get("Day × %s × %s" % (mdl[3], u))
+
+
+def _say(mdl, res):
+    """The two lines of words the tab says for a result."""
+    u = "pair" if mdl[5] == "pair" else "region"
+    t2, t3 = _terms(res, mdl)
+    w2, w3 = words(t2 and t2["p"]), words(t3 and t3["p"])
+    return ("All %ss together: %s of a change" % (u, w2),
+            "%s by %s: %s" % (u.capitalize(), u, "none stands out" if w3 == "no evidence" else w3 + " that some changed more than others"))
+
+
+def compare_name(res):
+    """The standalone script's file for a result (both methods)."""
     return "%s_%s_%s" % (res["model"], res["band"], res["method"])
 
 
 def wide_rows(res, mdl):
-    """Header and rows of the wide file: one row per rat, one column per
-    Day x level x unit (day-major, unit fastest: SPSS's WSFACTOR order)."""
+    """Header and rows of the file the standalone script is checked against:
+    one row per rat, one column per Day x level x unit (day-major, unit
+    fastest)."""
     units = res["units"]
     cols = []
     for d in TESTED:
@@ -1197,82 +1307,455 @@ def wide_rows(res, mdl):
     return cols, rows
 
 
-def sps_text(res, mdl, csv_name):
-    cols, _rows = wide_rows(res, mdl)
-    L = len(mdl[4])
+def long_rows(res, mdl):
+    """SPSS's file: one row per rat, day, level and unit that has a value
+    (a missing one is simply not there). Day is 1 or 4 (Precon1, Precon4)."""
+    units = res["units"]
+    allu = res["all_units"]
+    rows = []
+    for r, per in sorted(res["table"].items(), key=lambda x: int(x[0])):
+        for d in TESTED:
+            for li, (lv, lab) in enumerate(mdl[4]):
+                for ki, u in enumerate(units):
+                    v = per[d][lv][allu.index(u)]
+                    if v is not None:
+                        rows.append((int(r), int(d.replace("Precon", "")), li + 1, ki + 1, v, d, ascii_(lab), ascii_(u)))
+    return rows
+
+
+def _band_say(band):
+    return ascii_(BAND_SAY[band]).replace("Theta", "theta").replace("Gamma", "gamma")
+
+
+def _what_value(mdl, band):
+    if mdl[5] == "region":
+        return "log10 power, %s" % _band_say(band)
+    return "coherence (Dickson 2022), %s" % _band_say(band)
+
+
+def _cd(folder):
+    return ["* 1. Change the next line to the folder this file is in, then Run > All.",
+            "CD 'C:\\Users\\YOU\\Downloads\\joe_tab8_spss\\%s'." % folder, ""]
+
+
+def main_sps(res, mdl, csv_name, folder):
+    """The full model: Day x level x unit, the rat random with every
+    stratum, as a statistician would write it."""
+    no, title, what = NAMES[mdl[0]]
+    f, u = mdl[3].lower(), ("pair" if mdl[5] == "pair" else "region")
+    val = "power" if mdl[5] == "region" else "coherence"
     K = len(res["units"])
-    names = [c[3] for c in cols]
-    unit_word = "pair" if mdl[5] == "pair" else "region"
-    factor = mdl[3].lower()
-    lines = ["* Tab 8 · Joe's data: %s, %s, %s." % (mdl[1], BAND_SAY[res["band"]], METHOD_SAY.get(res["method"], res["method"])),
-             "* Written by Jarvis (backend/joe.py). %s = missing." % MISSING,
-             "* Within-subject order: day (Precon1, Precon4), then %s (%s), then %s (%d)."
-             % (factor, ", ".join(l for _i, l in mdl[4]), unit_word, K),
-             "",
-             "GET DATA /TYPE=TXT /FILE='%s' /ENCODING='UTF8' /DELCASE=LINE /DELIMITERS=','"
-             " /ARRANGEMENT=DELIMITED /FIRSTCASE=2 /VARIABLES=" % csv_name,
-             "  rat F4.0"]
-    lines += ["  %s F12.8" % n for n in names]
-    lines[-1] += "."
-    lines += ["MISSING VALUES %s TO %s (%d)." % (names[0], names[-1], MISSING), "VARIABLE LABELS rat 'Rat'"]
-    for d, lv, u, n in cols:
-        lab = "%s · %s · %s" % (d, dict(mdl[4])[lv], u)
-        lines.append("  /%s '%s'" % (n, lab.replace("'", "''")))
-    lines[-1] += "."
-    lines += ["", "* The repeated-measures GLM: a rat missing any cell is left out entirely.",
-              "GLM %s TO %s" % (names[0], names[-1]),
-              "  /WSFACTOR=day 2 Polynomial %s %d Polynomial%s" % (factor, L, (" %s %d Polynomial" % (unit_word, K)) if K > 1 else ""),
-              "  /METHOD=SSTYPE(3)",
-              "  /PRINT=DESCRIPTIVE ETASQ",
-              "  /WSDESIGN=day %s%s." % (factor, (" %s day*%s day*%s %s*%s day*%s*%s" % (unit_word, factor, unit_word, factor,
-                                                                                         unit_word, factor, unit_word)) if K > 1
-                                         else " day*%s" % factor),
+    t2, t3 = _terms(res, mdl)
+    s2, s3 = _say(mdl, res)
+    a, b = mdl[4][0][1], mdl[4][-1][1]
+    lines = ["* " + "=" * 72,
+             "* Tab 8, Joe's data. Comparison %d: %s, %s." % (no, ascii_(title), _band_say(res["band"])),
+             "* " + ascii_(what),
+             "* Each value: %s, the mean of that rat's trials on that day." % _what_value(mdl, res["band"]),
+             "*",
+             "* Where SPSS answers it (Type III Tests of Fixed Effects):",
+             "*   day*%s        all %ss together: did %s differ between Precon1 and Precon4?" % (
+                 f, u, ("the change from %s to %s" % (ascii_(a), ascii_(b))) if len(mdl[4]) == 2 else "the pattern across the %ss" % f),
+             "*   day*%s*%s   %s by %s: did it differ more in some %ss than in others?" % (f, u, u, u, u),
+             "*",
+             "* Tab 8 found: day*%s %s (%s)." % (f, _fp(t2), s2.split(": ")[1]),
+             "*              day*%s*%s %s (%s)." % (f, u, _fp(t3), s3.split(": ")[1]),
+             "* This full model estimates all its variances together, and SPSS reports",
+             "* Satterthwaite df, so its numbers will be close to tab 8's, not identical.",
+             "* For a result that changed, '3 Recreate the positive results' reproduces",
+             "* tab 8's F exactly.",
+             "* " + "=" * 72, ""]
+    lines += _cd(folder)
+    lines += ["GET DATA /TYPE=TXT /FILE=%s /ENCODING='UTF8' /DELCASE=LINE /DELIMITERS=','" % _q(csv_name),
+              "  /QUALIFIER='\"' /ARRANGEMENT=DELIMITED /FIRSTCASE=2 /VARIABLES=",
+              "  rat F4.0 day F1.0 %s F2.0 %s F3.0 %s F14.10 day_name A8 %s_name A40 %s_name A24." % (f, u, val, f, u),
+              "VARIABLE LABELS rat 'Rat' /day 'Day' /%s %s /%s %s /%s %s." % (
+                  f, _q(mdl[3]), u, _q("Pair of regions" if u == "pair" else "Region"), val, _q(_what_value(mdl, res["band"]))),
+              "VALUE LABELS day 1 'Precon1' 4 'Precon4'",
+              "  /%s %s" % (f, " ".join("%d %s" % (i + 1, _q(l)) for i, (_x, l) in enumerate(mdl[4]))),
+              "  /%s %s." % (u, " ".join("%d %s" % (i + 1, _q(x)) for i, x in enumerate(res["units"]))),
               "",
-              "* The mixed model: every rat, every cell it has.",
-              "VARSTOCASES /MAKE value FROM %s TO %s /INDEX=cell(%d) /KEEP=rat /NULL=DROP." % (names[0], names[-1], len(names)),
-              "COMPUTE day = TRUNC((cell - 1) / %d) + 1." % (L * K),
-              "COMPUTE %s = MOD(TRUNC((cell - 1) / %d), %d) + 1." % (factor, K, L),
-              "COMPUTE %s = MOD(cell - 1, %d) + 1." % (unit_word, K),
-              "VALUE LABELS day 1 'Precon1' 2 'Precon4' /%s %s /%s %s." % (
-                  factor, " ".join("%d '%s'" % (i + 1, l.replace("'", "''")) for i, (_x, l) in enumerate(mdl[4])),
-                  unit_word, " ".join("%d '%s'" % (i + 1, u.replace("'", "''")) for i, u in enumerate(res["units"]))),
-              "MISSING VALUES value (%d)." % MISSING,
-              "MIXED value BY day %s %s" % (factor, unit_word if K > 1 else ""),
-              "  /FIXED=day %s %s day*%s%s | SSTYPE(3)" % (factor, unit_word if K > 1 else "", factor,
-                                                         (" day*%s %s*%s day*%s*%s" % (unit_word, factor, unit_word, factor, unit_word)) if K > 1 else ""),
-              ("  /RANDOM=INTERCEPT day %s %s day*%s day*%s %s*%s | SUBJECT(rat) COVTYPE(VC)" % (factor, unit_word, factor, unit_word, factor, unit_word))
-              if K > 1 else "  /RANDOM=INTERCEPT day %s day*%s | SUBJECT(rat) COVTYPE(VC)" % (factor, factor),
+              "* 2. The mixed model: every rat, with every %s it has." % u]
+    if K > 1:
+        lines += ["MIXED %s BY day %s %s" % (val, f, u),
+                  "  /FIXED=day %s %s day*%s day*%s %s*%s day*%s*%s | SSTYPE(3)" % (f, u, f, u, f, u, f, u),
+                  "  /RANDOM=INTERCEPT day %s %s day*%s day*%s %s*%s | SUBJECT(rat) COVTYPE(VC)" % (f, u, f, u, f, u)]
+    else:
+        lines += ["MIXED %s BY day %s" % (val, f), "  /FIXED=day %s day*%s | SSTYPE(3)" % (f, f),
+                  "  /RANDOM=INTERCEPT day %s | SUBJECT(rat) COVTYPE(VC)" % f]
+    lines += ["  /METHOD=REML", "  /CRITERIA=DFMETHOD(SATTERTHWAITE)", "  /PRINT=SOLUTION TESTCOV.", ""]
+    return "\r\n".join(lines)
+
+
+def recreate_sps(res, mdl, csv_name, folder):
+    """A positive result again, exactly: the stratum tab 8 tests it in (each
+    rat and unit's difference, the unit fixed, the rat random), and the
+    by-hand check (each rat's mean difference, a one-sample t)."""
+    no, title, _w = NAMES[mdl[0]]
+    u = "pair" if mdl[5] == "pair" else "region"
+    (la, a), (lb, b) = mdl[4]
+    t2, t3 = _terms(res, mdl)
+    q = res.get("quick") or {}
+    s2, s3 = _say(mdl, res)
+    lines = ["* " + "=" * 72,
+             "* Tab 8, Joe's data. Recreate comparison %d: %s, %s." % (no, ascii_(title), _band_say(res["band"])),
+             "* One row per rat and %s with all four values, and their difference:" % u,
+             "*   (Precon4 %s - Precon4 %s) - (Precon1 %s - Precon1 %s)." % (ascii_(b), ascii_(a), ascii_(b), ascii_(a)),
+             "* How much more the value moved from %s to %s on Precon4 than on Precon1." % (ascii_(a), ascii_(b)),
+             "*",
+             "* Tab 8 found: all %ss together %s (%s);" % (u, _fp(t2), s2.split(": ")[1]),
+             "*              %s by %s %s (%s)." % (u, u, _fp(t3), s3.split(": ")[1]),
+             "* " + "=" * 72, ""]
+    lines += _cd(folder)
+    lines += ["GET DATA /TYPE=TXT /FILE=%s /ENCODING='UTF8' /DELCASE=LINE /DELIMITERS=','" % _q(csv_name),
+              "  /QUALIFIER='\"' /ARRANGEMENT=DELIMITED /FIRSTCASE=2 /VARIABLES=",
+              "  rat F4.0 %s F3.0 %s_name A24 p1_%s F14.10 p1_%s F14.10 p4_%s F14.10 p4_%s F14.10 difference F14.10." % (u, u, la, lb, la, lb),
+              "DATASET NAME thedata.",
+              "",
+              "* A. The exact test, as tab 8 ran it. In 'Type III Tests of Fixed Effects':",
+              "*    the Intercept row is all %ss together (tab 8: F = %.2f)," % (u, t2["F"]),
+              "*    the %s row is %s by %s (tab 8: F = %.2f)." % (u, u, u, t3["F"]),
+              "*    F should match to rounding. SPSS's df (Satterthwaite) can differ from",
+              "*    tab 8's (%d and %d), so p can differ a little." % (t2["df2"], t3["df2"]),
+              "MIXED difference BY %s" % u,
+              "  /FIXED=%s | SSTYPE(3)" % u,
+              "  /RANDOM=INTERCEPT | SUBJECT(rat) COVTYPE(VC)",
               "  /METHOD=REML",
-              "  /CRITERIA=DFMETHOD(SATTERTHWAITE)",
-              "  /PRINT=SOLUTION TESTCOV.", ""]
-    return "\n".join(lines)
+              "  /PRINT=SOLUTION TESTCOV.",
+              "",
+              "* B. The check anyone can do by hand: each rat's mean difference over the",
+              "*    %ss it has, then a one-sample t-test against 0." % u]
+    if q:
+        lines += ["*    Tab 8: t(%d) = %.2f, p %s. Close to A, not equal: rats have different" % (q["df"], q["t"], ("= " if not _p(q["p"]).startswith("<") else "") + _p(q["p"])),
+                  "*    numbers of %ss." % u]
+    lines += ["DATASET DECLARE ratmeans.",
+              "AGGREGATE /OUTFILE=ratmeans /BREAK=rat /difference=MEAN(difference).",
+              "DATASET ACTIVATE ratmeans.",
+              "T-TEST /TESTVAL=0 /VARIABLES=difference.",
+              "DATASET ACTIVATE thedata.", ""]
+    return "\r\n".join(lines)
+
+
+def follow_sps(res, mdl, csv_name, folder):
+    """Every follow-up of a result that changed: one one-sample t-test per
+    pair and measure on each rat's difference, as tab 8 ran them."""
+    no, title, _w = NAMES[mdl[0]]
+    (la, a), (lb, b) = mdl[4]
+    f = res["follow"]
+    n_lit = sum(1 for pr in f["pairs"] for k in FOLLOW_KEYS if (pr["measures"].get(k) or {}).get("p") is not None and pr["measures"][k]["p"] < ALPHA)
+    n_all = sum(1 for pr in f["pairs"] for k in FOLLOW_KEYS if (pr["measures"].get(k) or {}).get("p") is not None)
+    lines = ["* " + "=" * 72,
+             "* Tab 8, Joe's data. Follow-ups of comparison %d: %s, %s." % (no, ascii_(title), _band_say(res["band"])),
+             "* The pairs: %s (%d of them)." % (ascii_(f["basis"]), len(f["pairs"])),
+             "* For each pair, each measure, each rat: (Precon4 %s - Precon4 %s) - (Precon1 %s - Precon1 %s)," % (ascii_(b), ascii_(a), ascii_(b), ascii_(a)),
+             "* then a one-sample t-test of that difference against 0 across the rats that have it.",
+             "* Measures: PLI and imaginary coherence (coupling that volume conduction cannot make);",
+             "*   Granger both ways and the amplitude cross-correlation's lag and peak (direction;",
+             "*   a negative lag means the first region of the pair leads); PAC between and within.",
+             "* Tab 8: %d of %d tests at p < .05 (chance alone gives about %.1f). Uncorrected, and the" % (n_lit, n_all, ALPHA * n_all),
+             "* pairs themselves did not survive Holm on their own: read these as leads.",
+             "* Each t-test below gives tab 8's t and p for that line exactly.",
+             "* " + "=" * 72, ""]
+    lines += _cd(folder)
+    lines += ["GET DATA /TYPE=TXT /FILE=%s /ENCODING='UTF8' /DELCASE=LINE /DELIMITERS=','" % _q(csv_name),
+              "  /QUALIFIER='\"' /ARRANGEMENT=DELIMITED /FIRSTCASE=2 /VARIABLES=",
+              "  rat F4.0 pair F3.0 pair_name A24 measure F2.0 measure_name A60 p1_%s F16.10 p1_%s F16.10 p4_%s F16.10 p4_%s F16.10 difference F16.10." % (la, lb, la, lb),
+              "SORT CASES BY pair measure rat.",
+              "SPLIT FILE LAYERED BY pair_name measure_name.",
+              "T-TEST /TESTVAL=0 /VARIABLES=difference.",
+              "SPLIT FILE OFF.", ""]
+    return "\r\n".join(lines)
+
+
+def follow_rows(res):
+    """The follow-ups' rows: one per pair, measure and rat with all four values."""
+    rows = []
+    for pi, pr in enumerate(res["follow"]["pairs"]):
+        for ki, k in enumerate(FOLLOW_KEYS):
+            per = (pr["measures"].get(k) or {}).get("per_rat") or {}
+            for r in sorted(per, key=int):
+                v = per[r]
+                rows.append((int(r), pi + 1, ascii_(pr["pair"]), ki + 1, ascii_(follow_name(k, pr["a"], pr["b"])), v[0], v[1], v[2], v[3], v[4]))
+    return rows
+
+
+def _csv(header, rows):
+    out = [",".join(header)]
+    for r in rows:
+        out.append(",".join(("%.10g" % x) if isinstance(x, float) else ('"%s"' % x if isinstance(x, str) and "," in x else str(x)) for x in r))
+    return "\r\n".join(out) + "\r\n"
+
+
+MAIN_DIR = "1 Main comparisons"
+CHECK_DIR = "2 Checks, should show nothing"
+REDO_DIR = "3 Recreate the positive results"
+FOLLOW_DIR = "4 Follow-ups"
+ZIP_NAME = "joe_tab8_spss.zip"
+README_NAME = "joe_tab8_README.txt"
+SUMMARY_NAME = "joe_tab8_results.csv"
+
+
+def readme_text(out, positive, welch, rows_summary):
+    """The README in the zip: what is there, what each number is, how to
+    run one, why there is no repeated-measures ANOVA, and how to recreate
+    each result that changed."""
+    D = out
+    n_rats = len(D.get("rats") or [])
+    L = []
+    w = L.append
+    w("JOE'S DATA (TAB 8): THE FILES FOR SPSS")
+    w("Made by Jarvis on %s from %d rat-days (%d rats). Precon1 and Precon4 are tested." % (
+        D.get("at", "")[:10], D.get("n_days") or 0, n_rats))
+    w("")
+    w("WHAT IS IN HERE")
+    w("  Results summary.csv              every comparison: its answer in words, and its numbers")
+    w("  %-33s the 8 planned comparisons, each in theta and in gamma" % (MAIN_DIR + "\\"))
+    w("  %-33s the 4 sound checks, which should show nothing" % (CHECK_DIR + "\\"))
+    w("  %-33s for each result that changed, a small file that gives" % (REDO_DIR + "\\"))
+    w("  %-33s tab 8's numbers back exactly" % "")
+    w("  %-33s for each result that changed, the follow-ups (PLI, imaginary" % (FOLLOW_DIR + "\\"))
+    w("  %-33s coherence, Granger, cross-correlation, PAC) and their syntax" % "")
+    w("  Each comparison is a .csv (the data) and a .sps (SPSS syntax that reads it and runs the test).")
+    w("")
+    w("THE COMPARISONS")
+    for m in MODELS:
+        no, title, what = NAMES[m[0]]
+        w("  %2d  %s" % (no, ascii_(title)))
+        w("      %s" % ascii_(what))
+    w("")
+    w("WHAT EACH VALUE IS")
+    w("  Coherence: how much two regions' rhythms rise and fall together, from 0 to 1. Computed")
+    w("  as in Dickson et al. 2022 (Jeremy's mscohere): a 59-61 Hz Butterworth notch, then")
+    w("  hanning(1024) segments, 512 overlap, 2048 points; averaged over theta (5-12 Hz) or")
+    w("  gamma (30-90 Hz, leaving out the notch's own 59-61 Hz).")
+    w("  One value per rat, day, window and pair: the mean over that day's trials (16 cue pairs).")
+    w("  Comparison 8 is power instead: log10 power in each region.")
+    w("  Precon2 and Precon3 are drawn on the tab but never tested, so they are not in these files.")
+    w("")
+    w("THE TEST")
+    w("  A mixed model: day (Precon1, Precon4) x phase (the comparison's two windows) x pair,")
+    w("  with the rat as the random factor. Two rows of its output answer the question:")
+    w("    day*phase        all pairs together: did the change from one window to the other")
+    w("                     differ between Precon1 and Precon4, on average over the pairs?")
+    w("    day*phase*pair   pair by pair: did it differ more in some pairs than in others?")
+    w("  A comparison 'changed' when either reaches p < .05. p is not corrected: these are the")
+    w("  comparisons the proposal planned, not a search.")
+    w("  Words on the tab: strong evidence below p = .01, some evidence below .05, otherwise none.")
+    w("")
+    w("WHY THERE IS NO REPEATED-MEASURES ANOVA (GLM)")
+    full = sorted({r for x in out["results"] if x.get("complete_rats") is not None and x["model"] == "m1" for r in x["complete_rats"]})
+    w("  SPSS's GLM repeated measures can only use a rat that has every pair on both days.")
+    w("  Histology rules regions out for some rats, and every pair touching such a region is")
+    w("  missing for that rat. Only %d of the %d rats (%s) have every pair, so GLM would drop" % (
+        len(full), n_rats, ", ".join(str(r) for r in full) or "none"))
+    w("  the rest and rest on %d degree%s of freedom. The mixed model keeps all %d rats, each" % (
+        max(0, len(full) - 1), "" if len(full) == 2 else "s", n_rats))
+    w("  with the pairs it has. With every rat complete the two give the same F (checked in")
+    w("  Jarvis, tools/check_joe.py, on made-up data).")
+    w("")
+    w("HOW TO RUN ONE")
+    w("  1. Unzip everything. Keep the folders as they are.")
+    w("  2. In SPSS: File > Open > Syntax, and pick a .sps.")
+    w("  3. Change the CD line near its top to the folder that .sps is in.")
+    w("  4. Run > All.")
+    w("  5. Read the table 'Type III Tests of Fixed Effects'.")
+    w("")
+    w("HOW TO RECREATE THE POSITIVE RESULTS")
+    if not positive:
+        w("  No comparison changed, so there is nothing to recreate.")
+    else:
+        w("  Tab 8 found a change in:")
+        for x in positive:
+            w("    %2d  %s, %s" % (x["no"], ascii_(x["title"]), x["band"]))
+            w("        all pairs together: %s" % x["two_say"])
+            w("        pair by pair:       %s" % x["three_say"])
+        w("  For each, '%s' has two files:" % REDO_DIR)
+        w("    '... - per rat and pair.csv': one row per rat and pair with the four values")
+        w("      (Precon1 and Precon4, each window) and their difference,")
+        w("      (Precon4 second window - Precon4 first) - (Precon1 second - Precon1 first).")
+        w("    '... - recreate.sps', which runs two things:")
+        w("      A. The exact test. A mixed model of the difference, pair fixed, rat random:")
+        w("         the Intercept row is 'all pairs together' and the pair row is 'pair by pair'.")
+        w("         These are the very tests tab 8 ran, so F should match tab 8's to rounding.")
+        w("         SPSS reports Satterthwaite df, which can differ from tab 8's, so p can move a")
+        w("         little.")
+        w("      B. A check anyone can do by hand: each rat's mean difference over its own pairs,")
+        w("         then a one-sample t-test against 0 (t(7) with 8 rats). It comes close to A,")
+        w("         not exactly, because the rats have different numbers of pairs.")
+        for x in positive:
+            if x.get("quick"):
+                q = x["quick"]
+                w("         Comparison %d, %s: t(%d) = %.2f, p %s." % (x["no"], x["band"], q["df"], q["t"],
+                                                                     ("= " if not _p(q["p"]).startswith("<") else "") + _p(q["p"])))
+    w("")
+    w("THE FOLLOW-UPS")
+    if not any(x.get("follow_files") for x in positive):
+        w("  None: no result that changed had pairs to follow up.")
+    else:
+        w("  For each result that changed, the pairs that moved most were looked at more closely, in")
+        w("  the same windows and band: PLI and imaginary coherence (coupling that volume conduction")
+        w("  cannot make), Granger both ways and the amplitude cross-correlation's lag and peak")
+        w("  (direction; a negative lag means the pair's first region leads), and PAC between and")
+        w("  within the two regions. Each is a one-sample t-test of each rat's difference, the same")
+        w("  difference as in '%s'. They are uncorrected, and the pairs did not" % REDO_DIR)
+        w("  survive Holm on their own, so read them as leads, not results.")
+        for x in positive:
+            if not x.get("follow_files"):
+                continue
+            w("    %2d  %s, %s: %d of %d at p < .05 (chance alone gives about %.1f)" % (
+                x["no"], ascii_(x["title"]), x["band"], x["follow_lit"], x["follow_n"], ALPHA * x["follow_n"]))
+        w("  '%s' has, for each, the rows and a .sps that runs every t-test" % FOLLOW_DIR)
+        w("  (one per pair and measure, split by both); each gives tab 8's t and p for that line.")
+    w("")
+    w("  The full model in '%s' estimates all its variances together," % MAIN_DIR)
+    w("  so its day*phase F comes close to tab 8's but is not identical.")
+    w("")
+    w("WELCH")
+    import textwrap
+    for line in textwrap.wrap("Tab 8 also computed coherence the circuits' way (Welch). %s" % welch, 88):
+        w("  " + line)
+    w("  These files are Dickson only.")
+    w("")
+    w("THE SAME NUMBERS WITHOUT JARVIS")
+    w("  joe_standalone.py (numpy and scipy only, on the tab) reads the recordings itself and")
+    w("  writes every value again; tab 8 compares the two cell by cell.")
+    return "\r\n".join(L) + "\r\n"
+
+
+def welch_note(out):
+    """Whether Welch lights the same comparisons Dickson does, in words, and
+    the counts."""
+    same = total = 0
+    differ = []
+    for res in out["results"]:
+        if res["method"] != SHOWN or res["band"] is None:
+            continue
+        mdl = MODEL_BY_ID[res["model"]]
+        if mdl[5] != "pair" or not res.get("mixed", {}).get("ok"):
+            continue
+        other = next((x for x in out["results"] if x["model"] == res["model"] and x["band"] == res["band"] and x["method"] == "welch"), None)
+        if not other or not other.get("mixed", {}).get("ok"):
+            continue
+        total += 1
+        if _lit(res) == _lit(other):
+            same += 1
+        else:
+            differ.append("comparison %d (%s), %s: %s" % (NAMES[res["model"]][0], ascii_(NAMES[res["model"]][1]), res["band"],
+                                                          "Welch changed, Dickson did not" if _lit(other) else "Dickson changed, Welch did not"))
+    say = ("It gives the same answer in all %d comparisons and bands." % total) if not differ else (
+        "It gives the same answer in %d of %d comparisons and bands. It differs in %s." % (same, total, "; ".join(differ)))
+    return {"same": same, "total": total, "differ": differ, "say": say}
 
 
 def write_exports(out, into):
-    """Every model's wide .csv and .sps, and a zip of them all."""
+    """The SPSS package, and the files the standalone script is checked
+    against.
+
+    into/compare/<id>_<band>_<method>.csv: every result, both methods, wide
+    (the script writes the same; agreement() compares them).
+    into/joe_tab8_spss.zip, unzipping to joe_tab8_spss/: a README, a results
+    summary, then three folders -- the main comparisons, the checks, and,
+    for each result that changed, the files that recreate it -- each a long
+    .csv and its .sps, named by the comparison's number and name. Dickson
+    only (Welch is said in words). The README and the summary also sit
+    beside the zip, to read without unzipping."""
+    import shutil
     import zipfile
     os.makedirs(into, exist_ok=True)
-    files = []
+    for f in os.listdir(into):
+        pth = os.path.join(into, f)
+        if os.path.isfile(pth) and os.path.splitext(f)[1] in (".csv", ".sps", ".txt", ".zip", ".tmp"):
+            os.remove(pth)
+    cmp_dir = os.path.join(into, "compare")
+    shutil.rmtree(cmp_dir, ignore_errors=True)
+    os.makedirs(cmp_dir)
     for res in out["results"]:
         if not res.get("units"):
             continue
         mdl = MODEL_BY_ID[res["model"]]
-        name = export_name(res)
         cols, rows = wide_rows(res, mdl)
-        csv_path = os.path.join(into, name + ".csv")
-        with open(csv_path, "w", encoding="utf-8", newline="") as fh:
+        with open(os.path.join(cmp_dir, compare_name(res) + ".csv"), "w", encoding="utf-8", newline="") as fh:
             fh.write(",".join(["rat"] + [c[3] for c in cols]) + "\n")
             for r in rows:
                 fh.write(",".join(str(x) for x in r) + "\n")
-        with open(os.path.join(into, name + ".sps"), "w", encoding="utf-8", newline="\r\n") as fh:
-            fh.write(sps_text(res, mdl, name + ".csv"))
-        files += [name + ".csv", name + ".sps"]
-    zpath = os.path.join(into, "joe_tab8_spss.zip")
+    welch = welch_note(out)
+    files = {}                                     # path in the package -> text
+    summary = []
+    positive = []
+    root = "joe_tab8_spss/"
+    for mdl in MODELS:
+        for band in [b for b, _lo, _hi in BANDS]:
+            method = SHOWN if mdl[5] == "pair" else "welch"
+            res = next((x for x in out["results"] if x["model"] == mdl[0] and x["band"] == band and x["method"] == method), None)
+            no, title, _what = NAMES[mdl[0]]
+            if not res or not res.get("units") or not res.get("mixed", {}).get("ok"):
+                summary.append([no, ascii_(title), mdl[2], band, "not fitted"] + [""] * 14)
+                continue
+            folder = MAIN_DIR if mdl[2] == "first" else CHECK_DIR
+            name = "%s - %s" % (stem(mdl[0]), band)
+            f = mdl[3].lower()
+            u = "pair" if mdl[5] == "pair" else "region"
+            val = "power" if mdl[5] == "region" else "coherence"
+            files[root + folder + "/" + name + ".csv"] = _csv(
+                ["rat", "day", f, u, val, "day_name", f + "_name", u + "_name"], long_rows(res, mdl))
+            files[root + folder + "/" + name + ".sps"] = main_sps(res, mdl, name + ".csv", folder)
+            t2, t3 = _terms(res, mdl)
+            s2, s3 = _say(mdl, res)
+            other = next((x for x in out["results"] if x["model"] == mdl[0] and x["band"] == band and x["method"] == "welch"), None) \
+                if mdl[5] == "pair" else None
+            agrees = "-" if other is None or not other.get("mixed", {}).get("ok") else ("yes" if _lit(other) == _lit(res) else "no")
+            row = [no, ascii_(title), "main" if mdl[2] == "first" else "check", band, "yes" if _lit(res) else "no",
+                   s2.split(": ")[1]] + (["%.3f" % t2["F"], t2["df1"], t2["df2"], "%.4f" % t2["p"]] if t2 else ["", "", "", ""]) + \
+                [s3.split(": ")[1]] + (["%.3f" % t3["F"], t3["df1"], t3["df2"], "%.4f" % t3["p"]] if t3 else ["", "", "", ""]) + \
+                [agrees, len(res.get("rats") or []), len(res["units"]), folder + "\\" + name + ".sps"]
+            summary.append(row)
+            if _lit(res) and mdl[2] == "first" and len(mdl[4]) == 2:
+                rn = "%s - %s - per rat and %s" % (stem(mdl[0]), band, u)
+                tab = {r: per for r, per in res["table"].items()}
+                allu = res["all_units"]
+                keep = [allu.index(x) for x in res["units"]]
+                tabn = {r: {d: {lv: np.array([np.nan if x is None else x for x in per[d][lv]]) for lv, _l in mdl[4]}
+                            for d in TESTED} for r, per in tab.items()}
+                crow = [(r, keep.index(ui) + 1, ascii_(un), a, b, c, d, dif)
+                        for r, ui, un, a, b, c, d, dif in contrast_rows(tabn, mdl, keep, allu)]
+                (la, _a), (lb, _b) = mdl[4]
+                files[root + REDO_DIR + "/" + rn + ".csv"] = _csv(
+                    ["rat", u, u + "_name", "p1_" + la, "p1_" + lb, "p4_" + la, "p4_" + lb, "difference"], crow)
+                files[root + REDO_DIR + "/" + "%s - %s - recreate.sps" % (stem(mdl[0]), band)] = recreate_sps(res, mdl, rn + ".csv", REDO_DIR)
+                fol_files = []
+                if res.get("follow") and res["follow"].get("pairs"):
+                    fn = "%s - %s - follow-ups" % (stem(mdl[0]), band)
+                    files[root + FOLLOW_DIR + "/" + fn + ".csv"] = _csv(
+                        ["rat", u, u + "_name", "measure", "measure_name", "p1_" + la, "p1_" + lb, "p4_" + la, "p4_" + lb, "difference"],
+                        follow_rows(res))
+                    files[root + FOLLOW_DIR + "/" + fn + ".sps"] = follow_sps(res, mdl, fn + ".csv", FOLLOW_DIR)
+                    fol_files = [FOLLOW_DIR + "/" + fn + ".csv", FOLLOW_DIR + "/" + fn + ".sps"]
+                positive.append({"model": mdl[0], "band": band, "no": no, "title": title, "follow_files": fol_files,
+                                 "two_say": "%s (%s)" % (_fp(t2), s2.split(": ")[1]),
+                                 "three_say": "%s (%s)" % (_fp(t3), s3.split(": ")[1]),
+                                 "quick": res.get("quick"), "two": t2, "three": t3,
+                                 "follow_n": sum(1 for pr in (res.get("follow") or {}).get("pairs", []) for k in FOLLOW_KEYS
+                                                 if (pr["measures"].get(k) or {}).get("p") is not None),
+                                 "follow_lit": sum(1 for pr in (res.get("follow") or {}).get("pairs", []) for k in FOLLOW_KEYS
+                                                   if (pr["measures"].get(k) or {}).get("p") is not None and pr["measures"][k]["p"] < ALPHA),
+                                 "files": [REDO_DIR + "/" + rn + ".csv", REDO_DIR + "/" + "%s - %s - recreate.sps" % (stem(mdl[0]), band)]})
+    head = ["number", "comparison", "kind", "band", "changed", "all together", "F", "df1", "df2", "p",
+            "one by one", "F", "df1", "df2", "p", "Welch agrees", "rats", "pairs or regions", "syntax"]
+    summary_text = _csv(head, summary)
+    readme = readme_text(out, positive, welch["say"], summary)
+    files[root + "README.txt"] = readme
+    files[root + "Results summary.csv"] = summary_text
+    zpath = os.path.join(into, ZIP_NAME)
     with zipfile.ZipFile(zpath + ".tmp", "w", zipfile.ZIP_DEFLATED) as z:
-        for f in files:
-            z.write(os.path.join(into, f), f)
+        for pth in sorted(files):
+            z.writestr(pth, ("\ufeff" if pth.endswith(".sps") else "") + files[pth])
     os.replace(zpath + ".tmp", zpath)
-    return files
+    with open(os.path.join(into, README_NAME), "w", encoding="utf-8", newline="") as fh:
+        fh.write(readme)
+    with open(os.path.join(into, SUMMARY_NAME), "w", encoding="utf-8", newline="") as fh:
+        fh.write(summary_text)
+    return {"downloads": [ZIP_NAME, README_NAME, SUMMARY_NAME], "tree": sorted(p_[len(root):] for p_ in files),
+            "positive": positive, "welch": welch}
 
 
 # --------------------------------------------------------------------------
@@ -1392,8 +1875,9 @@ def joe_work(worker, workers=None):
     out["notes"] = notes
     out["histology"] = man.get("histology")
     out["trial_counts"] = {"r%d %s" % k: len(v[2]["trials"]) for k, v in day_data.items()}
-    files = write_exports(out, joe_dir("export"))
-    out["exports"] = files
+    got = write_exports(out, joe_dir("export"))
+    out["exports"] = got["downloads"]
+    out["spss"] = got
     # The per-rat tables are in the exports; the page needs the cells, the
     # post hocs and the follow-ups, not every number again.
     for res in out["results"]:
@@ -1474,7 +1958,7 @@ def agreement(tol=1e-6):
     """The standalone script's CSVs (joe_dir("script")) against this
     module's (joe_dir("export")), cell by cell: None when the script has
     not been run."""
-    sd, ed = joe_dir("script"), joe_dir("export")
+    sd, ed = joe_dir("script"), joe_dir("export", "compare")
     if not os.path.isdir(sd):
         return None
     files = sorted(f for f in os.listdir(ed) if f.endswith(".csv")) if os.path.isdir(ed) else []

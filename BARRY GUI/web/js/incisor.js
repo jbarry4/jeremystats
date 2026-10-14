@@ -56,6 +56,12 @@ BARRY.incisor = (function () {
     // never found again.
     row: null,
     channels: null,       // null means every channel
+    /* Which channels THIS scan reads (2026-10-14): null for every one, or
+       { mode: 'first' | 'second' | 'even' | 'odd' } or
+       { mode: 'ranges', ranges: [[lo, hi], ...] } by CSC number. Never a
+       bad mark: bad channels stay out inside any pick, and a pick marks
+       nothing bad. Back to every channel for each new recording. */
+    pick: null,
     height_sd: 4.5,
     abs_uv: 300,
     dist_ms: 100,
@@ -142,6 +148,7 @@ BARRY.incisor = (function () {
     return Object.assign({
       path: q.path,
       channels: q.channels,
+      channel_pick: q.pick,
       height_sd: q.height_sd,
       abs_uv: q.abs_uv,
       dist_ms: q.dist_ms,
@@ -530,15 +537,15 @@ BARRY.incisor = (function () {
     paint();
   }
 
-  async function setRowBad(r, numbers) {
+  async function setRowBad(r, numbers, change) {
     const st = chanOpen[r.gid];
     if (!st || st.busy) return;
     st.busy = true; paint();
     try {
-      await apiPost('/api/session/bad-for-path', {
+      await apiPost('/api/session/bad-for-path', Object.assign({
         path: st.path,
         bad_channels: numbers.map(Number).sort((a, b) => a - b),
-      });
+      }, change || {}));
       const got = await apiPost('/api/incisor/estimate',
                                 Object.assign({ path: st.path }, paramsBody()));
       chanOpen[r.gid] = { est: got, path: st.path };
@@ -565,10 +572,12 @@ BARRY.incisor = (function () {
     const bad = all.filter((c) => c.bad);
     const box = el('div', { class: 'inc-row-chans' });
     box.appendChild(chanGrid(all, bad, !!st.busy,
+      // A change, with the list for an older Jarvis. See setBad.
       (number, isBad) => {
         const now = new Set(bad.map((c) => Number(c.number)));
         if (isBad) now.add(Number(number)); else now.delete(Number(number));
-        setRowBad(r, Array.from(now));
+        const n = [Number(number)];
+        setRowBad(r, Array.from(now), isBad ? { add: n } : { remove: n });
       },
       () => setRowBad(r, [])));
     return box;
@@ -847,6 +856,8 @@ BARRY.incisor = (function () {
     q.gid = r.gid;
     q.row = got.row || r.row || null;
     q.path = got.path;
+    // The channels it was scanned on, so the estimate is of the same scan.
+    q.pick = (((got.result || {}).params) || {}).channel_pick || null;
     est = { known: got.known || {} };
     adopt(got.result);
     paint();
@@ -1036,6 +1047,7 @@ BARRY.incisor = (function () {
         q.gid = r.gid;
         q.row = r;
         q.path = g.path;
+        q.pick = null; pickOpen = false;
         reset();
         refreshEstimate();
         paint();
@@ -1181,7 +1193,11 @@ BARRY.incisor = (function () {
 
     box.appendChild(el('p', { class: 'inc-sel-head',
       text: p.n_channels + ' of ' + total + ' channel'
-          + (total === 1 ? '' : 's') + ' will be read' }));
+          + (total === 1 ? '' : 's') + ' will be read'
+          + (est && est.pick ? ': ' + est.pick_words
+             + (bad.some((c) => c.picked !== false)
+                ? ', less the ones marked bad' : '') : '') }));
+    box.appendChild(pickRow());
 
     /* Both ways round. "None are marked" is a fact about this recording
        too, and a panel that only speaks when something was removed leaves
@@ -1210,6 +1226,96 @@ BARRY.incisor = (function () {
 
     box.appendChild(chanEditor(all, bad));
     return box;
+  }
+
+  /* WHICH CHANNELS THIS SCAN READS (asked for 2026-10-14).
+
+     A 128-channel recording is often two probes, and the only way to scan
+     one of them was to untick the other 64 -- which marks them bad for this
+     session everywhere, in every tool, for a reason that has nothing to do
+     with the wires. A pick says which channels this one scan reads and
+     nothing else. Bad channels stay out inside any pick; a pick never puts
+     one back and never marks one. The halves are by CSC number over every
+     channel the recording has, so the first half of 128 is CSC1-64
+     whatever is marked. The server applies the rule (`incisor.channel_pick`),
+     so the count above and the scan cannot disagree. */
+  let pickOpen = false;          // the custom range field is showing
+  const PICKS = [
+    ['all', 'All', 'Every channel not marked bad'],
+    ['first', 'First half', 'The first half by CSC number, less the bad ones'],
+    ['second', 'Second half', 'The second half by CSC number, less the bad ones'],
+    ['even', 'Even', 'The even CSC numbers, less the bad ones'],
+    ['odd', 'Odd', 'The odd CSC numbers, less the bad ones'],
+    ['ranges', 'Range\u2026', 'CSC numbers and ranges of your own, such as '
+                         + '1-64, or 1-32, 65-96'],
+  ];
+
+  function pickText(pick) {
+    return ((pick && pick.ranges) || []).map((r) => (r[0] === r[1]
+      ? String(r[0]) : r[0] + '-' + r[1])).join(', ');
+  }
+
+  /* "1-64", "1-32, 65-96", "CSC5, 9-12": ranges by CSC number, or null
+     with the reason. */
+  function parseRanges(text) {
+    const parts = String(text || '').split(/[,;\s]+/).filter(Boolean);
+    if (!parts.length) return { why: 'Type CSC numbers or ranges, such as 1-64.' };
+    const out = [];
+    for (const raw of parts) {
+      const t = raw.replace(/^csc/i, '').replace(/[\u2013\u2014]/g, '-');
+      const m = /^(\d+)(?:-(?:csc)?(\d+))?$/i.exec(t);
+      if (!m) return { why: '\u201c' + raw + '\u201d is not a CSC number or '
+                            + 'a range such as 1-64.' };
+      const lo = Number(m[1]), hi = Number(m[2] || m[1]);
+      if (lo < 1 || hi < 1) return { why: 'CSC numbers start at 1.' };
+      out.push([Math.min(lo, hi), Math.max(lo, hi)]);
+    }
+    return { ranges: out };
+  }
+
+  function setPick(pick) {
+    q.pick = pick;
+    reset();            // a scan of other channels is not this one's answer
+    refreshEstimate();
+    paint();
+  }
+
+  function pickRow() {
+    const cur = (q.pick && q.pick.mode) || 'all';
+    const row = el('div', { class: 'inc-pick' });
+    row.appendChild(el('span', { class: 'inc-pick-l', text: 'Scan' }));
+    row.appendChild(el('div', { class: 'seg sm inc-pick-seg' }, PICKS.map(
+      ([id, label, why]) => el('button', {
+        class: (id === cur || (id === 'ranges' && pickOpen)) ? 'active' : '',
+        title: why, disabled: (job || savingBad) ? 'disabled' : null,
+        onclick: () => {
+          if (id === 'ranges') { pickOpen = true; paint(); return; }
+          pickOpen = false;
+          if (id === cur) return;
+          setPick(id === 'all' ? null : { mode: id });
+        },
+        text: label,
+      }))));
+    if (pickOpen || cur === 'ranges') {
+      const inp = el('input', { type: 'text', class: 'inc-pick-in',
+        'aria-label': 'CSC numbers and ranges',
+        placeholder: 'e.g. 1-64, or 1-32, 65-96',
+        value: pickText(q.pick) });
+      const go = () => {
+        const got = parseRanges(inp.value);
+        if (!got.ranges) { toast(got.why, 'warn', 7000); return; }
+        setPick({ mode: 'ranges', ranges: got.ranges });
+      };
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+      row.appendChild(inp);
+      row.appendChild(el('button', { class: 'btn ghost sm inc-pick-go',
+        text: 'Use these', disabled: (job || savingBad) ? 'disabled' : null,
+        onclick: go }));
+    }
+    row.appendChild(el('span', { class: 'hint quiet inc-pick-why', text:
+      'Which channels this scan reads. Channels marked bad stay out of any '
+      + 'of these, and choosing one marks nothing bad.' }));
+    return row;
   }
 
   /* Putting a channel back, or taking one out, and generating the times
@@ -1247,10 +1353,15 @@ BARRY.incisor = (function () {
     const wrap = el('div', {});
     const grid = el('div', { class: 'inc-chan-grid' });
     for (const c of all) {
+      // `picked` is false only where a pick leaves the channel out; a grid
+      // drawn without one (VACC mode's) has no such field.
+      const out = c.picked === false && !c.bad;
       grid.appendChild(el('label', {
-        class: 'inc-chan' + (c.bad ? ' bad' : ''),
+        class: 'inc-chan' + (c.bad ? ' bad' : '') + (out ? ' out' : ''),
         title: c.bad ? c.label + ' is marked bad and is not read'
-                     : c.label + ' is read',
+          : out ? c.label + ' is not in this scan’s channels (' + ((est
+              && est.pick_words) || 'the pick') + '). It is not marked bad.'
+          : c.label + ' is read',
       }, [
         el('input', {
           type: 'checkbox', checked: c.bad ? null : 'checked',
@@ -1270,21 +1381,26 @@ BARRY.incisor = (function () {
     return wrap;
   }
 
+  /* One channel is sent as a change, not as this panel's list with one
+     channel different: that list was read when the estimate was, and a
+     channel marked in the trace view since then was wiped by it. */
   function setBad(number, bad) {
     const now = new Set(((est && est.channels) || [])
       .filter((c) => c.bad).map((c) => Number(c.number)));
     if (bad) now.add(Number(number)); else now.delete(Number(number));
-    setBadSet(Array.from(now));
+    // The list too, for a Jarvis older than `add` / `remove`.
+    const n = [Number(number)];
+    setBadSet(Array.from(now), bad ? { add: n } : { remove: n });
   }
 
-  async function setBadSet(numbers) {
+  async function setBadSet(numbers, change) {
     if (!q.path || savingBad) return;
     savingBad = true; paint();
     try {
-      await apiPost('/api/session/bad-for-path', {
+      await apiPost('/api/session/bad-for-path', Object.assign({
         path: q.path,
         bad_channels: numbers.map(Number).sort((a, b) => a - b),
-      });
+      }, change || {}));
     } catch (e) {
       savingBad = false; paint();
       toast(e.message, 'err', 9000);

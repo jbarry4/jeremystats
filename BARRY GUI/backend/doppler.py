@@ -106,11 +106,262 @@ CHUNK_SECONDS = 60.0
 # probe is in 10-60% of events; the ones that were actually broken sat above
 # 95%.
 SUSPECT_FRAC = 0.90
+# ...and only once there are enough events for a fraction to mean anything.
+# With one event every channel that took part is "in 100% of them": a run of
+# PTEN m5 s44 that found one IED carried sixteen of these warnings.
+SUSPECT_MIN_EVENTS = 20
 
 _CACHE = {}
 _CACHE_ORDER = []
 CACHE_MAX = 8
 _CACHE_LOCK = threading.Lock()
+
+
+# --------------------------------------------------------------------------
+# The two methods, and the defaults the panel and every route read
+# --------------------------------------------------------------------------
+#
+# STORM is the default. It is what the IED detector study chose: it catches
+# every hand-sorted Solid on the ten PTEN recordings (169 of 169 reachable) in
+# 2,568 candidates run through this engine (validate_production.py; 2,595 in
+# the study, which sampled the percentile), against the lab's original
+# settings which catch 111 of
+# them in 4,447 -- AND it still catches all 169 with the threshold one step
+# higher or one more channel required. That margin is the point. The cheapest
+# setting that merely reaches 169 (2,072) sits on a cliff: chosen on nine
+# recordings it missed Solids on the tenth four times in ten, and the first
+# defaults shipped here (2,491) lost two Solids to nothing more than this
+# engine's exact percentile. This one, chosen the same way, missed none. The
+# study is in `FOOOF Playgroun/IED detection and such/README.md` (steps 7-10
+# for this choice). In order:
+#
+#   decimate to 2 kHz                anti-aliased, as each channel is read
+#   notch 60 Hz and harmonics
+#   common-average reference         per probe bank, good channels only. The
+#                                    single biggest fix: one channel's noise
+#                                    and whole-probe movement stop counting
+#   band-pass 20-300 Hz              raw line length is dominated by 300+ Hz
+#                                    unit/EMG activity, which is not an IED.
+#                                    The low edge matters little (5, 10, 20
+#                                    or none are within a few percent); 20 is
+#                                    the one with margin on both sides
+#   line length over 15 ms           10, 12.5, 20 and 30 all cost more
+#   even channels                    the lab's convention, and what the
+#                                    channel-count rule was validated on
+#   one pooled 99.9th percentile     per recording, over the detection channels
+#   merge gaps < 300 ms, keep >= 12.5 ms
+#                                    300 ms is the lab's own definition of one
+#                                    event; a longer merge looks cheaper only
+#                                    by folding doublets into one candidate
+#   at least 7 channels take part    inside the lab's own "5-10 even channels"
+#                                    review rule; an upper bound never helped
+#
+# LEGACY is Kleen's LLspikedetector exactly as the lab ran it: raw, native
+# rate, 40 ms, every chosen channel, 99.9th, no channel rule. It is what
+# tools/check_doppler_parity.py holds against the MATLAB, and what every run
+# banked before Storm existed was made with.
+
+STORM = {
+    "method": "storm",
+    "llw_s": 0.015,
+    "prc": 99.9,
+    "notch_hz": 60.0,
+    "band": [20.0, 300.0],
+    "car": True,
+    "fs_work": 2000.0,
+    "merge_s": 0.300,
+    "min_event_s": 0.0125,
+    "min_channels": 7,
+    "detect_on": "even",
+}
+LEGACY = {
+    "method": "legacy",
+    "llw_s": LLW_S,
+    "prc": PRC,
+    "notch_hz": None,
+    "band": None,
+    "car": False,
+    "fs_work": None,
+    "merge_s": MERGE_S,
+    "min_event_s": MIN_EVENT_S,
+    "min_channels": 1,
+    "detect_on": "all",
+}
+METHODS = {"storm": STORM, "legacy": LEGACY}
+PARAM_KEYS = tuple(STORM.keys())
+
+
+def params_from(body):
+    """The detection parameters a request asks for, defaults filled in.
+
+    A key the caller sent wins, including an explicit None -- that is how the
+    panel says "no band-pass". A key it did not send takes the method's
+    default. Types are made what the engine expects, so a number typed into
+    a box arrives as a number.
+    """
+    body = body or {}
+    method = body.get("method") or "storm"
+    if method not in METHODS:
+        raise ValueError("No such Doppler method: %r" % (method,))
+    out = dict(METHODS[method])
+    for k in PARAM_KEYS:
+        if k == "method" or k not in body:
+            continue
+        out[k] = body[k]
+    def num(v, cast=float):
+        return None if v in (None, "", False) else cast(v)
+    out["llw_s"] = float(out["llw_s"])
+    out["prc"] = float(out["prc"])
+    out["notch_hz"] = num(out["notch_hz"])
+    b = out.get("band")
+    out["band"] = [float(b[0]), float(b[1])] if b else None
+    out["car"] = bool(out["car"])
+    out["fs_work"] = num(out["fs_work"])
+    out["merge_s"] = float(out["merge_s"])
+    out["min_event_s"] = float(out["min_event_s"])
+    out["min_channels"] = max(1, int(out["min_channels"] or 1))
+    if out["detect_on"] not in ("even", "odd", "all"):
+        out["detect_on"] = "even"
+    # Not one of PARAM_KEYS, on purpose: adding a key there would rename
+    # every run already in the vault. It goes into a run's key and its
+    # request hash only when it is set (see `_spec_fingerprint`).
+    out["channel_range"] = channel_range(body.get("channel_range"))
+    return out
+
+
+def detects_on(rule, number):
+    if rule == "even":
+        return int(number) % 2 == 0
+    if rule == "odd":
+        return int(number) % 2 == 1
+    return True
+
+
+# --------------------------------------------------------------------------
+# Which channels go in: the range, then everything else inside it
+# --------------------------------------------------------------------------
+#
+# Some recordings carry 128 channels where only the first 64 are wanted --
+# a second headstage, another region, or nothing connected. The range is
+# applied FIRST and by CSC number: a channel outside it is not read at all,
+# and every other rule runs inside it unchanged -- detect on the even ones,
+# leave the bad ones out, reference each probe bank to itself. It is not a
+# list of "left out" channels: those are a choice about one run of one
+# recording, and a range is a rule that applies to every recording it is
+# run on, One or Many, so it is said once in the notes, as a range.
+
+def channel_range(value):
+    """`[first, last]`, CSC numbers inclusive, or None for every channel."""
+    if not value:
+        return None
+    try:
+        lo, hi = int(value[0]), int(value[1])
+    except (TypeError, ValueError, IndexError):
+        raise ValueError("A channel range is two CSC numbers: the first and "
+                         "the last.")
+    if lo < 1 or hi < lo:
+        raise ValueError("CSC%d to CSC%d is not a range of channels." % (lo, hi))
+    return [lo, hi]
+
+
+def in_range(rng, number):
+    return rng is None or rng[0] <= int(number) <= rng[1]
+
+
+def restrict(session, kept, excluded, rng):
+    """The range applied to a channel list resolved on a compute node, where
+    the desk could not open the recording and the list only exists there.
+    Returns (kept, excluded, out_of_range) -- the same three the desk's
+    `_doppler_spec` makes, so both say the same thing about the same run."""
+    rng = channel_range(rng)
+    if rng is None:
+        return list(kept), list(excluded or []), []
+    chans = session.get("channels") or []
+    by_index = {int(c["index"]): c for c in chans}
+    kept = [i for i in kept
+            if i in by_index and in_range(rng, by_index[i]["number"])]
+    excluded = [x for x in (excluded or []) if in_range(rng, x["number"])]
+    outside = [{"index": int(c["index"]), "number": int(c["number"]),
+                "label": c.get("label")}
+               for c in chans if not in_range(rng, c["number"])]
+    if not kept:
+        raise ValueError("Nothing is left to read in CSC%d to CSC%d: every "
+                         "channel there is marked bad, or there is none."
+                         % (rng[0], rng[1]))
+    return kept, excluded, outside
+
+
+def feed(session, spec):
+    """Which channels a run reads, in which role, by label -- the list shown
+    before anything is submitted, and the one the bank note writes out.
+
+    From the spec the run will be given and by the engine's own rules: the
+    channels read (range and bad channels already applied), less any on a
+    bank marked not connected (`run_storm` drops those), split into the ones
+    detection runs on and the ones read for the common reference only.
+    """
+    chans = session.get("channels") or []
+    by_index = {int(c["index"]): c for c in chans}
+    storm = (spec.get("method") or "legacy") != "legacy"
+    rule = (spec.get("detect_on") or "even") if storm else "all"
+    nc = not_connected(spec.get("banks")) if storm else set()
+
+    def label(c):
+        return c.get("label") or "CSC%d" % int(c["number"])
+
+    def labels(rows):
+        return [label(c) for c in sorted(rows, key=lambda c: int(c["number"]))]
+    read = [by_index[i] for i in (spec.get("channels") or []) if i in by_index]
+    on_nc = [c for c in read if int(c["number"]) in nc]
+    read = [c for c in read if int(c["number"]) not in nc]
+    return {
+        "rule": rule,
+        "range": spec.get("channel_range"),
+        "car": bool(spec.get("car")) if storm else False,
+        "detect": labels([c for c in read if detects_on(rule, c["number"])]),
+        "reference": labels([c for c in read
+                             if not detects_on(rule, c["number"])]),
+        "bad": labels(spec.get("excluded") or []),
+        "left_out": labels(spec.get("left_out") or []),
+        "out_of_range": labels(spec.get("out_of_range") or []),
+        "not_connected": labels(on_nc),
+    }
+
+
+def not_connected(banks):
+    """CSC numbers on a bank somebody marked as not connected.
+
+    A KCNT1 128-channel recording with no second implant has CSC 65-128 on an
+    unconnected headstage: 1-3 mV of mains and nothing below 8 Hz. Averaged
+    into a common reference, that would put its noise into every channel.
+    """
+    out = set()
+    for b in (banks or []):
+        if "not connected" in str(b.get("region") or "").lower():
+            out.update(range(int(b["first"]), int(b["last"]) + 1))
+    return out
+
+
+def car_groups(numbers, banks):
+    """Row indices to average together: one group per probe bank.
+
+    Two implants are two references -- averaging hippocampus into cortex
+    would subtract one region's activity from the other's. With no banks on
+    record the recording is one probe and one group.
+    """
+    if not banks:
+        return [list(range(len(numbers)))]
+    groups = []
+    for b in banks:
+        lo, hi = int(b["first"]), int(b["last"])
+        g = [i for i, n in enumerate(numbers) if lo <= int(n) <= hi]
+        if g:
+            groups.append(g)
+    placed = {i for g in groups for i in g}
+    rest = [i for i in range(len(numbers)) if i not in placed]
+    if rest:
+        groups.append(rest)
+    return groups
 
 
 # --------------------------------------------------------------------------
@@ -359,6 +610,17 @@ def _spec_fingerprint(spec):
     # Constant since even-only reading was removed (2026-10), and kept so a
     # key computed before then still finds its entry.
     out["even_only"] = False
+    # A Legacy run's key is exactly what it was before Storm existed, so
+    # every run already in the vault is still found by the question that
+    # made it. A Storm run's key also carries everything Storm adds.
+    if (spec.get("method") or "legacy") != "legacy":
+        for k in PARAM_KEYS:
+            out[k] = spec.get(k)
+        out["banks"] = [[b.get("first"), b.get("last"), b.get("region")]
+                        for b in (spec.get("banks") or [])]
+    # Only when set, so every run made without one keeps its name.
+    if spec.get("channel_range"):
+        out["channel_range"] = list(spec["channel_range"])
     return out
 
 
@@ -427,6 +689,7 @@ def plan_for(session, spec, report=None):
     if report and report.get("segments"):
         span = float(sum(s["duration_s"] for s in report["segments"]))
     megasamples = span * fs * max(1, len(want)) / 1e6
+    storm = (spec.get("method") or "legacy") == "storm"
     return {
         "n_channels": len(want),
         "span_s": span,
@@ -438,7 +701,8 @@ def plan_for(session, spec, report=None):
         # Read twice: once to pool the line-length distribution for the
         # threshold, once to apply it. Said here rather than discovered from
         # a progress bar that reaches 50% and starts again.
-        "passes": 2,
+        "passes": 1 if storm else 2,
+        "method": spec.get("method") or "legacy",
         # WHAT SLURM IS ASKED FOR. `vacc.slurm_request` sizes the wall time
         # from `plan["seconds"]`, and this key used to be missing -- so every
         # run asked for the ten-minute floor, and a whole recording read
@@ -450,7 +714,8 @@ def plan_for(session, spec, report=None):
         # second of wall, which is slower than the lab's local reads. The
         # 3x SAFETY in `slurm_request` goes on top. Asking for too much
         # costs a place in the queue; asking for too little costs the run.
-        "seconds": max(120.0, span * max(1, len(want)) * 2 / 20.0),
+        "seconds": max(120.0, span * max(1, len(want))
+                       * (1.2 if storm else 2.0) / 20.0),
     }
 
 
@@ -518,6 +783,17 @@ def _read_channel(session, ch, report, spec, job=None, on_read=None):
 
 
 def run(session, spec, report, job=None):
+    """Find IEDs, by whichever method the spec names.
+
+    A spec with no method is a Legacy one: every run made before Storm
+    existed, re-opened from the vault, must be answered the way it was asked.
+    """
+    if (spec.get("method") or "legacy") == "storm":
+        return run_storm(session, spec, report, job)
+    return run_legacy(session, spec, report, job)
+
+
+def run_legacy(session, spec, report, job=None):
     """Find IEDs on the kept channels, and say enough about them to judge.
 
     Two passes over the recording. The first pools every kept channel's
@@ -618,6 +894,186 @@ def run(session, spec, report, job=None):
                       traces, fs, thr, prc, llw)
 
 
+# --------------------------------------------------------------------------
+# Storm: the validated method
+# --------------------------------------------------------------------------
+
+def run_storm(session, spec, report, job=None):
+    """The default. See STORM at the top of this file for what and why.
+
+    ONE pass over the recording. Each channel is read whole at its native
+    rate, decimated to 2 kHz and notched straight away, so what is held is
+    every read channel at 2 kHz -- 0.9 GB for half an hour of 64 channels,
+    where the Legacy method's 30 kHz traces were 14 GB.
+    """
+    if not report or not report.get("ok"):
+        raise ValueError("That recording has not been segmented, so there is "
+                         "no clock to stamp events on.")
+    if report.get("mismatches"):
+        raise ValueError(
+            "The channels checked for gaps do not agree with one another "
+            "(%s), so there is no single clock to stamp events on."
+            % ", ".join(str(m) for m in report["mismatches"][:3]))
+    refusal = check_parts(session.get("path"))
+    if refusal:
+        raise ValueError(refusal)
+    if not HAVE_SCIPY:
+        raise RuntimeError("The Storm method needs scipy, which is not "
+                           "installed here.")
+
+    by_index = {c["index"]: c for c in (session.get("channels") or [])}
+    nc = not_connected(spec.get("banks"))
+    want = [by_index[i] for i in (spec.get("channels") or []) if i in by_index
+            and int(by_index[i]["number"]) not in nc]
+    if not want:
+        raise ValueError("No channels chosen.")
+    numbers = [int(c["number"]) for c in want]
+    rule = spec.get("detect_on") or "even"
+    det = [k for k, n in enumerate(numbers) if detects_on(rule, n)]
+    if not det:
+        raise ValueError(
+            "None of the channels being read are %s-numbered, so there is "
+            "nothing to detect on. Detect on every channel, or put some back."
+            % rule)
+
+    fs = float(report.get("fs") or session.get("fs") or 30000.0)
+    q = max(1, int(round(fs / float(spec.get("fs_work") or 2000.0))))
+    fsw = fs / q
+    llw = float(spec.get("llw_s") or STORM["llw_s"])
+    prc = float(spec.get("prc") or STORM["prc"])
+    notch = spec.get("notch_hz")
+    band = spec.get("band")
+    merge_s = float(spec.get("merge_s") if spec.get("merge_s") is not None
+                    else STORM["merge_s"])
+    min_s = float(spec.get("min_event_s") if spec.get("min_event_s")
+                  is not None else STORM["min_event_s"])
+    k_min = int(spec.get("min_channels") or 1)
+    w = max(2, int(round(llw * fsw)))
+    plan = plan_for(session, spec, report)
+
+    # ---- read, decimate, notch ------------------------------------------
+    if job:
+        job.begin("ied read", of=int(plan["span_s"] * len(want)),
+                  unit="seconds")
+    done = [0.0]
+    rows = []
+    for ch in want:
+        def on_read(got, base=done[0]):
+            if job:
+                job.tick("ied read", int(base + got))
+        x = _read_channel(session, ch, report, spec, job, on_read)
+        done[0] += plan["span_s"]
+        y = _sig.resample_poly(x, 1, q) if q > 1 else x
+        del x
+        if notch:
+            y = apply_filters(y, fsw, notch, None)
+        rows.append(np.asarray(y, dtype=np.float32))
+    n2 = min(r.size for r in rows)
+    if n2 <= w:
+        raise ValueError("Nothing long enough was read from the chosen "
+                         "channels to measure line length over.")
+    N = np.stack([r[:n2] for r in rows])
+    del rows
+
+    # ---- common-average reference, per bank --------------------------------
+    if spec.get("car"):
+        for g in car_groups(numbers, spec.get("banks")):
+            if len(g) < 2:
+                continue
+            ref = N[g].astype(np.float64).mean(axis=0)
+            N[g] -= ref.astype(np.float32)
+            del ref
+
+    # ---- band-pass and line length on the detection channels ---------------
+    if job:
+        job.begin("ied detect", of=len(det), unit="channels")
+    D = np.zeros((len(det), n2), dtype=np.float32)
+    n_pool, kept = 0, []
+    m_tail = tail_size(prc, len(det) * n2)
+    for j, k in enumerate(det):
+        y = N[k].astype(np.float64)
+        if band:
+            y = apply_filters(y, fsw, None, band)
+        D[j] = y
+        L = linelength(D[j][None, :].astype(np.float64), w)[0]
+        Lf = L[np.isfinite(L)]
+        n_pool += Lf.size
+        kept.append(keep_tail(Lf, prc, m_tail))
+        del L, Lf
+        if job:
+            job.tick("ied detect", j + 1)
+    del N
+    thr = prctile_from_tail(np.concatenate(kept), n_pool, prc, m_tail)
+    del kept
+    Li = np.zeros((len(det), n2), dtype=bool)
+    for j in range(len(det)):
+        L = linelength(D[j][None, :].astype(np.float64), w)[0]
+        with np.errstate(invalid="ignore"):
+            Li[j] = L > thr
+
+    ets, ech = _storm_events(Li, w, fsw, merge_s, min_s, k_min)
+    del Li
+    stamps = _stamp_at_peak(ets, D, ech)
+    det_want = [want[k] for k in det]
+    out = _summarise(session, spec, report, plan, det_want, ets, ech, stamps,
+                     D, fsw, thr, prc, llw, q=q, fs_native=fs)
+    out["params"].update({
+        "method": "storm",
+        "detector": "Storm line length (validated on the PTEN hand-sorts)",
+        "car": bool(spec.get("car")),
+        "car_groups": len(car_groups(numbers, spec.get("banks")))
+        if spec.get("car") else 0,
+        "fs_work": fsw,
+        "min_channels": k_min,
+        "detect_on": rule,
+        "read_channels": numbers,
+        "not_connected": sorted(nc),
+        "display": "as the detector saw it: common-average referenced, "
+                   "notched, band-passed" if spec.get("car") else
+                   "as the detector saw it",
+    })
+    return out
+
+
+def _storm_events(Li, w, fsw, merge_s, min_s, k_min):
+    """LLspikedetector's event logic at the working rate, then the channel rule.
+
+    Returns (ets, ech) in the shapes the Legacy path hands `_summarise`:
+    `ets` 1-based [on, off] sample indices at the working rate, already
+    shifted by half the line-length window as the .m file shifts them, and
+    `ech` events x detection-channels participation.
+    """
+    n_ch = Li.shape[0]
+    a = Li.any(axis=0)
+    if not a.any():
+        return (np.zeros((0, 2), dtype=np.int64),
+                np.zeros((0, n_ch), dtype=bool))
+    da = np.diff(a.astype(np.int8))
+    on = np.flatnonzero(da == 1) + 1                    # 0-based, inclusive
+    off = np.flatnonzero(da == -1)
+    if a[0]:
+        on = np.concatenate([[0], on])
+    if a[-1]:
+        off = np.concatenate([off, [a.size - 1]])
+    ech = np.zeros((on.size, n_ch), dtype=bool)
+    for i in range(on.size):
+        ech[i] = Li[:, on[i]:off[i] + 1].any(axis=1)
+    shift = int(round(w / 2.0))
+    ets = np.stack([on + 1 + shift, off + 1 + shift], axis=1).astype(np.int64)
+    # Sequential merge, as written: a gap shorter than merge_s joins the event
+    # to the one before, and a chain of short gaps joins them onto the first.
+    if ets.shape[0] > 1:
+        gap = ets[1:, 0] - ets[:-1, 1]
+        start = np.concatenate([[True], gap >= merge_s * fsw])
+        first = np.flatnonzero(start)
+        last = np.concatenate([first[1:] - 1, [ets.shape[0] - 1]])
+        ets = np.stack([ets[first, 0], ets[last, 1]], axis=1)
+        ech = np.logical_or.reduceat(ech, first, axis=0)
+    keep = ((ets[:, 1] - ets[:, 0]) >= min_s * fsw) & \
+        (ech.sum(axis=1) >= k_min)
+    return ets[keep], ech[keep]
+
+
 def _events_from_mask(Li, sfx, llw):
     """The post-transform half of LLspikedetector, on a ready-made mask.
 
@@ -703,7 +1159,11 @@ def _true_at(report, i, fs):
 
 
 def _summarise(session, spec, report, plan, want, ets, ech, stamps, traces,
-               fs, thr, prc, llw):
+               fs, thr, prc, llw, q=1, fs_native=None):
+    """`fs` is the rate `ets`, `stamps` and `traces` are at; `q` is how many
+    native samples one of them is, so a stamp is placed on the recording's
+    own clock at the native rate whatever rate the detector worked at."""
+    fs_native = float(fs_native or fs)
     numbers = [int(c["number"]) for c in want]
     span = float(plan["span_s"]) or 1.0
     half = int(round(SNIPPET_MS / 1000.0 * fs / 2.0))
@@ -714,8 +1174,8 @@ def _summarise(session, spec, report, plan, want, ets, ech, stamps, traces,
         # `concat_to_true`: the latter is exact only to the segment and
         # returns a (seconds, segment) PAIR. `stamps` is 0-based; `ets` is
         # the MATLAB's 1-based, so its offset is one sample earlier.
-        t = _true_at(report, int(stamps[i]), fs)
-        t_end = _true_at(report, int(ets[i, 1]) - 1, fs)
+        t = _true_at(report, int(stamps[i]) * q, fs_native)
+        t_end = _true_at(report, (int(ets[i, 1]) - 1) * q, fs_native)
         if t is None:
             continue
         rows = np.flatnonzero(ech[i])
@@ -803,7 +1263,8 @@ def _summarise(session, spec, report, plan, want, ets, ech, stamps, traces,
     warnings = []
     if ets.shape[0]:
         for row in per_channel:
-            if row["n"] >= SUSPECT_FRAC * ets.shape[0]:
+            if ets.shape[0] >= SUSPECT_MIN_EVENTS and \
+                    row["n"] >= SUSPECT_FRAC * ets.shape[0]:
                 warnings.append(
                     "CSC%d took part in %d%% of events, which is what a "
                     "broken channel looks like rather than a busy one."
@@ -858,10 +1319,13 @@ def _summarise(session, spec, report, plan, want, ets, ech, stamps, traces,
             "bad_channels": list(spec.get("bad_channels") or []),
             "excluded": list(spec.get("excluded") or []),
             "left_out": list(spec.get("left_out") or []),
+            "channel_range": spec.get("channel_range"),
+            "out_of_range": list(spec.get("out_of_range") or []),
             "preset": spec.get("preset"),
             "stamp": "peak",
-            "merge_s": MERGE_S,
-            "min_event_s": MIN_EVENT_S,
+            "method": spec.get("method") or "legacy",
+            "merge_s": float(spec.get("merge_s") or MERGE_S),
+            "min_event_s": float(spec.get("min_event_s") or MIN_EVENT_S),
             "gap_map_sha": report.get("gap_map_sha"),
         },
     }

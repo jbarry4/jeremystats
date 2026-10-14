@@ -17,6 +17,9 @@ What is guarded, in the order it can go wrong:
     for this computer, a second run adding nothing;
   * a folder found on a mapped share resolves as `native`, and beats a
     scratch copy of the same recording instead of conflicting with it;
+  * two netfiles folders with the same header, channel count and CSC1 size
+    are one recording kept twice and resolve to one; differing, they still
+    conflict;
   * the add route refusing without `confirm` and with a stale digest.
 
 Nothing talks to the cluster and nothing real is written: the inventory is
@@ -271,6 +274,70 @@ def app_side():
         vacc._INVS.clear()
 
 
+def copies():
+    print("\nthe app: the same recording kept twice on netfiles is not a conflict")
+    import re
+    from backend import app as appmod
+
+    # A recording in a folder named by its acquisition time, so the header
+    # the copies carry can say the same time the folder does -- a header
+    # that disagrees is refused as somebody else's recording.
+    def stamped(r):
+        p = ((r.get("paths") or [""])[0] or "").replace("\\", "/").rstrip("/")
+        return re.match(r"^(\d{4})-(\d\d)-(\d\d)_(\d\d)-(\d\d)-(\d\d)$",
+                        p.rsplit("/", 1)[-1])
+    rec = next((r for r in (appmod.REG.all() or [])
+                if r.get("gid") and r.get("key") and r.get("paths")
+                and stamped(r)), None)
+    if rec is None:
+        print("  (no registered recording here; skipped)")
+        return
+    m = stamped(rec)
+    hdr = ("-TimeCreated %s/%s/%s %s:%s:%s -SamplingFrequency 30000"
+           % m.groups())
+    parts = [x for x in rec["paths"][0].replace("\\", "/").split("/") if x]
+    leaf = "/".join(parts[-3:])
+    scratch = "/gpfs2/scratch/zztester"
+    cfg = dict(CFG, scratch_root=scratch, places=[])
+    one, two = NF + "/aa/" + leaf, NF + "/zz/" + leaf
+    rows = {}
+
+    def fake_inventory(c, root=None, timeout=180):
+        return list(rows.get(root) or [])
+
+    real = {k: getattr(vacc, k) for k in
+            ("inventory", "load_config", "readable_native_roots", "_inv_save",
+             "_inv_load")}
+    vacc.inventory = fake_inventory
+    vacc.load_config = lambda logs_dir: dict(cfg)
+    vacc.readable_native_roots = lambda c=None: [NF]
+    vacc._inv_save = lambda *a, **k: None
+    vacc._inv_load = lambda *a, **k: None
+    try:
+        for name, n2, want_conflict in (
+                ("identical copies resolve to one, the other kept as a copy",
+                 64, False),
+                ("copies that differ (64 against 128 channel files) still "
+                 "conflict", 128, True)):
+            rows[NF] = [{"path": one, "n_channels": 64, "first_ncs_bytes": 7,
+                         "header": hdr},
+                        {"path": two, "n_channels": n2, "first_ncs_bytes": 7,
+                         "header": hdr}]
+            vacc._INVS.clear()
+            vacc.inventory_cached(cfg, NF, force=True)
+            staged, _unknown = appmod._vacc_staged()
+            got = staged.get(rec["gid"]) or {}
+            if want_conflict:
+                check(name, bool(got.get("conflict")), got)
+            else:
+                check(name, got.get("native") and got.get("path") == one
+                      and got.get("copies") == [two], got)
+    finally:
+        for k, v in real.items():
+            setattr(vacc, k, v)
+        vacc._INVS.clear()
+
+
 def main():
     listing()
     unc()
@@ -279,6 +346,7 @@ def main():
     ingest(new)
     resolve()
     app_side()
+    copies()
     print("\n" + ("ALL PASS" if not FAILED else "%d FAILED" % len(FAILED)))
     return 1 if FAILED else 0
 

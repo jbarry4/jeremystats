@@ -107,6 +107,41 @@ def channels():
           and [e["number"] for e in out.get("spec_excluded")] == [2, 5], out)
 
 
+def picks():
+    print("\nwhich channels THIS scan reads: a pick, never a bad mark")
+    # Six channels, CSC1-6; CSC2 and CSC5 marked bad.
+    num = lambda kept: [SESSION["channels"][i]["number"] for i in kept]
+    for raw, want in (("first", [1, 3]), ("second", [4, 6]),
+                      ("even", [4, 6]), ("odd", [1, 3]),
+                      ({"mode": "ranges", "ranges": [[2, 4]]}, [3, 4])):
+        kept, excl = incisor.resolve_channels(
+            SESSION, bad=[2, 5], pick=incisor.channel_pick(raw))
+        check("%s, less the bad ones: %s" % (raw if isinstance(raw, str)
+                                             else "CSC2-4", want),
+              num(kept) == want, num(kept))
+        check("  and only the bad ones INSIDE it are listed as left out",
+              all(e["number"] in incisor.pick_numbers(
+                  [1, 2, 3, 4, 5, 6], incisor.channel_pick(raw))
+                  for e in excl), excl)
+    check("the halves count the bad channels, so the first half of six "
+          "is CSC1-3 whatever is marked",
+          incisor.pick_numbers([1, 2, 3, 4, 5, 6],
+                               incisor.channel_pick("first")) == {1, 2, 3})
+    check("no pick is every channel", incisor.channel_pick(None) is None
+          and incisor.channel_pick("all") is None)
+    for bad in ("middle", {"mode": "ranges", "ranges": []},
+                {"mode": "ranges", "ranges": [[0, 3]]}):
+        try:
+            incisor.channel_pick(bad)
+            ok = False
+        except ValueError:
+            ok = True
+        check("refused: %r" % (bad,), ok)
+    check("in words", incisor.pick_words(incisor.channel_pick("first"),
+                                         list(range(1, 129)))
+          == "the first half (CSC1-CSC64)")
+
+
 def requests():
     print("\nthe request's hash")
     base = {"invert": True, "estimator": "sd", "bad_channels": [2, 5],
@@ -325,6 +360,7 @@ def plan_side():
 def main():
     keys()
     channels()
+    picks()
     requests()
     plans()
     panels()

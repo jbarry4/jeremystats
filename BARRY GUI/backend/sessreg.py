@@ -1072,6 +1072,12 @@ class Registry:
             # that exist took the registry read from 5s to 25s.
             "loadable": [p for p in here if _opens(p)],
             "bad_channels": rec.get("bad_channels") or [],
+            # Whether the recording is in the analysis, and what somebody
+            # wrote about it. Both were saved by the Sessions view and never
+            # read back: the row left them out, so a "good" lasted until
+            # the next refresh and then the card said nothing at all.
+            "quality": rec.get("quality") or "",
+            "notes": rec.get("notes") or "",
             "merged_in": rec.get("merged_in") or [],
             "split_from": rec.get("split_from"),
             "created": rec.get("created") or {},

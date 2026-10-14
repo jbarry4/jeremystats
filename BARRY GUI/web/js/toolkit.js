@@ -1019,6 +1019,11 @@ BARRY.views.toolkit = (function () {
         const got = await api('/api/curation');
         if (l) l.step('reading the recording registry');
         got.registry = await registry();
+        /* And what the cluster can read, which the cards' open buttons ask
+           (`openReach`). Cached for minutes and usually already here. */
+        if (BARRY.vacc && BARRY.vacc.loadKnows) {
+          try { await BARRY.vacc.loadKnows(); } catch (e) { /* the drive answer stands */ }
+        }
         cur = got;
         curStale = false;
       } catch (e) {
@@ -1616,10 +1621,34 @@ BARRY.views.toolkit = (function () {
     BARRY.views.xplore.setWindow(0, Math.max(0, r.start - 0.5), 1.0);
   }
 
+  /* WHETHER A SET'S RECORDING CAN BE OPENED HERE (2026-10-13).
+
+     The same answer the tool gives when it opens it -- `BARRY.vacc.reachFor`,
+     this computer first and the cluster second -- so the button and the
+     open cannot disagree. The cards used to ask `session.reachable`, which
+     is "on a drive this computer mounts" and nothing else: Isabella's
+     machine had no copy of PTEN_DKO m44 s1, the cluster reads it in place on
+     netfiles, Checkup would have opened it through the link, and "Look
+     again…" was greyed out with no way in. Returns { ok, where, why }:
+     `why` is the reach's own sentence when it cannot, so a greyed button
+     says the real reason (no VACC account here, no read access, nowhere at
+     all) rather than only "not on a drive". */
+  function openReach(gid, session, tool) {
+    const row = Object.assign({ gid: gid }, session || {});
+    const got = (BARRY.vacc && BARRY.vacc.reachFor)
+      ? BARRY.vacc.reachFor(row, tool)
+      : { path: (row.here || [])[0] || null,
+          where: (row.here || [])[0] ? 'here' : null,
+          why: 'This recording is not on a drive this machine can reach.' };
+    return { ok: !!got.path, where: got.where, why: got.why
+             || 'This recording is not on a drive this machine can reach.' };
+  }
+
   function curCard(st) {
     const pr = st.progress || {};
     const done = pr.left === 0 && pr.total > 0;
-    const reach = st.session && st.session.reachable;
+    const rr = openReach(st.gid, st.session, 'curate');
+    const reach = rr.ok;
     const who = st.assignee || null;
     const when = curWhen(st.opened_at);
     const key = st.gid + '/' + st.kind;
@@ -1701,9 +1730,12 @@ BARRY.views.toolkit = (function () {
         el('button', {
           class: 'btn sm', text: pr.left ? 'Carry on…' : 'Look again…',
           disabled: reach ? null : 'disabled',
-          title: reach
-            ? 'Open the recording and step through the candidates'
-            : 'This recording is not on a drive this machine can reach',
+          title: !reach ? rr.why
+            : rr.where === 'vacc'
+              ? 'Open the recording off the cluster and step through the '
+                + 'candidates. It is not on this computer, so each window is '
+                + 'a round trip, about a second.'
+              : 'Open the recording and step through the candidates',
           onclick: () => enterSet(st),
         }),
         el('button', {
@@ -1832,7 +1864,8 @@ BARRY.views.toolkit = (function () {
     for (const st of rows) {
       const pr = st.progress || {};
       const done = pr.left === 0 && pr.total > 0;
-      const reach = st.session && st.session.reachable;
+      const rr = openReach(st.gid, st.session, 'curate');
+      const reach = rr.ok;
       const when = curWhen(st.opened_at) || curWhen((st.updated || {}).at);
       list.appendChild(el('div', {
         class: 'cur-shelf-row' + (done ? ' done' : ''),
@@ -1862,9 +1895,9 @@ BARRY.views.toolkit = (function () {
         }),
         el('button', {
           class: 'btn ghost sm icon-only',
-          text: '\u2192', title: reach
-            ? 'Pick it up and go straight to the recording'
-            : 'This recording is not on a drive this machine can reach',
+          text: '\u2192', title: !reach ? rr.why
+            : 'Pick it up and go straight to the recording'
+              + (rr.where === 'vacc' ? ', read off the cluster' : ''),
           disabled: reach ? null : 'disabled',
           /* Through the same pick-up as the button beside it: going
              straight to the recording is still picking it up, so it asks
@@ -2552,6 +2585,10 @@ BARRY.views.toolkit = (function () {
       strata = await api('/api/layers');
       if (l) l.step('reading the recording registry');
       strata.registry = await registry();
+      // What the cluster can read, for the open buttons (`openReach`).
+      if (BARRY.vacc && BARRY.vacc.loadKnows) {
+        try { await BARRY.vacc.loadKnows(); } catch (e) { /* the drive answer stands */ }
+      }
     } catch (e) {
       strata = { error: e.message, sheets: [], regions: [] };
     }
@@ -2759,7 +2796,9 @@ BARRY.views.toolkit = (function () {
   function sheetCard(sh, onBench) {
     const pr = sh.progress || {};
     const done = pr.left === 0 && pr.total > 0;
-    const reach = sh.session && sh.session.reachable;
+    // StrataScope opens it the same way Checkup does: here, or the link.
+    const rr = openReach(sh.gid, sh.session, 'strata');
+    const reach = rr.ok;
     const when = curWhen(onBench ? sh.opened_at : (sh.updated || {}).at);
 
     const acts = [
@@ -2767,9 +2806,9 @@ BARRY.views.toolkit = (function () {
         class: 'btn sm',
         text: pr.left ? 'Continue…' : 'Review…',
         disabled: reach ? null : 'disabled',
-        title: reach ? 'Open it in StrataScope'
-          : 'The folder for this recording is not reachable from this '
-            + 'computer',
+        title: !reach ? rr.why
+          : 'Open it in StrataScope'
+            + (rr.where === 'vacc' ? ', read off the cluster' : ''),
         onclick: () => BARRY.strata.enter(sh.gid),
       }),
     ];
@@ -2798,6 +2837,7 @@ BARRY.views.toolkit = (function () {
       acts.push(el('button', {
         class: 'btn ghost sm', text: 'Pick up and open',
         disabled: reach ? null : 'disabled',
+        title: reach ? null : rr.why,
         onclick: () => pickUpSheet(sh, true),
       }));
     }

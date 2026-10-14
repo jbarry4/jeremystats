@@ -17,6 +17,8 @@ something broke, the counter-example is named — those are the useful half.
 > **§6e** (choosing a recording, versions, banking) are the workflow every
 > tool shares. **§10** is speed; **§11** is what the cloud costs and how to
 > spend it -- read it before adding anything that reads or writes Supabase.
+> **§12** is feel -- what makes a panel stop reloading, how results arrive,
+> and the plan for the UI overhaul; Doppler is its reference.
 > Where a section names a shared component that is still being built, it
 > says so in italics and names the tool to copy until it lands.
 
@@ -162,6 +164,8 @@ that will be wrong in nine themes out of ten.
   caches one must repaint on a theme change — see `repaintThemedSurfaces()`.
 
 ### Motion
+
+When something moves, and how, is §12's vocabulary.
 
 Every animated surface needs a `prefers-reduced-motion` block. There are
 twelve, and the house pattern is to **name the component and stop its
@@ -1277,6 +1281,7 @@ checks and the whole suite reads as a clean sweep.
       consequence for this surface is written here (§6c)
 - [ ] `check_classes.py` clean; `ui_baseline.py` diff is only what you meant
 - [ ] A `_dev/` harness, listed in `_dev/README.md`
+- [ ] It feels like Doppler, not like a page reloading (§12)
 
 ---
 
@@ -1658,3 +1663,176 @@ server-assigned stamp is the real fix.
 - [ ] Pollers stop in `onHide` and when the window is hidden
 - [ ] One request per question; the columns it needs, checked in the URL
 - [ ] Backs off when quiet and on failure; says "not reachable" when away
+
+---
+
+## 12. Feel: continuity, arrival, and the overhaul to come
+
+The sections above make the interface *consistent*. This one is about whether
+it feels alive or janky, which is what people actually say about it. It was
+written on 2026-10-13, after Doppler was rebuilt in response to "old school
+and janky, keeps reloading, and I can't open a run that has landed". The
+rules below are in force for new work. The plan at the end is for bringing
+everything else up to them.
+
+**The reference implementation is Doppler:** [doppler.js](js/doppler.js) and
+`BARRY.ui.sections` in [ui.js](js/ui.js). Copy them, not the tools that
+predate this section.
+
+### Nothing on screen is rebuilt that has not changed
+
+**The counter-example.** Doppler's `paint()` emptied `#tkResult` and rebuilt
+all of it on every call, and its batch poll called it every 1.5 s. Each tick
+rebuilt the 666-row picker, the settings and the landed list. The scroll
+jumped, an open `<details>` snapped shut, the search box lost its cursor, and
+the canvases flashed blank. Nobody calls that a re-render. They say "the UI
+keeps reloading". 116 `host.innerHTML = ''` remain across 38 files.
+
+**The rule.** A panel is a list of parts, passed to
+`BARRY.ui.sections(host, [{ key, sig, build, update }])`:
+
+- **`sig`** names everything the part shows. The same sig keeps the node,
+  along with its scroll, focus, open `<details>` and canvas, and `build()`
+  is not called.
+- **A card whose insides change for different reasons** reconciles them with
+  a nested `sections` call from `update`. Doppler's plan card keeps its
+  channels, settings and run line apart, so a run starting does not rebuild
+  the settings somebody has open.
+- **Numbers that tick every second** change in place from `update`. They do
+  not cost a rebuild.
+- **What a rebuild carries over**, by marking it:
+  - an input's focus and caret: `data-fk`
+  - a `<details>`'s open state: `data-keep`
+  - a list's scroll: `data-keep-scroll`
+
+### Work in flight lives on the server, and a view finds it again
+
+**The counter-example.** Doppler kept the job it had started in a variable.
+Leaving the view or reloading lost it. A job the server had dropped, after a
+restart, was polled forever, and the panel showed "running" right beside the
+same run already landed. The user's words: "it worked only after I reloaded
+everything".
+
+**The rule.**
+
+- Every long job is registered server-side when it starts (`_doppler_track`,
+  served by `/api/doppler/inflight`).
+- The view asks for that list each time it is shown (`attach`), and follows
+  every run with **one** timer.
+- A job the server no longer knows is let go of with a sentence, not polled.
+- A run is in exactly one place: out on the cluster, or landed. Never both.
+
+### Opening a result reads it
+
+**The counter-example.** The landed list opened a run by posting the same
+question to `/api/doppler/scan` and hoping for a cache hit. When it missed (a
+run filed with channels left out, or a recording opened by another path), it
+quietly submitted a new cluster job and threw away the answer. From the Many
+view it set the result and then painted a view with no report in it, so the
+click did nothing.
+
+**The rule.**
+
+- Open by id (recording and key) through a route that cannot start work
+  (`/api/doppler/run`).
+- Switch to the view that shows the result, scroll it into view, and mark it
+  open in the list.
+- The settings on screen become the settings it was made with.
+
+### Arrival: the motion vocabulary
+
+Motion marks a **moment**: something arrived, or something is happening. It
+never plays on a poll, and never on a redraw of something already on screen.
+A rebuilt part does not re-enter, and a hover redraw does not replay a
+reveal.
+
+| moment | what moves | how long | where |
+|---|---|---|---|
+| a part appears | rises 8px and fades in, 60ms after the part above it | 420 ms | `.ui-enter`, applied by `sections` |
+| a result lands | the card's edge lights and spreads once; the count runs up to its value; the picture draws itself in (the waveform left to right, the bars rising, a sweep crossing the raster) | 1.9 s at most | `.dop-report.landing`, `BARRY.ui.countUp`, `drawPlots(true)` |
+| waiting | a picture of the work instead of a spinner: Doppler's radar, slow and dim while queued, quicker once a node has the job | loops | `.dop-radar` |
+| a state changes | colour and position transition; nothing jumps | `--ease-dur`, `--ease-out` | `.dop-run`, `.dop-run-bar` |
+| new since you looked | a soft pulse on a dot until it is opened | 2.4 s loop | `.dop-run.fresh` |
+
+- **End every animation on a timer too.** Under the harness runner's virtual
+  time, `animationend` never fires and a canvas reveal stops at frame one.
+  `sections` takes `.ui-enter` off again on a timer, and `drawPlots` draws
+  its last frame on one.
+- **Under reduced motion, show the final state at once.** No rise, no sweep,
+  no count; the states (colours, marks, the open run) stay. Name each
+  component in a `prefers-reduced-motion` block (§4); see the end of the
+  Doppler block in `app.css`.
+- **The final text is in the DOM.** A count runs up on screen, but a harness
+  (or a screen reader) that reads the panel when it lands reads the real
+  number.
+
+### Sound
+
+There is one instrument, [jarvisfx.js](js/jarvisfx.js) (the reveal's own),
+and one mute switch.
+
+- A tool may play **one** sound, for an arrival the person was waiting for.
+  Doppler plays a soft low bell when a run lands.
+- No sound for anything the person did themselves (a click, opening a run).
+- Never a loop, and never an alarm.
+
+### Charts say what they show without colliding
+
+**The counter-examples**, all three from Doppler on 2026-10-13:
+
+- The unit and the top value shared 40 pixels and printed over each other
+  ("events" + "273" read as "evens273").
+- The raster's "bad" was drawn between two rows, so it belonged to neither.
+- The odd channels, read only for the common reference, were labelled "bad".
+
+**The rules.**
+
+- The unit gets its own line above the plot, and each corner label has a
+  corner to itself.
+- A label on a row sits **on** that row, on a patch of the ground colour,
+  never in the gap between rows.
+- A missing row says why it is missing. A channel that has no row at all is
+  explained in a sentence under the chart.
+
+### The overhaul to come
+
+What it would take to bring every tool up to this section, in order:
+
+1. **Sections everywhere.** Every ToolKit panel whose `paint()` empties its
+   host moves onto `BARRY.ui.sections`, starting with Incisor, Root Canal,
+   Eye, Braces, Panorama and Horizon. These are the panels a poll repaints.
+   A tool whose paint is called once can wait.
+2. **One registry of work in flight.** `cfc.Job` carries its `tool` and its
+   members, one `/api/jobs?tool=` replaces `_DOPPLER_INFLIGHT`, and one
+   `BARRY.ui.flights(tool)` follows the runs. Every tool's run card finds
+   its runs again on show.
+3. **One runs list.** A composition (`BARRY.ui.runsList`) for every tool that
+   files results in a vault (Incisor, Doppler, Root Canal): out on the
+   cluster and landed, the new marks, opening by id.
+4. **A waiting picture per bundle,** in the house style. Doppler's radar is
+   the first. The stage rows stay underneath it, because they are the truth.
+5. **Reports arrive.** The big numbers first, a count that runs up, plots
+   that draw themselves in, the card's edge lighting once.
+6. **Canvas text through one helper** that reserves room and refuses
+   overlaps, plus a harness that measures the text boxes on every chart and
+   fails on any two that intersect.
+7. **A harness for feel** (`_dev/uifeel.html`, to write). For each tool it
+   checks three things:
+   - a repaint with nothing changed keeps every node, as `storm.html` checks
+     for Doppler today;
+   - every animated class has a reduced-motion stop;
+   - every reveal reaches its last frame under virtual time.
+
+### When you add or rebuild a surface
+
+- [ ] Parts with signatures through `sections`; no `innerHTML = ''` on
+      anything a poll repaints
+- [ ] Focus, open `<details>` and scroll survive a rebuild (`data-fk`,
+      `data-keep`, `data-keep-scroll`)
+- [ ] Long work is registered on the server and found again on show; a lost
+      job is let go of with a sentence
+- [ ] A run is in flight or landed, never shown as both
+- [ ] Opening a result reads it by id; nothing that opens can start work
+- [ ] Motion only for a moment; reduced-motion block; ends on a timer too
+- [ ] At most one sound, through `jarvisfx`, for an arrival
+- [ ] No label overlaps another, on canvas or off
