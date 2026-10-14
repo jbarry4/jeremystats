@@ -298,6 +298,32 @@ OPS = {
 }
 
 
+def missing_words(name):
+    """Why a package is missing, in words that point at the fix.
+
+    Two different things, told apart (2026-10-14). An environment that was
+    found but is older than the desk's needs a package added to it. NO
+    environment found -- this account has none of its own and could not use
+    the lab's -- means this process is the cluster's system Python, and
+    "install numpy into /usr" is advice nobody can follow.
+    """
+    found = os.environ.get("JARVIS_ENV") or ""
+    looked = [p for p in (os.environ.get("JARVIS_ENVS") or "").split(":") if p]
+    if not found:
+        return ("No Jarvis environment was found for this account on the "
+                "cluster, so it ran the cluster's own Python (%s, at %s), "
+                "which has no %s. Jarvis looks in %s. The lab's is readable "
+                "by everyone in the VACC group pi-jbarry4: if this account is "
+                "not in it, ask Shahriar to add it; or build this account's "
+                "own at %s with `pip install -r requirements.txt`."
+                % ("%d.%d" % sys.version_info[:2], sys.prefix, name,
+                   " and then ".join(looked) or "nowhere (none is set)",
+                   looked[0] if looked else "<workspace>/env"))
+    return ("The cluster's analysis environment (%s) does not have %s. "
+            "Everything else still works; add it with `pip install -r "
+            "requirements.txt` into that environment." % (found, name))
+
+
 def main():
     emit({"ok": True, "ready": True, "proto": 1})
     for line in sys.stdin:
@@ -330,11 +356,8 @@ def main():
             # fix rather than with an import traceback, because the person
             # reading it is looking at a trace window, not a terminal.
             emit({"id": rid, "ok": False,
-                  "error": ("The cluster's analysis environment does not have "
-                            "%s. Everything else still works; rebuild it with "
-                            "`pip install -r requirements.txt` into %s."
-                            % (getattr(exc, "name", None) or str(exc),
-                               sys.prefix)),
+                  "error": missing_words(getattr(exc, "name", None)
+                                         or str(exc)),
                   "missing": getattr(exc, "name", None)})
         except Exception as exc:                         # noqa: BLE001
             # Never die on one bad request. A viewer that asked for a window

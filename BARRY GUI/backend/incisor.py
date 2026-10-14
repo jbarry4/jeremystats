@@ -193,8 +193,12 @@ def pick_words(pick, numbers=None):
     if not pick:
         return "every channel"
     if pick["mode"] == "ranges":
+        # A range open at the top (the panel sends 9999 for "to the last")
+        # says so rather than naming a channel nobody has.
         return "CSC " + ", ".join(
-            ("%d" % lo) if lo == hi else ("%d-%d" % (lo, hi))
+            ("%d" % lo) if lo == hi
+            else ("%d to the last" % lo) if hi >= 9999
+            else ("%d-%d" % (lo, hi))
             for lo, hi in pick["ranges"])
     words = PICK_WORDS[pick["mode"]]
     if numbers and pick["mode"] in ("first", "second"):

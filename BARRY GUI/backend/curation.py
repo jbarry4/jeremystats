@@ -175,11 +175,87 @@ def vocabulary(kind):
     with an older vocabulary -- which may still carry a reserved key -- are
     cleaned up when they are read, instead of quietly breaking navigation for
     whoever opens them next.
+
+    The built-in ones first, in their order, then every category somebody
+    added to this kind (`Categories`), in the order they were added.
     """
     out = []
     for lab in KINDS[kind]["labels"]:
         out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
-    return out
+    return out + custom_labels(kind)
+
+
+# --------------------------------------------------------------------------
+# Categories somebody added
+# --------------------------------------------------------------------------
+#
+# Spotter can add a category -- "Polyspike", "Spike-wave" -- and it is then a
+# category of EVERY set of that kind, on every recording: one vocabulary, so
+# a count of polyspikes on one recording means the same as on the next. Two
+# routes carry it to other computers, and either is enough:
+#
+#   the store    GUI_logs/categories/, sharded per machine like everything
+#                else there, which travels with the repository;
+#   the sets     a set that has used a category carries it in its own
+#                `labels`, and curation sets go through the cloud sync --
+#                so a category reaches a colleague the moment a set using it
+#                does, without a new table to migrate.
+#
+# Added, never renamed or removed here: a candidate already labelled with
+# one has to go on meaning what it meant. Keys are the free digits after the
+# built-in four, so the keyboard keeps working the way it always has.
+
+CUSTOM_KEYS = ("5", "6", "7", "8", "9", "0")
+_CURATE = None          # the process's Curation, for the module functions
+
+
+def _slug(name):
+    out = "".join(c if c.isalnum() else "-" for c in str(name).lower())
+    while "--" in out:
+        out = out.replace("--", "-")
+    return out.strip("-")[:24] or "category"
+
+
+def custom_labels(kind):
+    """Every category added to `kind`: the store's, then any a set carries
+    that the store has not got (one that arrived through the cloud sync)."""
+    if _CURATE is None or kind not in KINDS:
+        return []
+    return _CURATE.customs(kind)
+
+
+def _with_customs(labels, kind):
+    """A set's vocabulary with every added category it does not carry yet,
+    so a category made on one recording is offered on all of them."""
+    have = {l.get("id") for l in (labels or [])}
+    return list(labels or []) + [dict(l) for l in custom_labels(kind)
+                                 if l["id"] not in have]
+
+
+class Categories:
+    """The added categories, one record per kind, merged per label id."""
+
+    def __init__(self, logs_dir, store):
+        self.dir = os.path.join(logs_dir, "categories")
+        os.makedirs(self.dir, exist_ok=True)
+        self.book = shards.Book(self.dir, {
+            "labels": shards.BYID,
+            "created": shards.FIRST,
+        }, store)
+        self.store = store
+
+    def for_kind(self, kind):
+        rec = self.book.read(shards.safe_base(kind)) or {}
+        return [dict(l) for l in (rec.get("labels") or [])
+                if isinstance(l, dict) and l.get("id")]
+
+    def add(self, kind, lab):
+        base = shards.safe_base(kind)
+        rec = self.book.read(base) or {}
+        rec.setdefault("kind", kind)
+        rec["labels"] = list(rec.get("labels") or []) + [lab]
+        self.book.write(base, rec)
+        return lab
 
 
 def _now():
@@ -309,6 +385,80 @@ class Curation:
         self.book.absorb_legacy()
         self.store = store
         os.makedirs(self.dir, exist_ok=True)
+        self.categories = Categories(logs_dir, store)
+        self._custom_memo = {}
+        global _CURATE
+        _CURATE = self
+
+    # ------------------------------------------------------------------
+    # Added categories
+    # ------------------------------------------------------------------
+    def customs(self, kind):
+        """See `custom_labels`. Built-in ids never count, whatever a set
+        holds: those are the vocabulary's own."""
+        # A second's memo: the workbench summarises forty sets at once, and
+        # each asks. Cleared the moment a category is added.
+        now = time.time()
+        hit = self._custom_memo.get(kind)
+        if hit and now - hit[0] < 1.0:
+            return [dict(l) for l in hit[1]]
+        builtin = {l["id"] for l in KINDS[kind]["labels"]} | set(RETIRED)
+        out, seen = [], set()
+        for lab in self.categories.for_kind(kind):
+            if lab["id"] not in builtin and lab["id"] not in seen:
+                seen.add(lab["id"])
+                out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
+        for rec in self.all():
+            if rec.get("kind") != kind:
+                continue
+            for lab in rec.get("labels") or []:
+                if (isinstance(lab, dict) and lab.get("custom")
+                        and lab.get("id") not in builtin
+                        and lab.get("id") not in seen):
+                    seen.add(lab["id"])
+                    out.append(dict(lab, keys=_usable_keys(lab.get("keys"))))
+        self._custom_memo[kind] = (now, out)
+        return [dict(l) for l in out]
+
+    @shards.atomic
+    def add_category(self, kind, name, color, good=False):
+        """A new category for every set of `kind`. Refuses a name already in
+        use and a colour that is not one."""
+        if kind not in KINDS:
+            raise CurationError("Unknown kind %r." % kind)
+        name = " ".join(str(name or "").split())
+        if not name:
+            raise CurationError("A category needs a name.")
+        if len(name) > 32:
+            raise CurationError("Keep the name to 32 characters or fewer; it "
+                                "goes on a button.")
+        color = str(color or "").strip()
+        if not (len(color) == 7 and color[0] == "#" and all(
+                c in "0123456789abcdefABCDEF" for c in color[1:])):
+            raise CurationError("Pick a colour for it.")
+        vocab = vocabulary(kind)
+        same = next((l for l in vocab if str(l.get("name", "")).strip()
+                     .lower() == name.lower()), None)
+        if same:
+            raise CurationError("There is already a category called %s."
+                                % same.get("name"))
+        taken_ids = {l.get("id") for l in vocab} | set(RETIRED)
+        base = _slug(name)
+        lid, n = base, 2
+        while lid in taken_ids:
+            lid = "%s-%d" % (base, n)
+            n += 1
+        taken_keys = {str(k).lower() for l in vocab for k in (l.get("keys") or [])}
+        key = next((k for k in CUSTOM_KEYS if k not in taken_keys), None)
+        prov = self.store.provenance() if self.store else {"at": _now()}
+        lab = {"id": lid, "name": name, "color": color.lower(),
+               "keys": [key] if key else [], "custom": True,
+               "created": prov}
+        if good:
+            lab["good"] = True
+        out = self.categories.add(kind, lab)
+        self._custom_memo.pop(kind, None)
+        return out
 
     # ------------------------------------------------------------------
     # Files
@@ -335,11 +485,24 @@ class Curation:
             raise CurationError("Unknown kind %r." % kind)
         rec = self._read(gid, kind)
         if rec:
-            rec["labels"] = live_labels(rec)
+            # Every added category is offered on every set, whether or not
+            # this one has used it yet (`_with_customs`).
+            rec["labels"] = _with_customs(live_labels(rec), kind)
             # An old set may carry a key the mode has since reserved.
             for lab in rec.get("labels") or []:
                 lab["keys"] = _usable_keys(lab.get("keys"))
         return rec
+
+    def _adopt_custom(self, rec, label):
+        """True if `label` is an added category of this set's kind, and puts
+        it into the set's own vocabulary -- which is what carries it to
+        other computers through the cloud sync."""
+        lab = next((l for l in custom_labels(rec.get("kind"))
+                    if l["id"] == label), None)
+        if lab is None:
+            return False
+        rec["labels"] = list(rec.get("labels") or []) + [dict(lab)]
+        return True
 
     def all(self):
         return self.book.all()
@@ -386,7 +549,10 @@ class Curation:
             "source": rec.get("source") or {},
             "created": rec.get("created") or {},
             "updated": rec.get("updated") or {},
-            "labels": live_labels(rec) or kind.get("labels") or [],
+            "labels": _with_customs(live_labels(rec) or kind.get("labels")
+                                    or [], rec.get("kind"))
+                      if rec.get("kind") in KINDS
+                      else (live_labels(rec) or kind.get("labels") or []),
             "archived": bool(rec.get("archived")),
             # The workbench facts. A set is either something somebody is
             # working on or it is not, and the list is unreadable without
@@ -1203,7 +1369,8 @@ class Curation:
         if not rec:
             raise CurationError("No curation set for that recording.")
         valid = {l["id"] for l in (rec.get("labels") or [])}
-        if label is not None and label not in valid:
+        if label is not None and label not in valid \
+                and not self._adopt_custom(rec, label):
             raise CurationError(
                 "%r is not one of this set's categories (%s)."
                 % (label, ", ".join(sorted(valid))))
@@ -1263,7 +1430,9 @@ class Curation:
             if not e:
                 continue
             if label is not None and label not in valid:
-                continue
+                if not self._adopt_custom(rec, label):
+                    continue
+                valid.add(label)
             # The same care `label` takes over one candidate. This is the
             # back end of the fill-down sweep AND of putting a banked
             # version back, and without it either one overwrote a

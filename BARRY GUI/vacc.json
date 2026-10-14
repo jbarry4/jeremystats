@@ -4,8 +4,10 @@
   "enabled": true,
   "host": "login.vacc.uvm.edu",
   "partition": "general",
-  "modules": [],
+  "_env": "The Python the cluster runs Jarvis with. An account's own environment (env, or <workspace>/env) when it has one; otherwise the lab's, built once and readable by everyone in pi-jbarry4. Without either, a login falls back to the cluster's system Python (3.9, no numpy), which is the error 'does not have numpy ... into /usr' -- measured 2026-10-14 on a colleague's laptop.",
+  "modules": ["miniforge/26.7.2-py3.14"],
   "env": "",
+  "lab_env": "/users/s/a/sakhava1/jarvis/env",
   "path_map": [
     {
       "unc": "//netfiles03.uvm.edu/bigdata_jbarry",

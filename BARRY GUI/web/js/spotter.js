@@ -48,6 +48,10 @@ BARRY.spotter = (function () {
   let beatOthers = [];
   let toldAbout = new Set();
   let decidedAtEntry = 0;
+  /* A category on its way into the bar (chipforge.js): its button is drawn
+     hidden until it lands, and the keys wait until it has. */
+  let arriving = null;
+  let forging = false;
 
   /* How strongly the channels an event was found on are tinted: 'lit',
      'faint' or 'off'. Remembered per person, because it is about how
@@ -700,6 +704,10 @@ BARRY.spotter = (function () {
   function keys(e) {
     if (!set_) return;
     if (isTyping(e)) return;
+    /* Not while a dialog is open -- a "1" pressed on a colour swatch in the
+       new-category dialog labelled the event behind it -- and not while a
+       new category is arriving, which has its own Escape. */
+    if (forging || modalOpen()) return;
     const k = (e.key || '').toLowerCase();
     if ((e.ctrlKey || e.metaKey) && k === 'z') {
       e.preventDefault(); e.stopPropagation(); undo(); return;
@@ -776,9 +784,12 @@ BARRY.spotter = (function () {
       if (lab.computed) continue;
       const key = (lab.keys || [])[0];
       cats.appendChild(el('button', {
-        class: 'cur-cat' + (ev && ev.label === lab.id ? ' on' : ''),
+        class: 'cur-cat' + (ev && ev.label === lab.id ? ' on' : '')
+               + (arriving === lab.id ? ' cf-arriving' : ''),
         style: '--cat:' + lab.color,
-        title: lab.name + (key ? '  [' + key + ']' : ''),
+        'data-cat': lab.id,
+        title: lab.name + (key ? '  [' + key + ']' : '')
+               + (lab.custom ? ' · added in Spotter, in every IED set' : ''),
         onclick: () => assign(lab.id),
       }, [
         el('span', { text: lab.name }),
@@ -786,6 +797,12 @@ BARRY.spotter = (function () {
         el('span', { class: 'cur-count', text: String(tally[lab.id] || 0) }),
       ].filter(Boolean)));
     }
+    cats.appendChild(el('button', {
+      class: 'cur-cat cur-cat-new',
+      title: 'A new category, for every IED set on every recording',
+      disabled: forging ? 'disabled' : null,
+      onclick: newCategory,
+    }, [el('span', { text: '+ New category' })]));
     bar.appendChild(cats);
 
     bar.appendChild(el('div', { class: 'cur-nav' }, [
@@ -852,6 +869,64 @@ BARRY.spotter = (function () {
 
   const flagged = () => events().filter(
     (e) => e.label && flagIds().has(e.label)).length;
+
+  /* ==================================================================
+     A new category
+     ================================================================== */
+
+  /* Added to the IED vocabulary itself (curation.Categories), so it is a
+     category of every set on every recording, with the next free digit as
+     its key. Added, never renamed or removed from here: a candidate
+     labelled with it has to go on meaning what it meant. */
+
+  const modalOpen = () => {
+    const m = document.getElementById('bigModal');
+    return !!m && !m.classList.contains('hidden');
+  };
+
+  /* The dialog is chipforge's -- name, colour, IED or not, then a confirm
+     that says what it will do -- and so is the arrival. Spotter only says
+     which vocabulary it is, and how to add to it. */
+  async function newCategory() {
+    if (!set_ || forging || !BARRY.chipForge) return;
+    const lab = await BARRY.chipForge.ask({
+      labels: (kind && kind.labels) || [],
+      create: (body) => apiPost('/api/curation/categories/ied', body)
+        .then((r) => r.label),
+    });
+    if (lab) forge(lab);
+  }
+
+  /* Into the vocabulary on screen, into the bar hidden, and then it
+     arrives. The keys wait until it has landed. */
+  function forge(lab) {
+    if (!lab || !kind) return;
+    if (!(kind.labels || []).some((l) => l.id === lab.id)) {
+      kind.labels = (kind.labels || []).concat([lab]);
+    }
+    if (set_ && set_.labels !== kind.labels
+        && !(set_.labels || []).some((l) => l.id === lab.id)) {
+      set_.labels = (set_.labels || []).concat([lab]);
+    }
+    BARRY.activity.log('spotter.category', { name: lab.name, label: lab.id },
+                       sess);
+    arriving = lab.id;
+    forging = true;
+    render();
+    publishMarks();
+    BARRY.chipForge.play({
+      label: lab,
+      target: () => document.querySelector('#spotBar .cur-cat[data-cat="'
+                                           + CSS.escape(lab.id) + '"]'),
+      /* Not a render: that would rebuild the bar under the ring and the
+         word it has just been given. Only the way in is re-enabled. */
+      onLand: () => {
+        arriving = null; forging = false;
+        const b = document.querySelector('#spotBar .cur-cat-new');
+        if (b) b.disabled = false;
+      },
+    });
+  }
 
   function updateSaving() {
     const n = $('#spotSaving');

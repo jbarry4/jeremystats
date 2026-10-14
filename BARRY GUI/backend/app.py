@@ -3945,8 +3945,21 @@ def api_incisor_reviews():
                 "computed": rec.get("computed") or {},
                 "where": (rec.get("computed") or {}).get("where"),
                 "banked": banked,
+                # Which channels it was asked to read, in words, when not
+                # every one -- two scans of one recording are told apart by
+                # this, its bad channels and when it ran (2026-10-14).
+                "pick_words": (incisormod.pick_words(
+                    (rec.get("spec") or {}).get("channel_pick"))
+                    if (rec.get("spec") or {}).get("channel_pick") else None),
             })
-        rows.sort(key=lambda r: str(r.get("label") or ""))
+        # By project, then by recording, the newest scan of each first: the
+        # list mixes projects, and "KCNT1 m11 s6" is a different animal in
+        # KCNT1 and in KCNT1 Urethane.
+        rows.sort(key=lambda r: str((r.get("computed") or {}).get("at") or ""),
+                  reverse=True)
+        rows.sort(key=lambda r: (str((r.get("row") or {}).get("project")
+                                     or "~ not known"),
+                                 str(r.get("label") or "")))
     except Exception as exc:                             # noqa: BLE001
         return fail("incisor/reviews", exc, 400)
     return jsonify({"ok": True, "reviews": rows, "n": len(rows)})
@@ -14824,6 +14837,32 @@ def _cur_session(gid):
             "No recording with the id %s. Open it once so it is registered."
             % gid)
     return rec
+
+
+@app.route("/api/curation/categories/<kind>", methods=["GET", "POST"])
+def api_curation_categories(kind):
+    """A kind's whole vocabulary, and adding a category to it.
+
+    A category added here is a category of EVERY set of that kind, on every
+    recording (curation.Categories) -- Spotter's "new category" chip.
+    """
+    if kind not in curation.KINDS:
+        return jsonify({"ok": False, "error": "Unknown kind %r." % kind}), 404
+    if request.method == "GET":
+        return jsonify({"ok": True, "labels": curation.vocabulary(kind)})
+    body = request.get_json(force=True) or {}
+    try:
+        lab = CURATE.add_category(kind, body.get("name"), body.get("color"),
+                                  bool(body.get("good")))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("curation/category", exc, 400, {"kind": kind})
+    STORE.record_activity([{"action": "curation.category",
+                            "detail": {"kind": kind, "name": lab["name"],
+                                       "label": lab["id"]}}])
+    return jsonify({"ok": True, "label": lab,
+                    "labels": curation.vocabulary(kind)})
 
 
 @app.route("/api/curation/kinds")

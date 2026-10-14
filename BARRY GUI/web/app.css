@@ -920,6 +920,16 @@
 .inc-review:hover { background: var(--bg-3); }
 .inc-review.on { border-color: var(--accent-line); background: var(--accent-soft); }
 .ir-name { font-weight: 550; white-space: normal; overflow-wrap: anywhere; }
+/* The project beside the name, and what the scan read and when under it:
+   two scans of one recording are told apart here (2026-10-14). */
+.ir-who { display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 2px var(--sp-8); min-width: 0; }
+.ir-proj { font-size: var(--fs-105); color: var(--accent); white-space: nowrap;
+  padding: 0 6px; border: 1px solid var(--accent-line);
+  border-radius: var(--radius-sm); }
+.ir-proj.none { color: var(--text-3); border-color: var(--line); }
+.ir-sub { flex: 0 0 100%; font-size: var(--fs-105); color: var(--text-3);
+  white-space: normal; overflow-wrap: anywhere; }
 .ir-pick { color: var(--text-2); font-family: var(--mono); font-size: var(--fs-11); }
 .ir-margin { color: var(--text-3); font-size: var(--fs-105); white-space: nowrap; }
 /* A near-tie is the row worth opening, so it is the row that is coloured. */
@@ -12172,6 +12182,174 @@ table.br-tbl tr.said td.br-why { color: var(--text-3); }
 }
 @media (prefers-reduced-motion: reduce) {
   .ui-enter { animation: none; }
+}
+
+/* ==========================================================================
+   A new category arriving -- js/chipforge.js, from Spotter.
+
+   The chip turns in the middle of the screen, four discharges strike it in
+   its own colour, it steadies and flies into the bar, and there it rings
+   once and says it is ready. `--cat` is the category's colour, set on the
+   stage and on the landed button -- a colour somebody chose for their
+   category, which is data, not a style.
+   ========================================================================== */
+.cf-stage {
+  position: fixed; inset: 0; z-index: 9000;
+  display: grid; place-items: center; cursor: pointer;
+}
+.cf-scrim {
+  position: absolute; inset: 0;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(2px);
+  opacity: 0; transition: opacity .45s var(--ease-out);
+}
+.cf-stage.in .cf-scrim { opacity: 1; }
+.cf-stage.leaving .cf-scrim { opacity: 0; transition-duration: .6s; }
+.cf-bolts { position: absolute; inset: 0; width: 100%; height: 100%;
+            pointer-events: none; overflow: visible; }
+.cf-bolt, .cf-bolt-glow { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.cf-bolt { stroke: color-mix(in srgb, var(--cat) 55%, var(--text)); stroke-width: 1.8; }
+.cf-bolt-glow { stroke: var(--cat); stroke-width: 7; opacity: .28; filter: blur(2px); }
+.cf-bolts g.go path { animation: cfDraw .24s cubic-bezier(.5, 0, .3, 1) forwards; }
+.cf-bolts g.out { animation: cfBoltOut .8s ease forwards; }
+@keyframes cfDraw { to { stroke-dashoffset: 0; } }
+@keyframes cfBoltOut { to { opacity: 0; } }
+
+.cf-hold {
+  position: relative; perspective: 700px;
+  display: grid; place-items: center;
+  opacity: 0; transform: scale(.6);
+  transition: opacity .4s var(--ease-out), transform .5s var(--ease-out);
+}
+.cf-stage.in .cf-hold { opacity: 1; transform: scale(1); }
+.cf-chip {
+  position: relative;
+  display: flex; align-items: center; gap: var(--sp-10);
+  padding: var(--sp-12) var(--sp-20) var(--sp-12) var(--sp-16);
+  border-radius: var(--radius); background: var(--bg-2); color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--cat) 55%, var(--line));
+  border-left: 5px solid var(--cat);
+  font-size: var(--fs-20); font-weight: 600; letter-spacing: .01em;
+  box-shadow: 0 18px 50px -18px color-mix(in srgb, var(--cat) 60%, transparent);
+  transform-style: preserve-3d;
+}
+/* The name is written whole, on one line -- it is at most 32 characters,
+   and a chip that wraps mid-turn reads as two chips. */
+.cf-name { white-space: nowrap; }
+.cf-chip kbd {
+  font-family: var(--mono); font-size: var(--fs-12); padding: 2px 7px;
+  border-radius: var(--r-4); background: var(--bg-3); color: var(--text-2);
+  border: 1px solid var(--line);
+}
+.cf-hold.spin .cf-chip { animation: cfSpin 1.7s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes cfSpin {
+  from { transform: rotateY(-540deg) scale(.85); }
+  to   { transform: rotateY(0deg) scale(1); }
+}
+/* Struck: the chip takes the hit -- a glow in its colour and the smallest
+   jolt -- and the ring behind it spreads. Run ALONGSIDE the turn rather
+   than instead of it (a rule that set only this animation cancelled the
+   turn at the first strike), and the jolt is on `translate`, not
+   `transform`, so it does not fight the turn's rotation either. */
+.cf-hold.spin.struck .cf-chip {
+  animation: cfSpin 1.7s cubic-bezier(.2, .7, .2, 1) both, cfStruck .42s ease-out;
+}
+@keyframes cfStruck {
+  0%   { box-shadow: 0 0 0 0 var(--cat), 0 0 34px 6px var(--cat); translate: -2px 0; }
+  35%  { translate: 2px 0; }
+  100% { box-shadow: 0 18px 50px -18px color-mix(in srgb, var(--cat) 60%, transparent);
+         translate: 0 0; }
+}
+/* Centred on the chip by its own offsets, not by the grid: an absolute
+   child of a grid sits at the area's corner unless told otherwise. */
+.cf-ring {
+  position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+  width: 220px; aspect-ratio: 1; border-radius: 50%;
+  border: 1px solid var(--cat); opacity: 0; pointer-events: none;
+}
+.cf-hold.struck .cf-ring { animation: cfRing .7s var(--ease-out); }
+@keyframes cfRing {
+  from { opacity: .55; transform: scale(.55); }
+  to   { opacity: 0; transform: scale(1.15); }
+}
+.cf-hold.steady .cf-chip {
+  box-shadow: 0 0 0 1px var(--cat), 0 0 28px -4px var(--cat);
+  transition: box-shadow .5s var(--ease-out);
+}
+.cf-caption {
+  position: absolute; top: calc(50% + 54px); left: 0; right: 0;
+  text-align: center; font-size: var(--fs-125); color: var(--text-2);
+  letter-spacing: .04em; opacity: 0; transition: opacity .5s var(--ease-out);
+}
+.cf-caption.in { opacity: 1; }
+
+/* In the bar: hidden until it lands, then a ring spreads once and the word
+   says it is ready, then goes. */
+.cur-cat.cf-arriving { visibility: hidden; }
+.cur-cat.cf-landed { position: relative; animation: cfSettle .6s var(--ease-out); }
+.cur-cat.cf-landed::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit;
+  pointer-events: none; animation: cfLandRing 1.4s var(--ease-out) forwards;
+}
+@keyframes cfSettle {
+  0% { transform: scale(1.12); } 60% { transform: scale(.97); } 100% { transform: none; }
+}
+@keyframes cfLandRing {
+  0%   { box-shadow: 0 0 0 0 var(--cat); opacity: 1; }
+  100% { box-shadow: 0 0 0 12px transparent; opacity: 0; }
+}
+.cf-ready {
+  position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+  white-space: nowrap; pointer-events: none;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  background: var(--bg-2); color: var(--text); font-size: var(--fs-11);
+  border: 1px solid var(--cat);
+  animation: cfReady .5s var(--ease-out) both;
+  transition: opacity .7s ease;
+}
+.cf-ready.out { opacity: 0; }
+@keyframes cfReady {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* The way in: a chip-shaped button at the end of the categories. */
+.cur-cat.cur-cat-new {
+  border-style: dashed; border-left: 1px dashed var(--line);
+  color: var(--text-2); background: transparent;
+}
+.cur-cat.cur-cat-new:hover { color: var(--text); border-color: var(--accent-line); }
+
+/* The dialog that names it. */
+.cf-dialog { width: min(520px, 92vw); }
+.cf-swatches { display: flex; flex-wrap: wrap; gap: var(--sp-6); align-items: center; }
+.cf-swatch {
+  width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; background: var(--sw);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 18%, transparent);
+  transition: transform var(--ease-dur) var(--ease-out);
+}
+.cf-swatch:hover { transform: scale(1.1); }
+.cf-swatch.on { border-color: var(--text); }
+.cf-swatch[disabled] { opacity: .3; cursor: not-allowed; transform: none; }
+/* The "any colour" well. Scoped past the global input rule, which makes
+   every input full width -- this one drew as a bar across the dialog. */
+.cf-swatches input.cf-own {
+  flex: none; width: 34px; min-width: 0; height: 28px; padding: 0;
+  border: 0; background: none; cursor: pointer;
+}
+.cf-preview { display: flex; align-items: center; gap: var(--sp-10); flex-wrap: wrap;
+              margin-top: var(--sp-12); }
+.cf-preview .cur-cat { pointer-events: none; }
+.cf-big { display: grid; place-items: center; padding: var(--sp-20) 0 var(--sp-12); }
+.cf-big .cur-cat { font-size: var(--fs-15); padding: 8px 14px 8px 10px; pointer-events: none; }
+.cf-err { color: var(--err); font-size: var(--fs-115); margin: var(--sp-8) 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-hold.spin .cf-chip, .cf-hold.spin.struck .cf-chip, .cf-hold.struck .cf-ring,
+  .cf-bolts g.go path, .cf-bolts g.out, .cur-cat.cf-landed,
+  .cur-cat.cf-landed::after, .cf-ready { animation: none; }
+  .cf-swatch { transition: none; }
 }
 
 /* ==========================================================================

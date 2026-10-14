@@ -142,6 +142,73 @@ def picks():
           == "the first half (CSC1-CSC64)")
 
 
+def batch_range():
+    print("\na batch's channel range: first and last, on the node")
+    first64 = {"mode": "ranges", "ranges": [[1, 64]]}
+    rec = {"bad_channels": [3, 70]}
+    sp = incisorvacc.spec_for("g1", {"channel_pick": first64}, rec, "h3",
+                              "H3", lambda spec, body: spec)
+    check("the range travels in the spec for the node",
+          sp.get("channel_pick") == first64, sp.get("channel_pick"))
+    plain = incisorvacc.spec_for("g1", {}, rec, "h3", "H3",
+                                 lambda spec, body: spec)
+    check("and none when none is asked for", plain.get("channel_pick") is None)
+    base = dict(plain)
+    base.pop("channel_pick", None)
+    check("a question with no range hashes as it did before there was one, "
+          "so every scan already answered is still found",
+          incisorvacc.request_hash("g1", plain)
+          == incisorvacc.request_hash("g1", base))
+    check("and a range is a different question",
+          incisorvacc.request_hash("g1", sp)
+          != incisorvacc.request_hash("g1", plain))
+    cost = incisorvacc.plan_for({"n_channels": 128, "duration_s": 600.0},
+                                sp, 0.002, 0.1)
+    check("the cost counts only the range's channels, less its bad ones: 63",
+          cost["n_channels"] == 63 and cost["n_all"] == 128, cost)
+    full = incisorvacc.plan_for({"n_channels": 128, "duration_s": 600.0},
+                                plain, 0.002, 0.1)
+    check("against 126 for the whole recording, and about half the time",
+          full["n_channels"] == 126
+          and abs(cost["seconds"] / full["seconds"] - 0.5) < 0.02,
+          (full["n_channels"], cost["seconds"], full["seconds"]))
+    check("open at the top, it says so",
+          incisor.pick_words(incisor.channel_pick(
+              {"mode": "ranges", "ranges": [[65, 9999]]})) == "CSC 65 to the last")
+
+    got = {}
+
+    def fake_run(session, spec, report, job=None):
+        got["channels"] = list(spec.get("channels") or [])
+        return {"ok": True, "time_basis": {}}
+
+    import vacc_run
+    from backend import csc
+    real = (csc.open_session, incisor.run, continuity.check)
+    csc.open_session = lambda path, invert=True: dict(SESSION, path=path)
+    incisor.run = fake_run
+    continuity.check = lambda path: dict(REPORT)
+    real_isdir = os.path.isdir
+    os.path.isdir = lambda p: True if p == "/netfiles/x/rec" else real_isdir(p)
+    try:
+        # CSC1-6, CSC2 and CSC5 bad, the range CSC1-4: CSC1, 3, 4.
+        out = vacc_run.run_tool(
+            "incisor", {"path": "/netfiles/x/rec", "channels": None,
+                        "bad_channels": [2, 5],
+                        "channel_pick": {"mode": "ranges",
+                                         "ranges": [[1, 4]]}},
+            {"report": None}, None, csc)
+    finally:
+        csc.open_session, incisor.run, continuity.check = real
+        os.path.isdir = real_isdir
+    num = [SESSION["channels"][i]["number"] for i in got.get("channels") or []]
+    check("the node reads the range, less the bad ones: CSC1, 3 and 4",
+          num == [1, 3, 4], num)
+    check("and echoes what it read, for the desk's key",
+          out.get("spec_channels") == got.get("channels")
+          and [e["number"] for e in out.get("spec_excluded")] == [2], out)
+
+
 def requests():
     print("\nthe request's hash")
     base = {"invert": True, "estimator": "sd", "bad_channels": [2, 5],
@@ -361,6 +428,7 @@ def main():
     keys()
     channels()
     picks()
+    batch_range()
     requests()
     plans()
     panels()

@@ -62,6 +62,11 @@ BARRY.incisor = (function () {
        bad mark: bad channels stay out inside any pick, and a pick marks
        nothing bad. Back to every channel for each new recording. */
     pick: null,
+    /* A batch's channel range, by CSC number (2026-10-14): first and last,
+       either blank for no limit at that end. The same for every recording
+       sent, with each one's bad channels left out inside it -- as Doppler's
+       is. */
+    batch_lo: null, batch_hi: null,
     height_sd: 4.5,
     abs_uv: 300,
     dist_ms: 100,
@@ -474,7 +479,58 @@ BARRY.incisor = (function () {
     return {
       height_sd: q.height_sd, abs_uv: q.abs_uv, dist_ms: q.dist_ms,
       wlen_ms: q.wlen_ms, estimator: q.estimator,
+      channel_pick: batchPick(),
     };
+  }
+
+  /* The batch's range as a channel pick: blank at the bottom is CSC1, blank
+     at the top "to the last" (9999, which the server words that way). */
+  function batchPick() {
+    if (q.batch_lo == null && q.batch_hi == null) return null;
+    return { mode: 'ranges', ranges: [[q.batch_lo || 1, q.batch_hi || 9999]] };
+  }
+
+  /* First and last, by CSC number -- Doppler's field, for every recording
+     in the batch. A blank box is no limit at that end. */
+  function batchRangeField() {
+    const box = (key, ph) => el('input', {
+      type: 'number', class: 'num', min: '1', step: '1', placeholder: ph,
+      'aria-label': key === 'batch_lo' ? 'First channel' : 'Last channel',
+      value: q[key] == null ? '' : String(q[key]),
+      disabled: batchJob ? 'disabled' : null,
+      onchange: (e) => {
+        const raw = String(e.target.value || '').trim();
+        const v = raw === '' ? null : Math.round(Number(raw));
+        if (v != null && !(isFinite(v) && v >= 1)) {
+          e.target.value = q[key] == null ? '' : String(q[key]);
+          return;
+        }
+        q[key] = v;
+        if (q.batch_lo != null && q.batch_hi != null && q.batch_hi < q.batch_lo) {
+          const t = q.batch_lo; q.batch_lo = q.batch_hi; q.batch_hi = t;
+        }
+        paramsChanged();
+      },
+    });
+    const set = q.batch_lo != null || q.batch_hi != null;
+    return BARRY.ui.field({
+      label: 'Channels', inline: true, extra: 'dop-range-field inc-batch-range',
+      hint: 'By CSC number, for every recording sent: a channel outside the '
+          + 'range is not read at all, and each recording\u2019s bad channels '
+          + 'are left out inside it. Blank is every channel. For 128-channel '
+          + 'recordings where only the first probe is wanted: 1 to 64. '
+          + 'Nothing is marked bad by this.',
+      control: el('div', { class: 'dop-range' }, [
+        el('span', { class: 'dop-range-w', text: 'CSC' }),
+        box('batch_lo', 'first'),
+        el('span', { class: 'dop-range-w', text: 'to CSC' }),
+        box('batch_hi', 'last'),
+        set ? el('button', { class: 'mini', text: 'Every channel',
+          disabled: batchJob ? 'disabled' : null,
+          onclick: () => { q.batch_lo = null; q.batch_hi = null;
+                           paramsChanged(); } }) : null,
+      ].filter(Boolean)),
+    });
   }
 
   /* Asked again whenever the parameters change, because "already scanned"
@@ -728,6 +784,7 @@ BARRY.incisor = (function () {
     box.appendChild(el('div', { class: 'section-label',
                                 text: 'Detection, for every recording sent' }));
     box.appendChild(params());
+    box.appendChild(batchRangeField());
     const todo = (vaccList && vaccList.todo) || [];
     const chosen = todo.filter((r) => picked.has(r.gid));
     const fresh = chosen.filter((r) => !r.answered);
@@ -921,6 +978,38 @@ BARRY.incisor = (function () {
     return wrap;
   }
 
+  /* WHICH PROJECT, AND WHICH SCAN (2026-10-14). "KCNT1 m11 s6" is a
+     different animal in KCNT1 and in KCNT1 Urethane, and a recording
+     scanned twice was two identical rows. So each row says its project
+     (and cohort, where the folders name one), and under its name what the
+     scan read and when: its channel count, the range it was given, the bad
+     channels it left out, any detection setting off Toothy's default, and
+     the day it ran. */
+  function reviewProject(r) {
+    const row = r.row || {};
+    const p = row.project || '';
+    if (!p || p === 'Unfiled') return 'project not known';
+    return p + (row.cohort && row.cohort !== p ? ' \u00b7 ' + row.cohort : '');
+  }
+
+  function reviewScan(r) {
+    const sp = r.spec || {};
+    const bad = sp.bad_channels || [];
+    const at = String((r.computed || {}).at || '').slice(0, 16).replace('T', ' ');
+    return [
+      r.n_channels != null ? r.n_channels + ' channels' : null,
+      r.pick_words || null,
+      bad.length ? (bad.length <= 3 ? 'CSC' + bad.join(', CSC') : bad.length
+                    + ' channels') + ' left out as bad' : null,
+      sp.height_sd != null && Number(sp.height_sd) !== 4.5
+        ? 'height ' + sp.height_sd + ' S.D.' : null,
+      sp.abs_uv != null && Number(sp.abs_uv) !== 300
+        ? 'floor ' + sp.abs_uv + ' \u00b5V' : null,
+      sp.estimator === 'mad' ? 'noise by MAD' : null,
+      at ? 'scanned ' + at : null,
+    ].filter(Boolean).join('  \u00b7  ');
+  }
+
   function reviewRow(r) {
     const hil = (r.picked || {}).hilus || {};
     const k = r.gid + '/' + r.params_hash;
@@ -929,7 +1018,14 @@ BARRY.incisor = (function () {
       class: 'inc-review' + (on ? ' on' : '') + (r.banked ? ' banked' : ''),
       onclick: () => toggleReview(r),
     }, [
-      el('span', { class: 'ir-name', text: r.label || r.gid }),
+      el('span', { class: 'ir-who' }, [
+        el('span', { class: 'ir-name', text: r.label || r.gid }),
+        el('span', { class: 'ir-proj' + ((r.row || {}).project
+                                         && (r.row || {}).project !== 'Unfiled'
+                                         ? '' : ' none'),
+                     text: reviewProject(r) }),
+        el('span', { class: 'ir-sub', text: reviewScan(r) }),
+      ]),
       el('span', { class: 'ir-pick',
         text: hil.label ? ('hilus ' + hil.label) : 'no hilus pick' }),
       /* A small margin is the interesting case, not a defect: the two top
