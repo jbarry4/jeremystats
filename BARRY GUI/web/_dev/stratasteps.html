@@ -344,6 +344,44 @@ const PATH = 'demo:ds-tutorial';
       const s0 = (await W().fetch('/api/layers/' + GID).then((r2) => r2.json())).sheet;
       const tw0 = ((s0.strata.states || {}).theta_walk || []);
       ck('painting saves a Theta Walk bout', tw0.length >= 1, JSON.stringify(tw0));
+
+      // A painted bout's edge can be taken hold of and moved (2026-10-12).
+      const tw1 = D().querySelector('.ss-tw');
+      if (tw1 && tw0.length) {
+        const r1 = tw1.getBoundingClientRect();
+        const end0 = tw0[tw0.length - 1][1];
+        ev('mousedown', r1.left + 0.55 * r1.width, tw1);
+        ev('mousemove', r1.left + 0.58 * r1.width);
+        ev('mousemove', r1.left + 0.62 * r1.width);
+        ev('mouseup', r1.left + 0.62 * r1.width);
+        await sleep(2500);
+        const s1 = (await W().fetch('/api/layers/' + GID).then((r2) => r2.json())).sheet;
+        const tw2 = ((s1.strata.states || {}).theta_walk || []);
+        const end1 = tw2.length ? tw2[tw2.length - 1][1] : null;
+        ck('dragging a bout’s edge moves that edge',
+           tw2.length === tw0.length && end1 > end0 + 0.02 * (end0 || 1),
+           JSON.stringify(tw0) + ' -> ' + JSON.stringify(tw2));
+      }
+
+      // The auto painter's shortest bout redraws the finder's bouts.
+      const minIn = D().querySelector('.ss-finder input[data-k="min_bout_s"]');
+      ck('the auto painter has a shortest-bout setting', !!minIn);
+      if (minIn) {
+        const ghostN = () => ((SS()._state().guide || {}).guide || {}).ghost.length;
+        minIn.value = '100000';
+        minIn.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+        for (let k = 0; k < 200 && ghostN() !== 0; k++) {
+          await W().fetch('/api/cfc/job/none').catch(() => null);
+          await sleep(50);
+        }
+        ck('... which redraws the finder’s bouts', ghostN() === 0, ghostN());
+        const again = D().querySelector('.ss-finder input[data-k="min_bout_s"]');
+        if (again) {
+          again.value = '';
+          again.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+          await sleep(1500);
+        }
+      }
     }
     const fin = Array.from(D().querySelectorAll('.ss-zero .btn'))
       .find((b) => /Done/.test(b.textContent));
@@ -386,20 +424,26 @@ const PATH = 'demo:ds-tutorial';
     await untilN(() => D().querySelector('.ss-drawer .ss-anchors'), 100);
     const imlIds = () => ((SS()._state().ghost || {}).lines || [])
       .filter((l) => /iml/.test(l.above + '|' + l.below)).length;
-    ck('Step 3 cuts in thirds, IML included, by default', imlIds() > 0, imlIds());
-    const noIml = Array.from(D().querySelectorAll('.ss-drawer button'))
-      .find((b) => /part of MML/.test(b.textContent));
-    ck('there is a switch to leave IML out', !!noIml);
-    if (noIml) {
-      noIml.click();
-      await untilN(() => imlIds() === 0, 200);
-      ck('... and with it off, no line names IML', imlIds() === 0, imlIds());
-      const back = Array.from(D().querySelectorAll('.ss-drawer button'))
-        .find((b) => /its own \(IML\)/.test(b.textContent));
-      if (back) back.click();
+    // IML is folded into the molecular layer unless asked for (2026-10-13).
+    ck('Step 3 leaves IML out by default (part of the MML)', imlIds() === 0, imlIds());
+    const ownIml = Array.from(D().querySelectorAll('.ss-drawer button'))
+      .find((b) => /its own \(IML\)/.test(b.textContent));
+    ck('there is a switch to give IML its own lines', !!ownIml);
+    if (ownIml) {
+      ownIml.click();
       await untilN(() => imlIds() > 0, 200);
-      ck('... and it comes back', imlIds() > 0, imlIds());
+      ck('... which draws IML', imlIds() > 0, imlIds());
+      const back = Array.from(D().querySelectorAll('.ss-drawer button'))
+        .find((b) => /part of MML/.test(b.textContent));
+      if (back) back.click();
+      await untilN(() => imlIds() === 0, 200);
+      ck('... and "part of MML" folds it back in', imlIds() === 0, imlIds());
     }
+    // Fissure to hilus in equal thirds (OML, MML, GCL) was tried and taken
+    // out the same day: no paper cuts it that way.
+    ck('there is no "in thirds" choice',
+       !Array.from(D().querySelectorAll('.ss-drawer button'))
+         .some((b) => /in thirds/.test(b.textContent)));
 
     hd('Step 3: Method B');
     const runBtn = Array.from(D().querySelectorAll('.ss-drawer .btn'))
@@ -413,8 +457,9 @@ const PATH = 'demo:ds-tutorial';
       runBtn.click();
       /* Waited on with real requests: the fit takes real seconds on the
          server, and a timer here runs on the virtual clock, which gets
-         through a two-minute wait in a fraction of one. */
-      for (let k = 0; k < 2000; k++) {
+         through a two-minute wait in a fraction of one. Three runs since
+         2026-10-13 (25-200, 90-160, 55-90 Hz), so a longer wait. */
+      for (let k = 0; k < 8000; k++) {
         if ((SS()._state().sug || {}).ica_ready) break;
         await W().fetch('/api/cfc/job/none').catch(() => null);
         await sleep(50);
@@ -431,16 +476,181 @@ const PATH = 'demo:ds-tutorial';
          /independent component analysis/.test(
            (D().querySelector('.ss-drawer') || {}).textContent || ''));
     }
-    const chip = D().querySelector('.ss-drawer .ss-chip-btn');
+    const chip = D().querySelector('.ss-drawer .ss-verdict');
     ck('each Method B check can be clicked', !!chip);
     if (chip) {
       chip.click();
       await sleep(300);
       const txt = (D().querySelector('.ss-drawer') || {}).textContent || '';
       ck('... and says what it means against Method A',
-         /Method A puts|nothing reliable|no generator it can vouch for/.test(txt),
+         /Matches\.|Does not match\.|Nothing reliable means/.test(txt),
          txt.slice(0, 80));
     }
+    // An off verdict offers to move the line that would take its sink in.
+    const ghostAts = () => JSON.stringify(((SS()._state().ghost || {}).lines || [])
+      .map((l) => l.at));
+    let moved = null;
+    const nOff = D().querySelectorAll('.ss-drawer .ss-verdict.off').length;
+    for (let k = 0; k < nOff && moved === null; k++) {
+      const offs = D().querySelectorAll('.ss-drawer .ss-verdict.off');
+      if (!offs[k]) break;
+      offs[k].click();
+      await sleep(300);
+      const mvb = D().querySelector('.ss-drawer .ss-move');
+      if (mvb) {
+        const before = ghostAts();
+        mvb.click();
+        await sleep(300);
+        moved = before !== ghostAts();
+      }
+    }
+    if (moved !== null) {
+      ck('an off Method B verdict moves its line from the drawer', moved);
+    } else {
+      /* The demo's sources happen to sit where Method A put them, so ask
+         about one that does not: a slow source two channels above OML1. */
+      const omlTop = ((SS()._state().ghost || {}).lines || [])
+        .find((l) => l.below === 'dg_oml1');
+      if (omlTop && omlTop.at >= 2) {
+        const at0 = omlTop.at;
+        const node = SS()._icaCompare({ row: at0 - 2, agree: false, off: -2,
+                                        region: 'dg_oml1', kind: 'slow',
+                                        blade: 'upper' });
+        const b = node && node.querySelector && node.querySelector('.ss-move');
+        ck('Method B’s explanation offers Move for a sink outside its layer',
+           !!b, node ? node.textContent.slice(0, 80) : 'nothing');
+        if (b) {
+          b.click();
+          await sleep(300);
+          ck('... which moves that line to take the sink in',
+             omlTop.at === at0 - 2, at0 + ' -> ' + omlTop.at);
+          omlTop.at = at0;               // put the proposal back as it was
+          SS()._openStep('3');
+          await sleep(300);
+        }
+      }
+    }
+    /* "ICA line recommendations line up with channel lines" (2026-10-12):
+       every mark a check makes sits on lane edges, as the step's lines do. */
+    const chks = (((SS()._state().sug || {}).steps || {})['3'] || {}).ica_checks || [];
+    const marks = chks.filter((c) => c.row != null).map((c) => SS()._icaMark(c));
+    ck('every ICA mark is on channel edges',
+       marks.every((m) => !m || (Number.isInteger(m.a) && Number.isInteger(m.b)
+         && (m.edge == null || m.edge === m.a || m.edge === m.b))),
+       JSON.stringify(marks));
+
+    /* The evidence window's Method B: one card per frequency, each saying
+       whether it matches, and the every-component grid folded away
+       (2026-10-12: "a lot of colours and lines"). Posed on Step 3 while
+       this run's ICA is still the sheet's. */
+    const af = document.createElement('iframe');
+    af.style.cssText = 'position:fixed;left:-2000px;top:0;width:1100px;height:900px;border:0';
+    document.body.appendChild(af);
+    af.src = '/strata-aids.html?step=3&gid=' + encodeURIComponent(GID)
+      + '&path=' + encodeURIComponent(PATH);
+    await new Promise((r) => af.addEventListener('load', r, { once: true }));
+    const A = () => af.contentDocument;
+    for (let k = 0; k < 600; k++) {
+      if (A().querySelectorAll('.sa-exp').length >= 3) break;
+      await W().fetch('/api/cfc/job/none').catch(() => null);
+      await sleep(50);
+    }
+    await sleep(300);
+    const cards = Array.from(A().querySelectorAll('.sa-exp'));
+    ck('Method B evidence: a card each for slow, mid and fast gamma',
+       !!A().querySelector('.sa-exp.slow') && !!A().querySelector('.sa-exp.mid')
+         && !!A().querySelector('.sa-exp.fast'),
+       cards.length + ' cards: '
+         + ((A().body || {}).textContent || '').replace(/\s+/g, ' ').slice(0, 300));
+    ck('... each saying whether it matches',
+       cards.length === 3 && cards.every((c) => /Matches|Does not match|Can.t tell|Not checked/
+         .test((c.querySelector('.sa-badge') || {}).textContent || '')),
+       cards.map((c) => (c.querySelector('.sa-badge') || {}).textContent).join(' | '));
+    ck('... a card that can’t tell says what that means',
+       cards.every((c) => !c.classList.contains('none')
+         || /Can.t tell means/.test((c.querySelector('.sa-mean') || {}).textContent || '')));
+    ck('... and every component stays folded until asked for',
+       !A().querySelector('.sa-ica'));
+    const fold = Array.from(A().querySelectorAll('button'))
+      .find((b) => /Every component/.test(b.textContent));
+    if (fold) fold.click();
+    await sleep(300);
+    ck('... which opens them', !!A().querySelector('.sa-ica .sa-comp'));
+    ck('Step 3 evidence shows theta\u2019s sink in the molecular layer',
+       Array.from(A().querySelectorAll('.sa-card h3'))
+         .some((h) => /sink in the molecular layer/.test(h.textContent)));
+
+    // The theta phase x depth gamma map (beta): worked out on the server
+    // in real seconds, so waited on with real requests.
+    for (let k = 0; k < 1200; k++) {
+      if (A().querySelectorAll('.sa-pm-fig').length >= 3
+          || /Could not draw it/.test((A().querySelector('.sa-pm') || {}).textContent || '')) break;
+      await W().fetch('/api/cfc/job/none').catch(() => null);
+      await sleep(50);
+    }
+    // Said line by line ("now above ch X, phase map: above ch Y, Move"),
+    // the maps folded away (2026-10-13: "too much going on").
+    const sug = A().querySelectorAll('.sa-pm .sa-sugg');
+    ck('the phase map says, line by line, where each line is and where it '
+       + 'would put it', sug.length >= 2
+         && Array.from(sug).every((r) => /now above/.test(r.textContent)),
+       ((A().querySelector('.sa-pm') || {}).textContent || '').slice(0, 200));
+    ck('... with the maps folded away', !A().querySelector('.sa-pm-fig'));
+    const showMaps = Array.from(A().querySelectorAll('.sa-pm button'))
+      .find((b) => /Show the maps/.test(b.textContent));
+    if (showMaps) showMaps.click();
+    for (let k = 0; k < 40 && A().querySelectorAll('.sa-pm-fig').length < 3; k++) {
+      await sleep(50);
+    }
+    const figs = A().querySelectorAll('.sa-pm-fig');
+    ck('... which open to slow, mid and fast gamma', figs.length === 3, figs.length);
+    const q = A().querySelector('.sa-pm .sa-q');
+    ck('the phase map has a ?', !!q);
+    if (q) {
+      q.click();
+      await sleep(200);
+      const ex = A().getElementById('saExplain');
+      ck('... which opens the animated explanation', !!ex
+         && !!ex.querySelector('canvas') && ex.querySelectorAll('.sa-ex-dot').length === 5,
+         ex ? ex.textContent.slice(0, 80) : 'nothing');
+      const t1 = (A().querySelector('.sa-ex-title') || {}).textContent;
+      const next = ex && Array.from(ex.querySelectorAll('button'))
+        .find((b) => /Next/.test(b.textContent));
+      if (next) next.click();
+      await sleep(100);
+      const t2 = (A().querySelector('.sa-ex-title') || {}).textContent;
+      ck('... and Next moves it on', !!t2 && t2 !== t1, t1 + ' -> ' + t2);
+      const x = ex && ex.querySelector('.sa-ex-x');
+      if (x) x.click();
+      await sleep(100);
+      ck('... and \u00d7 closes it', !A().getElementById('saExplain'));
+    }
+
+    /* Move: the evidence window asks the labelling window to move a line,
+       over the link. Sent here as the evidence window sends it. */
+    const lines3 = (SS()._state().ghost || {}).lines || [];
+    const target = lines3.find((l) => l.below === 'dg_oml1');
+    if (target) {
+      const from = target.at;
+      const to = Math.max(1, from - 2);
+      await post('/api/link', { channel: 'strata-cmd:' + GID, origin: 'strata-aid',
+                                value: { at: Date.now(), above: target.above,
+                                         below: target.below, to } });
+      for (let k = 0; k < 400; k++) {
+        const l = ((SS()._state().ghost || {}).lines || [])
+          .find((x) => x.below === 'dg_oml1');
+        if (l && l.at === to) break;
+        await W().fetch('/api/cfc/job/none').catch(() => null);
+        await sleep(50);
+      }
+      const after = ((SS()._state().ghost || {}).lines || [])
+        .find((x) => x.below === 'dg_oml1');
+      ck('Move in the evidence window moves the line in the labelling window',
+         !!after && after.at === to, from + ' -> ' + (after && after.at));
+    }
+    af.src = 'about:blank';
+    await sleep(100);
+    af.remove();
 
     hd('Step 4');
     D().querySelectorAll('.ss-step')[4].click();

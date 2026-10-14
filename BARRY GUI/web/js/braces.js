@@ -2247,13 +2247,58 @@ BARRY.braces = (function () {
        a different stamp's marks even for a frame. */
     if (view.curve) { view.trace = null; loadCurve(); }
     const r = all[view.at];
-    // Eight windows across, so the neighbours that made a run contested
-    // are on screen beside it rather than just off the edge.
-    const span = Math.max(0.4,
-                          ((set_.set.params || {}).window_ms || 100) / 1000 * 8);
+    const span = vSpan();
     BARRY.views.xplore.setWindow(0, Math.max(0, vNow(r) - span / 2), span);
+    view.spanSet = true;
     vPublish();
     vBar();
+  }
+
+  /* THE SPAN IS YOURS (2026-10-13).
+
+     Every move used to set the trace view's span again, to eight windows
+     across -- 1.6 s at ±200 ms -- so a view zoomed to 1 s was undone by
+     every step to the next flagged stamp. Now a move centres the stamp and
+     leaves the width alone: whatever the pane shows is the span, kept from
+     one stamp to the next and from one sitting to the next.
+
+     Eight windows across is only where the very first review opens, so the
+     neighbours that made a run contested are on screen beside it. The pane
+     is read only once this review has centred something itself: before
+     that it shows whatever was being browsed. `braces_span` is a local
+     preference (backend/store.py PREFS_LOCAL), as Checkup's is: how wide
+     somebody likes the window is about their screen. */
+  const SPAN_KEY = 'braces_span';
+
+  function vPaneSpan() {
+    try {
+      // Xplorefinder's own two cases (`winOf`): an unlinked pane carries
+      // its own window, a linked one reads the session's.
+      const XF = BARRY.views.xplore.state;
+      const pane = (XF.panes || [])[0];
+      const s = (XF.linkMode === 'none' && pane && pane.t0 != null)
+        ? pane.span : (view && view.sess ? view.sess.span : null);
+      return s > 0 ? s : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function vSpan() {
+    const kept = parseFloat(BARRY.prefs.get(SPAN_KEY, 0)) || 0;
+    let span = kept > 0 ? kept
+      : Math.max(0.4, ((set_.set.params || {}).window_ms || 100) / 1000 * 8);
+    // Zoomed since the last stamp: that is the width wanted now. Only a
+    // real change counts, as in Checkup -- the pane can round what it was
+    // given, or clamp it at the end of the recording.
+    const shown = view && view.spanSet ? vPaneSpan() : null;
+    if (shown && Math.abs(shown - span) > Math.max(0.02, span * 0.02)) {
+      span = shown;
+    }
+    if (Math.abs(span - kept) > 1e-6) {
+      try { BARRY.prefs.set(SPAN_KEY, span); } catch (e) { /* ignore */ }
+    }
+    return span;
   }
 
   function vStep(d) {
@@ -3741,6 +3786,8 @@ BARRY.braces = (function () {
     drawStrip,
     _enter: enter,
     _view: () => view,
+    _goTo: (n) => vGoTo(n),
+    _exitView: () => exitView(),
     _reset: () => { set_ = null; bench = null; cands = null; },
     /* The plan card drawn from a given plan, for web/_dev/vtreetools.html:
        a set with several readable versions is what the version tree is for,

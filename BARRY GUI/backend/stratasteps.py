@@ -171,8 +171,9 @@ def segments_for(session, report):
     return [{"index": 0, "t0": 0.0, "t1": dur}]
 
 
-def plan_for(session, report, channels=None):
-    """The shape of a scan, without doing any of it."""
+def plan_for(session, report, channels=None, skip=()):
+    """The shape of a scan, without doing any of it. `skip`: channels kept
+    as rows but not read -- the recording's bad channels."""
     fs = float(session.get("fs") or 30000.0)
     q = max(1, int(round(fs / LFP_FS)))
     lfs = fs / q
@@ -187,13 +188,16 @@ def plan_for(session, report, channels=None):
     n_bins = int(starts.size)
     chans = [c for c in (session.get("channels") or [])
              if channels is None or int(c["number"]) in set(channels)]
+    skipset = {int(x) for x in (skip or ())}
+    skipped = [int(c["number"]) for c in chans if int(c["number"]) in skipset]
+    n_read = len(chans) - len(skipped)
     span = sum(s["t1"] - s["t0"] for s in segs)
     return {
         "fs": fs, "q": q, "lfp_fs": lfs, "segments": segs, "end_s": end,
         "span_s": span, "n_samp": n_samp, "nper": nper, "n_bins": n_bins,
         "bin_starts": starts, "channels": chans,
-        "n_channels": len(chans),
-        "megasamples": span * fs * max(1, len(chans)) / 1e6,
+        "n_channels": len(chans), "skipped": skipped, "n_read": n_read,
+        "megasamples": span * fs * max(1, n_read) / 1e6,
         "lfp_bytes": n_samp * 2 * max(1, len(chans)),
     }
 
@@ -391,16 +395,25 @@ def _bin_features(lfp, plan):
 
 
 def scan(session, report, gid, job=None, workers=4, channels=None,
-         on_progress=None, line_hz=LINE_HZ):
+         on_progress=None, line_hz=LINE_HZ, skip=()):
     """Read every channel once and keep what the steps need.
 
     Channels go through a small pool. Reading is disk-bound and the filters
     and FFTs drop the GIL for most of their time, so four at once is about
     three times one -- measured, see the module tests.
+
+    `skip` (the recording's bad channels) are not read (2026-10-13). Each
+    keeps its row -- zeros in the 1250 Hz copy, NaN in the bins -- so the
+    probe's geometry is whole for the CSD and for interpolating across
+    them, and none of them has a say in which seconds are valid.
     """
-    plan = plan_for(session, report, channels)
+    plan = plan_for(session, report, channels, skip)
     if not plan["channels"]:
         raise StrataError("No channels to read.")
+    if not plan["n_read"]:
+        raise StrataError("Every channel is marked bad, so there is nothing "
+                          "to read.")
+    skipset = set(plan["skipped"])
     if plan["n_bins"] < 10:
         raise StrataError("This recording is shorter than ten seconds; "
                           "there is nothing to average.")
@@ -415,8 +428,11 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
     lfp_mm = np.lib.format.open_memmap(
         os.path.join(tmp, "lfp.npy"), mode="w+", dtype=np.int16,
         shape=(n_ch, plan["n_samp"]))
-    scale = np.zeros(n_ch, dtype=np.float32)
-    lfp_valid = np.zeros(plan["n_samp"], dtype=bool)
+    scale = np.ones(n_ch, dtype=np.float32)       # a skipped row: zeros at 1
+    # And'ed over the channels read, in whatever order they finish. (It
+    # used to be set by row 0 and and'ed by the rest, so when row 0 finished
+    # after another channel it overwrote that channel's say.)
+    lfp_valid = np.ones(plan["n_samp"], dtype=bool)
     nb = plan["n_bins"]
     out = {
         "power": np.full((n_ch, nb, len(BANDS)), np.nan, np.float32),
@@ -447,10 +463,7 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
         lfp_mm[i] = np.rint(np.nan_to_num(lfp, nan=0.0) / sc).astype(np.int16)
         with lock:
             scale[i] = sc
-            if i == 0:
-                lfp_valid[:] = fin
-            else:
-                lfp_valid[:] &= fin
+            lfp_valid[:] &= fin
             out["power"][i] = feats["power"]
             if out["theta_x"].shape[2] == 0:
                 out["theta_x"] = np.zeros(
@@ -469,11 +482,12 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
             if job is not None:
                 job.tick("strata read", done[0])
 
+    read = [(i, ch) for i, ch in enumerate(plan["channels"])
+            if int(ch["number"]) not in skipset]
     if job is not None:
-        job.begin("strata read", of=n_ch)
+        job.begin("strata read", of=len(read))
     with ThreadPoolExecutor(max_workers=max(1, int(workers))) as pool:
-        futs = [pool.submit(one, i, ch)
-                for i, ch in enumerate(plan["channels"])]
+        futs = [pool.submit(one, i, ch) for i, ch in read]
         for f in futs:
             f.result()
     lfp_mm.flush()
@@ -493,10 +507,11 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
         "bands": [list(b) for b in BANDS],
         "invert": bool(session.get("invert", True)),
         "line_hz": line_hz,
+        "skipped": plan["skipped"],
         "scanned_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "seconds": None,
     }
-    bin_valid = out["valid"].all(axis=0)
+    bin_valid = out["valid"][[i for i, _ch in read]].all(axis=0)
     np.savez(os.path.join(tmp, "bins.npz"),
              power=out["power"], theta_x=out["theta_x"], rms=out["rms"],
              mua=out["mua"], valid=bin_valid, spec=out["spec"],
@@ -513,8 +528,31 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
             _BINS_ORDER.remove(gid)
         if os.path.isdir(d):
             shutil.rmtree(d, ignore_errors=True)
-        os.replace(tmp, d)
+        try:
+            _replace(tmp, d)
+        except OSError as exc:
+            raise StrataError(
+                "The read finished but its folder could not be put in "
+                "place: something (OneDrive, an antivirus scan, another "
+                "window) is holding %s. Read it again in a moment. (%s)"
+                % (d, exc)) from exc
     return meta
+
+
+def _replace(src, dst, tries=8):
+    """os.replace, retried. Windows refuses to replace a file somebody has
+    open -- a reader in another thread, OneDrive uploading it, an antivirus
+    scan -- and each of those lets go within a second or so."""
+    wait = 0.05
+    for k in range(tries):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if k == tries - 1:
+                raise
+            time.sleep(wait)
+            wait = min(wait * 2, 0.5)
 
 
 # --------------------------------------------------------------------------
@@ -609,8 +647,12 @@ class Bins:
         return out
 
 
-def status(gid, session=None):
-    """Whether a scan exists for this recording, and whether it is current."""
+def status(gid, session=None, bad=None):
+    """Whether a scan exists for this recording, and whether it is current.
+
+    With `bad` (the recording's bad channels now), a scan that skipped a
+    channel which is no longer bad is not current: that channel was never
+    read, and the steps would be reading its zeros."""
     d = _dir(gid)
     mp = os.path.join(d, "meta.json")
     if not os.path.exists(mp):
@@ -627,10 +669,25 @@ def status(gid, session=None):
         "n_bins": meta.get("n_bins"),
         "lfp": os.path.exists(os.path.join(d, "lfp.npy")),
         "schema": meta.get("schema"),
+        "skipped": meta.get("skipped") or [],
     }
     if session is not None:
         out["current"] = (meta.get("stamp") == source_stamp(session)
                           and meta.get("schema") == SCHEMA)
+        if not out["current"]:
+            out["why"] = ("The recording or the way it is read changed "
+                          "since it was read.")
+    if bad is not None and out.get("current", True):
+        back = sorted(set(out["skipped"]) - {int(x) for x in bad})
+        if back:
+            out["current"] = False
+            out["why"] = ("Ch %s %s skipped as bad when it was read and %s "
+                          "not marked bad any more: read it again to "
+                          "include %s." % (
+                              ", ".join(str(c) for c in back),
+                              "was" if len(back) == 1 else "were",
+                              "is" if len(back) == 1 else "are",
+                              "it" if len(back) == 1 else "them"))
     return out
 
 
@@ -685,20 +742,67 @@ def derived_get(gid, kind, key):
         return None
     try:
         with open(p, encoding="utf-8") as fh:
-            return json.load(fh)
+            got = json.load(fh)
     except (OSError, ValueError):
         return None
+    if kind == "ica" and isinstance(got, dict):
+        # Kinds are read off the peak each time, so a run kept before the
+        # kinds changed is named by today's rule -- except a band run's,
+        # which are that band's whatever their peak.
+        for cm in got.get("components") or []:
+            if cm.get("band") in ("fast", "mid"):
+                cm["kind"] = cm["band"]
+            else:
+                cm["kind"] = ica_kind(cm.get("peak_hz"))
+    return got
 
 
 def derived_put(gid, kind, key, value):
-    d = os.path.join(_dir(gid), "derived")
-    os.makedirs(d, exist_ok=True)
-    p = os.path.join(d, "%s-%s.json" % (kind, key))
-    tmp = p + ".part"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(value, fh)
-    os.replace(tmp, p)
+    """Keep a derived value. A cache, so a write that fails (Windows or
+    OneDrive holding the file) is dropped, not raised: the value is good
+    and the request asking for it should get it."""
+    try:
+        d = os.path.join(_dir(gid), "derived")
+        os.makedirs(d, exist_ok=True)
+        p = os.path.join(d, "%s-%s.json" % (kind, key))
+        # A temp name of its own: two writers of one key used to share
+        # "<name>.part" and trip over each other.
+        tmp = "%s.%d-%d.part" % (p, os.getpid(), threading.get_ident())
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(value, fh)
+        try:
+            _replace(tmp, p)
+        except OSError:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+    except OSError:
+        pass
     return value
+
+
+_DERIVED_LOCKS = {}
+_DERIVED_LOCKS_LOCK = threading.Lock()
+
+
+def derived(gid, kind, key, compute):
+    """The value kept under (kind, key), computed once if it is not there.
+
+    Both windows of a step ask for the same things at the same moment --
+    the labelling window for its ripple count, the evidence window for the
+    ripple-triggered average -- so one asks and the other waits for the
+    answer instead of working it out again beside it."""
+    hit = derived_get(gid, kind, key)
+    if hit is not None:
+        return hit
+    with _DERIVED_LOCKS_LOCK:
+        lock = _DERIVED_LOCKS.setdefault((gid, kind, key), threading.Lock())
+    with lock:
+        hit = derived_get(gid, kind, key)
+        if hit is not None:
+            return hit
+        return derived_put(gid, kind, key, compute())
 
 
 # The job stages, declared to cfc so a run's progress is drawn (cfc drops a
@@ -724,7 +828,8 @@ def estimate_seconds(plan, workers=6):
     for 64 channels with six readers (2026-10-09, local disk), scaled by
     channel count."""
     return round(max(5.0, 0.1 * plan["span_s"]
-                     * plan["n_channels"] / 64.0 * 6.0 / max(1, workers)), 0)
+                     * plan.get("n_read", plan["n_channels"]) / 64.0
+                     * 6.0 / max(1, workers)), 0)
 
 
 # ==========================================================================
@@ -852,6 +957,21 @@ def guide(b, bad=(), params=None):
     if not np.isfinite(mean_th).any():
         raise StrataError("No theta was measured on any good channel.")
     r_best = rows[int(np.nanargmax(mean_th))]
+    r_auto = r_best
+    # Or the channel somebody chose to read it on (Step 0's auto painter).
+    note = None
+    want = params.get("theta_channel")
+    if want not in (None, ""):
+        try:
+            want = int(float(want))
+        except (TypeError, ValueError):
+            want = None
+        if want is not None and want in b.row and b.row[want] in rows:
+            r_best = b.row[want]
+        elif want is not None:
+            note = ("ch %s is not a good channel here, so this reads ch %s, "
+                    "the one with the most theta." % (want,
+                                                      b.channels[r_best]))
     with np.errstate(invalid="ignore", divide="ignore"):
         ratio = np.log10(th[r_best] / de[r_best])
     ratio[~v] = np.nan
@@ -894,6 +1014,8 @@ def guide(b, bad=(), params=None):
         "peak_hz": _lst(med, 2),
         "ghost": ghost,
         "channel": int(b.channels[r_best]),
+        "channel_auto": int(b.channels[r_auto]),
+        "channel_note": note,
         "spec_png": png,
         "spec_hz": [float(b.spec_freqs[0]), float(b.spec_freqs[-1])],
         "valid": [bool(x) for x in v],
@@ -1284,6 +1406,68 @@ ICA_DEFAULTS = {"n_components": 10, "max_fit": 300000, "lo": 25.0,
                 "hi": 200.0, "max_walk_s": 900.0, "seed": 0}
 
 
+# The decompositions Method B runs, each on its own band (2026-10-13). One
+# 25-200 Hz run is all slow gamma: power falls with frequency, so the slow
+# generators take every component and the medial entorhinal input never
+# gets one. The fast and mid bands are each run again on their own, where
+# they are the biggest thing in the signal. A band run's components are
+# that band's kind whatever their peak; the broad run's are named by peak.
+ICA_BANDS = (
+    {"id": "broad", "lo": 25.0, "hi": 200.0, "n_components": None},
+    {"id": "fast", "lo": 90.0, "hi": 160.0, "n_components": 6},
+    {"id": "mid", "lo": 55.0, "hi": 90.0, "n_components": 6},
+)
+ICA_VERSION = 2          # in the cache key: v1 runs had no band runs
+
+
+class _JobPart:
+    """One of several runs reporting into one job's single stage."""
+
+    def __init__(self, job, k, n):
+        self.job, self.k, self.n, self.of = job, k, n, 1
+
+    def begin(self, name, of=None, unit=None):
+        self.of = max(1, int(of or 1))
+        if self.k == 0:
+            self.job.begin(name, of=self.of * self.n, unit=unit)
+
+    def tick(self, name, done):
+        self.job.tick(name, self.k * self.of + done)
+
+    def check(self):
+        if hasattr(self.job, "check"):
+            self.job.check()
+
+
+def run_ica_all(b, mk, order=None, bad=(), spacing_um=20.0, ref=None,
+                params=None, job=None):
+    """Every band's decomposition (ICA_BANDS), as one answer: the broad
+    run's fields, with every run's components in it. Each component says
+    which run it came from (`band`), and its `variance` is its share of
+    that run's band, not of all gamma."""
+    out = None
+    comps = []
+    for k, bd in enumerate(ICA_BANDS):
+        p = dict(params or {})
+        if bd["id"] != "broad":
+            p.update({"lo": bd["lo"], "hi": bd["hi"],
+                      "n_components": bd["n_components"]})
+        part = _JobPart(job, k, len(ICA_BANDS)) if job is not None else None
+        got = run_ica(b, mk, order, bad, spacing_um, ref, p, part)
+        for cm in got["components"]:
+            cm["band"] = bd["id"]
+            if bd["id"] != "broad":
+                cm["kind"] = bd["id"]
+            cm["index"] = len(comps)
+            comps.append(cm)
+        if out is None:
+            out = got
+    out["components"] = comps
+    out["bands"] = [dict(bd) for bd in ICA_BANDS]
+    out["version"] = ICA_VERSION
+    return out
+
+
 def _ica_fit(X, n_comp, seed):
     from sklearn.decomposition import FastICA
     with warnings.catch_warnings():
@@ -1421,8 +1605,7 @@ def run_ica(b, mk, order=None, bad=(), spacing_um=20.0, ref=None,
             "sink_channel": nums[sink] if sink is not None else None,
             "sink_value": float(csd[sink]) if sink is not None else None,
             "peak_hz": round(peak, 1) if np.isfinite(peak) else None,
-            "kind": ("slow" if np.isfinite(peak) and peak < 60
-                     else "fast" if np.isfinite(peak) else None),
+            "kind": ica_kind(peak),
             "theta_phase_deg": None if pref is None else round(pref, 1),
             "theta_mvl": None if mvl is None else round(mvl, 4),
             "variance": round(float(var_exp[c]), 5),
@@ -1441,21 +1624,175 @@ def run_ica(b, mk, order=None, bad=(), spacing_um=20.0, ref=None,
     }
 
 
+# The dentate's three gamma inputs, by the frequency their component peaks
+# at (Fernandez-Ruiz et al. 2021, Science 372:eabf3119, ICA of 25-200 Hz on
+# the same probes): slow 30-50 Hz from the lateral entorhinal cortex, in the
+# outer third of the molecular layer; mid 60-80 Hz, commissural, in the
+# inner third; fast 100-150 Hz from the medial entorhinal cortex, in the
+# middle third. Cut halfway between. Until 2026-10-12 everything at 60 Hz
+# and up was "fast", so a commissural (inner-third) source was judged
+# against the MML.
+ICA_KINDS = (("slow", 55.0), ("mid", 90.0), ("fast", float("inf")))
+ICA_WANT = {"slow": "dg_oml", "mid": "dg_iml", "fast": "dg_mml"}
+
+
+def ica_kind(peak_hz):
+    try:
+        f = float(peak_hz)
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(f):
+        return None
+    return next(k for k, hi in ICA_KINDS if f < hi)
+
+
+# ==========================================================================
+# Theta phase x depth gamma maps (beta, 2026-10-12)
+# ==========================================================================
+# Each input to the dentate brings its own gamma at its own moment of theta
+# (Schomburg et al. 2014, Neuron 84:470; Fernandez-Ruiz et al. 2021,
+# Science 372:eabf3119). With theta from CA1 pyramidale, 0 deg its peak and
+# 180 its trough, Fernandez-Ruiz et al. (rats) have slow gamma, 30-50 Hz,
+# in the outer molecular layer on the descending phase (~47 deg); fast
+# gamma, 100-150 Hz, in the middle molecular layer at the trough (~168);
+# mid gamma, 60-80 Hz, in the inner molecular layer on the ascending phase
+# (~284). In mice Lasztoczi & Klausberger (2017, Brain Struct Funct 222:3355)
+# found both dentate gammas, ~40 and ~110 Hz, nearer the trough -- so in
+# mice the depth may say more than the phase.
+#
+# So: for every channel, how strong each gamma is at each moment of theta.
+# Amplitude is the Hilbert envelope of the band, read on the CSD (complex
+# analytic signals go through the CSD as real and imaginary parts, so the
+# envelope is the CSD's own) or on the LFP. Theta Walk only. Each walking
+# run is filtered with a second and a half of recording either side, so the
+# filters' edges never land in the map, and every fourth sample is kept:
+# 312 a second is plenty to average an envelope by theta phase.
+PHASE_BANDS = (("slow", 30.0, 50.0), ("mid", 60.0, 80.0), ("fast", 100.0, 150.0))
+PHASE_THETA = (4.0, 12.0)              # Schomburg et al.'s theta band
+PHASE_BINS = 18                        # 20 degrees each
+PHASE_VERSION = 1
+
+
+def phase_map(b, mk, order=None, bad=(), spacing_um=20.0, ref=None,
+              max_walk_s=600.0, step=4):
+    rows = _order_rows(b, order)
+    nums = [b.channels[r] for r in rows]
+    badset = {int(x) for x in (bad or [])}
+    is_bad = np.array([n in badset for n in nums], dtype=bool)
+    if ref is None or int(ref) not in b.row:
+        raise StrataError("The phase map needs a theta reference (CA1 SP).")
+    r_ref = b.row[int(ref)]
+    lfs = float(b.meta["lfp_fs"])
+    n_samp = int(b.meta["n_samp"])
+    nyq = lfs / 2.0
+    walk = _sample_mask(b, mk["walk"])
+    starts, ends = _runs(walk)
+    keep = (ends - starts) >= int(lfs)            # runs of a second or more
+    starts, ends = starts[keep], ends[keep]
+    if not starts.size:
+        raise StrataError("No Theta Walk run of a second or more to map.")
+    pad = int(1.5 * lfs)
+    sos_t = _sig.butter(3, [PHASE_THETA[0] / nyq, PHASE_THETA[1] / nyq],
+                        btype="band", output="sos")
+    sos_b = {k: _sig.butter(3, [lo / nyq, min(hi, nyq * 0.9) / nyq],
+                            btype="band", output="sos")
+             for k, lo, hi in PHASE_BANDS}
+    nr = len(rows)
+    acc = {(k, w): np.zeros((nr, PHASE_BINS)) for k, _, _ in PHASE_BANDS
+           for w in ("csd", "lfp")}
+    count = np.zeros(PHASE_BINS)
+    used = 0
+    cap = int(max_walk_s * lfs)
+    # Long runs (all of a recording, when nothing is painted) in pieces of
+    # half a minute, each with its own padding, so a piece fits in memory.
+    piece = int(30 * lfs)
+    chunks = [(c, min(c + piece, z)) for a, z in zip(starts, ends)
+              for c in range(int(a), int(z), piece)]
+    from scipy import fft as _fft
+
+    def analytic(x, axis=-1):
+        n = x.shape[axis]
+        return np.take(_sig.hilbert(x, N=_fft.next_fast_len(n), axis=axis),
+                       np.arange(n), axis=axis)
+
+    for a, z in chunks:
+        if used >= cap:
+            break
+        z = min(z, a + (cap - used))
+        if z - a < int(lfs):
+            continue
+        i0, i1 = max(0, a - pad), min(n_samp, z + pad)
+        X = b.lfp_rows(rows, i0, i1)
+        X = _interp_rows(X, is_bad)
+        x_ref = b.lfp_rows([r_ref], i0, i1)[0].astype(np.float64)
+        sl = slice(a - i0, z - i0, step)
+        ph = np.angle(analytic(_sig.sosfiltfilt(sos_t, x_ref)))[sl]
+        k_bin = ((np.degrees(ph) % 360.0) // (360.0 / PHASE_BINS)).astype(int)
+        k_bin = np.clip(k_bin, 0, PHASE_BINS - 1)
+        count += np.bincount(k_bin, minlength=PHASE_BINS)
+        for k, _, _ in PHASE_BANDS:
+            F = _sig.sosfiltfilt(sos_b[k], X.astype(np.float64), axis=1)
+            Z = analytic(F, axis=1)[:, sl]
+            env = {"lfp": np.abs(Z),
+                   "csd": np.abs(csd_of(Z.real, spacing_um).astype(np.float64)
+                                 + 1j * csd_of(Z.imag, spacing_um))}
+            for w, E in env.items():
+                for i in range(nr):
+                    if np.isfinite(E[i]).all():
+                        acc[(k, w)][i] += np.bincount(k_bin, weights=E[i],
+                                                      minlength=PHASE_BINS)
+                    else:
+                        acc[(k, w)][i] = np.nan
+        used += z - a
+    with np.errstate(invalid="ignore", divide="ignore"):
+        maps = {key: v / np.maximum(count, 1)[None, :] for key, v in acc.items()}
+    for key in maps:
+        maps[key][is_bad] = np.nan
+    width = 360.0 / PHASE_BINS
+    return {
+        "version": PHASE_VERSION,
+        "channels": nums, "bad": [bool(x) for x in is_bad],
+        "ref_channel": int(ref), "walk_s": round(used / lfs, 1),
+        "theta_all_time": bool(mk.get("theta_all_time")),
+        "theta_band": list(PHASE_THETA),
+        "phase_deg": [round((i + 0.5) * width, 1) for i in range(PHASE_BINS)],
+        "phase_count": [int(c) for c in count],
+        "bands": [{"id": k, "lo": lo, "hi": hi,
+                   "csd": [_lst(r, 5) for r in maps[(k, "csd")]],
+                   "lfp": [_lst(r, 5) for r in maps[(k, "lfp")]]}
+                  for k, lo, hi in PHASE_BANDS],
+    }
+
+
 def ica_zone_sinks(comp, lo_row, hi_row, min_frac=0.3):
     """The component's deepest sink inside rows [lo_row, hi_row), if it is at
     least `min_frac` of the component's main sink -- a weak local dip in a
-    zone is not that generator living there."""
+    zone is not that generator living there.
+
+    A sink is a real dip: no lower than the channels either side of it.
+    The lowest point of a zone whose edge sits on the flank of a sink
+    outside it is that other sink's shoulder, and used to read as a match
+    (2026-10-12: a 41 Hz source sinking 4 ch above the fissure was called
+    'in OML1' by its value at the fissure)."""
     csd = np.array([np.nan if v is None else v for v in comp["csd"]])
+    n = csd.size
+    lo_row, hi_row = max(0, int(lo_row)), min(n, int(hi_row))
     if hi_row <= lo_row or not np.isfinite(csd).any():
         return None
     main = np.nanmin(csd)
-    seg = csd[lo_row:hi_row]
-    if not np.isfinite(seg).any():
+    if main >= 0:
         return None
-    i = int(np.nanargmin(seg))
-    if main >= 0 or seg[i] > min_frac * main:
-        return None
-    return lo_row + i
+    best = None
+    for i in range(lo_row, hi_row):
+        v = csd[i]
+        if not np.isfinite(v) or v > min_frac * main:
+            continue
+        if any(0 <= j < n and np.isfinite(csd[j]) and csd[j] < v
+               for j in (i - 1, i + 1)):
+            continue
+        if best is None or v < csd[best]:
+            best = i
+    return best
 
 
 # ==========================================================================
@@ -1875,12 +2212,30 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     species = params.get("species") or "mouse"
     h = float(params.get("gcl_half_um") or GCL_HALF_UM.get(species, 30.0))
     scale = float(params.get("lower_ml_scale") or LOWER_ML_SCALE)
-    use_iml = params.get("use_iml", True) not in (False, "false", 0, "0")
+    # IML is folded into the molecular layer unless asked for (2026-10-13):
+    # the papers that do not draw it keep it in the molecular layer -- it is
+    # dendrites taking the commissural input, not granule cell bodies.
+    use_iml = params.get("use_iml", False) not in (False, "false", 0, "0",
+                                                   None)
+    # How the blade is cut. 'iml': GCL at its thickness against the hilus,
+    # the molecular layer above in thirds, OML / MML / IML. 'mml': the same,
+    # the inner third part of the MML -- the lab's scheme, and the way to
+    # leave IML out that keeps to the anatomy: the molecular layer is three
+    # bands of about equal width, the perforant path filling the outer two
+    # and the commissural input the inner one, and the granule layer is not
+    # one of them. (A 'thirds' scheme -- fissure to hilus in three equal
+    # parts, OML / MML / GCL -- was tried on 2026-10-12 and taken out the
+    # same day: no paper divides it that way. A sheet that saved it is cut
+    # as 'mml'.)
+    scheme = params.get("ml_scheme")
+    if scheme not in ("iml", "mml"):
+        scheme = "iml" if use_iml else "mml"
+    use_iml = scheme == "iml"
     below = params.get("below_lower") or "thal"
     notes, lines, anchors = [], [], []
     if fissure_at is None or hil_top is None:
         return {"step": 3, "lines": [], "anchors": [], "use_iml": use_iml,
-                "below_lower": below, "notes": [
+                "ml_scheme": scheme, "below_lower": below, "notes": [
                     "Method A needs the fissure (Step 1) and the hilus "
                     "(Step 2) first."]}
     fissure_at, hil_top = int(fissure_at), int(hil_top)
@@ -1891,18 +2246,19 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     U = Ht - F
     if U <= 2 * s:
         return {"step": 3, "lines": [], "anchors": [], "use_iml": use_iml,
-                "below_lower": below, "notes": [
+                "ml_scheme": scheme, "below_lower": below, "notes": [
                     "The fissure is within two contacts of the hilus, so "
                     "there is no molecular layer to divide. Check Steps 1 "
                     "and 2."]}
     gcl = min(2.0 * h, U / 2.0)
     L = U - gcl
-    third = L / 3.0
+    oml_frac = 1.0 / 3.0
+    third = oml_frac * L              # the OML's thickness
     row = lambda d: _rows_for_depth(d, s)                     # noqa: E731
     up = [("ca1_slm", "dg_oml1", fissure_at),
           ("dg_oml1", "dg_mml1", row(F + third))]
     if use_iml:
-        up += [("dg_mml1", "dg_iml1", row(F + 2 * third)),
+        up += [("dg_mml1", "dg_iml1", row(F + 2 * L / 3.0)),
                ("dg_iml1", "dg_gcl1", row(Ht - gcl))]
     else:
         # The lab's own scheme: the inner third belongs to the MML.
@@ -1919,14 +2275,16 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     out_edge = None
     if hil_end < n:
         U2 = U * scale
-        L2 = max(0.0, U2 - gcl)
+        gcl2 = gcl
+        L2 = max(0.0, U2 - gcl2)
         low = [("hil", "dg_gcl2", hil_end)]
         if use_iml:
-            low += [("dg_gcl2", "dg_iml2", row(Hb + gcl)),
-                    ("dg_iml2", "dg_mml2", row(Hb + gcl + L2 / 3.0))]
+            low += [("dg_gcl2", "dg_iml2", row(Hb + gcl2)),
+                    ("dg_iml2", "dg_mml2", row(Hb + gcl2 + L2 / 3.0))]
         else:
-            low += [("dg_gcl2", "dg_mml2", row(Hb + gcl))]
-        low += [("dg_mml2", "dg_oml2", row(Hb + gcl + 2 * L2 / 3.0))]
+            low += [("dg_gcl2", "dg_mml2", row(Hb + gcl2))]
+        low += [("dg_mml2", "dg_oml2",
+                 row(Hb + gcl2 + (1.0 - oml_frac) * L2))]
         for a_, b_, at in low:
             lines.append(_line(a_, b_, min(at, n), "guess",
                                "lower blade, the upper mirrored x %.2f"
@@ -1944,18 +2302,30 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
     thirds_um = round(third, 1)
     G1_top_row = row(Ht - gcl)
 
-    # Method B's votes, by blade.
+    # Method B's votes, by blade. Each blade's zone is its molecular layer
+    # plus one OML-thickness past the outer edge, so a sink just beyond the
+    # fissure (or the lower blade's edge) is reported as that far off
+    # rather than not seen.
     checks = []
     if ica and ica.get("components"):
-        zones = [("upper", fissure_at, G1_top_row)]
+        reach = max(1, int(round(third / s)))
+        zones = [("upper", max(0, fissure_at - reach), G1_top_row)]
         if out_edge is not None:
-            zones.append(("lower", row(Hb + gcl), min(n, out_edge + 1)))
-        want = {"slow": "dg_oml", "fast": "dg_mml"}
+            zones.append(("lower", row(Hb + gcl2), min(n, out_edge + reach)))
+        want = ICA_WANT
+        # The mid (commissural) kind is only checked where there is an IML
+        # to check it against.
+        kinds = ("slow", "mid", "fast") if use_iml else ("slow", "fast")
         for blade, z0, z1 in zones:
-            for kind in ("slow", "fast"):
-                cands = [cm for cm in ica["components"]
-                         if cm.get("kind") == kind
-                         and (cm.get("stability") or 0) >= 0.7]
+            for kind in kinds:
+                # The band's own run first (fast and mid have one), then
+                # the broad run's, each by its share of its run.
+                cands = sorted(
+                    [cm for cm in ica["components"]
+                     if cm.get("kind") == kind
+                     and (cm.get("stability") or 0) >= 0.7],
+                    key=lambda cm: (0 if cm.get("band") == kind else 1,
+                                    -(cm.get("variance") or 0)))
                 best = None
                 for cm in cands:
                     r = ica_zone_sinks(cm, z0, z1)
@@ -1993,7 +2363,7 @@ def suggest_ml(n, params=None, fissure_at=None, hil_top=None, hil_end=None,
                         ln["below"] in ("dg_mml1", "dg_iml1"):
                     ln["confidence"] = "guess"
     return {"step": 3, "lines": lines, "anchors": anchors, "notes": notes,
-            "use_iml": use_iml, "below_lower": below,
+            "use_iml": use_iml, "ml_scheme": scheme, "below_lower": below,
             "upper_blade_um": round(U, 1),
             "third_um": thirds_um, "upper_ml_um": round(L, 1),
             "gcl_half_um": h, "lower_ml_scale": scale, "ica_checks": checks}

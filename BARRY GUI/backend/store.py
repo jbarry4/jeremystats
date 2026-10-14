@@ -97,6 +97,8 @@ PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
                # How wide somebody likes the curation window. About this
                # screen and this pair of eyes, not about the project.
                "curate_span",
+               # And Braces' trace view, the same way (2026-10-13).
+               "braces_span",
                "chrome", "fullscreen", "zoom",
                "recent_scripts", "recent_bookmarks", "pipeline_folders",
                "scratch_draft")
@@ -527,6 +529,27 @@ class Store:
         if note is not None:
             patch["bad_channels_note"] = note
         return self.upsert_session(identity, patch)
+
+    def change_bad_channels(self, identity, add=(), remove=(), note=None):
+        """Mark some channels bad and clear others, against what is SAVED.
+
+        `set_bad_channels` takes the whole list, and every caller builds that
+        list from its own copy -- the one it read when the recording was
+        opened. Two clicks a moment apart are two requests in flight, and
+        whichever the server happens to take second wins: measured, the
+        second of two near-simultaneous clicks was lost 7 times in 20. And a
+        window that opened the recording before somebody marked a channel
+        somewhere else wiped that mark the next time anything was clicked in
+        it. A change applied here, under the lock, to the list on record
+        cannot do either.
+        """
+        with _LOCK:
+            existing, _how = self.get_session(identity)
+            have = {int(b) for b in ((existing or {}).get("bad_channels")
+                                     or [])}
+            have |= {int(b) for b in add or ()}
+            have -= {int(b) for b in remove or ()}
+            return self.set_bad_channels(identity, have, note)
 
     # ------------------------------------------------------------------
     # Presets

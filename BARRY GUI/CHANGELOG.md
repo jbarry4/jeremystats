@@ -15,6 +15,705 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.13.11 - Tab 8: the follow-ups are back on its face, and in the SPSS package
+
+From Shahriar: "We had a bunch of cross coupling and PLI and such planned
+for anything that did change... what happened to those?" They had run all
+along, but the restructure left them three ▸ deep under the hood, and the
+table there had dropped the amplitude cross-correlation's peak. **Restart
+Jarvis** (`backend/joe.py` changed), then press "Work it out again" on tab
+8 once; it takes about 20 s.
+
+### Changed
+
+- **A result that changed shows its follow-ups under its picture**
+  ("Looked at more closely").
+  - The pairs that moved most, with a light for each family of measures:
+    - not volume conduction (PLI, imaginary coherence);
+    - direction (Granger both ways, the amplitude lag);
+    - amplitudes together (the amplitude cross-correlation's peak);
+    - phase–amplitude (PAC between and within).
+  - A light is lit where one of its family's measures changed, and says
+    which with ↑ or ↓. Hover a light for the words.
+  - One line counts them against chance. On the real data:
+    - 1, gamma: 7 pairs, 7 of 70 follow-ups lit, where chance alone would
+      light about 3.5;
+    - 2, gamma: 12 pairs, 14 of 120 lit, against about 6.
+  - The line also says the pairs are leads: none survives on its own once
+    all 44 pairs are allowed for.
+  - Left against right of one structure is in one line.
+  - Every number is behind ▸.
+- **Follow-ups run for Dickson's results only**, since those are the ones
+  shown. The measures don't depend on the coherence method.
+- **The hood's follow-up table shows the amplitude cross-correlation's peak
+  again.** It was computed but not listed. It lights for 4 of the 12
+  pairs in 2, gamma.
+- **The SPSS package has a fourth folder, `4 Follow-ups/`.**
+  - For each result that changed: a .csv with one row per rat, pair and
+    measure (the four values and their difference).
+  - A .sps that runs every follow-up's one-sample t-test, split by pair
+    and measure. Each gives the tab's t and p.
+  - The README explains them, with their counts against chance.
+
+### Checked
+
+- `tools/check_joe.py`: 38 passed.
+  - Follow-ups run only on Dickson's results.
+  - The fourth folder is there.
+  - **Each follow-up t-test from the SPSS rows is the tab's** (10 of them,
+    to the rounding of the .csv).
+- `web/_dev/monolith.html`: 538 passed. The face's follow-up lights are
+  each lit exactly where joe.json has a change, the count line matches,
+  and the hood's table has all 10 measures.
+- `tools/check_review.py`: 54 passed.
+
+## 2026.10.13.10 - The Checkup harness stops erasing real curation sets, and passes
+
+### Fixed (in `web/_dev/curate.html`, a test page; nothing in Jarvis changed)
+
+- **It could erase somebody's curation.**
+  - It took the first reachable recording and "cleaned the slate" by
+    deleting that recording's IED and DS curation sets. That deletion is
+    every machine's copy.
+  - It banked into the real Event Bank and, on the way out, deleted every
+    curated entry for that recording.
+  - The runner's safety net puts back only committed files, at their
+    committed content. On a recording somebody had curated, their work
+    would have gone.
+  - On 2026-10-13 the first reachable recording was KCNT1 m2 s1. It holds
+    only test leftovers ("eye harness", "spotter harness", "curate
+    harness"), so nothing real was lost. Its "eye harness" set was put
+    back as committed.
+- **Now it picks a recording nobody has curated:** reachable, no
+  curation set but its own, and no IED or curated entry in the bank.
+  - It only ever deletes a set named "curate harness", and only removes
+    bank entries this run made.
+  - Both happen in a `finally`, so a run that stops early still cleans
+    up.
+- **Its "known failure on HEAD" was the test itself**, measured by saying
+  in full what was on screen when the check failed.
+  - KCNT1 m2 s2 had leftover IED entries in the bank, so picking the set
+    up asked which banked version to work from. That question is real and
+    meant to be asked; the test never answered it, and "it lands on the
+    bench" failed.
+  - A recording with no IED history is not asked.
+
+### Checked
+
+- `curate.html` 54 ok, 0 fail. It was 7 ok, 2 fail.
+  - It ran on KCNT1 m2 s3, which had nothing curated or banked.
+  - Afterwards the curation sets, the bank and the tombstones were
+    identical to a backup taken before the run, apart from PTEN m33 s4.
+    That set took 7 of Rain's decisions from 15:57–15:58, arriving by
+    sync while she worked.
+
+## 2026.10.13.9 - Checkup: a set whose recording is on the cluster can be looked at
+
+### Fixed
+
+- **"Look again…" / "Carry on…" were greyed out on any machine without
+  the recording on a local drive**, even when Checkup could open it off
+  the cluster.
+  - Isabella hit this with PTEN_DKO m44 s1. Her machine has no copy, and
+    the cluster reads it in place on netfiles.
+  - The card asked "is it on a drive this computer mounts?" and nothing
+    else. Checkup itself opens a recording this computer first, the
+    cluster second.
+  - The buttons now ask the same question the open does, so they cannot
+    disagree with it.
+  - On a machine without the drive, the button now works and says it
+    reads off the cluster, about a second a window.
+  - Where nothing can read the recording, the button stays greyed and its
+    hover gives the real reason: no VACC account on this computer, no
+    read access, or nowhere at all.
+- The shelf's → ("go straight to the recording") and StrataScope's
+  "Continue… / Review…" and "Pick up and open" had the same check. They
+  ask the same question now too.
+
+### Checked
+
+- New `checkupreach.html` 9.
+  - First it confirms the precondition: the cluster reads m44 s1 in
+    place, and this computer has a VACC account.
+  - It then shows the bench as a machine without the drive sees it (the
+    list's answer is changed in the page, nothing on disk):
+    - "Look again…" can be pressed, and says it opens off the cluster;
+    - a set nobody can reach stays greyed, giving the reason in the
+      reach's own words;
+    - the shelf's arrow can be pressed, and says it reads off the cluster.
+- Bite-tested: putting the old drive-only check back fails 3 of the 9
+  checks.
+- `toolkit.html` 53.
+- `curate.html` failed 2 checks at "it lands on the bench", which this
+  change does not touch. It is a known failure on HEAD. The run also
+  erases and rewrites its own "curate harness" set (KCNT1 m2 s1), which
+  was put back as committed afterwards.
+
+## 2026.10.13.8 - Xplorefinder: bad channels stay marked, and a list marks many
+
+### Added
+
+- **Type a list of channels to mark bad.** The Ch menu has a box above the
+  channel list: type `4, 6, 32-56, 59` and press Enter or **Mark bad**.
+  **Clear** takes the mark off every channel in the list instead.
+  - Before anything is saved, the line under the box says what the list
+    comes to ("28 channels: 4, 6, 32–56, 59").
+  - It also names any number that is not a channel on this recording, and
+    anything it could not read.
+
+### Fixed
+
+- **A bad mark is no longer lost when another tool, or another tab, marks
+  a channel on the same recording.**
+  - Each click used to save the whole bad list as the open tab saw it. So
+    a tab opened before a channel was marked in Doppler, Incisor or Braces
+    erased that mark at its next click.
+  - Two clicks close together could also be saved in the wrong order,
+    losing the second one.
+  - A click now saves only the channel it changed, and the lanes then show
+    the list as it is on record.
+  - Doppler and Incisor save their single-channel clicks the same way.
+- **Coming back to Xplorefinder shows marks made elsewhere.** A recording
+  left open while you worked in another view kept the bad list it had
+  when it opened. The list is now read again each time the view comes
+  back.
+- **A mark that could not be saved is taken back off, with a message.**
+  Before, the lane stayed bad on screen and the mark was gone on the next
+  open.
+- **Hiding a channel is saved the moment you leave.** Leaving means
+  switching views, closing the tab or reloading the page. Before, the save
+  waited about a second, and reloading or closing the page in that second
+  lost it.
+
+## 2026.10.13.7 - The reveal sounds dignified
+
+### Changed
+
+- **The reveal's sounds are made for a tribute, not a launch.** The
+  application is named in memory of Dr. Paul Jarvis, and the reveal is how
+  it is shown to his family, so the crackle, zap, boom, chatter and rush of
+  air are gone. In their place, all in A major and all through a soft hall:
+  a quiet open fifth that swells while the ring draws; one bell, struck
+  once, when the spike fires; a music-box note per letter as the name forms,
+  up the scale; and a warm, open A major chord that blooms and fades over
+  about six seconds. Choosing, going back and flying home are soft bell
+  notes and a falling arpeggio; the badge lands on a low bell. In the
+  destinations, each dentate spike found is a quiet wooden note from the
+  pentatonic scale, so a run of them is a melody, and each IED is a low,
+  muted one, never an alarm. The card about Paul opens on a single bell.
+
+- Balanced by measurement rather than by ear: every sound rendered offline
+  from `js/jarvisfx.js` and its loudness read. The swell had been louder
+  than the bell it leads to (peak -9.7 dBFS against -11); it is now a bed at
+  -17, the bell is the loudest moment, the chord sits just under it at -13,
+  and the letters at -26 carry over the bell's tail. The whole reveal peaks
+  at -9.5 dBFS, with nothing clipping.
+
+---
+
+## 2026.10.13.6 - StrataScope: every recording read as an H3; Method B finds fast gamma; Move on every verdict; the evidence window keeps up
+
+### Changed
+
+- **StrataScope reads every recording as an H3: one line of contacts, in
+  the recording's own channel order, and at most the first 64 channels.**
+  - A dual implant (128 channels) is read as its hippocampal array, CSC
+    1-64.
+  - A 128-channel recording filed as H3 is read as its first 64.
+  - An H10-D or a DEWEY montage is no longer refused ("not developed for
+    H10 probes"). It is read as if it were one column.
+  - The labelling pane shows one pane of those channels, whatever the
+    probe template would split it into. The evidence window's live panes
+    show the same channels. Leaving StrataScope gives the pane all its
+    channels back.
+  - Checked on KCNT1 m2 s3 (dual, 128 ch): it reads 64 channels in 11 s,
+    and every step answers.
+- **Method B runs ICA three times: 25-200 Hz, then 90-160 Hz and 55-90 Hz
+  on their own.** Gamma power falls with frequency, so in a single 25-200
+  Hz run slow gamma takes every component. On PTEN M6 s8 all ten components
+  peaked between 32 and 44 Hz, and the fast-gamma card said "ICA found no
+  fast-gamma source at all". The 90-160 Hz run alone finds a 104 Hz source
+  (25% of that band, 0.998 alike in both halves) sinking at ch 35 in MML1,
+  at the theta trough. A 107 Hz source sinks at ch 53 in MML2. Fast gamma
+  now matches in both blades.
+  - A component from a band run is that band's kind, and its share is of
+    its own band ("25% of the 90-160 Hz field").
+  - Saved ICA runs don't have the band runs, so Method B asks to run again.
+    It takes about three times as long (27 s on M6 s8).
+- **Move beside every verdict that names a line.** Method B's "sinks 6 ch
+  below OML1" rows, theta's sink against MML1, and the 2 : 1 proportion's
+  fissure each move that line in the labelling window, the same way the
+  phase map's Move does. The drawer's own Method B explanation has the
+  same button ("Move OML1 | MML1 to above ch 38").
+
+### Fixed
+
+- **Labels painted on the rail now reach the evidence window.** Painting
+  told the live panes but not the steps, and the evidence window follows
+  the steps. Its layer lines stayed where they were until something else
+  made the steps speak. `web/_dev/stratacheck.html` now checks that what
+  is painted arrives.
+
+## 2026.10.13.5 - Tab 8: Dickson only, no RM-ANOVA, numbered comparisons, and an SPSS package that explains itself
+
+From Shahriar: "get rid of the RM-ANOVA and explain why. And then just keep
+the dickson method and get rid of the welch and just say if they were
+similar or not. Prep everything for SPSS to be downloaded, but explain it
+better and structure it better. What is m1 m2? Make the names more
+descriptive and explain how they can recreate the positive results."
+**Restart Jarvis** (`backend/joe.py` changed), then press "Work it out
+again" on tab 8 once, so the new files are written. It takes about 20 s:
+the rat-days are cached.
+
+### Changed
+
+- **No repeated-measures ANOVA.** SPSS's GLM can only use a rat that has
+  every pair on both days. Histology rules regions out for five of the
+  eight rats, so it kept 3 (rats 6, 7 and 10) and rested on 2 degrees of
+  freedom. The mixed model keeps all 8, each with the pairs it has.
+  - The tab says this under "Every test", with each model's own rat count,
+    and behind "▸ the numbers"; the README says it too.
+  - With every rat complete, the mixed model and the RM-ANOVA give the same
+    F. `check_joe.py` still checks that on made-up data.
+- **Dickson only.** Jeremy's mscohere method is the one shown, with one
+  light per band.
+  - Welch, the circuits' way, is still computed, but only said. The sentence
+    over the lights says it, a light says "Welch differs" where it would
+    light differently, and the picked light says "Welch: the same answer"
+    or how it differs.
+  - On the real data Welch agrees on all 14 main lights and differs on one
+    check: 9 Noise vs Click, theta, which Dickson lights and Welch does not.
+- **Numbers and names instead of m1, m2.**
+  1. Baseline (20 s) → both cues
+  2. Baseline (10 s) → cue 1
+  3. Baseline (10 s) → cue 2
+  4. The switch: end of cue 1 → start of cue 2
+  5. Cue 1 → cue 2
+  6. Trials vs FP, 20 s
+  7. Trials vs FP, 10 s
+  8. Power, baseline (20 s) → both cues
+  9. Noise vs Click
+  10. All four sounds
+  11. A/B/C/D
+  12. High vs Low tone
+
+  Each has one line of what it compares. The lights, the cards, the
+  timeline's chips, the file names and the README all use them.
+- **The SPSS package.** `joe_tab8_spss.zip` unzips to `joe_tab8_spss/`:
+  - `README.txt`: what everything is, each comparison by number, what a
+    value is, the test, why there is no RM-ANOVA, how to run one, how to
+    recreate each result that changed, and Welch;
+  - `Results summary.csv`: one row per comparison and band, with its answer
+    in words, F, df and p for both tests, whether Welch agrees, and which
+    .sps to run;
+  - `1 Main comparisons/` and `2 Checks, should show nothing/`: each
+    comparison in each band as a long .csv and a .sps.
+    - The .csv has one row per rat, day (1 or 4), window and pair, with
+      the names beside the codes. A missing value is simply not there, so
+      there is no 999.
+    - The .sps has a CD line to change, reads the .csv, labels every
+      variable and runs the full mixed model (Satterthwaite). Its header
+      comment says what tab 8 found;
+  - `3 Recreate the positive results/`: for each comparison that changed,
+    two files.
+    - A .csv with one row per rat and pair: the four values and their
+      difference, (Precon4 cue − Precon4 baseline) − (Precon1 cue −
+      Precon1 baseline).
+    - A .sps that runs the exact test (the difference by pair, the rat
+      random). Its Intercept F is tab 8's "all pairs together" and its pair
+      F is "pair by pair". It then runs the check anyone can do by hand:
+      each rat's mean difference, then a one-sample t-test.
+
+  On the real data the two results that changed are 1 and 2, both in
+  gamma. Their files should give F = 9.57 and 6.83 (tab 8: p = .017 and
+  .035). The t-tests give t(7) = 2.77 (p = .028) and 2.71 (p = .030).
+  The README and the summary can also be downloaded on their own.
+- **Under the hood, "Files for SPSS"** now shows what is in the zip, folder
+  by folder, and the steps to recreate each result with the F to expect.
+- **The standalone script** still writes both methods, so the Welch
+  comparison is checked too. Its comparison files moved to
+  `export/compare/` and it agrees on all 46.
+
+### Checked
+
+- `tools/check_joe.py`: 37 passed. New checks:
+  - no RM-ANOVA is run;
+  - the by-hand t-test matches the engine;
+  - the zip's layout and names, with no Welch file and no m1;
+  - the long .csv's rows;
+  - the .sps reads every column and runs no GLM;
+  - recreate files exist exactly for the results that changed;
+  - **a recreate file, fitted as its .sps fits it, gives tab 8's two F
+    exactly**;
+  - the README's sections and the summary's rows.
+- `web/_dev/monolith.html`: 537 passed, including:
+  - every light Dickson's, and "Welch differs" exactly where Welch differs;
+  - the sentence's Welch count;
+  - the numbers with no RM-ANOVA column and the reason given;
+  - no method switch;
+  - the zip's tree and the recreate steps with their F.
+- `tools/check_review.py`: 54 passed.
+- On the real data, at desktop and in a 390 px frame.
+
+## 2026.10.13.4 - StrataScope: the phase map in one line each, with Move; IML folded in by default
+
+### Changed
+
+- **The theta phase map says what it means in one line per boundary.**
+  Each row gives a line, where it is now, and where the phase map would put
+  it, for example "Fissure · now above ch 31 · phase map: above ch 26 ·
+  Move". Underneath, a short reason ("fast γ turns from 91° to 175° between
+  ch 25 and ch 26").
+  - The rows are the fissure (where theta phase jumps going down), OML1
+    (should hold the channel slow gamma is most locked on), MML1 (should
+    hold the channel fast gamma is most locked on), and IML1 when IML is
+    its own layer.
+  - When slow and fast gamma are both most locked on the same channel, the
+    card shows a single row: "OML1 | MML1 · the phase map can't tell". It
+    does this rather than suggest two moves that pull the same line in
+    opposite directions. This is common in mice, where both gammas lean to
+    the trough.
+  - The maps are folded under "Show the maps".
+- **Move moves the line in the labelling window.** The evidence window
+  sends the move across, and the labelling window confirms it with "Moved
+  CA1 SLM | OML1 from above ch 31 to above ch 26. It is a proposal until
+  you Accept." Move is greyed when the labelling window has no Step 3 open.
+- **IML is folded into the molecular layer by default** ("part of MML").
+  Papers that don't draw IML keep it in the molecular layer: it is
+  granule-cell dendrites taking the commissural input, not the cell layer.
+  "Its own (IML)" is still one click away, and a sheet that already chose
+  either keeps its choice.
+
+## 2026.10.13.3 - Sessions: good / review / exclude stay put
+
+### Fixed
+
+- **A quality flag no longer disappears when the page is refreshed.**
+  - Pressing good, review or exclude on a recording saved the flag, but the
+    list never read it back. The button lit up from what you had just
+    pressed, and on the next refresh the card showed no flag at all.
+  - The flags set before this were saved and come back now. Nothing has to
+    be pressed again.
+  - Notes had the same problem and are fixed with it: the "note" chip shows
+    on every recording that has one.
+  - "Marked good" and "Hide excluded" now act on every recording in the list.
+    Before, they only saw flags pressed since the page last loaded.
+
+## 2026.10.13.2 - StrataScope: the read skips bad channels
+
+### Changed
+
+- **Reading a recording for StrataScope skips its bad channels.** These are
+  the channels on the recording's bad list. Skipping them saves their share
+  of the time, and the button says how many are skipped ("Read the
+  recording · about 3 min · 3 bad channels skipped"). Its tooltip names
+  them.
+  - A skipped channel keeps its place on the probe, and every picture that
+    needs it (the CSDs, ICA, the phase map) fills it in from its
+    neighbours, as before. A probe with the gap closed up would put every
+    channel below it one contact too high.
+  - Bad channels no longer have a say in which seconds count as valid.
+    Before, a bad channel with a gap in it removed those seconds for every
+    channel.
+  - If a skipped channel is taken off the bad list, the read is out of
+    date. The bar says so ("Ch 11 was skipped as bad when it was read and
+    is not marked bad any more: read it again to include it.") and offers
+    "Read it again". Marking another channel bad needs no new read: the
+    channel was read, and is now left out.
+  - Recordings read before this were read whole and stay current. Read
+    one again to stop its bad channels counting towards valid seconds.
+
+### Fixed
+
+- **A read could forget part of what made a second valid.** Each channel
+  narrows down which samples count as valid, and the read was meant to
+  combine all of them. Channel 1's answer replaced the combined result
+  instead of joining it, so if channel 1 finished after the others, their
+  share was lost.
+- **A reference channel set by hand in Parameters can no longer be a bad
+  channel.** Its row is empty, so StrataScope ignores it and falls back to
+  CA1 SP. The same goes for the middle of an accepted CA1 SP.
+
+## 2026.10.13.1 - Braces: the span you set stays as you move
+
+### Fixed
+
+- **Moving to the next flagged stamp no longer resets the trace view's
+  span.**
+  - Every move used to set it again to eight windows across: 1.6 s at
+    ±200 ms, whatever the view had been zoomed to. A 1 s view became
+    1.6 s at every step.
+  - Now a move centres the stamp and leaves the width alone. Whatever the
+    view shows is the span, kept from one stamp to the next (next, back,
+    or a jump from the list).
+  - It is remembered between reviews too, on this machine only
+    (`braces_span`, kept local the way Checkup's span is).
+  - Eight windows across is now only where the very first review opens.
+- **Restart Jarvis** for the span to stay this machine's own. Until then
+  it still works, but is filed as a shared preference.
+
+### Checked
+
+- New `bracesspan.html` 8. It enters a real review: PTEN m8 s2, 224 stamps.
+  - The first review opens eight windows across.
+  - A 1 s width stays through next, next and back.
+  - It is remembered.
+  - Leaving and entering again opens at 1 s.
+  - Every preference write and every session write the page makes is held,
+    and the aid pop-out is blocked. The one write left is the server's own
+    touch of the session record when a recording opens, as any open does.
+    That file was put back byte for byte after each run.
+- Bite-tested: the old eight-windows-every-move code fails 6 of its 8
+  checks.
+- `braces.html` 21, `bracesbad.html` 15.
+
+## 2026.10.12.9 - Tab 8 for someone who does not read statistics: traffic lights, words, one picture
+
+From Shahriar: "Restructure it for someone who has no idea how stats work
+or what these numbers mean and has the attention span of a fish." His ten
+answers set the shape: the reader is him; traffic lights first; words
+instead of numbers, the numbers one ▸ away; one short scroll; one light per
+band and method, lit when either test passes; Welch and Dickson side by
+side; the checks in their own small table; a click opening the
+before/after picture; everything else under one hood; lab words kept, no
+statistics words on the face. No restart needed: the page only.
+
+### Changed
+
+- **The face of tab 8 is now three things:**
+  - **A sentence and the lights.** For example: "Gamma changed in 2 of the
+    8 comparisons; theta in none. Both ways of computing coherence agree.
+    Each time it is all pairs together; no single pair stands out."
+    - Under it, a row for each comparison: Baseline → both cues, Baseline
+      → cue 1, Baseline → cue 2, the switch, Cue 1 → cue 2, Trials vs FP
+      (20 s and 10 s), and Power.
+    - Four lights in each row: theta and gamma, by Welch and by Dickson.
+      Green means it changed; an empty circle means it did not.
+  - **The picked light's picture.** It opens under the lights. The first
+    lit light is shown at once, and clicking another light swaps the
+    picture without redrawing anything else.
+    - Above the picture, one sentence from joe.json's own means. For
+      example: "From Baseline (20 s) to Cue 1 + Cue 2 (20 s), coherence
+      went down on Precon1 (0.153 → 0.144) and stayed level on Precon4
+      (0.173 → 0.173)."
+    - Then two lines in words. "All pairs together: some evidence of a
+      change." "Pair by pair: none stands out."
+    - The picture itself shows the two days' lines, scaled to the means,
+      with no statistics in its legend.
+    - The F, df and p of every term sit behind "▸ the numbers".
+  - **Checks: these should stay grey.** The four sound checks in a table of
+    their own, with a lit one in amber. The line above it says how many
+    are lit against how many chance alone would light: "1 of 16 lit;
+    chance alone lights about 0.8." Under it, the separate script's
+    agreement in one line.
+- **Under the hood**, in one folded ▸: how we measured (the timeline,
+  mains and its harmonics, the old Minus FP against this), every test's
+  card with its numbers, the follow-ups, the files for SPSS and the script,
+  and the notes from the recordings. Nothing in it changed.
+- The evidence words are fixed: "strong evidence" below p = .01, "some
+  evidence" below p = .05 (uncorrected), and "no evidence" otherwise. A
+  light is lit when either of its two tests is below .05, as before.
+- The ? help for tab 8 is in plain words. There is a new ? for the checks,
+  with its own entry in the Guide.
+
+### Checked
+
+- `web/_dev/monolith.html`: 533 passed. The tab 8 checks now cover:
+  - every light against joe.json (a lit check amber, no Dickson light for
+    power);
+  - no statistics words on the face;
+  - the sentence's counts and whether the two methods agree;
+  - the first lit light's picture at once;
+  - a click giving its own sentence and words with nothing redrawn;
+  - the numbers behind ▸;
+  - the checks' line and picture;
+  - the hood folded, and the picked lights kept when the hood's band
+    changes;
+  - the phone layout.
+- `tools/check_review.py`: 54 passed (the copy opens tab 8 with its
+  picture).
+- On the real data, at desktop and in a 390 px frame.
+
+## 2026.10.12.8 - StrataScope: bouts with handles, a tunable auto painter, three gammas, a theta phase map (beta)
+
+### Fixed
+
+- **"StrataScope could not work out the steps: [WinError 32] ... ripples-....json".**
+  When a vote was clicked in Step 1, the labelling window and the evidence
+  window asked for the same ripples at the same moment. Both wrote the same
+  temporary file, and Windows (and OneDrive) will not replace a file that
+  something has open. Now each result is worked out once while the other
+  window waits for it, each write gets its own temporary file, and a write
+  that still fails is retried and then skipped. It is a cache, so the
+  answer still comes back.
+- **Stop said "Interface error: No such run."** Leaving a recording while
+  it was being read kept the read's progress bar but lost its run, so Stop
+  on the next recording had nothing to stop. Now:
+  - coming back to a recording picks up its read where it is;
+  - a read still going on another recording shows in the step row ("Still
+    reading M6 s8 · 40%"), with its own Stop;
+  - asking to read a recording that is already being read joins that read
+    instead of starting a second one into the same folder;
+  - Stop on a run that has already ended does nothing.
+
+### Added
+
+- **Theta Walk bouts can be resized.** Drag a painted bout's edge; the time
+  shows beside it as you drag.
+- **The auto painter has settings**, beside "Paint them": shortest bout
+  (2 s), join gaps under (1 s), the theta/delta level (empty: picked from
+  the recording), and the channel it reads. Changing one redraws the ghost
+  bouts. The settings are kept with the sheet.
+- **Theta phase x depth gamma maps (beta), in Step 3's evidence.** These
+  follow Schomburg et al. 2014 and Fernández-Ruiz et al. 2021. For every
+  channel, the map shows how strong slow (30-50 Hz), mid (60-80) and fast
+  (100-150) gamma are at each moment of CA1 theta during Theta Walk, two
+  cycles across.
+  - You can show it in the CSD or the LFP, with each depth on its own
+    colour scale (the default) or one scale for the whole map.
+  - White dots follow each channel's preferred phase down the probe. The
+    biggest jump in that phase is marked, along with the step's line
+    nearest to it.
+  - Each map also says which channel is most theta-locked, compared with
+    the layer that gamma is expected in.
+  - A **?** opens a five-part animated explanation of how to read it. In
+    mice the dentate's slow and fast gamma both lean to the theta trough,
+    while CA1 lacunosum-moleculare gamma comes near the peak (Lasztóczi &
+    Klausberger 2017), so the biggest jump is often the fissure itself.
+  - The map is worked out once per walk (half a minute on a 105 s walk)
+    and kept.
+  - On PTEN M6 s8 the jump falls one or two channels from Step 3's
+    fissure line.
+- **Mid gamma.** Fernández-Ruiz et al. 2021 found three gamma inputs in the
+  dentate, each in its own third of the molecular layer: slow 30-50 Hz
+  (lateral entorhinal, OML), fast 100-150 Hz (medial entorhinal, MML) and
+  mid 60-80 Hz (commissural, IML). Method B used to call everything from
+  60 Hz up "fast" and judge it against the MML. A component is now named
+  by its peak (under 55 slow, 55-90 mid, 90 and up fast), and mid is
+  checked against the IML when there is one. Runs already saved are
+  renamed by the new rule when read.
+- **Step 3's evidence: theta's sink in the molecular layer.** The
+  theta-trough CSD with its strongest sink between the fissure and GCL1,
+  marked against MML1. It is a third look at the MML that uses neither the
+  thirds nor gamma.
+- **Step 3's evidence: the SP-fissure-GCL proportion.** From CA1 SP to the
+  fissure, compared with the fissure to GCL1. In mice this is about 2:1
+  (1.5-2.8; Paleologos et al. 2025). Method A's card says whether this
+  recording is in range, and where the fissure would be for 2:1.
+
+### Changed
+
+- **Leaving IML out keeps to the anatomy.** For a few hours Step 3 had a
+  third choice: "none: OML, MML, GCL in thirds", which cut fissure to hilus
+  into three equal parts. It is gone, because no paper divides the blade
+  that way. The molecular layer is three bands of about equal width (the
+  perforant path fills the outer two, the commissural input the inner one),
+  and the granule layer is not one of them. Papers that leave IML out
+  either keep the molecular layer whole (Lasztóczi & Klausberger 2017) or
+  mark only the OML and MML (Tarcsay et al. 2025). "Part of MML" does the
+  same here: the OML line stays at a third and the GCL keeps its own
+  thickness. A sheet that saved "thirds" is now cut as "part of MML".
+- **ICA marks sit on channel edges.** A picked Method B check used to draw
+  a line through the middle of a channel, between two boundaries. Now the
+  channel it sinks on is shaded edge to edge. When that channel is outside
+  the layer, a dashed line marks where the layer would have to start or
+  end to include it, on the same edges as every other line.
+
+## 2026.10.12.7 - The reveal holds, with sound, four ways on, and who Jarvis is
+
+### Added
+
+- **Who is Jarvis?** The application is named in memory of Dr. Paul Jarvis
+  (1987 - 2021), a graduate of UVM's Larner College of Medicine who was
+  training in neurology. A card with his photo says who he was, in a few
+  lines, and links to the fund his family asked gifts in his memory to
+  support: epilepsy research at the Larner College of Medicine
+  (go.uvm.edu/pjarvis). It opens from "Who is Jarvis?" under the name in the
+  reveal, from the same button in the destinations below, from the badge at
+  the top of the rail, and from Ctrl+K.
+
+- **The reveal holds, and says where to go.** It is slower -- about five
+  seconds -- and no longer leaves by itself: the name stays up with four
+  ways on. **Go to home page** flies the badge to the rail and lands on the
+  pipeline, the names on the page decoding back in a wave out of the badge.
+  **Analyze Dentate Spikes**, **Open Monolith** and **Detect IEDs** each open
+  a page with a live picture and the lab's own figures. A click while it
+  builds skips to the choices, never past them; 1-4 choose from the
+  keyboard, Escape is home.
+
+- **Sound.** Made on the spot with Web Audio, so there is no file to load
+  or lose: the crackle of a neuron on an audio monitor firing faster and
+  faster as the ring draws, a zap and a boom when the spike fires, a blip
+  per letter as the name locks in, a warm chord when it lands, and small
+  sounds for choosing, flying home and landing. In the destinations, a
+  "tock" per dentate spike found and a crack per IED. "Sound on/off" in the
+  corner, remembered in this browser.
+
+- **Three destinations that cannot fail.** Each live picture is a
+  simulated signal drawn in the browser -- it reads no recording and asks
+  the server nothing -- and says so on the page:
+  - Dentate spikes: a 14-channel probe swept like a scope, each spike caught
+    and labelled DS1 or DS2, the average spike building up, and its current
+    source density by depth.
+  - The Monolith: twelve regions on the real page's ring, swept from 1 to
+    55 Hz, measure by measure, red for stronger on Precon4 and blue for
+    weaker, with the top result named.
+  - IEDs: six channels, the line-length feature with its threshold, every
+    detection flagged, and the last minute's detections by channel.
+  Under each, the real figures: Root Canal's dentate spike clusters and a
+  CSD from Results/, KCNT1 and m34 recordings, a Panorama, and the
+  Monolith's own circuit, frequency, PAC and rat-by-rat views, prerendered
+  into `web/img/showcase/` (1.4 MB). A figure opens full size on a click.
+  The Monolith tab also opens the full, live Monolith page in a new tab.
+
+- **Replay the reveal** in Ctrl+K, for a rehearsal or for whoever missed it.
+  It hides the name without remembering that, and plays.
+
+- `web/_dev/jarvisname.html`: 96 checks, now including that the reveal
+  holds and keeps holding, that every destination draws, says it is
+  simulated and loads every figure, that Escape goes back, that the card
+  about Paul has his photo and the memorial link, that a click mid-build
+  skips to the choices, that a replay is not remembered, and that every
+  sound plays without throwing.
+
+---
+
+## 2026.10.12.6 - StrataScope: Method B says match or no match, one frequency at a time
+
+### Changed
+
+- **Method B in the evidence window is two cards, not ten.** One for slow
+  gamma (should sink in the OML), one for fast gamma (should sink in the
+  MML). Each has a badge: **Matches**, **Does not match** or **Can't
+  tell**, then one line per blade saying where the gamma sinks. Under the
+  lines is a picture of the source those lines are about, with only the
+  layer it should be in shaded, the hilus in grey and a tick or cross where
+  it dips. The full set of components is still there, folded under
+  "Every component".
+- **"Can't tell" is explained where it shows.** It means no source of that
+  kind came back when ICA was refit on each half of the walking and also
+  dips in that blade's molecular layer, so Method B neither confirms nor
+  contradicts Method A there. The card shows the closest source it did
+  find and why that one doesn't count: "came back only 63% alike (it
+  needs 70%)", or "sinks somewhere else".
+- A mismatch is now red, not orange, so it can't be confused with the fast
+  gamma curve. This applies to the drawer's checks too.
+
+### Fixed
+
+- **A source sinking just above the fissure could be called "in OML1".**
+  The check took the lowest point inside the molecular layer even when
+  that point was only the edge of a sink outside the layer. It now counts
+  only real dips. It also looks one OML-thickness beyond the outer edge, so
+  that sink is reported as "4 ch above OML1" instead of being missed.
+- **A CA1 pyramidal layer moved with a vote now survives a reload.** After
+  Step 1 is accepted, the reference channel is the middle of the sheet's
+  CA1 SP. It used to fall back to Step 1's own pick, which moved the phase
+  curves and lost the ICA saved against the moved channel.
+- `web/_dev/stratastepsshot.html` no longer leaves a demo layer sheet
+  behind when the suite runs it (`?keep=1` holds the step open for a
+  screenshot).
+
 ## 2026.10.12.5 - StrataScope: the evidence window scrolls; IML is optional; Step 3 builds on Steps 1 and 2
 
 ### Fixed

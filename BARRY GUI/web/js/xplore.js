@@ -461,6 +461,8 @@ BARRY.views.xplore = (function () {
   }
 
   function closeSession(id) {
+    // Its pending view save goes now, not 1.2 s after the tab has gone.
+    flushSaves(false);
     delete XF.sessions[id];
     XF.order = XF.order.filter((x) => x !== id);
     // Tear the pane down before dropping the reference, or renderPanes has
@@ -3961,6 +3963,9 @@ BARRY.views.xplore = (function () {
               },
             }))),
       ]),
+      /* Many at once, typed: "4, 6, 32-56, 59". Clicking sixty rows one
+         at a time to mark a dead headstage was the only way before. */
+      bulkBadRow(sess),
       /* The list itself, because this is now the only place it is. It
          used to say "toggled on the list beside the trace" -- true for a
          trace pane, where the list is drawn in the plot, and false for a
@@ -6528,28 +6533,219 @@ BARRY.views.xplore = (function () {
     }
   }
 
-  async function toggleBad(sess, number) {
-    if (sess.bad.has(number)) sess.bad.delete(number); else sess.bad.add(number);
-    render();
-    refreshSession(sess);
-    // Tell the other windows. This was missing entirely, which is why hiding
-    // a channel propagated and marking one bad did not.
-    publishFacts(sess);
+  /* Marking channels bad: one from the lane beside the traces or the Ch
+     menu, or a typed list from that menu.
+
+     What is sent is the CHANGE, never the whole list. The whole list was
+     this window's copy, read when the recording opened. So two clicks a
+     moment apart could be saved in the wrong order, losing the second, and
+     a channel marked in Doppler, Incisor or Braces after the recording
+     opened here was wiped by the next click here. The server applies the
+     change to what is on record and answers with the list as it now
+     stands, and the lanes are drawn from that answer.
+
+     A failed save takes the mark back off. A lane drawn bad that is not bad
+     on record looks saved and is gone the next time the recording opens --
+     the one outcome this must not have. */
+  function toggleBad(sess, number) {
+    const on = !sess.bad.has(number);
+    return changeBad(sess, on ? [number] : [], on ? [] : [number]);
+  }
+
+  async function changeBad(sess, add, remove) {
+    add = (add || []).map(Number);
+    remove = (remove || []).map(Number);
+    if (!add.length && !remove.length) return true;
+    const draw = () => {
+      render();
+      refreshSession(sess);
+      // Tell the other windows. This was missing entirely, which is why
+      // hiding a channel propagated and marking one bad did not.
+      publishFacts(sess);
+    };
+    add.forEach((n) => sess.bad.add(n));
+    remove.forEach((n) => sess.bad.delete(n));
+    draw();
 
     if (!sess.identity || sess.identity.mouse == null) {
       toast('Marked locally — this recording has no detectable mouse/session id, '
             + 'so it cannot be saved across machines.', 'err', 7000);
-      return;
+      return false;
     }
+    const seq = (sess.badSeq = (sess.badSeq || 0) + 1);
     try {
-      await apiPost('/api/session/bad', {
-        identity: sess.identity,
+      /* The whole list rides along for a Jarvis still running the code
+         from before this: it reads only `bad_channels`, and sent the
+         change alone it would have saved an empty list. */
+      const res = await apiPost('/api/session/bad', {
+        identity: sess.identity, add, remove,
         bad_channels: Array.from(sess.bad),
       });
+      // Only the newest answer is drawn. An older one landing late would
+      // put back a mark that the click after it took off.
+      if (seq === sess.badSeq && Array.isArray(res.bad_channels)) {
+        adoptBad(sess, res.bad_channels);
+      }
       BARRY.refreshSync();
+      return true;
     } catch (e) {
-      toast('Could not save bad channels: ' + e.message, 'err', 7000);
+      add.forEach((n) => sess.bad.delete(n));
+      remove.forEach((n) => sess.bad.add(n));
+      draw();
+      toast('Not saved, so the mark was taken back off: ' + e.message,
+            'err', 9000);
+      return false;
     }
+  }
+
+  /* The list on record, onto every tab showing this recording.
+
+     One recording can be open twice -- reached by two paths, or
+     duplicated -- and the tab that was not clicked kept its old list. */
+  function adoptBad(sess, list) {
+    const want = list.map(Number).sort((a, b) => a - b).join(',');
+    const key = sessKey(sess);
+    let changed = false;
+    for (const id of XF.order) {
+      const s = XF.sessions[id];
+      if (!s || sessKey(s) !== key) continue;
+      if (Array.from(s.bad).sort((a, b) => a - b).join(',') === want) continue;
+      s.bad = new Set(list.map(Number));
+      refreshSession(s);
+      changed = true;
+    }
+    if (changed) { render(); publishFacts(sess); }
+  }
+
+  /* What is on record, asked again each time the trace view comes back
+     into sight.
+
+     A recording stays open here while you are elsewhere, and its bad list
+     was read once, when it opened. A channel marked since -- in Doppler,
+     Incisor, Braces, or on another machine -- is on the record and was not
+     on these lanes, which reads exactly like a mark that did not save. */
+  async function rereadBad() {
+    const asked = new Set();
+    for (const id of XF.order.slice()) {
+      const s = XF.sessions[id];
+      const gid = s && s.identity && s.identity.gid;
+      if (!gid || asked.has(gid)) continue;
+      asked.add(gid);
+      const seq = s.badSeq || 0;
+      try {
+        const res = await api('/api/session/bad/' + encodeURIComponent(gid));
+        // A click made while this was asking is newer than its answer.
+        if (res.ok && (s.badSeq || 0) === seq && XF.sessions[id]) {
+          adoptBad(s, res.bad_channels || []);
+        }
+      } catch (e) { /* the next look asks again */ }
+    }
+  }
+
+  /* "4, 6, 32-56, 59" -> channel numbers, and what could not be read.
+
+     Ranges run either way round, and anything that is not a channel on
+     this recording is reported rather than silently dropped -- a typo of
+     "5-9" for "59" would otherwise mark five channels and say nothing. */
+  function parseChannelList(text, sess) {
+    const have = new Set(sess.info.channels.map((c) => Number(c.number)));
+    const nums = new Set();
+    const unread = [];
+    const missing = [];
+    for (const part of String(text || '').split(/[,;\s]+/)) {
+      if (!part) continue;
+      const m = /^(\d+)(?:\s*[-–:]\s*(\d+))?$/.exec(part);
+      if (!m) { unread.push(part); continue; }
+      let a = Number(m[1]);
+      let b = m[2] != null ? Number(m[2]) : a;
+      if (a > b) [a, b] = [b, a];
+      if (b - a > 4096) { unread.push(part); continue; }
+      for (let n = a; n <= b; n++) {
+        if (have.has(n)) nums.add(n); else missing.push(n);
+      }
+    }
+    return { nums: Array.from(nums).sort((a, b) => a - b), unread, missing };
+  }
+
+  /* Contiguous runs, for saying back what a list came to: "32–56", not
+     twenty-five numbers. */
+  function runsOf(nums) {
+    const out = [];
+    let i = 0;
+    while (i < nums.length) {
+      let j = i;
+      while (j + 1 < nums.length && nums[j + 1] === nums[j] + 1) j++;
+      out.push(j > i ? nums[i] + '–' + nums[j] : String(nums[i]));
+      i = j + 1;
+    }
+    return out.join(', ');
+  }
+
+  /* The typed list in the Ch menu: mark them all bad, or clear them all. */
+  function bulkBadRow(sess) {
+    const input = el('input', {
+      type: 'text', class: 'bulk-bad-in',
+      placeholder: 'e.g. 4, 6, 32-56, 59',
+      'aria-label': 'Channels to mark bad, as a list',
+      spellcheck: 'false',
+    });
+    const say = el('div', { class: 'bulk-bad-say hint quiet' });
+    const preview = () => {
+      const p = parseChannelList(input.value, sess);
+      const bits = [];
+      if (p.nums.length) {
+        bits.push(p.nums.length + ' channel' + (p.nums.length === 1 ? '' : 's')
+                  + ': ' + runsOf(p.nums));
+      }
+      if (p.missing.length) {
+        bits.push('not on this recording: ' + runsOf(p.missing));
+      }
+      if (p.unread.length) bits.push('could not read: ' + p.unread.join(' '));
+      say.textContent = bits.join(' · ');
+      say.classList.toggle('warn', !!(p.missing.length || p.unread.length));
+      return p;
+    };
+    input.addEventListener('input', preview);
+    const go = async (mark) => {
+      const p = preview();
+      if (!p.nums.length) {
+        // What could not be read stays on screen; it says why.
+        if (!say.textContent) {
+          say.textContent = 'Type channel numbers first, like 4, 6, 32-56, 59.';
+        }
+        say.classList.add('warn');
+        return;
+      }
+      const ok = await changeBad(sess, mark ? p.nums : [], mark ? [] : p.nums);
+      BARRY.activity.log('channels.bad.bulk',
+                         { mark, n: p.nums.length, list: runsOf(p.nums) }, sess);
+      if (!ok) return;          // the list stays in the box to try again
+      toast((mark ? 'Marked bad and saved: ' : 'Cleared and saved: ')
+            + 'CSC ' + runsOf(p.nums), 'ok', 4000);
+      input.value = '';
+      say.textContent = '';
+      // The rows below say ok / bad, and the menu will not repaint under
+      // a box that still has the cursor in it.
+      input.blur();
+      repaintMenu();
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); go(true); }
+    });
+    return el('div', {}, [
+      popRow('Mark bad', [
+        el('div', { class: 'bulk-bad' }, [
+          input,
+          el('button', { class: 'mini', text: 'Mark bad',
+            title: 'Mark every channel in the list bad, and save it',
+            onclick: () => go(true) }),
+          el('button', { class: 'mini', text: 'Clear',
+            title: 'Take the bad mark off every channel in the list',
+            onclick: () => go(false) }),
+        ]),
+      ]),
+      say,
+    ]);
   }
 
   /* ---------- the plot area ---------- */
@@ -7567,10 +7763,18 @@ BARRY.views.xplore = (function () {
     if (res.channel) {
       bits.unshift(res.channel.label);
     } else if ((res.channels_used || []).length) {
+      /* Said whole, never cut off with an ellipsis. A stack says its ORDER
+         -- which row is which is the thing to check, and its rows were once
+         drawn upside down under their labels -- and an average names its
+         channels when they fit, else says how many and where the list is. */
       const used = res.channels_used;
-      bits.unshift(used.length + ' ch (' + res.tf_mode + '): '
-        + used.slice(0, 6).map((c) => c.label).join(', ')
-        + (used.length > 6 ? '…' : ''));
+      const first = used[0].label, last = used[used.length - 1].label;
+      bits.unshift(res.tf_mode === 'stack'
+        ? used.length + ' ch stacked, ' + first + ' at the top to ' + last
+          + ' at the bottom'
+        : used.length + ' ch averaged' + (used.length <= 8
+          ? ': ' + used.map((c) => c.label).join(', ')
+          : ', listed under Channels in the panel menu'));
     }
     pane._readout.textContent = bits.join('  ');
     pane._readout.classList.add('on');
@@ -8498,6 +8702,11 @@ BARRY.views.xplore = (function () {
     if (data.reset || seen < linkSeen) linkSeen = seen;
     else linkSeen = Math.max(linkSeen, seen);
     const channels = data.channels || {};
+    // StrataScope's evidence window asking for a line to move (strataaids.js
+    // "Move"); the steps own the lines.
+    if (BARRY.strataSteps && BARRY.strataSteps.fromLink) {
+      try { BARRY.strataSteps.fromLink(channels); } catch (e) { /* toasts its own */ }
+    }
 
     let touched = false;
 
@@ -8657,12 +8866,34 @@ BARRY.views.xplore = (function () {
 
   /* ---------- everything is saved by default ---------- */
   const saveTimers = {};
+  const savePending = {};
   function queueSaveState(sess) {
     clearTimeout(saveTimers[sess.id]);
-    saveTimers[sess.id] = setTimeout(() => saveState(sess), 1200);
+    savePending[sess.id] = sess;
+    saveTimers[sess.id] = setTimeout(() => {
+      delete savePending[sess.id];
+      saveState(sess);
+    }, 1200);
   }
 
-  async function saveState(sess) {
+  /* Whatever is still waiting out the pause above, saved now.
+
+     The pause is there so dragging through a recording is one save rather
+     than forty. Leaving should not have to wait for it: a channel hidden a
+     moment before switching views, closing the tab or reloading the page
+     was a change on screen that never reached the record. `keepalive` is
+     what lets the last of these finish after the page has gone. */
+  function flushSaves(keepalive) {
+    for (const id of Object.keys(savePending)) {
+      clearTimeout(saveTimers[id]);
+      const sess = savePending[id];
+      delete savePending[id];
+      saveState(sess, keepalive ? { keepalive: true } : undefined);
+    }
+  }
+  window.addEventListener('pagehide', () => flushSaves(true));
+
+  async function saveState(sess, opts) {
     if (!sess.identity || (sess.identity.mouse == null && !sess.identity.key)) return;
     try {
       await apiPost('/api/session/state', {
@@ -8690,7 +8921,7 @@ BARRY.views.xplore = (function () {
           stft_mode: sess.stftMode || null,
           channels: Array.from(sess.sel).sort((a, b) => a - b),
         },
-      });
+      }, opts);
     } catch (e) { /* non-fatal */ }
   }
 
@@ -10949,7 +11180,14 @@ BARRY.views.xplore = (function () {
       render();
       refreshAll();
     },
-    onShow: () => { if (XF.order.length) { render(); refreshAll(); } },
+    onShow: () => {
+      if (!XF.order.length) return;
+      render(); refreshAll();
+      // Marks made elsewhere while this view was out of sight. See rereadBad.
+      rereadBad();
+    },
+    // Leaving saves what is waiting. See flushSaves.
+    onHide: () => flushSaves(false),
   };
 
   /* Published as a real property so another WINDOW can drive this one.

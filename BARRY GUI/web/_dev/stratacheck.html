@@ -294,6 +294,24 @@ async function untilN(fn, tries = 300, gap = 100) {
   check('and letting go stops it', labelled() === afterUp,
         'kept painting: ' + afterUp + ' -> ' + labelled());
 
+  /* The evidence window follows the steps' link channel, and painting on
+     the rail never reached it: its layer lines stayed where they were
+     (2026-10-13, "sometimes the changes here don't sync up"). */
+  const flat = (o) => JSON.stringify(Object.entries(o || {})
+    .sort((a, b) => Number(a[0]) - Number(b[0])));
+  const wantLabels = flat(W.eval('(BARRY.strata.state || {}).labels'));
+  let heard = null;
+  for (let k = 0; k < 60; k++) {
+    const lk = await fetch('/api/link?since=0').then((r) => r.json()).catch(() => ({}));
+    const slot = (lk.channels || {})['strata-steps:' + gid];
+    heard = slot && slot.value ? flat(slot.value.labels) : null;
+    if (heard === wantLabels) break;
+    await sleep(100);
+  }
+  check('the evidence window hears what was painted', heard === wantLabels,
+        heard ? 'link has ' + JSON.parse(heard).length + ' labels, rail has '
+          + JSON.parse(wantLabels).length : 'nothing on the link');
+
   head('5. The buttons along the bottom');
   const bar = D.querySelector('.strata-bar');
   const btns = bar ? Array.from(bar.querySelectorAll('button')) : [];

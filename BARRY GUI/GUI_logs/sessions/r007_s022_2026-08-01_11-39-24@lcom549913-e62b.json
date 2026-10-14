@@ -1,76 +1,106 @@
 {
   "_at": {
-    "created": "2026-09-25T16:51:48.568834+00:00",
-    "gid": "2026-09-25T20:23:58.324431+00:00",
+    "created": "2026-09-24T19:24:39.052858+00:00",
+    "duration_s": "2026-09-24T19:49:52.278123+00:00",
+    "first_seen_by": "2026-09-24T19:24:39.052858+00:00",
+    "fs": "2026-09-24T19:24:39.052858+00:00",
+    "gid": "2026-09-24T19:24:39.052858+00:00",
     "group": "2026-09-25T16:51:48.568834+00:00",
     "key": "2026-09-25T16:51:48.568834+00:00",
-    "label": "2026-09-25T20:23:58.324431+00:00",
+    "label": "2026-10-12T14:03:50.229986+00:00",
     "loose_key": "2026-09-25T16:51:48.568834+00:00",
     "mouse": "2026-09-25T16:51:48.568834+00:00",
+    "n_channels": "2026-09-24T19:24:39.052858+00:00",
+    "phase": "2026-09-24T19:24:39.052858+00:00",
+    "phase_n": "2026-09-24T19:24:39.052858+00:00",
     "probe": "2026-09-25T16:51:48.568834+00:00",
     "probe_source": "2026-09-25T16:51:48.568834+00:00",
     "project": "2026-09-25T16:51:48.568834+00:00",
     "project_source": "2026-09-25T16:51:48.568834+00:00",
     "retired": "2026-09-25T16:51:48.568834+00:00",
+    "run": "2026-09-24T19:24:39.052858+00:00",
     "schema": "2026-09-25T16:51:48.568834+00:00",
     "session": "2026-09-25T16:51:48.568834+00:00",
     "start": "2026-09-25T16:51:48.568834+00:00",
-    "updated": "2026-09-25T20:23:58.324431+00:00"
+    "updated": "2026-10-12T14:03:50.229986+00:00"
   },
   "_keys": {
     "paths": {
       "E:\\Joe Multisite 2026 data\\J7\\Test2\\J7_Test2_FP1\\2026-08-01_11-39-24": [
         "set",
-        "2026-09-25T18:39:49.525302+00:00"
+        "2026-09-25T18:41:36.772840+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J7\\Test2\\J7_Test2_FP2\\2026-08-01_13-31-44": [
         "set",
-        "2026-09-25T16:53:35.355319+00:00"
+        "2026-09-25T18:31:31.229279+00:00"
       ],
       "E:\\Joe Multisite 2026 data\\J7\\Test2\\J7_Test2_SPC\\2026-08-01_11-59-19": [
         "set",
-        "2026-09-25T18:39:49.525302+00:00"
+        "2026-09-25T18:41:36.772840+00:00"
+      ]
+    },
+    "seen": {
+      "desktop-4h65ai7-d565": [
+        "set",
+        "2026-09-25T20:23:16.676718+00:00"
       ]
     }
   },
   "_shard": {
-    "at": "2026-09-25T20:23:58.324431+00:00",
+    "at": "2026-10-12T14:03:50.229986+00:00",
     "machine": "lcom549913-e62b",
     "schema": 1
   },
   "created": {
-    "app_version": "2026.09.23.8",
-    "at": "2026-09-25T12:51:48-04:00",
-    "commit": "cd809b2",
-    "email": "Isabella.Piatek@uvm.edu",
-    "host": "LCOM549913",
-    "machine": "Blackbarry",
+    "app_version": "2026.09.24.6",
+    "at": "2026-09-24T15:24:39-04:00",
+    "commit": "0fc4943",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
     "os": "Windows",
-    "user": "Isabella Piatek"
+    "user": "Shahriar Tafti"
   },
-  "gid": "sb7e416a8270f",
+  "duration_s": 335.584,
+  "first_seen_by": "scan",
+  "fs": 32000.0,
+  "gid": "s42f69d62ed85",
   "group": null,
   "key": "r007_s022_2026-08-01_11-39-24",
-  "label": "DEWEY r7 s22 Test2 FP2 2026-08-01",
+  "label": "DEWEY r7 s22 Test2 FP1 2026-08-01",
   "loose_key": "r007_s022",
   "mouse": 7,
+  "n_channels": 32,
   "paths": [
     "E:\\Joe Multisite 2026 data\\J7\\Test2\\J7_Test2_FP2\\2026-08-01_13-31-44",
     "E:\\Joe Multisite 2026 data\\J7\\Test2\\J7_Test2_FP1\\2026-08-01_11-39-24",
     "E:\\Joe Multisite 2026 data\\J7\\Test2\\J7_Test2_SPC\\2026-08-01_11-59-19"
   ],
+  "phase": "Test",
+  "phase_n": 2,
   "probe": "dewey32",
   "probe_source": "manual",
   "project": "DEWEY",
   "project_source": "guessed",
   "retired": false,
+  "run": "FP1",
   "schema": 1,
+  "seen": {
+    "desktop-4h65ai7-d565": {
+      "at": "2026-09-25T16:23:16-04:00",
+      "by": "Shahriar Tafti",
+      "machine": "Bluebarry",
+      "path": "E:\\Joe Multisite 2026 data\\J7\\Test2\\J7_Test2_FP1\\2026-08-01_11-39-24",
+      "root": "E:/Joe Multisite 2026 data",
+      "scan": "scan_f60458f16f"
+    }
+  },
   "session": 22,
   "start": "2026-08-01T15:39:24+00:00",
   "updated": {
-    "app_version": "2026.09.23.8",
-    "at": "2026-09-25T16:23:58-04:00",
-    "commit": "cd809b2",
+    "app_version": "2026.10.09.6",
+    "at": "2026-10-12T10:03:50-04:00",
+    "commit": "021cb243",
     "email": "Isabella.Piatek@uvm.edu",
     "host": "LCOM549913",
     "machine": "Blackbarry",
