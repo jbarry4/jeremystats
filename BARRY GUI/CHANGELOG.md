@@ -15,7 +15,196 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
-## 2026.10.14.5 - Reading off the VACC works on every lab account, not only the one that built it
+## 2026.10.14.8 - The Confluence: Incisor's and Doppler's events, pooled, sorted and teased apart
+
+**Pull and restart Jarvis on every machine.** Pooling, merging and Root
+Canal's pooled sets are new server routes; an old server will say it does
+not have them.
+
+### New
+
+- **The Confluence, a new bundle in the ToolKit.** It sits under The
+  Dentist and The Storm, and a stream runs from both into it. Its four
+  steps:
+  1. **Junction: pool them.** Pick a recording that has both a banked
+     Incisor entry and a banked Doppler entry. The newest version of each
+     goes in, or any other through the version tree. Events closer than
+     5 ms are one event (the window can be changed). Time is what counts,
+     on any channel. Each event pairs with at most one of the other
+     detector's, nearest first. A merged event keeps Incisor's time, and
+     Doppler's is kept beside it. Anything already called Garbage stays
+     out. Press Merge and you see the two files flow together: the events
+     both detectors found fuse into two-tone dots, and the counts run up as
+     they land. The pool is a new bank entry, and the two it came from are
+     not changed. **Many at once** pools every ticked recording from its
+     newest entries in one go.
+  2. **Panning: sort them.** An Xplorefinder mode, like Spotter. The keys
+     are 1 Spike, 2 Garbage and 3 Flag. Every event is drawn in the colour
+     of the detector that found it. One both found is two-tone, with
+     Doppler's own stamp drawn beside the one kept. A strip under the traces
+     lays the window out on two lanes, Incisor's above Doppler's. To merge
+     two events, click one, shift-click the other and press M. Z undoes a
+     merge. You can also step through only the merged events, Incisor's
+     only, or Doppler's only.
+  3. **Lock: line them up.** Eye, pointed at a pooled set.
+  4. **Root Canal: tease them apart.** Root Canal is now in The Confluence
+     too. Opened from there, it offers pooled sets, and colours its
+     three-axis space by origin: Incisor, Doppler, or both (two-tone).
+     Banking names each event by its cluster and takes nothing out, and the
+     version note says how many of each detector's events fell on each
+     side.
+
+### Also in this version
+
+- **Doppler is calmer to use.** Runs you start show their progress and
+  land, and do not show as running and landed at the same time. A landed
+  run opens. The panel no longer reloads itself after you submit, and the
+  Activity feed no longer flicks to "Reading…".
+- **Doppler takes a channel range,** for example CSC1–CSC64 of a
+  128-channel probe, even channels only, bad ones left out. Before it runs,
+  it lists the channels it will read, and the bank note records them.
+- **Odd channels left out of an even-only run are shown as left out,** not
+  as bad.
+- **The stacked spectrogram was upside down.** Its channel labels now
+  match the traces.
+- **Spotter can add a category** that is offered on every recording. You
+  name it and choose its colour, and it arrives in the bar.
+
+## 2026.10.14.7 - Braces: Many sends a real batch, here and on the VACC, and shows it going
+
+**Pull and restart Jarvis on every machine.** The batch runs on the
+server, so the old one keeps the old Many until it is restarted.
+
+### Fixed
+
+- **Many did not send anything from a laptop.** It only offered sets whose
+  recording was on a drive of this computer. On a machine where every
+  recording is on the VACC, every row said "not on a drive this machine can
+  reach", nothing could be ticked, and nothing was sent. A set now runs
+  wherever its recording is: this computer if it has it, the VACC if only
+  the cluster does. This is the same rule the one-set panel and every other
+  tool follow.
+- **Many stopped when you left it.** The page itself walked the list one
+  set at a time, so leaving the view or reloading ended the queue without
+  a word. The batch now runs on the server (below), and the panel finds it
+  again when you come back.
+- **Ticking a set in Many threw the list back to the top.** Each tick
+  rebuilt the whole panel, and the list is a scroll box of its own, so the
+  new one started at the top. Many is now built in parts, like Doppler: a
+  tick changes its row and the counts, and nothing else moves. Ticking a
+  channel in the one-set channel grid is also written in place now.
+- **Doppler's and Incisor's "which recordings" lists also kept their
+  scroll only by luck.** A list rebuilt after "Tick the N shown" or
+  "Clear" came back at the top when the list itself was the part being
+  rebuilt. Fixed for every panel built in parts.
+- **Incisor's and Doppler's batch picker rows had lost their columns**
+  since 2026.10.14.1. The new "Scan: all / first half / …" row reused the
+  picker row's class name and turned every picker row into a wrapping
+  line. It has its own name now.
+
+### Changed
+
+- **Many looks and works like Doppler's.**
+  1. **Which sets.** A search box: mouse, session, project, "vacc" or
+     "here". Each row has the set, what it holds, the version to align, its
+     bad contacts, where it will run (HERE or the VACC mark) and its
+     alignments so far. Buttons: "Tick the N shown", "Only the N not
+     aligned with these settings" and "Clear". Sets that cannot be aligned
+     from here are listed underneath, each with its reason.
+  2. **Alignment, for every set sent.** The one-set panel's settings, plus
+     "read again even where these settings were run" and "send them all to
+     the VACC, even the ones this computer has". The second option runs
+     everything side by side on the cluster rather than one after another
+     here. A line says what will happen before you press "Align N sets":
+     how many run here, how many on the VACC, and how many were already
+     aligned with these settings and only open.
+  3. **The batch.** A bar fills as sets land (green), fail (red) or are
+     being read. Under it is a row per set: waiting, reading ("Reading
+     stretch 15 of 40"), in the cluster's queue (with its Slurm job id),
+     landed (with its counts and its sync mark), or failed (with the
+     reason). A landed row opens its proposal. When the batch ends it is
+     announced. "Tick the N that failed" sends those again, and "Put this
+     batch away" clears the card. Every set it made stays in Alignments.
+
+### Added
+
+- **A Braces batch is one job on the server** (`/api/braces/batch`).
+  - Sets this computer has are aligned here, one after another. The VACC
+    ones go up as one array job and run side by side. Both halves run at
+    the same time.
+  - Each set is asked exactly the question the one-set panel would ask
+    (`_braces_prepare`, shared by both). A set already aligned with these
+    settings opens that alignment instead of being read again.
+  - `/api/braces/inflight` lets the panel find a batch again after a
+    reload, for an hour after it ends. "Stop the batch" cancels it; every
+    set already filed stays filed.
+  - A VACC array still running when Jarvis restarts is picked up and its
+    answers filed, as Incisor's and Doppler's are.
+- **Enter after a drag asks first.** In the review, Enter confirms
+  Braces' recommended peak. If you had dragged the green line somewhere on
+  purpose, Enter used to throw your spot away and move on. Now a box comes
+  up first: "Enter moves it back to the recommended spot". It says how far
+  in ms, and which way, the stamp would move from where you put it.
+  - Enter again: keep your spot and move on.
+  - R: take the recommended spot.
+  - Esc: do nothing.
+  - An Enter pressed the instant the drag ends still counts as a drag.
+- **Finishing a set gets a moment.** It appears when the last flagged
+  stamp of a pass is answered, and again when the set is banked (not twice
+  within a minute). A grinning tooth in braces appears with a burst of
+  brackets and one of 32 lines ("Lesgooo!", "Goated af 🐐", "Ate and left
+  no crumbs", "Rizz level: orthodontist" …), never the same line twice in
+  a row. It is gone in under three seconds, and clicking it clears it at
+  once. Where motion is turned down, it only fades.
+
+### Checked
+
+- `tools/check_braces_batch.py`, all passing, on this machine's real bank
+  with the proposals filed to a temp folder:
+  - a batch here is filed under the one-set run's question;
+  - sent again, it is opened, not read; forced, it is read again;
+  - a set that cannot run fails on its own row and the batch goes on;
+  - the cluster's half, stood in for, becomes array tasks per set and is
+    filed live and again from the run record alone, as after a restart.
+- `--vacc`: one real set (PTEN_DKO m48 s6) went up as an array task, ran
+  on a node and came back filed with its Slurm id, about four minutes end
+  to end.
+- New harnesses, all passing:
+  - `bracesmany.html` (27): sending a batch and its progress;
+  - `bracesscroll.html` (20): ticks keep the scroll;
+  - `bracesenter.html` (18): Enter after a drag, and the celebration, in
+    a real review with every decision held in the page.
+- Also passing: braces, bracesbad, braceslist, bracesspan, incisorpick,
+  incisorsel, vaccbatch, checkupreach, storm, toolkit, uikit and uiparts.
+- `eye.html` and `incisor.html` fail the same way on an untouched copy of
+  the last commit, so those failures were not caused by this change.
+
+## 2026.10.14.6 - StrataScope runs on recordings only the VACC has
+
+### Added
+
+- **StrataScope's steps now work on a recording that is only on the
+  cluster.** The read is the only step that touches the recording, so it
+  is the only step that moves.
+  - A compute node runs the same read a local one does: the first 64
+    channels, with bad ones skipped (`vacc_run.py`, tool `strata`).
+  - The read comes back in one stream: the per-second numbers and the
+    1250 Hz copy. It goes exactly where a local read would have put it.
+  - The Theta Walk guide, the curves, the proposals, ICA and the phase map
+    then run on this computer, as for any other recording.
+  - The read is removed from the cluster workspace once it is home.
+  - The button says "Read the recording on the VACC". The progress line
+    says where the read is: "On the VACC: waiting for a node", "Reading on
+    the VACC", "Bringing the read home from the VACC — 11 of 53 MB".
+- StrataScope now has the ToolKit's VACC mark, with what runs on the
+  cluster and what does not.
+
+Checked on KCNT1 m2 s3, opened as `vacc:s96884739a6ff` and read off
+netfiles. The job was submitted, read 64 channels on a node and brought
+53 MB home, 59 s end to end. Once home the read was current, and the guide,
+the proposals (12 ripples, reference ch 4) and the phase map answered.
+
+## 2026.10.14.5 - Reading off the VACC works on every machine, not only the one it was set up on
 
 **Pull and restart Jarvis on every machine.** The cluster side updates
 itself: its code is pushed with the next read or run.
@@ -27,21 +216,26 @@ itself: its code is pushed with the next read or run.
   read off the VACC: Braces' "What it will read", the trace view, and any
   tool reading over the link. Jobs sent to the cluster would have failed
   the same way.
-  - **Cause:** the Python environment Jarvis uses on the cluster was built
-    once, for one account (`/users/s/a/sakhava1/jarvis/env`). Every other
-    account looked for its own `<workspace>/env`, found none, and went on
-    silently with the cluster's system Python, 3.9 with no numpy. The
-    `/usr` in the message was that Python.
-  - **Fix:** the cluster now uses the account's own environment if it has
-    one, and the lab's otherwise. The lab's environment is now a lab-wide
-    setting in `vacc.json` (`lab_env`, with its miniforge module).
-    Whichever is found goes first on PATH, so `python` is that one even if
-    conda's activation does not run.
-  - **Measured:** the lab's environment is readable and enterable by the
-    whole VACC group pi-jbarry4, which is jbarry4, sakhava1, syounger,
-    epoon, mmassad, awoychos, ipiatek, slsahagi and seclouse. Every file
-    and directory is group-readable, and the home directory is
-    group-enterable.
+  - **Cause:** everyone signs in to the VACC as the same account
+    (sakhava1), so the environment Jarvis uses there
+    (`/users/s/a/sakhava1/jarvis/env`) existed for them too. But only this
+    desktop's own `.vacc.json` said to `module load miniforge`, and conda's
+    activation needs that module. On every other machine the activation
+    failed, silently (`|| true`), and the shell ran the cluster's system
+    Python: 3.9, with no numpy. The `/usr` in the message was that Python.
+  - **Reproduced** with a laptop's settings (signed in as sakhava1, no
+    workspace or modules of its own), through the live link to the cluster
+    and the code from before this change: the cluster's Python 3.9 at
+    `/usr`, no numpy.
+  - **Fix, part one:** the miniforge module is now lab-wide, in the
+    tracked `vacc.json`.
+  - **Fix, part two:** whichever environment is found now goes first on
+    PATH, so `python` is that one even if conda's activation does not run.
+    With today's code the same settings give the environment's Python
+    3.14.7 and numpy 2.5.3, and they still do with no module at all.
+  - **For a different VACC account:** it is tried first in its own
+    environment, then the lab's (`lab_env` in `vacc.json`). The lab's is
+    readable by the whole group pi-jbarry4.
 - **The message, when no environment is found at all,** now says so and
   says where it looked. It names the group to be in, and who to ask, or
   where to build an account's own. An environment that was found but is

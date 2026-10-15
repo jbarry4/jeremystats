@@ -30,8 +30,8 @@
     "schema": "2026-09-04T15:57:01.894929+00:00",
     "session": "2026-09-04T15:57:01.894929+00:00",
     "start": "2026-09-04T15:57:01.894929+00:00",
-    "updated": "2026-09-24T13:43:00.808712+00:00",
-    "view_state": "2026-09-22T18:21:15.489686+00:00"
+    "updated": "2026-10-14T17:37:42.877467+00:00",
+    "view_state": "2026-10-09T15:51:51.169090+00:00"
   },
   "_keys": {
     "paths": {
@@ -50,6 +50,10 @@
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s11_Baseline": [
         "set",
         "2026-09-04T15:57:01.894929+00:00"
+      ],
+      "vacc:se942a3f42a33": [
+        "set",
+        "2026-10-14T17:37:42.877467+00:00"
       ]
     },
     "seen": {
@@ -63,7 +67,7 @@
       ],
       "barrylab-d8e8": [
         "set",
-        "2026-09-22T18:09:51.093997+00:00"
+        "2026-10-09T15:54:19.301394+00:00"
       ],
       "desktop-4h65ai7-d565": [
         "set",
@@ -72,7 +76,7 @@
     }
   },
   "_shard": {
-    "at": "2026-09-24T13:43:00.808712+00:00",
+    "at": "2026-10-14T17:37:42.877467+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
@@ -109,7 +113,8 @@
     "D:\\PTEN\\CTL\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54",
     "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M59_s11_Baseline",
-    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s11_Baseline"
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s11_Baseline",
+    "vacc:se942a3f42a33"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -133,7 +138,7 @@
       "scan": "scan_765fa11e51"
     },
     "barrylab-d8e8": {
-      "at": "2026-09-22T14:09:51-04:00",
+      "at": "2026-10-09T11:54:19-04:00",
       "by": "Rain Younger",
       "machine": "Strawbarry",
       "path": "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s11jul8\\2025-07-09_12-19-54",
@@ -152,9 +157,9 @@
   "session": 11,
   "start": "2025-07-09T12:19:54",
   "updated": {
-    "app_version": "2026.09.24.1",
-    "at": "2026-09-24T09:43:00-04:00",
-    "commit": "5924a80",
+    "app_version": "2026.10.14.5",
+    "at": "2026-10-14T13:37:42-04:00",
+    "commit": "8d0daabe",
     "email": "sakhava1@uvm.edu",
     "host": "DESKTOP-4H65AI7",
     "machine": "Bluebarry",
@@ -197,7 +202,6 @@
       63
     ],
     "clim": null,
-    "even_only": false,
     "fdefault": null,
     "flock": true,
     "gain": 2.25,
@@ -211,7 +215,7 @@
     "spacing": 50,
     "span": 0.8,
     "stft_mode": null,
-    "t0": 2111.3039519999998,
+    "t0": 0,
     "ylim": null
   }
 }

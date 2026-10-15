@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-10-14T19:14:02.120341+00:00",
+    "gid": "2026-10-14T19:14:02.120341+00:00",
+    "group": "2026-10-14T19:14:02.120341+00:00",
+    "key": "2026-10-14T19:14:02.120341+00:00",
+    "label": "2026-10-14T19:14:02.120341+00:00",
+    "loose_key": "2026-10-14T19:14:02.120341+00:00",
+    "mouse": "2026-10-14T19:14:02.120341+00:00",
+    "project": "2026-10-14T19:14:02.120341+00:00",
+    "project_source": "2026-10-14T19:14:02.120341+00:00",
+    "retired": "2026-10-14T19:14:02.120341+00:00",
+    "schema": "2026-10-14T19:14:02.120341+00:00",
+    "session": "2026-10-14T19:14:02.120341+00:00",
+    "start": "2026-10-14T19:14:02.120341+00:00",
+    "updated": "2026-10-14T19:14:38.494346+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con3\\multi_spcon_con3_J2_FP2\\2025-09-18_14-53-14": [
+        "set",
+        "2026-10-14T19:14:38.494346+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-14T19:14:38.494346+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.14.5",
+    "at": "2026-10-14T15:14:02-04:00",
+    "commit": "8d0daabe",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "sf86b58006353",
+  "group": null,
+  "key": "r002_s013_2025-09-18_12-56-26",
+  "label": "DEWEY r2 s13 Con3 FP2 2025-09-18",
+  "loose_key": "r002_s013",
+  "mouse": 2,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\HOF\\Joe_multiSite\\J2\\Con3\\multi_spcon_con3_J2_FP2\\2025-09-18_14-53-14"
+  ],
+  "project": "DEWEY",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 13,
+  "start": "2025-09-18T16:56:26+00:00",
+  "updated": {
+    "app_version": "2026.10.14.5",
+    "at": "2026-10-14T15:14:38-04:00",
+    "commit": "8d0daabe",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

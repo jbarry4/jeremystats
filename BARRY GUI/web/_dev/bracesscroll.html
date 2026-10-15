@@ -1,0 +1,235 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bracesscroll: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Ticking a box in Braces leaves the page where it is (2026-10-14).
+
+   WHAT WENT WRONG: in "many", ticking a recording halfway down the table
+   threw the table back to its top. Every tick redrew the whole panel, and
+   the table is a scroll box of its own: the new one started at 0. Many is
+   now kept in parts (`BARRY.ui.sections`), so a tick changes its row and
+   the counts; a channel tick in the one-set grid is written in place.
+
+   It scrolls the real panel down for real, ticks a box with a click, and
+   reads the scroll afterwards. The precondition is checked rather than
+   assumed: a panel that was never scrolled cannot jump to the top, so a
+   scroll of 0 BEFORE the click is a failure of the harness, not a pass.
+
+   IT WRITES NOTHING: a tick is held in the panel's memory, no run is
+   started, and preference writes are held. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  const ev = (c) => W().eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state')
+              && ev('!!(BARRY.braces && BARRY.prefs)'), 25000, 'the app');
+  ev('(function(){ var P = BARRY.prefs; P.set = function(k, v) { return v; }; })()');
+  const BR = 'BARRY.braces';
+  // Whatever is actually scrolling the panel, found from inside it.
+  const scroller = (n) => {
+    for (; n; n = n.parentElement) {
+      const s = W().getComputedStyle(n).overflowY;
+      if ((s === 'auto' || s === 'scroll') && n.scrollHeight > n.clientHeight + 2) return n;
+    }
+    return D().scrollingElement;
+  };
+  // Put `node` in the middle of the scroller, and say where that left it.
+  const bringDown = (node) => {
+    const sc = scroller(node);
+    const r = node.getBoundingClientRect();
+    const box = sc.getBoundingClientRect();
+    sc.scrollTop += (r.top - box.top) - sc.clientHeight / 2;
+    return sc;
+  };
+  try {
+    ev('setView("toolkit")');
+    await until(() => D().querySelectorAll('.tk-step').length, 15000, 'the ToolKit');
+    const step = [...D().querySelectorAll('.tk-step')]
+      .find((x) => /Braces/.test(x.textContent));
+    if (step) step.click();
+    await until(() => D().querySelector('.br-mode .seg button'), 30000, 'Braces');
+
+    head('MANY: TICKING A SET DOWN THE LIST');
+    const mb = [...D().querySelectorAll('.br-mode .seg button')]
+      .find((b) => /many/i.test(b.textContent));
+    if (mb) mb.click();
+    // Every row there, once the registry and the VACC have said which can go.
+    await until(() => D().querySelectorAll('.br-many-list .br-bulk-row').length > 8,
+                40000, 'the list');
+    await sleep(1200);                      // the registry's own repaint
+    const rowOf = (id) => D().querySelector('.br-many-list .br-bulk-row[data-id="' + id + '"]');
+    const listSc = () => D().querySelector('.br-many-list');
+    // On this computer: where a set runs from the VACC is read off the
+    // cluster's own answer, which can still be arriving.
+    const boxes = () => [...D().querySelectorAll('.br-many-list .br-bulk-row')]
+      .filter((r) => /HERE/.test((r.querySelector('.ip-where') || {}).textContent || ''))
+      .map((r) => r.querySelector('input[type=checkbox]'));
+    say('       ' + boxes().length + ' sets can be sent', 'dim');
+    const pickBox = boxes()[Math.floor(boxes().length * 0.7)] || boxes()[boxes().length - 1];
+    if (!pickBox) {
+      ok('there is a set to tick on this machine', false, 'none can be sent');
+    } else {
+      const id = pickBox.closest('.br-bulk-row').dataset.id;
+      const sc = bringDown(pickBox);
+      await sleep(100);
+      const before = sc.scrollTop;
+      ok('precondition: the list is scrolled down before the tick',
+         before > 100 && sc === listSc(), 'scrollTop ' + before
+         + (sc === listSc() ? '' : ' (not the list)'));
+      pickBox.click();
+      await sleep(250);
+      ok('ticking it leaves the list where it was',
+         Math.abs(listSc().scrollTop - before) <= 2,
+         'was ' + before + ', now ' + listSc().scrollTop);
+      ok('the very same row is still there, not a rebuilt one',
+         rowOf(id) === pickBox.closest('.br-bulk-row'));
+      ok('and the row is ticked', !!rowOf(id) && rowOf(id).classList.contains('on')
+         && rowOf(id).querySelector('input[type=checkbox]').checked);
+      const cnt = () => (D().querySelector('.br-bulk-count') || {}).textContent || '';
+      ok('and the count says one', /^1 ticked \(\d here, \d on the VACC\)/.test(cnt()), cnt());
+      const go = () => D().querySelector('.br-many-go .btn');
+      ok('and the Align button counts it and can be pressed',
+         !!go() && go().textContent === 'Align 1 set' && !go().disabled,
+         go() ? go().textContent + (go().disabled ? ' (disabled)' : '') : 'no button');
+      ok('and the cost says where it will run',
+         /^1 to send/.test((D().querySelector('.br-many-cost') || {}).textContent || ''),
+         (D().querySelector('.br-many-cost') || {}).textContent);
+      bringDown(rowOf(id).querySelector('input'));
+      await sleep(100);
+      const at2 = listSc().scrollTop;
+      rowOf(id).querySelector('input[type=checkbox]').click();
+      await sleep(250);
+      ok('unticking it leaves the list where it was too',
+         at2 > 100 && Math.abs(listSc().scrollTop - at2) <= 2,
+         'was ' + at2 + ', now ' + listSc().scrollTop);
+      ok('and the row and the button say so',
+         !rowOf(id).classList.contains('on') && /^0 ticked/.test(cnt())
+         && go().disabled, cnt() + ' / ' + go().textContent);
+      // A button on the tools row rebuilds the list: its scroll is carried.
+      const clr = () => [...D().querySelectorAll('.br-many-tools .btn')]
+        .find((b) => b.textContent === 'Clear');
+      bringDown(rowOf(id).querySelector('input'));
+      await sleep(100);
+      const at3 = listSc().scrollTop;
+      rowOf(id).querySelector('input[type=checkbox]').click();
+      await sleep(200);
+      clr().click();
+      await sleep(400);
+      ok('and Clear, which rebuilds the list, puts it back where it was',
+         at3 > 100 && Math.abs(listSc().scrollTop - at3) <= 2,
+         'was ' + at3 + ', now ' + listSc().scrollTop);
+      ok('with nothing ticked', /^0 ticked/.test(cnt()) && !rowOf(id).classList.contains('on'));
+    }
+
+    head('ONE: TICKING A CHANNEL IN THE GRID');
+    const cands = (await ev('api("/api/braces/candidates")')).sets || [];
+    // The ones read on this computer: the grid's plan is quick there.
+    const ready = [...D().querySelectorAll('.br-many-list .br-bulk-row')]
+      .filter((r) => /HERE/.test((r.querySelector('.ip-where') || {}).textContent || ''))
+      .map((r) => r.dataset.id);
+    const oneB = [...D().querySelectorAll('.br-mode .seg button')]
+      .find((b) => /one/i.test(b.textContent));
+    if (oneB) oneB.click();
+    await sleep(300);
+    let grid = null;
+    for (const id of ready.slice(0, 6)) {
+      const c = cands.find((x) => x.id === id);
+      if (!c || !c.gid) continue;
+      ev('(function(){ var s = ' + BR + '._state().q; s.entry = null; s.channels = null;'
+         + ' s.gid = ' + JSON.stringify(c.gid) + '; })()');
+      ev(BR + '.paint()');
+      await until(() => [...D().querySelectorAll('.bm-row input[type=radio]')]
+        .some((r) => !r.disabled), 10000, 'its entries');
+      const radio = [...D().querySelectorAll('.bm-row')]
+        .find((r) => (r.querySelector('.mk-name') || {}).textContent === (c.name || c.id));
+      const inp = radio && radio.querySelector('input[type=radio]');
+      if (!inp || inp.disabled) continue;
+      inp.click();
+      await until(() => D().querySelector('.br-chan-grid')
+                        || (ev(BR + '._state().plan') || {}).ok === false, 45000, 'its plan');
+      grid = D().querySelector('.br-chan-grid');
+      if (grid) { say('       on ' + (c.session_label || c.name), 'dim'); break; }
+    }
+    if (!grid) {
+      ok('a set whose plan can be read here, for the grid', false, 'none of the first six');
+    } else {
+      const chans = () => [...D().querySelectorAll('.br-chan-grid .br-chan')];
+      const pick = chans().find((l) => !l.classList.contains('bad')
+                                       && l.classList.contains('on'))
+                   || chans()[0];
+      const num = Number(pick.querySelector('span').textContent);
+      const sc = bringDown(pick);
+      await sleep(100);
+      const before = sc.scrollTop;
+      ok('precondition: the panel is scrolled down to the grid',
+         before > 100, 'scrollTop ' + before);
+      const had = (ev(BR + '._state().q.channels') || []).length;
+      pick.querySelector('input').click();
+      await sleep(250);
+      const sc2 = scroller(D().querySelector('.br-chan-grid'));
+      ok('unticking a channel leaves the panel where it was',
+         Math.abs(sc2.scrollTop - before) <= 2,
+         'was ' + before + ', now ' + sc2.scrollTop);
+      const nowC = ev(BR + '._state().q.channels') || [];
+      ok('and the channel is out of the average', nowC.length === had - 1
+         && nowC.indexOf(num) < 0, had + ' -> ' + nowC.length);
+      const lab = chans().find((l) => Number(l.querySelector('span').textContent) === num);
+      ok('and its box says so', !!lab && !lab.classList.contains('on')
+         && !lab.querySelector('input').checked);
+      ok('and the count over the grid says one fewer',
+         new RegExp('^' + (had - 1) + ' of ').test(
+           (D().querySelector('.br-chans .br-chans-head .br-hint') || {}).textContent || ''),
+         (D().querySelector('.br-chans .br-chans-head .br-hint') || {}).textContent);
+      ok('and "What it will read" counts one fewer',
+         new RegExp((had - 1) + ' channels, averaged').test(
+           (D().querySelector('.br-plan') || {}).textContent || ''));
+      const at2 = sc2.scrollTop;
+      lab.querySelector('input').click();
+      await sleep(250);
+      ok('ticking it back leaves the panel where it was too',
+         Math.abs(scroller(D().querySelector('.br-chan-grid')).scrollTop - at2) <= 2,
+         'was ' + at2 + ', now ' + scroller(D().querySelector('.br-chan-grid')).scrollTop);
+      ok('and it is back in', (ev(BR + '._state().q.channels') || []).length === had);
+    }
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'bracesscroll: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

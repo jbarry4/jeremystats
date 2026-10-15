@@ -4,6 +4,14 @@
   },
   "_keys": {
     "gone": {
+      "bank:4e00ff2b9b7d": [
+        "set",
+        "2026-10-15T14:04:29.390985+00:00"
+      ],
+      "bank:8931cc766fe7": [
+        "set",
+        "2026-10-15T14:04:29.390985+00:00"
+      ],
       "deck:deck_008e35e2": [
         "set",
         "2026-09-09T03:45:44.227404+00:00"
@@ -3187,11 +3195,29 @@
     }
   },
   "_shard": {
-    "at": "2026-10-12T20:01:21.585463+00:00",
+    "at": "2026-10-15T14:04:29.390985+00:00",
     "machine": "desktop-4h65ai7-d565",
     "schema": 1
   },
   "gone": {
+    "bank:4e00ff2b9b7d": {
+      "at": "2026-10-14T19:08:52-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "4e00ff2b9b7d",
+      "kind": "bank",
+      "note": "banked by the confluence.html harness by mistake",
+      "synced": true,
+      "synced_at": "2026-10-15T10:04:29-0400"
+    },
+    "bank:8931cc766fe7": {
+      "at": "2026-10-14T19:08:53-0400",
+      "by": "desktop-4h65ai7-d565",
+      "id": "8931cc766fe7",
+      "kind": "bank",
+      "note": "banked by the confluence.html harness by mistake",
+      "synced": true,
+      "synced_at": "2026-10-15T10:04:29-0400"
+    },
     "deck:deck_008e35e2": {
       "at": "2026-09-08T23:45:28-0400",
       "by": "desktop-4h65ai7-d565",

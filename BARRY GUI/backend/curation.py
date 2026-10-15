@@ -145,7 +145,31 @@ KINDS = {
              "color": "#E5A823", "flagged": True},
         ],
     },
+    # The Confluence: Incisor's dentate spikes and Doppler's discharges pooled
+    # into one list (backend/confluence.py), sorted in Panning. Spike or not
+    # -- whether a spike is a dentate spike or an IED is Root Canal's call,
+    # afterwards, in its three-axis space, so it is not asked here.
+    # Not `spike`: the bank already has entries of type `spike` -- unit
+    # spikes, threshold crossings (eventbank.EVENT_TYPES) -- and a filter
+    # preset of that name at 300 Hz. A pooled set is its own kind.
+    "pooled": {
+        "id": "pooled",
+        "name": "Pooled spikes — spike or not",
+        "blurb": "Incisor's and Doppler's events, pooled: a spike, or not.",
+        "labels": [
+            {"id": "spike", "name": "Spike", "keys": ["1", "s"],
+             "color": "#2f9e6e", "good": True},
+            {"id": "garbage", "name": "Garbage", "keys": ["2", "g"],
+             "color": "#dc2626"},
+            {"id": "flag", "name": "Flag", "keys": ["3", "f"],
+             "color": "#E5A823", "flagged": True},
+        ],
+    },
 }
+
+#: Where a pooled event came from (backend/confluence.py). Carried on the
+#: bank's events and on a curation set's candidates.
+ORIGINS = ("incisor", "doppler", "both")
 
 
 # Labels a set may still carry in the vocabulary it copied in, and that are
@@ -634,7 +658,10 @@ class Curation:
                 "label": UNSPECIFIED,
             }
             if isinstance(ev, dict):
-                for k in ("end", "channel", "amplitude", "note"):
+                # `origin` and `pair_t` for a pooled spike: which detector
+                # found it, and where the other one put it.
+                for k in ("end", "channel", "amplitude", "note", "origin",
+                          "pair_t"):
                     if ev.get(k) is not None:
                         item[k] = ev[k]
                 # An import that already carries a decision keeps it --
@@ -1221,6 +1248,113 @@ class Curation:
         return out
 
     @shards.atomic
+    def merge_events(self, gid, kind, keep_id, drop_id):
+        """Two candidates that are one event, made one -- Panning's merge.
+
+        Returns (survivor, progress, dropped_id).
+
+        The SURVIVOR is whichever of the two carries Incisor's time -- a
+        dentate-spike detector stamps the spike's own peak -- and otherwise
+        the earlier one, whichever was clicked first. So no candidate's time
+        ever changes: the bank matches versions on time, and a merge that
+        moved the surviving stamp would read in the history as one event
+        lost and an unrelated one gained, on top of the one really removed.
+        `pair_t` keeps the other time. The survivor keeps its decision, or
+        takes the other's when it has none; its origin is the two together.
+        The other candidate is removed, which the shard merge records as a
+        tombstone, so another machine's copy does not bring it back.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        evs = rec.get("events") or []
+        a = next((e for e in evs if e.get("id") == keep_id), None)
+        b = next((e for e in evs if e.get("id") == drop_id), None)
+        if not a or not b or a is b:
+            raise CurationError("Pick two different candidates in this set.")
+        oa, ob = a.get("origin"), b.get("origin")
+
+        def has(o, src):
+            return o == src or o == "both"
+        if has(ob, "incisor") and not has(oa, "incisor"):
+            lead, other = b, a
+        elif has(oa, "incisor") or float(a["start"]) <= float(b["start"]):
+            lead, other = a, b
+        else:
+            lead, other = b, a
+        srcs = set()
+        for o in (oa, ob):
+            if o == "both":
+                srcs |= {"incisor", "doppler"}
+            elif o:
+                srcs.add(o)
+        if not lead.get("label") and other.get("label"):
+            for k in ("label", "by", "at"):
+                if other.get(k) is not None:
+                    lead[k] = other[k]
+        lead["pair_t"] = round(float(other["start"]), 6)
+        if srcs:
+            lead["origin"] = "both" if len(srcs) > 1 else next(iter(srcs))
+        if lead.get("channel") is None and other.get("channel") is not None:
+            lead["channel"] = other["channel"]
+        lead["merged_by"] = (self.store.provenance() if self.store
+                             else {}).get("user")
+        lead["merged_at"] = _now()
+        gone = other.get("id")
+        rec["events"] = [e for e in evs if e.get("id") != gone]
+        self._write(rec)
+        return lead, self.progress(rec), gone
+
+    #: What an undone merge may put back on the survivor, and what the
+    #: candidate it took in may come back with. Whitelisted: these arrive
+    #: from the page, which held them from before the merge.
+    _UNMERGE_KEEP = ("origin", "pair_t", "label", "by", "at", "channel",
+                     "merged_by", "merged_at")
+    _UNMERGE_BACK = ("start", "end", "channel", "amplitude", "origin",
+                     "pair_t", "label", "by", "at", "note")
+
+    @shards.atomic
+    def unmerge(self, gid, kind, keep_id, before, dropped):
+        """Panning's undo of a merge (Z): the survivor as it was, and the
+        candidate it took in, back. Returns (survivor, restored, progress).
+
+        The one that comes back gets a NEW id. Its old id was removed, and
+        the shard merge tombstoned it so another machine's copy would not
+        bring it back; reusing it would be asking every machine to agree
+        that a deleted candidate is not deleted after all. Its time is what
+        identifies it here anyway, and the time is the same.
+        """
+        rec = self._read(gid, kind)
+        if not rec:
+            raise CurationError("No curation set for that recording.")
+        evs = rec.get("events") or []
+        a = next((e for e in evs if e.get("id") == keep_id), None)
+        if not a:
+            raise CurationError("That candidate is no longer in this set, so "
+                                "the merge cannot be undone here.")
+        try:
+            start = float((dropped or {}).get("start"))
+        except (TypeError, ValueError):
+            raise CurationError("Say where the other candidate was.")
+        was = before or {}
+        for k in self._UNMERGE_KEEP:
+            if was.get(k) is not None:
+                a[k] = was[k]
+            elif k == "label":
+                a[k] = UNSPECIFIED
+            else:
+                a.pop(k, None)
+        back = {"id": _eid()}
+        for k in self._UNMERGE_BACK:
+            if (dropped or {}).get(k) is not None:
+                back[k] = dropped[k]
+        back["start"] = round(start, 6)
+        back.setdefault("label", UNSPECIFIED)
+        rec["events"] = sorted(evs + [back], key=lambda e: e["start"])
+        self._write(rec)
+        return a, back, self.progress(rec)
+
+    @shards.atomic
     def set_order(self, gid, kind, how, scores=None):
         """Remember the order somebody wants to work in.
 
@@ -1627,6 +1761,12 @@ class Curation:
                 item["end"] = e["end"]
             if e.get("channel") is not None:
                 item["channel"] = e["channel"]
+            # A pooled spike says where it came from in every version, so
+            # Root Canal can still tell Incisor's from Doppler's after
+            # Panning has banked it (and after a merge made it "both").
+            for k in ("origin", "pair_t"):
+                if e.get(k) is not None:
+                    item[k] = e[k]
             item["label"] = names.get(lab, lab) if lab else "unspecified"
             item["label_id"] = lab or "unspecified"
             if e.get("by"):

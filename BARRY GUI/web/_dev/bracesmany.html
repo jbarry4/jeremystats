@@ -1,0 +1,244 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bracesmany: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Braces' Many sends one batch, and shows it going (2026-10-14).
+
+   WHAT WENT WRONG: Many was the page asking for one run at a time, so it
+   ran only while the panel stayed open, and it offered only what this
+   computer could open -- on a laptop with every recording on the VACC,
+   nothing could be ticked and nothing was ever sent.
+
+   On this machine's real list: a set only the cluster has is offered
+   (when there is one), ticked sets go to `/api/braces/batch` as ONE
+   request carrying each set's version and the settings, the ticks clear,
+   and the batch's progress -- read back from `/api/braces/inflight`, as a
+   reload would -- is a bar and a row per set: aligning, landed (opens the
+   proposal), failed (with its reason, and one click to tick again). When
+   it ends it is announced, and it can be put away.
+
+   IT WRITES NOTHING: the batch and the in-flight list are answered here,
+   no set is read, and preference writes are held. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state')
+              && ev('!!(BARRY.braces && BARRY.prefs)'), 25000, 'the app');
+  ev('(function(){ var P = BARRY.prefs; P.set = function(k, v) { return v; }; })()');
+  try { ev('localStorage.removeItem("barry.braces.dismissed")'); } catch (e) { /* ok */ }
+  /* The batch and its in-flight list, answered here. `__bmJobs` is what
+     the server would say; the harness moves it on. */
+  ev('(function(){ var W = window; W.__bmSent = []; W.__bmJobs = []; var f = W.fetch;'
+     + ' var j = function(o, st) { return Promise.resolve(new Response(JSON.stringify(o),'
+     + '   { status: st || 200, headers: { "Content-Type": "application/json" } })); };'
+     + ' W.fetch = function(u, o) { var s = String(u);'
+     + '  if (s.indexOf("/api/braces/batch") >= 0 && s.indexOf("/cancel") < 0) {'
+     + '    var b = JSON.parse((o && o.body) || "{}"); W.__bmSent.push(b);'
+     + '    return j({ ok: true, n: (b.entries || []).length, job: { id: "bmjob1",'
+     + '      status: "running", members: null } }); }'
+     + '  if (s.indexOf("/api/braces/inflight") >= 0) return j({ ok: true, jobs: W.__bmJobs });'
+     + '  if (s.indexOf("/api/braces/run") >= 0) return j({ ok: false, error: "harness: not read" }, 400);'
+     + '  return f.apply(this, arguments); }; })()');
+  const sent = () => JSON.parse(ev('JSON.stringify(window.__bmSent)'));
+  const setJobs = (jobs) => ev('window.__bmJobs = ' + JSON.stringify(jobs));
+  try {
+    ev('setView("toolkit")');
+    await until(() => D().querySelectorAll('.tk-step').length, 15000, 'the ToolKit');
+    const step = [...D().querySelectorAll('.tk-step')].find((x) => /Braces/.test(x.textContent));
+    if (step) step.click();
+    await until(() => D().querySelector('.br-mode .seg button'), 30000, 'Braces');
+    [...D().querySelectorAll('.br-mode .seg button')].find((b) => /many/i.test(b.textContent)).click();
+    await until(() => D().querySelectorAll('.br-many-list .br-bulk-row').length > 2,
+                40000, 'the list');
+    await sleep(1200);
+
+    head('WHAT CAN BE SENT');
+    const rows = () => [...D().querySelectorAll('.br-many-list .br-bulk-row')];
+    const where = (r) => (r.querySelector('.ip-where, .flagchip.vacc') || {}).textContent || '';
+    const here = rows().filter((r) => /HERE/.test(where(r)));
+    const vacc = rows().filter((r) => !/HERE/.test(where(r)));
+    say('       ' + here.length + ' here, ' + vacc.length + ' on the VACC', 'dim');
+    const cands = (await ev('api("/api/braces/candidates")')).sets || [];
+    const reg = ev('BARRY.views.toolkit.registryRows()') || [];
+    const byGid = new Map(reg.map((r) => [r.gid, r]));
+    const awayLoaded = cands.filter((c) => {
+      const r = byGid.get(c.gid);
+      return r && !(r.here || []).length && ev('BARRY.vacc.reachFor('
+        + JSON.stringify(r) + ', "braces").where') === 'vacc';
+    });
+    ok('every set only the cluster has, and the VACC can read, is offered',
+       awayLoaded.every((c) => rows().some((r) => r.dataset.id === c.id)),
+       awayLoaded.length + ' such sets');
+    ok('the sentence over the list says how many run where',
+       /can be aligned: \d+ on this computer, \d+ on the VACC/.test(
+         (D().querySelector('.br-many-say') || {}).textContent || ''),
+       (D().querySelector('.br-many-say') || {}).textContent);
+    const search = D().querySelector('.br-many .inc-search');
+    search.value = 'zzzz-nothing-matches';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await until(() => /Nothing matches/.test((D().querySelector('.br-many-list') || {}).textContent || ''),
+                3000, 'the search');
+    ok('the search narrows the list, and says when nothing matches',
+       /Nothing matches/.test(D().querySelector('.br-many-list').textContent));
+    ok('and the search box kept its place', D().querySelector('.br-many .inc-search') === search);
+    search.value = '';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await until(() => rows().length > 2, 3000, 'the list back');
+
+    head('SENT AS ONE BATCH');
+    const pick = [here[0], vacc[0] || here[1]].filter(Boolean)
+      .map((r) => rows().find((x) => x.dataset.id === r.dataset.id));
+    const ids = pick.map((r) => r.dataset.id);
+    const vers = pick.map((r) => (r.querySelector('select.br-bulk-v') || {}).value || null);
+    for (const r of pick) r.querySelector('input[type=checkbox]').click();
+    await sleep(250);
+    const go = () => D().querySelector('.br-many-go .btn');
+    ok('the button names how many', go().textContent === 'Align ' + pick.length + ' sets'
+       && !go().disabled, go().textContent);
+    const cost = (D().querySelector('.br-many-cost') || {}).textContent || '';
+    ok('and the cost says which run here and which on the VACC',
+       new RegExp('^' + pick.length + ' to send').test(cost)
+       && (vacc[0] ? /on the VACC as one array job/.test(cost) : true)
+       && /aligned on this computer/.test(cost), cost);
+    // What the server holds the moment it accepts it: every set waiting.
+    const labels = pick.map((r) => r.querySelector('.ip-name').textContent);
+    const job = (members, status) => [{ id: 'bmjob1', kind: 'many',
+      started: Date.now() / 1000 - 75, by: 'Harness',
+      members: ids.map((id, i) => ({ id, label: labels[i] })),
+      job: { id: 'bmjob1', status: status || 'running', elapsed: 75,
+             members: members } }];
+    setJobs(job(ids.map((id, i) => ({ id, label: labels[i], status: 'waiting',
+                                       step: 'opening the recording' }))));
+    go().click();
+    await until(() => sent().length === 1, 5000, 'the batch');
+    const b = sent()[0] || {};
+    ok('one request, every ticked set in it',
+       sent().length === 1 && JSON.stringify((b.entries || []).map((e) => e.id)) === JSON.stringify(ids),
+       JSON.stringify(b.entries));
+    ok('each with the version its row shows',
+       (b.entries || []).every((e, i) => (e.from_version || null) === (vers[i] || null)),
+       JSON.stringify(b.entries) + ' vs ' + JSON.stringify(vers));
+    const q = ev('BARRY.braces._state().q');
+    ok('and the settings on screen', b.measure === q.measure
+       && Number(b.window_ms) === Number(q.window_ms), JSON.stringify(b));
+    await sleep(200);
+    ok('the ticks clear, so it cannot be sent twice by accident',
+       /^0 ticked/.test((D().querySelector('.br-bulk-count') || {}).textContent || ''));
+
+    head('ITS PROGRESS, AS THE SERVER TELLS IT');
+    const sets = (await ev('api("/api/braces/sets")')).sets || [];
+    const real = sets[0];
+    ok('sent, the batch card is up at once, every set waiting',
+       await until(() => D().querySelectorAll('.br-flight .dop-batch-row.waiting').length
+                         === ids.length, 6000, 'the card'));
+    setJobs(job([
+      { id: ids[0], label: labels[0], status: 'running', where: 'here',
+        step: 'ds windows', done: 3, of: 10 },
+      ids[1] ? { id: ids[1], label: labels[1], status: 'queued',
+                 where: vacc[0] ? 'vacc' : 'here', slurm_id: '777_1' } : null,
+    ].filter(Boolean)));
+    await until(() => (D().querySelectorAll('.br-flight .dop-batch-row')[0] || {})
+                        .classList && D().querySelector('.br-flight .dop-batch-row')
+                        .classList.contains('running'), 8000, 'the batch to move');
+    const frows = () => [...D().querySelectorAll('.br-flight .dop-batch-row')];
+    ok('a row per set, in a card of its own', frows().length === ids.length);
+    ok('the one being read says how far, in words',
+       /Reading stretch 4 of 10/.test(frows()[0].textContent), frows()[0].textContent);
+    if (ids[1]) {
+      ok('the one on the cluster says it is queued, by its job id',
+         /queue as 777_1/.test(frows()[1].textContent), frows()[1].textContent);
+    }
+    const bar = () => D().querySelector('.br-flight .br-fbar');
+    ok('and the bar shows the part done', !!bar()
+       && parseFloat(bar().querySelector('.run').style.width) > 0
+       && parseFloat(bar().querySelector('.ok').style.width) === 0,
+       bar() && bar().innerHTML);
+    ok('the batch card has a Stop, while it is going',
+       [...D().querySelectorAll('.br-flight .btn')].some((x) => x.textContent === 'Stop the batch'));
+    ok('and a second batch cannot be sent meanwhile',
+       go().disabled && /A batch is going/.test(go().textContent), go().textContent);
+
+    const firstRow = frows()[0];
+    setJobs(job([
+      { id: ids[0], label: labels[0], status: 'done', where: 'here',
+        set_id: real ? real.set_id : 'brnothing', n: 41, n_flagged: 3 },
+      ids[1] ? { id: ids[1], label: labels[1], status: 'failed',
+                 where: vacc[0] ? 'vacc' : 'here', error: 'harness: the node fell over' } : null,
+    ].filter(Boolean), 'done'));
+    await until(() => frows()[0] && frows()[0].classList.contains('done'), 8000, 'the landing');
+    ok('a set that landed opens its proposal from its row',
+       frows()[0].tagName === 'BUTTON' && /41 aligned · 3 flagged/.test(frows()[0].textContent),
+       frows()[0].textContent);
+    ok('and the bar is full for it', parseFloat(bar().querySelector('.ok').style.width)
+       >= (100 / ids.length) - 0.1, bar().querySelector('.ok').style.width);
+    if (ids[1]) {
+      ok('a set that failed says why on its own row',
+         /failed: harness: the node fell over/.test(frows()[1].textContent));
+      const again = [...D().querySelectorAll('.br-flight .btn')]
+        .find((x) => /Tick the 1 that failed/.test(x.textContent));
+      ok('with one click to tick it again', !!again);
+      if (again) {
+        again.click();
+        await sleep(250);
+        ok('which ticks it', !!(D().querySelector('.br-many-list .br-bulk-row[data-id="'
+           + ids[1] + '"]') || {}).classList && D().querySelector('.br-many-list .br-bulk-row[data-id="'
+           + ids[1] + '"]').classList.contains('on'));
+        D().querySelector('.br-many-tools .btn:nth-child(3)').click();
+        await sleep(150);
+      }
+    }
+    ok('when it ends it is said, once',
+       [...D().querySelectorAll('.toast')].some((t) => /The batch has landed: 1 of /.test(t.textContent)),
+       [...D().querySelectorAll('.toast')].map((t) => t.textContent).join(' | '));
+    const away = [...D().querySelectorAll('.br-flight .btn')].find((x) => x.textContent === 'Put this batch away');
+    ok('and it can be put away', !!away);
+    if (away) {
+      away.click();
+      await until(() => !D().querySelector('.br-flight'), 4000, 'the card to go');
+      ok('which takes the card off the page', !D().querySelector('.br-flight'));
+    }
+    ok('nothing was read: the one-set run was never asked',
+       sent().length === 1);
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  }
+  try { ev('localStorage.removeItem("barry.braces.dismissed")'); } catch (e) { /* ok */ }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'bracesmany: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

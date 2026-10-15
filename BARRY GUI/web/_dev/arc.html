@@ -99,7 +99,8 @@ async function untilN(fn, tries = 250, gap = 100) {
      -- but it could not say which had happened, and the number had to be
      edited by hand every time a bundle landed. This still catches both, and
      the failure says which bundle is missing or unexpected. */
-  const WANT = ['The Dentist', 'The Arc', 'The Storm', 'The Lookout'];
+  const WANT = ['The Dentist', 'The Arc', 'The Storm', 'The Confluence',
+                'The Lookout'];
   await untilN(() => doc().querySelectorAll('.tk-bundle').length >= WANT.length);
   const cards = Array.from(doc().querySelectorAll('.tk-bundle'));
   /* `found`, not `seen` -- `seen` is the visibility helper declared at the

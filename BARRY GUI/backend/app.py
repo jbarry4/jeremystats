@@ -30,6 +30,7 @@ from . import (aibeta as aibetamod,
                compose, continuity as continuitymod, csc,
                healthlog as healthlogmod,
                doppler as dopplermod,
+               confluence as confluencemod,
                incisor as incisormod,
                spark as sparkmod,
                coupling as couplingmod,
@@ -4249,6 +4250,14 @@ _VACC_RESUMED = {"done": False, "jobs": []}
 
 def _file_batch_answer(tool, t, out):
     """File one answer of a resumed batch the way the live batch does."""
+    if tool == "braces":
+        # Everything filing needs was written into the run record when the
+        # set was prepared; the recording is never opened again.
+        _braces_file_parts(got=out,
+                           computed_on=(out.get("computed_on")
+                                        or {"kind": "vacc"}),
+                           **(t.get("resume") or {})["braces"])
+        return
     if (t.get("resume") or {}).get("vacc_only"):
         # Prepared without a copy here, so filed without one: the key comes
         # from the answer, exactly as the live batch files it.
@@ -4274,8 +4283,9 @@ def _file_batch_answer(tool, t, out):
 
 
 def _resume_vacc_batches(ssh=None):
-    """Pick up every Incisor and Doppler batch a previous process submitted
-    and never finished filing. Once per process; returns the jobs adopted.
+    """Pick up every Incisor, Doppler and Braces batch a previous process
+    submitted and never finished filing. Once per process; returns the jobs
+    adopted.
 
     A restart used to orphan them: the polling thread died with the
     process and the answers sat in scratch until the purge took them.
@@ -4291,7 +4301,8 @@ def _resume_vacc_batches(ssh=None):
     out = []
     for rec in VACC_RUNLOG.open_runs():
         tool = rec.get("tool")
-        if tool not in ("incisor", "doppler") or rec.get("kind") != "array":
+        if tool not in ("incisor", "doppler", "braces") \
+                or rec.get("kind") != "array":
             continue
         if rec.get("job_id") and cfcmod.exists(rec["job_id"]):
             continue                    # this process is driving it already
@@ -4305,8 +4316,15 @@ def _resume_vacc_batches(ssh=None):
                 "vacc:scratch", id=rec.get("job_id")))
             job.log.append("picked up again after a restart: array %s"
                            % arr.array_id)
-            job.members_init([{"id": j.get("gid"), "label": j.get("label")}
-                              for j in tasks])
+            # By member where a task names one (Braces: one row per SET,
+            # and a recording can hold several), else by recording.
+            job.members_init([{"id": j.get("member") or j.get("gid"),
+                               "label": j.get("label")} for j in tasks])
+            if tool == "braces":
+                _braces_track(job, [{"id": j.get("member"),
+                                     "gid": j.get("gid"),
+                                     "label": j.get("label")}
+                                    for j in tasks], resumed=True)
             taken = set(rec.get("taken") or [])
 
             def on_result(i, t, got, tool=tool):
@@ -4509,9 +4527,16 @@ def _kind_band(kind):
     through come from ONE place, and editing the preset moves both.
 
     None for a kind with no preset, or no store to read it from.
+
+    A pooled set (The Confluence) holds dentate spikes and IEDs together,
+    and is looked at through the IED band: a dentate spike keeps its shape
+    under a 70 Hz low-pass, and an IED loses its slow wave -- half of what
+    it is -- under the dentate-spike band's 5 Hz high-pass.
     """
     if not kind:
         return None
+    if kind == "pooled":
+        kind = "ied"
     try:
         for pr in (STORE.get_presets("filters") or []):
             if pr.get("id") == kind:
@@ -4572,10 +4597,11 @@ def _braces_spec(body, sess, kind=None):
     return spec
 
 
-def _braces_vacc_run(rec, spec, use_chans, events, stamp_times, align_ids,
-                     left_out, depth_n, steps):
-    """A `VaccRun` of `braces.align` for one entry, and the `where` its rates
-    belong to.
+def _braces_vacc_parts(rec, spec, use_chans, events, stamp_times, align_ids,
+                       left_out, depth_n, push=True):
+    """Where one set runs on the cluster, what the node is sent, and what
+    it costs. A single run builds a `VaccRun` from this; a batch makes it a
+    task of one array (`_braces_vacc_task`).
 
     Everything the node needs travels in the spec: the contacts by CSC
     number (never by row index), the stamps and their labels, which labels
@@ -4587,7 +4613,8 @@ def _braces_vacc_run(rec, spec, use_chans, events, stamp_times, align_ids,
     gid = rec.get("gid")
     place = _vacc_place_for_gid(gid)          # raises with a sentence
     cfg = vaccmod.load_config(LOGS_DIR)
-    vaccmod.push_code(cfg, APP_DIR)
+    if push:
+        vaccmod.push_code(cfg, APP_DIR)
     where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
              else "vacc:scratch")
     spans = bracesmod.spans(stamp_times, spec["window_ms"])
@@ -4604,13 +4631,24 @@ def _braces_vacc_run(rec, spec, use_chans, events, stamp_times, align_ids,
         align_ids=sorted(str(a) for a in align_ids),
         left_out=[int(n) for n in left_out],
         depth_n=int(depth_n))
+    return {"cfg": cfg, "place": place, "where": where, "job_spec": job_spec,
+            "seconds": seconds,
+            # What a node holds: a few seconds of the contacts around a stamp.
+            "megasamples": max(1.0, 30000.0 * 10 * max(1, len(use_chans))
+                               / 1e6)}
+
+
+def _braces_vacc_run(rec, spec, use_chans, events, stamp_times, align_ids,
+                     left_out, depth_n, steps):
+    """A `VaccRun` of `braces.align` for one entry, and the `where` its rates
+    belong to."""
+    p = _braces_vacc_parts(rec, spec, use_chans, events, stamp_times,
+                           align_ids, left_out, depth_n)
     run = vaccrunmod.VaccRun(
-        cfg, "braces", job_spec, place["remote"],
-        plan={"seconds": seconds},
-        # What a node holds: a few seconds of the contacts around a stamp.
-        megasamples=max(1.0, 30000.0 * 10 * max(1, len(use_chans)) / 1e6),
+        p["cfg"], "braces", p["job_spec"], p["place"]["remote"],
+        plan={"seconds": p["seconds"]}, megasamples=p["megasamples"],
         tool_steps=list(steps), report=None)
-    return run, where
+    return run, p["where"]
 
 
 # ==========================================================================
@@ -5874,56 +5912,52 @@ def _braces_answered(rq_hash):
     return None
 
 
-@app.route("/api/braces/run", methods=["POST"])
-def api_braces_run():
-    """Read the channel, find its peaks, and propose where each stamp goes.
+class _BracesRefusal(ValueError):
+    """A run that will not happen, and the sentence why. A 400 that is not
+    an error: nothing went wrong, there is just nothing to read."""
 
-    A job, because it reads a whole channel -- seconds on a local drive and
-    a good deal longer over the network, which is long enough that a request
-    holding the connection open is the wrong shape. Poll it on
-    /api/cfc/job/<id>, which is not cfc-specific.
 
-    Nothing is written to the bank here. What comes out is a proposal.
+def _braces_label(rec):
+    return rec.get("session_label") or rec.get("name") or rec.get("id")
+
+
+def _braces_prepare(body):
+    """Everything one set's run needs, settled before anything is read.
+
+    One function for the one-set run and for a batch (2026-10-14), so a set
+    sent in a batch is asked exactly the question the one-set panel asks of
+    it -- the same hash, so each opens the other's answer -- and is refused
+    for the same reasons in the same words. Raises `_BracesRefusal` for a
+    set with nothing to do, anything else for a failure.
     """
-    body = request.get_json(force=True) or {}
-    try:
-        rec = _braces_entry(body.get("entry_id"))
-        sess, row = _braces_session(rec)
-        spec = _braces_spec(body, sess, kind=rec.get("type"))
-        # Where it runs. On the cluster when the recording is only there --
-        # the session then came over the link and there is nothing here to
-        # read -- or when the caller asks; here otherwise.
-        where = ("vacc" if (vacciomod.is_vacc(sess.get("path"))
-                            or str(body.get("where") or "") == "vacc")
-                 else "here")
-        # The segmentation only sizes the job's progress bar here: the
-        # alignment reads windows around the stamps, and no read needs it.
-        # A recording opened off the cluster has none on this side.
-        report = ({"segments": [{"duration_s": sess.get("duration_s")}]}
-                  if where == "vacc" else _incisor_report(sess["path"]))
-    except Exception as exc:                             # noqa: BLE001
-        return fail("braces/run", exc, 400,
-                    {"entry_id": body.get("entry_id")})
+    rec = _braces_entry(body.get("entry_id"))
+    sess, row = _braces_session(rec)
+    spec = _braces_spec(body, sess, kind=rec.get("type"))
+    # Where it runs. On the cluster when the recording is only there --
+    # the session then came over the link and there is nothing here to
+    # read -- or when the caller asks; here otherwise.
+    where = ("vacc" if (vacciomod.is_vacc(sess.get("path"))
+                        or str(body.get("where") or "") == "vacc")
+             else "here")
+    # The segmentation only sizes the job's progress bar here: the
+    # alignment reads windows around the stamps, and no read needs it.
+    # A recording opened off the cluster has none on this side.
+    report = ({"segments": [{"duration_s": sess.get("duration_s")}]}
+              if where == "vacc" else _incisor_report(sess["path"]))
 
     # Whichever version supplies the stamps, addressed by its id -- the
     # NUMBER is not unique, and this bank holds entries with two versions
     # numbered 3 and two numbered 4.
     src_v = body.get("from_version")
-    try:
-        if src_v is None:
-            events = rec.get("events") or []
-        else:
-            events, _dropped = BANK.events_at(rec, src_v)
-    except Exception as exc:                             # noqa: BLE001
-        return fail("braces/run", exc, 400, {"from_version": src_v})
+    if src_v is None:
+        events = rec.get("events") or []
+    else:
+        events, _dropped = BANK.events_at(rec, src_v)
     if not events:
-        return jsonify({"ok": False,
-                        "error": "There are no stamps in that version to "
-                                 "align."}), 400
+        raise _BracesRefusal("There are no stamps in that version to align.")
 
-    who = _braces_who(body)
-    span = sum(float(s.get("duration_s") or 0.0)
-               for s in (report.get("segments") or [])) or 1.0
+    span = sum(float(s_.get("duration_s") or 0.0)
+               for s_ in (report.get("segments") or [])) or 1.0
 
     # Only the stamps somebody called a dentate spike. `good: True` is the
     # curation vocabulary's own mark for "this names a real event", so the
@@ -5959,14 +5993,12 @@ def api_braces_run():
     n_good = sum(1 for ev in events
                  if (ev.get("label_id") or ev.get("label")) in align_ids)
     if not n_good:
-        return jsonify({
-            "ok": False,
-            "error": "Nothing in this set is %s: all %d candidate(s) "
-                     "were rejected or are still undecided. There is "
-                     "nothing to align, so nothing was read."
-                     % ("an interictal discharge"
-                        if rec.get("type") == "ied" else "a dentate spike",
-                        len(events))}), 400
+        raise _BracesRefusal(
+            "Nothing in this set is %s: all %d candidate(s) were rejected "
+            "or are still undecided. There is nothing to align, so nothing "
+            "was read." % ("an interictal discharge"
+                           if rec.get("type") == "ied" else "a dentate spike",
+                           len(events)))
 
     # Which channels go into the profile.
     #
@@ -5981,9 +6013,8 @@ def api_braces_run():
     else:
         want = {int(c["number"]) for c in all_ch if not c.get("bad")}
     if not want:
-        return jsonify({"ok": False,
-                        "error": "No channels are ticked, so there is "
-                                 "nothing to build a profile from."}), 400
+        raise _BracesRefusal("No channels are ticked, so there is nothing to "
+                             "build a profile from.")
 
     # A contact nobody wants is INTERPOLATED, not removed.
     #
@@ -5996,6 +6027,9 @@ def api_braces_run():
     # their neighbours: they carry no information of their own, which is
     # what "we do not trust this wire" means.
     idx = [i for i, c in enumerate(all_ch) if int(c["number"]) in want]
+    if not idx:
+        raise _BracesRefusal("None of the channels asked for are in this "
+                             "recording.")
     use_chans = all_ch[idx[0]:idx[-1] + 1]
     left_out = [int(c["number"]) for c in use_chans
                 if int(c["number"]) not in want]
@@ -6003,77 +6037,400 @@ def api_braces_run():
     stamp_times = [float(e["start"]) for e in events
                    if e.get("start") is not None]
     depth_n = int(body.get("depth_band") or bracesmod.DEPTH_BAND)
-
-    # Asked before? Then the answer is the alignment already made, opened
-    # rather than read again -- unless somebody asked to read it again.
     rq_hash, rq = _braces_question(rec, src_v, spec, want, depth_n,
                                    stamp_times)
-    if not body.get("force"):
-        had = _braces_answered(rq_hash)
-        if had:
-            return jsonify({"ok": True, "existing": _braces_set_row(had),
-                            "request_hash": rq_hash})
-
-    def file_set(got, computed_on=None):
-        """File one alignment as a proposal, wherever it was computed."""
-        out, rows, params = got["out"], got["rows"], got["params"]
-        # The question it answers, so asking it again opens this.
-        params["request_hash"] = rq_hash
-        params["request"] = {k: v for k, v in rq.items() if k != "spec"}
-        if computed_on:
-            # Where it was computed, on the set itself: a proposal made on a
-            # compute node is the same proposal, and says so.
-            out["computed_on"] = computed_on
-            params["computed_on"] = computed_on
-        made = BRACES.create(rec["id"], rec.get("gid"), src_v, params, rows,
-                             out, name=rec.get("name"), by=who)
-        # The summary travels with the job's result so the panel can draw
-        # the counts and the histogram without a second request.
-        return {"set_id": made["set_id"], "summary": out, "params": params,
-                "n_rows": len(rows),
-                "n_channels": got.get("n_channels"),
-                "from_version": src_v,
-                "where": "vacc" if computed_on else "here"}
-
     steps = [("ds depth", len(use_chans)),
              ("ds windows", max(1, len(bracesmod.spans(
                  stamp_times, spec["window_ms"]))))]
+    return {"rec": rec, "sess": sess, "row": row, "spec": spec,
+            "where": where, "report": report, "src_v": src_v,
+            "events": events, "align_ids": align_ids,
+            "use_chans": use_chans, "left_out": left_out,
+            "stamp_times": stamp_times, "depth_n": depth_n,
+            "rq_hash": rq_hash, "rq": rq, "span": span, "steps": steps,
+            "who": _braces_who(body)}
 
+
+def _braces_file_parts(entry_id, gid, name, src_v, rq_hash, request, who,
+                       got, computed_on=None):
+    """File one alignment as a proposal, wherever it was computed.
+
+    By its parts rather than from a preparation, so an answer a batch
+    collects after a restart -- when nothing of the preparation is left but
+    the run record -- is filed exactly as the live batch files it."""
+    out, rows, params = got["out"], got["rows"], got["params"]
+    # The question it answers, so asking it again opens this.
+    params["request_hash"] = rq_hash
+    params["request"] = dict(request or {})
+    if computed_on:
+        # Where it was computed, on the set itself: a proposal made on a
+        # compute node is the same proposal, and says so.
+        out["computed_on"] = computed_on
+        params["computed_on"] = computed_on
+    made = BRACES.create(entry_id, gid, src_v, params, rows, out,
+                         name=name, by=who)
+    # The summary travels with the job's result so the panel can draw
+    # the counts and the histogram without a second request.
+    return {"set_id": made["set_id"], "summary": out, "params": params,
+            "n_rows": len(rows),
+            "n_channels": got.get("n_channels"),
+            "from_version": src_v,
+            "where": "vacc" if computed_on else "here"}
+
+
+def _braces_resume_parts(prep):
+    """What filing this set's answer needs, small enough for a run record."""
+    rec = prep["rec"]
+    return {"entry_id": rec["id"], "gid": rec.get("gid"),
+            "name": rec.get("name"), "src_v": prep["src_v"],
+            "rq_hash": prep["rq_hash"],
+            "request": {k: v for k, v in prep["rq"].items() if k != "spec"},
+            "who": prep["who"]}
+
+
+def _braces_file(prep, got, computed_on=None):
+    return _braces_file_parts(got=got, computed_on=computed_on,
+                              **_braces_resume_parts(prep))
+
+
+@app.route("/api/braces/run", methods=["POST"])
+def api_braces_run():
+    """Read the channel, find its peaks, and propose where each stamp goes.
+
+    A job, because it reads a whole channel -- seconds on a local drive and
+    a good deal longer over the network, which is long enough that a request
+    holding the connection open is the wrong shape. Poll it on
+    /api/cfc/job/<id>, which is not cfc-specific.
+
+    Nothing is written to the bank here. What comes out is a proposal.
+    """
+    body = request.get_json(force=True) or {}
+    try:
+        prep = _braces_prepare(body)
+    except _BracesRefusal as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("braces/run", exc, 400,
+                    {"entry_id": body.get("entry_id"),
+                     "from_version": body.get("from_version")})
+
+    # Asked before? Then the answer is the alignment already made, opened
+    # rather than read again -- unless somebody asked to read it again.
+    if not body.get("force"):
+        had = _braces_answered(prep["rq_hash"])
+        if had:
+            return jsonify({"ok": True, "existing": _braces_set_row(had),
+                            "request_hash": prep["rq_hash"]})
+
+    rec, spec, where = prep["rec"], prep["spec"], prep["where"]
+    use_chans, steps = prep["use_chans"], prep["steps"]
     if where == "vacc":
         # The same `braces.align`, on a compute node, reading the cluster's
         # copy -- the recording is not on this computer, or somebody asked
         # for the cluster. Stamps, channels and settings go up with the job;
         # the proposal comes back and is filed here like any other.
         try:
-            run, vwhere = _braces_vacc_run(rec, spec, use_chans, events,
-                                           stamp_times, align_ids, left_out,
-                                           depth_n, steps)
+            run, vwhere = _braces_vacc_run(
+                rec, spec, use_chans, prep["events"], prep["stamp_times"],
+                prep["align_ids"], prep["left_out"], prep["depth_n"], steps)
         except Exception as exc:                         # noqa: BLE001
             return fail("braces/run-vacc", exc, 400,
                         {"entry_id": body.get("entry_id")})
 
         def work(job, _run=run):
             got = _run.work(job)
-            return file_set(got, got.get("computed_on") or {"kind": "vacc"})
+            return _braces_file(prep, got,
+                                got.get("computed_on") or {"kind": "vacc"})
 
         job = cfcmod.start(spec, vaccrunmod.steps() + steps, work,
-                           max(0.001, span / 60.0), vwhere)
+                           max(0.001, prep["span"] / 60.0), vwhere)
     else:
         def work(job):
-            return file_set(bracesmod.align(
-                sess, use_chans, spec, events, stamp_times, align_ids,
-                left_out, depth_n, job))
+            return _braces_file(prep, bracesmod.align(
+                prep["sess"], use_chans, spec, prep["events"],
+                prep["stamp_times"], prep["align_ids"], prep["left_out"],
+                prep["depth_n"], job))
 
-        job = cfcmod.start(spec, steps, work, max(0.001, span / 60.0))
+        job = cfcmod.start(spec, steps, work, max(0.001, prep["span"] / 60.0))
     STORE.record_activity([{
         "action": "braces.run",
         "detail": {"entry": rec["id"], "n_channels": len(use_chans),
-                   "n": len(events), "from_version": src_v,
+                   "n": len(prep["events"]), "from_version": prep["src_v"],
                    "window_ms": spec["window_ms"], "where": where},
     }])
     return jsonify({"ok": True, "job": job.snapshot(),
-                    "n_channels": len(use_chans), "left_out": left_out,
-                    "n": len(events), "where": where})
+                    "n_channels": len(use_chans), "left_out": prep["left_out"],
+                    "n": len(prep["events"]), "where": where})
+
+
+# MANY SETS AT ONCE (2026-10-14).
+#
+# "Many" used to be the browser walking its list and asking for one run at a
+# time, waiting for each to finish before asking for the next. So it ran only
+# while the panel stayed open -- leaving the view or reloading ended the
+# queue, silently, with nothing on the server to say it had ever started --
+# and it only offered what this computer could open, so on a laptop with no
+# drives, where every recording is on the VACC, there was nothing to tick and
+# nothing was ever sent.
+#
+# Now it is one job on the server, like Doppler's: the sets this computer can
+# open are aligned here one after another, the ones only the cluster has go
+# up as ONE array job and run side by side there, and both halves run at the
+# same time. Each set is prepared by `_braces_prepare`, so it asks exactly
+# the question the one-set panel would and a set already answered with these
+# settings is opened rather than read again. The panel finds the batch again
+# on `/api/braces/inflight` after a reload, and an array the cluster is still
+# running when Jarvis restarts is picked up and filed (`_resume_vacc_batches`).
+_BRACES_INFLIGHT = {}
+_BRACES_INFLIGHT_LOCK = threading.Lock()
+# An hour: long enough to come back to a batch that has landed and read how
+# it went, row by row. Every set it made is in the Alignments list for good.
+BRACES_INFLIGHT_KEEP_S = 3600.0
+
+
+def _braces_track(job, members, settings=None, resumed=False):
+    with _BRACES_INFLIGHT_LOCK:
+        _BRACES_INFLIGHT[job.id] = {
+            "id": job.id, "kind": "many", "members": list(members or []),
+            "settings": dict(settings or {}), "started": time.time(),
+            "by": (STORE.provenance() or {}).get("user"),
+            "resumed": bool(resumed)}
+
+
+def _braces_vacc_task(prep):
+    """One set as a task of a VACC array: what `_braces_vacc_run` builds for
+    a single run, without the run, plus what filing its answer needs."""
+    rec = prep["rec"]
+    parts = _braces_vacc_parts(rec, prep["spec"], prep["use_chans"],
+                               prep["events"], prep["stamp_times"],
+                               prep["align_ids"], prep["left_out"],
+                               prep["depth_n"], push=False)
+    job_spec = parts["job_spec"]
+    return {
+        # The member is the SET: one recording can hold several sets, and
+        # each is its own row of the batch.
+        "gid": rec.get("gid"), "member": rec["id"], "label": _braces_label(rec),
+        "sess": None, "report": None, "key": None,
+        "spec_local": job_spec,
+        "spec_remote": dict(job_spec, path=parts["place"]["remote"]),
+        "tool_steps": list(prep["steps"]),
+        "seconds": parts["seconds"], "megasamples": parts["megasamples"],
+        "state": parts["place"].get("state"),
+        "resume": {"braces": _braces_resume_parts(prep)},
+    }
+
+
+@app.route("/api/braces/batch", methods=["POST"])
+def api_braces_batch():
+    """Align every set sent, as one job: here where this computer has the
+    recording, on the VACC where only the cluster does.
+
+    `entries` is [{"id", "from_version"}]; the settings are the one-set
+    panel's (`measure`, `window_ms`, `estimator`, ...) and go to every set.
+    Nothing is banked: each set lands as a proposal to review.
+    """
+    body = request.get_json(force=True) or {}
+    items = [it for it in (body.get("entries") or [])
+             if isinstance(it, dict) and it.get("id")]
+    if not items:
+        return jsonify({"ok": False,
+                        "error": "Tick the sets to align first."}), 400
+    seen, members = set(), []
+    for it in items:
+        if it["id"] in seen:
+            continue
+        seen.add(it["id"])
+        rec = BANK.get(it["id"])
+        members.append({"id": it["id"], "gid": (rec or {}).get("gid"),
+                        "label": _braces_label(rec) if rec else it["id"],
+                        "from_version": it.get("from_version")})
+    force = bool(body.get("force"))
+    settings = {k: body.get(k) for k in
+                ("measure", "window_ms", "estimator", "line_hz",
+                 "smooth_ms", "depth_band")
+                if body.get(k) is not None}
+    # Every set to the cluster, even the ones this computer has: side by
+    # side there rather than one after another here. Only where the cluster
+    # can read the recording -- the rest stay here rather than fail.
+    all_vacc = str(body.get("where") or "") == "vacc"
+    who = _braces_who(body)
+
+    def work(job):
+        job.members_init([{"id": m["id"], "label": m["label"]}
+                          for m in members])
+        here, tasks = [], []
+        tally = {"done": 0, "failed": 0, "skipped": 0}
+        for m in members:
+            job.check()
+            mid = m["id"]
+            job.member(mid, status="waiting", step="opening the recording")
+            try:
+                prep = _braces_prepare(dict(settings, entry_id=mid, by=who,
+                                            from_version=m["from_version"]))
+            except Exception as exc:                     # noqa: BLE001
+                tally["failed"] += 1
+                job.member(mid, status="failed", step=None,
+                           error=str(exc)[:300])
+                continue
+            if all_vacc and prep["where"] != "vacc":
+                try:
+                    _vacc_place_for_gid(prep["rec"].get("gid"))
+                    prep["where"] = "vacc"
+                except Exception:                        # noqa: BLE001
+                    pass        # the cluster cannot read it; this computer can
+            if not force:
+                had = _braces_answered(prep["rq_hash"])
+                if had:
+                    tally["skipped"] += 1
+                    job.member(mid, status="done", cached=True, step=None,
+                               set_id=had["set_id"],
+                               where="vacc" if prep["where"] == "vacc"
+                               else "here")
+                    continue
+            if prep["where"] == "vacc":
+                try:
+                    tasks.append(_braces_vacc_task(prep))
+                except Exception as exc:                 # noqa: BLE001
+                    tally["failed"] += 1
+                    job.member(mid, status="failed", step=None,
+                               error=str(exc)[:300])
+                    continue
+                prep["sess"] = None
+                job.member(mid, status="queued", where="vacc",
+                           step="waiting for the cluster")
+            else:
+                here.append(prep)
+                job.member(mid, status="waiting", where="here",
+                           step="waiting its turn on this computer")
+
+        # The cluster's half goes up first and runs while this computer
+        # works through its own: both halves at once.
+        arr = {}
+        thread = None
+        if tasks:
+            def go_cluster():
+                try:
+                    cfg = vaccmod.load_config(LOGS_DIR)
+                    vaccmod.push_code(cfg, APP_DIR)
+                    cap = (INCISOR_NETFILES_CAP
+                           if any(t.get("state") == vaccmod.NATIVE
+                                  for t in tasks) else None)
+
+                    def adopt(t, out):
+                        filed = _braces_file_parts(
+                            got=out, computed_on=(out.get("computed_on")
+                                                  or {"kind": "vacc"}),
+                            **t["resume"]["braces"])
+                        job.member(t["member"], set_id=filed["set_id"],
+                                   n=int((filed["summary"] or {}).get("n")
+                                         or 0),
+                                   n_flagged=int((filed["summary"] or {})
+                                                 .get("n_flagged") or 0))
+
+                    arr["done"], arr["failed"] = _vacc_run_array(
+                        job, tasks, 0, cap, tool="braces", adopt=adopt,
+                        runlog=VACC_RUNLOG,
+                        record={"tool": "braces", "job_id": job.id})
+                except Exception as exc:                 # noqa: BLE001
+                    arr["error"] = exc
+                    for t in tasks:
+                        snap = job.snapshot()
+                        row = next((r for r in (snap["members"] or [])
+                                    if r["id"] == t["member"]), {})
+                        if row.get("status") not in ("done", "failed"):
+                            job.member(t["member"], status="failed",
+                                       step=None, error=str(exc)[:300])
+            thread = threading.Thread(target=go_cluster, daemon=True,
+                                      name="barry-braces-array-" + job.id)
+            thread.start()
+
+        for prep in here:
+            job.check()
+            mid = prep["rec"]["id"]
+            try:
+                job.member(mid, status="running", step="reading")
+                got = bracesmod.align(
+                    prep["sess"], prep["use_chans"], prep["spec"],
+                    prep["events"], prep["stamp_times"], prep["align_ids"],
+                    prep["left_out"], prep["depth_n"], _MemberJob(job, mid))
+                filed = _braces_file(prep, got)
+                summ = filed["summary"] or {}
+                tally["done"] += 1
+                job.member(mid, status="done", step=None,
+                           set_id=filed["set_id"],
+                           n=int(summ.get("n") or 0),
+                           n_flagged=int(summ.get("n_flagged") or 0))
+            except cfcmod.Canceled:
+                raise
+            except Exception as exc:                     # noqa: BLE001
+                tally["failed"] += 1
+                job.member(mid, status="failed", step=None,
+                           error=str(exc)[:300])
+            finally:
+                # Let the recording go once its set is filed: a batch of
+                # forty holding forty sessions is memory nobody needs.
+                prep["sess"] = None
+        if thread is not None:
+            while thread.is_alive():
+                job.check()
+                thread.join(1.0)
+            tally["done"] += int(arr.get("done") or 0)
+            tally["failed"] += int(arr.get("failed") or 0)
+        return dict(tally, n=len(members), here=len(here),
+                    cluster=len(tasks))
+
+    # Counted in sets. Each set's own reading is its row's business.
+    job = cfcmod.start({"path": ""}, [("panorama pool", len(members))], work,
+                       1.0, "here")
+    _braces_track(job, [{"id": m["id"], "gid": m["gid"], "label": m["label"]}
+                        for m in members],
+                  dict(settings, force=force, all_vacc=all_vacc))
+    STORE.record_activity([{"action": "braces.batch",
+                            "detail": {"n": len(members), "force": force,
+                                       "settings": settings}}])
+    return jsonify({"ok": True, "job": job.snapshot(), "n": len(members)})
+
+
+@app.route("/api/braces/inflight")
+def api_braces_inflight():
+    """Every Braces batch still going, and any that ended in the last hour,
+    each with its job's own snapshot: what the panel finds again when it is
+    opened, reloaded, or come back to."""
+    now = time.time()
+    with _BRACES_INFLIGHT_LOCK:
+        items = list(_BRACES_INFLIGHT.values())
+    out, gone = [], []
+    for it in items:
+        job = cfcmod.get(it["id"])
+        if job is None:
+            gone.append(it["id"])
+            continue
+        snap = job.snapshot()
+        if snap["status"] != "running" and \
+                now - float(job.ended or now) > BRACES_INFLIGHT_KEEP_S:
+            gone.append(it["id"])
+            continue
+        snap.pop("spec", None)
+        out.append(dict(it, job=snap))
+    if gone:
+        with _BRACES_INFLIGHT_LOCK:
+            for jid in gone:
+                _BRACES_INFLIGHT.pop(jid, None)
+    out.sort(key=lambda r: r["started"], reverse=True)
+    return jsonify({"ok": True, "jobs": out})
+
+
+@app.route("/api/braces/batch/<job_id>/cancel", methods=["POST"])
+def api_braces_batch_cancel(job_id):
+    """Stop a batch: the set being read here stops, the cluster's array is
+    cancelled, and every set already filed stays filed."""
+    job = cfcmod.get(job_id)
+    with _BRACES_INFLIGHT_LOCK:
+        ours = job_id in _BRACES_INFLIGHT
+    if job is None or not ours:
+        return jsonify({"ok": False, "error": "No such batch."}), 404
+    job.cancel()
+    return jsonify({"ok": True})
 
 
 @app.route("/api/braces/sets")
@@ -8293,10 +8650,35 @@ def _rootcanal_events(rec, src_v):
         have = live.get(curation._tkey(ev.get("start")))
         if have:
             for k in ("end", "channel", "amplitude", "from_t", "align_flag",
-                      "clipped", "excluded", "kept"):
+                      "clipped", "excluded", "kept", "origin", "pair_t"):
                 if have.get(k) is not None and k not in item:
                     item[k] = have[k]
         out.append(item)
+    return out
+
+
+def _rootcanal_origins(rec, events):
+    """{time key -> 'incisor' | 'doppler' | 'both'} for a pooled set, so
+    Root Canal can colour its space by which detector found each event.
+
+    From the live set, by time and by where Lock moved a stamp from: a
+    version older than Lock's alignment holds the stamps before they moved,
+    and its snapshot carries no origin of its own. Empty for anything that
+    is not a pooled set."""
+    if (rec.get("type") or "") != "pooled":
+        return {}
+    out = {}
+    for ev in (rec.get("events") or []):
+        o = ev.get("origin")
+        if not o:
+            continue
+        for t in (ev.get("start"), ev.get("from_t")):
+            k = curation._tkey(t)
+            if k is not None:
+                out.setdefault(k, o)
+    for ev in (events or []):
+        if ev.get("origin"):
+            out.setdefault(curation._tkey(ev.get("start")), ev["origin"])
     return out
 
 
@@ -8574,7 +8956,11 @@ def api_rootcanal_candidates():
                 ied_by.setdefault(fe, rec)
     out = []
     for rec in BANK.all():
-        if (rec.get("type") or "") != "ds":
+        # Pooled sets too (The Confluence, 2026-10-14): Incisor's and
+        # Doppler's events, sorted in Panning and lined up in Lock, are
+        # teased apart in the same three axes -- coloured by which detector
+        # found each one.
+        if (rec.get("type") or "") not in ("ds", "pooled"):
             continue
         if gid and rec.get("gid") != gid:
             continue
@@ -8595,6 +8981,7 @@ def api_rootcanal_candidates():
                          if r.get("usable") and r.get("aligned")]
         out.append({
             "entry_id": rec["id"], "name": rec.get("name"),
+            "type": rec.get("type") or "ds",
             "session_label": rec.get("session_label"),
             "gid": rec.get("gid"), "project": rec.get("project"),
             "mouse": rec.get("mouse"), "session": rec.get("session"),
@@ -8762,6 +9149,14 @@ def api_rootcanal_fit():
                     {"entry_id": body.get("entry_id"),
                      "from_version": body.get("from_version")})
     res["params"] = dict(res["params"], read=rh)
+    # Which detector found each event, for a pooled set.
+    res["entry_type"] = rec.get("type") or "ds"
+    org = _rootcanal_origins(rec, None)
+    if org:
+        for e in res.get("events") or []:
+            o = org.get(curation._tkey(e.get("t")))
+            if o:
+                e["origin"] = o
     # Whether the version being fitted is itself Root Canal's output. The
     # panel should say so: see the guard in `api_rootcanal_commit`.
     res["source_tag"] = _rootcanal_source_tag(rec, body.get("from_version"))
@@ -8839,6 +9234,132 @@ def _rootcanal_figures(body, rec, p, answer_hash, src_v):
     return filed
 
 
+def _rootcanal_commit_pooled(body, rec, p, res, rh, events, src_v):
+    """Bank Root Canal's answer about a POOLED set: named, not split.
+
+    A dentate-spike set is cleaned -- the IEDs come out into an entry of
+    their own -- because it is meant to hold dentate spikes only. A pooled
+    set (The Confluence) is meant to hold both: it is Incisor's and
+    Doppler's events together, so taking one kind out would undo the pool.
+    So every event keeps its place and gets its cluster's name in `rc_name`
+    ("DS slow", "IED big"), as the next version of the same entry. Its
+    origin rides along, so the question the Confluence was built to ask --
+    which detector's events land in which cluster -- can be read off the
+    version. Nothing moves and nothing is removed.
+    """
+    cls_at = {curation._tkey(e["t"]): e for e in res["events"]}
+    out, named = [], {"ds": 0, "ied": 0}
+    cross = {}
+    for ev in events:
+        item = dict(ev)
+        hit = cls_at.get(curation._tkey(ev.get("start")))
+        if hit is not None and hit.get("cls") in ("ds", "ied"):
+            item["rc_name"] = hit.get("name") or hit["cls"].upper()
+            named[hit["cls"]] += 1
+            o = ev.get("origin") or "unknown"
+            row = cross.setdefault(o, {"ds": 0, "ied": 0})
+            row[hit["cls"]] += 1
+        out.append(item)
+    counts = res["counts"]
+    who = (body.get("by") or "").strip() or None
+    answer_hash = ROOTCANAL.hash_of(p.as_dict())
+    user_note = (body.get("note") or "").strip()
+    where = ("v%s" % src_v) if src_v is not None else "the live set"
+    filed = _rootcanal_figures(body, rec, p, answer_hash, src_v)
+    flags = rootcanal.flag_times(res)
+    words = {"incisor": "Incisor's", "doppler": "Doppler's",
+             "both": "both detectors'", "unknown": "unmarked"}
+    by_origin = "; ".join(
+        "%s %d DS-like, %d IED-like" % (words.get(o, o), c["ds"], c["ied"])
+        for o, c in sorted(cross.items()))
+    note = ("Root Canal named %d pooled event(s) read from %s: %d DS-like, "
+            "%d IED-like%s. Nothing was removed. %s %s Results bank "
+            "rootcanal/%s__%s."
+            % (named["ds"] + named["ied"], where, named["ds"], named["ied"],
+               (", %d not measured" % counts["unmeasured"])
+               if counts.get("unmeasured") else "",
+               ("By origin: " + by_origin + ".") if by_origin else "",
+               res["rule"], rec.get("gid"), answer_hash)).strip()
+    if user_note:
+        note += " " + user_note
+    tally = {}
+    for ev in out:
+        k = ev.get("label_id") or ev.get("label") or "unspecified"
+        tally[k] = tally.get(k, 0) + 1
+    names = rec.get("label_names") or {
+        l["id"]: l["name"] for l in curation.KINDS["pooled"]["labels"]}
+    try:
+        made = BANK.add(dict(
+            {k: rec.get(k) for k in (
+                "gid", "project", "mouse", "session", "session_key",
+                "session_loose_key", "session_label", "session_path",
+                "recording_start", "duration_s")},
+            id=rec["id"], type="pooled",
+            type_name=rec.get("type_name") or "Pooled spike",
+            name=rec.get("name"), events=out, by_label=tally,
+            label_names=names, curated=True,
+            curation_label=rec.get("curation_label") or "*",
+            aligned=rec.get("aligned"),
+            based_on=src_v if src_v is not None else rec.get("based_on"),
+            pipeline="Root Canal (pooled, named)",
+            added_by=who,
+            parameters=dict(p.as_dict(), tool="rootcanal", read_hash=rh,
+                            params_hash=answer_hash, figures=filed,
+                            by_origin=cross, **flags),
+            version_note=note, version_tag="rootcanal"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/commit", exc, 400,
+                    {"entry_id": rec["id"], "step": "pooled version"})
+    version = versionsmod.tip_next(made.get("versions") or [])[0]
+    try:
+        ROOTCANAL.put({
+            "gid": rec.get("gid"), "params_hash": answer_hash,
+            "kind": "classification", "entry_id": rec["id"],
+            "entry_name": rec.get("name"), "entry_type": "pooled",
+            "session_label": rec.get("session_label"),
+            "from_version": src_v, "read": rh, "ds_version": version,
+            "params": p.as_dict(), "n": res["n"], "n_used": res["n_used"],
+            "counts": counts, "removed": 0,
+            "kept": counts["ds"] + counts["ied"] + counts["unmeasured"],
+            "by_origin": cross, "rule": res["rule"],
+            "centres": res["centres"], "scale": res["scale"],
+            "axes": res["axes"],
+            "columns": ["i", "t", "amp_uV", "hw_ms", "hf_db", "cls",
+                        "flipped", "contact", "axes", "partial", "wide",
+                        "origin"],
+            "rows": [[e["i"], e["t"], e["amp_uV"], e["hw_ms"], e["hf_db"],
+                      e["cls"], e["flipped"], e["contact"], e["axes"],
+                      e["partial"], e["wide"], e.get("origin")]
+                     for e in res["events"]],
+            "k": res.get("k"), "clusters": res.get("clusters"),
+            "margin_used": res.get("margin_used"), "figures": filed,
+        })
+    except Exception as exc:                             # noqa: BLE001
+        STORE.record_error("rootcanal/result",
+                           "The set was banked but the result record was "
+                           "not filed: %s" % exc, None,
+                           {"entry_id": rec["id"]})
+    STORE.record_activity([{
+        "action": "rootcanal.commit",
+        "detail": {"entry": rec["id"], "from_version": src_v,
+                   "ds_version": version, "pooled": True,
+                   "named": named, "read": rh},
+    }])
+    written = bool(made.get("new_version"))
+    out_ = {"ok": True, "ds_entry": rec["id"], "ds_version": version,
+            "ied_entry": None, "ied_version": None, "pooled": True,
+            "named": named, "by_origin": cross,
+            "removed": 0, "kept": len(out),
+            "unmeasured": counts["unmeasured"],
+            "partial": counts["partial"], "wide": counts["wide"],
+            "written": {"ds": written, "ied": False},
+            "figures": filed, "params_hash": answer_hash}
+    if not written:
+        out_["already"] = ("These names are already banked, so nothing was "
+                           "written. Version %s still holds them." % version)
+    return jsonify(out_)
+
+
 @app.route("/api/rootcanal/commit", methods=["POST"])
 def api_rootcanal_commit():
     """Bank the answer: the DS set without its IEDs, and the IEDs.
@@ -8895,6 +9416,9 @@ def api_rootcanal_commit():
                      "take out another share of real dentate spikes. Read "
                      "from the version before it -- or, if a second pass "
                      "really is meant, send it again with again: true."}), 400
+
+    if (rec.get("type") or "") == "pooled":
+        return _rootcanal_commit_pooled(body, rec, p, res, rh, events, src_v)
 
     cls_at = {curation._tkey(e["t"]): e for e in res["events"]}
     ds_out, ied_src = [], []
@@ -14125,11 +14649,8 @@ def _strata_context(gid, body, need_scan=True):
     if err:
         raise stratamod.StrataError(err.get("error") or "Could not open the "
                                     "recording.")
-    if vacciomod.is_vacc(sess.get("path")):
-        raise stratamod.StrataError(
-            "This recording is only on the cluster. StrataScope reads every "
-            "channel of the whole recording once, which needs a copy on this "
-            "computer.")
+    # A recording only the cluster has is read there (_strata_scan_vacc);
+    # everything after the read works from the folder brought home.
     stored = _stored_for(sess)
     probe_filed = _probe_for(stored) or "h3"
     bad = sorted({int(b) for b in (stored.get("bad_channels") or [])})
@@ -14245,7 +14766,8 @@ def api_strata_scan(gid):
         if st.get("scanned") and st.get("current") and not body.get("force"):
             return jsonify({"ok": True, "cached": True, "status": st})
         rep_ = None
-        if sess.get("source") == "ncs":
+        on_vacc = vacciomod.is_vacc(sess.get("path"))
+        if sess.get("source") == "ncs" and not on_vacc:
             rep_ = _incisor_report(sess["path"])
         # The channels the steps use and no others: at most the first 64
         # (a dual implant's hippocampal array; the rest of anything bigger).
@@ -14260,6 +14782,9 @@ def api_strata_scan(gid):
         return jsonify({"ok": True, "cached": False, "joined": True,
                         "job": going.snapshot(),
                         "estimate_s": stratamod.estimate_seconds(plan)})
+
+    if on_vacc:
+        return _strata_scan_vacc(gid, sess, ctx, plan, only)
 
     spec = {"path": sess.get("path"), "gid": gid, "tool": "strata",
             "label": _strata_label(ctx, sess)}
@@ -14282,6 +14807,135 @@ def api_strata_scan(gid):
     }])
     return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
                     "estimate_s": stratamod.estimate_seconds(plan)})
+
+
+def _strata_scan_vacc(gid, sess, ctx, plan, only):
+    """StrataScope's read of a recording only the cluster has (2026-10-14).
+
+    The read is the only step that touches the recording, so it is the only
+    one that goes: a compute node runs the same `stratasteps.scan`
+    (vacc_run.py, tool "strata") into a folder beside the run, and the
+    folder -- meta, the per-second bins, the 1250 Hz copy, a few hundred
+    megabytes for a half-hour recording -- comes home in one ssh stream and
+    is put where a local read would have put it (`adopt_scan`). The
+    guide, the curves, the proposals, ICA and the phase map then work from
+    it here, as for any other recording. The folder on the cluster is
+    removed once it is home: a workspace is not a cache.
+    """
+    bad = list(ctx["bad"])
+    try:
+        place = _vacc_place_for_gid(vacciomod.gid_of(sess.get("path")))
+        cfg = vaccmod.load_config(LOGS_DIR)
+        vaccmod.push_code(cfg, APP_DIR)
+    except Exception as exc:                             # noqa: BLE001
+        return _strata_fail("scan", exc, gid)
+    where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
+             else "vacc:scratch")
+    steps = [(stratamod.STAGE_READ, plan["n_read"])]
+    # The size of what comes home, for the fetch's progress: 2 bytes a
+    # sample of the 1250 Hz copy for every channel, and the bins.
+    mb = max(1, int(plan["lfp_bytes"] / 1e6 * 1.1))
+    spec = {"path": sess.get("path"), "gid": gid, "tool": "strata",
+            "label": _strata_label(ctx, sess), "channels": list(only),
+            "skip": bad, "invert": bool(sess.get("invert", True)),
+            "workers": 4}
+    seconds = max(120.0, stratamod.estimate_seconds(plan, workers=4) * 2.0)
+    run = vaccrunmod.VaccRun(
+        cfg, "strata", spec, place["remote"], plan={"seconds": seconds},
+        megasamples=max(0.001, float(plan.get("span_s") or 0)
+                        * float(plan.get("fs") or 30000.0) * 2 * 4 / 1e6),
+        tool_steps=list(steps), report=None)
+
+    def work(job):
+        out = run.work(job)
+        _strata_bring_home(cfg, run, gid, sess, out, job, where, place)
+        return {"status": stratamod.status(gid, sess, bad), "meta": {
+            k: (out.get("meta") or {}).get(k)
+            for k in ("n_bins", "channels", "end_s", "scanned_at", "lfp_fs")},
+            "where": where}
+
+    job = cfcmod.start(spec, vaccrunmod.steps() + steps
+                       + [(stratamod.STAGE_FETCH, mb)], work,
+                       max(0.001, plan["megasamples"]), where)
+    _strata_job_keep(gid, "scan", job)
+    STORE.record_activity([{
+        "action": "strata.scan",
+        "detail": {"gid": gid, "channels": plan["n_read"], "where": where,
+                   "remote": place.get("remote"),
+                   "span_s": round(plan["span_s"], 1)},
+    }])
+    return jsonify({"ok": True, "cached": False, "job": job.snapshot(),
+                    "estimate_s": seconds, "where": where})
+
+
+def _strata_bring_home(cfg, run, gid, sess, out, job, where, place):
+    """The read's folder, from the run's workspace to StrataScope's cache:
+    one tar over ssh straight to a file (never through memory), unpacked
+    beside the cache, then swapped in. Removed from the cluster after."""
+    import subprocess
+    import tarfile
+    rel = (out or {}).get("folder")
+    if not rel or not run.ws:
+        raise stratamod.StrataError("The cluster finished but said nothing "
+                                    "about where it put the read.")
+    remote_dir = run.ws.rstrip("/") + "/" + rel
+    total = max(1, int((out or {}).get("bytes") or 0))
+    job.begin(stratamod.STAGE_FETCH, of=max(1, total // 1_000_000))
+    incoming = os.path.join(stratamod.DIR, ".incoming-" + run.rid)
+    os.makedirs(incoming, exist_ok=True)
+    tar_path = os.path.join(incoming, "read.tar")
+    cmd = vaccmod.ssh_cmd(cfg, "cd %s && tar -cf - ." % vaccmod.q(remote_dir))
+    try:
+        with open(tar_path, "wb") as fh, \
+                open(tar_path + ".err", "wb") as eh:
+            proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=fh,
+                                    stderr=eh, **vaccmod.popen_kwargs())
+            try:
+                while proc.poll() is None:
+                    job.check()
+                    try:
+                        job.tick(stratamod.STAGE_FETCH,
+                                 os.path.getsize(tar_path) // 1_000_000)
+                    except OSError:
+                        pass
+                    time.sleep(0.5)
+            except BaseException:
+                proc.kill()
+                raise
+        if proc.returncode != 0:
+            with open(tar_path + ".err", "rb") as eh:
+                err = eh.read().decode("utf-8", "replace").strip()
+            raise stratamod.StrataError(
+                "Bringing the read home from the cluster failed: %s"
+                % (err or "no reason given")[:300])
+        folder = os.path.join(incoming, "read")
+        os.makedirs(folder, exist_ok=True)
+        with tarfile.open(tar_path, "r") as tar:
+            for m in tar.getmembers():
+                name = m.name.replace("\\", "/")
+                if name.startswith("/") or ".." in name.split("/"):
+                    continue
+                if m.isfile():
+                    tar.extract(m, folder, filter="data")
+        os.remove(tar_path)
+        stratamod.adopt_scan(gid, folder, {
+            "stamp": stratamod.source_stamp(sess),
+            "path": sess.get("path"),
+            "computed_on": {"where": where, "remote": place.get("remote"),
+                            "rid": run.rid},
+        })
+        job.tick(stratamod.STAGE_FETCH, max(1, total // 1_000_000))
+    finally:
+        shutil.rmtree(incoming, ignore_errors=True)
+    # The workspace is backed up and has a quota; the read now lives here.
+    # The whole cache folder the node made, not just the read in it.
+    top = rel.split("/")[0]
+    gone = (run.ws.rstrip("/") + "/" + top) if top.startswith(".") \
+        else remote_dir
+    try:
+        vaccmod._ssh(cfg, "rm -rf %s" % vaccmod.q(gone), timeout=60)
+    except Exception:                                    # noqa: BLE001
+        pass
 
 
 @app.route("/api/strata/<gid>/guide", methods=["POST"])
@@ -15085,6 +15739,28 @@ def api_curation_from_bank():
         return jsonify({"ok": False,
                         "error": "That version has no usable times in it."}), 400
 
+    # What the entry knows about each event beyond its time and label --
+    # a pooled spike's origin and the other detector's time, and the channel
+    # -- matched by time from the entry's own events, since a version's
+    # snapshot carries only those two (eventbank.SNAP_FIELDS).
+    facts = {}
+    for e in (ent.get("events") or []):
+        try:
+            key = round(float(e.get("start")), 4)
+        except (TypeError, ValueError):
+            continue
+        facts[key] = {k: e[k] for k in ("origin", "pair_t", "channel",
+                                         "amplitude") if e.get(k) is not None}
+    if facts:
+        for item in events:
+            try:
+                got = facts.get(round(float(item["start"]), 4))
+            except (TypeError, ValueError, KeyError):
+                got = None
+            if got:
+                for k, v in got.items():
+                    item.setdefault(k, v)
+
     existing = CURATE.get(gid, kind)
     if existing and not body.get("replace"):
         prog = CURATE.progress(existing)
@@ -15183,6 +15859,358 @@ def api_curation_for_recording(gid):
             have.append(CURATE.summary(got))
     return jsonify({"ok": True, "entries": out, "existing": have,
                     "session": _session_by_gid(gid)})
+
+
+# ==========================================================================
+# The Confluence -- Incisor's and Doppler's banked events, pooled
+#
+# Junction pools one recording's dentate-spike entry and its IED entry, each
+# at a version (newest by default, any other through the version tree, as
+# every version picker chooses -- constitution §6e), into one entry of type
+# `pooled` -- not `spike`, which the bank already uses for unit spikes.
+# Panning sorts it, Lock lines it up, Root Canal teases it apart.
+# The rule is backend/confluence.py's.
+# ==========================================================================
+
+def _cf_entry_row(rec):
+    vers = rec.get("versions") or []
+    # When it was last worked on: its newest version, or when it was filed.
+    # Two entries on one recording often share a name (a re-run of the same
+    # detector); the one somebody has been working in is the one to offer.
+    last = max([str(v.get("at") or "") for v in vers]
+               + [str((rec.get("added") or {}).get("at") or "")])
+    return {
+        "id": rec["id"], "name": rec.get("name"), "n": rec.get("n"),
+        "type": rec.get("type"),
+        "curated": bool(rec.get("specified")),
+        "tip": versionsmod.tip_next(vers)[0] if vers else None,
+        "pipeline": (rec.get("source") or {}).get("pipeline"),
+        "params": (rec.get("source") or {}).get("parameters") or {},
+        "at": last or None,
+    }
+
+
+def _cf_is_test(rec):
+    """A set a harness banked and left behind -- offered nowhere, as Eye
+    does not offer them either."""
+    who = "%s %s" % ((rec.get("added") or {}).get("by") or "",
+                     rec.get("name") or "")
+    return "harness" in who.lower()
+
+
+@app.route("/api/confluence/recordings")
+def api_confluence_recordings():
+    """Every recording with a banked dentate-spike entry AND a banked IED
+    entry -- the ones Junction can pool -- with what is already pooled."""
+    by_gid = {}
+    for rec in BANK.all():
+        t, gid = rec.get("type"), rec.get("gid")
+        if not gid or t not in ("ds", "ied", "pooled"):
+            continue
+        if _cf_is_test(rec):
+            continue
+        row = by_gid.setdefault(gid, {
+            "gid": gid, "label": rec.get("session_label"),
+            "project": rec.get("project"), "mouse": rec.get("mouse"),
+            "session": rec.get("session"), "ds": [], "ied": [], "pooled": []})
+        key = {"ds": "ds", "ied": "ied", "pooled": "pooled"}[t]
+        row[key].append(_cf_entry_row(rec))
+        if not row.get("label") and rec.get("session_label"):
+            row["label"] = rec.get("session_label")
+    out = []
+    for row in by_gid.values():
+        if not (row["ds"] and row["ied"]):
+            continue
+        for k in ("ds", "ied", "pooled"):
+            row[k].sort(key=lambda r: str(r.get("at") or ""), reverse=True)
+        out.append(row)
+    out.sort(key=lambda r: (str(r.get("project") or ""),
+                            str(r.get("mouse") or ""),
+                            str(r.get("session") or ""),
+                            str(r.get("label") or "")))
+    return jsonify({"ok": True, "recordings": out, "n": len(out),
+                    "window_ms": confluencemod.DEFAULT_WINDOW_MS})
+
+
+def _cf_version_events(ent, ref):
+    """One version of a banked entry, as events: the newest when `ref` is
+    empty, else the one the version tree picked. A version's snapshot holds
+    a time and a label; the channel and amplitude come back from the entry's
+    own events, matched by time."""
+    cur = list(ent.get("events") or [])
+    if ref in (None, "", "tip"):
+        return cur, None
+    ver = BANK._version_ref(ent, ref)
+    newest = max([v.get("v") or 0 for v in (ent.get("versions") or [])]
+                 or [0])
+    if not ver.get("snap"):
+        if (ver.get("v") or 0) == newest:
+            return cur, ver
+        raise eventbank.BankError(
+            "%s has no snapshot of that version on this computer, so its "
+            "events cannot be read back." % (ent.get("name") or "That entry"))
+    names = ent.get("label_names") or {}
+    facts = {}
+    for e in cur:
+        try:
+            facts[round(float(e.get("start")), 4)] = e
+        except (TypeError, ValueError):
+            continue
+    out = []
+    for pair in ver["snap"]:
+        try:
+            t = float(pair[0])
+        except (TypeError, ValueError, IndexError):
+            continue
+        lab = pair[1] if len(pair) > 1 else None
+        item = {"start": t}
+        if lab:
+            item["label_id"] = lab
+            item["label"] = names.get(lab, lab)
+        got = facts.get(round(t, 4)) or {}
+        for k in ("channel", "amplitude"):
+            if got.get(k) is not None:
+                item[k] = got[k]
+        out.append(item)
+    return out, ver
+
+
+def _cf_inputs(body):
+    """Both entries, at their versions, and the window. Refusals are
+    sentences."""
+    gid = (body.get("gid") or "").strip()
+    ds = BANK.get((body.get("ds_entry") or "").strip())
+    ied = BANK.get((body.get("ied_entry") or "").strip())
+    if not ds or (ds.get("type") or "") != "ds":
+        raise ValueError("Pick the dentate-spike entry to pool.")
+    if not ied or (ied.get("type") or "") != "ied":
+        raise ValueError("Pick the IED entry to pool.")
+    for ent in (ds, ied):
+        if gid and ent.get("gid") and ent["gid"] != gid:
+            raise ValueError("%s was banked against a different recording."
+                             % (ent.get("name") or "One of those entries"))
+    gid = gid or ds.get("gid") or ied.get("gid")
+    if ds.get("gid") != ied.get("gid"):
+        raise ValueError("Those two entries are from different recordings; "
+                         "their times would not line up.")
+    win = confluencemod.window_s(body.get("window_ms",
+                                          confluencemod.DEFAULT_WINDOW_MS))
+    ds_ev, ds_ver = _cf_version_events(ds, body.get("ds_version"))
+    ied_ev, ied_ver = _cf_version_events(ied, body.get("ied_version"))
+    ds_use = confluencemod.usable(ds_ev, curation.vocabulary("ds"))
+    ied_use = confluencemod.usable(ied_ev, curation.vocabulary("ied"))
+    return {"gid": gid, "ds": ds, "ied": ied, "win": win,
+            "ds_ver": ds_ver, "ied_ver": ied_ver,
+            "ds_events": ds_use, "ied_events": ied_use,
+            "ds_left_out": len(ds_ev) - len(ds_use),
+            "ied_left_out": len(ied_ev) - len(ied_use)}
+
+
+def _cf_vname(ent, ver):
+    if ver is None:
+        vers = ent.get("versions") or []
+        return versionsmod.tip_next(vers)[0] if vers else "0"
+    for v, name in versionsmod.label_rows(list(ent.get("versions") or [])):
+        if v is ver or (v.get("id") and v.get("id") == ver.get("id")):
+            return name
+    return str(ver.get("v") or 0)
+
+
+def _cf_params(inp):
+    return {
+        "ds_entry": inp["ds"]["id"], "ds_name": inp["ds"].get("name"),
+        "ds_version": _cf_vname(inp["ds"], inp["ds_ver"]),
+        "ied_entry": inp["ied"]["id"], "ied_name": inp["ied"].get("name"),
+        "ied_version": _cf_vname(inp["ied"], inp["ied_ver"]),
+        "window_ms": round(inp["win"] * 1e3, 3),
+        "rule": "time only, any channel; one to one, nearest first; "
+                "Incisor's time kept, Doppler's as pair_t",
+    }
+
+
+@app.route("/api/confluence/plan", methods=["POST"])
+def api_confluence_plan():
+    """What a pool would be, without writing anything: the counts, and the
+    events by origin for the merge to be drawn from."""
+    body = request.get_json(force=True) or {}
+    try:
+        inp = _cf_inputs(body)
+        events, stats = confluencemod.pool(inp["ds_events"],
+                                           inp["ied_events"], inp["win"])
+    except (ValueError, eventbank.BankError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    stats.update(ds_left_out=inp["ds_left_out"],
+                 ied_left_out=inp["ied_left_out"])
+    done = _cf_existing(inp["gid"], _cf_params(inp))
+    return jsonify({
+        "ok": True, "gid": inp["gid"], "stats": stats,
+        "params": _cf_params(inp),
+        "already": _cf_entry_row(done) if done else None,
+        "duration_s": (inp["ds"].get("duration_s")
+                       or inp["ied"].get("duration_s")),
+        "events": [{"t": e["start"], "o": e["origin"],
+                    "p": e.get("pair_t")} for e in events],
+    })
+
+
+def _cf_existing(gid, params):
+    """A pool already banked from exactly these inputs, if there is one."""
+    want = {k: params.get(k) for k in ("ds_entry", "ds_version", "ied_entry",
+                                       "ied_version", "window_ms")}
+    for rec in BANK.all():
+        if rec.get("gid") != gid or (rec.get("type") or "") != "pooled":
+            continue
+        got = (rec.get("source") or {}).get("parameters") or {}
+        if all(got.get(k) == v for k, v in want.items()):
+            return rec
+    return None
+
+
+def _cf_merge(body, who=None):
+    """Pool one recording and bank the pool. Returns (entry, stats, cached)."""
+    inp = _cf_inputs(body)
+    params = _cf_params(inp)
+    if not body.get("force"):
+        done = _cf_existing(inp["gid"], params)
+        if done:
+            return done, (done.get("source") or {}).get("parameters", {}) \
+                .get("stats") or {}, True
+    events, stats = confluencemod.pool(inp["ds_events"], inp["ied_events"],
+                                       inp["win"])
+    if not events:
+        raise ValueError("Nothing to pool: both entries are empty once what "
+                         "was called Garbage is left out.")
+    # Where the recording is filed, from the dentate-spike entry: it was
+    # banked against this gid, and asking the registry costs a re-stat of
+    # every shard per call -- a batch of forty would wait half a minute.
+    src = inp["ds"]
+    label = (src.get("session_label") or inp["ied"].get("session_label")
+             or inp["gid"])
+    stats_kept = {k: v for k, v in stats.items() if k != "dt_ms"}
+    stats_kept.update(ds_left_out=inp["ds_left_out"],
+                      ied_left_out=inp["ied_left_out"])
+    params["stats"] = stats_kept
+    entry = BANK.add({
+        "project": src.get("project"),
+        "mouse": src.get("mouse"),
+        "session": src.get("session"),
+        "session_key": src.get("session_key"),
+        "session_loose_key": src.get("session_loose_key"),
+        "session_label": label,
+        "session_path": src.get("session_path"),
+        "recording_start": src.get("recording_start"),
+        "duration_s": src.get("duration_s") or inp["ied"].get("duration_s"),
+        "gid": inp["gid"],
+        "name": (body.get("name") or "").strip()
+                or "%s — pooled (Incisor + Doppler, %g ms)"
+                   % (label, round(inp["win"] * 1e3, 3)),
+        "type": "pooled", "type_name": "Pooled spike",
+        "events": [{k: e[k] for k in ("start", "channel", "amplitude",
+                                      "origin", "pair_t") if k in e}
+                   for e in events],
+        "pipeline": "The Confluence: Junction (Incisor + Doppler, %g ms)"
+                    % round(inp["win"] * 1e3, 3),
+        "parameters": params,
+        "version_tag": "junction",
+        "added_by": (who or body.get("added_by")
+                     or (STORE.provenance() or {}).get("user")),
+        "version_note": "Junction's pool: %d from Incisor, %d from Doppler, "
+                        "%d merged within %g ms." % (
+                            stats["incisor_only"], stats["doppler_only"],
+                            stats["merged"], round(inp["win"] * 1e3, 3)),
+    })
+    return entry, stats_kept, False
+
+
+@app.route("/api/confluence/merge", methods=["POST"])
+def api_confluence_merge():
+    """Pool one recording and bank it as an entry of type `pooled`."""
+    body = request.get_json(force=True) or {}
+    try:
+        entry, stats, cached = _cf_merge(body)
+    except (ValueError, eventbank.BankError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("confluence/merge", exc, 400, {"gid": body.get("gid")})
+    if not cached:
+        STORE.record_activity([{"action": "confluence.merge",
+                                "detail": {"gid": entry.get("gid"),
+                                           "entry": entry["id"],
+                                           "n": len(entry.get("events") or []),
+                                           "merged": stats.get("merged")}}])
+        mirror_bank_soon()
+    return jsonify({"ok": True, "cached": cached,
+                    "entry": _cf_entry_row(entry), "stats": stats})
+
+
+@app.route("/api/confluence/batch", methods=["POST"])
+def api_confluence_batch():
+    """Several recordings at once. Pooling is arithmetic on banked times --
+    no recording is read -- so it runs here, one after another, and answers
+    with a row per recording."""
+    body = request.get_json(force=True) or {}
+    rows = []
+    for it in (body.get("items") or []):
+        one = dict(it, window_ms=body.get("window_ms", it.get("window_ms")),
+                   force=body.get("force"))
+        try:
+            entry, stats, cached = _cf_merge(one)
+            rows.append({"gid": entry.get("gid"), "ok": True,
+                         "cached": cached, "entry": _cf_entry_row(entry),
+                         "stats": stats})
+        except (ValueError, eventbank.BankError) as exc:
+            rows.append({"gid": it.get("gid"), "ok": False,
+                         "error": str(exc)})
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("confluence.batch", str(exc), None,
+                               {"gid": it.get("gid")})
+            rows.append({"gid": it.get("gid"), "ok": False,
+                         "error": str(exc)[:300]})
+    made = [r for r in rows if r.get("ok") and not r.get("cached")]
+    if made:
+        STORE.record_activity([{"action": "confluence.batch",
+                                "detail": {"n": len(made)}}])
+        mirror_bank_soon()
+    return jsonify({"ok": True, "rows": rows})
+
+
+@app.route("/api/curation/<gid>/<kind>/merge", methods=["POST"])
+def api_curation_merge(gid, kind):
+    """Two candidates that are one event, made one (Panning)."""
+    body = request.get_json(force=True) or {}
+    try:
+        ev, prog, gone = CURATE.merge_events(gid, kind, body.get("keep"),
+                                             body.get("drop"))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("curation/merge", exc, 400, {"gid": gid, "kind": kind})
+    STORE.record_activity([{"action": "panning.merge",
+                            "detail": {"gid": gid, "kind": kind,
+                                       "kept": ev.get("id")}}])
+    return jsonify({"ok": True, "event": ev, "progress": prog,
+                    "dropped": gone})
+
+
+@app.route("/api/curation/<gid>/<kind>/unmerge", methods=["POST"])
+def api_curation_unmerge(gid, kind):
+    """A merge undone (Panning's Z): the survivor as it was, the other
+    candidate back under a new id."""
+    body = request.get_json(force=True) or {}
+    try:
+        ev, back, prog = CURATE.unmerge(gid, kind, body.get("keep"),
+                                        body.get("before"),
+                                        body.get("dropped"))
+    except curation.CurationError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    except Exception as exc:                             # noqa: BLE001
+        return fail("curation/unmerge", exc, 400, {"gid": gid, "kind": kind})
+    STORE.record_activity([{"action": "panning.unmerge",
+                            "detail": {"gid": gid, "kind": kind,
+                                       "kept": ev.get("id"),
+                                       "back": back.get("id")}}])
+    return jsonify({"ok": True, "event": ev, "restored": back,
+                    "progress": prog})
 
 
 @app.route("/api/curation/<gid>/<kind>/label", methods=["POST"])

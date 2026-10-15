@@ -1040,6 +1040,11 @@ BARRY.views.xplore = (function () {
        decision. `BARRY.braces.draw` is called from the same three places
        this is. */
     if (marks.kind === 'braces') return;
+    /* And so does Panning: a pooled event is drawn in the colour of the
+       detector that found it, and an event both found is two stamps joined
+       -- one mark per candidate coloured by its decision cannot say either.
+       `BARRY.panning.draw` is called from the same places this is. */
+    if (marks.kind === 'pooled') return;
     const span = t1 - t0;
     if (!(span > 0)) return;
     const small = (opts && opts.small) || false;
@@ -7701,6 +7706,12 @@ BARRY.views.xplore = (function () {
     if (BARRY.braces && BARRY.braces.draw) {
       BARRY.braces.draw(ctx, sess, { t0: t0, t1: t0 + span }, 0, w, 0, h, P);
     }
+    if (BARRY.panning && BARRY.panning.draw && mAlpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = mAlpha;
+      BARRY.panning.draw(ctx, sess, { t0: t0, t1: t0 + span }, 0, w, 0, h, P);
+      ctx.restore();
+    }
     if (mAlpha <= 0) return;
 
     ctx.save();
@@ -8453,8 +8464,15 @@ BARRY.views.xplore = (function () {
         kind: pointer.kind, index: pointer.index, at: pointer.at,
         rev: pointer.rev || 0,
         labels,
-        events: (set.events || []).map(
-          (e) => ({ start: e.start, label: e.label || null })),
+        /* With where each came from, for a pooled set: Panning draws an
+           event in its detector's colour, and the aid window draws what it
+           is given. */
+        events: (set.events || []).map((e) => {
+          const o = { start: e.start, label: e.label || null };
+          if (e.origin) o.origin = e.origin;
+          if (e.pair_t != null) o.pair_t = e.pair_t;
+          return o;
+        }),
         gid: pointer.gid,
         marks: pointer.marks,
       };
@@ -9255,6 +9273,15 @@ BARRY.views.xplore = (function () {
        mark from the same data. */
     if (BARRY.spotter && BARRY.spotter.draw) {
       BARRY.spotter.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+    }
+    /* Panning draws every pooled event itself, in its detector's colour;
+       the generic painter above steps aside for it. From the session, so
+       the aid window draws the same. */
+    if (BARRY.panning && BARRY.panning.draw && mAlpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = mAlpha;
+      BARRY.panning.draw(ctx, sess, win, padL, plotW, padTop, plotH, P);
+      ctx.restore();
     }
     if (BARRY.strata && BARRY.strata.draw) {
       /* With the lanes this pane drew, as the early paint above passes

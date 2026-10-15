@@ -1378,7 +1378,7 @@ BARRY.incisor = (function () {
 
   function pickRow() {
     const cur = (q.pick && q.pick.mode) || 'all';
-    const row = el('div', { class: 'inc-pick' });
+    const row = el('div', { class: 'inc-chpick' });
     row.appendChild(el('span', { class: 'inc-pick-l', text: 'Scan' }));
     row.appendChild(el('div', { class: 'seg sm inc-pick-seg' }, PICKS.map(
       ([id, label, why]) => el('button', {

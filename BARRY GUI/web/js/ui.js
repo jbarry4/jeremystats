@@ -246,6 +246,10 @@ BARRY.ui = (function () {
      Called at render time, not load time: ToolKit loads after this file. */
   function stepOf(toolId) {
     const tk = BARRY.views && BARRY.views.toolkit;
+    /* ToolKit's own answer when it has one: a tool in two bundles (Root
+       Canal is in The Dentist and The Confluence) is numbered in the one it
+       was opened from, which only ToolKit knows. */
+    if (tk && typeof tk.stepOf === 'function') return tk.stepOf(toolId);
     const list = (tk && typeof tk.bundles === 'function') ? tk.bundles() : [];
     for (const b of list) {
       const i = (b.steps || []).findIndex((s) => s.id === toolId);
@@ -989,8 +993,9 @@ BARRY.ui = (function () {
         fresh.dataset.sec = s.key;
         fresh.__sig = sig;
         if (node) {
-          carry(node, fresh);
+          const after = carry(node, fresh);
           node.replaceWith(fresh);
+          after();
         } else if (s.enter !== false) {
           enter(fresh, entering++);
         }
@@ -1005,7 +1010,17 @@ BARRY.ui = (function () {
     return built;
   }
 
-  /* What a rebuilt part takes over from the one it replaces. */
+  /* What a rebuilt part takes over from the one it replaces. Returns what
+     has to wait until the new node is in the page: its scroll.
+
+     The part's OWN node counts as well as what is inside it. A part that IS
+     its scroll box -- a picker list built as one element -- was skipped by
+     `querySelectorAll`, which only looks inside, so a rebuilt list came back
+     at the top (2026-10-14). */
+  const selfAnd = (node, sel) => (node.matches && node.matches(sel) ? [node] : [])
+    .concat(Array.from(node.querySelectorAll(sel)));
+  const twinOf = (fresh, sel) => (fresh.matches && fresh.matches(sel)
+    ? fresh : fresh.querySelector(sel));
   function carry(old, fresh) {
     const act = document.activeElement;
     if (act && old.contains(act) && act.dataset && act.dataset.fk) {
@@ -1025,14 +1040,22 @@ BARRY.ui = (function () {
       const twin = fresh.querySelector('details[data-keep="' + d.dataset.keep + '"]');
       if (twin) twin.open = d.open;
     }
-    for (const s of old.querySelectorAll('[data-keep-scroll]')) {
-      const twin = fresh.querySelector('[data-keep-scroll="'
-                                       + s.dataset.keepScroll + '"]');
-      if (twin && s.scrollTop) {
-        const top = s.scrollTop;
-        requestAnimationFrame(() => { twin.scrollTop = top; });
-      }
+    const tops = [];
+    for (const s of selfAnd(old, '[data-keep-scroll]')) {
+      const twin = twinOf(fresh, '[data-keep-scroll="'
+                                 + s.dataset.keepScroll + '"]');
+      if (twin && s.scrollTop) tops.push([twin, s.scrollTop]);
     }
+    return () => {
+      // Now, so it never shows at the top; and next frame again, once
+      // anything still settling inside it has its height.
+      for (const [twin, top] of tops) twin.scrollTop = top;
+      if (tops.length) {
+        requestAnimationFrame(() => {
+          for (const [twin, top] of tops) twin.scrollTop = top;
+        });
+      }
+    };
   }
 
   /* The entrance: a short rise and fade, each new part a beat after the

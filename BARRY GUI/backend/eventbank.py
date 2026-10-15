@@ -415,6 +415,19 @@ class EventBank:
             # all, and every reader of a DS set picks events by it.
             if ev.get("rc_name"):
                 item["rc_name"] = str(ev["rc_name"])[:60]
+            # A pooled spike's origin (The Confluence, 2026-10-14): which
+            # detector found it -- Incisor, Doppler, or both within the
+            # merge window -- and `pair_t`, where the other one put it.
+            # Facts about where the event came from, so they ride with it
+            # through every later version and every alignment, the way
+            # `rc_name` does; never the label, which says what it IS.
+            if ev.get("origin") in ("incisor", "doppler", "both"):
+                item["origin"] = ev["origin"]
+            if ev.get("pair_t") is not None:
+                try:
+                    item["pair_t"] = round(float(ev["pair_t"]), 6)
+                except (TypeError, ValueError):
+                    pass
             # Channels this event is not valid on, and the two different
             # reasons it might not be.
             #
@@ -664,7 +677,29 @@ class EventBank:
                 changed += _pair(was.pop(key), ev.get("label"))
             lost = len(was)
 
+        # Root Canal NAMING events is a pass too. On a pooled set
+        # (The Confluence) it takes nothing out -- it says which cluster
+        # each event fell in -- so no label, count or time changes, and
+        # without this the names were written with no version to say when
+        # or by whom. Counted only where the new event carries a name that
+        # differs: a re-bank that simply does not carry `rc_name` is not a
+        # renaming, and minting a version for it would be noise.
+        renamed = 0
+        if prior:
+            was_rc = {}
+            for ev in prior.get("events") or []:
+                try:
+                    was_rc[round(float(ev["start"]), 4)] = ev.get("rc_name")
+                except (TypeError, ValueError, KeyError):
+                    continue
+            for ev in clean:
+                key = round(float(ev["start"]), 4)
+                if (ev.get("rc_name") and key in was_rc
+                        and was_rc[key] != ev["rc_name"]):
+                    renamed += 1
+
         moved = ((not prior) or changed or gained or lost or shifted
+                 or renamed
                  or prior.get("n") != rec["n"]
                  or (prior.get("by_label") or {}) != counts)
         if moved:
@@ -721,6 +756,8 @@ class EventBank:
             # that has never been aligned is a column of noise.
             if shifted:
                 fresh["shifted"] = shifted
+            if renamed:
+                fresh["renamed"] = renamed
             # Which step minted this version, as a short machine-readable
             # word beside the note a person reads. The note is prose and
             # changes wording; a later step choosing where to read from

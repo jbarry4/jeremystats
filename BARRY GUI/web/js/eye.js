@@ -31,7 +31,14 @@
    ========================================================================== */
 'use strict';
 
-BARRY.eye = (function () {
+/* LOCK IS THE SAME PANEL, POINTED AT A POOLED SET (2026-10-14)
+   The Confluence's third step lines up Incisor's and Doppler's events
+   pooled into one set, and it is this panel with a different `cfg`: the
+   kind of set it offers, the words, and where a set "of its own" comes
+   from. One panel rather than a copy, so a fix to the wait or the commit
+   reaches both (constitution §6c). Both look through the IED band: a pooled
+   set holds IEDs, and the backend reads the same preset for it. */
+function makeAligner(cfg) {
   const q = {
     entry: null,          // the bank entry being aligned
     from_version: null,   // which version supplies the stamps
@@ -83,15 +90,14 @@ BARRY.eye = (function () {
   }
 
   function paint() {
-    if (!BARRY.views.toolkit || BARRY.views.toolkit.tool() !== 'eye') return;
+    if (!BARRY.views.toolkit || BARRY.views.toolkit.tool() !== cfg.tool) return;
     const host = document.getElementById('tkResult');
     if (!host) return;
     host.innerHTML = '';
     host.appendChild(BARRY.ui.stepHeader({
-      title: 'Eye',
-      step: 'step 3 of The Storm',
-      blurb: 'Put every confirmed discharge on the same part of itself, so '
-           + 'an average of them is of the event and not of the jitter.',
+      title: cfg.title,
+      step: BARRY.ui.stepOf(cfg.tool) || cfg.step,
+      blurb: cfg.blurb,
     }));
     host.appendChild(pickCard());
     if (q.entry) {
@@ -129,12 +135,10 @@ BARRY.eye = (function () {
 
      Harness leftovers are not shown, and the line under the list says how
      many were hidden rather than pretending they are not there. */
-  const DOPPLER = 'Doppler (line length)';
-
   function originOf(c) {
     const who = ((c.added || {}).by || '') + ' ' + (c.name || '');
     if (/harness/i.test(who)) return 'test';
-    if (c.pipeline === DOPPLER) return 'doppler';
+    if (cfg.mine.test(c.pipeline || '')) return cfg.mine.id;
     return 'import';
   }
 
@@ -155,8 +159,7 @@ BARRY.eye = (function () {
 
   function tallyChips(c) {
     // Labels in the vocabulary's own order, the confirmed ones first.
-    const order = ['Solid', 'solid', 'Sputter', 'sputter', 'Flag', 'flag',
-                   'Garbage', 'garbage'];
+    const order = cfg.order;
     const bl = c.by_label || {};
     const keys = Object.keys(bl).sort((a, b) => {
       const ia = order.indexOf(a), ib = order.indexOf(b);
@@ -164,7 +167,7 @@ BARRY.eye = (function () {
     });
     return keys.filter((k) => bl[k]).map((k) => BARRY.ui.chip(
       k.charAt(0).toUpperCase() + k.slice(1) + ' ' + bl[k],
-      { kind: /solid|sputter/i.test(k) ? 'good'
+      { kind: cfg.good.test(k) ? 'good'
             : /flag/i.test(k) ? 'warn' : null }));
   }
 
@@ -182,14 +185,15 @@ BARRY.eye = (function () {
     const tests = cands.length - real.length;
     const nOf = (o) => real.filter((c) => originOf(c) === o).length;
 
-    // Doppler's by default -- unless there are none yet, in which case
-    // showing an empty list with the imports one click away would be a
-    // screen that says "nothing" when it does not mean it.
-    if (!q.origin) q.origin = nOf('doppler') ? 'doppler' : 'all';
+    // The bundle's own by default -- Doppler's for Eye, Junction's for
+    // Lock -- unless there are none yet, in which case showing an empty
+    // list with the rest one click away would be a screen that says
+    // "nothing" when it does not mean it.
+    if (!q.origin) q.origin = nOf(cfg.mine.id) ? cfg.mine.id : 'all';
 
     const pills = el('div', { class: 'eye-filter' }, [
-      ['doppler', 'From Doppler'],
-      ['import', 'Older imports'],
+      [cfg.mine.id, cfg.mine.label],
+      ['import', cfg.otherLabel],
       ['all', 'Everything'],
     ].map(([id, label]) => {
       const n = id === 'all' ? real.length : nOf(id);
@@ -248,11 +252,8 @@ BARRY.eye = (function () {
       host.appendChild(el('div', { class: 'empty-state',
         text: want
           ? 'Nothing here matches \u201c' + q.find + '\u201d.'
-          : q.origin === 'doppler'
-            ? 'No Doppler run has been confirmed yet. Run Doppler, bank what '
-              + 'it finds, and confirm them in Spotter \u2014 a raw detector '
-              + 'list has nothing worth moving, because half of it is thrown '
-              + 'away an hour later.'
+          : q.origin === cfg.mine.id
+            ? cfg.mine.empty
             : 'Nothing confirmed of this kind.' }));
       return;
     }
@@ -290,8 +291,8 @@ BARRY.eye = (function () {
         }, [
           el('div', { class: 'eye-set-top' }, [
             el('span', { class: 'eye-set-name', text: c.name || c.id }),
-            BARRY.ui.chip(o === 'doppler' ? 'Doppler' : 'imported',
-                          { flag: true, kind: o === 'doppler' ? 'ok' : null }),
+            BARRY.ui.chip(o === cfg.mine.id ? cfg.mine.chip : 'imported',
+                          { flag: true, kind: o === cfg.mine.id ? 'ok' : null }),
             vw ? BARRY.ui.chip(vw, { flag: true }) : null,
             c.aligned ? BARRY.ui.chip('already aligned',
                                       { flag: true, kind: 'warn' }) : null,
@@ -346,7 +347,7 @@ BARRY.eye = (function () {
       iedBand = ((f.presets || []).find((x) => x.id === 'ied')) || null;
     } catch (e) { iedBand = null; }
     try {
-      const got = await api('/api/braces/candidates?type=ied');
+      const got = await api('/api/braces/candidates?type=' + cfg.type);
       cands = got.sets || [];
     } catch (e) { cands = []; }
     try {
@@ -369,8 +370,7 @@ BARRY.eye = (function () {
         inline: true,
         hint: 'How far from its current position a stamp may be moved. Wide '
             + 'enough to find the event, narrow enough that it cannot find '
-            + 'the next one \u2014 a discharge and the one after it are '
-            + 'often only a few hundred milliseconds apart.',
+            + 'the next one \u2014 ' + cfg.nextOne,
         control: el('input', { type: 'number', class: 'num', min: 5,
           step: 10, value: q.window_ms,
           disabled: running ? 'disabled' : null,
@@ -381,10 +381,10 @@ BARRY.eye = (function () {
          lost the slow wave that is half of what it is. */
       el('p', { class: 'hint', style: 'max-width:80ch',
         text: 'Aligned through the IED filter (' + band + '), not the '
-            + 'dentate-spike band. All three measures are computed on every '
-            + 'run, so the choice is made with the answers in front of you '
-            + 'rather than by accepting a default. Nothing is written until '
-            + 'you commit one.' }),
+            + 'dentate-spike band' + cfg.bandWhy + '. All three measures '
+            + 'are computed on every run, so the choice is made with the '
+            + 'answers in front of you rather than by accepting a default. '
+            + 'Nothing is written until you commit one.' }),
     ]);
     if (running) {
       box.appendChild(waitCard());
@@ -815,4 +815,48 @@ BARRY.eye = (function () {
       q.entry = null; q.gid = null; q.from_version = null; q.measure = null;
     },
   };
-})();
+}
+
+BARRY.eye = makeAligner({
+  tool: 'eye', title: 'Eye', step: 'step 3 of The Storm', type: 'ied',
+  blurb: 'Put every confirmed discharge on the same part of itself, so an '
+       + 'average of them is of the event and not of the jitter.',
+  mine: {
+    id: 'doppler', label: 'From Doppler', chip: 'Doppler',
+    test: (p) => p === 'Doppler (line length)',
+    empty: 'No Doppler run has been confirmed yet. Run Doppler, bank what it '
+         + 'finds, and confirm them in Spotter \u2014 a raw detector list has '
+         + 'nothing worth moving, because half of it is thrown away an hour '
+         + 'later.',
+  },
+  otherLabel: 'Older imports',
+  order: ['Solid', 'solid', 'Sputter', 'sputter', 'Flag', 'flag',
+          'Garbage', 'garbage'],
+  good: /solid|sputter/i,
+  nextOne: 'a discharge and the one after it are often only a few hundred '
+         + 'milliseconds apart.',
+  bandWhy: '',
+});
+
+BARRY.lock = makeAligner({
+  tool: 'lock', title: 'Lock', step: 'step 3 of The Confluence',
+  type: 'pooled',
+  blurb: 'Put every pooled spike \u2014 Incisor\u2019s and Doppler\u2019s, '
+       + 'sorted in Panning \u2014 on the same part of itself, so Root '
+       + 'Canal measures each one at the same instant.',
+  mine: {
+    id: 'junction', label: 'From Junction', chip: 'Junction',
+    test: (p) => /^The Confluence/.test(p),
+    empty: 'No pooled set has been sorted yet. Pool a recording in Junction, '
+         + 'sort it in Panning and bank the results \u2014 an unsorted pool '
+         + 'has nothing worth moving yet.',
+  },
+  otherLabel: 'Other pooled sets',
+  order: ['Spike', 'spike', 'Flag', 'flag', 'Garbage', 'garbage'],
+  good: /spike/i,
+  nextOne: 'two events in a pool can be a few milliseconds apart, which is '
+         + 'what Panning\u2019s merge is for.',
+  bandWhy: ': a pooled set holds discharges as well as dentate spikes, and '
+         + 'a dentate spike keeps its shape in this band where a discharge '
+         + 'would lose its slow wave in the other',
+});

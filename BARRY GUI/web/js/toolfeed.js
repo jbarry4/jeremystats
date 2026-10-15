@@ -319,6 +319,12 @@ BARRY.toolfeed = (function () {
     'spikes.to_events': 'turned spikes into events',
     'phy.open': 'opened Phy', 'pipeline.batch': 'ran a batch',
     'dsimport.apply': 'imported sorted snapshots',
+    'junction.merge': 'pooled a recording',
+    'junction.batch': 'pooled several recordings',
+    'confluence.merge': 'banked a pool',
+    'confluence.batch': 'banked pools',
+    'panning.enter': 'opened a pool', 'panning.leave': 'closed a pool',
+    'panning.merge': 'merged two events', 'panning.unmerge': 'undid a merge',
   };
 
   function words(action) {

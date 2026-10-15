@@ -69,6 +69,16 @@ TOOLS = {
         "name": "Import sorted snapshots",
         "prefixes": ["dsimport.", "curation.import"],
     },
+    # The Confluence. Junction's own clicks are `junction.*`; the server
+    # files the pool it banked as `confluence.*`, and both are Junction's.
+    "junction": {
+        "name": "Junction",
+        "prefixes": ["junction.", "confluence."],
+    },
+    "panning": {
+        "name": "Panning",
+        "prefixes": ["panning."],
+    },
 }
 
 LIMIT = 200

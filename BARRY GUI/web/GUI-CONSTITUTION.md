@@ -384,6 +384,27 @@ Leaving it out says the step does not exist. Somebody arriving at Coupling
 needs to know both that it is the third of four and that the two before it
 come first.
 
+**A tool may be a step of two bundles, and is still one tool.** Root Canal is
+step 4 of The Dentist (take the IEDs out of a dentate-spike set) and step 4 of
+The Confluence (tease a pooled set apart). It is listed in both arrays and
+written once. The step it was opened from is remembered (`q.via`, set by the
+bundle step that was clicked), so `stepOf` numbers it in that bundle, only that
+bundle's card is lit, and the tool can ask `toolkit.via()` which job it is
+doing -- Root Canal offers pooled sets in one and dentate-spike sets in the
+other. A door that names no bundle keeps the one in use, else the first.
+
+**Bundles that feed one another can say so.** The Dentist and The Storm both
+run into The Confluence, and the rail draws it: the three cards sit in one
+group (`.tk-flow`) with two strands in the gutter beside them, flowing gently,
+still under reduced motion, offset by the clock so a re-render does not
+restart them. Words stay out of the stream -- a harness finds a bundle by its
+name, and a stream carrying "The Dentist" would be found as one.
+
+**Which detector found an event has one pair of colours: `--o-incisor` and
+`--o-doppler`,** taken from the categorical palette so every theme has its
+own. The stream, Junction, Panning and Root Canal all use them, and an event
+both found is drawn two-tone -- half each -- everywhere, never a third colour.
+
 #### Bundles fold
 
 A bundle is a heading with a list under it, and **every bundle folds**. Three
