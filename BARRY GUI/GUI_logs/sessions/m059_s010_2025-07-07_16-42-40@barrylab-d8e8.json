@@ -25,7 +25,7 @@
     "schema": "2026-09-04T15:57:01.894928+00:00",
     "session": "2026-09-04T15:57:01.894928+00:00",
     "start": "2026-09-04T15:57:01.894928+00:00",
-    "updated": "2026-10-09T18:46:47.889272+00:00",
+    "updated": "2026-10-14T16:14:57.721727+00:00",
     "view_state": "2026-10-09T18:46:47.889272+00:00"
   },
   "_keys": {
@@ -45,6 +45,10 @@
       "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s10_CNO": [
         "set",
         "2026-09-04T15:57:01.894928+00:00"
+      ],
+      "vacc:sef04f3b4eb4d": [
+        "set",
+        "2026-10-14T16:14:57.721727+00:00"
       ]
     },
     "seen": {
@@ -75,7 +79,7 @@
     }
   },
   "_shard": {
-    "at": "2026-10-09T18:46:47.889272+00:00",
+    "at": "2026-10-14T16:14:57.721727+00:00",
     "machine": "barrylab-d8e8",
     "schema": 1
   },
@@ -121,7 +125,8 @@
     "D:\\PTEN\\CTL\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40",
     "Y:\\ProcessedPtenData\\PTENDKOM59\\m59s10jul7\\2025-07-07_16-42-40",
     "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\CTL\\M59_s10_CNO",
-    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s10_CNO"
+    "Y:\\ProcessedPtenData\\PTEN_CSDsEtc\\DKO\\Controls\\M59\\M59_s10_CNO",
+    "vacc:sef04f3b4eb4d"
   ],
   "project": "PTEN",
   "project_source": "guessed",
@@ -176,9 +181,9 @@
   "session": 10,
   "start": "2025-07-07T16:42:40",
   "updated": {
-    "app_version": "2026.10.07.7",
-    "at": "2026-10-09T14:46:47-04:00",
-    "commit": "07c4708b",
+    "app_version": "2026.10.13.11",
+    "at": "2026-10-14T12:14:57-04:00",
+    "commit": "8855eda1",
     "email": "rain.younger@uvm.edu",
     "host": "BarryLab",
     "machine": "Strawbarry",
