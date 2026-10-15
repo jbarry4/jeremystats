@@ -131,13 +131,24 @@ const post = (u, b) => fetch(u, { method: 'POST',
   /* ---------------------------------------------------------------- */
   head('the four buttons and their keys');
 
-  const cats = $$('#spotBar .cur-cat');
+  /* The four the vocabulary is built with. Categories added in Spotter
+     (chipforge.js, 2026-10-14) are real and permanent -- two exist since
+     that afternoon -- and come after these, on 5 and up; the "+ New
+     category" button is a .cur-cat too. Neither is one of the four. */
+  const custom = JSON.parse(ev('JSON.stringify((BARRY.spotter._kindLabels '
+    + '? BARRY.spotter._kindLabels() : []).filter(function(l){return l.custom;})'
+    + '.map(function(l){return l.id;}))') || '[]');
+  const allCats = $$('#spotBar .cur-cat:not(.cur-cat-new)');
+  const cats = allCats.filter((c) => custom.indexOf(c.getAttribute('data-cat')) < 0);
   check('four categories', cats.length === 4, String(cats.length));
-  const kbds = $$('#spotBar .cur-cat kbd').map((k) => k.textContent);
+  if (custom.length) say('  note  ' + custom.length + ' added in Spotter, after them: '
+                         + custom.join(', '), 'note');
+  const kbds = cats.map((c) => c.querySelector('kbd'))
+    .filter(Boolean).map((k) => k.textContent);
   check('labelled 1 2 3 4, as the mockup has them',
         kbds.join(',') === '1,2,3,4', kbds.join(','));
   check('a computed category gets no button',
-        cats.length === ev('BARRY.spotter._kindLabels '
+        allCats.length === ev('BARRY.spotter._kindLabels '
                            + '? BARRY.spotter._kindLabels().filter('
                            + 'function(l){return !l.computed;}).length : 4'));
 

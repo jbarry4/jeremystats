@@ -322,7 +322,24 @@ BARRY.rootcanal = (function () {
   /* ==================================================================
      Loading
      ================================================================== */
+  /* Which sets the picker offers: dentate-spike sets in The Dentist, pooled
+     ones in The Confluence. Switching bundles starts the picker again, so a
+     set chosen in one is never left open under the other's name. */
+  let candsCtx = null;
+
   async function paint() {
+    const ctx = inConfluence() ? 'pooled' : 'ds';
+    if (candsCtx !== ctx) {
+      if (candsCtx !== null) {
+        cands = null; q.entry = null; q.gid = null; q.from_version = null;
+        forget(); single = null;
+      }
+      candsCtx = ctx;
+      /* A pooled set opens coloured by which detector found each event --
+         the question The Confluence exists to ask; the cluster call is a
+         click away. */
+      singleColour = ctx === 'pooled' ? 'origin' : 'call';
+    }
     render();
     if (viewMode === 'pooled') { await loadPool(); return; }
     if (!cands) await loadCandidates();
@@ -331,7 +348,8 @@ BARRY.rootcanal = (function () {
   async function loadCandidates() {
     try {
       const got = await api('/api/rootcanal/candidates');
-      cands = got.sets || [];
+      const want = inConfluence() ? 'pooled' : 'ds';
+      cands = (got.sets || []).filter((c) => (c.type || 'ds') === want);
     } catch (e) {
       toast('Could not read the event bank: ' + e.message, 'err', 8000);
       reportClientError('rootcanal.candidates', e.message,
@@ -881,6 +899,12 @@ BARRY.rootcanal = (function () {
   function render() {
     const box = host();
     if (!box) return;
+    /* Only while Root Canal is the tool open. A read of the bank that lands
+       after somebody has moved on -- to Junction, say -- painted Root Canal
+       over the panel they were now in (_dev/confluence.html caught it: one
+       run in three). */
+    const tk = BARRY.views && BARRY.views.toolkit;
+    if (tk && typeof tk.tool === 'function' && tk.tool() !== 'rootcanal') return;
     const feed = box.querySelector('.tf');
     if (feed) box.removeChild(feed);
     try {
@@ -930,13 +954,27 @@ BARRY.rootcanal = (function () {
     return true;
   }
 
+  /* Which bundle Root Canal is being worked in: The Dentist cleans a
+     dentate-spike set, The Confluence teases a pooled one apart. The same
+     tool, said two ways (toolkit.js, `bundleOf`). */
+  function inConfluence() {
+    const tk = BARRY.views && BARRY.views.toolkit;
+    return !!(tk && tk.via && tk.via() === 'confluence');
+  }
+
   function intro() {
     return BARRY.ui.stepHeader({
       title: 'Root Canal',
-      step: 'step 4 of The Dentist',
-      blurb: 'Takes the interictal discharges out of an aligned set of '
-           + 'dentate spikes — amplitude, half-width and high-frequency '
-           + 'power per event, split in two by k-means.',
+      step: BARRY.ui.stepOf('rootcanal') || 'step 4 of The Dentist',
+      blurb: inConfluence()
+        ? 'Teases a pooled set apart — Incisor’s and Doppler’s events '
+          + 'together, sorted in Panning and lined up in Lock — by '
+          + 'amplitude, half-width and high-frequency power, coloured by '
+          + 'which detector found each one. Nothing is taken out: each '
+          + 'event is named by its cluster.'
+        : 'Takes the interictal discharges out of an aligned set of '
+          + 'dentate spikes — amplitude, half-width and high-frequency '
+          + 'power per event, split in two by k-means.',
     });
   }
 
@@ -945,6 +983,20 @@ BARRY.rootcanal = (function () {
   }
 
   function nothing() {
+    if (inConfluence()) {
+      return el('div', { class: 'card rc-none' }, [
+        el('div', { class: 'empty-state' }, [
+          el('p', { text:
+            'No pooled set is ready yet. Pool a recording in Junction, sort '
+            + 'it in Panning and bank the results, then line it up in Lock: '
+            + 'every number here is read at one instant relative to the '
+            + 'stamp, and a stamp a few milliseconds out measures a smear.' }),
+          BARRY.ui.button({ kind: 'ghost', size: 'sm', text: 'Open Lock',
+            onclick: () => { const tk = BARRY.views.toolkit;
+                             if (tk && tk.pick) tk.pick('lock'); } }),
+        ]),
+      ]);
+    }
     return el('div', { class: 'card rc-none' }, [
       el('div', { class: 'empty-state' }, [
         el('p', { text:
@@ -1878,8 +1930,12 @@ BARRY.rootcanal = (function () {
              bar below the fold (measured: 912 px down on a 908 screen). */
           ...versionStrip(),
           BARRY.ui.seg([['call', fit.border_used ? 'by border' : 'by call'],
-                        ['cluster', 'by cluster']],
-            singleColour, (v) => { singleColour = v; render(); },
+                        ['cluster', 'by cluster'],
+                        // A pooled set says which detector found each one.
+                        hasOrigins() ? ['origin', 'by origin'] : null,
+                       ].filter(Boolean),
+            hasOrigins() || singleColour !== 'origin' ? singleColour : 'call',
+            (v) => { singleColour = v; render(); },
             { extra: 'rc-colour-by' }),
         ].filter(Boolean)),
         clusterChips(fit.clusters,
@@ -2813,7 +2869,21 @@ BARRY.rootcanal = (function () {
   function legend() {
     const item = (cls, text) => el('span', { class: 'rc-lg' }, [
       el('i', { class: 'rc-lg-m ' + cls }), el('span', { text })]);
-    const byBorder = !!(fit && fit.border_used) && singleColour !== 'cluster';
+    const byOrigin = singleColour === 'origin' && hasOrigins();
+    const byBorder = !!(fit && fit.border_used) && singleColour !== 'cluster'
+      && !byOrigin;
+    if (byOrigin) {
+      return el('div', { class: 'rc-legend' }, [
+        item('rc-lg-oi', 'found by Incisor'),
+        item('rc-lg-od', 'found by Doppler'),
+        item('rc-lg-ob', 'found by both'),
+        item('rc-lg-square', 'on 2 of 3 axes'),
+        item('rc-lg-wide', 'half-width by the widened search'),
+        item('rc-lg-flip', 'set by hand'),
+        item('rc-lg-hollow', 'not measured'),
+        item('rc-lg-centre', 'centre'),
+      ]);
+    }
     return el('div', { class: 'rc-legend' }, [
       item('rc-lg-ds', byBorder ? 'solid DS' : 'DS'),
       item('rc-lg-ied', byBorder ? 'solid IED' : 'IED'),
@@ -2957,7 +3027,29 @@ BARRY.rootcanal = (function () {
     const c = fit.counts || {};
     const cur = setOf();
     const v = versionOf(cur, q.from_version);
-    const body = el('div', { class: 'rc-ask' }, [
+    const pooledSet = cur && cur.type === 'pooled';
+    const body = pooledSet ? el('div', { class: 'rc-ask' }, [
+      el('p', { text: bankLabel() + '.' }),
+      el('ul', {}, [
+        el('li', { text: 'Every event stays in the set, read from '
+                         + (v ? BARRY.ui.versionLabel(v) : 'the set as it is '
+                         + 'now') + ', with its stamp, label and origin as '
+                         + 'they are. Nothing is taken out: a pooled set is '
+                         + 'meant to hold both kinds.' }),
+        el('li', { text: (c.ds || 0) + ' are named by a DS-like cluster and '
+                         + (c.ied || 0) + ' by an IED-like one, each with its '
+                         + 'cluster’s name' + (c.unmeasured
+                           ? '; ' + c.unmeasured + ' could not be measured '
+                             + 'and keep no name' : '') + '.' }),
+        el('li', { text: 'How many of Incisor’s, Doppler’s and both '
+                         + 'detectors’ events fell on each side goes in the '
+                         + 'version’s note.' }),
+        el('li', { text: 'The rule, the settings, the ' + q.flips.length
+                         + ' event(s) set by hand and both pictures are '
+                         + 'filed with it.' }),
+      ]),
+      el('p', { class: 'hint', text: fit.rule || '' }),
+    ]) : el('div', { class: 'rc-ask' }, [
       el('p', { text: bankLabel() + '.' }),
       el('ul', {}, [
         el('li', { text: (c.ds || 0) + ' dentate spikes stay in the set, '
@@ -3089,6 +3181,23 @@ BARRY.rootcanal = (function () {
        it twice on one answer must not read as two versions. */
     if (rep.already) {
       toast(rep.already, 'warn', 9000);
+      return rep;
+    }
+    /* A pooled set is named, not split (app.py, `_rootcanal_commit_pooled`):
+       nothing comes out, so there is no IED count to hold against. */
+    if (rep.pooled) {
+      const nm = rep.named || {};
+      toast('Banked: every event named by its cluster, as v' + rep.ds_version
+            + ' — ' + (nm.ds || 0) + ' DS-like, ' + (nm.ied || 0)
+            + ' IED-like, nothing removed. The previous version is kept.',
+            'ok', 10000);
+      BARRY.activity.log('rootcanal.commit', {
+        gid: q.gid, entry: q.entry, ds_version: rep.ds_version,
+        pooled: true, named: rep.named,
+      });
+      loadSingle();
+      cands = null;
+      loadCandidates();
       return rep;
     }
     toast('Banked: the set as v' + rep.ds_version + ' with ' + rep.kept
@@ -3318,6 +3427,18 @@ BARRY.rootcanal = (function () {
                                                         : tok('--text-3');
   }
 
+  /* Which detector found a pooled event, in the colours Panning and the
+     ToolKit's stream use for them: Incisor's, Doppler's, and both halves
+     for one both found (drawn two-tone, by `fill2`). */
+  function originCol(o) {
+    return o === 'doppler' ? tok('--o-doppler') : o === 'incisor' || o === 'both'
+      ? tok('--o-incisor') : tok('--text-3');
+  }
+  function originCol2(o) {
+    return o === 'both' ? tok('--o-doppler') : null;
+  }
+  const hasOrigins = () => !!(fit && (fit.events || []).some((e) => e.origin));
+
   /* A colour as three numbers, for the CSD's interpolation. Through a
      canvas rather than a parser, so a token written as a name, a hex or an
      rgb() all come out the same. */
@@ -3453,9 +3574,13 @@ BARRY.rootcanal = (function () {
       /* With a border on, the call shown is the border's: solid DS,
          solid IED, or ambiguous (grey, and filled -- not hollow, which is
          "not measured"). */
-      fill: (e) => (singleColour === 'cluster' && e.cluster != null
+      fill: (e) => (singleColour === 'origin' && hasOrigins()
+                    ? originCol(e.origin)
+                    : singleColour === 'cluster' && e.cluster != null
                     ? cluColour(e.cluster)
                     : colOf(fit.border_used ? e.border : e.cls)),
+      fill2: (e) => (singleColour === 'origin' && hasOrigins()
+                     ? originCol2(e.origin) : null),
       shape: (e) => (singleColour === 'cluster' && e.cluster != null
                      ? cluShape(e.cluster) : null),
       centreFill: (c) => cluFill(c.k, c.cls),
@@ -3577,10 +3702,29 @@ BARRY.rootcanal = (function () {
       g.lineWidth = 0.7;
       g.stroke();
     } else {
-      g.beginPath();
-      g.arc(x, y, r, 0, 6.2832);
-      g.fillStyle = fill;
-      g.fill();
+      /* Two-tone when the scene says the event is two things at once -- a
+         pooled event both detectors found: the left half one colour, the
+         right half the other. */
+      const fill2 = kind === 'dot' && sc && sc.fill2 ? sc.fill2(e) : null;
+      if (fill2) {
+        g.beginPath();
+        g.arc(x, y, r, 1.5708, 4.7124);
+        g.closePath();
+        g.fillStyle = fill;
+        g.fill();
+        g.beginPath();
+        g.arc(x, y, r, -1.5708, 1.5708);
+        g.closePath();
+        g.fillStyle = fill2;
+        g.fill();
+        g.beginPath();
+        g.arc(x, y, r, 0, 6.2832);
+      } else {
+        g.beginPath();
+        g.arc(x, y, r, 0, 6.2832);
+        g.fillStyle = fill;
+        g.fill();
+      }
       g.strokeStyle = k.bg;
       g.lineWidth = 0.7;
       g.stroke();

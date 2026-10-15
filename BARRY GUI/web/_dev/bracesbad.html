@@ -114,8 +114,8 @@ async function until(fn, ms, what) {
     .find((b) => /many/i.test(b.textContent));
   ok('there is a "many sets at once" mode', !!many);
   if (many) many.click();
-  await until(() => D().querySelectorAll('.br-bulk-row').length > 0,
-              9000, 'the bulk table');
+  await until(() => D().querySelectorAll('.br-many-list .br-bulk-row').length > 0,
+              30000, 'the list of sets');
 
   head('THE BAD-CHANNEL COLUMN');
   /* Given time to fill in. The registry read is not awaited before the panel
@@ -126,11 +126,13 @@ async function until(fn, ms, what) {
                       .some((b) => /\d+ bad/.test(b.textContent)),
               20000, 'the column to fill in');
 
-  const chips = [...D().querySelectorAll('.br-bulk-row')].map((row) => ({
+  const listed = [...D().querySelectorAll('.br-many-list .br-bulk-row')];
+  const chips = listed.map((row) => ({
     id: row.getAttribute('data-id'),
     text: (row.querySelector('.br-bulk-bad') || {}).textContent || '',
   }));
-  eq('every row has a chip', chips.length, cands.length);
+  // Every set that can be sent is a row; the rest are listed with why.
+  eq('every row has a chip', chips.filter((c) => c.text).length, listed.length);
 
   const saidNone = chips.filter((c) => /none bad/.test(c.text)).length;
   ok('the column is not "none bad" all the way down',
@@ -155,16 +157,18 @@ async function until(fn, ms, what) {
      wrong.length ? wrong.slice(0, 6).join('\n       ')
                   : 'there were no rows to check');
 
-  head('WHAT IT CLAIMS CAN BE READ');
+  head('WHAT IT CLAIMS CAN BE READ HERE');
   /* The same cache answers this, and was wrong the same way: with no rows to
-     judge against, `reachable` says yes to everything. */
+     judge against, everything read as reachable. Here is this computer's
+     own drives; the VACC's are counted beside them. */
   const reachable = cands.filter(
-    (c) => (byGid.get(c.gid) || {}).reachable).length;
-  const bar = (D().querySelector('.br-bulk-count') || {}).textContent || '';
-  const claimed = /·\s*(\d+)\s*can be read here/.test(bar)
+    (c) => ((byGid.get(c.gid) || {}).here || []).length
+           && (c.versions || []).some((v) => v.usable)).length;
+  const bar = (D().querySelector('.br-many-say') || {}).textContent || '';
+  const claimed = /can be aligned: (\d+) on this computer/.test(bar)
     ? Number(RegExp.$1) : null;
-  say('       bar says: ' + bar.trim(), 'dim');
-  eq('the bar counts the ones the registry can actually reach',
+  say('       it says: ' + bar.trim(), 'dim');
+  eq('it counts the ones this computer can actually reach',
      claimed, reachable);
 
   head('THE SETTINGS, IN MANY TOO (THE RUN INTERCEPTED; NOTHING IS READ)');
@@ -186,40 +190,39 @@ async function until(fn, ms, what) {
   eq('changed there, it is the setting', Number(st0().window_ms), winWant);
   ev('(function(){ var W = window; if (W.__brbFetch) return; W.__brbFetch = W.fetch;'
      + ' W.__brbSent = []; W.fetch = function(u, o) {'
-     + ' if (String(u).indexOf("/api/braces/run") >= 0) {'
+     + ' if (String(u).indexOf("/api/braces/batch") >= 0) {'
      + '   W.__brbSent.push(JSON.parse((o && o.body) || "{}"));'
      + '   return Promise.resolve(new Response(JSON.stringify({ ok: false,'
      + '     error: "harness: not read" }), { status: 400,'
      + '     headers: { "Content-Type": "application/json" } })); }'
      + ' return W.__brbFetch.apply(this, arguments); }; })()');
   try {
-    const box = [...D().querySelectorAll('.br-bulk-row input[type=checkbox]')]
+    const box = [...D().querySelectorAll('.br-many-list .br-bulk-row input[type=checkbox]')]
       .find((b) => !b.disabled);
-    ok('a set that can be read here is there to tick', !!box);
+    ok('a set that can be sent is there to tick', !!box);
     if (box) {
       box.click();
-      await until(() => [...D().querySelectorAll('.br-bulk-bar .btn')]
-        .some((b) => /^Align 1 set$/.test(b.textContent) && !b.disabled),
-        5000, 'the Align button');
-      [...D().querySelectorAll('.br-bulk-bar .btn')]
-        .find((b) => /^Align 1 set$/.test(b.textContent)).click();
-      await until(() => JSON.parse(ev('JSON.stringify(window.__brbSent)')).length
-                        && D().querySelector('.br-bulk-row.failed'),
-                  9000, 'the run');
+      const go = () => D().querySelector('.br-many-go .btn');
+      await until(() => go() && go().textContent === 'Align 1 set' && !go().disabled,
+                  5000, 'the Align button');
+      go().click();
+      await until(() => JSON.parse(ev('JSON.stringify(window.__brbSent)')).length,
+                  9000, 'the batch');
       const sent = JSON.parse(ev('JSON.stringify(window.__brbSent)'));
-      ok('a many-sets run reads every set with the window set there',
+      ok('a batch reads every set with the window set there',
          sent.length === 1 && Number(sent[0].window_ms) === winWant
          && sent[0].measure === st0().measure, JSON.stringify(sent));
-      ok('and the refused read is said on its row',
-         /harness: not read/.test((D().querySelector('.br-bulk-row.failed .st')
-                                    || {}).textContent || ''));
+      await until(() => [...D().querySelectorAll('.toast')]
+        .some((t) => /harness: not read/.test(t.textContent)), 5000, 'the refusal');
+      ok('and a refused batch is said, not swallowed',
+         [...D().querySelectorAll('.toast')].some((t) => /harness: not read/.test(t.textContent)));
     }
   } finally {
     ev('(function(){ var W = window; if (W.__brbFetch) { W.fetch = W.__brbFetch;'
        + ' delete W.__brbFetch; } })()');
     // Put back what this changed: the ticks, and the window.
-    const clr = [...D().querySelectorAll('.br-bulk-bar .btn.ghost')]
-      .find((b) => b.textContent === 'Clear');
+    const clr = [...D().querySelectorAll('.br-many-tools .btn')]
+      .find((b) => b.textContent === 'Clear' && !b.disabled);
     if (clr) clr.click();
     await sleep(150);
     if (winIn()) {

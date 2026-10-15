@@ -87,7 +87,13 @@ async function untilN(fn, tries = 200, gap = 100) {
           say('note', '  ' + s.name + ' is not built yet; its header is not read');
           continue;
         }
-        const btn = Array.from(D().querySelectorAll('.tk-step')).find(
+        /* Within THIS bundle's card. Root Canal is a step of The Dentist
+           and of The Confluence, and the first "Root Canal" on the page is
+           The Dentist's -- clicking it from The Confluence's loop opened it
+           as step 4 of The Dentist, which is right, and read as a fail. */
+        const card = D().querySelector('.tk-bundle[data-bundle="' + b.id + '"]')
+                     || D();
+        const btn = Array.from(card.querySelectorAll('.tk-step')).find(
           (x) => ((x.querySelector('strong') || {}).textContent || '').trim()
                    === s.name);
         if (!btn) { check(s.name + ' has a step button', false, 'not found'); continue; }

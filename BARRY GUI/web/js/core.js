@@ -1867,6 +1867,15 @@ const MODES = {
     what: 'Looking only · nothing here is saved · pick two '
         + 'regions and a boundary',
   },
+  panning: {
+    name: 'Panning',
+    /* Worth a `what`: merging is the one thing here that is not on a
+       button you can see until you need it, and two events a few
+       milliseconds apart look like one line on the traces. */
+    what: 'Each event in the colour of the detector that found it '
+        + '· shift-click a second one on the strip, M to merge '
+        + '· Z undoes',
+  },
   curate: {
     name: 'DS curation',
     /* No `what`. It said "Y keeps, N rejects", and neither key does

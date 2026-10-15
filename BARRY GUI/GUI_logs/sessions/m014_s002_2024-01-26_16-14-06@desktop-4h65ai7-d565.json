@@ -1,0 +1,66 @@
+{
+  "_at": {
+    "created": "2026-10-14T19:13:37.075688+00:00",
+    "gid": "2026-10-14T19:13:37.075688+00:00",
+    "group": "2026-10-14T19:13:37.075688+00:00",
+    "key": "2026-10-14T19:13:37.075688+00:00",
+    "label": "2026-10-14T19:13:37.075688+00:00",
+    "loose_key": "2026-10-14T19:13:37.075688+00:00",
+    "mouse": "2026-10-14T19:13:37.075688+00:00",
+    "project": "2026-10-14T19:13:37.075688+00:00",
+    "project_source": "2026-10-14T19:13:37.075688+00:00",
+    "retired": "2026-10-14T19:13:37.075688+00:00",
+    "schema": "2026-10-14T19:13:37.075688+00:00",
+    "session": "2026-10-14T19:13:37.075688+00:00",
+    "start": "2026-10-14T19:13:37.075688+00:00",
+    "updated": "2026-10-14T19:14:20.216024+00:00"
+  },
+  "_keys": {
+    "paths": {
+      "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2024-01-26_16-13-50": [
+        "set",
+        "2026-10-14T19:14:20.216024+00:00"
+      ]
+    }
+  },
+  "_shard": {
+    "at": "2026-10-14T19:14:20.216024+00:00",
+    "machine": "desktop-4h65ai7-d565",
+    "schema": 1
+  },
+  "created": {
+    "app_version": "2026.10.14.5",
+    "at": "2026-10-14T15:13:37-04:00",
+    "commit": "8d0daabe",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  },
+  "gid": "s71cd0fb06034",
+  "group": null,
+  "key": "m014_s002_2024-01-26_16-14-06",
+  "label": "KCNT1 m14 s2 2024-01-26",
+  "loose_key": "m014_s002",
+  "mouse": 14,
+  "paths": [
+    "\\\\netfiles03.uvm.edu\\bigdata_jbarry\\Jeremy2\\KCNT1M14_YH\\kcnt1m14s2oct19\\2024-01-26_16-13-50"
+  ],
+  "project": "KCNT1",
+  "project_source": "guessed",
+  "retired": false,
+  "schema": 1,
+  "session": 2,
+  "start": "2024-01-26T21:14:06+00:00",
+  "updated": {
+    "app_version": "2026.10.14.5",
+    "at": "2026-10-14T15:14:20-04:00",
+    "commit": "8d0daabe",
+    "email": "sakhava1@uvm.edu",
+    "host": "DESKTOP-4H65AI7",
+    "machine": "Bluebarry",
+    "os": "Windows",
+    "user": "Shahriar Tafti"
+  }
+}

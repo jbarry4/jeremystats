@@ -354,14 +354,30 @@ BARRY.strataSteps = (function () {
   }
 
   function jobText() {
-    const st = ((jobSnap && jobSnap.stages) || [])[0] || {};
-    if (jobKind === 'ica') return 'Unmixing the gamma field — '
+    const all = (jobSnap && jobSnap.stages) || [];
+    if (jobKind === 'ica') return 'Unmixing the gamma field \u2014 '
       + jobPct() + '%';
     const skip = (readPlan && readPlan.skipped) || [];
-    return 'Reading the channels — ' + (st.done || 0) + ' of '
-      + (st.of || '?') + ' done'
-      + (skip.length ? ' (' + skip.length + ' bad skipped)' : '');
+    const skipTxt = skip.length ? ' (' + skip.length + ' bad skipped)' : '';
+    /* A read on the VACC goes through stages of its own (2026-10-14):
+       said in the words of where it is, not as a channel count that sits
+       at 0 while the job waits in the queue. */
+    const run = all.find((x) => x.status === 'running');
+    const st = all.find((x) => x.name === 'strata read') || all[0] || {};
+    if (run && /^vacc stage/.test(run.name)) return 'Sending the job to the VACC';
+    if (run && /^vacc queue/.test(run.name)) {
+      return 'On the VACC: waiting for a node, then reading there';
+    }
+    if (run && run.name === 'strata fetch') {
+      return 'Bringing the read home from the VACC \u2014 ' + (run.done || 0)
+        + ' of ' + (run.of || '?') + ' MB';
+    }
+    if (run && /^vacc fetch/.test(run.name)) return 'The VACC is done; collecting it';
+    return (onVacc() ? 'Reading on the VACC \u2014 ' : 'Reading the channels \u2014 ')
+      + (st.done || 0) + ' of ' + (st.of || '?') + ' done' + skipTxt;
   }
+  /* A recording only the cluster has: read there, used here. */
+  const onVacc = () => !!(H && /^vacc:/.test(H.path() || ''));
 
   /* ==================================================================
      The bar: the step row, then whatever the open step needs
@@ -513,8 +529,9 @@ BARRY.strataSteps = (function () {
       + (skip.length === 1 ? '' : 's') + ' skipped' : '';
     wrap.appendChild(el('button', {
       class: 'btn sm', text: (stale ? 'Read it again' : 'Read the recording')
-        + (mins ? ' · about ' + mins + ' min' : '')
-        + (skipTxt ? ' · ' + skipTxt : ''),
+        + (onVacc() ? ' on the VACC' : '')
+        + (mins ? ' \u00b7 about ' + mins + ' min' : '')
+        + (skipTxt ? ' \u00b7 ' + skipTxt : ''),
       title: (stale ? (status.why || 'The files changed since this '
                        + 'recording was last read.') + '\n' : '')
            + 'The steps need every channel read once: ripples, theta, gamma '
@@ -522,7 +539,12 @@ BARRY.strataSteps = (function () {
            + 'answer comes back at once.'
            + (skip.length ? '\nNot read, because they are marked bad: ch '
              + skip.join(', ') + '. They keep their place on the probe and '
-             + 'are filled in from their neighbours.' : ''),
+             + 'are filled in from their neighbours.' : '')
+           + (onVacc() ? '\nThis recording is only on the VACC: a compute '
+             + 'node reads it, and the read (the per-second numbers and a '
+             + '1250 Hz copy, a few hundred MB) comes back here. Everything '
+             + 'after that runs on this computer. Plus however long the '
+             + 'queue is.' : ''),
       onclick: () => scan(true),
     }));
     if (stale && status.why) {

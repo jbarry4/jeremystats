@@ -539,6 +539,32 @@ def scan(session, report, gid, job=None, workers=4, channels=None,
     return meta
 
 
+def adopt_scan(gid, folder, patch=None):
+    """Put a read made elsewhere where a read made here goes.
+
+    `folder` holds what `scan` writes (meta.json, bins.npz, lfp.npy) -- a
+    read made on a compute node and brought home. `patch` goes into its
+    meta: the stamp and path of the recording as THIS machine knows it,
+    because the node stamped the files it read, which this machine cannot
+    stat, and a stamp that never matches would make the read out of date
+    the moment it landed."""
+    mp = os.path.join(folder, "meta.json")
+    with open(mp, encoding="utf-8") as fh:
+        meta = json.load(fh)
+    meta.update(patch or {})
+    with open(mp, "w", encoding="utf-8") as fh:
+        json.dump(meta, fh, indent=1)
+    d = _dir(gid)
+    with _LOCK:
+        _BINS.pop(gid, None)
+        if gid in _BINS_ORDER:
+            _BINS_ORDER.remove(gid)
+        if os.path.isdir(d):
+            shutil.rmtree(d, ignore_errors=True)
+        _replace(folder, d)
+    return meta
+
+
 def _replace(src, dst, tries=8):
     """os.replace, retried. Windows refuses to replace a file somebody has
     open -- a reader in another thread, OneDrive uploading it, an antivirus
@@ -809,8 +835,12 @@ def derived(gid, kind, key, compute):
 # stage it was not told about without a word -- see rootcanal.register_stages).
 STAGE_READ = "strata read"
 STAGE_ICA = "strata ica"
+# Bringing a read made on the cluster home: megabytes, at the speed of one
+# ssh stream (about 10 MB/s measured, 2026-10).
+STAGE_FETCH = "strata fetch"
 _STAGES = ((STAGE_READ, "channels", 8e-4, False),
-           (STAGE_ICA, "steps", 3.0, True))
+           (STAGE_ICA, "steps", 3.0, True),
+           (STAGE_FETCH, "MB", 0.1, True))
 
 
 def register_stages(cfcmod):

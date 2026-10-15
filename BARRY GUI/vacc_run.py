@@ -134,6 +134,9 @@ def main(argv):
     emit({"k": "start", "rid": rid, "tool": tool, "pid": os.getpid(),
           "host": os.uname().nodename if hasattr(os, "uname") else "?"})
 
+    # Where this run writes beside its result -- for a tool whose answer is
+    # a folder rather than a page of numbers (StrataScope's read).
+    bundle["_out_dir"] = out_dir
     try:
         from backend import csc
         result = run_tool(tool, spec, bundle, job, csc)
@@ -286,6 +289,37 @@ def run_tool(tool, spec, bundle, job, csc):
     if tool == "panorama":
         from backend import panorama
         return panorama.run(session, spec, job)
+
+    if tool == "strata":
+        # StrataScope's read, for a recording the desk cannot open. The SAME
+        # `stratasteps.scan` a local read calls, into a folder beside this
+        # run; the desk brings the folder home in one stream and everything
+        # after the read happens there. The segmentation is made here, as
+        # Incisor's is when no report travelled.
+        from backend import stratasteps
+        report = bundle.get("report")
+        if report is None and session.get("source") == "ncs":
+            from backend import continuity
+            report = continuity.check(path)
+            if not report or not report.get("ok"):
+                raise ValueError((report or {}).get("error")
+                                 or "could not segment the recording")
+        stratasteps.configure(bundle["_out_dir"])
+        gid = spec.get("gid") or "vacc"
+        meta = stratasteps.scan(session, report, gid, job=job,
+                                workers=int(spec.get("workers") or 4),
+                                channels=spec.get("channels"),
+                                skip=spec.get("skip") or [])
+        folder = stratasteps._dir(gid)
+        size = sum(os.path.getsize(os.path.join(folder, f))
+                   for f in os.listdir(folder))
+        return {"folder": os.path.relpath(folder, bundle["_out_dir"])
+                .replace(os.sep, "/"),
+                "bytes": int(size),
+                "files": sorted(os.listdir(folder)),
+                "meta": {k: meta.get(k) for k in (
+                    "n_bins", "channels", "skipped", "end_s", "lfp_fs",
+                    "scanned_at")}}
 
     raise ValueError("no such tool: %r" % (tool,))
 

@@ -27,6 +27,7 @@ BARRY.views.toolkit = (function () {
     from: '', to: '',
     form: 'long',
     clean: false,
+    via: null,          // the bundle the open tool was opened from
   };
 
   /* ==================================================================
@@ -132,6 +133,18 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'braces') { BARRY.braces.paint(); return; }
     if (q.tool === 'doppler') { await loadDoppler(); return; }
     if (q.tool === 'eye') { BARRY.eye.paint(); return; }
+    /* The Confluence. Junction and Lock paint from banked entries; Panning
+       is a mode, and its step page is the way in, like Spotter's. None of
+       them reads the bad-channel table below. */
+    /* Only when the pane is not already theirs: `render` has painted them a
+       moment before this debounced call lands, and a second paint rebuilt
+       the panel under the pointer -- the "it keeps reloading" Doppler had. */
+    if (q.tool === 'junction' || q.tool === 'panning') {
+      const h = $('#tkResult');
+      if (!(h && h.dataset.tool === q.tool)) renderResult();
+      return;
+    }
+    if (q.tool === 'lock') { BARRY.lock.paint(); return; }
     /* Spotter has no panel of its own: it is a MODE, and the step is the
        way in rather than the thing itself. It still needs a branch here,
        or it falls through to the bad-channel query below -- which is the
@@ -195,7 +208,7 @@ BARRY.views.toolkit = (function () {
       el('div', { class: 'tk-tools' }, [
         el('div', { class: 'section-label',
                     text: 'Bundles' }),
-        ...BUNDLES.map(bundleCard),
+        ...bundleCards(),
         el('div', { class: 'section-label', text: 'Tools' }),
         toolButton('bad', 'Bad channels',
                    'Export which channels were marked bad, by session, mouse, '
@@ -263,7 +276,10 @@ BARRY.views.toolkit = (function () {
           // banked set, so the bad-channel scope card would be describing
           // something else -- and Doppler has a channel editor of its own
           // that writes to the same record.
-          || STORM.some(([id]) => id === q.tool))
+          || STORM.some(([id]) => id === q.tool)
+          // The Confluence pools banked entries and walks pooled sets; the
+          // scope card would be about a question none of its steps asks.
+          || CONFLUENCE.some(([id]) => id === q.tool))
            ? [el('div', { class: 'tk-result', id: 'tkResult' })]
            : [scopeCard(),
               el('div', { class: 'tk-result', id: 'tkResult' })]),
@@ -333,6 +349,26 @@ BARRY.views.toolkit = (function () {
     ['eye', 'Eye', 'line them up'],
   ];
 
+  /* The Confluence -- where The Dentist and The Storm meet.
+
+     Named for the place two rivers become one. Incisor's dentate spikes and
+     Doppler's discharges are two detectors' answers about one recording,
+     and some of what each finds is the other's; Junction pools them,
+     Panning sorts the pool (spike, or not -- prospectors pan a river for
+     what is worth keeping), Lock lines it up (a canal lock is what levels
+     boats), and Root Canal teases it apart in its three axes, coloured by
+     which detector found each event.
+
+     Root Canal is a step of The Dentist too. A tool in two bundles is one
+     tool: the step you came in by is remembered (`q.via`), so its chip and
+     the lit card say which bundle you are working in. */
+  const CONFLUENCE = [
+    ['junction', 'Junction', 'pool them'],
+    ['panning', 'Panning', 'sort them'],
+    ['lock', 'Lock', 'line them up'],
+    ['rootcanal', 'Root Canal', 'tease them apart'],
+  ];
+
   /* The Lookout -- the frequency tools, widest view first.
 
      Named for the place you stand to see a long way. The order is a real
@@ -358,10 +394,14 @@ BARRY.views.toolkit = (function () {
      This used to be one array and one hard-coded card, which was right
      while there was one bundle. `icon` is the tool whose glyph stands for
      the whole bundle. */
+  /* The Dentist and The Storm sit together, with The Confluence under them,
+     because a stream runs from both into it (`bundleCards`). */
   const BUNDLES = [
     { id: 'dentist', name: 'The Dentist', icon: 'incisor', steps: DENTIST },
-    { id: 'arc', name: 'The Arc', icon: 'circuit', steps: ARC },
     { id: 'storm', name: 'The Storm', icon: 'doppler', steps: STORM },
+    { id: 'confluence', name: 'The Confluence', icon: 'junction',
+      steps: CONFLUENCE },
+    { id: 'arc', name: 'The Arc', icon: 'circuit', steps: ARC },
     { id: 'lookout', name: 'The Lookout', icon: 'horizon', steps: LOOKOUT },
   ];
 
@@ -369,6 +409,17 @@ BARRY.views.toolkit = (function () {
      to keep them out of the flat list below. */
   const BUNDLED = BUNDLES.reduce(
     (acc, b) => acc.concat(b.steps.map(([id]) => id)), []);
+
+  /* The bundle a tool is being worked in: the one it was opened from when
+     it is in more than one, else the first that holds it. */
+  function bundleOf(toolId) {
+    const holds = (b) => b.steps.some(([id]) => id === toolId);
+    if (q.via) {
+      const via = BUNDLES.find((b) => b.id === q.via);
+      if (via && holds(via)) return via;
+    }
+    return BUNDLES.find(holds) || null;
+  }
 
   /* "step 2 of The Lookout", worked out rather than typed.
 
@@ -379,13 +430,10 @@ BARRY.views.toolkit = (function () {
      inserting a step renumbers every header after it, and a tool that is
      not in a bundle gets null and draws no chip at all. */
   function stepOf(toolId) {
-    for (const b of BUNDLES) {
-      const i = b.steps.findIndex(([id]) => id === toolId);
-      if (i >= 0) {
-        return 'step ' + (i + 1) + ' of ' + b.name;
-      }
-    }
-    return null;
+    const b = bundleOf(toolId);
+    if (!b) return null;
+    const i = b.steps.findIndex(([id]) => id === toolId);
+    return 'step ' + (i + 1) + ' of ' + b.name;
   }
 
   /* Which bundles are folded away.
@@ -486,9 +534,117 @@ BARRY.views.toolkit = (function () {
     setTimeout(end, FOLD_MS + 80);
   }
 
+  /* The cards, with The Dentist, The Storm and The Confluence in a group of
+     their own so the stream can be drawn beside them. Everything else is a
+     card as it always was. */
+  function bundleCards() {
+    const out = [];
+    const flow = el('div', { class: 'tk-flow' });
+    for (const b of BUNDLES) {
+      if (FLOW_IN.indexOf(b.id) >= 0 || b.id === FLOW_OUT) {
+        flow.appendChild(bundleCard(b));
+        if (b.id === FLOW_OUT) {
+          flow.insertBefore(riverSvg(), flow.firstChild);
+          out.push(flow);
+          // Once the group is in the page and has heights to measure. On a
+          // timer as well as a frame: a frame never comes in a background
+          // tab, and the stream would be missing until something resized.
+          requestAnimationFrame(() => drawRiver(flow));
+          setTimeout(() => drawRiver(flow), 0);
+        }
+      } else {
+        out.push(bundleCard(b));
+      }
+    }
+    return out;
+  }
+
+  /* ---------- the stream ----------
+
+     Asked for in so many words: "a stream connecting them and leading to a
+     separate bundle". Two strands in the gutter to the left of the cards,
+     one leaving The Dentist and one leaving The Storm, in the two origin
+     colours Panning and Root Canal use for Incisor's and Doppler's events
+     -- so the colours are learnt here once -- joining, and running into The
+     Confluence as a pair: two-tone, the way a merged event is drawn.
+
+     Always flowing, gently: dashes travel along the strands. The rail is
+     rebuilt on every tool switch, so the animation is offset by the clock
+     rather than restarted -- a stream that jumps back to the start each
+     time you click is not a stream. Still under prefers-reduced-motion. */
+  const FLOW_IN = ['dentist', 'storm'];
+  const FLOW_OUT = 'confluence';
+  const RIVER_W = 16;
+  const RIVER_MS = 2400;              // one dash period; see app.css
+
+  function riverSvg() {
+    return el('svg', { class: 'tk-river', 'aria-hidden': 'true',
+                       focusable: 'false' });
+  }
+
+  function drawRiver(flow) {
+    const svg = flow && flow.querySelector('.tk-river');
+    if (!svg || !flow.isConnected) {
+      // The rail was rebuilt; this group is gone, and so is its watcher.
+      if (flow && flow._riverObs) { flow._riverObs.disconnect(); }
+      return;
+    }
+    const top = flow.getBoundingClientRect().top;
+    const cardY = (id, f) => {
+      const c = flow.querySelector('.tk-bundle[data-bundle="' + id + '"] '
+                                   + '.tk-bundle-hd');
+      if (!c) return null;
+      const r = c.getBoundingClientRect();
+      return r.top - top + r.height * (f == null ? 0.5 : f);
+    };
+    const yD = cardY('dentist'), yS = cardY('storm');
+    const yC = cardY(FLOW_OUT);
+    if (yD == null || yS == null || yC == null) return;
+    const h = Math.ceil(flow.getBoundingClientRect().height);
+    svg.setAttribute('viewBox', '0 0 ' + RIVER_W + ' ' + h);
+    svg.setAttribute('width', RIVER_W);
+    svg.setAttribute('height', h);
+    /* As a style too: a rule elsewhere sizes svgs in the rail, and an svg
+       wider than its viewBox centres the drawing -- which put the stream
+       through the middle of the cards instead of in the gutter. */
+    svg.style.width = RIVER_W + 'px';
+    svg.style.height = h + 'px';
+    svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
+    /* Each strand leaves its card's head at the gutter's right edge, turns
+       down, and the two run side by side once they meet, a few pixels
+       apart, until they turn into The Confluence's head. */
+    const xIn = RIVER_W, xA = 5, xB = 10;
+    const strand = (y0, x, yEnd, xEnd) =>
+      'M' + xIn + ' ' + y0.toFixed(1)
+      + ' C' + (x + 3) + ' ' + y0.toFixed(1) + ' ' + x + ' '
+      + (y0 + 4).toFixed(1) + ' ' + x + ' ' + (y0 + 9).toFixed(1)
+      + ' L' + x + ' ' + (yEnd - 9).toFixed(1)
+      + ' C' + x + ' ' + (yEnd - 3).toFixed(1) + ' ' + (xEnd - 4) + ' '
+      + yEnd.toFixed(1) + ' ' + xEnd + ' ' + yEnd.toFixed(1);
+    const dPath = strand(yD, xA, yC - 2, xIn);
+    const sPath = strand(yS, xB, yC + 2, xIn);
+    // The clock, so the dashes carry on from where they were.
+    const lag = -(Date.now() % RIVER_MS) + 'ms';
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    svg.appendChild(svgFragment(
+      '<path class="tk-river-bed i" d="' + dPath + '"/>'
+      + '<path class="tk-river-bed d" d="' + sPath + '"/>'
+      + '<path class="tk-river-i" style="animation-delay:' + lag + '" d="'
+      + dPath + '"/>'
+      + '<path class="tk-river-d" style="animation-delay:' + lag + '" d="'
+      + sPath + '"/>'));
+    // A fold changes the heights under it; the stream follows.
+    if (!flow._riverObs && window.ResizeObserver) {
+      flow._riverObs = new ResizeObserver(() => drawRiver(flow));
+      flow._riverObs.observe(flow);
+    }
+  }
+
   function bundleCard(bundle) {
     const steps = bundle.steps;
-    const here = steps.find(([id]) => id === q.tool);
+    const here = steps.find(([id]) => id === q.tool)
+      && bundleOf(q.tool) === bundle
+      ? steps.find(([id]) => id === q.tool) : null;
     const on = !!here;
     const open = !folded.has(bundle.id);
     const box = el('div', {
@@ -532,7 +688,7 @@ BARRY.views.toolkit = (function () {
           title: soon ? (name + ' — ' + does + '. ' + soon)
                       : (name + ' — ' + does),
           disabled: soon ? 'disabled' : null,
-          onclick: soon ? null : (() => pickTool(id)),
+          onclick: soon ? null : (() => pickTool(id, bundle.id)),
         }, [
           el('span', { class: 'tk-step-i', text: String(i + 1) }),
           /* `strong`, like the flat tool buttons use, because the name of a
@@ -575,6 +731,12 @@ BARRY.views.toolkit = (function () {
     // An eye, for the centre of the storm.
     spotter: 'M1 8s2.6-4.2 7-4.2S15 8 15 8s-2.6 4.2-7 4.2S1 8 1 8z'
              + 'M8 6.2A1.8 1.8 0 1 0 8 9.8a1.8 1.8 0 0 0 0-3.6z',
+    /* The Confluence. Two streams becoming one; a pan with the gold left
+       in it; a lock's two gates and the level between them. */
+    junction: 'M2 2.5c0 4 3 5 6 6.5M14 2.5c0 4-3 5-6 6.5M8 9v4.5',
+    panning: 'M1.5 8.5h13c0 2.8-2.9 4.5-6.5 4.5S1.5 11.3 1.5 8.5z'
+             + 'M5.5 10.6h.01M8.6 10.9h.01M10.6 10.2h.01M4 6.5l2-3 2 3',
+    lock: 'M3.5 2.5v11M12.5 2.5v11M3.5 9.5h9M6 6.5h4M1.5 13.5h13',
     // A target: the thing lined up on.
     eye: 'M8 1.6v2.2M8 12.2v2.2M1.6 8h2.2M12.2 8h2.2'
          + 'M8 3.6a4.4 4.4 0 1 0 0 8.8 4.4 4.4 0 0 0 0-8.8z'
@@ -618,8 +780,15 @@ BARRY.views.toolkit = (function () {
   /* Switching tools. One function, because the bundle's steps and the flat
      list are two doors onto the same thing and a second copy of this drifts
      -- the Kilosort host reset below was already missed once. */
-  function pickTool(id) {
+  function pickTool(id, via) {
     q.tool = id;
+    /* Which bundle it was opened from, for a tool in more than one. A door
+       that names no bundle keeps the one already in use when it holds this
+       tool -- Panning's "Tease them apart" opens Root Canal inside The
+       Confluence by passing it -- and otherwise falls back to the first. */
+    if (via) q.via = via;
+    else if (q.via && !BUNDLES.some((b) => b.id === q.via
+        && b.steps.some(([s]) => s === id))) q.via = null;
     // The Kilosort pane owns its own host; let it rebuild.
     const host = document.getElementById('tkResult');
     if (host) delete host.dataset.ks;
@@ -665,7 +834,15 @@ BARRY.views.toolkit = (function () {
      cluster run has come back yet, so it is not listed. */
   /* Braces and Eye joined 2026-10-09: a set whose recording is only on the
      cluster is aligned there by the same `braces.align` (vacc_run.py). */
-  const VACC_TOOLS = ['incisor', 'doppler', 'circuit', 'braces', 'eye'];
+  /* StrataScope joined 2026-10-14: a recording only on the cluster is read
+     there by the same `stratasteps.scan` (vacc_run.py), and the read comes
+     home. */
+  /* Lock joined 2026-10-14 with The Confluence: it is Eye's engine on a
+     pooled set, so it goes to the cluster for the same reason Eye does.
+     Junction does not -- it reads no recording, only banked times -- and
+     Panning only looks, through the link, the way Spotter does. */
+  const VACC_TOOLS = ['incisor', 'doppler', 'circuit', 'braces', 'eye',
+                      'strata', 'lock'];
 
   /* What each tool can do with a recording that is VACC loaded and not on
      this computer -- the input to `BARRY.vacc.reach` (vacc.js says what the
@@ -680,13 +857,16 @@ BARRY.views.toolkit = (function () {
                   computer first, so it is 'here' until that moves.
        'link'     views it through the live link: Checkup, Spotter and
                   StrataScope take over Xplorefinder, which reads windows and
-                  every panel off the cluster.
+                  every panel off the cluster. StrataScope's steps also read
+                  the recording on the cluster and bring the read home.
        'here'     everything else, until somebody checks that every read it
                   makes goes through the link or the cluster. Panorama's VACC
                   run is in the constitution's table and not built yet. */
   const READS = {
     incisor: 'cluster', doppler: 'cluster', braces: 'cluster', eye: 'cluster',
-    curate: 'link', spotter: 'link', strata: 'link', xplore: 'link',
+    lock: 'cluster',
+    curate: 'link', spotter: 'link', panning: 'link', strata: 'link',
+    xplore: 'link',
   };
   function readsOf(id) { return READS[id] || 'here'; }
 
@@ -727,6 +907,19 @@ BARRY.views.toolkit = (function () {
              + 'computer has no copy of runs just as well — its channel list '
              + 'comes over the link and the rest is done there.',
     },
+    strata: {
+      why: 'StrataScope\u2019s steps start by reading every channel of the '
+         + 'whole recording once. For a recording only on the cluster that '
+         + 'read cannot happen here.',
+      what: 'Only when this computer has no copy: a compute node reads the '
+          + 'recording by the same rule as here (the first 64 channels, bad '
+          + 'ones skipped) and the read — the per-second numbers and a 1250 '
+          + 'Hz copy, a few hundred MB — comes home. The steps, the '
+          + 'evidence, ICA and the phase map then run on this computer.',
+      without: 'Only recordings on this computer could be labelled with the '
+             + 'steps; one only on the cluster could be looked at but not '
+             + 'read.',
+    },
     braces: {
       why: 'Lining stamps up reads the signal around every curated spike on '
          + 'many channels at full rate. For a recording this computer has, '
@@ -748,6 +941,24 @@ BARRY.views.toolkit = (function () {
           + 'proposals come back side by side.',
       without: 'Only sets whose recording is on this computer could be '
              + 'lined up.',
+    },
+    lock: {
+      why: 'Lock is Eye pointed at a pooled set -- Incisor’s and Doppler’s '
+         + 'events together -- so it reads the windows round every stamp, '
+         + 'three times over, as Eye does.',
+      what: 'Only when this computer has no copy: each of the three runs is '
+          + 'a job on the cluster, reading the windows there; the three '
+          + 'proposals come back side by side.',
+      without: 'Only pooled sets whose recording is on this computer could '
+             + 'be lined up.',
+    },
+    panning: {
+      why: 'Panning sorts a pooled set on the traces. For a recording only '
+         + 'on the cluster, there is nothing here to draw them from.',
+      what: 'Nothing is run. Each window — traces, CSD, voltage and '
+          + 'spectrogram — is read and drawn on the cluster over a live '
+          + 'link. Decisions and merges are saved here.',
+      without: 'Only recordings on this computer could be sorted.',
     },
     circuit: {
       why: 'A circuit computes every coupling measure on every cue pair of '
@@ -3474,6 +3685,9 @@ BARRY.views.toolkit = (function () {
     if (q.tool === 'doppler') { BARRY.doppler.paint(); return; }
     if (q.tool === 'spotter') { renderSpotter(); return; }
     if (q.tool === 'eye') { BARRY.eye.paint(); return; }
+    if (q.tool === 'junction') { BARRY.junction.paint(); return; }
+    if (q.tool === 'panning') { BARRY.panning.paintStep(); return; }
+    if (q.tool === 'lock') { BARRY.lock.paint(); return; }
     if (q.tool === 'rootcanal') { BARRY.rootcanal.paint(); return; }
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { renderCFC(); return; }
@@ -3660,14 +3874,16 @@ BARRY.views.toolkit = (function () {
        the third would be the one that drifts. Unknown ids are refused
        rather than set, because `q.tool` naming a tool that does not exist
        renders an empty pane with no way back. */
-    pick: (id) => {
+    pick: (id, via) => {
       /* Every bundle step, plus every flat tool -- which is every id with
          an icon. Not the icon map alone: X-ray has no icon of its own and
          would have been refused by a guard that only asked that. */
       if (BUNDLED.indexOf(id) < 0 && !TOOL_ICONS[id]) return false;
-      pickTool(id);
+      pickTool(id, via);
       return true;
     },
+    /* The bundle the open tool is being worked in (see `bundleOf`). */
+    via: () => (bundleOf(q.tool) || {}).id || null,
     /* Which tools are steps of a bundle, and of which. `_dev/arc.html`
        checks the bundle renders its steps and keeps them out of the flat
        list; nothing else should need this. */

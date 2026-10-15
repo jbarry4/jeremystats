@@ -55,11 +55,29 @@ BARRY.braces = (function () {
      column reads, so a row that failed says why for as long as the panel
      is open. */
   const bulk = {
-    on: false, pick: {}, want: {}, state: {},
-    running: false, stop: false, now: null,
+    on: false, pick: {}, want: {},
     // Read again even where these settings were run before.
     force: false,
+    // Every set to the cluster, even the ones this computer has.
+    allVacc: false,
+    find: '',           // the search over the list
+    rev: 0,             // bumped when what the rows say has changed
   };
+  /* The batches the server is running or has just run, from
+     `/api/braces/inflight` -- the server's, not this page's, so leaving the
+     view or reloading finds them again (2026-10-14). */
+  let flights = [];
+  let flightTimer = null;
+  let flightsAsked = false;
+  const flightSeen = new Set();     // "<job>:<set>" landings already counted
+  const flightAnnounced = new Set();
+  const flightLive = new Set();     // batches seen running from here
+  let dismissed = new Set();
+  try {
+    dismissed = new Set(JSON.parse(localStorage.getItem('barry.braces.dismissed')
+                                   || '[]'));
+  } catch (e) { /* a remembered dismissal is a convenience */ }
+  let recentRev = 0;                // the Alignments list, read again
   let plan = null;      // what a run would read
   /* The alignment a run opened instead of reading again, so its page can
      say so and offer to read it again (2026-10-14). */
@@ -88,7 +106,18 @@ BARRY.braces = (function () {
   async function paint() {
     render();
     warmRegistry();
+    warmKnows();
     if (!cands) await loadCandidates();
+  }
+
+  /* What the cluster can read -- which decides the rows Many can send to
+     the VACC. Cached for minutes in vacc.js, so usually already here. */
+  function warmKnows() {
+    if (!BARRY.vacc || !BARRY.vacc.loadKnows) return;
+    BARRY.vacc.loadKnows().then(() => {
+      bulk.rev += 1;
+      if (shownPage === 'many') render();
+    }).catch(() => { /* the drive answer stands */ });
   }
 
   /* The registry, read rather than hoped for.
@@ -124,13 +153,12 @@ BARRY.braces = (function () {
       // for is a worse answer than a column that fills in late or not at all.
       return;
     }
-    /* Not while something is moving: a full render rebuilds the bulk table,
-       which is what `paintBulkRow` exists to avoid during a run. Nor over an
-       open proposal -- none of what just arrived is on that screen, so
-       rebuilding it would cost a scroll position and buy nothing. This lands
-       during the same load as `loadCandidates`'s own render, which is the
-       one moment on this panel when a repaint disturbs nothing. */
-    if (!bulk.running && !job && !set_) render();
+    /* Not while a read is going, nor over an open proposal -- none of what
+       just arrived is on that screen, so rebuilding it would cost a scroll
+       position and buy nothing. In Many the rows are rebuilt (`bulk.rev`):
+       where each set can be aligned from is read off the registry. */
+    bulk.rev += 1;
+    if (!job && !set_) render();
   }
 
   async function loadCandidates() {
@@ -432,26 +460,42 @@ BARRY.braces = (function () {
   /* ==================================================================
      The page
      ================================================================== */
+  /* THE PAGE, IN PARTS THAT ARE KEPT (2026-10-14).
+
+     It was emptied and built again on every change, so ticking a set
+     halfway down the many-sets table threw the table back to its top: the
+     table is a scroll box of its own, and the new one started at 0. Many
+     is now built the way Doppler's is -- each part kept as a node of its
+     own and rebuilt only when what it shows has changed (`BARRY.ui.sections`)
+     -- so a tick changes its row and the counts and nothing else. One set
+     and a proposal are still drawn whole, with the page's scroll held where
+     it was across the redraw. */
+  let renders = 0;
+  let shownPage = null;
   function render() {
     const h = host();
     if (!h) return;
-    h.innerHTML = '';
-    if (set_) { h.appendChild(proposalView()); return; }
-    h.appendChild(pickView());
+    const page = set_ ? 'set'
+      : (bulk.on && cands && cands.length) ? 'many' : 'one';
+    const back = (page === shownPage && page !== 'set')
+      ? BARRY.keepScroll(h) : null;
+    shownPage = page;
+    if (page === 'many') {
+      BARRY.ui.sections(h, manyParts());
+    } else {
+      renders += 1;
+      BARRY.ui.sections(h, [{ key: page, sig: renders, enter: false,
+        build: page === 'set' ? proposalView : pickView }]);
+    }
+    if (back) back();
+    if (!flightsAsked) { flightsAsked = true; loadFlights(); }
   }
 
   /* ---------- 1. what to align ---------- */
   function pickView() {
     const box = el('div', { class: 'br-wrap' });
 
-    box.appendChild(BARRY.ui.stepHeader({
-      title: 'Braces',
-      step: BARRY.ui.stepOf('braces'),
-      blurb: 'Every stamp onto the peak it belongs to. A ±100 ms window, the '
-           + 'DS-filtered magnitude, and one peak per stamp — so a spike '
-           + 'that drifted early is not corrected by stealing the next '
-           + 'one’s. Nothing is written until you accept it.',
-    }));
+    box.appendChild(stepHead());
 
     if (!cands) {
       box.appendChild(el('div', { class: 'card', text: 'Reading the bank…' }));
@@ -469,15 +513,37 @@ BARRY.braces = (function () {
       return box;
     }
 
-    /* One set, or many.
+    box.appendChild(modeCard());
 
-       Two genuinely different jobs rather than two views of one. Choosing
-       a set, checking what it would read and running it is a thing you do
-       while thinking; aligning everything curated is a thing you set off
-       and come back to. The switch is here rather than being a separate
-       tool because the sets, the versions and the settings are the same
-       in both. */
-    box.appendChild(el('div', { class: 'card br-mode' }, [
+    if (bulk.on) {
+      // Drawn by `manyParts` -- this is the bank arriving mid-render.
+      return box;
+    }
+    return pickOne(box);
+  }
+
+  function stepHead() {
+    return BARRY.ui.stepHeader({
+      title: 'Braces',
+      step: BARRY.ui.stepOf('braces'),
+      blurb: 'Every stamp onto the peak it belongs to. A ±100 ms window, the '
+           + 'DS-filtered magnitude, and one peak per stamp — so a spike '
+           + 'that drifted early is not corrected by stealing the next '
+           + 'one’s. Nothing is written until you accept it.',
+    });
+  }
+
+  /* One set, or many.
+
+     Two genuinely different jobs rather than two views of one. Choosing
+     a set, checking what it would read and running it is a thing you do
+     while thinking; aligning everything curated is a thing you set off
+     and come back to. The switch is here rather than being a separate
+     tool because the sets, the versions and the settings are the same
+     in both. */
+  function modeCard() {
+    const running = flights.filter(flightRunning).length;
+    return el('div', { class: 'card br-mode' }, [
       /* How many, through the run bar (constitution §6d): one component
          for the choice every tool makes, rather than a seg each tool drew
          for itself. Only local modes, so the bar shows How many alone. */
@@ -487,17 +553,19 @@ BARRY.braces = (function () {
         onChange: (w, c) => { bulk.on = c === 'many'; render(); },
       }),
       el('span', { class: 'br-hint', text: bulk.on
-        ? 'Reads them one after another and leaves a proposal for each. '
-          + 'Nothing is banked — every set still has to be reviewed.'
+        ? 'Sends every set you tick as one batch: the ones on this computer '
+          + 'are aligned here, the ones only the VACC has are aligned there, '
+          + 'side by side. Each lands as a proposal — nothing is banked.'
         : 'Pick a recording, check what it would read, then run it.' }),
-    ]));
+      /* A batch going while one set is on screen is still worth knowing
+         about, and one click from its progress. */
+      (!bulk.on && running) ? el('button', { class: 'btn ghost sm br-mode-go',
+        text: 'A batch is going — show it',
+        onclick: () => { bulk.on = true; render(); } }) : null,
+    ].filter(Boolean));
+  }
 
-    if (bulk.on) {
-      box.appendChild(bulkCard());
-      box.appendChild(recentSets());
-      return box;
-    }
-
+  function pickOne(box) {
     /* Which recording, then which of its banked entries.
 
        Two questions in that order, because the first narrows the second
@@ -710,12 +778,12 @@ BARRY.braces = (function () {
     const nBad = all.filter((c) => c.bad).length;
 
     const box = el('div', { class: 'br-chans' });
+    const countLine = () => q.channels.length + ' of ' + all.length
+      + (nBad ? '  ·  ' + nBad + ' marked bad, unticked' : '');
+    const count = el('span', { class: 'br-hint', text: countLine() });
     box.appendChild(el('div', { class: 'br-chans-head' }, [
       el('label', { text: 'Channels in the average' }),
-      el('span', { class: 'br-hint',
-                   text: on.size + ' of ' + all.length
-                         + (nBad ? '  ·  ' + nBad + ' marked bad, '
-                                   + 'unticked' : '') }),
+      count,
       el('div', { style: 'flex:1' }),
       el('button', { class: 'btn ghost sm', text: 'All',
         onclick: () => { q.channels = all.map((c) => c.number); render(); } }),
@@ -734,11 +802,17 @@ BARRY.braces = (function () {
         el('input', {
           type: 'checkbox', id: id,
           checked: on.has(c.number) ? 'checked' : null,
+          /* In place (2026-10-14): the box, the count over the grid and
+             the plan's "Measured on" line, and nothing else -- a redraw
+             of the panel for one tick is how the page lost its place. */
           onchange: (e) => {
             const next = new Set(q.channels);
             if (e.target.checked) next.add(c.number); else next.delete(c.number);
             q.channels = [...next].sort((a2, b2) => a2 - b2);
-            render();
+            e.target.closest('.br-chan').classList.toggle('on', e.target.checked);
+            count.textContent = countLine();
+            const mo = document.querySelector('.br-plan .br-measured');
+            if (mo) mo.textContent = measuredOn();
           },
         }),
         el('span', { text: String(c.number) }),
@@ -794,6 +868,12 @@ BARRY.braces = (function () {
     ].filter(Boolean));
   }
 
+  function measuredOn() {
+    return ((q.channels && q.channels.length)
+            || ((plan && plan.channels) || []).filter((c) => !c.bad).length)
+      + ' channels, averaged into one trace';
+  }
+
   function planCard() {
     const card = el('div', { class: 'card br-plan' });
     card.appendChild(el('div', { class: 'section-label',
@@ -813,9 +893,7 @@ BARRY.braces = (function () {
          is most of this archive -- 41 of 45 sets were banked before Incisor
          existed and say nothing about which channel they came from. That is
          a prompt, not a failure, so the row says so rather than throwing. */
-      dt('Measured on', ((q.channels && q.channels.length)
-                         || (plan.channels || []).filter((c) => !c.bad).length)
-                        + ' channels, averaged into one trace'),
+      dt('Measured on', measuredOn(), 'br-measured'),
       dt('Band', s.band ? s.band[0] + '–' + s.band[1] + ' Hz, on the '
                           + 'magnitude' : '—'),
       dt('Stamps', plan.entry.n + ' in ' + vName(plan)),
@@ -874,8 +952,8 @@ BARRY.braces = (function () {
     return card;
   }
 
-  const dt = (k, v) => el('div', {}, [el('dt', { text: k }),
-                                      el('dd', { text: String(v) })]);
+  const dt = (k, v, cls) => el('div', {}, [el('dt', { text: k }),
+    el('dd', { class: cls || null, text: String(v) })]);
 
   /* What a version is CALLED. Never the stored number: two machines
      curating one entry both mint the next one and the union keeps both,
@@ -919,21 +997,6 @@ BARRY.braces = (function () {
     return v ? v.ref : null;
   }
 
-  /* Whether this machine could actually read the recording.
-
-     From the registry, joined on the gid. A bulk run of things that cannot
-     be opened is forty-eight failures in a row, so "select everything
-     ready" means everything reachable -- and a row that is not says so
-     rather than being hidden, because the answer to "why is that one not
-     ticked" has to be on the screen. */
-  function reachable(c) {
-    const reg = (BARRY.views.toolkit && BARRY.views.toolkit.registryRows)
-      ? BARRY.views.toolkit.registryRows() : [];
-    if (!reg.length) return true;      // nothing to judge against
-    const row = reg.find((r) => r.gid === c.gid);
-    return row ? !!row.reachable : false;
-  }
-
   /* How many of a set's candidates are the thing Braces moves.
 
      `n` counts CANDIDATES. A set can be fully curated and hold no events
@@ -943,234 +1006,718 @@ BARRY.braces = (function () {
      vocabulary rather than from a hard-coded word. */
   const goodOf = (c) => (c.n_good == null ? c.n : c.n_good);
 
-  function bulkReady(c) {
-    return reachable(c) && !!newestRef(c) && goodOf(c) > 0;
+  /* ==================================================================
+     Many sets at once (2026-10-14)
+     ================================================================== */
+  /* WHERE A SET CAN BE ALIGNED FROM.
+
+     This computer when it has the recording, the VACC when only the cluster
+     does: the rule the one-set panel and every other tool follow
+     (`BARRY.vacc.reachFor`; Braces is 'cluster' in ToolKit's READS). It used
+     to be the registry's `reachable`, which means this computer only -- so
+     on a laptop with no drives, where every recording is on the VACC, every
+     row said "not on a drive this machine can reach", nothing could be
+     ticked, and nothing was ever sent. */
+  function reachOf(c) {
+    const reg = (BARRY.views.toolkit && BARRY.views.toolkit.registryRows)
+      ? BARRY.views.toolkit.registryRows() : [];
+    if (!reg.length) {
+      return { where: null, why: 'still reading which recordings this '
+                                 + 'computer and the VACC can reach' };
+    }
+    const row = regRowOf(c);
+    if (!row) {
+      return { where: null, why: 'no recording with this set’s id is in '
+                                 + 'this computer’s registry' };
+    }
+    if (!BARRY.vacc || !BARRY.vacc.reachFor) {
+      const here = (row.here || []).length;
+      return { where: here ? 'here' : null,
+               why: here ? '' : 'not on a drive this computer can reach' };
+    }
+    const r = BARRY.vacc.reachFor(row, 'braces');
+    // And whether the cluster could take it even so, for "every set to
+    // the VACC".
+    const up = !!(BARRY.vacc.canRead && BARRY.vacc.canRead(row)
+                  && (BARRY.vacc.last || {}).configured && row.gid);
+    return { where: r.where, why: r.why || '', vacc: up };
   }
 
-  /* Why a row cannot be run, in a sentence, or '' when it can.
-
-     Ordered by what is most true: a set with nothing in it to align is
-     not going to run whether or not its recording is reachable. Said
-     rather than hidden -- "this set is finished and everything in it was
-     garbage" is a real answer somebody may be looking for, and a row that
-     silently is not there reads as a set that does not exist. */
-  function whyNot(c) {
+  /* Why a set cannot be sent, in a sentence, or '' when it can. Ordered by
+     what is most true: a set with nothing in it to align is not going to
+     run wherever its recording is. */
+  function whyNot(c, r) {
     if (!goodOf(c)) {
       return 'no dentate spikes — all ' + c.n + ' candidate'
            + (c.n === 1 ? ' was' : 's were')
            + ' rejected or left undecided';
     }
-    if (!reachable(c)) {
-      return 'the recording is not on a drive this machine can reach';
-    }
     if (!newestRef(c)) return 'no version of its stamps can be read here';
-    return '';
+    const at = r || reachOf(c);
+    return at.where ? '' : (at.why || 'it cannot be reached from here');
   }
 
-  /* The counts on the bar, which change as rows are ticked and as a run
-     goes. Written in place for the same reason the status cells are: the
-     table under them must not move. */
-  function paintBulkBar() {
-    const host = document.querySelector('.br-bulk-count');
-    if (!host) return;
-    const n = cands.filter((c) => bulk.want[c.id]).length;
-    const ready = cands.filter(bulkReady).length;
-    const done = Object.keys(bulk.state)
-      .filter((k) => (bulk.state[k] || {}).state === 'done').length;
-    host.textContent = n + ' of ' + cands.length + ' ticked \u00b7 ' + ready
-      + ' can be read here' + (done ? ' \u00b7 ' + done + ' done' : '');
+  const rowLabel = (c) => c.session_label || c.name || c.id;
+  const flightRunning = (f) => ((f && f.job) || {}).status === 'running';
+  const batchRunning = () => flights.some(flightRunning);
+
+  /* Aligned before, with the settings on screen, from the version picked:
+     the batch opens that alignment instead of reading the set again. The
+     server decides for certain -- it hashes the whole question, bad
+     channels and stamps included -- and this is the list saying so before
+     anything is sent. */
+  function answeredBefore(c) {
+    const want = bulk.pick[c.id] || null;
+    return (allSets || []).find((x) => {
+      if (x.entry_id !== c.id) return false;
+      const p = x.params || {};
+      if ((p.measure || 'csd') !== q.measure) return false;
+      if (Number(p.window_ms) !== Number(q.window_ms)) return false;
+      const rq = p.request || {};
+      const fv = ('from_version' in rq) ? rq.from_version : x.from_version;
+      return (fv || null) === want;
+    }) || null;
   }
 
-  function bulkCard() {
-    // The alignments already made, for each row's "open the newest".
-    if (allSets === null) {
-      allSets = [];
-      api('/api/braces/sets').then((got) => {
-        allSets = got.sets || [];
-        if (bulk.on && !bulk.running) render();
-      }).catch(() => {});
+  function manyRows() {
+    const out = [];
+    for (const c of cands || []) {
+      if (bulk.pick[c.id] === undefined) bulk.pick[c.id] = newestRef(c);
+      const r = reachOf(c);
+      out.push({ c, r, why: whyNot(c, r) });
     }
-    const card = el('div', { class: 'card br-bulk' });
-    card.appendChild(el('div', { class: 'br-chans-head' }, [
-      el('label', { text: 'Align many sets' }),
-      el('span', { class: 'br-hint', text:
-        'One read after another, leaving a proposal per entry. Nothing is '
-        + 'banked \u2014 every set still has to be reviewed.' }),
+    out.sort((a, b) => String(a.c.project || '~')
+      .localeCompare(String(b.c.project || '~'))
+      || rowLabel(a.c).localeCompare(rowLabel(b.c)));
+    return out;
+  }
+
+  const chosen = () => manyRows().filter((x) => !x.why && bulk.want[x.c.id]);
+
+  function rowSub(c, r) {
+    const bad = badOf(c);
+    const n = goodOf(c);
+    return [
+      c.name && c.name !== c.session_label ? c.name : null,
+      c.project || null,
+      n + ' spike' + (n === 1 ? '' : 's')
+        + (c.n !== n ? ' of ' + c.n + ' stamps' : ''),
+      bad.length ? (bad.length <= 3 ? 'CSC' + bad.join(', CSC')
+                                    : bad.length + ' contacts')
+                   + ' marked bad' : null,
+      r.where === 'here' ? 'aligned on this computer'
+        : r.where === 'vacc' ? 'aligned on the VACC' : null,
+    ].filter(Boolean).join('  ·  ');
+  }
+
+  function rowHay(c, r) {
+    return [rowLabel(c), c.name, c.project,
+            c.mouse != null ? 'm' + c.mouse : '',
+            c.session != null ? 's' + c.session : '',
+            r.where === 'vacc' ? 'vacc cluster' : 'here computer',
+            c.aligned ? 'aligned' : 'never']
+      .join(' ').toLowerCase();
+  }
+
+  /* The parts of the page, each kept until what it shows changes. */
+  function manyParts() {
+    if (allSets === null) loadAllSets();
+    const f = shownFlight();
+    return [
+      { key: 'mtop', sig: 'mtop',
+        build: () => el('div', { class: 'br-wrap' }, [stepHead(), modeCard()]) },
+      { key: 'mpick', sig: 'mpick', build: manyPickShell,
+        update: manyPickUpdate },
+      { key: 'mrun', sig: 'mrun', build: manyRunShell, update: manyRunUpdate },
+      f ? { key: 'mflight', sig: 'flight:' + f.id, build: flightShell,
+            update: (node) => flightUpdate(node, f) } : null,
+      { key: 'recent', sig: 'recent:' + recentRev, enter: false,
+        build: recentSets },
+    ];
+  }
+
+  let allSetsAsked = false;
+  function loadAllSets() {
+    if (allSetsAsked) return;
+    allSetsAsked = true;
+    api('/api/braces/sets').then((got) => { allSets = got.sets || []; })
+      .catch(() => { allSets = allSets || []; })
+      .finally(() => {
+        allSetsAsked = false;
+        bulk.rev += 1;
+        if (shownPage === 'many') render();
+      });
+  }
+
+  /* ---- 1. Which sets ---------------------------------------------- */
+  function manyPickShell() {
+    const box = el('div', { class: 'card br-many' }, [
+      el('div', { class: 'section-label', text: '1. Which sets' }),
+      el('p', { class: 'hint br-many-say', style: 'max-width:80ch' }),
+    ]);
+    const search = el('input', {
+      type: 'search', class: 'inc-search', value: bulk.find,
+      placeholder: 'Type a mouse, session, project, or “vacc” or “here”',
+      'aria-label': 'Search the sets', 'data-fk': 'br-many-search',
+    });
+    let t = null;
+    search.addEventListener('input', () => {
+      clearTimeout(t);
+      t = setTimeout(() => { bulk.find = search.value; render(); }, 160);
+    });
+    box.appendChild(search);
+    box.appendChild(el('div', { class: 'br-many-parts' }));
+    return box;
+  }
+
+  function manyPickUpdate(node) {
+    const rows = manyRows();
+    const ok = rows.filter((x) => !x.why);
+    const blocked = rows.filter((x) => x.why);
+    const words = bulk.find.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const shown = ok.filter((x) => {
+      const hay = rowHay(x.c, x.r);
+      return words.every((w) => hay.indexOf(w) >= 0);
+    });
+    const nHere = ok.filter((x) => x.r.where === 'here').length;
+    const say = node.querySelector('.br-many-say');
+    const text = ok.length
+      ? ok.length + ' curated set' + (ok.length === 1 ? '' : 's')
+        + ' can be aligned: ' + nHere + ' on this computer, '
+        + (ok.length - nHere) + ' on the VACC, where only the cluster has '
+        + 'the recording. Tick any mix of them; each half runs where its '
+        + 'data is, and both at once.'
+      : 'None of the curated sets can be aligned from here yet — the '
+        + 'reasons are below.';
+    if (say && say.textContent !== text) say.textContent = text;
+    const nTick = ok.filter((x) => bulk.want[x.c.id]).length;
+    BARRY.ui.sections(node.querySelector('.br-many-parts'), [
+      { key: 'tools', enter: false,
+        sig: [bulk.rev, bulk.find, nTick, q.measure, q.window_ms],
+        build: () => pickTools(ok, shown) },
+      { key: 'list', enter: false,
+        sig: [bulk.rev, bulk.find, (cands || []).length, q.measure,
+              q.window_ms],
+        build: () => pickList(ok, shown) },
+      { key: 'blocked', enter: false,
+        sig: [bulk.rev, blocked.length],
+        build: () => blockedPart(blocked) },
+    ]);
+  }
+
+  function pickTools(ok, shown) {
+    const all = (fn) => () => { fn(); bulk.rev += 1; render(); };
+    const notYet = shown.filter((x) => !answeredBefore(x.c));
+    const ticked = ok.filter((x) => bulk.want[x.c.id]);
+    const tHere = ticked.filter((x) => x.r.where === 'here').length;
+    return el('div', { class: 'tk-actions inc-pick-tools br-many-tools' }, [
+      el('button', { class: 'btn ghost sm',
+        text: 'Tick the ' + shown.length + ' shown',
+        disabled: shown.length ? null : 'disabled',
+        onclick: all(() => shown.forEach((x) => { bulk.want[x.c.id] = true; })) }),
+      el('button', { class: 'btn ghost sm',
+        text: 'Only the ' + notYet.length + ' not aligned with these settings',
+        title: 'Ticks every set shown that has no alignment yet with the '
+             + 'settings below, and unticks the ones that have',
+        disabled: shown.length ? null : 'disabled',
+        onclick: all(() => shown.forEach((x) => {
+          if (answeredBefore(x.c)) delete bulk.want[x.c.id];
+          else bulk.want[x.c.id] = true;
+        })) }),
+      el('button', { class: 'btn ghost sm', text: 'Clear',
+        disabled: ticked.length ? null : 'disabled',
+        onclick: all(() => { bulk.want = {}; }) }),
+      el('span', { class: 'hint quiet br-bulk-count',
+        text: ticked.length + ' ticked'
+          + (ticked.length ? ' (' + tHere + ' here, ' + (ticked.length - tHere)
+                             + ' on the VACC)' : '')
+          + '  ·  ' + shown.length + ' of ' + ok.length + ' shown' }),
+    ]);
+  }
+
+  function pickList(ok, shown) {
+    const list = el('div', { class: 'inc-pick-list br-many-list',
+                             'data-keep-scroll': 'br-many-list' });
+    if (!shown.length) {
+      list.appendChild(el('div', { class: 'empty-state', text: ok.length
+        ? 'Nothing matches that. Clear the search to see all ' + ok.length + '.'
+        : 'Nothing here can be aligned from this computer yet; the reasons '
+          + 'are listed below.' }));
+    }
+    for (const x of shown) list.appendChild(manyRow(x.c, x.r));
+    return list;
+  }
+
+  /* One set. A row rather than a label: the version list and the two
+     buttons inside it must not also toggle the tick. A tick changes this
+     row and the counts, IN PLACE -- the list is not rebuilt, so it keeps
+     its scroll (the whole panel used to be). */
+  function manyRow(c, r) {
+    const on = !!bulk.want[c.id];
+    const had = (allSets || []).filter((x) => x.entry_id === c.id);
+    const before = answeredBefore(c);
+    const vs = (c.versions || []).filter((v) => v.usable);
+    const nBad = badOf(c).length;
+    const row = el('div', {
+      class: 'inc-pick br-bulk-row' + (on ? ' on' : '') + (before ? ' done' : ''),
+      'data-id': c.id,
+    }, [
+      el('input', {
+        type: 'checkbox', checked: on ? 'checked' : null,
+        'aria-label': 'Align ' + rowLabel(c),
+        onchange: (e) => {
+          if (e.target.checked) bulk.want[c.id] = true;
+          else delete bulk.want[c.id];
+          row.classList.toggle('on', e.target.checked);
+          render();
+        },
+      }),
+      el('div', { class: 'ip-main' }, [
+        el('span', { class: 'ip-name nm', text: rowLabel(c) }),
+        el('span', { class: 'ip-sub', text: rowSub(c, r) }),
+        before ? el('span', { class: 'ip-done', text:
+          'aligned with these settings ' + String((before.created || {}).at || '')
+            .slice(0, 10) + ' — sending it opens that one, nothing is read' })
+          : null,
+      ].filter(Boolean)),
+      /* The version, changeable before anything is sent. */
+      vs.length ? el('select', {
+        class: 'br-bulk-v', title: 'Which version of its stamps to align',
+        'aria-label': 'Which version of ' + rowLabel(c) + '’s stamps',
+        onchange: (e) => {
+          bulk.pick[c.id] = e.target.value || null;
+          bulk.rev += 1;
+          render();
+        },
+      }, vs.map((v) => el('option', {
+        value: v.ref,
+        selected: bulk.pick[c.id] === v.ref ? 'selected' : null,
+        text: BARRY.ui.versionLabel(v) + (v === newestOf(c) ? '  (newest)' : '')
+              + (v.n != null ? '  · ' + v.n + ' stamps' : ''),
+      }))) : el('span', { class: 'br-hint', text: 'no readable version' }),
+      /* The contacts this recording has marked bad, which the batch uses.
+         Interpolated rather than dropped -- a second difference over an
+         uneven grid is not a CSD -- so "which wires are not believed". */
+      el('button', {
+        class: 'mini br-bulk-bad' + (nBad ? ' some' : ''),
+        title: nBad ? 'Interpolated on this recording: CSC'
+                      + badOf(c).join(', CSC') + '. Click to change.'
+                    : 'No contact is marked bad on this recording. Click to '
+                      + 'mark one.',
+        text: nBad ? nBad + ' bad' : 'none bad',
+        onclick: () => editBad(c),
+      }),
+      r.where === 'vacc'
+        ? (BARRY.vacc.mark({ gid: c.gid }, { compact: true })
+           || el('span', { class: 'ip-where', text: 'VACC' }))
+        : el('span', { class: 'ip-where', text: 'HERE',
+                       title: 'Aligned on this computer' }),
+      had.length ? el('button', { class: 'mini br-bulk-had',
+        text: 'Open the newest of ' + had.length,
+        title: 'Aligned ' + had.length + ' time' + (had.length === 1 ? '' : 's')
+             + ' already. The newest: ' + setLine(had[0])
+             + '. Opening it reads nothing.',
+        onclick: () => { reused = null; openSet(had[0].set_id); } })
+        : el('span', {}),
+    ]);
+    return row;
+  }
+
+  function blockedPart(blocked) {
+    const box = el('div', {});
+    if (!blocked.length) return box;
+    box.appendChild(el('details', { class: 'inc-blocked',
+                                    'data-keep': 'br-many-blocked' }, [
+      el('summary', { text: blocked.length + ' cannot be aligned from here, '
+                            + 'so left out' }),
+      el('div', {}, blocked.map((x) => el('div', { class: 'hint quiet',
+        text: rowLabel(x.c) + ' — ' + x.why }))),
     ]));
-    /* The same settings as one set, for every set in the queue. */
-    const sets = el('div', { class: 'br-bulk-settings' }, [settingsFields(bulk.running)]);
-    sets.appendChild(el('label', { class: 'br-bulk-force',
+    return box;
+  }
+
+  /* ---- 2. The alignment, for every set sent ------------------------ */
+  function manyRunShell() {
+    return el('div', { class: 'card br-bulk' }, [
+      el('div', { class: 'section-label',
+                  text: '2. Alignment, for every set sent' }),
+      el('div', { class: 'br-many-run' }),
+    ]);
+  }
+
+  function manyRunUpdate(node) {
+    const inner = node.querySelector('.br-many-run');
+    if (!inner) return;
+    const run = batchRunning();
+    const picks = Object.keys(bulk.want).sort().join(',');
+    BARRY.ui.sections(inner, [
+      { key: 'set', enter: false,
+        sig: [q.measure, q.window_ms, bulk.force, bulk.allVacc, run,
+              !!(BARRY.vacc && (BARRY.vacc.last || {}).configured)],
+        build: () => runSettings(run) },
+      { key: 'cost', enter: false,
+        sig: [picks, bulk.rev, q.measure, q.window_ms, bulk.force,
+              bulk.allVacc, run],
+        build: costLine },
+      { key: 'go', enter: false, sig: [picks, bulk.rev, run],
+        build: manyGo },
+    ]);
+  }
+
+  function runSettings(lock) {
+    const box = el('div', { class: 'br-bulk-settings' }, [settingsFields(lock)]);
+    box.appendChild(el('label', { class: 'br-bulk-force',
       title: 'A set already aligned with exactly these settings is opened '
            + 'from that alignment rather than read again. Tick this to read '
            + 'every one again anyway.' }, [
       el('input', { type: 'checkbox', checked: bulk.force ? 'checked' : null,
-        disabled: bulk.running ? 'disabled' : null,
-        onchange: (e) => { bulk.force = e.target.checked; } }),
+        disabled: lock ? 'disabled' : null,
+        onchange: (e) => { bulk.force = e.target.checked; render(); } }),
       el('span', { text: 'read again even where these settings were run' }),
     ]));
-    sets.appendChild(el('span', { class: 'br-hint', text: 'Every set in '
-      + 'this run is read with these, and its proposal records them. They '
-      + 'are the one-set panel\u2019s too: changing them here changes them '
-      + 'there.' }));
-    card.appendChild(sets);
-
-    const ready = cands.filter(bulkReady);
-    const bar = el('div', { class: 'br-bulk-bar' });
-    bar.appendChild(el('button', {
-      class: 'btn sm', disabled: bulk.running ? 'disabled' : null,
-      text: 'Every ready session, newest version',
-      title: 'Ticks every set whose recording can be read from this '
-           + 'machine, each at the newest version of its stamps',
-      onclick: () => {
-        for (const c of ready) {
-          bulk.want[c.id] = true;
-          bulk.pick[c.id] = newestRef(c);
-        }
-        render();
-      },
-    }));
-    bar.appendChild(el('button', {
-      class: 'btn ghost sm', disabled: bulk.running ? 'disabled' : null,
-      text: 'Clear',
-      onclick: () => { bulk.want = {}; render(); },
-    }));
-    /* And one that leaves alone anything already done.
-
-       "Everything ready" ticks a set that has been aligned as readily as
-       one that has not, so a second pass over a bank re-reads the lot.
-       This is the button somebody wants on the second run: the ones that
-       have never been through. */
-    const fresh = ready.filter((c) => !c.aligned);
-    bar.appendChild(el('button', {
-      class: 'btn sm', disabled: (bulk.running || !fresh.length)
-                                 ? 'disabled' : null,
-      text: 'Only the ' + fresh.length + ' never aligned',
-      title: 'Every ready set that has no alignment banked against it yet, '
-           + 'each at its newest version',
-      onclick: () => {
-        for (const c of fresh) {
-          bulk.want[c.id] = true;
-          bulk.pick[c.id] = newestRef(c);
-        }
-        render();
-      },
-    }));
-    const n = cands.filter((c) => bulk.want[c.id]).length;
-    bar.appendChild(el('span', { class: 'br-hint br-bulk-count', text:
-      n + ' of ' + cands.length + ' ticked \u00b7 ' + ready.length
-      + ' can be read here' }));
-    bar.appendChild(el('div', { style: 'flex:1' }));
-    if (bulk.running) {
-      bar.appendChild(el('button', {
-        class: 'btn ghost sm', text: 'Stop after this one',
-        onclick: () => { bulk.stop = true; render(); },
-      }));
-    } else {
-      bar.appendChild(el('button', {
-        class: 'btn', disabled: n ? null : 'disabled',
-        text: 'Align ' + n + ' set' + (n === 1 ? '' : 's'),
-        onclick: runBulk,
-      }));
+    if (BARRY.vacc && (BARRY.vacc.last || {}).configured) {
+      box.appendChild(el('label', { class: 'br-bulk-force br-bulk-allvacc',
+        title: 'The cluster reads them side by side; this computer reads its '
+             + 'own one after another. A set the cluster cannot read stays '
+             + 'here.' }, [
+        el('input', { type: 'checkbox', checked: bulk.allVacc ? 'checked' : null,
+          disabled: lock ? 'disabled' : null,
+          onchange: (e) => { bulk.allVacc = e.target.checked; render(); } }),
+        el('span', { text: 'send them all to the VACC, even the ones this '
+                           + 'computer has' }),
+      ]));
     }
-    card.appendChild(bar);
-
-    const tbl = el('div', { class: 'br-bulk-rows' });
-    for (const c of cands) tbl.appendChild(bulkRow(c));
-    card.appendChild(tbl);
-    return card;
+    box.appendChild(el('span', { class: 'br-hint', text: 'Every set in this '
+      + 'batch is read with these, and its proposal records them. They are '
+      + 'the one-set panel’s too: changing them here changes them there.' }));
+    return box;
   }
 
-  /* One row.
+  /* Where a ticked set will actually run, this batch. */
+  const runsOn = (x) => ((x.r.where === 'vacc'
+                          || (bulk.allVacc && x.r.vacc)) ? 'vacc' : 'here');
 
-     Its own function so that a row which has just finished can be rebuilt
-     where it stands. A tick rewrites the status text and nothing else,
-     which is right while a read is going and wrong the moment it lands:
-     the Open button is part of the row, so it only appeared at the next
-     full render -- which is when the whole queue finishes. A set that had
-     been done for four minutes looked exactly like one still working. */
-  function bulkRow(c) {
-    {
-      const st = bulk.state[c.id] || {};
-      const ok = bulkReady(c);
-      const why = whyNot(c);
-      if (bulk.pick[c.id] === undefined) bulk.pick[c.id] = newestRef(c);
-      const vs = (c.versions || []).filter((v) => v.usable);
-      return el('div', {
-        class: 'br-bulk-row' + (bulk.want[c.id] ? ' on' : '')
-               + (ok ? '' : ' away') + (st.state ? ' ' + st.state : ''),
-        // So a tick can find one row without rebuilding the table.
-        'data-id': c.id,
-      }, [
-        el('input', {
-          type: 'checkbox', disabled: (bulk.running || !ok) ? 'disabled' : null,
-          checked: bulk.want[c.id] ? 'checked' : null,
-          onchange: (e) => {
-            if (e.target.checked) bulk.want[c.id] = true;
-            else delete bulk.want[c.id];
-            render();
-          },
-        }),
-        el('span', { class: 'nm', text: c.name || c.id }),
-        el('span', { class: 'ss', text: c.session_label || '\u2014' }),
-        el('span', { class: 'ct', text: c.n + ' stamps' }),
-        /* The contacts this recording has marked bad, which a bulk run
-           uses and could not previously be seen, let alone changed, from
-           here. They are interpolated rather than dropped -- a second
-           difference over an uneven grid is not a CSD -- so this is
-           "which wires are not believed", not "which are missing". */
-        el('button', {
-          class: 'mini br-bulk-bad' + (badOf(c).length ? ' some' : ''),
-          disabled: bulk.running ? 'disabled' : null,
-          title: badOf(c).length
-            ? 'Interpolated on this recording: CSC'
-              + badOf(c).join(', CSC') + '. Click to change.'
-            : 'No contact is marked bad on this recording. Click to mark '
-              + 'one.',
-          text: badOf(c).length ? badOf(c).length + ' bad' : 'none bad',
-          onclick: () => editBad(c),
-        }),
-        /* The version, changeable before anything runs. A short ordered
-           list per entry, so a select is the right control here -- unlike
-           a list of every recording, which is why that one is typed. */
-        vs.length ? el('select', {
-          class: 'br-bulk-v',
-          disabled: bulk.running ? 'disabled' : null,
-          onchange: (e) => { bulk.pick[c.id] = e.target.value || null; },
-        }, vs.map((v) => el('option', {
-          value: v.ref,
-          selected: bulk.pick[c.id] === v.ref ? 'selected' : null,
-          text: BARRY.ui.versionLabel(v) + (v === newestOf(c) ? '  (newest)' : '')
-                + (v.n != null ? '  \u00b7 ' + v.n + ' stamps' : ''),
-        }))) : el('span', { class: 'br-hint', text: 'no readable version' }),
-        /* What it is doing, or why it cannot. The "newest is not
-           readable" case is said out loud rather than left as a version
-           number somebody would have to notice was one behind. */
-        el('span', { class: 'st', text: st.msg
-          || why
-          || (c.newest_usable_name
-              && c.newest_name !== c.newest_usable_name
-              ? BARRY.ui.versionLabel(c.newest_name) + ' never reached this machine — '
-                + BARRY.ui.versionLabel(c.newest_usable_name) + ' is the newest readable'
-              : '') }),
-        st.set_id ? el('button', {
-          class: 'mini', text: 'Open',
-          onclick: () => openSet(st.set_id),
-        }) : null,
-        /* What this set already has, so its alignments are reached from
-           its own row rather than by remembering when it was run. */
-        (() => {
-          if (st.set_id) return null;
-          const had = (allSets || []).filter((x) => x.entry_id === c.id);
-          if (!had.length) return null;
-          return el('button', { class: 'mini br-bulk-had',
-            text: 'Open the newest of ' + had.length,
-            title: 'Aligned ' + had.length + ' time'
-                 + (had.length === 1 ? '' : 's') + ' already. The newest: '
-                 + setLine(had[0]) + '. Opening it reads nothing.',
-            onclick: () => { reused = null; openSet(had[0].set_id); } });
-        })(),
-      ].filter(Boolean));
+  function costLine() {
+    const sel = chosen();
+    if (!sel.length) {
+      return el('p', { class: 'hint br-many-cost',
+                       text: 'Tick the sets to send, above.' });
     }
+    const h = sel.filter((x) => runsOn(x) === 'here').length;
+    const v = sel.length - h;
+    const again = bulk.force ? 0 : sel.filter((x) => answeredBefore(x.c)).length;
+    const parts = [
+      sel.length + ' to send',
+      h ? h + ' aligned on this computer, one after another' : null,
+      v ? v + ' on the VACC as one array job, side by side' : null,
+      again ? again + ' already aligned with these settings, which open '
+              + 'that alignment and read nothing' : null,
+    ].filter(Boolean);
+    return el('p', { class: 'hint br-many-cost', style: 'max-width:80ch',
+      text: parts.join('  ·  ') + '. Both halves run at once, on the '
+        + 'server rather than in this page: leave this view or reload and '
+        + 'the batch carries on, with its progress here when you come back. '
+        + 'Nothing is banked — every set lands as a proposal to review.' });
+  }
+
+  function manyGo() {
+    const sel = chosen();
+    const run = batchRunning();
+    return el('div', { class: 'tk-actions br-many-go' }, [
+      el('span', { class: 'spacer' }),
+      el('button', {
+        class: 'btn',
+        text: run ? 'A batch is going'
+          : sel.length ? 'Align ' + sel.length + ' set' + (sel.length === 1 ? '' : 's')
+          : 'Tick the sets to align',
+        title: run ? 'One batch at a time: the one below is still going' : null,
+        disabled: (!sel.length || run) ? 'disabled' : null,
+        onclick: sendBatch,
+      }),
+    ]);
+  }
+
+  async function sendBatch() {
+    const sel = chosen();
+    if (!sel.length || batchRunning()) return;
+    let got;
+    try {
+      got = await apiPost('/api/braces/batch', {
+        entries: sel.map((x) => ({ id: x.c.id,
+                                   from_version: bulk.pick[x.c.id] || null })),
+        measure: q.measure, window_ms: q.window_ms, estimator: q.estimator,
+        force: !!bulk.force,
+        where: bulk.allVacc ? 'vacc' : null,
+      });
+    } catch (e) {
+      toast(e.message, 'err', 12000);
+      return;
+    }
+    const j = got.job || {};
+    flights = [{ id: j.id, kind: 'many', started: Date.now() / 1000, job: j,
+                 members: sel.map((x) => ({ id: x.c.id, gid: x.c.gid,
+                                            label: rowLabel(x.c) })) }]
+      .concat(flights.filter((f) => f.id !== j.id));
+    flightLive.add(j.id);
+    bulk.want = {};
+    bulk.rev += 1;
+    render();
+    loadFlights();
+  }
+
+  /* ---- 3. The batch, as it goes ------------------------------------ */
+  function shownFlight() {
+    return flights.find((f) => !dismissed.has(f.id)) || null;
+  }
+
+  /* Asked of the server, which is where the batch is: every 1.5 s while
+     one is going and not at all otherwise. Kept going while the panel is
+     elsewhere, so a batch that lands is announced wherever you are. */
+  async function loadFlights() {
+    clearTimeout(flightTimer);
+    flightTimer = null;
+    const was = batchRunning();
+    let got = null;
+    try { got = await api('/api/braces/inflight'); } catch (e) { /* next time */ }
+    if (got) {
+      flights = got.jobs || [];
+      let landed = false;
+      for (const f of flights) {
+        const snap = f.job || {};
+        if (snap.status === 'running') flightLive.add(f.id);
+        for (const m of (snap.members || [])) {
+          const k = f.id + ':' + m.id;
+          if (m.status === 'done' && m.set_id && !flightSeen.has(k)) {
+            flightSeen.add(k);
+            landed = true;
+          }
+        }
+        if (snap.status !== 'running' && flightLive.has(f.id)
+            && !flightAnnounced.has(f.id)) {
+          flightAnnounced.add(f.id);
+          announce(f);
+        }
+      }
+      // What landed is in the Alignments list and on its row.
+      if (landed) { allSets = null; recentRev += 1; }
+      if (onScreen() && (shownPage === 'many' || was !== batchRunning())) {
+        render();
+      }
+    }
+    if (batchRunning() || !got) {
+      flightTimer = setTimeout(loadFlights, got ? 1500 : 5000);
+    }
+  }
+
+  function onScreen() {
+    const tk = BARRY.views.toolkit;
+    return !!host() && !set_
+      && (!tk || typeof tk.tool !== 'function' || tk.tool() === 'braces');
+  }
+
+  function tally(ms) {
+    const n = { waiting: 0, queued: 0, running: 0, done: 0, failed: 0 };
+    for (const m of ms) n[m.status in n ? m.status : 'waiting'] += 1;
+    return n;
+  }
+
+  function announce(f) {
+    const snap = f.job || {};
+    const ms = snap.members || [];
+    const n = tally(ms);
+    const head = snap.status === 'done' ? 'The batch has landed: '
+      : snap.status === 'canceled' ? 'The batch was stopped: '
+      : 'The batch ended early (' + (snap.error || 'no reason given') + '): ';
+    toast(head + n.done + ' of ' + ms.length + ' aligned'
+          + (n.failed ? ', ' + n.failed + ' failed' : '')
+          + '. Each is a proposal waiting to be reviewed — nothing has been '
+          + 'banked.', (n.failed || snap.status !== 'done') ? 'warn' : 'ok',
+          10000);
+  }
+
+  function flightShell() {
+    return el('div', { class: 'card br-flight' }, [
+      el('div', { class: 'section-label', text: '3. The batch' }),
+      el('div', { class: 'br-flight-parts' }),
+    ]);
+  }
+
+  function membersOf(f) {
+    const snap = f.job || {};
+    return snap.members || (f.members || []).map((m) => (
+      { id: m.id, label: m.label, status: 'waiting' }));
+  }
+
+  function flightUpdate(node, f) {
+    const inner = node.querySelector('.br-flight-parts');
+    if (!inner) return;
+    const snap = f.job || {};
+    const ms = membersOf(f);
+    const n = tally(ms);
+    BARRY.ui.sections(inner, [
+      { key: 'line', enter: false,
+        sig: [snap.status, n.done, n.failed, n.running, n.queued,
+              Math.floor((snap.elapsed || 0) / 15)],
+        build: () => flightLine(f, ms, n) },
+      { key: 'bar', enter: false, sig: 'bar',
+        build: () => el('div', { class: 'br-fbar', role: 'progressbar',
+                                 'aria-label': 'How far the batch has got' }, [
+          el('i', { class: 'ok' }), el('i', { class: 'bad' }),
+          el('i', { class: 'run' })]),
+        update: (b) => paintFlightBar(b, ms, n) },
+      { key: 'rows', enter: false,
+        sig: ms.map((m) => [m.id, m.status, m.error, m.set_id, m.cached,
+                            m.where].join(':')).join('|'),
+        build: () => flightRows(ms),
+        update: (box) => {
+          // The step of a row that is going, without rebuilding the rows.
+          for (const m of ms) {
+            const cell = box.querySelector('[data-mid="' + cssEsc(m.id)
+                                           + '"] .dop-batch-state');
+            const w = memberWords(m);
+            if (cell && cell.textContent !== w) cell.textContent = w;
+          }
+        } },
+      { key: 'acts', enter: false, sig: [snap.status, n.failed, f.id],
+        build: () => flightActs(f, ms) },
+    ]);
+  }
+
+  function spellFor(sec) {
+    const s_ = Math.max(0, Math.round(sec || 0));
+    if (s_ < 90) return s_ + ' s';
+    if (s_ < 5400) return Math.round(s_ / 60) + ' min';
+    return (Math.round(s_ / 360) / 10) + ' h';
+  }
+
+  function flightLine(f, ms, n) {
+    const snap = f.job || {};
+    const at = f.started ? new Date(f.started * 1000) : null;
+    const when = at ? at.toTimeString().slice(0, 5) : '';
+    const here = ms.filter((m) => m.where === 'here').length;
+    const vacc = ms.filter((m) => m.where === 'vacc').length;
+    const state = snap.status === 'running' ? 'going'
+      : snap.status === 'done' ? 'landed'
+      : snap.status === 'canceled' ? 'stopped' : 'ended early';
+    return el('div', { class: 'br-flight-line' }, [
+      el('strong', { text: ms.length + ' set' + (ms.length === 1 ? '' : 's')
+                           + ', ' + state }),
+      el('span', { class: 'br-hint', text: [
+        when ? 'sent ' + when + (f.by ? ' by ' + f.by : '') : null,
+        (here || vacc) ? here + ' here, ' + vacc + ' on the VACC' : null,
+        n.done + ' landed', n.failed ? n.failed + ' failed' : null,
+        n.running ? n.running + ' aligning' : null,
+        n.queued ? n.queued + ' in the cluster’s queue' : null,
+        n.waiting ? n.waiting + ' waiting' : null,
+        spellFor(snap.elapsed) + (snap.status === 'running' ? ' so far' : ''),
+      ].filter(Boolean).join('  ·  ') }),
+      snap.status !== 'running' && snap.status !== 'done' && snap.error
+        ? el('p', { class: 'br-err', text: snap.error }) : null,
+    ].filter(Boolean));
+  }
+
+  /* Landed, failed and aligning, as one bar: a row that is part-way
+     through counts for the part it has done. */
+  function paintFlightBar(b, ms, n) {
+    const all = Math.max(1, ms.length);
+    let part = 0;
+    for (const m of ms) {
+      if (m.status === 'running') {
+        part += m.of ? Math.min(1, (m.done || 0) / m.of) * 0.9 + 0.05 : 0.1;
+      }
+    }
+    const pct = (v) => (100 * v / all).toFixed(2) + '%';
+    const [ok, bad, run] = b.children;
+    ok.style.width = pct(n.done);
+    bad.style.width = pct(n.failed);
+    run.style.width = pct(part);
+    b.setAttribute('aria-valuenow', String(Math.round(100 * (n.done + n.failed)
+                                                       / all)));
+    b.title = n.done + ' of ' + ms.length + ' landed'
+      + (n.failed ? ', ' + n.failed + ' failed' : '');
+  }
+
+  function memberWords(m) {
+    if (m.status === 'failed') return 'failed: ' + (m.error || 'no reason given');
+    if (m.status === 'done') {
+      return m.cached ? 'aligned before with these settings — opens that one'
+                      : 'landed — open it to review';
+    }
+    if (m.status === 'running') {
+      if (m.where === 'vacc' && !m.of) {
+        return 'on a node' + (m.slurm_id ? ' (' + m.slurm_id + ')' : '');
+      }
+      const lbl = STAGE_NAMES[m.step] || m.step || 'Aligning';
+      return m.of ? lbl + ' ' + Math.min((m.done || 0) + 1, m.of) + ' of ' + m.of
+                  : lbl;
+    }
+    if (m.status === 'queued') {
+      return 'in the cluster’s queue' + (m.slurm_id ? ' as ' + m.slurm_id : '');
+    }
+    return m.step || 'waiting its turn';
+  }
+
+  function flightRows(ms) {
+    const box = el('div', { class: 'dop-batch br-flight-rows' });
+    for (const m of ms) {
+      const st = m.status || 'waiting';
+      const open = st === 'done' && m.set_id;
+      box.appendChild(el(open ? 'button' : 'div', {
+        class: 'dop-batch-row ' + st, 'data-mid': m.id,
+        title: open ? 'Open this proposal' : null,
+        onclick: open ? () => { reused = null; openSet(m.set_id); } : null,
+      }, [
+        el('span', { class: 'dop-batch-dot', 'aria-hidden': 'true' }),
+        el('span', { class: 'dop-batch-name', text: m.label || m.id }),
+        m.where ? el('span', { class: 'ip-where',
+                               text: m.where === 'vacc' ? 'VACC' : 'HERE' }) : null,
+        el('span', { class: 'dop-batch-state', text: memberWords(m) }),
+        open && !m.cached && m.n != null
+          ? el('span', { class: 'dop-batch-n',
+                         text: m.n + ' aligned · ' + (m.n_flagged || 0)
+                               + ' flagged' }) : null,
+        /* Whether it has reached the shared database, so a proposal made
+           in this batch can be reviewed on another machine. */
+        open && BARRY.syncState ? BARRY.syncState.mark('braces', m.set_id) : null,
+      ].filter(Boolean)));
+    }
+    return box;
+  }
+
+  function flightActs(f, ms) {
+    const run = flightRunning(f);
+    const failed = ms.filter((m) => m.status === 'failed');
+    return el('div', { class: 'tk-actions br-flight-acts' }, [
+      run ? el('button', { class: 'btn ghost', text: 'Stop the batch',
+        title: 'The set being read stops and the cluster’s jobs are '
+             + 'cancelled. Every set already filed stays filed.',
+        onclick: async () => {
+          try {
+            await apiPost('/api/braces/batch/' + encodeURIComponent(f.id)
+                          + '/cancel', {});
+            toast('Stopping. Every set already filed stays filed.', null, 6000);
+          } catch (e) { toast(e.message, 'err', 8000); }
+          loadFlights();
+        } }) : null,
+      (!run && failed.length) ? el('button', { class: 'btn ghost sm',
+        text: 'Tick the ' + failed.length + ' that failed, to send again',
+        onclick: () => {
+          for (const m of failed) bulk.want[m.id] = true;
+          bulk.rev += 1;
+          render();
+        } }) : null,
+      el('span', { class: 'spacer' }),
+      !run ? el('button', { class: 'btn ghost sm', text: 'Put this batch away',
+        title: 'Every set it made stays in the Alignments list below',
+        onclick: () => {
+          dismissed.add(f.id);
+          try {
+            localStorage.setItem('barry.braces.dismissed',
+                                 JSON.stringify([...dismissed].slice(-40)));
+          } catch (e) { /* remembered for this page only */ }
+          render();
+        } }) : null,
+    ].filter(Boolean));
   }
 
   /* Which contacts a recording has marked bad.
@@ -1265,139 +1812,9 @@ BARRY.braces = (function () {
           } catch (e) {
             toast('Could not save that: ' + e.message, 'err', 8000);
           }
+          bulk.rev += 1;
           render();
         });
-  }
-
-  /* One read after another. */
-  async function runBulk() {
-    const queue = cands.filter((c) => bulk.want[c.id] && bulkReady(c));
-    if (!queue.length || bulk.running) return;
-    bulk.running = true;
-    bulk.stop = false;
-    // The settings as they stood when the run was asked for, for every set.
-    const conf = { measure: q.measure, window_ms: q.window_ms,
-                   force: !!bulk.force };
-    for (const c of queue) bulk.state[c.id] = { state: 'queued',
-                                                msg: 'waiting' };
-    render();
-
-    for (const c of queue) {
-      if (bulk.stop) {
-        bulk.state[c.id] = { state: '', msg: 'stopped before this one' };
-        continue;
-      }
-      bulk.now = c.id;
-      bulk.state[c.id] = { state: 'going', msg: 'reading\u2026' };
-      paintBulkRow(c.id);
-      try {
-        const started = await apiPost('/api/braces/run', {
-          entry_id: c.id,
-          from_version: bulk.pick[c.id] || null,
-          measure: conf.measure,
-          window_ms: conf.window_ms,
-          force: !!conf.force,
-        });
-        if (started.existing) {
-          // Answered before with these settings: opened, not read.
-          const ex = started.existing;
-          bulk.state[c.id] = { state: 'done', set_id: ex.set_id,
-            msg: 'aligned before with these settings (' + setLine(ex)
-                 + '), nothing read again' };
-          paintBulkRow(c.id, true);
-          paintBulkBar();
-          continue;
-        }
-        const id = (started.job || {}).id;
-        if (!id) throw new Error('the read did not start');
-        const res = await waitForJob(id, (j) => {
-          const st = (j.stages || []).find((x) => x.status === 'running')
-                  || (j.stages || [])[0] || {};
-          // The same words the single-set bar uses. The raw stage name
-          // is `ds windows`, which is the code's name for it and not a
-          // thing to put in front of somebody.
-          const lbl = STAGE_NAMES[st.name] || st.name || 'Reading';
-          bulk.state[c.id] = { state: 'going', msg:
-            lbl + ' ' + Math.min((st.done || 0) + 1, st.of || 0)
-            + ' of ' + (st.of || 0) };
-          paintBulkRow(c.id);
-        });
-        const summ = res.summary || {};
-        bulk.state[c.id] = {
-          state: 'done', set_id: res.set_id,
-          msg: summ.n + ' aligned, ' + (summ.n_flagged || 0) + ' flagged, '
-               + 'median ' + ms(summ.shift_median_ms || 0) + ' ms',
-        };
-      } catch (e) {
-        // Named and kept. A bulk run that swallows one failure is a bulk
-        // run somebody has to check by hand afterwards anyway.
-        bulk.state[c.id] = { state: 'failed', msg: e.message || String(e) };
-      }
-      // The row REBUILT, not just its text: it has finished, so it has
-      // an Open button now, and waiting for the end of the queue to show
-      // it made a set that landed four minutes ago look like one still
-      // being read.
-      paintBulkRow(c.id, true);
-      paintBulkBar();
-    }
-    bulk.now = null;
-    bulk.running = false;
-    bulk.stop = false;
-    render();
-    const done = queue.filter((c) => (bulk.state[c.id] || {}).state === 'done');
-    toast(done.length + ' of ' + queue.length + ' aligned. Each is a '
-          + 'proposal waiting to be reviewed \u2014 nothing has been banked.',
-          done.length === queue.length ? null : 'warn', 9000);
-  }
-
-  /* Poll one job to the end. Separate from `run`'s own loop because that
-     one repaints the single-set panel as it goes and this one repaints a
-     table row. */
-  function waitForJob(id, onTick) {
-    return new Promise((resolve, reject) => {
-      const poll = setInterval(async () => {
-        let got;
-        try { got = await api('/api/cfc/job/' + id); } catch (e) { return; }
-        const j = got.job || {};
-        if (j.status === 'running') { if (onTick) onTick(j); return; }
-        clearInterval(poll);
-        if (j.status !== 'done') {
-          reject(new Error(j.error || 'the read did not finish'));
-          return;
-        }
-        try {
-          const r = await api('/api/cfc/result/' + id);
-          resolve(r.result || {});
-        } catch (e) { reject(e); }
-      }, 400);
-    });
-  }
-
-  /* ONE ROW'S STATUS, and nothing else.
-
-     Replacing the card on every tick threw away the scroll position, the
-     focus, and any version list somebody had open -- four times a second,
-     for the whole minute a read takes, which is exactly when somebody is
-     trying to read the table. The status column is the only thing that
-     changes while a run is going, so it is the only thing written. */
-  function paintBulkRow(id, whole) {
-    const row = document.querySelector('.br-bulk-row[data-id="'
-                                       + cssEsc(id) + '"]');
-    if (!row || !row.parentNode) return;
-    const st = bulk.state[id] || {};
-    /* A read that has LANDED changes more than its status text -- there
-       is an Open button now -- so the row is rebuilt. Only that row: the
-       table keeps its scroll position, which was the whole reason ticks
-       stopped rebuilding the card. */
-    if (whole) {
-      const c = (cands || []).find((x) => x.id === id);
-      if (c) { row.parentNode.replaceChild(bulkRow(c), row); return; }
-    }
-    const cell = row.querySelector('.st');
-    if (cell) cell.textContent = st.msg || '';
-    for (const k of ['queued', 'going', 'done', 'failed']) {
-      row.classList.toggle(k, st.state === k);
-    }
   }
 
   /* Attribute selectors take a quoted value, and a bank id is hex -- but
@@ -2210,6 +2627,7 @@ BARRY.braces = (function () {
         });
       } catch (e2) { /* the log is not worth a second failure */ }
     } finally {
+      closeEnterAsk();
       view = null;
       document.removeEventListener('keydown', vKeys, true);
       setMode(null);
@@ -2510,7 +2928,10 @@ BARRY.braces = (function () {
     const r = vAt();
     if (!r) return;
     const t = Math.round((vNow(r) + deltaMs / 1000) * 1e6) / 1e6;
-    await decide(view.at, 'move', t);
+    const row = view.at;
+    view.placed = { row, t };
+    await decide(row, 'move', t);
+    if (view && view.placed && view.placed.row === row) view.placed = null;
     vPublish();
     vBar();
   }
@@ -2520,13 +2941,90 @@ BARRY.braces = (function () {
     if (!r) return;
     await decide(view.at, call);
     vPublish();
-    // Straight on to the next one that still wants an answer, which is what
-    // makes a pass a pass rather than a list.
+    vNextOpen();
+  }
+
+  /* Straight on to the next one that still wants an answer, which is what
+     makes a pass a pass rather than a list -- and when there is none left
+     anywhere in the set, the pass is done, and that is said properly. */
+  function vNextOpen() {
+    if (!view) return;
     const all = vRows();
     for (let i = view.at + 1; i < all.length; i++) {
       if (all[i].flag && !callFor(i)) { vGoTo(i); return; }
     }
     vBar();
+    if (passDone()) celebrate('pass');
+  }
+
+  /* ENTER AFTER A DRAG (2026-10-14).
+
+     Enter is "Braces is right": it confirms the proposed peak. After
+     somebody has dragged the green line somewhere on purpose, Enter took
+     their spot away without a word -- the stamp jumped back to the
+     proposal and the pass moved on. So when the stamp in view has been
+     moved by hand, Enter asks first, and says how far the stamp would go:
+     Enter again keeps their spot and moves on, R takes the recommended
+     one, Esc does nothing. */
+  let enterAsk = null;
+
+  function vEnter() {
+    const r = vAt();
+    if (!r || (view && view.drag)) return;
+    const said = (set_.set.calls || {})[String(view.at)] || {};
+    const prop = r.now == null ? r.was : r.now;
+    const mine = (view.placed && view.placed.row === view.at) ? view.placed.t
+      : (said.call === 'move' ? said.t : null);
+    if (mine == null || Math.abs(mine - prop) < 5e-7) {
+      vSay('confirm');
+      return;
+    }
+    askEnter(mine, prop);
+  }
+
+  /* How far, in words: "15.0 ms later than your spot". */
+  function enterWords(mine, prop) {
+    const d = (prop - mine) * 1000;
+    return Math.abs(d).toFixed(1) + ' ms ' + (d > 0 ? 'later' : 'earlier');
+  }
+
+  function askEnter(mine, prop) {
+    closeEnterAsk();
+    const at = view.at;
+    const keep = () => { closeEnterAsk(); if (view && view.at === at) vNextOpen(); };
+    const back = () => { closeEnterAsk(); if (view && view.at === at) vSay('confirm'); };
+    const how = enterWords(mine, prop);
+    const box = el('div', { class: 'br-enter-ask', role: 'alertdialog',
+                            'aria-labelledby': 'brEnterAskT' }, [
+      el('strong', { id: 'brEnterAskT',
+                     text: 'Enter moves it back to the recommended spot' }),
+      el('p', { text: 'You put this stamp at ' + clock(mine) + ' s. Enter on '
+        + 'its own confirms where Braces recommends, ' + clock(prop)
+        + ' s, which moves it away from your spot.' }),
+      el('div', { class: 'br-enter-move' }, [
+        el('b', { text: how }),
+        el('span', { text: 'than where you put it' }),
+      ]),
+      el('div', { class: 'br-enter-acts' }, [
+        el('button', { class: 'btn', onclick: keep }, [
+          el('span', { text: 'Keep my spot' }), el('kbd', { text: 'Enter' })]),
+        el('button', { class: 'btn ghost', onclick: back }, [
+          el('span', { text: 'Use the recommended spot' }),
+          el('kbd', { text: 'R' })]),
+        el('button', { class: 'btn ghost sm', onclick: closeEnterAsk }, [
+          el('span', { text: 'Cancel' }), el('kbd', { text: 'Esc' })]),
+      ]),
+    ]);
+    document.body.appendChild(box);
+    enterAsk = { box, keep, back, row: at, ms: (prop - mine) * 1000 };
+    try { box.querySelector('.btn').focus({ preventScroll: true }); } catch (e) { /* ok */ }
+  }
+
+  function closeEnterAsk() {
+    if (!enterAsk) return;
+    const b = enterAsk.box;
+    enterAsk = null;
+    if (b && b.parentNode) b.parentNode.removeChild(b);
   }
 
   /* Dragging a stamp onto its peak.
@@ -2580,7 +3078,11 @@ BARRY.braces = (function () {
         const row = view.drag.row;
         const at = Math.round(t * 1e6) / 1e6;
         view.drag = null;
+        // Held while the decision is on its way, so an Enter pressed the
+        // instant the button comes up still knows the stamp was placed.
+        view.placed = { row, t: at };
         await decide(row, 'move', at);
+        if (view && view.placed && view.placed.row === row) view.placed = null;
         vPublish();
         vBar();
       },
@@ -3154,12 +3656,22 @@ BARRY.braces = (function () {
 
   function vKeys(e) {
     if (!view) return;
+    const k = e.key.toLowerCase();
+    // The question about a dragged stamp has the keys while it is up.
+    if (enterAsk) {
+      if (k === 'enter') enterAsk.keep();
+      else if (k === 'r') enterAsk.back();
+      else if (k === 'escape') closeEnterAsk();
+      else return;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     const tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
-    const k = e.key.toLowerCase();
     if (k === 'n' || k === 'arrowright') vStep(1);
     else if (k === 'p' || k === 'arrowleft') vStep(-1);
-    else if (k === 'enter') vSay('confirm');
+    else if (k === 'enter') vEnter();
     else if (k === 'k') vSay('keep');
     else if (k === '[') vMove(-1);
     else if (k === ']') vMove(1);
@@ -3602,7 +4114,8 @@ BARRY.braces = (function () {
     }
     bench = null;
     render();
-    toast('That was the last one in this pass.', null, 4000);
+    if (passDone()) celebrate('pass');
+    else toast('That was the last one in this pass.', null, 4000);
   }
 
   function stepBench(d) {
@@ -3835,6 +4348,7 @@ BARRY.braces = (function () {
     if (apply === true) {
       toast('Banked as version ' + rep.version + '. ' + rep.moved
             + ' stamp' + (rep.moved === 1 ? '' : 's') + ' moved.', 'ok', 7000);
+      celebrate('banked', rep);
       await openSet(set_.set.set_id);
       cands = null;
       return;
@@ -3907,6 +4421,127 @@ BARRY.braces = (function () {
                                       : rep.next_version) + '?',
         body, 'Bank it',
         () => commit(true));
+  }
+
+
+  /* ==================================================================
+     Done (2026-10-14)
+     ================================================================== */
+  /* Every flagged stamp in the set has an answer. */
+  function passDone() {
+    if (!set_ || !set_.set) return false;
+    const rows = set_.set.rows || [];
+    let flagged = 0;
+    for (let i = 0; i < rows.length; i++) {
+      if (!rows[i].flag) continue;
+      flagged += 1;
+      if (!callFor(i)) return false;
+    }
+    return flagged > 0;
+  }
+
+  /* A SET FINISHED IS A SET FINISHED, AND IT GETS A MOMENT.
+
+     A grinning tooth in braces, a burst of brackets, and one line from the
+     list below -- a different one each time, never the same twice running.
+     Once when the pass is done and once when it is banked, but not twice
+     inside a minute for the same set: finishing and banking straight after
+     is one moment, not two. Over in under three seconds, ended on a timer
+     as well as by the animation (the harness runner's virtual time never
+     ends one), clicked away at once, and only a fade where motion is
+     turned down. */
+  const HYPE = [
+    'Lesgooo!', 'Yo that’s lit 🔥', 'Goated af 🐐', 'No cap, that’s aligned',
+    'Slay. Every spike on its peak 💅', 'It’s giving… perfectly aligned',
+    'Ate and left no crumbs', 'Sheesh 🥶', 'W review. Massive W.',
+    'Main character energy 🦷✨', 'Understood the assignment',
+    'Built different 💪', 'Absolute cinema 🎬', 'Bussin’ fr fr',
+    'Big brain moves only 🧠', '+1000 aura', 'Periodt. 💅',
+    'Straight teeth, straight stamps 😤', 'That’s fire, no 🧢',
+    'Sigma grindset: complete', 'Vibe check: passed ✅', 'GG EZ',
+    'Rizz level: orthodontist', 'Cooked. In the good way 🍳',
+    'Era: aligned 📈', 'Touch grass? After this one.',
+    'Not delulu, just aligned', 'Mewing with perfect braces 😮‍💨',
+    'Every peak hit. Insane.', 'The brackets are bracketing 🔩',
+    'Certified spike whisperer', 'Skibidi stamps, fully aligned',
+  ];
+  let lastHype = -1;
+  const partied = {};
+
+  const passParty = {};
+  function celebrate(moment, rep) {
+    const sid = set_ && set_.set ? set_.set.set_id : '';
+    const now = Date.now();
+    // The pass is celebrated once a sitting: answering one again later is
+    // not finishing it again.
+    if (moment === 'pass') {
+      if (passParty[sid]) return;
+      passParty[sid] = true;
+    }
+    if (partied[sid] && now - partied[sid] < 60000) return;
+    partied[sid] = now;
+    let i = Math.floor(Math.random() * HYPE.length);
+    if (i === lastHype) i = (i + 1) % HYPE.length;
+    lastHype = i;
+    const s_ = set_ && set_.set ? set_.set : {};
+    const c = (set_ && set_.counts) || {};
+    const sub = moment === 'banked'
+      ? 'Banked as v' + ((rep || {}).version != null ? rep.version : '?') + ' · '
+        + ((rep || {}).moved || 0) + ' stamp' + (((rep || {}).moved === 1) ? '' : 's')
+        + ' moved · ' + (s_.name || 'this set')
+      : 'Every flagged stamp has an answer · ' + (s_.name || 'this set')
+        + (c.moved != null ? ' · ' + c.moved + ' moved by hand' : '');
+    party(HYPE[i], sub);
+  }
+
+  /* The tooth: a plain tooth shape, four brackets on a wire, and a grin. */
+  const TOOTH_SVG = '<svg viewBox="0 0 120 120" aria-hidden="true">'
+    + '<path class="t" d="M30 18c10-8 22-6 30 0 8-6 20-8 30 0 12 9 13 30 6 '
+    + '50-4 12-6 34-14 34-7 0-8-16-12-26-2-5-6-5-8 0-4 10-5 26-12 26-8 '
+    + '0-10-22-14-34-7-20-6-41 6-50z"/>'
+    + '<path class="w" d="M24 56 Q60 66 96 56"/>'
+    + '<rect class="b" x="27" y="50" width="11" height="11" rx="2"/>'
+    + '<rect class="b" x="45" y="54" width="11" height="11" rx="2"/>'
+    + '<rect class="b" x="64" y="54" width="11" height="11" rx="2"/>'
+    + '<rect class="b" x="82" y="50" width="11" height="11" rx="2"/>'
+    + '<circle class="e" cx="46" cy="36" r="4"/><circle class="e" cx="74" cy="36" r="4"/>'
+    + '<path class="m" d="M48 76 Q60 86 72 76"/>'
+    + '</svg>';
+
+  function party(line, sub) {
+    const old = document.querySelector('.br-party');
+    if (old) old.remove();
+    const calm = BARRY.ui.reducedMotion && BARRY.ui.reducedMotion();
+    const bits = el('div', { class: 'br-party-bits', 'aria-hidden': 'true' });
+    if (!calm) {
+      const marks = ['🦷', '✨', '🔩', '⭐', '💯', '🔥'];
+      for (let k = 0; k < 22; k++) {
+        const a = (k / 22) * Math.PI * 2 + Math.random() * 0.3;
+        const d = 140 + Math.random() * 160;
+        const b = el('i', { text: k % 3 === 0 ? marks[k % marks.length] : '' });
+        b.style.setProperty('--dx', Math.round(Math.cos(a) * d) + 'px');
+        b.style.setProperty('--dy', Math.round(Math.sin(a) * d) + 'px');
+        b.style.setProperty('--r', Math.round(Math.random() * 540 - 270) + 'deg');
+        b.style.setProperty('--d', Math.round(Math.random() * 160) + 'ms');
+        bits.appendChild(b);
+      }
+    }
+    const tooth = el('div', { class: 'br-party-tooth' });
+    tooth.innerHTML = TOOTH_SVG;
+    const box = el('div', { class: 'br-party' + (calm ? ' calm' : ''),
+                            role: 'status', 'aria-live': 'polite',
+                            title: 'Click to carry on',
+                            onclick: () => box.remove() }, [
+      el('div', { class: 'br-party-card' }, [
+        bits, tooth,
+        el('div', { class: 'br-party-line', text: line }),
+        el('div', { class: 'br-party-sub', text: sub }),
+      ]),
+    ]);
+    document.body.appendChild(box);
+    // Out, then gone -- on timers, not on `animationend`.
+    setTimeout(() => box.classList.add('out'), 2300);
+    setTimeout(() => { if (box.parentNode) box.remove(); }, 2800);
   }
 
   /* The app's own modal, not a second one. `showModal` stacks, so the
@@ -3982,6 +4617,10 @@ BARRY.braces = (function () {
     _allSets: () => allSets,
     _goTo: (n) => vGoTo(n),
     _exitView: () => exitView(),
+    _enterAsk: () => (enterAsk ? { row: enterAsk.row, ms: enterAsk.ms,
+                                   text: enterAsk.box.textContent } : null),
+    _party: (line, sub) => party(line || HYPE[0], sub || ''),
+    _hype: () => HYPE.slice(),
     _reset: () => { set_ = null; bench = null; cands = null; },
     /* The plan card drawn from a given plan, for web/_dev/vtreetools.html:
        a set with several readable versions is what the version tree is for,
