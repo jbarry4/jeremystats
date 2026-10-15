@@ -253,6 +253,14 @@ async function until(fn, ms, what) {
            !!D().querySelector('.br-yoink .br-glove svg'));
         ok('and says so', /We ain’t doing that\./.test(
           (D().querySelector('.br-yoink-say') || {}).textContent || ''));
+        await until(() => (D().querySelector('.br-yoink') || {}).classList
+                          && D().querySelector('.br-yoink').classList.contains('say'),
+                    4000, 'the finger');
+        ok('then it stands up and wags its finger: uh, uh, uh',
+           !!D().querySelector('.br-yoink.say .br-glove-wag svg .g-index')
+           && D().querySelectorAll('.br-yoink-say .br-uh span').length === 3
+           && /brWag/.test(frame.contentWindow.getComputedStyle(
+                D().querySelector('.br-glove-wag')).animationName));
         await until(() => !ev(BR + '._yoinking()'), 5000, 'the yank');
         const v = ev(BR + '._view()') || {};
         ok('the stamp is yanked back to where it was, and nothing was sent',

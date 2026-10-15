@@ -33,8 +33,10 @@ Nothing on the server changed: pull and reload the page.
   dropped it while the question is up, and every other key waits.
   - **Keep it there** (Enter): placed where you put it.
   - **Place it somewhere else** (Esc): a white cartoon glove comes down,
-    grabs the line and yanks it back to where it was. "YOINK!" and then
-    "We ain't doing that." Nothing is decided, and you put it down again.
+    grabs the line and yanks it back to where it was ("YOINK!"). Then it
+    stands up and wags its index finger, three times, under "We ain't
+    doing that", with an "uh" for each wag. Nothing is decided, and you put
+    the stamp down again.
 
   20 ms is closer than a dentate spike is wide. The detector's own
   spacing (`dist_ms`, 100 ms) is quoted from the set. A stamp that was
@@ -49,11 +51,12 @@ Nothing on the server changed: pull and reload the page.
 ### Checked
 
 - `bracesenter.html` now runs this in a real review, with every decision
-  held in the page. 30 checks pass:
+  held in the page. 31 checks pass:
   - dropped 4 ms from its neighbour, it asks, names the neighbour and the
     4.0 ms, shakes the page, and decides nothing;
   - other keys are held while it asks;
   - Esc sends the glove, the stamp goes back, and nothing is sent;
+  - the glove then wags its finger, with three "uh"s;
   - Enter places it where it was dropped;
   - a nudge beside the same neighbour does not ask again.
 - Also passing: braces, bracesbad, braceslist, bracesmany, bracesscroll

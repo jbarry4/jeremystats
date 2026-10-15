@@ -4646,7 +4646,8 @@ BARRY.braces = (function () {
   }
 
   /* THE GLOVE. Down onto the line, a grab, YOINK -- the line goes with it,
-     back to where it was -- and a word on the way out. Timers, not
+     back to where it was -- then it stands up and wags its finger: "We
+     ain't doing that", uh, uh, uh. Timers, not
      `animationend` (the harness runner's virtual time never ends one), and
      the line itself is moved by `step(f)`, f from 0 to 1, in step with the
      glove. `geo` is { x, y, dx } in client pixels, or null when the line is
@@ -4665,6 +4666,21 @@ BARRY.braces = (function () {
     + '<path class="g-seam" d="M25 10h40M25 16h40"/>'
     + '</svg>';
 
+  /* And the same glove upright, index finger up, for "uh uh uh": three
+     fingers curled over the palm, the thumb across them, cuff at the
+     wrist. Wagged from the wrist by `.br-glove-wag`'s own animation. */
+  const WAG_SVG = '<svg viewBox="0 0 90 132" aria-hidden="true">'
+    + '<rect class="g-palm" x="18" y="56" width="56" height="52" rx="15"/>'
+    + '<rect class="g-index" x="22" y="6" width="15" height="60" rx="7.5"/>'
+    + '<path class="g-line" d="M25 44h9"/>'
+    + '<rect class="g-curl" x="37" y="52" width="13" height="18" rx="6.5"/>'
+    + '<rect class="g-curl" x="49" y="54" width="13" height="17" rx="6.5"/>'
+    + '<rect class="g-curl" x="61" y="57" width="12" height="16" rx="6"/>'
+    + '<path class="g-thumb" d="M20 76c6-6 22-6 30 0 4 3 2 9-3 9H26c-6 0-10-5-6-9z"/>'
+    + '<rect class="g-cuff" x="20" y="104" width="52" height="24" rx="8"/>'
+    + '<path class="g-seam" d="M25 112h42M25 118h42"/>'
+    + '</svg>';
+
   function yoink(geo, step, done) {
     const calm = BARRY.ui.reducedMotion && BARRY.ui.reducedMotion();
     yoinking = true;
@@ -4678,11 +4694,19 @@ BARRY.braces = (function () {
     const box = el('div', { class: 'br-yoink' }, [
       el('div', { class: 'br-hand' }, [
         el('div', { class: 'br-glove' }),
+        // The same glove, upright, finger up -- shown once it has yanked.
+        el('div', { class: 'br-glove-wag' }),
         el('div', { class: 'br-yoink-word', text: 'YOINK!' }),
       ]),
-      el('div', { class: 'br-yoink-say', text: 'We ain’t doing that.' }),
+      el('div', { class: 'br-yoink-say' }, [
+        el('div', { text: 'We ain’t doing that.' }),
+        // One "uh" for each wag of the finger.
+        el('div', { class: 'br-uh' }, [0, 1, 2].map((i) => el('span', {
+          text: 'uh', style: '--i:' + i }))),
+      ]),
     ]);
     box.querySelector('.br-glove').innerHTML = GLOVE_SVG;
+    box.querySelector('.br-glove-wag').innerHTML = WAG_SVG;
     box.style.left = Math.round(geo.x) + 'px';
     box.style.top = Math.round(geo.y) + 'px';
     box.style.setProperty('--dx', Math.round(geo.dx) + 'px');
@@ -4704,9 +4728,10 @@ BARRY.braces = (function () {
       };
       tick();
     }, 600);
+    // Then upright, finger wagging: no, no, no -- uh, uh, uh.
     setTimeout(() => box.classList.add('say'), 1150);
-    setTimeout(() => box.classList.add('out'), 2300);
-    setTimeout(() => { if (box.parentNode) box.remove(); }, 2750);
+    setTimeout(() => box.classList.add('out'), 2750);
+    setTimeout(() => { if (box.parentNode) box.remove(); }, 3200);
   }
 
   /* ==================================================================

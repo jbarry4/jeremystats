@@ -14334,6 +14334,47 @@ div.tf-tile { cursor: default; }
 .br-glove .g-fingers { transform-box: view-box; transform-origin: 45px 60px;
   transition: transform 160ms ease-out; }
 .br-yoink.grab .br-glove .g-fingers { transform: scaleY(.6); }
+/* "Uh uh uh": the fist gives way to the same glove upright, index finger
+   up, wagging from the wrist -- three times, one "uh" with each. */
+.br-glove-wag {
+  position: absolute; left: -45px; bottom: 0; width: 90px; height: 132px;
+  opacity: 0; transform-origin: 50% 96%;
+}
+.br-glove-wag svg { width: 100%; height: 100%; overflow: visible;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45)); }
+.br-glove-wag .g-palm, .br-glove-wag .g-index, .br-glove-wag .g-curl,
+.br-glove-wag .g-thumb { fill: #fbfbf6; stroke: #1c2a24; stroke-width: 3; }
+.br-glove-wag .g-cuff { fill: #e6e3d8; stroke: #1c2a24; stroke-width: 3; }
+.br-glove-wag .g-seam, .br-glove-wag .g-line { fill: none; stroke: #1c2a24;
+  stroke-width: 2; stroke-linecap: round; opacity: .55; }
+.br-yoink.say .br-glove { opacity: 0; transition: opacity 120ms ease-out; }
+.br-yoink.say .br-glove-wag {
+  opacity: 1;
+  animation: brWagIn 220ms ease-out both,
+             brWag 440ms 220ms ease-in-out 3 both;
+}
+/* Specific enough to win over `.pull`'s pop, which also matches. */
+.br-yoink.pull.say .br-yoink-word { animation: brYoinkGone 180ms ease-in both; }
+.br-uh { display: flex; justify-content: center; gap: 8px; margin-top: 2px;
+  font-size: var(--fs-12); font-weight: 800; letter-spacing: .04em;
+  color: var(--err); }
+.br-uh span { opacity: 0; }
+.br-yoink.say .br-uh span {
+  animation: brUh 300ms calc(220ms + var(--i) * 440ms) ease-out both;
+}
+@keyframes brWagIn { from { transform: translateY(18px) scale(.8); opacity: 0; } }
+@keyframes brWag {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-20deg); }
+  75% { transform: rotate(20deg); }
+}
+@keyframes brYoinkGone { from { opacity: 1; transform: scale(1) rotate(-8deg); }
+                         to { opacity: 0; transform: scale(.7) rotate(-8deg); } }
+@keyframes brUh {
+  0% { opacity: 0; transform: translateY(4px) scale(.7); }
+  60% { opacity: 1; transform: translateY(-2px) scale(1.15); }
+  100% { opacity: 1; transform: none; }
+}
 .br-yoink-word {
   position: absolute; left: 30px; top: -112px; white-space: nowrap;
   font-size: 30px; font-weight: 900; font-style: italic; letter-spacing: .02em;
@@ -14344,7 +14385,7 @@ div.tf-tile { cursor: default; }
 .br-yoink.pull .br-yoink-word { animation: brYoinkWord 520ms ease-out both; }
 .br-yoink-say {
   position: absolute; left: var(--dx, 0); top: 20px; transform: translateX(-50%);
-  white-space: nowrap; padding: 6px 12px; border-radius: 12px;
+  white-space: nowrap; text-align: center; padding: 6px 12px; border-radius: 12px;
   background: var(--bg-2); color: var(--text); border: 1px solid var(--line);
   box-shadow: var(--shadow); font-size: var(--fs-13); font-weight: 650;
   opacity: 0; transition: opacity 200ms ease-out, transform 200ms ease-out;
