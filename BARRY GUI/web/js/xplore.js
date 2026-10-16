@@ -4852,6 +4852,9 @@ BARRY.views.xplore = (function () {
      one-shot thing somebody has just asked for. */
   function wireTimeGrab(index, pane, sess, host) {
     let held = false;
+    // Kept for `clientAtTime`, the way back from a time to the screen.
+    pane._grabHost = host;
+    pane._grabSess = sess;
     const at = (e) => timeAtPointer(pane, sess, host, e.clientX);
     const down = (e) => {
       const g = XF.grabTime;
@@ -11049,6 +11052,26 @@ BARRY.views.xplore = (function () {
     /* A mode taking over pointer drags on a pane, to be told the time
        under the pointer. `null` hands it back. */
     grabTime: (hooks) => { XF.grabTime = hooks || null; },
+    /* Where a time is on the screen, in client pixels: `timeAtPointer` run
+       backwards, for a mode drawing over a pane (Braces' glove, 2026-10-15).
+       `{ x, top, bottom }`, or null when the pane is not drawn or the time
+       is off it. */
+    clientAtTime: (t, index) => {
+      const pane = (XF.panes || [])[index || 0];
+      const host = pane && pane._grabHost;
+      if (!host || !host.isConnected) return null;
+      const rect = host.getBoundingClientRect();
+      const isTrace = pane.panel === 'traces';
+      const left = isTrace ? PAD_TRACES_L : 0;
+      const right = isTrace ? PAD.r : 0;
+      const plotW = Math.max(1, rect.width - left - right);
+      const w = winOf(pane, pane._grabSess);
+      if (!w || !(w.span > 0)) return null;
+      const frac = (t - w.t0) / w.span;
+      if (frac < -0.05 || frac > 1.05) return null;
+      return { x: rect.left + left + frac * plotW, top: rect.top,
+               bottom: rect.bottom };
+    },
     fillPanes,
     /* Repaint what is loaded, in every kind of pane -- the traces, and on a
        raster its grid, bands, marks and StrataScope's lines -- with no

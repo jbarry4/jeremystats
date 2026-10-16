@@ -15,6 +15,53 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.15.1 - Braces: put a stamp on top of another one and it asks, bud
+
+Nothing on the server changed: pull and reload the page.
+
+### Added
+
+- **A stamp dropped on top of another one shakes the screen and asks.**
+  In the review, a stamp dragged (or nudged with `[` `]`) to within 20 ms
+  of another stamp gets this:
+
+  > **Are you sure, bud?** You're telling me these 2 dentate spikes were
+  > really that close? **3.2 ms** between stamp #12 and stamp #13. The
+  > detector these came from never puts two closer than 100 ms.
+
+  (On an IED set it says "these 2 discharges".) The line stays where you
+  dropped it while the question is up, and every other key waits.
+  - **Keep it there** (Enter): placed where you put it.
+  - **Place it somewhere else** (Esc): a white cartoon glove comes down,
+    grabs the line and yanks it back to where it was ("YOINK!"). Then it
+    stands up and wags its index finger, three times, under "We ain't
+    doing that", with an "uh" for each wag. Nothing is decided, and you put
+    the stamp down again.
+
+  20 ms is closer than a dentate spike is wide. The detector's own
+  spacing (`dist_ms`, 100 ms) is quoted from the set. A stamp that was
+  already that close to the same neighbour is not asked about again for
+  every nudge. The bench's Enter asks the same way. Where motion is turned
+  down there is no shake, and the stamp just goes back, with a note.
+  Stamps landing on exactly one time are still the overlap flag, which
+  the bank will not write.
+- Xplorefinder can now say where a time is on screen (`clientAtTime`).
+  The glove uses it to land on the line.
+
+### Checked
+
+- `bracesenter.html` now runs this in a real review, with every decision
+  held in the page. 31 checks pass:
+  - dropped 4 ms from its neighbour, it asks, names the neighbour and the
+    4.0 ms, shakes the page, and decides nothing;
+  - other keys are held while it asks;
+  - Esc sends the glove, the stamp goes back, and nothing is sent;
+  - the glove then wags its finger, with three "uh"s;
+  - Enter places it where it was dropped;
+  - a nudge beside the same neighbour does not ask again.
+- Also passing: braces, bracesbad, braceslist, bracesmany, bracesscroll
+  and bracesspan.
+
 ## 2026.10.14.8 - The Confluence: Incisor's and Doppler's events, pooled, sorted and teased apart
 
 **Pull and restart Jarvis on every machine.** Pooling, merging and Root

@@ -2628,6 +2628,7 @@ BARRY.braces = (function () {
       } catch (e2) { /* the log is not worth a second failure */ }
     } finally {
       closeEnterAsk();
+      closeCrowded();
       view = null;
       document.removeEventListener('keydown', vKeys, true);
       setMode(null);
@@ -2838,6 +2839,8 @@ BARRY.braces = (function () {
     // A drag in flight outranks both: the line has to follow the pointer
     // now, not after a round trip.
     if (view && view.drag && view.drag.row === n) return view.drag.t;
+    // Then a placement waiting on "are you sure" -- or being yoinked back.
+    if (view && view.pending && view.pending.row === n) return view.pending.t;
     const said = ((set_.set.calls || {})[String(n)] || {});
     if (said.call === 'move' && said.t != null) return said.t;
     if (said.call === 'keep') return r.was;
@@ -2928,12 +2931,7 @@ BARRY.braces = (function () {
     const r = vAt();
     if (!r) return;
     const t = Math.round((vNow(r) + deltaMs / 1000) * 1e6) / 1e6;
-    const row = view.at;
-    view.placed = { row, t };
-    await decide(row, 'move', t);
-    if (view && view.placed && view.placed.row === row) view.placed = null;
-    vPublish();
-    vBar();
+    await vDrop(view.at, vNow(r), t);
   }
 
   async function vSay(call) {
@@ -3059,7 +3057,7 @@ BARRY.braces = (function () {
         // panning rather than aiming.
         const reach = ((set_.set.params || {}).window_ms || 100) / 1000;
         if (Math.abs(t - vNow(r)) > reach) return false;
-        view.drag = { row: view.at, t: vNow(r), last: 0 };
+        view.drag = { row: view.at, t: vNow(r), last: 0, from: vNow(r) };
         return true;
       },
       onMove: (t) => {
@@ -3076,17 +3074,27 @@ BARRY.braces = (function () {
       onEnd: async (t) => {
         if (!view || !view.drag) return;
         const row = view.drag.row;
+        const from = view.drag.from;
         const at = Math.round(t * 1e6) / 1e6;
         view.drag = null;
-        // Held while the decision is on its way, so an Enter pressed the
-        // instant the button comes up still knows the stamp was placed.
-        view.placed = { row, t: at };
-        await decide(row, 'move', at);
-        if (view && view.placed && view.placed.row === row) view.placed = null;
-        vPublish();
-        vBar();
+        await vDrop(row, from, at);
       },
     });
+  }
+
+  /* A stamp put down by hand: on top of another one it asks first
+     (`crowds`); anywhere else it is decided at once. */
+  async function vDrop(row, from, at) {
+    if (!view) return;
+    const near = crowds(row, from, at);
+    if (near) { crowdedReview(row, from, at, near); return; }
+    // Held while the decision is on its way, so an Enter pressed the
+    // instant the button comes up still knows the stamp was placed.
+    view.placed = { row, t: at };
+    await decide(row, 'move', at);
+    if (view && view.placed && view.placed.row === row) view.placed = null;
+    vPublish();
+    vBar();
   }
 
   /* The two numbers in the bar, without rebuilding it. Dragging repaints
@@ -4012,6 +4020,8 @@ BARRY.braces = (function () {
       t: said.t != null ? said.t : (r.now != null ? r.now : r.was),
       trace: null,
     };
+    // Where it was when the bench opened: what a yoink puts it back to.
+    bench.from = bench.t;
     render();
     loadTrace();
   }
@@ -4099,6 +4109,11 @@ BARRY.braces = (function () {
     const n = bench.n;
     const r = set_.set.rows[n];
     const moved = Math.abs(bench.t - (r.now == null ? r.was : r.now)) > 1e-6;
+    const near = (call === 'confirm' && moved) ? crowds(n, bench.from, bench.t) : null;
+    if (near) {
+      crowdedBench(n, near);
+      return;
+    }
     if (call === 'confirm' && moved) {
       await decide(n, 'move', bench.t);
     } else {
@@ -4282,6 +4297,18 @@ BARRY.braces = (function () {
 
   /* ---------- keys ---------- */
   function keys(e) {
+    /* "Are you sure, bud?" has the keys while it is up, and nothing moves
+       while a stamp is being yoinked. First of the two key handlers (this
+       one is registered at load, the review's on entering it), and
+       IMMEDIATE, so the review's own Enter never also fires. */
+    if (closeAsk || yoinking) {
+      const k0 = e.key.toLowerCase();
+      if (closeAsk && k0 === 'enter') closeAsk.keep();
+      else if (closeAsk && k0 === 'escape') closeAsk.back();
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
     if (!bench || !set_) return;
     const tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
@@ -4423,6 +4450,289 @@ BARRY.braces = (function () {
         () => commit(true));
   }
 
+
+
+  /* ==================================================================
+     On top of another one (2026-10-15)
+     ================================================================== */
+  /* A STAMP PUT DOWN ON TOP OF ANOTHER ONE.
+
+     Two dentate spikes do not sit on top of each other: a spike is twenty
+     milliseconds or so wide, and the detector these stamps came from never
+     puts two closer than its own spacing (`dist_ms`, 100 ms). A stamp
+     dragged onto a neighbour is nearly always a slip -- the wrong line
+     grabbed, or a drag that ran on. So the screen shakes and asks. "Keep it
+     there" places it as asked. "Place it somewhere else" sends a glove in to
+     grab it and yank it back to where it was, and you put it down again.
+
+     Only when the placement MAKES the pair: a stamp that was already that
+     close to the same neighbour is not asked about again for every nudge.
+     The bank's own rule -- two stamps on exactly one time cannot be written
+     at all -- is still the overlap flag (`bracesset.overlaps`). */
+  const TOO_CLOSE_MS = 20;
+
+  /* Where row i will be written, the way `bracesset.settled` works it out. */
+  function landsAt(i) {
+    const r = ((set_ && set_.set.rows) || [])[i];
+    if (!r) return null;
+    const said = (set_.set.calls || {})[String(i)] || {};
+    const prop = (r.now != null && !r.same) ? r.now : r.was;
+    if (said.call === 'move') return said.t;
+    if (said.call === 'garbage') return null;
+    if (said.call === 'keep') return r.was;
+    if (said.call === 'confirm') return prop;
+    if (r.flag) return r.was;
+    return prop;
+  }
+
+  /* The nearest other stamp within TOO_CLOSE_MS of `t`: where it will be
+     written, and in the review where its line is drawn too. */
+  function nearest(n, t) {
+    const rows = (set_ && set_.set.rows) || [];
+    let best = null;
+    for (let i = 0; i < rows.length; i++) {
+      if (i === n || callFor(i) === 'garbage') continue;
+      const spots = [landsAt(i)];
+      if (view) spots.push(vNow(rows[i]));
+      for (const at of spots) {
+        if (at == null) continue;
+        const d = Math.abs(at - t) * 1000;
+        if (d < TOO_CLOSE_MS && (!best || d < best.ms)) best = { i, ms: d, t: at };
+      }
+    }
+    return best;
+  }
+
+  function crowds(n, from, to) {
+    if (to == null) return null;
+    const now = nearest(n, to);
+    if (!now) return null;
+    const was = from == null ? null : nearest(n, from);
+    return (was && was.i === now.i) ? null : now;
+  }
+
+  let closeAsk = null;
+  let yoinking = false;
+
+  function eventWords() {
+    const rq = (((set_ || {}).set || {}).params || {}).request || {};
+    return rq.kind === 'ied' ? 'these 2 discharges' : 'these 2 dentate spikes';
+  }
+
+  function shake() {
+    if (BARRY.ui.reducedMotion && BARRY.ui.reducedMotion()) return;
+    const app = document.getElementById('app') || document.body;
+    app.classList.remove('br-shake');
+    void app.offsetWidth;                   // so a second shake starts over
+    app.classList.add('br-shake');
+    setTimeout(() => app.classList.remove('br-shake'), 560);
+  }
+
+  /* "Are you sure, bud?" -- `o` is { n, near, keep, back }. */
+  function askCrowded(o) {
+    closeCrowded();
+    shake();
+    const dist = Number((((set_ && set_.set) || {}).params || {}).dist_ms || 100);
+    const box = el('div', { class: 'br-enter-ask br-close-ask', role: 'alertdialog',
+                            'aria-labelledby': 'brCloseAskT' }, [
+      el('strong', { id: 'brCloseAskT', text: 'Are you sure, bud?' }),
+      el('p', { class: 'br-close-q', text: 'You’re telling me ' + eventWords()
+                                           + ' were really that close?' }),
+      el('div', { class: 'br-enter-move' }, [
+        el('b', { text: o.near.ms.toFixed(1) + ' ms' }),
+        el('span', { text: 'between stamp #' + (o.n + 1) + ' and stamp #'
+                           + (o.near.i + 1) }),
+      ]),
+      el('p', { text: 'The detector these came from never puts two closer '
+                      + 'than ' + Math.round(dist) + ' ms.' }),
+      el('div', { class: 'br-enter-acts' }, [
+        el('button', { class: 'btn', onclick: () => closeAsk && closeAsk.keep() }, [
+          el('span', { text: 'Keep it there' }), el('kbd', { text: 'Enter' })]),
+        el('button', { class: 'btn ghost', onclick: () => closeAsk && closeAsk.back() }, [
+          el('span', { text: 'Place it somewhere else' }),
+          el('kbd', { text: 'Esc' })]),
+      ]),
+    ]);
+    document.body.appendChild(box);
+    closeAsk = {
+      box, n: o.n, near: o.near,
+      keep: () => { closeCrowded(); o.keep(); },
+      back: () => { closeCrowded(); o.back(); },
+    };
+    try { box.querySelector('.btn').focus({ preventScroll: true }); } catch (e) { /* ok */ }
+  }
+
+  function closeCrowded() {
+    if (!closeAsk) return;
+    const b = closeAsk.box;
+    closeAsk = null;
+    if (b && b.parentNode) b.parentNode.removeChild(b);
+  }
+
+  /* In the review: the line stays where it was put while the question is
+     up, and either lands there or is yoinked back to `from`. */
+  function crowdedReview(row, from, at, near) {
+    view.pending = { row, t: at };
+    vPublish({ local: true });
+    askCrowded({
+      n: row, near,
+      keep: async () => {
+        if (!view) return;
+        view.placed = { row, t: at };
+        await decide(row, 'move', at);
+        if (view) {
+          view.pending = null;
+          if (view.placed && view.placed.row === row) view.placed = null;
+          vPublish();
+          vBar();
+        }
+      },
+      back: () => {
+        const X = BARRY.views.xplore.clientAtTime || (() => null);
+        const a = X(at, 0);
+        const b = X(from, 0);
+        yoink(a && {
+          x: a.x, y: a.top + Math.min(120, (a.bottom - a.top) * 0.3),
+          dx: b ? b.x - a.x : (from > at ? 140 : -140),
+        }, (f) => {
+          if (!view || !view.pending) return;
+          view.pending.t = at + (from - at) * f;
+          vPublish({ local: true });
+          vBarTimes();
+        }, () => {
+          if (!view) return;
+          view.pending = null;
+          vPublish();
+          vBar();
+        });
+      },
+    });
+  }
+
+  /* On the bench: its own line, on its own canvas. */
+  function crowdedBench(n, near) {
+    const at = bench.t;
+    const from = bench.from;
+    askCrowded({
+      n, near,
+      keep: async () => {
+        await decide(n, 'move', at);
+        nextFlag(n);
+      },
+      back: () => {
+        const cv = document.getElementById('brBench');
+        const r = set_.set.rows[n];
+        const win = ((set_.set.params || {}).window_ms || 100) / 1000;
+        const t0 = r.was - win * 3, t1 = r.was + win * 3;
+        const rect = cv ? cv.getBoundingClientRect() : null;
+        const X = (t) => rect.left + ((t - t0) / (t1 - t0)) * rect.width;
+        yoink(rect && { x: X(at), y: rect.top + Math.min(90, rect.height * 0.3),
+                        dx: X(from) - X(at) }, (f) => {
+          if (!bench || bench.n !== n) return;
+          bench.t = Math.round((at + (from - at) * f) * 1e6) / 1e6;
+          drawBench();
+        }, () => {
+          if (!bench || bench.n !== n) return;
+          bench.t = from;
+          drawBench();
+          const head = document.querySelector('.br-bench-head .br-sub');
+          if (head) {
+            head.textContent = 'was ' + clock(r.was) + '   →   now '
+              + clock(bench.t) + '   ·   ' + ms((bench.t - r.was) * 1000) + ' ms';
+          }
+        });
+      },
+    });
+  }
+
+  /* THE GLOVE. Down onto the line, a grab, YOINK -- the line goes with it,
+     back to where it was -- then it stands up and wags its finger: "We
+     ain't doing that", uh, uh, uh. Timers, not
+     `animationend` (the harness runner's virtual time never ends one), and
+     the line itself is moved by `step(f)`, f from 0 to 1, in step with the
+     glove. `geo` is { x, y, dx } in client pixels, or null when the line is
+     not on screen: then the line still goes back, with no glove. */
+  const GLOVE_SVG = '<svg viewBox="0 0 90 120" aria-hidden="true">'
+    + '<path class="g-thumb" d="M16 34c-10 2-14 13-7 22l11 13c3 4 9 2 9-3V42z"/>'
+    + '<path class="g-palm" d="M22 20h46c5 0 8 4 8 8v30c0 9-7 15-15 15H31'
+    + 'c-9 0-16-6-16-15V28c0-4 3-8 7-8z"/>'
+    + '<g class="g-fingers">'
+    + '<rect x="21" y="58" width="12" height="40" rx="6"/>'
+    + '<rect x="34" y="60" width="12" height="47" rx="6"/>'
+    + '<rect x="47" y="60" width="12" height="45" rx="6"/>'
+    + '<rect x="60" y="58" width="11" height="36" rx="5.5"/></g>'
+    + '<path class="g-line" d="M34 42v14M47 42v16M60 42v14"/>'
+    + '<rect class="g-cuff" x="20" y="2" width="50" height="22" rx="8"/>'
+    + '<path class="g-seam" d="M25 10h40M25 16h40"/>'
+    + '</svg>';
+
+  /* And the same glove upright, index finger up, for "uh uh uh": three
+     fingers curled over the palm, the thumb across them, cuff at the
+     wrist. Wagged from the wrist by `.br-glove-wag`'s own animation. */
+  const WAG_SVG = '<svg viewBox="0 0 90 132" aria-hidden="true">'
+    + '<rect class="g-palm" x="18" y="56" width="56" height="52" rx="15"/>'
+    + '<rect class="g-index" x="22" y="6" width="15" height="60" rx="7.5"/>'
+    + '<path class="g-line" d="M25 44h9"/>'
+    + '<rect class="g-curl" x="37" y="52" width="13" height="18" rx="6.5"/>'
+    + '<rect class="g-curl" x="49" y="54" width="13" height="17" rx="6.5"/>'
+    + '<rect class="g-curl" x="61" y="57" width="12" height="16" rx="6"/>'
+    + '<path class="g-thumb" d="M20 76c6-6 22-6 30 0 4 3 2 9-3 9H26c-6 0-10-5-6-9z"/>'
+    + '<rect class="g-cuff" x="20" y="104" width="52" height="24" rx="8"/>'
+    + '<path class="g-seam" d="M25 112h42M25 118h42"/>'
+    + '</svg>';
+
+  function yoink(geo, step, done) {
+    const calm = BARRY.ui.reducedMotion && BARRY.ui.reducedMotion();
+    yoinking = true;
+    const finish = () => { yoinking = false; done(); };
+    if (calm || !geo || !isFinite(geo.x) || !isFinite(geo.dx)) {
+      step(1);
+      finish();
+      toast('We ain’t doing that. It is back where it was.', null, 4000);
+      return;
+    }
+    const box = el('div', { class: 'br-yoink' }, [
+      el('div', { class: 'br-hand' }, [
+        el('div', { class: 'br-glove' }),
+        // The same glove, upright, finger up -- shown once it has yanked.
+        el('div', { class: 'br-glove-wag' }),
+        el('div', { class: 'br-yoink-word', text: 'YOINK!' }),
+      ]),
+      el('div', { class: 'br-yoink-say' }, [
+        el('div', { text: 'We ain’t doing that.' }),
+        // One "uh" for each wag of the finger.
+        el('div', { class: 'br-uh' }, [0, 1, 2].map((i) => el('span', {
+          text: 'uh', style: '--i:' + i }))),
+      ]),
+    ]);
+    box.querySelector('.br-glove').innerHTML = GLOVE_SVG;
+    box.querySelector('.br-glove-wag').innerHTML = WAG_SVG;
+    box.style.left = Math.round(geo.x) + 'px';
+    box.style.top = Math.round(geo.y) + 'px';
+    box.style.setProperty('--dx', Math.round(geo.dx) + 'px');
+    box.classList.toggle('left', geo.dx < 0);
+    document.body.appendChild(box);
+    // Ease-in-back, the same curve the glove's own transition uses: a
+    // little wind-up toward the neighbour, then the yank.
+    const ease = (f) => f * f * (2.2 * f - 1.2);
+    setTimeout(() => box.classList.add('grab'), 420);
+    setTimeout(() => {
+      box.classList.add('pull');
+      const t0 = Date.now();
+      const D = 520;
+      const tick = () => {
+        const f = Math.min(1, (Date.now() - t0) / D);
+        step(ease(f));
+        if (f < 1) setTimeout(tick, 16);
+        else finish();
+      };
+      tick();
+    }, 600);
+    // Then upright, finger wagging: no, no, no -- uh, uh, uh.
+    setTimeout(() => box.classList.add('say'), 1150);
+    setTimeout(() => box.classList.add('out'), 2750);
+    setTimeout(() => { if (box.parentNode) box.remove(); }, 3200);
+  }
 
   /* ==================================================================
      Done (2026-10-14)
@@ -4620,6 +4930,17 @@ BARRY.braces = (function () {
     _enterAsk: () => (enterAsk ? { row: enterAsk.row, ms: enterAsk.ms,
                                    text: enterAsk.box.textContent } : null),
     _party: (line, sub) => party(line || HYPE[0], sub || ''),
+    /* A drop, as the drag's release would make it, and what is asking. */
+    _drop: (t) => vDrop(view.at, vNow(vAt()), Math.round(t * 1e6) / 1e6),
+    _crowds: (n, from, to) => crowds(n, from, to),
+    _closeAsk: () => (closeAsk ? { n: closeAsk.n, near: closeAsk.near,
+                                   text: closeAsk.box.textContent } : null),
+    _yoinking: () => yoinking,
+    /* The question and the glove on their own, for a picture of them. */
+    _askDemo: (n, i, msAway) => askCrowded({ n, near: { i, ms: msAway },
+                                             keep: () => {}, back: () => {} }),
+    _yoinkDemo: (x, y, dx) => yoink({ x, y, dx }, () => {}, () => {}),
+    _tooCloseMs: TOO_CLOSE_MS,
     _hype: () => HYPE.slice(),
     _reset: () => { set_ = null; bench = null; cands = null; },
     /* The plan card drawn from a given plan, for web/_dev/vtreetools.html:

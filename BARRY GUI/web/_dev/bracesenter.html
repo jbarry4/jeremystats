@@ -17,8 +17,11 @@ iframe{flex:1;height:100vh;border:0}
    stamp nobody moved confirms it, as before. Enter on one moved by hand
    asks, and says by how many ms the stamp would move; Enter again keeps
    the hand-placed spot, R takes the recommended one, Esc does nothing.
-   Then the last open stamp of the pass is answered and the celebration
-   comes up -- a tooth, one line of twenty-odd -- and goes by itself.
+   A stamp dropped on top of its neighbour shakes the page and asks ("Are
+   you sure, bud?"): Esc sends the glove to yank it back and nothing is
+   decided, Enter keeps it where it was put. Then the last open stamp of
+   the pass is answered and the celebration comes up -- a tooth, one line
+   of thirty-odd -- and goes by itself.
 
    IT WRITES NOTHING: every decision is answered here and kept in this page
    (the proposal on disk is never touched), and preference and session
@@ -203,6 +206,84 @@ async function until(fn, ms, what) {
       ok('R confirms the recommended spot', (said()[k1] || {}).row === n0
          && said()[k1].call === 'confirm' && (calls()[String(n0)] || {}).call === 'confirm',
          JSON.stringify(said().slice(k1)));
+      // The pass moves on by itself after an answer: let it settle.
+      await until(() => at() !== n0, 4000, 'the pass to move on');
+      await sleep(400);
+
+      head('PUT ON TOP OF ANOTHER ONE: SHAKE, ASK, YOINK');
+      /* A stamp and a neighbour it is not already close to; the drop lands
+         4 ms from where the neighbour's line is. */
+      const vnow = (i) => { const c = calls()[String(i)] || {}; const r = rows()[i];
+        return c.call === 'move' ? c.t : c.call === 'keep' ? r.was
+          : (r.now == null ? r.was : r.now); };
+      let pair = null;
+      for (let i = 0; i < rows().length - 1 && !pair; i++) {
+        if (i === last || i === n0) continue;
+        for (const j of [i + 1, i - 1]) {
+          if (j < 0 || j >= rows().length || (calls()[String(j)] || {}).call === 'garbage') continue;
+          const to = Math.round((vnow(j) + 0.004) * 1e6) / 1e6;
+          const hit = ev(BR + '._crowds(' + i + ', ' + vnow(i) + ', ' + to + ')');
+          if (hit && hit.i === j && Math.abs(vnow(i) - to) * 1000 < 300) { pair = { i, j, to, from: vnow(i) }; break; }
+        }
+      }
+      if (!pair) {
+        say('       no stamp here has a neighbour within reach, so this is not checked', 'dim');
+      } else {
+        ev(BR + '._goTo(' + pair.i + ')');
+        await until(() => at() === pair.i, 5000, 'the stamp');
+        const k2 = said().length;
+        ev(BR + '._drop(' + pair.to + ')');
+        await until(() => ev(BR + '._closeAsk()'), 3000, 'the question');
+        const q = ev(BR + '._closeAsk()') || {};
+        ok('dropped on its neighbour, it asks', /Are you sure, bud\?/.test(q.text || ''), q.text);
+        ok('in so many words',
+           /these 2 (dentate spikes|discharges) were really that close\?/.test(q.text || ''), q.text);
+        ok('naming the neighbour and how close, in ms',
+           q.near && q.near.i === pair.j && /4\.0 ms/.test(q.text)
+           && q.text.indexOf('stamp #' + (pair.j + 1)) >= 0, JSON.stringify(q.near));
+        ok('the page shakes', D().getElementById('app').classList.contains('br-shake'));
+        ok('and nothing is decided while it asks', said().length === k2);
+        key('n');
+        await sleep(200);
+        ok('the other keys are held while it asks', at() === pair.i);
+
+        key('Escape');
+        await until(() => D().querySelector('.br-yoink'), 2000, 'the glove');
+        ok('"Place it somewhere else": the glove comes for it',
+           !!D().querySelector('.br-yoink .br-glove svg'));
+        ok('and says so', /We ain’t doing that\./.test(
+          (D().querySelector('.br-yoink-say') || {}).textContent || ''));
+        await until(() => (D().querySelector('.br-yoink') || {}).classList
+                          && D().querySelector('.br-yoink').classList.contains('say'),
+                    4000, 'the finger');
+        ok('then it stands up and wags its finger: uh, uh, uh',
+           !!D().querySelector('.br-yoink.say .br-glove-wag svg .g-index')
+           && D().querySelectorAll('.br-yoink-say .br-uh span').length === 3
+           && /brWag/.test(frame.contentWindow.getComputedStyle(
+                D().querySelector('.br-glove-wag')).animationName));
+        await until(() => !ev(BR + '._yoinking()'), 5000, 'the yank');
+        const v = ev(BR + '._view()') || {};
+        ok('the stamp is yanked back to where it was, and nothing was sent',
+           !v.pending && said().length === k2,
+           JSON.stringify(v.pending) + ' / ' + said().length);
+        ok('and the glove leaves', await until(() => !D().querySelector('.br-yoink'), 4000, 'it to go'));
+
+        ev(BR + '._drop(' + pair.to + ')');
+        await until(() => ev(BR + '._closeAsk()'), 3000, 'the question again');
+        key('Enter');
+        await until(() => said().length > k2, 5000, 'the decision');
+        ok('"Keep it there" places it where it was put',
+           (said()[k2] || {}).row === pair.i && said()[k2].call === 'move'
+           && Math.abs(said()[k2].t - pair.to) < 1e-6, JSON.stringify(said().slice(k2)));
+        await sleep(400);
+        ev(BR + '._goTo(' + pair.i + ')');
+        await until(() => at() === pair.i, 5000, 'the stamp');
+        const k3 = said().length;
+        ev(BR + '._drop(' + Math.round((pair.to + 0.001) * 1e6) / 1e6 + ')');
+        await until(() => said().length > k3, 4000, 'the nudge');
+        ok('nudged again beside the same neighbour, it does not ask twice',
+           !ev(BR + '._closeAsk()') && (said()[k3] || {}).call === 'move');
+      }
 
       head('THE LAST OPEN STAMP OF THE PASS: CELEBRATED');
       if (last < 0) {
