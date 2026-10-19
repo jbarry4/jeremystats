@@ -7157,11 +7157,15 @@ BARRY.views.xplore = (function () {
 
   function refreshControls(index) {
     refreshHead(index);
-    // A popover is anchored to a button on this strip, so it cannot outlive
-    // the rebuild.
-    closeMenu();
     // Cheap: rebuild just the one strip -- this pane's, or the master.
     const box = stripHost(index);
+    /* Only a menu open on THIS strip is touched, and it is moved onto the
+       rebuilt button rather than shut. This used to close whatever menu was
+       open, anywhere: a CSD pane's colour range arriving shut the Ch menu
+       somebody had open on the traces pane beside it, half way through
+       combining two picks. */
+    const mine = !!(openMenu && openMenu.button && box
+                    && box.contains(openMenu.button));
     if (!box) return;
     // When one strip speaks for every pane, it is built from the pane it
     // speaks for, not from whichever one happened to change.
@@ -7179,6 +7183,7 @@ BARRY.views.xplore = (function () {
     old.replaceWith(strip);
     wireStripScroll(strip);
     strip.scrollLeft = left;      // stay where the user had scrolled to
+    if (mine) repaintMenu();
 
     // Swapping the strip can change its height, which restretches the canvas
     // underneath it. Redraw once the new height is in effect or the traces

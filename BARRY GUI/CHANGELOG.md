@@ -15,6 +15,49 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.19.4 - Xplorefinder: a filter for one pane, picks that combine, and panels that keep to themselves
+
+### Added
+
+- **A filter for one pane only.** The Filter menu now asks where its
+  corners go: *Every pane on this recording*, or *Pane N only*.
+  - A pane given its own filter keeps it whatever the recording's is set
+    to.
+  - Its head says *own filter 300–500 Hz*, and its Filter button says
+    *own …*.
+  - It reads its traces and draws its rasters with its own filter.
+  - Its traces keep their own amplitude, rather than the scale shared by
+    the recording's other trace panes.
+  - *Give it back* returns it to the recording's filter.
+- **Channel picks that combine.** In the Ch menu, *Even*, *Odd*,
+  *1st half*, *2nd half* and *Good* are switches that narrow the selection
+  together. *Even* + *1st half* is the even channels of the first half.
+  - Press a pick again to take it off.
+  - The two in a pair exclude each other.
+  - The menu stays open, so a second pick can be added to the first.
+  - *All*, *None* and *Flip* reset the picks.
+  - Ticking a channel by hand ends them.
+
+### Fixed
+
+- **A colour scale pinned on one kind of panel painted every other
+  kind.** A CSD pinned at ±2.8e5 µV/mm² turned the band-power map on the
+  same pane into one flat colour. With a shared strip, it did the same to
+  every panel on the recording. A pinned scale now belongs to its kind of
+  panel, so each kind keeps its own.
+- **Switching a pane to another panel kept the last panel's data.** The
+  old picture stood in for the new one, the strip offered the old panel's
+  units, and a late reply for the old panel could land on top of the new
+  one. A switch now drops all of that, and any read still in flight.
+- **Another pane's data arriving shut whatever menu was open.** A CSD
+  pane's colour range landing closed the Ch menu open on the traces pane
+  beside it. Only a menu on the strip being rebuilt is affected now, and
+  it stays open on the rebuilt button.
+
+Harness: `_dev/xfpanels.html` (52). It drives every panel kind alone,
+four kinds side by side, two of a kind sharing a strip, fast switching,
+moving the window, zoom, a filter for one pane, and the picks.
+
 ## 2026.10.19.3 - Root Canal: pools you open, build and redo; borders around one group, archived, and drawn in 3D
 
 **Pull and restart Jarvis on every machine.** The server changed (pool

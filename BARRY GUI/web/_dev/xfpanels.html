@@ -22,8 +22,8 @@ iframe{position:fixed;left:560px;top:0;width:1300px;height:820px;border:0}</styl
    - a filter a pane was given for itself is the one it asks with, and the
      others keep the recording's.
 
-   On the demo recording, so it needs nothing mounted; nothing is written
-   beyond the demo's own view state. */
+   On the demo recording, so it needs nothing mounted. Its view state is
+   answered from the page, so nothing is written. */
 const L = document.getElementById('log');
 let fails = 0, checks = 0;
 const say = (s, c) => { const n = document.createElement('span');
@@ -64,6 +64,13 @@ async function until(fn, ms) {
     W().addEventListener('unhandledrejection', (e) =>
       errs.push('promise: ' + ((e.reason && e.reason.message) || e.reason)));
 
+    // The demo's view state is answered here, not written: this moves the
+    // window, pins scales and picks channels, none of which is anybody's.
+    const realApi = W().api;
+    W().api = async (path, opts) => (path === '/api/session/state'
+      ? { ok: true } : realApi(path, opts));
+    // Not put back: the frame is blanked at the end, and the unload's own
+    // flush of the view state would otherwise write the demo's after all.
     ev("setView('xplore')");
     await X.open('demo:long-session');
     const sess = await until(() => Object.values(XF.sessions)
