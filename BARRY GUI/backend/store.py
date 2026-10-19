@@ -86,6 +86,13 @@ PREFS_SPEC = {
     # same reason again -- and start.py reads it to keep the name out of the
     # terminal on a machine where it is hidden.
     "jarvis": shards.MAPLWW,
+    # Root Canal's archived borders (2026-10-19): {artifact id: {at}}.
+    # Merged per border, so two people archiving different ones both keep
+    # theirs, and putting one back (a removed key) wins over an older
+    # archive of it. A preference rather than a field on the artifact,
+    # because putting one back has to sync too, and an artifact's soft
+    # delete only ever travels one way.
+    "rootcanal_border_archive": shards.MAPLWW,
 }
 
 # Settings that describe this screen rather than this project. Merging them

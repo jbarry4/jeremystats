@@ -2505,6 +2505,13 @@ BARRY.rootcanal = (function () {
           ctx.appliedId === r.artifact_id
             ? BARRY.ui.chip('applied here', { kind: 'ok', extra: 'rc-border-here' })
             : null,
+          ctx.onArchive ? BARRY.ui.button({ kind: 'mini', text: 'Archive',
+            extra: 'rc-border-archive',
+            title: 'Put it away: it leaves this list, on every machine once '
+                 + 'it syncs, and stays saved. It is listed under Archived '
+                 + 'borders and can be put back.',
+            onclick: (e) => { e.preventDefault(); e.stopPropagation();
+                              ctx.onArchive(r.artifact_id); } }) : null,
         ]),
         el('span', { class: 'ip-sub rc-border-nums', text: borderWords(r) }),
         el('span', { class: 'ip-sub rc-border-what', text: rule }),
@@ -2514,7 +2521,9 @@ BARRY.rootcanal = (function () {
             : 'Measured on ' + r.measure + (fits === true
               ? ': the same filter as this ' + what + '.'
               : fits === false ? '. This ' + what + ' is measured on '
-                + ctx.here + ', so it would be refused here.' : '.') }),
+                + ctx.here + '. It can still be applied: its cut-offs are '
+                + 'numbers of the measurement it was drawn under, so here they '
+                + 'ask a slightly different question.' : '.') }),
         el('span', { class: 'ip-sub rc-border-from', text: (r.source
           ? 'Drawn from ‘' + r.source + '’, ' + lvl
           : 'Drawn from ' + lvl + ' that was not saved')
@@ -2543,9 +2552,40 @@ BARRY.rootcanal = (function () {
      does not throw it away. The class names the suites read are kept on
      the parts doing the same jobs (rc-border-row, -pick, -grace, -apply,
      -clear, -on, -rule, -err). */
+  /* ARCHIVED BORDERS (2026-10-19): "allow us to archive borders". An
+     archived border leaves the list -- everyone's, once it syncs -- and
+     stays saved: it is listed under "Archived borders" and can be put back,
+     and one that is applied stays applied, saying so. Kept in a shared
+     preference merged per border (backend/store.py PREFS_SPEC). */
+  const ARCH_KEY = 'rootcanal_border_archive';
+
+  function archivedBorders() {
+    try {
+      return (BARRY.prefs && BARRY.prefs.get(ARCH_KEY, {})) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function setArchived(id, on) {
+    const m = Object.assign({}, archivedBorders());
+    if (on) m[id] = { at: new Date().toISOString() };
+    else delete m[id];
+    BARRY.prefs.set(ARCH_KEY, m);
+    const r = (borders || []).find((x) => x.artifact_id === id) || {};
+    toast((on ? 'Archived ‘' : 'Put back ‘') + (r.nickname || r.name || id)
+          + (on ? '’. It is listed under Archived borders, and can be put '
+                  + 'back from there.' : '’.'), 'ok', 6000);
+    BARRY.activity.log('rootcanal.border_archive', { artifact: id,
+                                                     archived: !!on });
+    render();
+  }
+
   function bordersCard(b) {
     if (borders === null) loadBorders();
-    const list = borders || [];
+    const arch = archivedBorders();
+    const shelved = (borders || []).filter((r) => arch[r.artifact_id]);
+    const list = (borders || []).filter((r) => !arch[r.artifact_id]);
     const st = borderPick[b.where] || (borderPick[b.where] = {});
     const bu = b.used || null;
     const rowOf = (id) => list.find((x) => x.artifact_id === id) || null;
@@ -2554,7 +2594,6 @@ BARRY.rootcanal = (function () {
        opened with a saved pool -- becomes the pick. */
     if (st.seen !== aid) {
       st.seen = aid;
-      st.open = null;
       if (aid) {
         st.id = aid;
         st.grace = b.applied.grace != null ? b.applied.grace
@@ -2619,21 +2658,32 @@ BARRY.rootcanal = (function () {
                + 'pool is all one identity. Previewed at every grace before '
                + 'it is saved.',
           onclick: () => b.onDraw() }) : null,
-        BARRY.ui.button({ kind: 'primary', size: 'sm',
-          text: (on ? 'Applied to this ' : 'Apply to this ') + what,
+        /* The primary in Pooled, where the card is a surface of its own;
+           in Single it sits inside the card whose one primary is Bank, so
+           there it is the last of its row but not filled. */
+        BARRY.ui.button({ kind: b.where === 'pool' ? 'primary' : 'ghost',
+          size: 'sm', text: (on ? 'Applied to this ' : 'Apply to this ') + what,
           extra: 'rc-border-apply', disabled: !r || st.grace == null || on,
           title: r ? 'Classify every event of this ' + what + ' by ‘'
                      + (r.nickname || r.name || r.artifact_id) + '’ at grace '
                      + graceWords(st.grace) + ', by its three numbers alone.'
                    : 'Pick a saved border first.',
-          onclick: () => b.onApply({ artifact_id: st.id, version: null,
-                                     grace: st.grace }) }),
+          onclick: () => {
+            if (r && r.measure && here && r.measure !== here) {
+              toast('‘' + (r.nickname || r.name || r.artifact_id) + '’ was '
+                    + 'drawn on ' + r.measure + ', and this ' + what + ' is '
+                    + 'measured on ' + here + '. Applying it all the same.',
+                    'warn', 9000);
+            }
+            b.onApply({ artifact_id: st.id, version: null, grace: st.grace });
+          } }),
       ], { extra: 'rc-border-actions' }));
     };
     const items = list.map((r) => borderItem(r, {
       where: b.where, here, appliedId: bu ? bu.artifact_id : null,
       pickId: () => st.id,
-      onPick: (id) => { st.id = id; st.grace = null; sync(); } }));
+      onPick: (id) => { st.id = id; st.grace = null; sync(); },
+      onArchive: (id) => setArchived(id, true) }));
     const sync = () => {
       for (const it of items) {
         const on = it.getAttribute('data-id') === st.id;
@@ -2667,13 +2717,27 @@ BARRY.rootcanal = (function () {
             BARRY.ui.chip(borderCounts(bu, c), { extra: 'rc-border-on',
               title: isEnv(bu)
                 ? 'Inside the box is solid ' + bGroup(bu) + '; outside it on '
-                  + 'any axis is ambiguous, drawn grey.'
+                  + 'any axis is ambiguous, drawn in its own call’s colour, '
+                  + 'faded, with a dotted edge. An event missing one of the '
+                  + 'three numbers counts as outside.'
                 : 'Every event by its three numbers alone: solid DS, solid IED '
-                  + 'or ambiguous, drawn grey.' }),
+                  + 'or ambiguous -- an ambiguous one in its own call’s '
+                  + 'colour, faded, with a dotted edge.' }),
             c.none ? BARRY.ui.chip(c.none + ' with no numbers', {
               title: 'Not measured on any axis, so no border can place them.' })
                    : null,
+            (bu.mismatch || []).length ? BARRY.ui.chip('measured another way', {
+              kind: 'warn', extra: 'rc-border-is-mismatch',
+              title: bu.mismatch.join('; ') }) : null,
+            arch[bu.artifact_id] ? BARRY.ui.chip('archived', {
+              extra: 'rc-border-is-archived',
+              title: 'Archived, and still applied here. Put it back from '
+                   + 'Archived borders below, or Clear it.' }) : null,
           ]),
+          (bu.mismatch || []).length ? el('p', { class: 'hint rc-warn rc-border-mismatch',
+            text: 'Measured another way: ' + bu.mismatch.join('; ') + '. It is '
+              + 'applied all the same, as asked -- read its cut-offs as numbers '
+              + 'of the measurement it was drawn under.' }) : null,
           el('p', { class: 'hint rc-border-rule', text: borderRule(bu) }),
           bu.edges ? el('p', { class: 'hint rc-border-drawn', text: isEnv(bu)
             ? 'On the flat views it is the box, outlined, with everything '
@@ -2686,7 +2750,12 @@ BARRY.rootcanal = (function () {
       : el('p', { class: 'rc-border-now rc-border-none',
                   text: 'No border applied: every event is called by its '
                         + 'cluster.' });
-    const dflt = b.where === 'pool' || !!(bu || b.err || b.applied);
+    /* OPEN IN POOLED, under the pictures. FOLDED IN SINGLE unless a border
+       was just refused: there the card sits above the pictures, in a card
+       455 px wide, and open it put the picked event's own controls below
+       the fold -- its folded line says what is applied. Opened or folded
+       by hand, it stays that way across repaints and applies. */
+    const dflt = b.where === 'pool' || !!b.err;
     const open = st.open != null ? st.open : dflt;
     return el('details', { class: 'card rc-borders', open: open ? 'open' : null,
       ontoggle: (e) => { st.open = e.target.open === dflt ? null
@@ -2700,7 +2769,8 @@ BARRY.rootcanal = (function () {
           + '’ at grace ' + bu.grace_words + ': ' + borderShort(bu, c)
           : b.err ? 'not applied, said below'
           : 'No border applied' + (list.length ? ' · ' + list.length
-                                                 + ' saved' : '')) }),
+                                                 + ' saved' : '')
+            + (shelved.length ? ' · ' + shelved.length + ' archived' : '')) }),
       state,
       b.err ? el('p', { class: 'hint rc-warn rc-border-err',
                         text: 'Not applied: ' + b.err }) : null,
@@ -2723,6 +2793,22 @@ BARRY.rootcanal = (function () {
                 : 'No border has been saved yet.' }),
         gHold,
         aHold,
+        shelved.length ? el('details', { class: 'rc-border-archived',
+                                         'data-keep': 'rc-border-archived-'
+                                                      + b.where }, [
+          el('summary', { text: 'Archived borders (' + shelved.length + ')' }),
+          el('div', { class: 'rc-border-arch-list' }, shelved.map((r) =>
+            el('div', { class: 'rc-border-arch-row',
+                        'data-id': r.artifact_id }, [
+              el('span', { class: 'rc-border-arch-name',
+                           text: borderWords(r) }),
+              BARRY.ui.button({ kind: 'mini', text: 'Put back',
+                extra: 'rc-border-unarchive',
+                title: 'Back in the list of saved borders, on every machine '
+                     + 'once it syncs.',
+                onclick: () => setArchived(r.artifact_id, false) }),
+            ]))),
+        ]) : null,
         b.where === 'single' ? el('p', { class: 'hint rc-border-where',
           text: 'New borders are drawn in Pooled, against each event’s own '
               + 'identity, which one recording on its own does not have.' })
@@ -3312,7 +3398,8 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'rc-legend' }, [
       item('rc-lg-ds', byBorder ? 'solid DS' : 'DS'),
       item('rc-lg-ied', byBorder ? 'solid IED' : 'IED'),
-      byBorder ? item('rc-lg-amb', 'ambiguous') : null,
+      byBorder ? item('rc-lg-amb rc-lg-amb-ds', 'outside, called DS') : null,
+      byBorder ? item('rc-lg-amb rc-lg-amb-ied', 'outside, called IED') : null,
       item('rc-lg-square', 'on 2 of 3 axes'),
       item('rc-lg-wide', 'half-width by the widened search'),
       item('rc-lg-flip', 'set by hand'),
@@ -4474,6 +4561,25 @@ BARRY.rootcanal = (function () {
                                                         : tok('--text-3');
   }
 
+  /* OUTSIDE THE BORDER, BUT STILL SOMETHING (2026-10-19). With a border
+     applied, every event it left ambiguous was drawn the same grey, so
+     what they had been called was lost exactly where it was most worth
+     seeing. Now an ambiguous dot keeps its own call's colour, faded halfway
+     to the grey, and wears a dotted grey edge (`outside` in the scene):
+     clearly not solid, and still DS-ish or IED-ish at a glance. */
+  function outsideCol(cls) {
+    if (cls !== 'ds' && cls !== 'ied') return tok('--text-3');
+    const a = rgbOf(colOf(cls)), b = rgbOf(tok('--text-3'));
+    return 'rgb(' + [0, 1, 2].map((j) => Math.round(a[j] * 0.55 + b[j] * 0.45))
+      .join(',') + ')';
+  }
+
+  /* The colour a border gives an event: solid DS or IED in full, and an
+     ambiguous one its own call, faded. */
+  function borderCol(e, own) {
+    return e.border === 'amb' ? outsideCol(own) : colOf(e.border);
+  }
+
   /* Which detector found a pooled event, in the colours Panning and the
      ToolKit's stream use for them: Incisor's, Doppler's, and both halves
      for one both found (drawn two-tone, by `fill2`). */
@@ -4625,7 +4731,10 @@ BARRY.rootcanal = (function () {
                     ? originCol(e.origin)
                     : singleColour === 'cluster' && e.cluster != null
                     ? cluColour(e.cluster)
-                    : colOf(fit.border_used ? e.border : e.cls)),
+                    : fit.border_used ? borderCol(e, e.cls) : colOf(e.cls)),
+      outside: (e) => !!fit.border_used && e.border === 'amb'
+                      && singleColour !== 'cluster'
+                      && !(singleColour === 'origin' && hasOrigins()),
       fill2: (e) => (singleColour === 'origin' && hasOrigins()
                      ? originCol2(e.origin) : null),
       shape: (e) => (singleColour === 'cluster' && e.cluster != null
@@ -4772,9 +4881,18 @@ BARRY.rootcanal = (function () {
         g.fillStyle = fill;
         g.fill();
       }
-      g.strokeStyle = k.bg;
-      g.lineWidth = 0.7;
-      g.stroke();
+      if (sc && sc.outside && sc.outside(e)) {
+        // Outside the border: a dotted grey edge round its faded colour.
+        g.strokeStyle = k.dim;
+        g.lineWidth = 1;
+        g.setLineDash([1.4, 1.4]);
+        g.stroke();
+        g.setLineDash([]);
+      } else {
+        g.strokeStyle = k.bg;
+        g.lineWidth = 0.7;
+        g.stroke();
+      }
     }
     if (e.wide) {
       g.beginPath();
@@ -4851,6 +4969,8 @@ BARRY.rootcanal = (function () {
       axes.push({ a, x0: A.x, y0: A.y, x1: B.x, y1: B.y });
     }
 
+    borderOutline3d(g, k, S, toScreen, L);
+
     // Everything that has a depth, sorted far to near.
     const items = [];
     const pts = [];
@@ -4862,7 +4982,8 @@ BARRY.rootcanal = (function () {
       items.push({ d: P.d, kind: 'e', e, P, hollow: zz.hollow, mk, al });
       pts.push({ i: e.i, x: P.x, y: P.y, depth: P.d, hollow: zz.hollow,
                  r: 3.4, mark: mk, wide: !!e.wide, alpha: al,
-                 fill: S.fill(e), shape: S.shape(e), ringed: S.ringed(e) });
+                 fill: S.fill(e), shape: S.shape(e), ringed: S.ringed(e),
+                 outside: !!(S.outside && S.outside(e)) });
     }
     const cpts = [];
     for (const c of cs) {
@@ -5129,7 +5250,7 @@ BARRY.rootcanal = (function () {
       drawMark(g, k, x, y, 3.2, e, mk, (hollow ? 1 : 0.9) * al, S);
       pts.push({ i: e.i, x, y, hollow, mark: mk, wide: !!e.wide,
                  edge: !hx || !hy, alpha: al, fill: S.fill(e),
-                 ringed: S.ringed(e) });
+                 ringed: S.ringed(e), outside: !!(S.outside && S.outside(e)) });
     }
     // The dots drawn round in the 3D view, ringed here too.
     const selF = new Set(lassoIds());
@@ -5204,6 +5325,78 @@ BARRY.rootcanal = (function () {
      corner with the fewest dots, so it is never cut off, and kept short --
      the Borders card names the border. What was drawn is kept in
      `GEOM.border[id]`, for the suites. */
+  /* THE BORDER IN 3D (2026-10-19): "make a faint outline of where the
+     borders are in the 3d graph". The flat views draw it; the cloud did
+     not, so a border applied to a pool was colour alone there. Now its
+     regions are outlined, faint and behind the dots:
+       around one group (an envelope)  its box, in the accent colour;
+       between DS and IED              the solid-DS region and the solid-IED
+                                       region, each a box cut off at the
+                                       axes' ends, dashed, in their colours.
+     In the view's own z units, through the same raw-to-z line the dots
+     use, so a box edge and a dot at that number land in one place.
+     `GEOM.border3d` holds what was drawn, for the harness. */
+  function borderOutline3d(g, k, S, toScreen, L) {
+    GEOM.border3d = null;
+    const bu = S.kind === 'pooled' ? pool.fit && pool.fit.border_used
+                                   : fit && fit.border_used;
+    const ed = bu && bu.edges;
+    if (!ed) return;
+    const ok = (v) => v != null && isFinite(v);
+    const clamp = (z) => Math.max(-L, Math.min(L, z));
+    const boxes = [];
+    if (isEnv(bu)) {
+      const r = [0, 1, 2].map((a) => {
+        const e = ed[KEYS[a]] || {};
+        return ok(e.lo) && ok(e.hi)
+          ? [clamp(rawToZ(a, e.lo)), clamp(rawToZ(a, e.hi))] : null;
+      });
+      if (r.every(Boolean)) boxes.push({ cls: 'env', r, col: k.accent, dash: [] });
+    } else {
+      const up = bu.ied_above || {};
+      const ied = [], ds = [];
+      for (let a = 0; a < 3; a++) {
+        const e = ed[KEYS[a]] || {};
+        if (!ok(e.ied_at) || !ok(e.ds_at)) return;
+        const zi = rawToZ(a, e.ied_at), zd = rawToZ(a, e.ds_at);
+        const above = up[KEYS[a]] !== false;
+        ied.push(above ? [clamp(zi), L] : [-L, clamp(zi)]);
+        ds.push(above ? [-L, clamp(zd)] : [clamp(zd), L]);
+      }
+      const real = (r) => r.every(([a, b]) => b - a > 1e-6);
+      if (real(ds)) boxes.push({ cls: 'ds', r: ds, col: colOf('ds'), dash: [4, 4] });
+      if (real(ied)) boxes.push({ cls: 'ied', r: ied, col: colOf('ied'), dash: [4, 4] });
+    }
+    if (!boxes.length) return;
+    g.save();
+    g.lineWidth = 1;
+    for (const bx of boxes) {
+      const [xr, yr, zr] = bx.r;
+      const corner = (i, j, l) => toScreen([xr[i], yr[j], zr[l]]);
+      g.strokeStyle = bx.col;
+      g.setLineDash(bx.dash);
+      g.globalAlpha = 0.32;
+      g.beginPath();
+      for (let i = 0; i < 2; i++) {
+        for (let j = 0; j < 2; j++) {
+          for (let l = 0; l < 2; l++) {
+            const P0 = corner(i, j, l);
+            // The three edges leaving this corner towards the far side.
+            if (!i) { const Q = corner(1, j, l); g.moveTo(P0.x, P0.y); g.lineTo(Q.x, Q.y); }
+            if (!j) { const Q = corner(i, 1, l); g.moveTo(P0.x, P0.y); g.lineTo(Q.x, Q.y); }
+            if (!l) { const Q = corner(i, j, 1); g.moveTo(P0.x, P0.y); g.lineTo(Q.x, Q.y); }
+          }
+        }
+      }
+      g.stroke();
+    }
+    g.restore();
+    g.globalAlpha = 1;
+    g.setLineDash([]);
+    GEOM.border3d = { kind: isEnv(bu) ? 'envelope' : 'between',
+                      boxes: boxes.map((b) => ({ cls: b.cls, r: b.r })) };
+  }
+
   function borderOverlay(id, g, k, S, xa, ya, X, Y, bx) {
     const all = GEOM.border || (GEOM.border = {});
     delete all[id];
@@ -5364,7 +5557,7 @@ BARRY.rootcanal = (function () {
     const words = pooledEv
       ? (failed && !evComing() ? 'no trace' : 'reading…')
       : (failed ? d.error : 'reading…');
-    s.g.fillStyle = failed ? k.warn : k.dim;
+    s.g.fillStyle = failed && words !== 'reading…' ? k.warn : k.dim;
     const f = fitText(s.g, words, s.w - 16, 10);
     drawLines(s.g, f, 8, 18);
   }
@@ -7281,6 +7474,30 @@ BARRY.rootcanal = (function () {
       pool.refusal = away.length ? { error: e.message, away: away.slice(),
                                      from: 'fit' } : null;
       if (!pool.fit || !pool.fit.ok) pool.fit = { ok: false, error: e.message };
+      /* MEMBERS THAT ONLY NEED READING HERE ARE READ (2026-10-19). Changing
+         the filter on a pool with members read on another machine was a red
+         error -- "3 members of this pool were measured another way and read
+         on Strawbarry..." -- for something Jarvis can simply do. So the
+         reads start by themselves, said calmly, and the pool fits again when
+         they land. Once per request: when reading did not fix it, the
+         refusal and its button stay, with the reasons. */
+      const toRead = readKeys(pool.refusal);
+      const ask = JSON.stringify([toRead.slice().sort(), body.measure || null,
+                                  body.band || null]);
+      if (toRead.length && toRead.length === away.length
+          && pool.autoRedoFor !== ask) {
+        pool.autoRedoFor = ask;
+        toast('Reading ' + toRead.length + ' recording'
+              + (toRead.length === 1 ? '' : 's') + ' here so '
+              + (toRead.length === 1 ? 'it' : 'they') + ' can be measured the '
+              + 'pool’s way -- ' + (toRead.length === 1 ? 'its read was' : 'their '
+              + 'reads were') + ' made on another machine. The pool fits again '
+              + 'when ' + (toRead.length === 1 ? 'it lands' : 'they land') + '.',
+              null, 9000);
+        render();
+        startRedo();
+        return null;
+      }
       toast(e.message, 'err', 10000);
       render();
       return null;
@@ -7305,7 +7522,45 @@ BARRY.rootcanal = (function () {
     });
     render();
     if (pool.picked != null) loadPoolEvent();
+    else autoPick();
     return got;
+  }
+
+  /* THE FOUR EVENT CHARTS AT ONCE (2026-10-19): "any time a pool is
+     created, render the 4 charts as soon as pooling is pulled up". They
+     waited for a dot to be clicked, so a pool came up as a cloud beside
+     four empty boxes. Now, when nothing is picked, the event nearest the
+     centre of its own cluster is -- the most typical dot there is, of the
+     first cluster, from a recording whose read is here when there is one,
+     so its traces draw straight away rather than starting a read. Picking
+     another dot works as it always did. */
+  function autoPick() {
+    const f = pool.fit;
+    if (!f || !f.ok || pool.picked != null) return;
+    const evs = poolEvents();
+    if (!evs.length) return;
+    const cents = f.centres || [];
+    const dist = (e) => {
+      const c = cents.find((x) => x.cls === e.cls_pool) || cents[0];
+      if (!c || !e.z || !c.z) return Infinity;
+      let d = 0;
+      for (let a = 0; a < 3; a++) {
+        const v = e.z[a], w = c.z[a];
+        if (v == null || !isFinite(v) || w == null || !isFinite(w)) return Infinity;
+        d += (v - w) * (v - w);
+      }
+      return d;
+    };
+    let best = -1, bestD = Infinity, bestHere = false;
+    evs.forEach((e, j) => {
+      const here = memberHere(poolMember(e));
+      const d = dist(e);
+      // Here beats elsewhere; then nearer beats farther.
+      if ((here && !bestHere) || (here === bestHere && d < bestD)) {
+        best = j; bestD = d; bestHere = here;
+      }
+    });
+    if (best >= 0) poolPick(best);
   }
 
   /* The pool's events, in the shape the shared renderer draws: `i` is the
@@ -7399,7 +7654,8 @@ BARRY.rootcanal = (function () {
   function poolFill(e) {
     const mode = pool.colour;
     if (mode === 'border') {
-      return colOf(pool.fit && pool.fit.border_used ? e.border : e.cls_pool);
+      return pool.fit && pool.fit.border_used ? borderCol(e, e.cls_pool)
+                                              : colOf(e.cls_pool);
     }
     if (mode === 'cluster') return e.cluster != null ? cluColour(e.cluster)
                                                      : tok('--text-3');
@@ -7487,6 +7743,8 @@ BARRY.rootcanal = (function () {
                                    : hfLabel(DEF) },
       picked: pool.picked,
       fill: poolFill,
+      outside: (e) => pool.colour === 'border' && !!(pool.fit
+                      && pool.fit.border_used) && e.border === 'amb',
       shape: poolShape,
       centreFill: (c) => cluFill(c.k, c.cls),
       alpha: (e) => (inFocus(e) ? 1 : 0.12),
@@ -8014,8 +8272,10 @@ BARRY.rootcanal = (function () {
             + ' to pool.', 'warn', 5000);
       return null;
     }
+    // Started first: it says it is pooling before the screen is drawn.
+    const fitting = runPool();
     goScreen('view');
-    const got = await runPool();
+    const got = await fitting;
     if (!got && !pool.fitErr && !pool.refusal && !(pool.fit && pool.fit.ok)) {
       goScreen('build');
     }
@@ -8374,7 +8634,11 @@ BARRY.rootcanal = (function () {
     const nUnb = f ? unbankedOf(members)
                    : pool.sel.filter((m) => { const c = candOf(m.key);
                                               return c && !c.banked; }).length;
-    const again = pool.dirty && pool.sel.length > 0;
+    // Not while it is being pooled: the waiting line says that.
+    const changed = pool.dirty && !pool.fitting;
+    // A pool saved with two answers about one recording, said up here too.
+    const nDup = dbl ? 0 : recordings().filter((r) => recSel(r).length > 1).length;
+    const again = changed && pool.sel.length > 0;
     const primarySave = !pool.dirty && !!f;
     return BARRY.ui.workbenchCard({
       title: pool.open ? pool.open.nickname : 'A pool not saved yet',
@@ -8384,8 +8648,15 @@ BARRY.rootcanal = (function () {
                       { flag: true }),
         pool.saved ? BARRY.ui.chip('as saved: nothing refitted', { flag: true })
                    : null,
-        pool.dirty ? BARRY.ui.chip('changed: pool again to see it',
-                                   { flag: true, kind: 'warn' }) : null,
+        changed ? BARRY.ui.chip('changed: pool again to see it',
+                                { flag: true, kind: 'warn' }) : null,
+        nDup ? BARRY.ui.chip(nDup + ' recording' + (nDup === 1 ? '' : 's')
+                             + ' in twice', { flag: true, kind: 'warn',
+          extra: 'rc-dup-chip',
+          title: 'This pool holds two answers about ' + (nDup === 1
+            ? 'one recording' : nDup + ' recordings') + ', so ' + (nDup === 1
+            ? 'its' : 'their') + ' events are counted twice. Change recordings '
+            + 'says which, with a press to keep one.' }) : null,
         unbankedChip(nUnb),
       ].filter(Boolean),
       count: members.length + ' recording' + (members.length === 1 ? '' : 's')
@@ -8517,7 +8788,12 @@ BARRY.rootcanal = (function () {
                       + 'join a pool before it is banked.' }),
       ]));
     }
-    if (recs.length) kids.push(membersTable());
+    /* In a box of its own that scrolls across on a narrow panel, so a
+       recording's answers are never cut and the page never scrolls
+       sideways. */
+    if (recs.length) {
+      kids.push(el('div', { class: 'rc-pool-cands-wrap' }, [membersTable()]));
+    }
     kids.push(fromSaveNote());
     kids.push(typesBox());
     kids.push(refusedPart('members'));
@@ -8815,9 +9091,11 @@ BARRY.rootcanal = (function () {
     const running = !!(pool.redo && !pool.redo.ended);
     if (!r && !running) return box;
     if (r) {
+      // The picture's card says what was refused in its heading.
       box.appendChild(el('p', { class: 'hint rc-warn rc-pool-refused', text:
-        (r.from === 'save' ? 'Not saved: ' : r.from === 'singles'
-          ? 'Not saved as singles: ' : 'Not pooled: ') + r.error }));
+        (where === 'view' ? '' : r.from === 'save' ? 'Not saved: '
+          : r.from === 'singles' ? 'Not saved as singles: ' : 'Not pooled: ')
+        + r.error }));
     }
     const copies = copyKeys(r);
     if (copies.length) {
@@ -8886,11 +9164,11 @@ BARRY.rootcanal = (function () {
     return el('div', { class: 'rc-work rc-pool-work' }, [
       poolTop(),
       poolClusterBar(),
-      bordersCard(poolBorderCtx()),
       lassoBar(),
       poolPickBar(),
       poolLegend(),
       el('div', { class: 'rc-main' }, [spacePane(), flatsPane(), eventPane()]),
+      bordersCard(poolBorderCtx()),
       gmmPanel(),
       switchPanel(),
       deepPanel(),
@@ -9080,7 +9358,8 @@ BARRY.rootcanal = (function () {
       ([id]) => id === mode) || [0, ''])[1] + ':' })];
     if (mode === 'border' && pool.fit && pool.fit.border_used) {
       kids.push(item('rc-lg-ds', 'solid DS'), item('rc-lg-ied', 'solid IED'),
-                item('rc-lg-amb', 'ambiguous'));
+                item('rc-lg-amb rc-lg-amb-ds', 'outside, pooled as DS'),
+                item('rc-lg-amb rc-lg-amb-ied', 'outside, pooled as IED'));
     } else if (mode === 'pool' || mode === 'single' || mode === 'border') {
       kids.push(item('rc-lg-ds', 'DS'), item('rc-lg-ied', 'IED'));
     } else if (mode === 'switches') {
@@ -9776,8 +10055,8 @@ BARRY.rootcanal = (function () {
                              : 'between its single and this pool')
         + (f.border_used ? ', and every one the border ‘'
                            + f.border_used.nickname + '’ leaves ambiguous'
-                         : ' (apply a border, in Margins and borders, to add '
-                           + 'the ones it leaves ambiguous)')
+                         : ' (apply a border, in the Borders card above, to '
+                           + 'add the ones it leaves ambiguous)')
         + '. Step through them with their traces, average them, see where '
         + 'they come from by mouse, type, group, subgroup and condition, '
         + 'export them as a CSV and bank them.' }));
@@ -10172,6 +10451,7 @@ BARRY.rootcanal = (function () {
        the top of the tool -- not drawn under the table of recordings at
        the bottom of the page, which is where "Open" used to put it. */
     goScreen('view');
+    if (pool.picked == null) autoPick();
     return got;
   }
 
@@ -10447,6 +10727,9 @@ BARRY.rootcanal = (function () {
     _resetCentres: resetCentres,
     _clearFlips: clearFlips,
     _rawToZ: rawToZ,
+    _border3d: () => GEOM.border3d || null,
+    _poolFillOf: (j) => poolFill(poolEvents()[j]),
+    _autoPick: () => autoPick(),
     _zToRaw: zToRaw,
     /* A setting typed but not recomputed, which is the state the stale
        chip exists for; and Recompute, which is the button. */

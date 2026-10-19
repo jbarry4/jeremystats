@@ -12856,8 +12856,8 @@ def _rootcanal_border_cite(res, out, where):
 
 def _rootcanal_border_on(res, ref, measure):
     """Each event's class under a saved border, onto a fit: `border` on
-    every event and `border_used` on the fit. Refuses, in a sentence that
-    starts "The border", one measured another way."""
+    every event and `border_used` on the fit. One measured another way is
+    applied all the same, with `border_used.mismatch` saying how."""
     if not ref:
         return res
     pay, used = _rootcanal_border_load(ref)
@@ -12869,14 +12869,15 @@ def _rootcanal_border_on(res, ref, measure):
                                       "order", "win_ms", "cross_ms",
                                       "band_lo", "band_hi")})
     diff = rootcanal.margin_mismatch({"measure": pay.get("measure")}, mp)
-    if diff:
-        raise rcborder.BorderError(
-            "The border ‘%s’ cannot be applied here: %s. A border is "
-            "cut-offs in µV, dB and ms, and those are only the same numbers "
-            "under the same measurement."
-            % (used["nickname"],
-               "; ".join(diff).replace("the margin", "the border")
-               .replace("its ", "the border's ")))
+    # MEASURED ANOTHER WAY: APPLIED, AND SAID (2026-10-19). It was refused.
+    # The user: "warn us when the filtering parameters of our border are
+    # different from what is being applied, but still let us do it." A
+    # border's cut-offs are numbers of the measurement it was drawn under,
+    # so on another filter or window they are a different question -- which
+    # the person may well mean to ask. So it applies, and `mismatch` says
+    # exactly how the two differ, on the fit, for the panel to show.
+    mismatch = ["; ".join(diff).replace("the margin", "the border")
+                .replace("its ", "the border's ")] if diff else []
     try:
         lv = rcborder.level_of(pay, g)
     except rcborder.BorderError as exc:
@@ -12892,6 +12893,8 @@ def _rootcanal_border_on(res, ref, measure):
         # "between" two identities, or an "envelope" round one (2026-10-19).
         kind=pay.get("kind") or "between", group=pay.get("group"),
         saved={"counts": lv["counts"], "switch_rate": lv["switch_rate"]},
+        measure=(pay.get("measure") or {}).get("filter_label"),
+        mismatch=mismatch,
         **info)
     res["params"] = dict(res.get("params") or {}, border={
         "artifact_id": used["artifact_id"], "version": used["version"],
@@ -27374,7 +27377,9 @@ def api_vacc_setup():
     """
     body = request.get_json(force=True) or {}
     netid = (body.get("netid") or "").strip()
-    if netid and not re.match(r"^[a-z0-9._-]{2,32}$", netid, re.I):
+    # `_re`: this module imports the regex module under that name only, so
+    # `re` here was a NameError the moment a NetID was typed (2026-10-19).
+    if netid and not _re.match(r"^[a-z0-9._-]{2,32}$", netid, _re.I):
         return jsonify({"ok": False,
                         "error": "That does not look like a NetID."}), 400
     key_path = (body.get("key_path") or "").strip()

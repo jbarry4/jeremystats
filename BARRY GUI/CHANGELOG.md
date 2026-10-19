@@ -15,6 +15,142 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.19.3 - Root Canal: pools you open, build and redo; borders around one group, archived, and drawn in 3D
+
+**Pull and restart Jarvis on every machine.** The server changed (pool
+rereads, single saving, one-group borders, the VACC read).
+
+### Fixed
+
+- **Duplicate events in a pool.** A recording with a banked Root Canal
+  result and a read cached on this machine was offered as two rows. If
+  both were ticked, every one of its events went into the pool twice.
+  - The list now has one row per recording. When there is more than one
+    answer about it, a picker in the row chooses which one goes in: a saved
+    single version, the banked result, or the read here. "Select all"
+    ticks one per recording.
+  - The server refuses a pool holding one recording twice and names the
+    second copy.
+  - A saved pool that already holds two copies shows a warning on that row,
+    with "Keep this one".
+- **"Measured differently … its read is not on this machine".** This used
+  to stop a pool and say to read the set in Single. Now it offers
+  **"Read them here and redo the analysis"**:
+  - Jarvis finds each recording itself: on this computer when a copy is
+    here, otherwise on the VACC, where a compute node reads it and brings
+    the read home.
+  - Each one is read exactly as it was read before (the same stamps, so
+    the same read), and the pool is fitted again.
+  - It works from a pool, a pool of pools and the save dialog.
+- **The trace panel for a member read elsewhere** used to print a clipped
+  sentence inside all four of its charts. Clicking such a dot now reads
+  that recording here or on the VACC, with its progress in plain text
+  above the charts, and opens the event when the read lands.
+- **Pooled's filter chips** now show when they are pressed.
+- **Changing the filter on a pool looked like an error.** When members had
+  been read on another machine, a red message said they were "measured
+  another way and read on Strawbarry", even though nothing was wrong.
+  - Now Jarvis reads those members here (or on the VACC) by itself.
+  - It says so in a plain message, and the pool fits again when they land.
+  - The refusal and its button only appear if reading did not fix it.
+- **VACC sign-in** failed with an error as soon as a NetID was entered (a
+  missing name in the server code).
+
+### Changed
+
+- **Pooled is three screens, for pools of recordings and pools of pools
+  alike:**
+  - **Saved pools** first, with **New pool**.
+  - **Building one:** the recordings, then Pool.
+  - **Viewing one:** the picture.
+  Open goes straight to the picture, at the top of the tool rather than
+  under the table at the bottom of the page. Pooling goes straight to the
+  picture too. "Change recordings" goes back to building.
+- **The four event charts come up with the pool.** The most typical event
+  of the first cluster is picked, from a recording read here when there is
+  one, so the trace, spectrum, contacts and CSD draw without a click.
+- **Applying a border has a Borders card of its own.** It says what is
+  applied ("Classified by ‘x’ at grace 5%: 1203 inside · 60 outside"), then
+  lists the saved borders, each with:
+  - its rule in words;
+  - its kind;
+  - the measurement it was made under, and whether that matches here;
+  - where it came from.
+  Below the list: the picked border's graces, each saying what it means,
+  then Clear, "Draw a new border from this pool…" and **Apply to this
+  pool**.
+- **Dots outside a border keep their colour.** They used to be one grey,
+  so you couldn't tell what they had been called. Now an event the border
+  leaves ambiguous is drawn in its own call's colour, faded, with a dotted
+  grey edge. The legend says "outside, called DS / IED" in Single and
+  "outside, pooled as DS / IED" in Pooled.
+- **A border measured another way can be applied, with a warning.** It used
+  to be refused.
+  - Its row in the list says how the measurement differs.
+  - Apply warns before applying it.
+  - Once applied, the card shows a "measured another way" chip and a
+    sentence naming the difference.
+  - Its cut-offs are numbers of the measurement it was drawn under, so here
+    they ask a slightly different question.
+- **Single → Many ("Read a batch")** is built the way Braces' and Doppler's
+  lists are:
+  - a search, and filter chips with icons and counts;
+  - "Select all shown", "Only the ones not read yet" and "Unselect all";
+  - a count line, and rows that tick in place;
+  - "Already read" and "Left out" folded away, each with its count;
+  - while it reads, a progress bar and a row per set.
+  The other Single views were tidied as well.
+
+### Added
+
+- **A border around one group.** A pool where every event is DS (the
+  controls) now gets a border drawn around the group instead of being
+  refused. On each axis, the box spans what the events span. Inside it is
+  solid DS, and outside it on any axis is ambiguous. Grace pulls every side
+  in, leaving out more and more outliers. On a test pool of 1263 DS events:
+  0 left outside at no grace, 12 at 1%, 60 at 5%.
+- **Archiving borders.** Each saved border has "Archive". An archived one
+  leaves the list on every machine once it syncs, stays saved, and is
+  listed under "Archived borders" with "Put back".
+- **Borders drawn where you look.** The applied border shows on the flat
+  views (the box, or the dashed cut-offs with their band) and as a faint
+  outline in the 3D view: the box around one group, or the solid-DS and
+  solid-IED regions of a two-sided border.
+- **Save as singles…** in a pool's view. It saves any of its members as
+  their own Root Canal single versions, measured the pool's way. None are
+  ticked until you choose. Nothing is banked.
+
+### Checked
+
+- `tools/check_rootcanal_reread.py`, all passing, on this machine's real
+  bank with copies of the stores:
+  - a member read elsewhere is refused and named;
+  - it is read again on this computer, as the same read;
+  - the pool then fits the pool's way;
+  - banked plus read-here of one recording is refused, naming the second;
+  - a member saves as its own single.
+  With `--vacc`, the same member was read on a compute node, brought home
+  and pooled from.
+- `tools/check_rootcanal.py`: 451 ok, 0 fail. This includes the one-group
+  border. Its two checks on the real bank no longer assume a stamp count
+  (the set has grown) or pool every candidate (one per recording now, on
+  one measurement). A border measured another way is now checked to apply
+  and say how it differs; one measured the same way says nothing differs.
+- Browser tests: rootcanalpool (294), rootcanalborder (103, new: the
+  envelope, the card, the overlays, the 3D outline, archiving, the
+  measured-another-way warning), rootcanal (356), confluence (45). Also
+  bracesmany, incisorpick, toolkit, uikit and uiparts. All pass. No real
+  record was written by any of them.
+  - New in rootcanal and rootcanalpool: dots outside a border are in a
+    faded colour per call, never the plain grey. Turning the fading off on
+    purpose made 3 checks fail; the file was then restored byte for byte.
+  - New in rootcanalpool: a refusal that only needs members read starts
+    the reading itself, calmly. Refused the same way again, it is not read
+    a second time by itself, and the button shows.
+- Screenshots of the saved pools, a new pool, an opened pool with its four
+  charts up, the Borders card, and the envelope on the flat views and in
+  3D.
+
 ## 2026.10.19.2 - Compact, for a small screen
 
 ### Added

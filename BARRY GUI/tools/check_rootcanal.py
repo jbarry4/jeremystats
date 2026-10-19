@@ -1945,12 +1945,20 @@ def _cluster_stats_routes(A, c, unbanked):
                                                          None)
                                     for e in sf["events"]),
        sf.get("error"))
+    # Measured another way it APPLIES, saying how (2026-10-19: "warn us ...
+    # but still let us do it"); it used to be refused.
     mm = c.post("/api/rootcanal/fit", json=dict(body, filt="ds", border=ref))
-    ck("measured another way, it is refused, saying how, in a sentence that "
-       "starts with the border", mm.status_code == 400
-       and mm.get_json()["error"].startswith("The border ‘two blobs’ cannot "
-                                             "be applied here")
-       and "DS filter" in mm.get_json()["error"], mm.get_json())
+    mmj = mm.get_json() or {}
+    mmu = mmj.get("border_used") or {}
+    ck("measured another way, it is applied all the same, and says how",
+       mm.status_code == 200 and mmj.get("ok")
+       and mmu.get("artifact_id") == bs["artifact_id"]
+       and any("DS filter" in x for x in mmu.get("mismatch") or [])
+       and all(e.get("border") in ("ds", "ied", "amb", None)
+               for e in mmj.get("events") or []), mmj.get("error") or mmu)
+    ck("measured the same way, it says nothing is different",
+       (sf.get("border_used") or {}).get("mismatch") == [],
+       (sf.get("border_used") or {}).get("mismatch"))
     psb = c.post("/api/rootcanal/pool/save", json=dict(
         tb, border=ref, nickname="classified by a border")).get_json()
     sp_ = A.ARTIFACTS.payload(psb["artifact_id"], psb["version"])
