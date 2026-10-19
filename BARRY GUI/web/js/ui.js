@@ -261,7 +261,10 @@ BARRY.ui = (function () {
   function stepHeader(o) {
     const opt = o || {};
     return el('div', { class: 'step-head' }, [
-      el('strong', { text: opt.title }),
+      /* The blurb is also the title's tooltip: Compact hides the line it
+         is printed on (app.css), and the words should still be one hover
+         away rather than gone. */
+      el('strong', { text: opt.title, title: opt.blurb || null }),
       opt.step ? el('span', { class: 'step-n', text: opt.step }) : null,
       opt.blurb ? el('p', { class: 'hint', text: opt.blurb }) : null,
     ].filter(Boolean));

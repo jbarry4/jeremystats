@@ -191,6 +191,32 @@ If a theme ever gets a layer like this, it follows the same rules:
 - **Reduced motion keeps the webs and the yard, and nothing moves.**
   Nothing new is sent while the window is hidden.
 
+### Compact
+
+The theme picker's other switch: `data-density="compact"` on the root, for
+a small screen. Like VACC Mode it is a separate attribute, so it works
+with every palette, and it changes geometry only.
+
+What it is allowed to do is decided in one place, the *Compact* block at
+the end of `app.css`:
+- **Headers first, because they are always on screen.** That means
+  every view's title bar, Xplorefinder's bar and pane head and control
+  strip, a tool's head, and the Output bar.
+- A label goes beside its field where there is room across, and stays
+  above it, smaller, where there is not (a pane's control strip).
+- A tool's one-line description leaves the page and becomes its title's
+  tooltip (`ui.stepHeader` always sets it).
+- The rail gets narrower, and its footer chips go two to a row.
+
+What it must not do:
+- Truncate. Text that does not fit wraps.
+- Shrink type below the house scale.
+- Touch the icon rail, or a canvas's drawing.
+
+A new header or bar checks how it looks with the switch on.
+`web/_dev/compact.html` measures the headers both ways at 1366x768 and
+fails any that do not get smaller.
+
 ### Fire mode
 
 Opt-in **per surface**. The six that opt in are enumerated in `app.css` under

@@ -15,6 +15,41 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.19.2 - Compact, for a small screen
+
+### Added
+
+- **Compact**, a switch in the theme picker. It takes the air out of the
+  interface for a smaller screen, works with every theme, and is
+  remembered for this computer only. Measured at 1366x768:
+
+  | | before | compact |
+  |---|---|---|
+  | a view's title bar | 47–61 px | 32–45 px |
+  | Xplorefinder's pane head | 35 px | 29 px |
+  | its control strip | 54 px | 40 px |
+  | the Output bar | 38 px | 28 px |
+  | the rail | 190 px wide | 166 px |
+  | the rail's footer | 238 px tall | 83 px, two chips to a row |
+
+  Every view's title bar loses most of its padding, and Xplorefinder's
+  field labels sit beside their fields. A tool's one-line description
+  moves into its title's tooltip, so Checkup's head is one line. ToolKit's
+  steps fit on one line each, so every nav item and three bundles are on
+  screen at once. Cards, workbench cards, dialogs and panels have less
+  padding.
+
+  Nothing is cut off to make it fit: text that does not fit wraps. Type is
+  no smaller than the sizes already used, and the icon rail is unchanged.
+  Pop-out windows follow the main window.
+
+### Changed
+
+- The Halloween welcome is said when somebody picks the theme in the
+  picker, not again when Jarvis restores it at start-up.
+
+Harness: `_dev/compact.html` (27).
+
 ## 2026.10.19.1 - Halloween 🎃
 
 ### Added

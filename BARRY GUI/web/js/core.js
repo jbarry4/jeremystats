@@ -2982,7 +2982,7 @@ const THEMES = [
 
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
 
-function applyTheme(theme, remember) {
+function applyTheme(theme, remember, byHand) {
   if (!THEMES.some((t) => t.id === theme)) theme = 'dark';
   BARRY.state.theme = theme;
   document.documentElement.dataset.theme = theme;
@@ -2990,11 +2990,11 @@ function applyTheme(theme, remember) {
   if (label) label.textContent = themeById(theme).name;
   /* The layer that only one theme has. Here, on every path into a theme --
      a pick, boot, another window -- so switching away can never leave a
-     spider behind. `remember` doubles as "a person chose it", which is
-     when the welcome is said. Decoration: it must never take the theme
+     spider behind. `byHand` is a person picking it in the picker, which
+     is when the welcome is said -- not a boot restoring it. Decoration: it must never take the theme
      change down with it. */
   try {
-    if (BARRY.spooky) BARRY.spooky.sync(theme, remember !== false);
+    if (BARRY.spooky) BARRY.spooky.sync(theme, !!byHand);
   } catch (e) { /* the palette has already changed; that is what matters */ }
 
   if (remember !== false) {
@@ -3239,6 +3239,34 @@ function applyVacc(on, remember) {
   }
 }
 
+/* ==========================================================================
+   Compact
+
+   A third attribute on the root, beside `data-theme` and `data-vacc`:
+   `data-density="compact"` takes the air out of the interface for a small
+   screen -- the headers above all, which are on screen whatever you are
+   doing (app.css, "Compact"). Geometry only, so it goes with every theme.
+
+   Remembered for this computer: localStorage for a first paint that is
+   already right, and `density` in the preferences, which store.py keeps
+   per machine (PREFS_LOCAL) -- a laptop's choice is not the desktop's.
+   ========================================================================== */
+function applyDensity(compact, remember) {
+  compact = !!compact;
+  BARRY.state.compact = compact;
+  if (compact) document.documentElement.dataset.density = 'compact';
+  else delete document.documentElement.dataset.density;
+  if (remember !== false) {
+    try { localStorage.setItem('barry.density', compact ? 'compact' : ''); }
+    catch (e) { /* private window */ }
+    try { BARRY.prefs.set('density', compact ? 'compact' : 'comfortable'); }
+    catch (e) { /* prefs not up yet; localStorage has it */ }
+  }
+  /* The panes and canvases were laid out for the old geometry. They all
+     listen for the window changing size, which is what this is to them. */
+  try { window.dispatchEvent(new Event('resize')); } catch (e) { /* fine */ }
+}
+
 /* Other windows of the same app, told without being polled.
 
    A pop-out gets `?vacc=` when it opens and then knows nothing more, so
@@ -3249,6 +3277,12 @@ function applyVacc(on, remember) {
 
    `remember: false` on the way back in, or two windows would write the same
    preference to the shared store in a loop. */
+window.addEventListener('storage', (e) => {
+  if (e.key !== 'barry.density') return;
+  const on = e.newValue === 'compact';
+  if (on !== !!BARRY.state.compact) applyDensity(on, false);
+});
+
 window.addEventListener('storage', (e) => {
   if (e.key !== 'barry.vacc') return;
   const on = e.newValue === '1';
@@ -3312,6 +3346,23 @@ function closeThemePicker() {
   if (themePopShut) { const f = themePopShut; themePopShut = null; f(); }
 }
 
+function densityRow() {
+  const b = el('button', {
+    class: 'theme-opt density-opt' + (BARRY.state.compact ? ' on' : ''),
+    type: 'button', role: 'switch',
+    'aria-checked': String(!!BARRY.state.compact),
+    title: 'Less space between things, and smaller headers, for a small '
+         + 'screen. For this computer only.',
+    onclick: () => {
+      applyDensity(!BARRY.state.compact);
+      b.classList.toggle('on', !!BARRY.state.compact);
+      b.setAttribute('aria-checked', String(!!BARRY.state.compact));
+      BARRY.activity.log('density.change', { compact: !!BARRY.state.compact });
+    },
+  }, [el('span', { class: 'jv-pill' }), el('span', { text: 'Compact' })]);
+  return b;
+}
+
 function showThemePicker() {
   if ($('#themePop')) { closeThemePicker(); return; }
 
@@ -3319,7 +3370,7 @@ function showThemePicker() {
     THEMES.map((t) => el('button', {
       class: 'theme-opt' + (BARRY.state.theme === t.id ? ' on' : ''),
       onclick: () => {
-        applyTheme(t.id);
+        applyTheme(t.id, true, true);
         closeThemePicker();
         BARRY.activity.log('theme.change', { theme: t.id });
       },
@@ -3328,6 +3379,10 @@ function showThemePicker() {
          t.swatch.map((c) => el('i', { style: 'background:' + c }))),
       el('span', { text: t.name }),
     ])).concat([
+      // Compact: the same switch shape as the one below it, and it leaves
+      // the picker open, because what changed is easiest to judge from
+      // the picker you are still looking at.
+      densityRow(),
       // The name and the mark, off or back on with the reveal. Here because
       // it is how this screen looks, remembered the same way a theme is.
       BARRY.jarvis ? BARRY.jarvis.pickerRow(closeThemePicker) : null,
@@ -3637,6 +3692,15 @@ BARRY.init = async function init() {
   try { saved = localStorage.getItem('barry.theme'); } catch (e) { /* ignore */ }
   applyTheme(urlTheme || saved || 'dark', !urlTheme);
 
+  // Compact the same way: before the first paint, from this browser, and
+  // a pop-out takes what its URL says (`?density=compact`).
+  const urlDensity = q0.get('density');
+  let savedDensity = false;
+  try { savedDensity = localStorage.getItem('barry.density') === 'compact'; }
+  catch (e) { /* ignore */ }
+  applyDensity(urlDensity === null ? savedDensity : urlDensity === 'compact',
+               false);
+
   // VACC Mode reads the same way and for the same reason -- before anything
   // is fetched, so the first paint is already right. `?vacc=` wins and is not
   // remembered: it is how a pop-out inherits the window it came from, which
@@ -3796,6 +3860,16 @@ BARRY.init = async function init() {
   if (new URLSearchParams(location.search).get('vacc') === null) {
     const mineVacc = vaccForThisMachine();
     if (mineVacc !== BARRY.state.vacc) applyVacc(mineVacc);
+  }
+  // Compact, as this machine's preferences have it -- unless the URL said.
+  if (new URLSearchParams(location.search).get('density') === null) {
+    const pd = BARRY.prefs.get('density', null);
+    if (pd === 'compact' || pd === 'comfortable') {
+      const want = pd === 'compact';
+      if (want !== !!BARRY.state.compact) applyDensity(want, false);
+      try { localStorage.setItem('barry.density', want ? 'compact' : ''); }
+      catch (e) { /* ignore */ }
+    }
   }
   // And whether the name is hidden here: the same per-host map, which may
   // know better than this browser's localStorage. Quietly -- the reveal is

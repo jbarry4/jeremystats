@@ -14596,3 +14596,133 @@ div.tf-tile { cursor: default; }
   .spk-spider .legs-a, .spk-spider .legs-b, .spk-bat .wing,
   .spk-pumpkin .glow, .spk-cauldron .bubble, .spk-say { animation: none; }
 }
+
+/* ==========================================================================
+   Compact (the theme picker's switch; `data-density="compact"` on the root)
+   ==========================================================================
+   For a small screen: the same interface with less air in it. A second
+   attribute beside `data-theme`, like `data-vacc`, so it goes with every
+   palette, and it changes geometry only -- no colour, and no type smaller
+   than the house scale already uses.
+
+   What it takes the room from, biggest first:
+   - the headers that are on screen all the time: every view's title bar,
+     Xplorefinder's bar, its pane head and control strip, a tool's head,
+     and the Output bar. Field labels move beside their fields instead of
+     above them, and a one-line description moves into the title's
+     tooltip;
+   - the rail: narrower, tighter rows, and the footer chips two to a row;
+   - padding and gaps in panels, cards, workbench cards and dialogs.
+
+   Nothing is truncated to make it fit: text that does not fit wraps, as
+   everywhere else. Measured at 1366x768 in web/_dev/compact.html. */
+:root[data-density="compact"] { --rail: 166px; }
+
+/* The switch in the theme picker. The same shape as the name switch below
+   it (.jv-opt), drawn by its own class so the two are never mistaken for
+   each other by anything that looks for one of them. */
+.theme-opt.density-opt {
+  border-top: 1px solid var(--line-soft); border-radius: 0;
+  margin-top: 3px; padding-top: 8px;
+}
+.theme-opt.density-opt.on { background: transparent; color: var(--text-2); }
+.theme-opt.density-opt:hover { background: var(--bg-3); color: var(--text); }
+.density-opt.on .jv-pill { background: var(--accent-soft); border-color: var(--accent-line); }
+.density-opt.on .jv-pill::after { transform: translateX(12px); background: var(--accent); }
+
+/* ---- the rail ---- */
+:root[data-density="compact"] #rail { padding: 8px 8px; gap: var(--sp-8); }
+:root[data-density="compact"] .rail-scroll { gap: var(--sp-8); }
+:root[data-density="compact"] .brand { gap: var(--sp-8); padding: 0 4px; }
+:root[data-density="compact"] .brand-mark { width: 24px; height: 24px; }
+:root[data-density="compact"] .brand-text strong { font-size: var(--fs-13); }
+:root[data-density="compact"] .who-chip { margin: 0 4px 2px; padding: 3px 8px; }
+:root[data-density="compact"] .rail-toggle { padding: 4px 10px; }
+:root[data-density="compact"] .nav-group { gap: 1px; }
+:root[data-density="compact"] .nav-item {
+  padding: 5px 9px; gap: var(--sp-8); font-size: var(--fs-125);
+}
+:root[data-density="compact"] .nav-item svg { width: 15px; height: 15px; }
+:root[data-density="compact"] .nav-group > .section-label { margin: 4px 0 2px; }
+/* Two chips to a row. The sync chip has the most to say and keeps a row
+   of its own, and so do the yard and anything else that is not a chip. */
+:root[data-density="compact"] #app:not(.rail-icons) .rail-foot {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4);
+}
+:root[data-density="compact"] #app:not(.rail-icons) .rail-foot > :not(.chip-btn) { grid-column: 1 / -1; }
+:root[data-density="compact"] #app:not(.rail-icons) .rail-foot .chip-btn {
+  padding: 4px 7px; gap: 5px; font-size: var(--fs-11); min-width: 0;
+}
+/* Half a 166px rail is about 70px, which holds "Halloween" or "VACC on"
+   but not those and an icon. The words say what each one is; the sync
+   chip has its row to itself and keeps its icon. */
+:root[data-density="compact"] #app:not(.rail-icons) .rail-foot .chip-btn:not(.sync-go) svg { display: none; }
+:root[data-density="compact"] #app:not(.rail-icons) .rail-foot .chip-btn svg { width: 12px; height: 12px; flex: none; }
+/* MATLAB and Python versions: a once-a-month need, as on a short screen. */
+:root[data-density="compact"] .env { display: none; }
+/* The icon rail is already as small as it goes, and is left as it is. */
+
+/* ---- every view's title bar ---- */
+:root[data-density="compact"] .view-head { padding: 6px 14px 5px; gap: 6px 12px; }
+:root[data-density="compact"] .view-head.compact { padding: 5px 12px 4px; }
+:root[data-density="compact"] .view-head h1 { font-size: var(--fs-15); }
+:root[data-density="compact"] .view-head .sub { font-size: var(--fs-115); }
+:root[data-density="compact"] .head-actions { gap: var(--sp-6); }
+/* A labelled control in a bar: the label beside it, not over it.
+   In the head bar, where there is room across and none down. */
+:root[data-density="compact"] .head-actions .ctl {
+  flex-direction: row; align-items: center; gap: 5px;
+}
+:root[data-density="compact"] .head-actions .ctl > label { white-space: nowrap; }
+/* A pane's control strip is the other way round -- full across already,
+   and beside its field a label would push the strip onto a second row --
+   so its labels stay above their fields, smaller and closer. */
+:root[data-density="compact"] .pane-ctl .ctl { gap: 1px; }
+:root[data-density="compact"] .pane-ctl .ctl > label {
+  font-size: var(--fs-9); line-height: 1.15;
+}
+:root[data-density="compact"] .pad { padding: 8px 12px 12px; }
+:root[data-density="compact"] .btn { padding: 5px 11px; }
+:root[data-density="compact"] .btn.sm { padding: 3px 8px; }
+:root[data-density="compact"] .section-label { margin-bottom: 6px; }
+:root[data-density="compact"] * + .section-label { margin-top: 12px; }
+
+/* ---- Xplorefinder ---- */
+:root[data-density="compact"] .xf-head { gap: var(--sp-10); }
+:root[data-density="compact"] .xf-tab { padding: 3px 8px; }
+:root[data-density="compact"] .pane-head { padding: 3px 8px; gap: var(--sp-6); }
+/* No 52px floor: a row is as tall as its tallest control. */
+:root[data-density="compact"] .pane-ctl { padding: 3px 6px; gap: 5px 7px; min-height: 0; }
+:root[data-density="compact"] .ctl input[type=number],
+:root[data-density="compact"] .ctl input[type=text],
+:root[data-density="compact"] .ctl select { padding: 3px 6px; }
+
+/* ---- the Output bar ---- */
+:root[data-density="compact"] #logDock.collapsed { height: 28px; }
+:root[data-density="compact"] .log-head { height: 28px; padding: 0 10px; gap: var(--sp-8); }
+
+/* ---- a tool's head, and the ToolKit around it ---- */
+/* The description goes; it is the title's tooltip (ui.stepHeader). */
+:root[data-density="compact"] .step-head > .hint { display: none; }
+:root[data-density="compact"] .tk-head { gap: var(--sp-8); }
+:root[data-density="compact"] .tk-head .sub { display: none; }
+:root[data-density="compact"] .tk-layout { grid-template-columns: 206px minmax(0, 1fr); gap: var(--sp-10); }
+:root[data-density="compact"] .tk-main { gap: var(--sp-8); }
+:root[data-density="compact"] .tk-bundle { padding: 7px 8px 8px; gap: 5px; }
+:root[data-density="compact"] .tk-bundle:not(.open) { padding-bottom: 7px; }
+:root[data-density="compact"] .tk-steps { gap: 1px; }
+/* A step on one line: number, name, what it does. */
+:root[data-density="compact"] .tk-step {
+  grid-template-columns: 15px auto minmax(0, 1fr) auto; gap: 2px 6px;
+  padding: 3px 6px;
+}
+:root[data-density="compact"] .tk-step-s { grid-column: auto; }
+
+/* ---- panels, cards and dialogs ---- */
+:root[data-density="compact"] .card { padding: 10px 12px; }
+:root[data-density="compact"] .card-grid { gap: var(--sp-8); }
+:root[data-density="compact"] .cur-set { padding: 7px 10px; }
+:root[data-density="compact"] .modal { padding: 14px; }
+:root[data-density="compact"] .modal.big .mh { padding: 8px 12px; }
+:root[data-density="compact"] .modal.big .mb { padding: 10px 12px; }
+:root[data-density="compact"] .modal.big .mf { padding: 8px 12px; }
