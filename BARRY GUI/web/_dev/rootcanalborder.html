@@ -152,24 +152,31 @@ function quantile(sorted, q) {
   /* The members are put in through the panel's own hooks, not its table:
      choosing them is rootcanalpool.html's to check, and this suite is
      about what happens once there is a picture. The three it pools are
-     the ones that suite does, or the three smallest here. */
+     the three smallest NOT BANKED, of three recordings: an unbanked one is
+     measured at the settings bar, so the three agree and the pool asks no
+     one-measurement question (whose answer would measure saved singles
+     again as new versions -- stubbed here, and never pressed). */
   await ev(RC + '._poolLoad()');
   const cands = (await get('/api/rootcanal/pool/candidates')).singles || [];
-  const by = (lab) => cands.find((c) => c.session_label === lab);
-  let picks = [by('PTEN m1 s2 2023-10-02'), by('PTEN m1 s8 2023-10-05'),
-               by('PTEN m2 s3 2024-01-23')].filter(Boolean);
-  if (picks.length < 3) {
-    note('the three named singles are not all here; taking the three smallest');
-    picks = cands.filter((c) => c.here !== false).slice()
-      .sort((a, b) => (a.n || 0) - (b.n || 0)).slice(0, 3);
-  }
-  ok('three singles to pool', picks.length === 3, cands.length + ' candidates');
+  const seenLab = {};
+  const picks = cands.filter((c) => c.here !== false && !c.banked).slice()
+    .sort((a, b) => (a.n || 0) - (b.n || 0))
+    .filter((c) => (seenLab[c.session_label] ? false : (seenLab[c.session_label] = true)))
+    .slice(0, 3);
+  ok('three singles to pool, not banked, of three recordings', picks.length === 3,
+     cands.length + ' candidates');
+  say('       ' + picks.map((c) => c.session_label + ' (' + c.n + ')').join(', '), 'dim');
   ev(RC + '._poolGo("build")');
   for (const c of picks) ev(RC + '._poolToggle(' + JSON.stringify(c.key) + ', true)');
   ev(RC + '._poolGo("view")');
   ev(RC + '._poolRun()');
-  await until(() => P().fit && P().fit.ok !== undefined && !P().fitting,
-              120000, 'the pool');
+  await until(() => (P().fit && P().fit.ok !== undefined && !P().fitting)
+              || D().querySelector('#bigModal:not(.hidden)'), 120000, 'the pool');
+  if (!P().fit && D().querySelector('#bigModal:not(.hidden)')) {
+    note('the pool asked a question instead: '
+         + D().querySelector('#bigModalBox').textContent.slice(0, 160));
+    ev('try { closeModal(); } catch (e) {}');
+  }
   const f0 = P().fit;
   ok('the pool is fitted', !!(f0 && f0.ok), f0 && f0.error);
   if (!f0 || !f0.ok) throw new Error('no pool: ' + (f0 && f0.error));

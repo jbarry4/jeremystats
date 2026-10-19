@@ -6409,7 +6409,10 @@ BARRY.rootcanal = (function () {
       r.facts.push(facts);
       return r;
     };
-    const add = (r, a) => { r.answers.push(a); r.keys.add(a.key); byKey.set(a.key, r); };
+    const add = (r, a) => {
+      if (r.keys.has(a.key)) return;     // offered twice is one answer
+      r.answers.push(a); r.keys.add(a.key); byKey.set(a.key, r);
+    };
     for (const c of cs) {
       const r = recFor(recOf(c), c);
       if (c.kind === 'single') {
@@ -7779,9 +7782,10 @@ BARRY.rootcanal = (function () {
     } else if (R.landed) {
       say = 'Read here. Opening the event…';
     } else {
-      say = 'It could not be read here — ' + rereadWords(x) + '. Its pooled '
-        + 'numbers are still in the pool; its trace opens on the machine that '
-        + 'read it.';
+      say = 'It could not be read here: ' + (x && x.status === 'stopped'
+        ? 'it was stopped' : (x && x.error) || 'no reason given') + '. Its '
+        + 'pooled numbers are still in the pool; its trace opens on the machine '
+        + 'that read it.';
     }
     return el('div', { class: 'rc-ev-note' }, [
       el('p', { class: 'rc-ev-why rc-ev-away', text: awayText(m) }),
