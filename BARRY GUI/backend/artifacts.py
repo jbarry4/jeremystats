@@ -513,9 +513,11 @@ def _rcborder_key(subject):
 def _rcborder_summary(payload):
     p = payload or {}
     return {"strict": p.get("strict"),
+            "kind": p.get("kind") or "between", "group": p.get("group"),
             "grace": p.get("grace_default"),
             "levels": [{"grace": lv.get("grace"),
                         "switch_rate": lv.get("switch_rate"),
+                        "outside_rate": lv.get("outside_rate"),
                         "counts": lv.get("counts")}
                        for lv in p.get("levels") or []],
             "events": p.get("n"), "level": p.get("level"),

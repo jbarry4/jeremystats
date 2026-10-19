@@ -238,6 +238,35 @@ def run_tool(tool, spec, bundle, job, csc):
         out["spec_excluded"] = list(spec.get("excluded") or [])
         return out
 
+    if tool == "rootcanal":
+        # Root Canal's read, for a recording only the cluster has
+        # (2026-10-19). The SAME screen and `rootcanal.read` the desk runs;
+        # the .npz is written beside this run and the desk brings it home
+        # and files it as a read made there.
+        from backend import braces, rootcanal
+        from backend import dspca
+        use = braces.channels_by_number(session, spec.get("channels"))
+        if not use:
+            raise ValueError("None of the contacts asked for are in the "
+                             "cluster's copy of this recording.")
+        p = rootcanal.Params(**(spec.get("params") or {}))
+        stamps = spec.get("stamps") or []
+        bad = {int(k): v for k, v in (spec.get("marked") or {}).items()}
+        sspec = {"band": dspca.T_DS_FREQ, "line_hz": braces.LINE_HZ,
+                 "line_q": braces.LINE_Q, "lfp_fs": dspca.T_LFP_FS,
+                 "spacing_um": p.spacing, "csd_smooth": True}
+        bad.update(braces.screen(session, use, sspec,
+                                 [e["t"] for e in stamps]))
+        got = rootcanal.read(session, use, stamps, p, bad, job=job)
+        name = "rootcanal_read.npz"
+        rootcanal.save_read(os.path.join(bundle["_out_dir"], name), got)
+        return {"file": name,
+                "bytes": os.path.getsize(os.path.join(bundle["_out_dir"],
+                                                      name)),
+                "missed": got.get("missed"),
+                "bad": {str(k): v for k, v in (got.get("bad") or {}).items()},
+                "probe": got.get("probe")}
+
     if tool == "braces":
         # Braces (and Eye, which is Braces' engine pointed at IEDs) for a
         # recording the desk could not open. The SAME `braces.align` a local

@@ -77,7 +77,9 @@ const LIGHT = ['light', 'parchment', 'horizon', 'jirai-shiro'];
 
   setVacc(false);
   say('=== the layer exists and is inert ===');
-  check('ten themes to check', themes.length === 10, themes.join(' '));
+  // Eleven since Halloween (2026-10-19). Counted so a theme added without
+  // a light/dark decision below is noticed here.
+  check('eleven themes to check', themes.length === 11, themes.join(' '));
   for (const t of FIRE_TOKENS) {
     check('is declared at :root: ' + t, tok(t) !== '', tok(t) || 'EMPTY');
   }
