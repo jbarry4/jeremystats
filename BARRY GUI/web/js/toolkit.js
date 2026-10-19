@@ -139,17 +139,17 @@ BARRY.views.toolkit = (function () {
     /* Only when the pane is not already theirs: `render` has painted them a
        moment before this debounced call lands, and a second paint rebuilt
        the panel under the pointer -- the "it keeps reloading" Doppler had. */
-    if (q.tool === 'junction' || q.tool === 'panning') {
+    /* Spotter has no panel of its own either: it is a MODE, and the step
+       is the way in rather than the thing itself. It still needs a branch
+       here, or it falls through to the bad-channel query below -- which is
+       the fault Kilosort's comment above is about. */
+    if (q.tool === 'junction' || q.tool === 'panning'
+        || q.tool === 'spotter') {
       const h = $('#tkResult');
       if (!(h && h.dataset.tool === q.tool)) renderResult();
       return;
     }
     if (q.tool === 'lock') { BARRY.lock.paint(); return; }
-    /* Spotter has no panel of its own: it is a MODE, and the step is the
-       way in rather than the thing itself. It still needs a branch here,
-       or it falls through to the bad-channel query below -- which is the
-       fault Kilosort's comment above is about. */
-    if (q.tool === 'spotter') { renderResult(); return; }
     if (q.tool === 'rootcanal') { BARRY.rootcanal.paint(); return; }
     if (q.tool === 'dspca') { BARRY.dspca.paint(); return; }
     if (q.tool === 'cfc') { await loadCFC(); return; }
@@ -3138,45 +3138,25 @@ BARRY.views.toolkit = (function () {
     const host = document.getElementById('tkResult');
     if (!host) return;
     host.innerHTML = '';
+    host.dataset.tool = 'spotter';
     host.appendChild(BARRY.ui.stepHeader({
       title: 'Spotter',
-      step: 'step 2 of The Storm',
+      step: BARRY.ui.stepOf('spotter') || 'step 2 of The Storm',
       blurb: 'Confirm what the radar found, one discharge at a time: solid, '
            + 'sputter, or neither.',
     }));
-    const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', text: 'Which set' }),
-    ]);
+    const box = el('div', { class: 'card' });
     host.appendChild(box);
-    BARRY.skeleton.into(box, 'row', 3);
-    api('/api/curation?kind=ied').then((got) => {
-      box.innerHTML = '';
-      box.appendChild(el('div', { class: 'section-label',
-        text: 'Which set' }));
-      const sets = (got.sets || []).filter((s) => s.kind === 'ied');
-      if (!sets.length) {
-        box.appendChild(el('div', { class: 'empty-state',
-          text: 'Nothing to confirm yet. Run Doppler on a recording and '
-              + 'bank what it finds — that is what makes a set for '
-              + 'this step to walk.' }));
-        return;
-      }
-      for (const st of sets) {
-        const p = st.progress || {};
-        box.appendChild(el('button', {
-          class: 'dop-review',
-          onclick: () => BARRY.spotter.enter(st.gid),
-        }, [
-          el('strong', { text: st.name || st.session_label || st.gid }),
-          el('span', { text: (p.specified || 0) + ' of ' + (p.total || 0)
-                           + ' decided' }),
-          st.open ? BARRY.ui.chip('on the bench', { kind: 'ok' }) : null,
-          st.assignee ? BARRY.ui.chip(st.assignee) : null,
-        ].filter(Boolean)));
-      }
-    }).catch((e) => {
-      box.innerHTML = '';
-      box.appendChild(el('div', { class: 'empty-state', text: e.message }));
+    /* The sets started, and every Doppler run banked that has not been --
+       setpicker.js, which Panning uses too. */
+    BARRY.setPicker.mount(box, {
+      kind: 'ied', tool: 'spotter', noun: 'discharges',
+      mine: { id: 'doppler', label: 'From Doppler', chip: 'Doppler',
+              test: (p) => /^Doppler/.test(p) },
+      otherLabel: 'imported',
+      empty: 'Nothing to confirm yet. Run Doppler on a recording and bank '
+           + 'what it finds — that is what this step walks.',
+      enter: (gid, entryId) => BARRY.spotter.enter(gid, entryId),
     });
   }
 

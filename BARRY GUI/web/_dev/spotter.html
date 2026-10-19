@@ -56,6 +56,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
   };
 
   let entryId = null, gid = null;
+  let forgetWhere = null;
   try {
 
   /* ---------------------------------------------------------------- */
@@ -83,6 +84,17 @@ const post = (u, b) => fetch(u, { method: 'POST',
     throw new Error('no fixture');
   }
   gid = target.gid;
+  /* Where this harness's own set was last left. An earlier run on this
+     same recording, at these same times, remembers its last candidate, and
+     the next run then opened on it -- the last one, where "pressing 1 moves
+     on" has nowhere to go. Forgotten before entering and again after
+     leaving: only this recording's key, which only these runs write. */
+  forgetWhere = () => ev("(function (g) { try {"
+    + " var a = JSON.parse(BARRY.prefs.get('spotter_at', '{}')) || {};"
+    + " if (a[g + ':ied']) { delete a[g + ':ied'];"
+    + " BARRY.prefs.set('spotter_at', JSON.stringify(a)); }"
+    + " } catch (e) {} })(" + JSON.stringify(gid) + ")");
+  forgetWhere();
   say('  note  ' + (target.label || gid), 'note');
 
   // Ten stamps spread across the recording, at times nothing else uses.
@@ -261,6 +273,7 @@ const post = (u, b) => fetch(u, { method: 'POST',
     /* Take ours away again, both halves. A harness that leaves a set behind
        is one somebody finds next week and tries to curate. */
     try { ev('BARRY.spotter.active && BARRY.spotter.exit()'); } catch (e) {}
+    try { if (forgetWhere) forgetWhere(); } catch (e) {}
     if (gid) {
       try { await post('/api/curation/' + gid + '/ied/delete', {}); }
       catch (e) { say('  note  could not remove the set', 'note'); }

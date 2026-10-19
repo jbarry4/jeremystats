@@ -730,7 +730,8 @@ def estimate(session, spec, report=None):
 # The run
 # --------------------------------------------------------------------------
 
-def _read_channel(session, ch, report, spec, job=None, on_read=None):
+def _read_channel(session, ch, report, spec, job=None, on_read=None,
+                  short=None):
     """One channel's whole recording, concatenated, in microvolts.
 
     Concatenated across segments because that is what the detector has
@@ -738,11 +739,24 @@ def _read_channel(session, ch, report, spec, job=None, on_read=None):
     a question nobody has answered. The concat index is converted back to
     true recording seconds on the way out, so the gap never becomes a lie
     about when something happened.
+
+    EVERY SEGMENT IS EXACTLY ITS OWN LENGTH IN THE RESULT. A position in the
+    joined trace IS a concatenated sample index -- that is what
+    `continuity.sample_to_true` is handed for every event -- so a segment
+    that reads short must not let the next one move up into its place. It
+    did: the reader stopped where the file stopped, the next segment was
+    appended straight after, and every event after it was stamped early by
+    the shortfall. That is the fault Incisor met as a -9.71 ms median offset
+    against Toothy, and KCNT1 m306 s1's segment 6 really is 36 ms short of
+    what its header says. A shortfall is now held flat at the last value
+    read -- no line length, so no event can come from it -- and reported in
+    `short` as (segment index, missing samples), so the run can say so.
     """
     fs = float(report.get("fs") or session.get("fs") or 30000.0)
     pieces = []
     at_concat = 0
-    for seg in report.get("segments") or []:
+    last = 0.0
+    for seg_i, seg in enumerate(report.get("segments") or []):
         n_samples = int(seg["n_samples"])
         start_concat = at_concat
         at_concat += n_samples
@@ -773,13 +787,38 @@ def _read_channel(session, ch, report, spec, job=None, on_read=None):
             take = min(take, raw.size - i0)
             if take <= 0:
                 break
-            pieces.append(np.asarray(raw[i0:i0 + take], dtype=np.float64))
+            piece = np.asarray(raw[i0:i0 + take], dtype=np.float64)
+            pieces.append(piece)
+            last = float(piece[-1])
             want_i += take
             if on_read:
                 on_read(min(n_samples, want_i) / fs)
-    if not pieces:
+        if want_i < n_samples:
+            # Held, not skipped: see above.
+            pieces.append(np.full(n_samples - want_i, last, dtype=np.float64))
+            if short is not None:
+                short.append((seg.get("index", seg_i), n_samples - want_i))
+    if not pieces or not any(p.size for p in pieces):
         return np.zeros(0, dtype=np.float64)
     return np.concatenate(pieces)
+
+
+def _short_words(short, fs):
+    """A shortfall, said once per segment: the worst channel's."""
+    worst = {}
+    for seg_i, n in short:
+        worst[seg_i] = max(worst.get(seg_i, 0), int(n))
+    if not worst:
+        return None
+    total_ms = sum(worst.values()) / fs * 1000.0
+    return ("%d segment%s read short of what the recording's records say "
+            "(%s; %.0f ms in all). The missing stretch is held flat, so it "
+            "cannot produce an event and every time after it is still on "
+            "the recording's own clock."
+            % (len(worst), "" if len(worst) == 1 else "s",
+               ", ".join("segment %s by %.0f ms" % (k, v / fs * 1000.0)
+                         for k, v in sorted(worst.items())[:4]),
+               total_ms))
 
 
 def run(session, spec, report, job=None):
@@ -838,11 +877,12 @@ def run_legacy(session, spec, report, job=None):
     n_upper = len(want) * int(report.get("total_samples")
                               or (plan["span_s"] * fs + 1))
     m_tail = tail_size(prc, n_upper)
+    short = []
     for ch in want:
         def on_read(got, base=done[0]):
             if job:
                 job.tick("ied read", int(base + got))
-        x = _read_channel(session, ch, report, spec, job, on_read)
+        x = _read_channel(session, ch, report, spec, job, on_read, short)
         done[0] += plan["span_s"]
         if x.size <= w:
             pooled.append(np.zeros(0))
@@ -890,8 +930,12 @@ def run_legacy(session, spec, report, job=None):
 
     ets, ech = _events_from_mask(Li, fs, llw)
     stamps = _stamp_at_peak(ets, traces, ech)
-    return _summarise(session, spec, report, plan, want, ets, ech, stamps,
-                      traces, fs, thr, prc, llw)
+    out = _summarise(session, spec, report, plan, want, ets, ech, stamps,
+                     traces, fs, thr, prc, llw)
+    said = _short_words(short, fs)
+    if said:
+        out["warnings"].append(said)
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -957,11 +1001,12 @@ def run_storm(session, spec, report, job=None):
                   unit="seconds")
     done = [0.0]
     rows = []
+    short = []
     for ch in want:
         def on_read(got, base=done[0]):
             if job:
                 job.tick("ied read", int(base + got))
-        x = _read_channel(session, ch, report, spec, job, on_read)
+        x = _read_channel(session, ch, report, spec, job, on_read, short)
         done[0] += plan["span_s"]
         y = _sig.resample_poly(x, 1, q) if q > 1 else x
         del x
@@ -1032,6 +1077,9 @@ def run_storm(session, spec, report, job=None):
                    "notched, band-passed" if spec.get("car") else
                    "as the detector saw it",
     })
+    said = _short_words(short, fs)
+    if said:
+        out["warnings"].append(said)
     return out
 
 

@@ -106,6 +106,8 @@ PREFS_LOCAL = ("theme", "density", "panes", "last_view", "last_session",
                "curate_span",
                # And Braces' trace view, the same way (2026-10-13).
                "braces_span",
+               # And Spotter's and Panning's (2026-10-19).
+               "spotter_span", "panning_span",
                "chrome", "fullscreen", "zoom",
                "recent_scripts", "recent_bookmarks", "pipeline_folders",
                "scratch_draft")

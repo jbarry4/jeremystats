@@ -587,6 +587,13 @@ class Curation:
             "opened_by": rec.get("opened_by"),
             "closed_at": rec.get("closed_at"),
             "progress": self.progress(rec),
+            # When two candidates were last made one (Panning). A merge can
+            # change what a banked version would hold without changing a
+            # single count, so "is the bank up to date" has to know it.
+            "last_merge": max([str(e.get("merged_at")) for e in
+                               (rec.get("events") or [])
+                               if e.get("merged_at")] or [None],
+                              key=lambda v: v or ""),
         }
 
     def summaries(self):

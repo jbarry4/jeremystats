@@ -1,0 +1,315 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>xfpanels: running</title>
+<style>html,body{margin:0;height:100%;background:#0a1310;color:#dfeae4;
+font:11px/1.6 ui-monospace,Consolas,monospace}
+#log{position:fixed;left:0;top:0;width:560px;height:100vh;overflow:auto;padding:8px;
+background:#06100c;white-space:pre-wrap;z-index:9}
+.bad{color:#ff8a7a}.good{color:#7fe3b0}.note{color:#7593a2}
+iframe{position:fixed;left:560px;top:0;width:1300px;height:820px;border:0}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/?linkhold=0"></iframe>
+<script>
+/* Every panel type in Xplorefinder, alone and beside the others, the way a
+   person moves between them: the pane's own panel menu, the strip's Move
+   buttons, the Filter menu, the colour pin, zoom.
+
+   What it holds each panel to:
+   - it arrives, with the panel and the window that were asked for (a
+     reply for the panel that was there before is not the picture);
+   - nothing is reported as a client error on the way;
+   - a scale set for one kind of panel is not used by another kind (a
+     colour scale in uV/mm2 painted onto a dB map is a wrong picture);
+   - when the window moves, every pane moves with it;
+   - a filter a pane was given for itself is the one it asks with, and the
+     others keep the recording's.
+
+   On the demo recording, so it needs nothing mounted; nothing is written
+   beyond the demo's own view state. */
+const L = document.getElementById('log');
+let fails = 0, checks = 0;
+const say = (s, c) => { const n = document.createElement('span');
+  if (c) n.className = c; n.textContent = s + '\n'; L.appendChild(n); };
+const check = (what, ok, note) => { checks++; if (!ok) fails++;
+  say((ok ? '  ok   ' : '  FAIL ') + what + (note ? '   [' + note + ']' : ''),
+      ok ? 'good' : 'bad'); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 30000)) {
+    try { const v = fn(); if (v) return v; } catch (e) {}
+    await sleep(100);
+  }
+  return null;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const W = () => frame.contentWindow;
+  const D = () => frame.contentDocument;
+  const ev = (c) => W().eval(c);
+  try {
+    await until(() => W().BARRY && W().BARRY.views && W().BARRY.views.xplore
+                      && typeof W().setView === 'function', 30000);
+    const B = ev('BARRY');
+    const X = B.views.xplore;
+    const XF = X.state;
+    // Client errors, however they are reported.
+    const errs = [];
+    const realRCE = W().reportClientError;
+    W().reportClientError = function (where, msg) {
+      errs.push(where + ': ' + msg);
+      return realRCE && realRCE.apply(this, arguments);
+    };
+    W().addEventListener('error', (e) => errs.push('window: ' + e.message));
+    W().addEventListener('unhandledrejection', (e) =>
+      errs.push('promise: ' + ((e.reason && e.reason.message) || e.reason)));
+
+    ev("setView('xplore')");
+    await X.open('demo:long-session');
+    const sess = await until(() => Object.values(XF.sessions)
+      .find((s) => s.path === 'demo:long-session'));
+    sess.t0 = 120; sess.span = 6;
+    X.setPanes([{ panel: 'traces' }], { col: 0.5, row: 0.5 });
+    await until(() => XF.panelDefs && XF.panelDefs.length, 10000);
+    const ids = XF.panelDefs.map((p) => p.id);
+    say('panels: ' + ids.join(', '), 'note');
+
+    const box = (i) => D().querySelector('#paneGrid > [data-pane-at="' + i + '"]');
+    const headSel = (i) => box(i) && box(i).querySelector('.pane-head select');
+    const choose = (i, panel) => {
+      const s = headSel(i);
+      s.value = panel;
+      s.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    };
+    const arrived = (i, panel) => {
+      const p = XF.panes[i];
+      if (!p || p.panel !== panel) return false;
+      if (panel === 'traces') return !!(p._win && p._win.series);
+      return !!(p._panelData && p._panelData.panel
+                && (p._panelData.panel === panel
+                    || (panel === 'theta' && /theta/.test(p._panelData.panel))));
+    };
+    const readoutErr = (i) => {
+      const r = box(i) && box(i).querySelector('.pane-readout, .readout');
+      return r && r.classList.contains('on') && /err/.test(r.style.color || '')
+        ? r.textContent : '';
+    };
+
+    say('');
+    say('=== each panel, alone ===');
+    for (const id of ids) {
+      const e0 = errs.length;
+      choose(0, id);
+      const ok = await until(() => arrived(0, id), 90000);
+      const p = XF.panes[0];
+      const d = p._panelData || p._win || {};
+      check(id.padEnd(12) + ' arrives', !!ok,
+            'panel=' + (p._panelData && p._panelData.panel) + ' err=' + readoutErr(0));
+      if (ok && id !== 'traces') {
+        check(id.padEnd(12) + ' for the window asked', Math.abs((d.t0 || 0) - sess.t0) < 1.5,
+              'data t0 ' + d.t0 + ' vs ' + sess.t0);
+      }
+      check(id.padEnd(12) + ' no client error', errs.length === e0, errs.slice(e0).join(' | '));
+    }
+
+    say('');
+    say('=== a colour scale belongs to its kind of panel ===');
+    choose(0, 'csd');
+    await until(() => arrived(0, 'csd'), 60000);
+    const pin = Array.from(box(0).querySelectorAll('.scale-ctl .mini'))
+      .find((b) => /auto|pinned/.test(b.textContent));
+    pin && pin.click();
+    await sleep(300);
+    const csdClim = JSON.stringify(X.panelSpec(0).clim);
+    check('pinning the CSD pins it', csdClim !== 'null', csdClim);
+    choose(0, 'bandpower');
+    await until(() => arrived(0, 'bandpower'), 60000);
+    check('a band-power map does not inherit the CSD’s pinned scale',
+          JSON.stringify(X.panelSpec(0).clim) !== csdClim, JSON.stringify(X.panelSpec(0).clim));
+    choose(0, 'csd');
+    await until(() => arrived(0, 'csd'), 60000);
+    check('and the CSD gets its own back', JSON.stringify(X.panelSpec(0).clim) === csdClim,
+          JSON.stringify(X.panelSpec(0).clim));
+
+    say('');
+    say('=== switching fast ===');
+    choose(0, 'spectrogram');
+    await sleep(40);
+    choose(0, 'voltage');
+    await sleep(40);
+    choose(0, 'theta');
+    const fast = await until(() => arrived(0, 'theta'), 90000);
+    await sleep(2500);
+    check('the last one asked for is the one shown', !!fast && arrived(0, 'theta'),
+          XF.panes[0]._panelData && XF.panes[0]._panelData.panel);
+
+    say('');
+    say('=== four kinds side by side ===');
+    X.setPanes([{ panel: 'traces' }, { panel: 'csd' }, { panel: 'voltage' },
+                { panel: 'spectrogram' }], { col: 0.5, row: 0.5 });
+    const all = () => ['traces', 'csd', 'voltage', 'spectrogram']
+      .every((k, i) => arrived(i, k));
+    check('all four arrive', !!(await until(all, 120000)),
+          XF.panes.map((p, i) => i + ':' + (p && p.panel) + '=' + arrived(i, p && p.panel)).join(' '));
+    const t0 = sess.t0;
+    const move = Array.from(box(0).querySelectorAll('.pane-ctl button'))
+      .find((b) => b.textContent.trim() === '▶');
+    move && move.click();
+    const moved = await until(() => sess.t0 !== t0
+      && [1, 2, 3].every((i) => XF.panes[i]._panelData
+                         && Math.abs(XF.panes[i]._panelData.t0 - sess.t0) < 1.5)
+      && XF.panes[0]._win && Math.abs(XF.panes[0]._win.t0 - sess.t0) < 0.5, 90000);
+    check('moving the window moves every pane', !!moved,
+          'sess ' + sess.t0 + ' panes ' + XF.panes.map((p) =>
+            (p._panelData || p._win || {}).t0).join(','));
+    const z = box(2).querySelector('.pane-head button[title*="Fill the workspace"]');
+    z && z.click();
+    await sleep(600);
+    z && box(2) && box(2).querySelector('.pane-head button[title*="Back to the other"]')
+      && box(2).querySelector('.pane-head button[title*="Back to the other"]').click();
+    await sleep(800);
+    check('zoom in and out leaves every pane drawn',
+          !!(await until(() => [0, 1, 2, 3].every((i) => box(i)
+             && (i === 0 ? box(i).querySelector('canvas')
+                 : (box(i).querySelector('img') || {}).src)), 30000)));
+
+    say('');
+    say('=== one strip for two of a kind, then not ===');
+    X.setPanes([{ panel: 'csd' }, { panel: 'csd' }], { col: 0.5, row: 0.5 });
+    await until(() => arrived(0, 'csd') && arrived(1, 'csd'), 90000);
+    check('two CSD panes share one strip', XF.master >= 0, 'master=' + XF.master);
+    const mpin = Array.from(D().querySelectorAll('#xfMaster .scale-ctl .mini'))
+      .find((b) => /auto|pinned/.test(b.textContent));
+    mpin && mpin.click();
+    await sleep(300);
+    const c0 = JSON.stringify(X.panelSpec(0).clim), c1 = JSON.stringify(X.panelSpec(1).clim);
+    check('pinned there, both are pinned alike', c0 !== 'null' && c0 === c1, c0 + ' / ' + c1);
+    choose(1, 'voltage');
+    await until(() => arrived(1, 'voltage'), 90000);
+    check('the second turned into a voltage raster gets its own strip',
+          XF.master < 0, 'master=' + XF.master);
+    check('and is not painted with the CSD’s range', X.panelSpec(1).clim === null,
+          JSON.stringify(X.panelSpec(1).clim));
+    check('the CSD keeps its pin', JSON.stringify(X.panelSpec(0).clim) === c0);
+    const strip1 = box(1) && box(1).querySelector('.scale-ctl label');
+    check('the voltage strip reads in uV, not the CSD’s units',
+          !!strip1 && !/mm/.test(strip1.textContent + strip1.title),
+          strip1 && strip1.textContent + ' ' + strip1.title);
+    // Unpinned again, so the next sections start clean.
+    const up = Array.from(box(0).querySelectorAll('.scale-ctl .mini'))
+      .find((b) => /pinned/.test(b.textContent));
+    up && up.click();
+    await sleep(200);
+    X.setPanes([{ panel: 'traces' }, { panel: 'csd' }, { panel: 'voltage' },
+                { panel: 'spectrogram' }], { col: 0.5, row: 0.5 });
+    await until(all, 120000);
+
+    say('');
+    say('=== a filter for one pane only ===');
+    const e1 = errs.length;
+    if (typeof X.paneFilter === 'function') {
+      X.paneFilter(1, { hp: 300, lp: 500, notch: 0 });
+      await sleep(400);
+      const s1 = X.panelSpec(1), s2 = X.panelSpec(2);
+      check('the pane asks with its own filter', s1.highpass === 300 && s1.lowpass === 500,
+            s1.highpass + '-' + s1.lowpass);
+      check('its neighbour keeps the recording’s', s2.highpass === (sess.hp || 0)
+            && s2.lowpass === (sess.lp || 0), s2.highpass + '-' + s2.lowpass);
+      const before = X.panelSpec(1).highpass;
+      sess.hp = 1; sess.lp = 70;
+      X.refreshAll();
+      await sleep(400);
+      check('a change to the recording’s filter does not reach it',
+            X.panelSpec(1).highpass === before && X.panelSpec(2).highpass === 1);
+      X.paneFilter(1, null);
+      await sleep(300);
+      check('and given back, it follows the recording again', X.panelSpec(1).highpass === 1);
+      sess.hp = 0; sess.lp = 0;
+    } else {
+      check('there is a way to give one pane its own filter', false, 'no paneFilter');
+    }
+    say('');
+    say('=== ... chosen in the Filter menu ===');
+    const fbtn = (i) => D().querySelector('.ctl-menu[data-menu="Filter"][data-pane="' + i + '"]');
+    const pop = () => D().querySelector('.ctl-pop');
+    check('each of these panes has a strip of its own', XF.master < 0 && !!fbtn(1),
+          'master=' + XF.master);
+    fbtn(1).click();
+    await until(() => pop(), 3000);
+    const tsel = pop().querySelector('select.filt-target');
+    check('the menu says where its corners go', !!tsel
+          && tsel.options[0].textContent === 'Every pane on this recording',
+          tsel && Array.from(tsel.options).map((o) => o.textContent).join(' | '));
+    tsel.value = '1';
+    tsel.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    await sleep(150);
+    check('choosing "Pane 2 only" gives that pane a filter of its own',
+          !!XF.panes[1].filt && !XF.panes[2].filt);
+    const hpBox = Array.from(pop().querySelectorAll('.ctl')).find((c) =>
+      (c.querySelector('label') || {}).textContent === 'High-pass').querySelector('input');
+    hpBox.value = '250';
+    hpBox.dispatchEvent(new (W().Event)('change', { bubbles: true }));
+    await sleep(200);
+    check('a corner set there reaches that pane', X.panelSpec(1).highpass === 250,
+          String(X.panelSpec(1).highpass));
+    check('and no other', X.panelSpec(2).highpass === (sess.hp || 0)
+          && (sess.hp || 0) !== 250, String(X.panelSpec(2).highpass));
+    check('the pane says so in its head',
+          /own filter/.test((box(1).querySelector('.pane-filt-tag') || {}).textContent || ''));
+    check('and its Filter button says so', /^Filter\s*own/.test(fbtn(1).textContent.trim()),
+          fbtn(1).textContent.trim());
+    const back = Array.from(pop().querySelectorAll('button')).find((b) =>
+      /Give it back/.test(b.textContent));
+    back && back.click();
+    await sleep(200);
+    check('given back, it reads with the recording’s filter again',
+          !XF.panes[1].filt && X.panelSpec(1).highpass === (sess.hp || 0));
+    D().body.dispatchEvent(new (W().KeyboardEvent)('keydown', { key: 'Escape', bubbles: true }));
+    await sleep(150);
+
+    say('');
+    say('=== channel picks combine ===');
+    const nums = sess.info.channels.map((c) => c.number);
+    const half = Math.ceil(nums.length / 2);
+    const chBtn = () => D().querySelector('.ctl-menu[data-menu="Ch"][data-pane="0"]');
+    chBtn().click();
+    await until(() => pop(), 3000);
+    const pk = (label) => Array.from(pop().querySelectorAll('button.pick'))
+      .find((b) => b.textContent === label);
+    pk('Even').click();
+    await sleep(150);
+    check('the menu stays open for a second pick', !!pop());
+    pk('1st half').click();
+    await sleep(150);
+    const want = sess.info.channels.filter((c, i) => c.number % 2 === 0 && i < half)
+      .map((c) => c.index).sort((a, b) => a - b);
+    const got = Array.from(sess.sel).sort((a, b) => a - b);
+    check('Even and 1st half: the even channels of the first half',
+          JSON.stringify(got) === JSON.stringify(want), got.length + ' vs ' + want.length);
+    check('both read as on', pk('Even').getAttribute('aria-pressed') === 'true'
+          && pk('1st half').getAttribute('aria-pressed') === 'true');
+    pk('2nd half').click();
+    await sleep(150);
+    check('2nd half takes 1st half’s place, not both',
+          Array.from(sess.sel).every((i) => i >= half && sess.info.channels[i].number % 2 === 0)
+          && pk('1st half').getAttribute('aria-pressed') === 'false');
+    pk('Even').click();
+    await sleep(150);
+    check('Even pressed again comes off: the whole second half',
+          sess.sel.size === nums.length - half, String(sess.sel.size));
+    Array.from(pop().querySelectorAll('button')).find((b) => b.textContent === 'All').click();
+    await sleep(150);
+    check('All puts every channel back, every pick off',
+          sess.sel.size === nums.length && !pop().querySelector('button.pick[aria-pressed="true"]'));
+    D().body.dispatchEvent(new (W().KeyboardEvent)('keydown', { key: 'Escape', bubbles: true }));
+    check('no client error anywhere', errs.length === 0, errs.join(' | '));
+  } catch (e) {
+    check('the harness ran', false, (e && e.stack) || String(e));
+  }
+  say('');
+  say('ran ' + checks + ' checks');
+  document.title = fails ? 'xfpanels: ' + fails + ' FAILED' : 'xfpanels: passed';
+  frame.src = 'about:blank';
+})();
+</script>
+</body></html>

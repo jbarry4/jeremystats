@@ -121,7 +121,7 @@ BARRY.views.xplore = (function () {
       spacing: 50,
       win: null, reqId: 0,
       ylim: null,              // pinned trace amplitude (uV), null = auto
-      clim: null,              // pinned raster color scale, null = auto
+      climBy: null,            // pinned colour scale, by kind of panel
       bookmarks: (info.bookmarks || []),
       spikeSets: (info.spike_sets || []),
       spikeDraft: null,        // detected but not yet committed
@@ -350,6 +350,7 @@ BARRY.views.xplore = (function () {
     let best = 0;
     for (const i of panesOf(sess)) {
       const p = XF.panes[i];
+      if (p.filt) continue;     // its own filter, its own amplitude
       const w = p.panel === 'traces' ? paneWin(p, sess) : null;
       const v = w && Number(w[key || 'robust_auto']);
       if (v && isFinite(v) && v > best) best = v;
@@ -1777,6 +1778,15 @@ BARRY.views.xplore = (function () {
     return box;
   }
 
+  function forgetPanelData(p) {
+    if (!p) return;
+    p._req = (p._req || 0) + 1;
+    if (p._abort) { try { p._abort.abort(); } catch (e) { /* gone */ } }
+    p._abort = null;
+    p._panelData = null;
+    p._win = null;
+  }
+
   function isChannelPanel(panel) {
     return ['traces', 'voltage', 'csd', 'theta'].includes(panel);
   }
@@ -1824,6 +1834,12 @@ BARRY.views.xplore = (function () {
              + (pane.channels || []).length + ' contacts · the CSD here is '
              + 'run on this column alone',
       }) : null,
+      pane.filt ? el('span', {
+        class: 'pane-filt-tag',
+        text: 'own filter ' + filterWord(pane.filt),
+        title: 'This pane has a filter of its own, and the recording\u2019s '
+             + 'does not reach it. Filter \u203a Applies to gives it back.',
+      }) : null,
       el('div', { class: 'spacer' }),
       el('select', {
         title: 'What this pane shows',
@@ -1831,6 +1847,12 @@ BARRY.views.xplore = (function () {
           const prev = pane.panel;
           const want = e.target.value;
           pane.panel = want;
+          /* Whatever the last panel left on the pane is not this panel's:
+             its picture, its read in flight, and the scale control built
+             from them. Kept, a CSD's data stood in for the band-power map
+             until it arrived (the strip offered uV/mm2 for a dB map), and
+             a reply for the old panel could land after the new one. */
+          forgetPanelData(pane);
           /* In a probe layout the panes are one view of one recording split
              by column, so the panel type belongs to the view. Changing it
              on one pane used to leave the other five behind: six clicks to
@@ -1853,7 +1875,7 @@ BARRY.views.xplore = (function () {
                 (p, i) => p && i !== index && p.colTag
                           && p.sessionId === pane.sessionId)
             : [];
-          for (const p of spread) p.panel = want;
+          for (const p of spread) { p.panel = want; forgetPanelData(p); }
           BARRY.activity.log('panel.change', { from: prev, to: want,
                                                pane: index,
                                                alsoSet: spread.length }, sess);
@@ -2602,7 +2624,7 @@ BARRY.views.xplore = (function () {
     const auto = isTraces ? sessAuto(sess)
                           : (data && data.clim_auto);
     const pinned = isTraces ? (sess.ylim != null)
-                            : !!(pane.clim || sess.clim);
+                            : !!climOf(pane, sess);
     /* Is zero the middle of this quantity or the floor of it?
 
        Voltage, CSD and theta are signed and a diverging map means something,
@@ -2625,7 +2647,7 @@ BARRY.views.xplore = (function () {
     if (isTraces) {
       magnitude = sess.ylim != null ? sess.ylim : (auto || 100);
     } else {
-      const cur = pane.clim || sess.clim || auto || [-1, 1];
+      const cur = climOf(pane, sess) || auto || [-1, 1];
       /* On a one-sided scale the slider drives the SPAN -- how far below the
          top the map reaches -- because that is the only number on a dB axis
          a person wants to move. On a signed one it drives the half-range, as
@@ -2644,7 +2666,7 @@ BARRY.views.xplore = (function () {
        event, which replaced the very slider under the pointer -- the drag
        died, and two rebuilds racing each other threw NotFoundError from
        replaceChild. A drag now only repaints. */
-    const baseClim = pane.clim || sess.clim || auto || [-1, 1];
+    const baseClim = climOf(pane, sess) || auto || [-1, 1];
 
     const apply = (v, commit) => {
       const m = Math.abs(v);
@@ -2694,7 +2716,7 @@ BARRY.views.xplore = (function () {
       }, commit ? 0 : 220);
       if (commit) {
         BARRY.activity.log('clim.change',
-                           { clim: pane.clim, panel: pane.panel }, sess);
+                           { clim: climOf(pane, sess), panel: pane.panel }, sess);
         refreshControls(index);
       }
     };
@@ -2767,7 +2789,6 @@ BARRY.views.xplore = (function () {
             } else {
               if (pinned) {
                 setClim(index, pane, sess, null);
-                if (sess) sess.clim = null;
               } else {
                 /* Pin what is on screen, read at the moment of the click.
 
@@ -2789,7 +2810,7 @@ BARRY.views.xplore = (function () {
                         [round(live[0], 6), round(live[1], 6)]);
               }
               BARRY.activity.log('clim.change',
-                                 { clim: pane.clim, panel: pane.panel }, sess);
+                                 { clim: climOf(pane, sess), panel: pane.panel }, sess);
               if (XF.master >= 0) refreshSession(sess); else refreshPane(index);
             }
             // Pinning a trace scale pins it for the recording, so every
@@ -3147,7 +3168,7 @@ BARRY.views.xplore = (function () {
               + 'changes as you scroll. Pinning keeps it comparable.'
               + (auto ? '  Auto here is ' + sig(auto) + ' µV.' : '') }));
     } else {
-      const cur = pane.clim || sess.clim || auto || [-1, 1];
+      const cur = climOf(pane, sess) || auto || [-1, 1];
       const lo = el('input', { type: 'number', step: 'any', value: String(round(cur[0], 4)) });
       const hi = el('input', { type: 'number', step: 'any', value: String(round(cur[1], 4)) });
       pop.appendChild(el('h4', { text: 'Color scale'
@@ -3165,7 +3186,7 @@ BARRY.views.xplore = (function () {
               toast('Max must be greater than min.', 'err'); return;
             }
             setClim(index, pane, sess, [a, b]);
-            BARRY.activity.log('clim.change', { clim: pane.clim,
+            BARRY.activity.log('clim.change', { clim: climOf(pane, sess),
                                                 panel: pane.panel }, sess);
             pop.remove(); render(); refreshPane(index);
           },
@@ -3174,7 +3195,6 @@ BARRY.views.xplore = (function () {
           class: 'btn ghost sm', text: 'Auto',
           onclick: () => {
             setClim(index, pane, sess, null);
-            if (sess) sess.clim = null;
             BARRY.activity.log('clim.change', { clim: null,
                                                 panel: pane.panel }, sess);
             pop.remove(); render(); refreshPane(index);
@@ -3246,7 +3266,8 @@ BARRY.views.xplore = (function () {
   function popOut(pane, sess, opts) {
     const q = new URLSearchParams({
       csc: sess.path, t0: sess.t0.toFixed(4), span: sess.span.toFixed(4),
-      panel: pane.panel, hp: sess.hp, lp: sess.lp, notch: sess.notch,
+      panel: pane.panel, hp: filtOf(pane, sess).hp, lp: filtOf(pane, sess).lp,
+      notch: filtOf(pane, sess).notch,
       theme: BARRY.state.theme,
       // Carry the scope across, or the new window would not be listening.
       link: XF.linkMode,
@@ -3454,7 +3475,17 @@ BARRY.views.xplore = (function () {
   function filterWordFor(pane, sess) {
     const lb = lockedBand(pane);
     if (lb) return trimNum(lb[0]) + '–' + trimNum(lb[1]) + ' Hz locked';
+    if (pane && pane.filt) return 'own ' + filterWord(pane.filt);
     return filterWord(sess);
+  }
+
+  /* The corners a pane reads with: its own (`pane.filt`), when it has been
+     given one in the Filter menu, else the recording's. Every request for
+     a pane's samples asks through this, so "this pane only" cannot be
+     honoured by the strip and ignored by the read. */
+  function filtOf(pane, sess) {
+    const f = (pane && pane.filt) || sess || {};
+    return { hp: f.hp || 0, lp: f.lp || 0, notch: f.notch || 0 };
   }
 
   function ctlNum(label, value, step, onchange, title, width) {
@@ -3479,17 +3510,40 @@ BARRY.views.xplore = (function () {
      at [-2.71e+4], [-2.04e+4] and [-2.16e+4] while the control said
      "pinned", and a CSD read by colour across those cannot be compared.
 
-     The value also lands on the session. `pane.clim || sess.clim || auto`
-     is the lookup, so a pane opened afterwards picks up the shared range
-     instead of auto-scaling itself back out of line. */
+     The value also lands on the session, so a pane opened afterwards
+     picks up the shared range instead of auto-scaling itself back out of
+     line (`climOf`).
+
+     BY KIND OF PANEL. It was one `clim` on the pane and one on the
+     session, so a CSD pinned at +-2.8e5 uV/mm2 painted the band-power map
+     the same pane was switched to, in dB, at +-2.8e5 -- one flat colour --
+     and every other kind of panel on the recording with it. A scale is a
+     fact about what is being measured, so each kind keeps its own. */
+  function climOf(pane, sess) {
+    const k = pane && pane.panel;
+    if (!k) return null;
+    return ((pane.climBy || {})[k]) || (((sess && sess.climBy) || {})[k]) || null;
+  }
+
   function setClim(index, pane, sess, value) {
+    const kind = pane.panel;
+    const put = (o) => {
+      o.climBy = Object.assign({}, o.climBy || {});
+      if (value) o.climBy[kind] = value; else delete o.climBy[kind];
+    };
     const all = XF.master >= 0;
-    if (!all) { pane.clim = value; return; }
+    if (!all) {
+      put(pane);
+      // Un-pinning un-pins: the session's range would otherwise show
+      // through the pane's and the control would still read "pinned".
+      if (!value && sess) put(sess);
+      return;
+    }
     for (let i = 0; i < XF.nPanes; i++) {
       const other = XF.panes[i];
-      if (other && sessionOf(other)) other.clim = value;
+      if (other && sessionOf(other) && other.panel === kind) put(other);
     }
-    if (sess) sess.clim = value;
+    if (sess) put(sess);
   }
 
   function paneControls(index, pane, sess) {
@@ -3609,17 +3663,93 @@ BARRY.views.xplore = (function () {
 
   /* ---------- what the menu buttons open ---------- */
 
+  /* Which filter the Filter menu's corners are editing: the recording's,
+     shared by every pane on it, or one pane's own (`pane.filt`).
+
+     Picked from the menu, kept while it is open -- the menu is rebuilt on
+     every change (repaintMenu) -- and forgotten when it closes, so it
+     opens on the obvious one next time: this pane, if it has its own
+     filter and has a strip of its own, else the recording. */
+  let filtPick = null;            // { sessId, target: 'all' | pane index }
+
+  function filterTargets(sess) {
+    return panesOf(sess).filter((i) => {
+      const p = XF.panes[i];
+      return p && p.panel !== 'video' && p.panel !== 'tracking';
+    });
+  }
+
+  function paneLabel(i) {
+    const p = XF.panes[i];
+    return 'Pane ' + (i + 1) + ' \u00b7 ' + (p ? labelForPanel(p.panel) : '');
+  }
+
   function filterPop(index, sess, pane) {
     const lb = lockedBand(pane);
+    // A fresh open (no menu up while this builds) starts from the default.
+    if (!openMenu || !filtPick || filtPick.sessId !== sess.id) {
+      filtPick = { sessId: sess.id,
+                   target: (XF.master < 0 && pane.filt) ? index : 'all' };
+    }
+    let tgt = filtPick.target;
+    if (tgt !== 'all' && !(XF.panes[tgt] && XF.panes[tgt].filt
+                           && XF.panes[tgt].sessionId === sess.id)) {
+      tgt = filtPick.target = 'all';
+    }
+    const tp = tgt === 'all' ? null : XF.panes[tgt];
+    // The object whose corners these are: the session's or the pane's own.
+    const F = tp ? tp.filt : sess;
+    const relabel = () => {
+      if (XF.master >= 0) {
+        relabelMenu(XF.master, 'Filter',
+                    filterWordFor(XF.panes[XF.master], sess));
+      } else {
+        for (const i of panesOf(sess)) {
+          relabelMenu(i, 'Filter', filterWordFor(XF.panes[i], sess));
+        }
+      }
+      for (const i of panesOf(sess)) refreshHead(i);
+    };
     const bump = (via) => {
       BARRY.activity.log('filter.change', {
-        highpass: sess.hp, lowpass: sess.lp, notch: sess.notch, via,
+        highpass: F.hp, lowpass: F.lp, notch: F.notch, via,
+        pane: tp ? tgt : null,
       }, sess);
-      queueSaveState(sess);
-      refreshSession(sess);
-      relabelMenu(index, 'Filter', filterWordFor(pane, sess));
-      publishLink(sess.t0, sess.span, sess);
+      if (tp) {
+        refreshPane(tgt);
+      } else {
+        queueSaveState(sess);
+        refreshSession(sess);
+        publishLink(sess.t0, sess.span, sess);
+      }
+      relabel();
     };
+    const choose = (want) => {
+      if (want !== 'all') {
+        const p = XF.panes[want];
+        if (p && !p.filt) {
+          // Starts from the recording's, so choosing it changes nothing on
+          // screen until a corner is changed.
+          p.filt = { hp: sess.hp || 0, lp: sess.lp || 0, notch: sess.notch || 0 };
+          BARRY.activity.log('filter.own', { pane: want, on: true }, sess);
+        }
+      }
+      filtPick = { sessId: sess.id, target: want };
+      relabel();
+      repaintMenu();
+    };
+    const giveBack = (i) => {
+      const p = XF.panes[i];
+      if (!p || !p.filt) return;
+      delete p.filt;
+      BARRY.activity.log('filter.own', { pane: i, on: false }, sess);
+      filtPick = { sessId: sess.id, target: 'all' };
+      refreshPane(i);
+      relabel();
+      repaintMenu();
+    };
+    const targets = filterTargets(sess);
+    const own = targets.filter((i) => XF.panes[i].filt && i !== tgt);
     return popBody([
       /* Above the corners, not under them. A note underneath is one nobody
          reads until after they have typed a number and watched the picture
@@ -3630,15 +3760,50 @@ BARRY.views.xplore = (function () {
             + ' Hz itself — a panel named for a rhythm should be showing '
             + 'that rhythm, whatever else is set. These corners still apply '
             + 'to every other pane on this recording.' }),
+      /* Where the corners below go: every pane on this recording, or one
+         pane alone -- which then keeps its own filter whatever the others
+         are set to, until it is given back. */
+      popRow('Applies to', [
+        el('select', {
+          class: 'filt-target',
+          title: 'Every pane on this recording, or one pane on its own',
+          onchange: (e) => choose(e.target.value === 'all' ? 'all'
+                                                            : +e.target.value),
+        }, [el('option', { value: 'all', text: 'Every pane on this recording',
+                           selected: tgt === 'all' ? 'selected' : null })]
+          .concat(targets.map((i) => el('option', {
+            value: String(i),
+            text: paneLabel(i) + ' only'
+                + (XF.panes[i].filt ? '  (its own filter)' : ''),
+            selected: tgt === i ? 'selected' : null,
+          })))),
+      ]),
+      tp ? el('div', { class: 'ctl-pop-note' }, [
+        el('span', { text: paneLabel(tgt) + ' has its own filter: these '
+                         + 'corners reach it alone, and the recording\u2019s '
+                         + 'filter does not. ' }),
+        el('button', {
+          class: 'mini', text: 'Give it back to the recording\u2019s',
+          title: 'This pane follows the recording\u2019s filter again',
+          onclick: () => giveBack(tgt),
+        }),
+      ]) : null,
+      !tp && own.length ? el('div', { class: 'ctl-pop-note' },
+        own.map((i) => el('div', { class: 'filt-own-line' }, [
+          el('span', { text: paneLabel(i) + ' keeps its own, '
+                             + filterWord(XF.panes[i].filt) + '. ' }),
+          el('button', { class: 'mini', text: 'Give it back',
+                         onclick: () => giveBack(i) }),
+        ]))) : null,
       popRow('Corners, Hz  (0 = off)', [
-        ctlNum('High-pass', sess.hp, 0.5, (v) => {
-          sess.hp = Math.max(0, isFinite(v) ? v : 0); bump('manual');
+        ctlNum('High-pass', F.hp || 0, 0.5, (v) => {
+          F.hp = Math.max(0, isFinite(v) ? v : 0); bump('manual');
         }, 'Everything below this is removed', '68px'),
-        ctlNum('Low-pass', sess.lp, 5, (v) => {
-          sess.lp = Math.max(0, isFinite(v) ? v : 0); bump('manual');
+        ctlNum('Low-pass', F.lp || 0, 5, (v) => {
+          F.lp = Math.max(0, isFinite(v) ? v : 0); bump('manual');
         }, 'Everything above this is removed', '68px'),
-        ctlNum('Notch', sess.notch, 10, (v) => {
-          sess.notch = Math.max(0, isFinite(v) ? v : 0); bump('manual');
+        ctlNum('Notch', F.notch || 0, 10, (v) => {
+          F.notch = Math.max(0, isFinite(v) ? v : 0); bump('manual');
         }, 'Mains hum, usually 60 Hz here', '68px'),
       ]),
       popRow('Presets', [
@@ -3646,9 +3811,9 @@ BARRY.views.xplore = (function () {
           onchange: (e) => {
             const pr = XF.presets.filters.find((x) => x.id === e.target.value);
             if (pr) {
-              sess.hp = +pr.highpass || 0;
-              sess.lp = +pr.lowpass || 0;
-              sess.notch = +pr.notch || 0;
+              F.hp = +pr.highpass || 0;
+              F.lp = +pr.lowpass || 0;
+              F.notch = +pr.notch || 0;
               bump(pr.name);
               closeMenu();
             }
@@ -3663,13 +3828,13 @@ BARRY.views.xplore = (function () {
         el('button', {
           class: 'mini', text: 'Save these…',
           title: 'Save the current corners as a named preset',
-          onclick: () => { closeMenu(); saveFilterPreset(sess); },
+          onclick: () => { closeMenu(); saveFilterPreset(F); },
         }),
         el('button', {
           class: 'mini', text: 'Clear',
           title: 'Turn every filter off',
           onclick: () => {
-            sess.hp = 0; sess.lp = 0; sess.notch = 0;
+            F.hp = 0; F.lp = 0; F.notch = 0;
             bump('cleared');
             closeMenu();
           },
@@ -3946,27 +4111,49 @@ BARRY.views.xplore = (function () {
   }
 
   function channelPop(index, sess) {
+    const st = pickState(sess);
+    const apply = (k) => {
+      quickSelect(sess, k);
+      BARRY.activity.log('channels.change',
+        { preset: k, picks: Object.assign({}, st), n: sess.sel.size }, sess);
+      render(); refreshSession(sess);
+      queueSaveState(sess);
+      publishLink(sess.t0, sess.span, sess);
+      // Left open, so a second pick can be combined with the first.
+      repaintMenu();
+    };
+    const on = (k) => st.parity === k || st.half === k || (k === 'good' && st.good);
+    const pick = (k, label, title) => el('button', {
+      class: 'mini pick' + (on(k) ? ' active' : ''), text: label,
+      'aria-pressed': String(on(k)), title,
+      onclick: () => apply(k),
+    });
     return popBody([
       popRow(sess.sel.size + ' of ' + sess.info.channels.length + ' drawn', [
-        el('div', { class: 'ctl-group' },
-          [['all', 'All'], ['none', 'None'], ['even', 'Even'],
-           ['odd', 'Odd'], ['first', '1st half'], ['second', '2nd half'],
-           ['invert', 'Flip'], ['good', 'Good']].map(
-            ([k, label]) => el('button', {
-              class: 'mini', text: label,
-              title: k === 'good' ? 'Only channels not marked bad'
-                : (k === 'first' || k === 'second') ? halfTitle(sess, k)
-                : '',
-              onclick: () => {
-                quickSelect(sess, k);
-                BARRY.activity.log('channels.change',
-                  { preset: k, n: sess.sel.size }, sess);
-                closeMenu();
-                render(); refreshSession(sess);
-                queueSaveState(sess);
-                publishLink(sess.t0, sess.span, sess);
-              },
-            }))),
+        el('div', { class: 'ctl-group' }, [
+          el('button', { class: 'mini', text: 'All', title: 'Every channel, '
+                         + 'and every pick below off', onclick: () => apply('all') }),
+          el('button', { class: 'mini', text: 'None', onclick: () => apply('none') }),
+          el('button', { class: 'mini', text: 'Flip',
+                         title: 'Swap what is drawn for what is not',
+                         onclick: () => apply('invert') }),
+        ]),
+      ]),
+      /* Picks that combine: Even and 1st half is the even channels of the
+         first half. Each is a switch -- press it again to take it off --
+         and the two in a pair exclude each other. */
+      popRow('Narrow to \u2014 these combine', [
+        el('div', { class: 'ctl-group' }, [
+          pick('even', 'Even', 'Even channel numbers. Press again to take it off.'),
+          pick('odd', 'Odd', 'Odd channel numbers. Press again to take it off.'),
+        ]),
+        el('div', { class: 'ctl-group' }, [
+          pick('first', '1st half', halfTitle(sess, 'first')),
+          pick('second', '2nd half', halfTitle(sess, 'second')),
+        ]),
+        el('div', { class: 'ctl-group' }, [
+          pick('good', 'Good', 'Only channels not marked bad'),
+        ]),
       ]),
       /* Many at once, typed: "4, 6, 32-56, 59". Clicking sixty rows one
          at a time to mark a dead headstage was the only way before. */
@@ -4003,6 +4190,8 @@ BARRY.views.xplore = (function () {
           onchange: () => {
             if (sess.sel.has(c.index)) sess.sel.delete(c.index);
             else sess.sel.add(c.index);
+            // A hand-picked list is no longer what the picks describe.
+            sess.chanPick = null;
             BARRY.activity.log('channels.change',
               { one: c.number, n: sess.sel.size }, sess);
             render(); refreshSession(sess);
@@ -6520,24 +6709,43 @@ BARRY.views.xplore = (function () {
            + ' (' + h.length + ')';
   }
 
+  /* The picks in the Ch menu, which narrow the selection and combine:
+     parity (even | odd), half (first | second), and good. A pick is a
+     switch, and the two in a pair exclude each other. Held on the session
+     while they describe what is drawn; a channel ticked or unticked by
+     hand ends that, and they read as off again (chanList). */
+  function pickState(sess) {
+    if (!sess.chanPick) sess.chanPick = { parity: null, half: null, good: false };
+    return sess.chanPick;
+  }
+
+  function applyPicks(sess) {
+    const st = pickState(sess);
+    const first = new Set(halfOf(sess, 'first').map((c) => c.index));
+    sess.sel.clear();
+    for (const c of sess.info.channels || []) {
+      if (st.parity && ((c.number % 2 === 0) !== (st.parity === 'even'))) continue;
+      if (st.half && (first.has(c.index) !== (st.half === 'first'))) continue;
+      if (st.good && (sess.bad.has(c.number) || c.bad)) continue;
+      sess.sel.add(c.index);
+    }
+  }
+
   function quickSelect(sess, kind) {
     const all = sess.info.channels;
+    const st = pickState(sess);
+    if (kind === 'all' || kind === 'none' || kind === 'invert') {
+      st.parity = null; st.half = null; st.good = false;
+    }
     if (kind === 'all') all.forEach((c) => sess.sel.add(c.index));
     else if (kind === 'none') sess.sel.clear();
     else if (kind === 'invert') all.forEach((c) => sess.sel.has(c.index) ? sess.sel.delete(c.index) : sess.sel.add(c.index));
-    else if (kind === 'good') {
-      sess.sel.clear();
-      all.forEach((c) => { if (!sess.bad.has(c.number) && !c.bad) sess.sel.add(c.index); });
-    } else if (kind === 'first' || kind === 'second') {
-      // Before the even/odd fall-through below, which takes any other word
-      // to mean odd.
-      const h = halfOf(sess, kind);
-      sess.sel.clear();
-      h.forEach((c) => sess.sel.add(c.index));
-    } else {
-      const want = kind === 'even' ? 0 : 1;
-      sess.sel.clear();
-      all.forEach((c) => { if (c.number % 2 === want) sess.sel.add(c.index); });
+    else {
+      if (kind === 'even' || kind === 'odd') st.parity = st.parity === kind ? null : kind;
+      else if (kind === 'first' || kind === 'second') st.half = st.half === kind ? null : kind;
+      else if (kind === 'good') st.good = !st.good;
+      else return;
+      applyPicks(sess);
     }
   }
 
@@ -7044,7 +7252,8 @@ BARRY.views.xplore = (function () {
     const bits = [];
     if (pane.fullRate) {
       if (rate) bits.push('every sample at ' + rate);
-      if (sess && (sess.hp || sess.lp || sess.notch)) {
+      const fw = filtOf(pane, sess);
+      if (fw.hp || fw.lp || fw.notch) {
         bits.push('exact filters, no shortcut');
       }
       if (pane.panel === 'bandpower' && rate) {
@@ -7113,7 +7322,8 @@ BARRY.views.xplore = (function () {
         path: sess.path, invert: sess.invert,
         t0: sess.t0, t1: sess.t0 + sess.span,
         channels: paneChans(pane, sess),
-        px, highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
+        px, highpass: filtOf(pane, sess).hp, lowpass: filtOf(pane, sess).lp,
+        notch: filtOf(pane, sess).notch,
         mode: 'voltage', spacing_um: sess.spacing,
         bad_channels: Array.from(sess.bad),
         ylim: sess.ylim,
@@ -7127,13 +7337,15 @@ BARRY.views.xplore = (function () {
          that replaced it. */
       if (XF.panes[index] !== pane || !XF.sessions[sess.id]) return;
       const before = sessAuto(sess);
-      if (!pane.channels || !pane.channels.length) sess.win = win;
+      // Not from a pane with its own filter: `sess.win` is what another
+      // trace pane draws while its own read is on the way.
+      if ((!pane.channels || !pane.channels.length) && !pane.filt) sess.win = win;
       pane._win = win;
       showPanelInput(pane, {
         input: [fmtTime(win.t0) + '\u2013' + fmtTime(win.t1)
                 + ' (' + round(win.t1 - win.t0, 2) + ' s)',
                 win.series.length + ' ch',
-                filterWords(sess),
+                filterWords(filtOf(pane, sess)),
                 sess.bad.size ? sess.bad.size + ' bad marked' : null,
                 sess.invert ? 'inverted' : null,
                ].filter(Boolean).join('  \u00b7  '),
@@ -7214,11 +7426,12 @@ BARRY.views.xplore = (function () {
       // Rows to draw faintly. Sent even when empty so a cached render from
       // the other mode is not collected by mistake -- the server keys its
       // cache on the whole spec.
-      highpass: sess.hp, lowpass: sess.lp, notch: sess.notch,
+      highpass: filtOf(pane, sess).hp, lowpass: filtOf(pane, sess).lp,
+      notch: filtOf(pane, sess).notch,
       cmap: pane.cmap || 'jet', spacing_um: sess.spacing,
       bad_channels: Array.from(sess.bad),
       max_cols: 1800,
-      clim: pane.clim || sess.clim || null,
+      clim: climOf(pane, sess),
       // Off by default. Every panel says whether it took it.
       full_rate: !!pane.fullRate,
     };
@@ -8066,10 +8279,16 @@ BARRY.views.xplore = (function () {
        arithmetic put it, which on a big zoom is off the edge. A pan is left
        alone: looking around deliberately is a different act, and the marker
        draws an edge arrow when the candidate is off screen. */
+    /* Spotter and Panning are the same shape and want the same: a zoom
+       is the span from then on, with the event kept in the middle. Without
+       this they read the span once, when they opened, and put it back on
+       every event. */
+    const centring = [BARRY.curate, BARRY.spotter, BARRY.panning].find(
+      (m) => m && m.active && typeof m.recentre === 'function');
     if (!recentring && Math.abs((sess.span || 0) - (spanWas || 0)) > 1e-9
-        && BARRY.curate && BARRY.curate.active && BARRY.curate.recentre) {
+        && centring) {
       recentring = true;
-      try { BARRY.curate.recentre(); } finally { recentring = false; }
+      try { centring.recentre(); } finally { recentring = false; }
     }
 
     /* Braid's bar reads out the window, and the comodulogram form fills
@@ -8923,7 +9142,7 @@ BARRY.views.xplore = (function () {
           t0: sess.t0, span: sess.span, gain: sess.gain,
           hp: sess.hp, lp: sess.lp, notch: sess.notch,
           normalize: sess.normalize, spacing: sess.spacing,
-          ylim: sess.ylim, clim: sess.clim,
+          ylim: sess.ylim, climBy: sess.climBy || null,
           // The frequency band and whether it is locked. Without these the
           // band was remembered by nothing and every reopen went back to
           // the built-in 20.
@@ -9310,7 +9529,8 @@ BARRY.views.xplore = (function () {
     // depend on it -- so honouring it locally makes the amplitude slider
     // instant instead of one request per pixel of drag.
     const shared = (sess.ylim != null ? sess.ylim
-                    : (sessAuto(sess, 'robust_max') || win.robust_max)) || 1;
+                    : ((!pane.filt && sessAuto(sess, 'robust_max'))
+                       || win.robust_max)) || 1;
     const npts = win.n_points, dx = npts > 1 ? plotW / (npts - 1) : plotW;
     ctx.textAlign = 'right';
 
@@ -11199,6 +11419,16 @@ BARRY.views.xplore = (function () {
       const pane = XF.panes[index];
       const sess = pane && (XF.sessions[pane.sessionId] || active());
       return fBand(pane, sess);
+    },
+    /* Give one pane its own filter ({hp, lp, notch}), or give it back
+       (null). The Filter menu's "Applies to" does the same. */
+    paneFilter: (index, f) => {
+      const p = XF.panes[index];
+      if (!p) return;
+      if (f) p.filt = { hp: +f.hp || 0, lp: +f.lp || 0, notch: +f.notch || 0 };
+      else delete p.filt;
+      render();
+      refreshPane(index);
     },
     setPanes: (specs, split) => {
       /* Twelve, not six.

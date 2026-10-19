@@ -38,7 +38,9 @@ BARRY.panning = (function () {
   let kind = null;      // { id, labels[] } -- COPIED from the set
   let sess = null;      // the open xplore session
   let index = 0;
-  let span = 0.6;
+  let span = 1.0;
+  let banked = null;    // what the bank holds of this set (api _cur_banked)
+  let bankDirty = false; // a decision or merge made since `banked` was read
   let history = [];     // [{type:'label', id, from} | {type:'merge', ...}]
   let review = 'left';  // 'left' | 'flag' | 'all'
   let origin = 'all';   // 'all' | 'both' | 'incisor' | 'doppler'
@@ -140,11 +142,16 @@ BARRY.panning = (function () {
     sess = await BARRY.views.xplore.open(got.path);
     if (!sess) { set_ = null; return false; }
 
+    /* The width somebody last looked at events with, and 1 s the first
+       time -- the same as Spotter and Checkup. It was 0.6 s and was put
+       back on every event, whatever the span field had been set to. */
     span = (opts && opts.span)
-        || parseFloat(BARRY.prefs.get('panning_span', 0)) || 0.6;
-    if (!(span > 0)) span = 0.6;
+        || parseFloat(BARRY.prefs.get('panning_span', 0)) || 1.0;
+    if (!(span > 0)) span = 1.0;
     index = 0; history = []; review = 'left'; origin = 'all'; mark = null;
     lastWin = null;
+    banked = data.banked || null;
+    bankDirty = false;
 
     apiPost(url('open'), { open: true })
       .then((r) => { if (r && r.set) set_.assignee = r.set.assignee; })
@@ -165,7 +172,7 @@ BARRY.panning = (function () {
       const was = [review, origin];
       review = back.review; origin = back.origin || 'all';
       if (!nWanted()) { review = was[0]; origin = was[1]; }
-      goTo(back.index, true);
+      goTo(back.index, true, true);
       const at = events().slice(0, index + 1).filter(wanted).length;
       toast(back.gone
         ? 'Back where you were — that one is no longer in this pool, so '
@@ -173,7 +180,7 @@ BARRY.panning = (function () {
         : 'Back where you left off: ' + at + ' of ' + nWanted() + '.',
         null, 5000);
     } else {
-      goTo(firstWanted(), true);
+      goTo(firstWanted(), true, true);
     }
     render();
 
@@ -369,13 +376,49 @@ BARRY.panning = (function () {
     return i < 0 ? 0 : i;
   }
 
-  function goTo(i, quiet) {
+  /* The span, and the one place it is written down: per machine, in
+     preferences (`panning_span` is in PREFS_LOCAL), because how wide
+     somebody likes the window is about this screen. */
+  function setSpan(v) {
+    const want = Math.max(0.05, parseFloat(v) || 1);
+    if (Math.abs(want - span) < 1e-6) return;
+    span = want;
+    try { BARRY.prefs.set('panning_span', span); } catch (e) { /* later */ }
+  }
+
+  /* What the pane is actually showing -- Checkup's `paneSpan`, for the
+     reason it gives: the mode centres the window on each event, and doing
+     that with its own remembered span undid every zoom and every span
+     typed into the field the moment the next event came up. */
+  function paneSpan() {
+    try {
+      const XF = BARRY.views.xplore.state;
+      const pane = (XF.panes || [])[0];
+      const s = (XF.linkMode === 'none' && pane && pane.t0 != null)
+        ? pane.span : (sess ? sess.span : null);
+      return (s > 0) ? s : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function goTo(i, quiet, ownSpan) {
     const n = events().length;
     if (!n) return;
     index = Math.max(0, Math.min(n - 1, i));
     const ev = current();
     if (!ev || !sess) return;
     publishMarks();
+    // Somebody zoomed the pane or typed a span: that is the window they
+    // want, so take it rather than putting it back. Only a real change --
+    // the centring below sets the span itself, and the edge of a recording
+    // can trim it a little.
+    // Not on the way in: the pane then still shows whatever the recording
+    // was last looked at with, and the span this mode remembers wins.
+    const shown = ownSpan ? null : paneSpan();
+    if (shown && Math.abs(shown - span) > Math.max(0.02, span * 0.02)) {
+      setSpan(shown);
+    }
     BARRY.views.xplore.setWindow(0, Math.max(0, ev.start - span / 2), span);
     lightChannel(ev);
     if (!quiet) render();
@@ -432,6 +475,7 @@ BARRY.panning = (function () {
     if (!ev) return;
     const was = ev.label || null;
     ev.label = labelId;
+    bankDirty = true;
     const h = { type: 'label', id: ev.id, from: was };
     history.push(h);
     if (history.length > 500) history.shift();
@@ -471,6 +515,7 @@ BARRY.panning = (function () {
     if (!ev || !ev.label) return;
     const was = ev.label;
     ev.label = null;
+    bankDirty = true;
     const h = { type: 'label', id: ev.id, from: was };
     history.push(h);
     markRev += 1;
@@ -576,8 +621,23 @@ BARRY.panning = (function () {
     fuse = { from: fromX, to: lead.start, at: performance.now(),
              o: other.origin };
     sfx('select');
-    publishMarks();
-    render();
+    bankDirty = true;
+    /* Bring up what comes next, the way a decision does. It used to stay
+       put without redrawing, so the traces still showed the event that had
+       just gone and nothing moved until an arrow was pressed.
+
+       Which "next" depends on what is left to do here: a survivor that is
+       already decided -- you called it and then merged its twin into it --
+       is done, so the next event of this pass comes up; one that is still
+       undecided stays, centred and redrawn as one event, to be called. */
+    let to = index;
+    if (lead.label) {
+      const evs = events();
+      for (let i = index + 1; i < evs.length; i++) {
+        if (wanted(evs[i])) { to = i; break; }
+      }
+    }
+    goTo(to);
     animateFuse();
 
     saving += 1; updateSaving();
@@ -588,6 +648,8 @@ BARRY.panning = (function () {
       if (res.dropped && res.dropped !== other.id) {
         // The server chose otherwise; its answer is the truth.
         await reload();
+      } else if (set_) {
+        render();          // who merged it, as the server stamped it
       }
       BARRY.activity.log('panning.merge', { gid: set_.gid, kept: lead.id,
                                             gap_ms: +gap.toFixed(2) }, sess);
@@ -602,11 +664,10 @@ BARRY.panning = (function () {
         else delete lead[k];
       }
       events().splice(dropAt, 0, other);
-      index = events().indexOf(a);
       const back = history.indexOf(h);
       if (back >= 0) history.splice(back, 1);
       markRev += 1;
-      publishMarks(); render();
+      goTo(events().indexOf(a));
       toast('That merge did not save: ' + e.message, 'err', 8000);
     } finally {
       saving -= 1; updateSaving();
@@ -633,6 +694,7 @@ BARRY.panning = (function () {
   async function undo() {
     const last = history.pop();
     if (!last) { toast('Nothing to undo.', null, 2000); return; }
+    bankDirty = true;
     if (last.type === 'merge') { await undoMerge(last); return; }
     const at = events().findIndex((e) => e.id === last.id);
     if (at < 0) return;
@@ -783,6 +845,13 @@ BARRY.panning = (function () {
       ev && ev.channel != null
         ? el('span', { class: 'cur-sub', text: 'CSC' + ev.channel }) : null,
       el('span', { class: 'cur-count', text: at + ' / ' + nWanted() }),
+      // Whether the work is in the bank -- the step page says the same.
+      BARRY.setPicker ? BARRY.setPicker._bankChip({
+        banked: banked ? Object.assign({}, banked,
+                                       { changed: banked.changed || bankDirty })
+                       : null,
+        progress: { specified: events().filter((e) => e.label).length },
+      }) : null,
       beatOthers.length
         ? BARRY.ui.chip(beatOthers.length + ' also here', { kind: 'warn' })
         : null,
@@ -889,11 +958,33 @@ BARRY.panning = (function () {
     if (!set_ || !BARRY.curate || !BARRY.curate.bankAt) return;
     const t = {};
     for (const e of events()) if (e.label) t[e.label] = (t[e.label] || 0) + 1;
-    return BARRY.curate.bankAt({
+    const gid = set_.gid;
+    return settled().then(() => BARRY.curate.bankAt({
       gid: set_.gid, kind: set_.kind, name: set_.name,
       labels: (kind && kind.labels) || set_.labels || [],
       progress: { by_label: t, left: left() },
-    });
+    })).then(() => refreshBanked(gid));
+  }
+
+  /* Every decision and merge on the server before the bank reads them, or
+     the version is one short -- a last key pressed just before Bank. */
+  async function settled() {
+    for (let i = 0; i < 60 && saving > 0; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+
+  /* What the bank holds of this set now, read back after banking rather
+     than assumed: a bank that wrote nothing new says so in the chip too. */
+  async function refreshBanked(gid) {
+    if (!set_ || set_.gid !== gid) return;
+    try {
+      const got = await api(url(''));
+      if (!set_ || set_.gid !== gid) return;
+      banked = got.banked || null;
+      bankDirty = false;
+      render();
+    } catch (e) { /* the chip keeps what it had */ }
   }
 
   const flagged = () => events().filter(
@@ -1400,17 +1491,24 @@ BARRY.panning = (function () {
     render();
   }
 
+  /* Put the current event back in the middle at whatever span the window
+     is now on. Called by xplore's setWindow after a zoom, the way Checkup's
+     is: a zoom from the pane's buttons, the wheel or the span field keeps
+     the event in view, and is the span from then on. */
   function recentre() {
-    const p = (BARRY.views.xplore.state.panes || [])[0];
-    if (p && p.span) span = p.span;
+    if (!set_ || !sess) return;
+    const shown = paneSpan();
+    if (shown) setSpan(shown);
+    goTo(index, true);
   }
 
   /* ==================================================================
      The step page in ToolKit
      ================================================================== */
 
-  /* The way in: pools being sorted, and pools nobody has started on. */
-  async function paintStep() {
+  /* The way in: pools being sorted, and every pool banked that nobody has
+     started on -- setpicker.js, the same list Spotter uses. */
+  function paintStep() {
     const h = document.getElementById('tkResult');
     if (!h) return;
     h.style.opacity = '1';
@@ -1423,68 +1521,17 @@ BARRY.panning = (function () {
            + 'Every event shows which detector found it, and two that are '
            + 'one event can be merged.',
     }));
-    const box = el('div', { class: 'card' }, [
-      el('div', { class: 'section-label', text: 'Which pool' }),
-    ]);
+    const box = el('div', { class: 'card' });
     h.appendChild(box);
-    BARRY.skeleton.into(box, 'row', 3);
-    let sets = [], recs = [];
-    try {
-      const [a, b] = await Promise.all([
-        api('/api/curation?kind=' + KIND),
-        api('/api/confluence/recordings'),
-      ]);
-      sets = (a.sets || []).filter((s) => s.kind === KIND);
-      recs = b.recordings || [];
-    } catch (e) {
-      box.innerHTML = '';
-      box.appendChild(el('div', { class: 'empty-state', text: e.message }));
-      return;
-    }
-    if (!BARRY.views.toolkit || BARRY.views.toolkit.tool() !== 'panning') return;
-    box.innerHTML = '';
-    box.appendChild(el('div', { class: 'section-label', text: 'Which pool' }));
-    const started = new Set(sets.map((s) => s.gid));
-    const fresh = [];
-    for (const r of recs) {
-      if (started.has(r.gid)) continue;
-      const p = (r.pooled || [])[0];
-      if (p) fresh.push({ r, p });
-    }
-    if (!sets.length && !fresh.length) {
-      box.appendChild(el('div', { class: 'empty-state',
-        text: 'Nothing pooled yet. Pool a recording in Junction — step 1 '
-            + '— and it is here to sort.' }));
-      return;
-    }
-    if (sets.length) {
-      box.appendChild(el('div', { class: 'hint quiet', text: 'Being sorted' }));
-      for (const st of sets) {
-        const pr = st.progress || {};
-        box.appendChild(el('button', {
-          class: 'dop-review', onclick: () => enter(st.gid),
-        }, [
-          el('strong', { text: st.name || st.session_label || st.gid }),
-          el('span', { text: (pr.specified || 0) + ' of ' + (pr.total || 0)
-                           + ' decided' }),
-          st.open ? BARRY.ui.chip('on the bench', { kind: 'ok' }) : null,
-          st.assignee ? BARRY.ui.chip(st.assignee) : null,
-        ].filter(Boolean)));
-      }
-    }
-    if (fresh.length) {
-      box.appendChild(el('div', { class: 'hint quiet', text: 'Pooled, not started' }));
-      for (const { r, p } of fresh) {
-        const s = (p.params || {}).stats || {};
-        box.appendChild(el('button', {
-          class: 'dop-review', onclick: () => enter(r.gid, p.id),
-        }, [
-          el('strong', { text: p.name || r.label || r.gid }),
-          el('span', { text: (p.n || 0).toLocaleString() + ' events'
-                           + (s.merged != null ? ' · ' + s.merged + ' merged' : '') }),
-        ]));
-      }
-    }
+    BARRY.setPicker.mount(box, {
+      kind: KIND, tool: 'panning', noun: 'events',
+      mine: { id: 'junction', label: 'From Junction', chip: 'Junction',
+              test: (p) => /^The Confluence/.test(p) },
+      otherLabel: 'other',
+      empty: 'Nothing pooled yet. Pool a recording in Junction — step 1 '
+           + '— and it is here to sort.',
+      enter: (gid, entryId) => enter(gid, entryId),
+    });
   }
 
   return {
@@ -1511,6 +1558,8 @@ BARRY.panning = (function () {
     _keys: keys,
     _leadOf: leadOf,
     _strips: drawStrips,
+    // For a harness: the span the mode will use, and what the pane shows.
+    _span: () => ({ span, pane: paneSpan() }),
   };
 })();
 

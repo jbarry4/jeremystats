@@ -15969,6 +15969,76 @@ def _cur_history(gid, kind, summaries=None):
     return out
 
 
+def _when_s(stamp):
+    """An ISO time as seconds since the epoch, or None. Both spellings in
+    this repo: curation writes `-0400`, the bank writes `-04:00`."""
+    if not stamp:
+        return None
+    s = str(stamp).strip().replace("Z", "+00:00")
+    if len(s) > 5 and s[-5] in "+-" and s[-4:].isdigit():
+        s = s[:-2] + ":" + s[-2:]
+    try:
+        return datetime.datetime.fromisoformat(s).timestamp()
+    except ValueError:
+        return None
+
+
+def _cur_banked(row, bank_rows):
+    """Whether this set's work is in the bank, for a list of sets.
+
+    The entry a set banks into is the one the bank route writes: same
+    recording, same kind, `curation_label` "*". Its newest version is the
+    last bank. The set has moved on since when its decisions no longer
+    count up to what that version holds, or when two candidates were merged
+    after it -- a merge can change a version's content without changing a
+    single count. Decision times are not compared: a set rebuilt from a
+    version stamps its decisions with the moment it was rebuilt, and would
+    read as changed when nothing was.
+
+    None when the set has never been banked.
+    """
+    gid, kind = row.get("gid"), row.get("kind")
+    ent = None
+    for rec in bank_rows:
+        if (rec.get("gid") != gid or (rec.get("type") or "") != kind
+                or rec.get("curation_label") != "*"):
+            continue
+        if ent is None or (str((rec.get("added") or {}).get("at") or "")
+                           > str((ent.get("added") or {}).get("at") or "")):
+            ent = rec
+    if ent is None:
+        return None
+    vers = list(ent.get("versions") or [])
+    named = versionsmod.label_rows(vers)
+    if not named:
+        return None
+    tip = versionsmod.tip_next(vers)[0]
+    ver = next((v for v, nm in named if nm == tip), named[-1][0])
+    vocab = curation.vocabulary(kind) if kind in curation.KINDS else []
+    names = ent.get("label_names") or {}
+
+    def ids(counts):
+        out = {}
+        for k, n in (counts or {}).items():
+            if not n or k in (None, "", "unspecified"):
+                continue
+            lid = curation.resolve_label(vocab, names.get(k, k)) \
+                or curation.resolve_label(vocab, k) or k
+            out[lid] = out.get(lid, 0) + n
+        return out
+
+    have = ids((row.get("progress") or {}).get("by_label"))
+    was = ids(ver.get("by_label"))
+    changed = have != was
+    merged = _when_s(row.get("last_merge"))
+    banked_at = _when_s(ver.get("at"))
+    if not changed and merged and banked_at and merged > banked_at + 1:
+        changed = True
+    return {"entry": ent.get("id"), "name": ent.get("name"),
+            "version": tip, "at": ver.get("at"), "by": ver.get("by"),
+            "n": ver.get("n"), "changed": changed}
+
+
 @app.route("/api/curation")
 def api_curation_list():
     """Every curation set, with how far through each one is."""
@@ -15991,6 +16061,11 @@ def api_curation_list():
         rec = by_gid.get(row["gid"])
         row["session"] = REG.summary(rec) if rec else None
         row["history"] = _cur_history(row["gid"], row.get("kind"), banked)
+        # Whether the work on it is in the bank: "banked v3", or changed
+        # since, or never banked. The bench showed none of it, so a set
+        # finished and banked looked exactly like one still in progress.
+        row["banked"] = _cur_banked(row, banked)
+        row["test"] = _cf_is_test(row)
         out.append(row)
     out.sort(key=lambda r: (r.get("progress", {}).get("left", 0) == 0,
                             -(r.get("progress", {}).get("total") or 0)))
@@ -16008,7 +16083,63 @@ def api_curation_get(gid, kind):
     return jsonify({"ok": True, "set": rec,
                     "progress": CURATE.progress(rec),
                     "history": _cur_history(gid, kind),
+                    "banked": _cur_banked(CURATE.summary(rec),
+                                          BANK.summaries()),
                     "session": _session_by_gid(gid)})
+
+
+@app.route("/api/curation/startable")
+def api_curation_startable():
+    """Banked entries of one kind that a set could be started from, and
+    is not already.
+
+    Spotter's list showed only sets that existed, so a Doppler run banked on
+    another machine -- or banked and never opened -- could only be reached
+    from Doppler's own review list. Every entry of the kind is here except
+    the ones a set already stands for: the entry the set was started from,
+    and the entry it banks into (`curation_label` "*").
+
+    One set per recording and kind, so an entry on a recording that already
+    has a set from a different entry says so (`set_name`): starting it asks
+    before replacing that set.
+    """
+    kind = (request.args.get("kind") or "").strip()
+    if kind not in curation.KINDS:
+        return jsonify({"ok": False,
+                        "error": "%r is not a kind of curation this Jarvis "
+                                 "knows about." % kind}), 400
+    sets = {s["gid"]: s for s in CURATE.summaries() if s.get("kind") == kind}
+    out = []
+    for rec in BANK.summaries():
+        gid = rec.get("gid")
+        if (rec.get("type") or "") != kind or not gid:
+            continue
+        st = sets.get(gid)
+        if st and (((st.get("source") or {}).get("bank_entry") == rec.get("id"))
+                   or rec.get("curation_label") == "*"):
+            continue
+        vers = list(rec.get("versions") or [])
+        last = max([str(v.get("at") or "") for v in vers]
+                   + [str((rec.get("added") or {}).get("at") or "")])
+        src = rec.get("source") or {}
+        out.append({
+            "id": rec.get("id"), "name": rec.get("name"), "gid": gid,
+            "session_label": rec.get("session_label"),
+            "project": rec.get("project"), "mouse": rec.get("mouse"),
+            "session": rec.get("session"), "n": rec.get("n"),
+            "pipeline": src.get("pipeline"),
+            "by": (rec.get("added") or {}).get("by"),
+            "at": last or None,
+            "tip": versionsmod.tip_next(vers)[0] if vers else "0",
+            "by_label": rec.get("by_label") or {},
+            "curated": bool(rec.get("specified")),
+            "test": _cf_is_test(rec)
+                    or str(src.get("pipeline") or "").startswith("harness"),
+            "set_name": (st or {}).get("name") if st else None,
+        })
+    out.sort(key=lambda r: str(r.get("at") or ""), reverse=True)
+    return jsonify({"ok": True, "kind": kind, "entries": out,
+                    "n": len(out)})
 
 
 @app.route("/api/curation/create", methods=["POST"])

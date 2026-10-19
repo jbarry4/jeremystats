@@ -14990,3 +14990,51 @@ div.tf-tile { cursor: default; }
   background: var(--accent-soft); color: var(--accent);
   border-color: var(--accent-line);
 }
+
+/* ---------- The way into Spotter and Panning (setpicker.js) ---------- */
+.sp-search { margin: 4px 0 10px; }
+.sp-search input { width: 100%; max-width: 460px; }
+.sp-lists { display: flex; flex-direction: column; gap: 6px; }
+.sp-group-hd {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 8px; padding-bottom: 2px;
+  border-bottom: 1px solid var(--line-soft, var(--line));
+}
+.sp-group-hd strong { font-size: var(--fs-12); }
+.sp-none { margin: 4px 0; }
+.sp-row {
+  display: grid; align-items: center; gap: 6px 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 8px 12px; border-radius: var(--r-8);
+  border: 1px solid var(--line); background: var(--bg-2);
+}
+.sp-row.done { border-color: var(--accent-line); }
+.sp-row.fresh { background: transparent; }
+@media (max-width: 900px) {
+  .sp-row { grid-template-columns: minmax(0, 1fr); }
+}
+.sp-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sp-row-main strong { font-weight: 600; overflow-wrap: anywhere; }
+.sp-row-sub { font-size: var(--fs-11); color: var(--text-2);
+  overflow-wrap: anywhere; }
+.sp-row-chips, .sp-row-acts { display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap; }
+
+/* --------------------------------------------------------------------------
+   Xplorefinder: a pane on a filter of its own (xplore.js, filtOf)
+   -------------------------------------------------------------------------- */
+/* Said on the pane, in the second accent, so it is not read as the probe
+   column tag beside it. */
+.pane-filt-tag {
+  flex: none; font-family: var(--mono); font-size: var(--fs-95);
+  padding: 0 6px; border-radius: var(--r-3); white-space: nowrap;
+  background: var(--accent-2-soft); color: var(--accent-2);
+}
+.ctl-pop select.filt-target { max-width: 100%; }
+.filt-own-line { display: flex; align-items: center; gap: var(--sp-6);
+                 flex-wrap: wrap; margin-top: 2px; }
+/* A channel pick that is on. The same pressed look as any active mini
+   button, said again here so a pick reads as a switch. */
+.mini.pick[aria-pressed="true"] {
+  background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+}
