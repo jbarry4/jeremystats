@@ -144,8 +144,8 @@ They are marked in `app.css`. If you change one, `align.html` is the check.
 
 ## 4. Theme
 
-Ten themes, from UVM Dark through Phosphor to the three Jirai variants
-(`THEMES`, [core.js](js/core.js)).
+Eleven themes, from UVM Dark through Phosphor and the three Jirai variants
+to Halloween (`THEMES`, [core.js](js/core.js)).
 
 ### Never write a literal colour
 
@@ -171,6 +171,51 @@ Every animated surface needs a `prefers-reduced-motion` block. There are
 twelve, and the house pattern is to **name the component and stop its
 animation**, not a blanket `* { animation: none }` — reduced motion should
 keep the contrast and lose the movement, not flatten the page.
+
+### A theme with visitors
+
+Halloween is the one theme with more than a palette: [spooky.js](js/spooky.js)
+adds cobwebs, crawling and dangling spiders, bats, a ghost, a yard at the
+foot of the rail (moon, jack-o'-lantern, cauldron) and seven things to find.
+If a theme ever gets a layer like this, it follows the same rules:
+
+- **Built on the way in, gone on the way out.** `applyTheme` calls
+  `BARRY.spooky.sync()` on every path, and `stop()` removes every node,
+  timer, listener and animation.
+- **It never takes a click meant for something else.** The layer is
+  `pointer-events: none` and sits under toasts and dialogs. Only the
+  creatures and the yard take the pointer. The corner web watches the
+  mouse by position rather than covering the buttons there.
+- **The main window only.** A pop-out gets the palette, not the visitors.
+- **Chrome, not data.** Nothing is drawn into a view or onto a canvas.
+- **Reduced motion keeps the webs and the yard, and nothing moves.**
+  Nothing new is sent while the window is hidden.
+
+### Compact
+
+The theme picker's other switch: `data-density="compact"` on the root, for
+a small screen. Like VACC Mode it is a separate attribute, so it works
+with every palette, and it changes geometry only.
+
+What it is allowed to do is decided in one place, the *Compact* block at
+the end of `app.css`:
+- **Headers first, because they are always on screen.** That means
+  every view's title bar, Xplorefinder's bar and pane head and control
+  strip, a tool's head, and the Output bar.
+- A label goes beside its field where there is room across, and stays
+  above it, smaller, where there is not (a pane's control strip).
+- A tool's one-line description leaves the page and becomes its title's
+  tooltip (`ui.stepHeader` always sets it).
+- The rail gets narrower, and its footer chips go two to a row.
+
+What it must not do:
+- Truncate. Text that does not fit wraps.
+- Shrink type below the house scale.
+- Touch the icon rail, or a canvas's drawing.
+
+A new header or bar checks how it looks with the switch on.
+`web/_dev/compact.html` measures the headers both ways at 1366x768 and
+fails any that do not get smaller.
 
 ### Fire mode
 

@@ -1474,20 +1474,31 @@ const ENTRY = '46fd29a77cc7';
      + ' status: "done", cached: true },'
      + ' { id: "harness-other", label: "another", status: "running",'
      + ' done: 3, of: 64 }])');
-  await until(() => D().querySelector('.rc-bulk-card'), 5000, 'the batch card');
-  const rowsB = Array.from(D().querySelectorAll('.rc-bulk-card tr'));
-  ok('a finished set is a button you can open',
-     !!rowsB[0] && !!rowsB[0].querySelector('td:first-child button.mini'));
-  ok('and bank', !!rowsB[0] && Array.from(rowsB[0].querySelectorAll('button'))
+  await until(() => D().querySelector('.rc-bulk-card .rc-bulk-member'), 5000,
+              'the batch card');
+  /* A row per set with its dot, Braces' shape (2026-10-19: it was a table). */
+  const rowsB = Array.from(D().querySelectorAll('.rc-bulk-card .rc-bulk-member'));
+  ok('a row per set, each with its dot', rowsB.length === 2
+     && rowsB.every((r) => r.querySelector('.dop-batch-dot')),
+     rowsB.length + ' rows');
+  ok('a finished set can be opened',
+     !!rowsB[0] && !!rowsB[0].querySelector('button.rc-bulk-open'));
+  ok('and banked', !!rowsB[0] && Array.from(rowsB[0].querySelectorAll('button'))
      .some((b) => /Bank/.test(b.textContent)));
   ok('while one still reading is neither',
      !!rowsB[1] && !rowsB[1].querySelector('button'));
+  ok('and says how far it has got', /4 of 64/.test(rowsB[1] && rowsB[1].textContent),
+     rowsB[1] && rowsB[1].textContent);
+  ok('one bar over them all', !!D().querySelector('.rc-bulk-card .br-fbar'));
   ok('there is a Stop', Array.from(D().querySelectorAll('.rc-bulk-card button'))
      .some((b) => b.textContent === 'Stop'));
   const feedB = D().querySelector('#tkResult .tf');
+  const runB = D().querySelector('.rc-bulk-card .rc-bulk-run');
   for (let k = 0; k < 6; k++) { ev(RC + '._tickBulk()'); await sleep(90); }
   ok('ticking the batch leaves the activity feed alone',
      !feedB || D().querySelector('#tkResult .tf') === feedB);
+  ok('and leaves the rows where they are, when nothing in them changed',
+     !!runB && D().querySelector('.rc-bulk-card .rc-bulk-run') === runB);
   ev(RC + '._endBulk()');
   await until(() => D().querySelector('.rc-work'), 8000, 'the workbench back');
 
@@ -1496,6 +1507,158 @@ const ENTRY = '46fd29a77cc7';
   ok('and PTEN m13 s2 is already read in it',
      (bp.done || []).some((r) => r.entry_id === ENTRY),
      JSON.stringify((bp.done || []).map((r) => r.entry_id)).slice(0, 160));
+
+  /* ================================================================== */
+  head('MANY: CHOOSING THE SETS (THE PLAN INTERCEPTED; NOTHING IS READ)');
+
+  /* The plan is made up here, so the checks know what every row is, and
+     the batch route answers from here, so nothing is ever read. Thirty sets
+     not read yet across two projects, three read, two left out. What was
+     ticked and filtered is put back to nothing at the end -- it lives in
+     the panel only. */
+  const hbRow = (i) => ({ entry_id: 'hb-' + i, gid: 'hbg-' + i,
+    label: (i % 2 ? 'HarnessB' : 'HarnessA') + ' m' + (i + 1) + ' s1',
+    name: null, n_good: 10 + i, n: 10 + i, date: '2026-10-19',
+    project: i % 2 ? 'HarnessB' : 'HarnessA', mouse: i + 1, session: 1,
+    mouse_type: i % 2 ? 'HarnessB' : 'HarnessA', group: i % 3 ? 'G1' : 'G2',
+    subgroup: null, condition: i % 4 ? 'baseline' : 'CNO', probe: 'h3' });
+  const hbPlan = { ok: true,
+    todo: Array.from({ length: 30 }, (_, i) => hbRow(i)),
+    done: [30, 31, 32].map((i) => Object.assign(hbRow(i), { cached: true })),
+    blocked: [33, 34].map((i) => Object.assign(hbRow(i),
+      { why: 'Braces hasn’t aligned this set yet' })),
+    n: 30, n_done: 3, n_blocked: 2 };
+  ev('window.__hbPlan = ' + JSON.stringify(hbPlan));
+  ev('(function(){ var W = window; if (W.__hbFetch) return; W.__hbFetch = W.fetch;'
+     + ' W.__hbSent = []; W.fetch = function(u, o) { var s = String(u);'
+     + ' var J = function(b) { return Promise.resolve(new Response(JSON.stringify(b),'
+     + '   { status: 200, headers: { "Content-Type": "application/json" } })); };'
+     + ' if (s.indexOf("/api/rootcanal/batch/plan") >= 0) return J(W.__hbPlan);'
+     + ' if (s.indexOf("/api/rootcanal/batch") >= 0) {'
+     + '   W.__hbSent.push(JSON.parse((o && o.body) || "{}"));'
+     + '   return J({ ok: false, error: "harness: nothing is read" }); }'
+     + ' return W.__hbFetch.apply(this, arguments); }; })()');
+  ev('(function(){ var b = ' + RC + '._bulk(); b.plan = null; b.want = {};'
+     + ' b.filt = { q: "" }; b.last = null; return 1; })()');
+  const manyB = Array.from(D().querySelectorAll('.rc-mode .seg button'))
+    .find((b) => /many/i.test(b.textContent));
+  ok('One or many is the run bar’s choice', !!manyB);
+  if (manyB) manyB.click();
+  const listRows = () => Array.from(D().querySelectorAll(
+    '.rc-bulk-card .rc-bulk-list:not(.rc-bulk-done-list) .rc-bulk-row'));
+  const doneRows = () => Array.from(D().querySelectorAll(
+    '.rc-bulk-card .rc-bulk-done-list .rc-bulk-row'));
+  const rowIds = (rs) => rs.map((r) => r.dataset.id);
+  const wantIds = () => Object.keys(ev(RC + '._bulk()').want).sort();
+  const countLine = () => ((D().querySelector('.rc-bulk-count') || {}).textContent
+                           || '').replace(/\s+/g, ' ');
+  await until(() => listRows().length === 30, 8000, 'the stubbed list');
+  eq('the list is the thirty not read yet, in mouse order',
+     rowIds(listRows()).slice(0, 3), ['hb-0', 'hb-2', 'hb-4']);
+  eq('the three already read are folded under it, counted',
+     [doneRows().length, (D().querySelector('.rc-bulk-done .rc-bulk-fold-n') || {})
+       .textContent, (D().querySelector('.rc-bulk-done') || {}).tagName], [3, '3', 'DETAILS']);
+  eq('and the two left out, counted, with their reason',
+     [(D().querySelector('.rc-bulk-left .rc-bulk-fold-n') || {}).textContent,
+      (D().querySelector('.rc-bulk-left .rc-bulk-why-h strong') || {}).textContent],
+     ['2', 'Braces hasn’t aligned this set yet']);
+  eq('nothing is ticked to begin with', wantIds(), []);
+  ok('and the primary says so, and is off', (() => {
+    const g = D().querySelector('.rc-bulk-go');
+    return !!g && g.disabled && g.textContent === 'Read the ticked';
+  })());
+  eq('the count says what is ticked and what is shown', countLine(),
+     '0 ticked · 33 of 33 shown');
+
+  /* The search: every word has to match. */
+  const findIn = D().querySelector('.rc-bulk-find input');
+  const typeIn = (v) => { findIn.value = v;
+                          findIn.dispatchEvent(new W.Event('input', { bubbles: true })); };
+  typeIn('HarnessB m1');
+  await until(() => listRows().length < 30, 4000, 'the search');
+  ok('a search narrows the list to what matches',
+     listRows().length > 0 && listRows().length < 30
+     && listRows().every((r) => /HarnessB m1\d* s1/.test(r.textContent)),
+     rowIds(listRows()).join(' '));
+  ok('and keeps the box it was typed in', D().querySelector('.rc-bulk-find input') === findIn);
+  typeIn('');
+  await until(() => listRows().length === 30, 4000, 'the search cleared');
+  eq('cleared, every set is back', listRows().length, 30);
+
+  /* A chip, with its mark. */
+  const chipB = () => D().querySelector('.rc-bulk-cat[data-cat="project"] '
+                                        + '.rc-bulk-chip[data-v="HarnessB"]');
+  ok('each value of a category is a chip with a mark and its count',
+     !!chipB() && !!chipB().querySelector('svg.rc-bulk-ico')
+     && /HarnessB\s*16/.test(chipB().textContent), chipB() && chipB().textContent);
+  ok('a category that only repeats another word for word is not offered',
+     !D().querySelector('.rc-bulk-cat[data-cat="mouse_type"]'));
+  chipB().click();
+  await until(() => listRows().length === 15, 4000, 'the chip');
+  ok('a chip shows only its sets',
+     listRows().length === 15 && listRows().every((r) => /HarnessB/.test(r.textContent))
+     && doneRows().every((r) => /HarnessB/.test(r.textContent)),
+     rowIds(listRows()).join(' '));
+  ok('and says it is pressed', !!chipB() && chipB().getAttribute('aria-pressed') === 'true'
+     && chipB().classList.contains('on'));
+
+  /* Select all shown: the shown ones, and only those. */
+  const shownIds = rowIds(listRows().concat(doneRows())).sort();
+  D().querySelector('.rc-bulk-all').click();
+  await until(() => wantIds().length, 4000, 'the ticks');
+  eq('“Select all shown” ticks the shown sets and no others', wantIds(), shownIds);
+  ok('and their boxes', listRows().every((r) => r.querySelector('input').checked));
+  eq('the count says so', countLine(), shownIds.length + ' ticked · '
+     + shownIds.length + ' of 33 shown');
+  D().querySelector('.rc-bulk-fresh').click();
+  await until(() => wantIds().length === 15, 4000, 'only the fresh');
+  ok('“Only the ones not read yet” lets the read ones go',
+     wantIds().every((id) => !/^hb-3[012]$/.test(id)), wantIds().join(' '));
+  chipB().click();
+  await until(() => listRows().length === 30, 4000, 'the chip let go');
+  eq('let go, every set is shown again and the ticks stay',
+     [listRows().length, wantIds().length], [30, 15]);
+
+  /* A tick changes its row where it stands. */
+  const listB = D().querySelector('.rc-bulk-card .rc-bulk-list');
+  const rowB = listRows().find((r) => !r.querySelector('input').checked);
+  listB.scrollTop = 120;
+  const topB = listB.scrollTop;
+  rowB.querySelector('input').click();
+  await until(() => wantIds().length === 16, 4000, 'the tick');
+  ok('a tick does not rebuild the list',
+     D().querySelector('.rc-bulk-card .rc-bulk-list') === listB && listB.contains(rowB)
+     && rowB.classList.contains('on'));
+  /* A few pixels either way is the browser's own scroll anchoring, as rows
+     off screen are laid out (`content-visibility`); a rebuilt list goes
+     back to 0. */
+  ok('which keeps its scroll',
+     topB > 0 && Math.abs(listB.scrollTop - topB) <= 8,
+     topB + ' then ' + listB.scrollTop);
+  ok('while the count and the primary follow',
+     /^16 ticked/.test(countLine())
+     && D().querySelector('.rc-bulk-go').textContent === 'Read the 16 ticked');
+
+  /* Unselect all: every tick, shown or not. */
+  typeIn('HarnessA');
+  await until(() => listRows().length === 15, 4000, 'the search again');
+  D().querySelector('.rc-bulk-none').click();
+  await until(() => !wantIds().length, 4000, 'no ticks');
+  eq('“Unselect all” clears every tick, shown or not', wantIds(), []);
+  ok('and every box', listRows().concat(doneRows())
+     .every((r) => !r.querySelector('input').checked));
+  typeIn('');
+  await until(() => listRows().length === 30, 4000, 'the search cleared');
+  ok('the hidden ones too',
+     listRows().every((r) => !r.querySelector('input').checked));
+  eq('nothing was sent to be read', JSON.parse(ev('JSON.stringify(window.__hbSent)')), []);
+
+  ev('(function(){ var W = window; if (W.__hbFetch) { W.fetch = W.__hbFetch;'
+     + ' delete W.__hbFetch; } })()');
+  ev('(function(){ var b = ' + RC + '._bulk(); b.plan = null; b.want = {};'
+     + ' b.filt = { q: "" }; b.last = null; return 1; })()');
+  ev(RC + '._endBulk()');
+  await until(() => D().querySelector('.rc-work'), 8000, 'the workbench back');
 
   /* ================================================================== */
   head('NAMING A CLUSTER (THE LAB’S LIST INTERCEPTED; NOTHING IS SAVED)');
@@ -1861,10 +2024,16 @@ const ENTRY = '46fd29a77cc7';
   head('A BORDER IN SINGLE (ITS CLASSES ADDED TO THE SERVER’S ANSWER)');
 
   await until(() => st().fit && st().fit.ok && !st().fitting, 30000, 'a fit');
-  ok('folded, the card says margins and borders on one line',
+  /* Margins and borders each have a card since 2026-10-19, both folded
+     to one line while nothing is applied. */
+  ok('folded, the margins card says so on one line',
      D().querySelector('.rc-why .rc-margin-sum').textContent
-       === 'Margins and borders · none applied'
+       === 'Margins · none applied'
      && !D().querySelector('.rc-why .rc-margins').open);
+  ok('and so does the Borders card beside it',
+     /^Borders · No border applied/.test(
+       (D().querySelector('.rc-why .rc-border-sum') || {}).textContent || '')
+     && !D().querySelector('.rc-why .rc-borders').open);
   /* A border the server does not have is refused, said, and taken off. */
   ev(RC + '._setBorder({ artifact_id: "harness-nope", version: null, grace: null })');
   /* The refusal refits without it, a debounce later: wait for that
@@ -1906,8 +2075,8 @@ const ENTRY = '46fd29a77cc7';
   const sFills = new Set(geom().space.pts.filter((p) => !p.hollow)
                          .map((p) => p.fill));
   eq('three colours on the picture, one per class', sFills.size, 3);
-  ok('the card opens with the border’s counts',
-     D().querySelector('.rc-why .rc-margins').open
+  ok('the Borders card opens with the border’s counts',
+     D().querySelector('.rc-why .rc-borders').open
      && /solid DS · \d+ solid IED · \d+ ambiguous/.test(
        D().querySelector('.rc-why .rc-border-on').textContent));
   ev(RC + '._setBorder(null)');

@@ -1,0 +1,1733 @@
+{
+  "_at": {
+    "added": "2026-09-10T04:15:35.181586+00:00",
+    "curation_label": "2026-09-10T04:15:35.181586+00:00",
+    "duration_s": "2026-09-10T04:15:35.181586+00:00",
+    "events": "2026-09-10T04:15:35.181586+00:00",
+    "gid": "2026-09-10T04:15:35.181586+00:00",
+    "id": "2026-09-10T04:15:35.181586+00:00",
+    "mouse": "2026-09-10T04:15:35.181586+00:00",
+    "n": "2026-09-10T04:15:35.181586+00:00",
+    "name": "2026-09-10T04:15:35.181586+00:00",
+    "note": "2026-09-10T04:15:35.181586+00:00",
+    "project": "2026-09-10T04:15:35.181586+00:00",
+    "recording_start": "2026-09-10T04:15:35.181586+00:00",
+    "schema": "2026-09-10T04:15:35.181586+00:00",
+    "session": "2026-09-10T04:15:35.181586+00:00",
+    "session_key": "2026-09-10T04:15:35.181586+00:00",
+    "session_label": "2026-09-10T04:15:35.181586+00:00",
+    "session_loose_key": "2026-09-10T04:15:35.181586+00:00",
+    "session_path": "2026-09-10T04:15:35.181586+00:00",
+    "source": "2026-09-10T04:15:35.181586+00:00",
+    "specified": "2026-09-10T04:15:35.181586+00:00",
+    "type": "2026-09-10T04:15:35.181586+00:00",
+    "type_name": "2026-09-10T04:15:35.181586+00:00",
+    "units": "2026-09-10T04:15:35.181586+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-10T04:15:35.181586+00:00",
+    "machine": "desktop-nr2h5o7-8845",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-10T00:15:35-04:00",
+    "by": "Rain",
+    "machine": "DESKTOP-NR2H5O7"
+  },
+  "curation_label": "*",
+  "duration_s": null,
+  "events": [
+    {
+      "label": "Dentate Spike",
+      "start": 2.171
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 33.783
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 34.474
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 39.694
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 40.823
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 43.204
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 44.125
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 45.093
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 48.353
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 48.472
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 49.375
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 49.517
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 50.575
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 52.536
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 56.152
+    },
+    {
+      "label": "Garbage",
+      "start": 60.886
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 65.641
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 66.867
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 66.983
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 68.732
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 72.714
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 72.877
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 74.367
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 74.565
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 82.315
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 83.069
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 86.038
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 86.438
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 90.53
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 91.915
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 93.814
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 95.293
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 99.215
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 99.333
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 101.568
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 101.735
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 102.754
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 105.584
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 105.866
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 106.419
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 108.478
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 108.86
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 109.219
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 110.834
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 112.783
+    },
+    {
+      "label": "Garbage",
+      "start": 112.905
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 113.278
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 113.729
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 113.844
+    },
+    {
+      "label": "Garbage",
+      "start": 113.948
+    },
+    {
+      "label": "Garbage",
+      "start": 114.254
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 116.512
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 117.188
+    },
+    {
+      "label": "Garbage",
+      "start": 118.147
+    },
+    {
+      "label": "Garbage",
+      "start": 119.326
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 119.58
+    },
+    {
+      "label": "Garbage",
+      "start": 120.116
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 121.108
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 121.278
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 122.729
+    },
+    {
+      "label": "Garbage",
+      "start": 123.481
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 126.952
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 127.551
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 133.364
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 134.113
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 134.942
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 135.631
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 136.529
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 137.73
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 138.531
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 138.704
+    },
+    {
+      "label": "Garbage",
+      "start": 138.823
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 140.283
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 140.417
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 141.942
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 161.137
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 161.299
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 162.575
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 163.773
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 167.922
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 170.431
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 170.578
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 171.303
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 173.99
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 175.363
+    },
+    {
+      "label": "Garbage",
+      "start": 177.725
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 178.065
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 179.45
+    },
+    {
+      "label": "Garbage",
+      "start": 179.592
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 180.618
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 181.488
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 182.994
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 183.403
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 184.102
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 188.01
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 188.863
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 188.987
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 327.042
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 333.08
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 334.756
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 355.513
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 357.732
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 412.233
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 412.593
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 416.143
+    },
+    {
+      "label": "Garbage",
+      "start": 417.91
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 418.458
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 418.926
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 426.613
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 427.364
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 435.095
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 435.245
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 441.762
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 446.016
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 446.185
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 446.956
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 447.666
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 455.21
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 459.032
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 459.208
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 459.795
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 462.251
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 467.207
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 468.171
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 470.502
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 471.114
+    },
+    {
+      "label": "Garbage",
+      "start": 472.961
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 473.186
+    },
+    {
+      "label": "Garbage",
+      "start": 473.541
+    },
+    {
+      "label": "Garbage",
+      "start": 473.659
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 475.416
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 476.085
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 478.056
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 478.953
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 489.655
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 491.306
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 493.255
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 494.154
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 494.791
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 496.202
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 497.217
+    },
+    {
+      "label": "Garbage",
+      "start": 497.75
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 499.934
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 501.815
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 502.69
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 579.777
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 581.088
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 581.829
+    },
+    {
+      "label": "Garbage",
+      "start": 582.602
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 588.587
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 592.204
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 593.691
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 594.98
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 595.339
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 599.721
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 601.151
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 601.294
+    },
+    {
+      "label": "Garbage",
+      "start": 602.085
+    },
+    {
+      "label": "Garbage",
+      "start": 603.432
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 604.046
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 607.72
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 607.974
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 608.079
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 611.558
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 611.988
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 612.895
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 616.078
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 616.361
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 616.712
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 621.429
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 629.549
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 633.543
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 635.937
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 637.169
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 637.359
+    },
+    {
+      "label": "Garbage",
+      "start": 637.591
+    },
+    {
+      "label": "Garbage",
+      "start": 637.72
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 639.985
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 641.085
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 641.697
+    },
+    {
+      "label": "Garbage",
+      "start": 643.316
+    },
+    {
+      "label": "Garbage",
+      "start": 643.466
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 643.655
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 644.498
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 644.991
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 647.071
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 648.882
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 649.263
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 650.613
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 651.032
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 651.781
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 652.444
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 652.809
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 653.426
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 657.226
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 657.46
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 662.428
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 662.913
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 664.875
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 667.283
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 669.788
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 670.931
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 671.772
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 674.354
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 675.038
+    },
+    {
+      "label": "Garbage",
+      "start": 675.518
+    },
+    {
+      "label": "Garbage",
+      "start": 677.545
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 677.802
+    },
+    {
+      "label": "Garbage",
+      "start": 677.985
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 679.643
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 679.975
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 680.921
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 684.197
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 685.478
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 687.711
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 703.445
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 705.489
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 713.531
+    },
+    {
+      "label": "Garbage",
+      "start": 715.052
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 717.145
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 717.763
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 717.922
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 718.679
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 719.366
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 719.525
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 720.279
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 721.584
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 722.493
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 725.391
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 725.971
+    },
+    {
+      "label": "Garbage",
+      "start": 726.649
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 726.855
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 727.636
+    },
+    {
+      "label": "Garbage",
+      "start": 729.293
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 729.588
+    },
+    {
+      "label": "Garbage",
+      "start": 729.769
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 731.157
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 731.714
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 731.833
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 741.596
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 745.476
+    },
+    {
+      "label": "Garbage",
+      "start": 748.381
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 748.95
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 760.25
+    },
+    {
+      "label": "Garbage",
+      "start": 766.071
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 768.09
+    },
+    {
+      "label": "Garbage",
+      "start": 768.865
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 769.265
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 769.773
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 769.922
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 770.596
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 771.232
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 775.332
+    },
+    {
+      "label": "Garbage",
+      "start": 775.479
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 775.794
+    },
+    {
+      "label": "Garbage",
+      "start": 776.845
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 779.062
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 779.812
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 781.348
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 781.829
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 784.745
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 788.055
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 788.245
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 788.936
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 793.334
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 794.512
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 795.32
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 796.764
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 860.974
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 876.858
+    },
+    {
+      "label": "Garbage",
+      "start": 876.972
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 882.323
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 884.992
+    },
+    {
+      "label": "Garbage",
+      "start": 885.188
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 889.72
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 892.92
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 893.057
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 894.284
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 896.572
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 897.8
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 898.922
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 899.069
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 899.955
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 900.393
+    },
+    {
+      "label": "Garbage",
+      "start": 900.834
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 901.969
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 904.538
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 906.386
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 906.9
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 908.167
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 919.529
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 920.103
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 921.941
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 922.07
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 937.07
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 953.176
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 956.753
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 956.942
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 958.098
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 958.981
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1229.172
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1261.69
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1278.973
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1281.723
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1288.036
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1291.043
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1291.217
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1307.438
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1333.403
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1336.371
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1341.089
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1341.38
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1353.868
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1354.772
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1355.522
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1366.414
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1368.186
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1370.212
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1370.979
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1374.84
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1378.71
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1381.926
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1405.028
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1415.907
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1416.673
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1417.841
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1419.911
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1422.23
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1512.556
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1512.933
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1513.79
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1514.548
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1517.98
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1520.986
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1532.285
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1532.778
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1535.369
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1535.502
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1535.615
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1541.623
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1561.552
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1561.842
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1564.904
+    },
+    {
+      "label": "Garbage",
+      "start": 1565.016
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1566.68
+    },
+    {
+      "label": "Garbage",
+      "start": 1571.569
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1573.252
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1573.38
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1575.096
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1575.561
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1577.181
+    },
+    {
+      "label": "Garbage",
+      "start": 1577.486
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1577.714
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1578.94
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1579.627
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1585.111
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1585.916
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1594.756
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1596.277
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1596.758
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1597.626
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1598.691
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1598.809
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1600.625
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1628.424
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1635.723
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1636.235
+    },
+    {
+      "label": "Garbage",
+      "start": 1636.636
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1637.817
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1639.346
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1640.519
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1733.964
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1736.0
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1742.994
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1743.154
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1743.267
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1748.438
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1765.732
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1770.788
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1791.456
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1803.09
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1806.425
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1808.341
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1809.41
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1809.794
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1812.188
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1813.389
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1823.722
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1824.521
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1831.586
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1832.709
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1835.299
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1838.434
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1839.382
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1842.173
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1842.481
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1843.015
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1843.497
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1844.312
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1844.528
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1845.276
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1845.797
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1845.942
+    },
+    {
+      "label": "Garbage",
+      "start": 1846.064
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1847.8
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1848.693
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1848.863
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1849.682
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1850.309
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1852.895
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1853.751
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1854.079
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1854.632
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1857.503
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1857.741
+    },
+    {
+      "label": "Dentate Spike",
+      "start": 1859.729
+    }
+  ],
+  "gid": "s0a1cd99454b9",
+  "id": "8fc4e2c68124",
+  "mouse": 33,
+  "n": 416,
+  "name": "m33s8",
+  "note": "",
+  "project": "PTEN",
+  "recording_start": "2024-06-14T14:16:58+00:00",
+  "schema": 1,
+  "session": 8,
+  "session_key": "m033_s008_2024-06-14_14-16-58",
+  "session_label": "PTEN m33 s8 2024-06-14",
+  "session_loose_key": null,
+  "session_path": null,
+  "source": {
+    "detector": "ets_hp_1_lp_300_nf",
+    "file": "C:\\Users\\Z390\\Desktop\\jeremystats\\DS Analysis\\ETS\\m33s8_ets\\ets_hp_1_lp_300_nf.mat",
+    "parameters": {
+      "filter": "ets_hp_1_lp_300_nf.mat",
+      "variable": "Combined_DS_timestamps_sec"
+    },
+    "pipeline": "ETS dentate-spike export",
+    "run_id": null
+  },
+  "specified": true,
+  "type": "ds",
+  "type_name": "ds",
+  "units": "seconds relative to the start of the recording"
+}

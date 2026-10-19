@@ -197,13 +197,19 @@ def fail(where, exc, status=400, context=None, user_message=None):
     """Log an error and return a JSON body the UI can show verbatim."""
     detail = traceback.format_exc(limit=8)
     rec = STORE.record_error(where, user_message or str(exc), detail, context)
-    return jsonify({
+    out = {
         "ok": False,
         "error": user_message or str(exc),
         "type": type(exc).__name__,
         "where": where,
         "error_id": rec["id"],
-    }), status
+    }
+    # A refusal about particular pool members names them, so the panel can
+    # offer to fix exactly those (Root Canal's "read them here").
+    away = getattr(exc, "away", None)
+    if away:
+        out["away"] = list(away)
+    return jsonify(out), status
 
 
 @app.errorhandler(Exception)
@@ -9710,14 +9716,35 @@ def api_rootcanal_batch_plan():
         body = dict(request.args)
     try:
         todo, done, blocked = [], [], []
+        # WHAT EACH SET IS, for the batch card's search and filter chips
+        # (2026-10-19): the entry's own name (two sets of one session told
+        # apart), the recording's date, the project and mouse type the pool
+        # files it under, and -- below -- group, subgroup and condition from
+        # the session workbook, the same facts Pooled's chips read. One read
+        # of the registry for all of it (`_rootcanal_reg_index`).
+        reg = _rootcanal_reg_index()
         for rec in BANK.all():
             if (rec.get("type") or "") != "ds":
                 continue
             label = (rec.get("session_label") or rec.get("name")
                      or rec.get("id"))
+            proj, mk, mt = _rootcanal_who(rec.get("gid"), rec.get("project"),
+                                          rec.get("mouse"), reg)
+            # The date the search finds: the recording's start where the
+            # entry has it, else the one its session key or label carries
+            # (most entries have no recording_start; 2026-10-19).
+            day = str(rec.get("recording_start") or "")[:10]
+            if not _re.match(r"\d{4}-\d{2}-\d{2}$", day):
+                hit = _re.search(r"\d{4}-\d{2}-\d{2}",
+                                "%s %s" % (rec.get("session_key") or "",
+                                           rec.get("session_label") or ""))
+                day = hit.group(0) if hit else ""
             row = {"entry_id": rec["id"], "gid": rec.get("gid"),
                    "label": label, "n_good": _n_good(rec),
-                   "project": rec.get("project"), "mouse": rec.get("mouse"),
+                   "name": rec.get("name"), "n": rec.get("n"),
+                   "date": day or None,
+                   "project": proj, "mouse": rec.get("mouse"),
+                   "mouse_key": mk, "mouse_type": mt,
                    "session": rec.get("session")}
             if not rec.get("specified"):
                 blocked.append(dict(row, why="nobody has been through this "
@@ -9761,8 +9788,23 @@ def api_rootcanal_batch_plan():
                 done.append(dict(row, cached=True))
             else:
                 todo.append(row)
-        key = lambda r: (str(r.get("project") or ""), str(r.get("mouse") or ""),
-                         str(r.get("session") or ""))
+        # The facts are for finding sets, never a reason to leave one out:
+        # a workbook that cannot be read leaves the chips without them.
+        try:
+            _rootcanal_describe(todo + done + blocked, reg)
+        except Exception as exc:                         # noqa: BLE001
+            STORE.record_error("rootcanal/batch-plan-facts",
+                               "The batch plan has no group or condition "
+                               "for its sets: %s" % exc, None)
+        # Mouse and session as NUMBERS: as strings m13 sorted before m2.
+        def _num(v):
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return float("inf")
+        key = lambda r: (str(r.get("project") or ""), _num(r.get("mouse")),
+                         str(r.get("mouse") or ""), _num(r.get("session")),
+                         str(r.get("label") or ""))
         todo.sort(key=key)
         done.sort(key=key)
         blocked.sort(key=key)
@@ -10513,7 +10555,7 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
             if got_m:
                 out.append(got_m)
             else:
-                stuck.append(why)
+                stuck.append(tuple(why) + (key,))
             continue
         c = cands.get(key)
         s = kept.get(key)
@@ -10523,11 +10565,11 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
                 out.append(got)
             else:
                 stuck.append((s["member"].get("session_label") or key,
-                              s["read_on"], words))
+                              s["read_on"], words, key))
             continue
         if not c:
             label, where = _rootcanal_key_words(key)
-            raise rootcanalpool.PoolError(
+            raise _away(key, rootcanalpool.PoolError(
                 "%s %sis not a Root Canal result or a cached read on this "
                 "machine, so it cannot be pooled here.%s Take it out, read "
                 "that set on this machine in Single, or pool it on the "
@@ -10539,7 +10581,7 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
                    " The saved pool this was opened from does not hold it "
                    "either." if kept else
                    " The saved pool this was opened from is not on this "
-                   "machine yet, so its numbers cannot stand in for it."))
+                   "machine yet, so its numbers cannot stand in for it.")))
         gid, rh = c["gid"], c.get("read")
         rebanded = None
         remeasured = []
@@ -10562,17 +10604,14 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
                         out.append(got)
                     else:
                         stuck.append((c.get("session_label") or key,
-                                      s["read_on"], words))
+                                      s["read_on"], words, key))
                     continue
             if remeasured:
                 if not (rh and ROOTCANAL.has_cached(gid, rh, ".npz")):
-                    raise rootcanalpool.PoolError(
-                        "%s was banked measured differently (%s) and its read "
-                        "is not on this machine, so it cannot be measured the "
-                        "pool's way. Take it out, set the pool's measurement "
-                        "back, or read that set here."
-                        % (c.get("session_label") or key,
-                           "; ".join(remeasured)))
+                    stuck.append((c.get("session_label") or key,
+                                  _rootcanal_read_on(gid, rh),
+                                  remeasured, key))
+                    continue
                 if [p0.band_lo, p0.band_hi] != [p.band_lo, p.band_hi]:
                     rebanded = [p0.band_lo, p0.band_hi]
                 rows = _rootcanal_member_rows(gid, rh, p)
@@ -10615,28 +10654,378 @@ def _rootcanal_pool_members(want, band=None, measure=None, k=None,
             event_body=(dict(p.fit_params(), entry_id=c["entry_id"], read=rh)
                         if here else None)))
     if stuck:
-        where = sorted({w_ for _l, w_, _x in stuck if w_})
+        where = sorted({w_ for _l, w_, _x, _k in stuck if w_})
         # Grouped by what was asked: one change, said once, with every
         # member it strands.
         asks = {}
-        for lab, _w, words in stuck:
+        for lab, _w, words, _k in stuck:
             asks.setdefault("; ".join(words), []).append(lab)
         one_ = len(stuck) == 1
-        raise rootcanalpool.PoolError(
-            "%d member%s of this pool %s read on %s, so %s here only as the "
-            "saved pool holds %s, and %s cannot be measured another way "
-            "without %s read. Asked for %s. Set the measurement back "
-            "(filter, window, half-width search, HF band), take %s out, or "
-            "read %s on this machine in Single."
+        raise _away([k for _l, _w, _x, k in stuck], rootcanalpool.PoolError(
+            "%d member%s of this pool %s measured another way and read on "
+            "%s, so %s cannot be measured the pool's way here without %s "
+            "read. Asked for %s. Read %s here (this computer finds the "
+            "recording, or the VACC reads it) and the analysis is redone; "
+            "or set the measurement back, or take %s out."
             % (len(stuck), "" if one_ else "s", "was" if one_ else "were",
                " and ".join(where) if where else "another machine",
-               "it is" if one_ else "they are", "it" if one_ else "them",
                "it" if one_ else "they", "its" if one_ else "their",
                "; and ".join("%s, for %s" % (ask, ", ".join(labs))
                              for ask, labs in asks.items()),
-               "it" if one_ else "them",
-               "that set" if one_ else "those sets"))
+               "it" if one_ else "them", "it" if one_ else "them")))
+    # THE SAME RECORDING TWICE (2026-10-19). A recording with a banked
+    # result and a read cached here was offered as two candidates, and both
+    # could be ticked: every one of its events then went into the pool
+    # twice, as two dots on top of each other. Refused, naming both.
+    seen, twice = {}, []
+    for m in (out if RC_REFUSE_TWICE else []):
+        k_ = m.get("gid") or m.get("entry_id")
+        if not k_:
+            continue
+        if k_ in seen:
+            twice.append((seen[k_], m))
+        else:
+            seen[k_] = m
+    if twice:
+        raise _away([b_["key"] for _a, b_ in twice], rootcanalpool.PoolError(
+            "%s %s in this pool twice: %s. Those are two answers about the "
+            "same events, so pooling both would count every one of them "
+            "twice. Keep one."
+            % ("; ".join(a_.get("session_label") or a_["key"]
+                         for a_, _b in twice),
+               "is" if len(twice) == 1 else "are",
+               "; ".join("as %s and as %s" % (_rootcanal_member_kind(a_),
+                                              _rootcanal_member_kind(b_))
+                         for a_, b_ in twice))))
     return out
+
+
+# The checks pool one fake recording's many answers on purpose, to test
+# the mechanics of each kind of member, and turn this off; nothing else does.
+RC_REFUSE_TWICE = True
+
+
+def _away(keys, exc):
+    """`exc`, naming the pool members it is about (see `fail`)."""
+    exc.away = [keys] if isinstance(keys, str) else list(keys)
+    return exc
+
+
+def _rootcanal_member_kind(m):
+    """What kind of answer a pool member is, in words."""
+    key = str(m.get("key") or "")
+    if key.startswith("s:"):
+        return "saved single v%s" % key.split(":")[-1]
+    if key.startswith("b:") or m.get("banked"):
+        return "banked%s" % (" v%s" % m["version"] if m.get("version") else "")
+    return "the read cached here (not banked)"
+
+
+# --------------------------------------------------------------------------
+# READ AGAIN, HERE (2026-10-19)
+# --------------------------------------------------------------------------
+# A member whose read is on another machine -- read on Strawbarry, say --
+# can be pooled from its numbers, but not measured another way and not
+# drawn (its traces). It used to say so and stop: "read that set on this
+# machine in Single". Now it can be asked to: the recording is found the
+# way every tool finds one -- a drive here first, the VACC second -- and
+# read exactly as it was read there (the same set, the same version of its
+# stamps, so the same read), here or on a compute node. The pool is then
+# fitted again, and every member measures the pool's way.
+def _rootcanal_target(key, cands, kept):
+    """(entry id, read hash, label, version hint) a member's numbers came
+    from."""
+    key = str(key or "")
+    if key.startswith("s:"):
+        _s, aid, v = key.split(":", 2)
+        pay, _row = _rootcanal_single_payload(aid, int(v))
+        if not pay:
+            raise rootcanal.RootCanalError(
+                "The saved single %s is not on this machine." % key)
+        return (pay.get("entry_id"), pay.get("read"),
+                pay.get("session_label") or key, pay.get("from_version"))
+    c = cands.get(key)
+    if c:
+        return (c.get("entry_id"), c.get("read"),
+                c.get("session_label") or key, None)
+    s = kept.get(key)
+    if s:
+        m = s["member"]
+        return (m.get("entry_id"), (m.get("pin") or {}).get("read"),
+                m.get("session_label") or key, None)
+    parts = key.split(":")
+    if len(parts) == 3 and parts[0] == "u":
+        ent = BANK.get(parts[1]) or {}
+        return (parts[1], parts[2],
+                ent.get("session_label") or ent.get("name") or key, None)
+    raise rootcanal.RootCanalError(
+        "%s is not a member this machine can find." % key)
+
+
+def _rootcanal_version_for(rec, rh, hint=None):
+    """The version of a set whose stamps make the read `rh`. Cheap: the
+    read's name is the set and its stamps, so no recording is opened."""
+    tries = ([hint] if hint is not None else []) + [None] + [
+        BANK.version_key(v) for v in reversed(rec.get("versions") or [])]
+    seen = set()
+    for v in tries:
+        if repr(v) in seen:
+            continue
+        seen.add(repr(v))
+        try:
+            stamps, _n = _dspca_stamps(rec, v)
+        except Exception:                                # noqa: BLE001
+            continue
+        if stamps and rootcanal.Params(
+                entry_id=rec["id"],
+                stamps_hash=rootcanal.stamps_hash(stamps)).read_hash() == rh:
+            return v
+    raise rootcanal.RootCanalError(
+        "None of the versions of %s on this machine has the stamps that "
+        "read was made from, so it cannot be read again the same way. Pull, "
+        "so its versions arrive, or read it where it was read."
+        % (rec.get("session_label") or rec.get("name") or rec.get("id")))
+
+
+def _rootcanal_read_vacc(sess, chans, stamps, p, marked, rec, src_v, job,
+                         mid):
+    """A Root Canal read on a compute node, for a recording only the cluster
+    has: the same `rootcanal.read`, its .npz written beside the run and
+    brought home in one stream, then filed as a read made here."""
+    import subprocess
+    gid = rec.get("gid")
+    place = _vacc_place_for_gid(gid)
+    cfg = vaccmod.load_config(LOGS_DIR)
+    vaccmod.push_code(cfg, APP_DIR)
+    where = ("vacc:netfiles" if place.get("state") == vaccmod.NATIVE
+             else "vacc:scratch")
+    spec = {"path": incisorvaccmod.path_of(gid), "tool": "rootcanal",
+            "invert": bool(sess.get("invert", True)),
+            "channels": [int(c["number"]) for c in chans],
+            "stamps": stamps,
+            "params": dict(p.read_params(), from_version=src_v,
+                           invert=p.invert, probe=p.probe,
+                           spacing=p.spacing),
+            "marked": {str(k): v for k, v in marked.items()}}
+    span_s = len(stamps) * 2 * (p.snip_ms / 1000.0 + p.pad_s)
+    seconds = max(300.0, cfcmod.rate_for("ds read", where) * span_s * 3
+                  * max(1, len(chans)) + 120.0)
+    run = vaccrunmod.VaccRun(
+        cfg, "rootcanal", spec, place["remote"], plan={"seconds": seconds},
+        megasamples=max(1.0, span_s * 30000.0 * len(chans) / 1e6),
+        tool_steps=[(rootcanal.STAGE_READ, len(chans))], report=None)
+    out = run.work(_MemberJob(job, mid))
+    rel = (out or {}).get("file")
+    if not rel or not run.ws:
+        raise rootcanal.RootCanalError(
+            "The cluster finished the read but said nothing about where it "
+            "put it.")
+    remote = run.ws.rstrip("/") + "/" + rel
+    rh = p.read_hash()
+    dest = _rootcanal_npz(gid, rh)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    part = dest + ".incoming"
+    job.member(mid, step="bringing the read home")
+    cmd = vaccmod.ssh_cmd(cfg, "cat %s" % vaccmod.q(remote))
+    with open(part, "wb") as fh, open(part + ".err", "wb") as eh:
+        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=fh,
+                                stderr=eh, **vaccmod.popen_kwargs())
+        try:
+            while proc.poll() is None:
+                job.check()
+                time.sleep(0.4)
+        except BaseException:
+            proc.kill()
+            raise
+    try:
+        if proc.returncode != 0:
+            with open(part + ".err", "rb") as eh:
+                err = eh.read().decode("utf-8", "replace").strip()
+            raise rootcanal.RootCanalError(
+                "Bringing the read home from the cluster failed: %s"
+                % (err or "no reason given")[:300])
+        got = rootcanal.load_read(part)          # a read, or it raises
+        os.replace(part, dest)
+    finally:
+        for f in (part, part + ".err"):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+    cfcmod.cache_put("rootcanal:%s:%s" % (gid, rh), got)
+    ROOTCANAL.put({
+        "gid": gid, "params_hash": rh, "kind": "read",
+        "entry_id": rec["id"], "from_version": src_v,
+        "session_label": rec.get("session_label"),
+        "params": p.read_params(),
+        "marked": sorted(marked),
+        "screened": {str(k): v for k, v in (got.get("bad") or {}).items()},
+        "n_events": len(stamps),
+        "missed": got.get("missed"),
+        "probe": got.get("probe"),
+        "computed_on": {"where": where, "remote": place.get("remote"),
+                        "rid": run.rid},
+    })
+    try:
+        vaccmod._ssh(cfg, "rm -f %s" % vaccmod.q(remote), timeout=60)
+    except Exception:                                    # noqa: BLE001
+        pass
+    return rh
+
+
+def _rootcanal_read_anywhere(it, job, mid):
+    """Read one set again, wherever its recording is. Returns where."""
+    rec = BANK.get(it["entry_id"])
+    if not rec:
+        raise rootcanal.RootCanalError("No bank entry %s." % it["entry_id"])
+    job.member(mid, step="finding the recording")
+    sess, chans, stamps, p, marked = _rootcanal_prepare(rec, it["src_v"])
+    if p.read_hash() != it["read"]:
+        raise rootcanal.RootCanalError(
+            "The stamps of %s have changed since it was read, so reading it "
+            "now would not be the same read." % it["label"])
+    if vacciomod.is_vacc(sess.get("path")):
+        job.member(mid, step="reading on the VACC", where="vacc")
+        _rootcanal_read_vacc(sess, chans, stamps, p, marked, rec,
+                             it["src_v"], job, mid)
+        return "vacc"
+    job.member(mid, step="reading", where="here", done=0, of=len(chans))
+
+    def progress(done, of):
+        job.member(mid, done=int(done), of=int(of))
+
+    _rootcanal_do_read(sess, chans, stamps, p, marked, rec, it["src_v"],
+                       job=None, stop=job.check, progress=progress)
+    return "here"
+
+
+@app.route("/api/rootcanal/pool/reread", methods=["POST"])
+def api_rootcanal_pool_reread():
+    """Read the named pool members again on this machine (or the VACC), so
+    they can be measured the pool's way and drawn. Body: {members: [{key}],
+    saved}. A job, one row per member; a member whose read is already here
+    is not read again."""
+    body = request.get_json(force=True) or {}
+    want = [str((m or {}).get("key") or "") for m in body.get("members") or []]
+    want = [k for k in want if k]
+    if not want:
+        return jsonify({"ok": False, "error": "Which members?"}), 400
+    try:
+        cands = ({c["key"]: c for c in _rootcanal_pool_candidates()}
+                 if any(not k.startswith("s:") for k in want) else {})
+        kept = _rootcanal_saved_members(body.get("saved"))
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-reread", exc, 400)
+    items, refused, here = [], [], []
+    for key in want:
+        try:
+            eid, rh, label, hint = _rootcanal_target(key, cands, kept)
+            rec = BANK.get(eid) or {}
+            if not rec:
+                raise rootcanal.RootCanalError(
+                    "%s's set is not in this machine's bank." % label)
+            if rh and ROOTCANAL.has_cached(rec.get("gid"), rh, ".npz"):
+                here.append(key)
+                continue
+            items.append({"id": key, "label": label, "entry_id": eid,
+                          "read": rh,
+                          "src_v": _rootcanal_version_for(rec, rh, hint)})
+        except Exception as exc:                         # noqa: BLE001
+            refused.append({"key": key, "why": str(exc)})
+    if not items:
+        return jsonify({"ok": True, "job": None, "here": here,
+                        "refused": refused})
+
+    def work(job):
+        job.members_init([{"id": it["id"], "label": it["label"]}
+                          for it in items])
+        job.begin(rootcanal.STAGE_SETS, of=len(items), unit="recordings")
+        done, failed = 0, 0
+        for k, it in enumerate(items):
+            job.check()
+            job.tick(rootcanal.STAGE_SETS, k)
+            job.member(it["id"], status="running")
+            try:
+                where = _rootcanal_read_anywhere(it, job, it["id"])
+                job.member(it["id"], status="done", step=None, where=where)
+                done += 1
+            except cfcmod.Canceled:
+                job.member(it["id"], status="stopped")
+                raise
+            except Exception as exc:                     # noqa: BLE001
+                failed += 1
+                job.member(it["id"], status="failed", step=None,
+                           error=str(exc)[:300])
+        return {"done": done, "failed": failed, "here": here,
+                "refused": refused}
+
+    job = cfcmod.start({"tool": "rootcanal"},
+                       [(rootcanal.STAGE_SETS, len(items))], work,
+                       max(0.001, float(len(items))))
+    STORE.record_activity([{"action": "rootcanal.reread",
+                            "detail": {"n": len(items),
+                                       "refused": len(refused)}}])
+    return jsonify({"ok": True, "job": job.snapshot(), "here": here,
+                    "refused": refused})
+
+
+@app.route("/api/rootcanal/pool/singles", methods=["POST"])
+def api_rootcanal_pool_singles():
+    """Save members of a pool as Root Canal singles, one version each, at
+    the pool's measurement: each one's own analysis, redone the pool's way
+    from its read here. Body: the pool body, and `keys` -- the members to
+    save. Nothing is banked."""
+    body = request.get_json(force=True) or {}
+    keys = [str(k) for k in body.get("keys") or [] if k]
+    if not keys:
+        return jsonify({"ok": False, "error": "Tick the members to save."}), 400
+    try:
+        over = {k: v for k, v in (body.get("measure") or {}).items()
+                if k in RC_MEASURE_KEYS and v is not None}
+        tp = rootcanal.Params(**over)
+        target = rootcanal.measure_of(tp)
+        cands = {c["key"]: c for c in _rootcanal_pool_candidates()}
+        kept = _rootcanal_saved_members(body.get("saved"))
+        byk = {str((w or {}).get("key") or ""): w
+               for w in body.get("members") or []}
+    except Exception as exc:                             # noqa: BLE001
+        return fail("rootcanal/pool-singles", exc, 400)
+    done, away = [], []
+    for key in keys:
+        try:
+            eid, rh, label, _hint = _rootcanal_target(key, cands, kept)
+            rec = BANK.get(eid) or {}
+            gid = rec.get("gid")
+            if not (gid and rh and ROOTCANAL.has_cached(gid, rh, ".npz")):
+                away.append({"key": key, "label": label,
+                             "why": "its read is not on this machine -- "
+                                    "read it here first"})
+                continue
+            got = _rootcanal_member_measure(byk.get(key) or {"key": key},
+                                            cands, kept)
+            fitp = dict((got or {}).get("params") or {})
+            if not got and key.startswith("u:"):
+                fitp = _rootcanal_fit_part((byk.get(key) or {}).get("params"))
+            fbody = dict(fitp, **over)
+            if body.get("k"):
+                fbody["k"] = int(body["k"])
+            fbody.update(entry_id=eid, read=rh)
+            fbody.pop("margin", None)        # a margin is one measurement's
+            out, nv, conf, _p = _rootcanal_single_save(
+                fbody, "measured the pool's way · %s"
+                % target["filter_label"].split(",")[0],
+                note="Saved from a pool, measured the pool's way: %s."
+                     % target["filter_label"],
+                from_={"kind": "pool_member", "from_key": key})
+            done.append({"key": key, "label": label,
+                         "new_key": "s:%s:%s" % (out["id"], nv),
+                         "confirmed": bool(conf)})
+        except Exception as exc:                         # noqa: BLE001
+            away.append({"key": key, "why": str(exc)[:300]})
+    STORE.record_activity([{"action": "rootcanal.pool_singles",
+                            "detail": {"n": len(done), "away": len(away)}}])
+    return jsonify({"ok": True, "done": done, "away": away,
+                    "target": target})
 
 
 def _rootcanal_pool_fit(body):
@@ -12398,7 +12787,8 @@ def _rootcanal_border_row(r):
                 strict=ns.get("strict"), levels=ns.get("levels") or [],
                 grace_default=ns.get("grace"), measure=ns.get("filter"),
                 source=ns.get("source"), level=ns.get("level"),
-                events=ns.get("events"))
+                events=ns.get("events"),
+                kind=ns.get("kind") or "between", group=ns.get("group"))
 
 
 @app.route("/api/rootcanal/borders")
@@ -12499,6 +12889,8 @@ def _rootcanal_border_on(res, ref, measure):
         used, grace=g, grace_words=rcborder.grace_words(g),
         rule=rcborder.rule_words(pay, g), strict=pay.get("strict"),
         edges=lv["edges"], ied_above=pay.get("ied_above"),
+        # "between" two identities, or an "envelope" round one (2026-10-19).
+        kind=pay.get("kind") or "between", group=pay.get("group"),
         saved={"counts": lv["counts"], "switch_rate": lv["switch_rate"]},
         **info)
     res["params"] = dict(res.get("params") or {}, border={

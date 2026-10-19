@@ -1,0 +1,189 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bracesticks: running</title>
+<style>body{font:12px/1.5 ui-monospace,Consolas,monospace;background:#0a1310;color:#dfeae4;margin:0;display:flex}
+#log{width:820px;padding:10px;overflow:auto;height:100vh;white-space:pre}
+iframe{flex:1;height:100vh;border:0}
+.ok{color:#5cc98d}.bad{color:#ff6b5e}.hd{color:#FFB81C}.dim{color:#6f8c7d}</style></head>
+<body><pre id="log"></pre><iframe id="app" src="/"></iframe>
+<script>
+/* Every other stamp's tick is drawn in the review (2026-10-15).
+
+   WHAT WENT WRONG: the little bars that show where the other dentate
+   spikes are went missing "sometimes". The review opens on "Needing a
+   decision" whenever anything is still flagged, and in that mode every
+   stamp outside the pass -- every one Braces was sure of -- was left out
+   of the marks altogether. So the neighbours were there or not depending
+   on whether the set still had a flag open, and a stamp could be dragged
+   onto one nobody could see.
+
+   In a REAL review: for every stamp whose line falls inside the window on
+   screen, in both modes and after stepping, the marks the painter is
+   handed include it, and the painter -- the real `BARRY.braces.draw`, on a
+   canvas of the harness's own -- puts ink in its column.
+
+   IT WRITES NOTHING: no decision is made, and preference and session
+   writes are held as in bracesspan.html. */
+const L = document.getElementById('log');
+let pass = 0, fail = 0;
+const say = (s, cls) => {
+  const n = document.createElement('span');
+  if (cls) n.className = cls;
+  n.textContent = s + '\n';
+  L.appendChild(n);
+  L.scrollTop = L.scrollHeight;
+};
+const head = (s) => { say(''); say(s, 'hd'); say('-'.repeat(66), 'dim'); };
+const ok = (name, good, why) => {
+  if (good) { pass++; say('  ok   ' + name, 'ok'); }
+  else { fail++; say('  FAIL ' + name + (why ? '\n       ' + why : ''), 'bad'); }
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function until(fn, ms, what) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < (ms || 15000)) {
+    try { if (await fn()) return true; } catch (e) { /* not yet */ }
+    await sleep(150);
+  }
+  say('       timed out waiting for ' + (what || 'something'), 'dim');
+  return false;
+}
+
+(async () => {
+  const frame = document.getElementById('app');
+  await new Promise((r) => frame.addEventListener('load', r, { once: true }));
+  const ev = (c) => frame.contentWindow.eval(c);
+  const D = () => frame.contentDocument;
+  await until(() => ev('typeof BARRY') === 'object' && ev('!!BARRY.state'),
+              25000, 'the app to boot');
+  await until(() => ev('!!(BARRY.prefs && BARRY.braces)'), 10000, 'the modules');
+  const get = (u) => ev('api(' + JSON.stringify(u) + ')');
+  const BR = 'BARRY.braces';
+  ev('(function(){ var P = BARRY.prefs; window.__btGet = P.get; window.__btMem = {};'
+     + ' P.set = function(k, v) { window.__btMem[k] = v; return v; };'
+     + ' P.get = function(k, d) { if (k in window.__btMem) return window.__btMem[k];'
+     + '   return window.__btGet.apply(P, arguments); }; })()');
+  ev('(function(){ window.open = function() { return null; }; })()');
+  ev('(function(){ var W = window; var f = W.fetch;'
+     + ' var hold = ["state", "events", "note", "bookmarks", "bad", "bad-for-path"];'
+     + ' W.fetch = function(u, o) { var s = String(u).split("?")[0];'
+     + '  if (/\\/api\\/braces\\/set\\/[^/]+\\/decide$/.test(s))'
+     + '    return Promise.resolve(new Response(JSON.stringify({ ok: false, error: "harness: no decisions" }),'
+     + '      { status: 400, headers: { "Content-Type": "application/json" } }));'
+     + '  var at = "/api/session/"; var i = s.indexOf(at);'
+     + '  var tail = i >= 0 ? s.slice(i + at.length) : null;'
+     + '  if (tail !== null && hold.indexOf(tail) >= 0 && o && o.method === "POST")'
+     + '    return Promise.resolve(new Response(JSON.stringify({ ok: true, saved: false }),'
+     + '      { status: 200, headers: { "Content-Type": "application/json" } }));'
+     + '  return f.apply(this, arguments); }; })()');
+
+  /* What is on screen, and every stamp whose line is inside it. */
+  const win = () => ev('(function(){ var XF = BARRY.views.xplore.state;'
+    + ' var p = (XF.panes || [])[0]; var v = ' + BR + '._view();'
+    + ' var s = (XF.linkMode === "none" && p && p.t0 != null) ? p : (v && v.sess);'
+    + ' return s ? { t0: s.t0, span: s.span } : null; })()');
+  const lines = (w) => ev('(function(){ var s = ' + BR + '._state().set.set;'
+    + ' var calls = s.calls || {}; var out = [];'
+    + ' (s.rows || []).forEach(function(r, i) {'
+    + '   var c = calls[String(i)] || {};'
+    + '   var to = c.call === "move" ? c.t : c.call === "keep" ? r.was : (r.now == null ? r.was : r.now);'
+    + '   [r.was, to].forEach(function(t) { if (t >= ' + w.t0 + ' && t <= ' + (w.t0 + w.span)
+    + ') out.push({ r: i, t: t }); }); });'
+    + ' return out; })()');
+  /* The real painter, on a canvas of our own: for every expected line,
+     whether its column has ink in the band where a neighbour's tick is. */
+  const inked = (w, want) => ev('(function(){ var c = document.createElement("canvas");'
+    + ' c.width = 2000; c.height = 200; var g = c.getContext("2d");'
+    + ' var sess = ' + BR + '._view().sess;'
+    + ' ' + BR + '.draw(g, sess, { t0: ' + w.t0 + ', t1: ' + (w.t0 + w.span) + ' }, 0, 2000, 0, 200, {});'
+    + ' var img = g.getImageData(0, 180, 2000, 12).data;'
+    + ' return ' + JSON.stringify(want) + '.map(function(l) {'
+    + '   var x = Math.round((l.t - ' + w.t0 + ') / ' + w.span + ' * 2000);'
+    + '   for (var dx = -2; dx <= 2; dx++) { var xx = x + dx; if (xx < 0 || xx >= 2000) continue;'
+    + '     for (var y = 0; y < 12; y++) if (img[(y * 2000 + xx) * 4 + 3] > 20) return true; }'
+    + '   return false; }); })()');
+
+  async function checkAll(label) {
+    const w = win();
+    const want = lines(w);
+    const marks = ev(BR + '._view().sess.curationMarks.events') || [];
+    const have = new Set(marks.map((m) => m.r));
+    const missing = [...new Set(want.map((l) => l.r))].filter((r) => !have.has(r));
+    say('       ' + label + ': ' + want.length + ' line(s) of '
+        + new Set(want.map((l) => l.r)).size + ' stamp(s) in '
+        + w.span.toFixed(2) + ' s', 'dim');
+    ok(label + ': every stamp in the window is in the marks',
+       want.length > 0 && !missing.length,
+       want.length ? 'missing stamps #' + missing.map((r) => r + 1).join(', #')
+                   : 'nothing in the window');
+    const ink = inked(w, want);
+    const blank = want.filter((l, i) => !ink[i]);
+    ok(label + ': and the painter draws every one of them',
+       want.length > 0 && !blank.length,
+       'no ink for #' + blank.map((l) => (l.r + 1) + ' at ' + l.t.toFixed(3)).join(', #'));
+    return want.length;
+  }
+
+  let entered = false;
+  try {
+    head('AN OPEN PROPOSAL WITH FLAGS STILL OPEN');
+    const sets = await get('/api/braces/sets');
+    const open = (sets.sets || []).filter((s) => !s.committed
+                                            && ((s.counts || {}).waiting || 0) > 0);
+    for (const s of open.slice(0, 6)) {
+      await ev(BR + '._open(' + JSON.stringify(s.set_id) + ')');
+      await until(() => (ev(BR + '._state()').set || {}).set, 9000, 'the proposal');
+      const st = ev(BR + '._state()').set || {};
+      if (!st.session_path) continue;
+      say('       entering ' + s.set_id + ', ' + st.set.rows.length + ' stamps, '
+          + (st.counts || {}).waiting + ' waiting', 'dim');
+      if (!(await ev(BR + '._enter()'))) continue;
+      entered = true;
+      break;
+    }
+    if (!entered) {
+      say('       no open proposal with flags waiting and a recording here; '
+          + 'nothing below is checked', 'dim');
+    } else {
+      await until(() => ev(BR + '._view()') && (ev(BR + '._view()') || {}).spanSet
+                        && ev(BR + '._view().sess.curationMarks'), 60000, 'the review');
+      ok('precondition: it opens on "Needing a decision"',
+         ev(BR + '._view().only') === 'flag', ev(BR + '._view().only'));
+      // Wide enough that the stamp in view has neighbours on screen.
+      const w0 = win();
+      ev('BARRY.views.xplore.setWindow(0, ' + Math.max(0, w0.t0 + w0.span / 2 - 5) + ', 10)');
+      await until(() => Math.abs((win() || {}).span - 10) < 0.05, 5000, 'the zoom');
+      ev(BR + '._goTo(' + ev(BR + '._view().at') + ')');
+      await sleep(400);
+
+      head('"NEEDING A DECISION"');
+      await checkAll('needing a decision');
+      ok('the ones outside the pass are drawn quieter, not left out',
+         (ev(BR + '._view().sess.curationMarks.events') || []).some((m) => m.o));
+
+      head('AFTER STEPPING TO THE NEXT ONE');
+      const a0 = ev(BR + '._view().at');
+      ev(BR + '._goTo(' + (a0 + 1) + ')');
+      await until(() => ev(BR + '._view().at') === a0 + 1, 5000, 'the step');
+      await sleep(400);
+      await checkAll('after a step');
+
+      head('"ALL OF THEM"');
+      ev(BR + '._view().only = "all"');
+      ev(BR + '._goTo(' + ev(BR + '._view().at') + ')');
+      await sleep(400);
+      await checkAll('all of them');
+    }
+  } catch (err) {
+    fail++;
+    say('  FAIL the suite threw and stopped here', 'bad');
+    say('       ' + (err && err.message ? err.message : String(err)), 'bad');
+  } finally {
+    try { if (entered || ev(BR + '._view()')) ev(BR + '._exitView()'); } catch (e) { /* gone */ }
+    await sleep(2000);
+  }
+  say('');
+  say('  ' + pass + ' ok, ' + fail + ' fail', fail ? 'bad' : 'ok');
+  document.title = 'bracesticks: ' + pass + ' ok, ' + fail + ' fail';
+  try { frame.src = 'about:blank'; } catch (e) { /* ok */ }
+})();
+</script></body></html>

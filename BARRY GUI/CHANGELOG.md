@@ -15,9 +15,96 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
-## 2026.10.15.1 - Braces: put a stamp on top of another one and it asks, bud
+## 2026.10.19.2 - Compact, for a small screen
+
+### Added
+
+- **Compact**, a switch in the theme picker. It takes the air out of the
+  interface for a smaller screen, works with every theme, and is
+  remembered for this computer only. Measured at 1366x768:
+
+  | | before | compact |
+  |---|---|---|
+  | a view's title bar | 47–61 px | 32–45 px |
+  | Xplorefinder's pane head | 35 px | 29 px |
+  | its control strip | 54 px | 40 px |
+  | the Output bar | 38 px | 28 px |
+  | the rail | 190 px wide | 166 px |
+  | the rail's footer | 238 px tall | 83 px, two chips to a row |
+
+  Every view's title bar loses most of its padding, and Xplorefinder's
+  field labels sit beside their fields. A tool's one-line description
+  moves into its title's tooltip, so Checkup's head is one line. ToolKit's
+  steps fit on one line each, so every nav item and three bundles are on
+  screen at once. Cards, workbench cards, dialogs and panels have less
+  padding.
+
+  Nothing is cut off to make it fit: text that does not fit wraps. Type is
+  no smaller than the sizes already used, and the icon rail is unchanged.
+  Pop-out windows follow the main window.
+
+### Changed
+
+- The Halloween welcome is said when somebody picks the theme in the
+  picker, not again when Jarvis restores it at start-up.
+
+Harness: `_dev/compact.html` (27).
+
+## 2026.10.19.1 - Halloween 🎃
+
+### Added
+
+- **A Halloween theme**, in the theme picker. The colours are a night sky,
+  pumpkin orange, slime green and bone, and every view and chart is
+  recoloured the way any theme recolours it. On top of that, while it is
+  on:
+  - **Spiders crawl** along the edges of the window and down the rail. They
+    stop, twitch and carry on. Bring the mouse near one and it freezes, then
+    bolts.
+  - **Spiders let themselves down on silk** from the top and climb back up.
+    One drops from the cobweb in the top corner when the mouse goes near it.
+  - **Bats** cross the top of the screen, and now and then **a ghost**
+    drifts up through it.
+  - **Cobwebs** hang in two corners.
+  - **A little yard** sits at the foot of the rail: a moon, a jack-o'-lantern
+    whose candle flickers, and a bubbling cauldron.
+- **Seven things to find**, none of them hidden very hard:
+  - squash a crawling spider;
+  - send a dangling one back up;
+  - click the ghost;
+  - click the pumpkin (trick or treat);
+  - click the moon;
+  - stir the cauldron;
+  - type *boo* anywhere that isn't a text box.
+
+  Each one tells you how many of the seven you have found, and the
+  pumpkin's tooltip keeps count. Typing *trick*, *treat* or *spiders* does
+  what it says. Squash enough spiders and they have opinions about it.
+
+Switching to another theme removes all of it. None of it takes a click
+meant for a button, and none of it moves for anybody whose system asks for
+reduced motion. Pop-out windows get the colours and not the visitors.
+Harness: `_dev/spooky.html` (37).
+
+## 2026.10.15.1 - Braces: every spike's bar is drawn, and a stamp put on top of another one asks, bud
 
 Nothing on the server changed: pull and reload the page.
+
+### Fixed
+
+- **The little bars showing where the other dentate spikes are sometimes
+  vanished in the review.** The review opens on "Needing a decision"
+  whenever a set still has a flag open. In that mode, every stamp outside
+  the pass (every one Braces was sure of) was left off the trace
+  altogether. So the neighbours were there or not depending on whether a
+  flag was still open, and a stamp could be dragged onto one nobody could
+  see.
+  - Every stamp is drawn now, in either mode. The ones outside the pass
+    are a little quieter, but always there.
+  - The pass still decides which stamps the arrows step through.
+  - Measured before the fix: in a 10 s window with 3 stamps, the one
+    Braces was sure of had no mark and no ink in "Needing a decision". It
+    was drawn only in "All of them".
 
 ### Added
 
@@ -59,6 +146,11 @@ Nothing on the server changed: pull and reload the page.
   - the glove then wags its finger, with three "uh"s;
   - Enter places it where it was dropped;
   - a nudge beside the same neighbour does not ask again.
+- New `bracesticks.html`, 9 checks passing, in a real review with flags
+  still open. In "Needing a decision", after a step, and in "All of
+  them", every stamp whose line is inside the window is in the marks. The
+  real painter also puts ink in its column. Before the fix it failed on
+  exactly that missing stamp.
 - Also passing: braces, bracesbad, braceslist, bracesmany, bracesscroll
   and bracesspan.
 
