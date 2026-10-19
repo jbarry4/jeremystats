@@ -2974,6 +2974,10 @@ const THEMES = [
     swatch: ['#fffafc', '#f2d5e2', '#b03a68'] },
   { id: 'jirai-yami', name: 'Jirai Yami',
     swatch: ['#120d1c', '#c9a7ff', '#9ff2d0'] },
+  /* Halloween: the palette is an ordinary theme; the spiders, bats, ghost
+     and the yard in the rail come with it from js/spooky.js. */
+  { id: 'halloween', name: 'Halloween',
+    swatch: ['#0e0a12', '#ff7a1a', '#9be564'] },
 ];
 
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
@@ -2984,6 +2988,14 @@ function applyTheme(theme, remember) {
   document.documentElement.dataset.theme = theme;
   const label = $('#themeToggle span');
   if (label) label.textContent = themeById(theme).name;
+  /* The layer that only one theme has. Here, on every path into a theme --
+     a pick, boot, another window -- so switching away can never leave a
+     spider behind. `remember` doubles as "a person chose it", which is
+     when the welcome is said. Decoration: it must never take the theme
+     change down with it. */
+  try {
+    if (BARRY.spooky) BARRY.spooky.sync(theme, remember !== false);
+  } catch (e) { /* the palette has already changed; that is what matters */ }
 
   if (remember !== false) {
     // The theme belongs to the machine, not the person's whole account: the

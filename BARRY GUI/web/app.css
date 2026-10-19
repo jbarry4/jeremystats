@@ -571,12 +571,63 @@
   --event: #ff9ec7;
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
 }
+/* Halloween: a night sky, pumpkin, slime and bone. The palette is an
+   ordinary theme -- the same thirty tokens, so every view and every chart
+   is simply recoloured. The spiders, the bats and the rest are a separate
+   layer at the end of this file (js/spooky.js), drawn only while this
+   theme is on, and never inside a view. */
+:root[data-theme="halloween"] {
+  --bg:        #0e0a12;
+  --bg-2:      #16101c;
+  --bg-3:      #1f1727;
+  --bg-hover:  #2b2036;
+  --line:      #3d2c47;
+  --line-soft: #271c31;
+
+  --text:      #f3ead8;
+  --text-2:    #c9b89d;
+  --text-3:    #8f7e6b;
+
+  --accent:      #ff7a1a;
+  --accent-soft: rgba(255, 122, 26, 0.16);
+  --accent-line: rgba(255, 122, 26, 0.46);
+  --on-accent:   #1c0b01;
+
+  --ok:      #9be564;
+  --ok-soft: rgba(155, 229, 100, 0.15);
+  --warn:      #ffd23f;
+  --warn-soft: rgba(255, 210, 63, 0.15);
+  --err:      #ff3b5c;
+  --on-err:   #2b0510;
+  --err-soft: rgba(255, 59, 92, 0.17);
+
+  --accent-2:      #b48cff;
+  --accent-2-soft: rgba(180, 140, 255, 0.16);
+
+  /* Categorical chart colors -- see --c1 on the default theme. */
+  --c1: #ff7a1a;
+  --c2: #9be564;
+  --c3: #b48cff;
+  --c4: #ffd23f;
+  --c5: #8d8296;
+
+  --trace: #9be564;
+  --event: #ff7a1a;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
+
+  /* The spooky layer's own three. Silk and the spiders' legs are bone, so
+     they show on the night; their bodies are darker than the page, so
+     they read as something sitting ON it. */
+  --spk-silk: rgba(243, 234, 216, 0.38);
+  --spk-body: #2a1a24;
+  --spk-eye:  #ff7a1a;
+}
 /* Native controls and scrollbars follow whichever family the theme is in. */
 :root[data-theme="parchment"], :root[data-theme="horizon"],
 :root[data-theme="jirai-shiro"] { color-scheme: light; }
 :root[data-theme="slate"], :root[data-theme="phosphor"],
 :root[data-theme="horizon-night"], :root[data-theme="jirai"],
-:root[data-theme="jirai-yami"] { color-scheme: dark; }
+:root[data-theme="jirai-yami"], :root[data-theme="halloween"] { color-scheme: dark; }
 /* ==========================================================================
    VACC Mode -- a layer, not a theme
 
@@ -617,7 +668,8 @@
 :root[data-vacc="on"][data-theme="phosphor"],
 :root[data-vacc="on"][data-theme="horizon-night"],
 :root[data-vacc="on"][data-theme="jirai"],
-:root[data-vacc="on"][data-theme="jirai-yami"] {
+:root[data-vacc="on"][data-theme="jirai-yami"],
+:root[data-vacc="on"][data-theme="halloween"] {
   --fire-glow: color-mix(in srgb, var(--accent) 38%, transparent);
 }
 /* Light family: no headroom, so weight instead of light.
@@ -14403,4 +14455,144 @@ div.tf-tile { cursor: default; }
 }
 @media (prefers-reduced-motion: reduce) {
   #app.br-shake { animation: none; }
+}
+
+/* ==========================================================================
+   Halloween: the spooky layer (js/spooky.js)
+   ==========================================================================
+   Everything here exists only while `data-theme="halloween"`, because
+   spooky.js builds it on the way in and removes every node on the way out.
+
+   Three rules hold it in place:
+   - It never takes a click it was not meant for. The layer is
+     `pointer-events: none`; only the things you are meant to poke (a
+     spider, the ghost, the pumpkin, the moon, the cauldron) take the
+     pointer, and they are small and keep to the edges.
+   - It sits under every toast (60) and every dialog (70).
+   - Motion is transform and opacity only, and none of it runs under
+     `prefers-reduced-motion` (the block at the end). The cobwebs and the
+     little yard in the rail stay; nothing crawls. */
+#spooky {
+  position: fixed; inset: 0; z-index: 55; pointer-events: none;
+  overflow: hidden;
+}
+#spooky .spk-hit { pointer-events: auto; cursor: pointer; }
+#spooky svg { display: block; overflow: visible; }
+
+/* ---- cobwebs, in the two corners nothing lives in ---- */
+.spk-web {
+  position: fixed; width: 132px; height: 132px; color: var(--spk-silk);
+  pointer-events: none;
+}
+.spk-web.tr { top: 0; right: 0; }
+.spk-web.bl { bottom: 0; left: var(--rail); }
+/* The top web notices the mouse by position (spooky.js, onMove), so it
+   lays nothing over the buttons in that corner. */
+
+/* ---- a spider: body, two leg sets that step against each other ---- */
+.spk-spider { position: fixed; left: 0; top: 0; width: 30px; height: 30px;
+              margin: -15px 0 0 -15px; will-change: transform; }
+.spk-spider .legs-a, .spk-spider .legs-b {
+  transform-origin: 15px 15px;
+  animation: spk-step 0.22s ease-in-out infinite alternate;
+}
+.spk-spider .legs-b { animation-direction: alternate-reverse; }
+.spk-spider.still .legs-a, .spk-spider.still .legs-b { animation-play-state: paused; }
+@keyframes spk-step { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+.spk-spider .body { fill: var(--spk-body); stroke: var(--text-2); stroke-width: 1; }
+.spk-spider .leg { fill: none; stroke: var(--text-2); stroke-width: 1.4;
+                   stroke-linecap: round; stroke-linejoin: round; }
+.spk-spider .eye { fill: var(--spk-eye); }
+.spk-spider.squished { transition: transform .12s ease-in, opacity .5s .5s;
+                       opacity: 0; }
+.spk-splat { position: fixed; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+             color: var(--ok); opacity: .8; transition: opacity 1.2s .6s; }
+.spk-splat.gone { opacity: 0; }
+
+/* ---- a spider on its silk ---- */
+.spk-dangle { position: fixed; top: 0; width: 30px; margin-left: -15px; }
+.spk-dangle .silk { position: absolute; left: 14.5px; top: 0; width: 1px;
+                    background: var(--spk-silk); transform-origin: 0 0; }
+.spk-dangle .spk-spider { position: absolute; left: 15px; top: 0; margin: -4px 0 0 -15px; }
+
+/* ---- bats ---- */
+.spk-bat { position: fixed; left: 0; top: 0; width: 44px; height: 24px;
+           margin: -12px 0 0 -22px; color: var(--text-3); will-change: transform; }
+.spk-bat .wing { transform-origin: 17px 9px; fill: currentColor;
+                 animation: spk-flap .16s ease-in-out infinite alternate; }
+@keyframes spk-flap { from { transform: scaleY(1); } to { transform: scaleY(-.35); } }
+.spk-bat .bat-body { fill: currentColor; }
+.spk-bat .bat-eye { fill: var(--spk-eye); }
+
+/* ---- the ghost ---- */
+.spk-ghost { position: fixed; left: 0; top: 0; width: 46px; height: 56px;
+             margin: -28px 0 0 -23px; opacity: .88; will-change: transform; }
+.spk-ghost .sheet { fill: var(--text); fill-opacity: .9; }
+.spk-ghost .face { fill: var(--bg); }
+.spk-ghost.gone { transition: opacity .35s ease, transform .35s ease;
+                  opacity: 0; }
+
+/* ---- speech bubbles, which is how anything here talks ---- */
+.spk-say {
+  position: fixed; padding: 5px 9px; border-radius: var(--radius-sm);
+  background: var(--bg-3); border: 1px solid var(--accent-line);
+  color: var(--text); font-size: var(--fs-115); white-space: nowrap;
+  box-shadow: var(--shadow); pointer-events: none;
+  animation: spk-pop .18s ease-out;
+}
+.spk-say.big { font-size: var(--fs-20); font-weight: 800; color: var(--accent);
+               letter-spacing: .04em; }
+.spk-say.gone { transition: opacity .3s; opacity: 0; }
+@keyframes spk-pop { from { opacity: 0; transform: translateY(6px) scale(.9); } }
+
+/* ---- treats ---- */
+.spk-candy { position: fixed; left: 0; top: 0; width: 18px; height: 18px;
+             margin: -9px 0 0 -9px; will-change: transform; }
+.spk-witch { position: fixed; left: 0; top: 0; width: 64px; height: 40px;
+             color: var(--spk-body); will-change: transform; }
+.spk-witch path { fill: currentColor; stroke: var(--text-3); stroke-width: .8; }
+
+/* ---- the yard: moon, pumpkin, cauldron, at the foot of the rail ---- */
+.spk-yard {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--sp-6); padding: 2px 6px 0; flex: none;
+}
+.spk-yard > * { flex: none; cursor: pointer; background: none; border: 0;
+                padding: 0; line-height: 0; }
+.spk-yard svg { display: block; overflow: visible; }
+.spk-moon { width: 28px; height: 28px; }
+.spk-moon .disc { fill: var(--text); fill-opacity: .82; }
+.spk-moon .crater { fill: var(--text-3); fill-opacity: .35; }
+.spk-pumpkin { width: 34px; height: 30px; }
+.spk-pumpkin .flesh { fill: var(--accent); stroke: color-mix(in srgb, var(--accent) 60%, black);
+                      stroke-width: 1; }
+.spk-pumpkin .stem { fill: var(--ok); }
+.spk-pumpkin .glow { fill: var(--warn); animation: spk-flicker 2.6s steps(6) infinite; }
+.spk-pumpkin:hover .glow { fill: color-mix(in srgb, var(--warn) 40%, white);
+                          animation-duration: .9s; }
+@keyframes spk-flicker { 0%, 100% { opacity: 1; } 30% { opacity: .55; }
+                         55% { opacity: .9; } 75% { opacity: .65; } }
+.spk-cauldron { width: 30px; height: 26px; }
+.spk-cauldron .pot { fill: var(--spk-body); stroke: var(--text-3); stroke-width: 1; }
+.spk-cauldron .brew { fill: var(--brew, var(--ok)); }
+.spk-cauldron .bubble { fill: var(--brew, var(--ok)); opacity: 0;
+                        animation: spk-bubble 2.4s ease-in infinite; }
+.spk-cauldron .bubble.b2 { animation-delay: .8s; }
+.spk-cauldron .bubble.b3 { animation-delay: 1.6s; }
+@keyframes spk-bubble { 0% { opacity: 0; transform: translateY(0); }
+                        30% { opacity: .9; }
+                        100% { opacity: 0; transform: translateY(-9px); } }
+.spk-yard > *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px;
+                              border-radius: var(--r-4); }
+/* The narrow rail has room for the pumpkin and nothing else. */
+#app.rail-icons .spk-yard { justify-content: center; padding: 6px 0 2px; }
+#app.rail-icons .spk-yard .spk-moon,
+#app.rail-icons .spk-yard .spk-cauldron { display: none; }
+
+/* Nothing crawls, flies or flickers for somebody who has asked the page to
+   keep still. The webs, the yard and the eggs that need no movement stay;
+   spooky.js does not send the moving ones at all. */
+@media (prefers-reduced-motion: reduce) {
+  .spk-spider .legs-a, .spk-spider .legs-b, .spk-bat .wing,
+  .spk-pumpkin .glow, .spk-cauldron .bubble, .spk-say { animation: none; }
 }

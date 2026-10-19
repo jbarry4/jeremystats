@@ -15,6 +15,42 @@ This file is the only place the version is written. The app reads it.
 
 ---
 
+## 2026.10.19.1 - Halloween 🎃
+
+### Added
+
+- **A Halloween theme**, in the theme picker. The colours are a night sky,
+  pumpkin orange, slime green and bone, and every view and chart is
+  recoloured the way any theme recolours it. On top of that, while it is
+  on:
+  - **Spiders crawl** along the edges of the window and down the rail. They
+    stop, twitch and carry on. Bring the mouse near one and it freezes, then
+    bolts.
+  - **Spiders let themselves down on silk** from the top and climb back up.
+    One drops from the cobweb in the top corner when the mouse goes near it.
+  - **Bats** cross the top of the screen, and now and then **a ghost**
+    drifts up through it.
+  - **Cobwebs** hang in two corners.
+  - **A little yard** sits at the foot of the rail: a moon, a jack-o'-lantern
+    whose candle flickers, and a bubbling cauldron.
+- **Seven things to find**, none of them hidden very hard:
+  - squash a crawling spider;
+  - send a dangling one back up;
+  - click the ghost;
+  - click the pumpkin (trick or treat);
+  - click the moon;
+  - stir the cauldron;
+  - type *boo* anywhere that isn't a text box.
+
+  Each one tells you how many of the seven you have found, and the
+  pumpkin's tooltip keeps count. Typing *trick*, *treat* or *spiders* does
+  what it says. Squash enough spiders and they have opinions about it.
+
+Switching to another theme removes all of it. None of it takes a click
+meant for a button, and none of it moves for anybody whose system asks for
+reduced motion. Pop-out windows get the colours and not the visitors.
+Harness: `_dev/spooky.html` (37).
+
 ## 2026.10.15.1 - Braces: put a stamp on top of another one and it asks, bud
 
 Nothing on the server changed: pull and reload the page.
