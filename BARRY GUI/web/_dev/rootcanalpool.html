@@ -588,13 +588,16 @@ const NL = String.fromCharCode(10);
   const fills = new Set(geom().space.pts.filter((p) => !p.hollow)
                         .map((p) => p.fill));
   eq('three colours on the picture, one per class', fills.size, 3);
-  const card = D().querySelector('.rc-pool-work .rc-margins');
-  ok('the card opens, and says which border and what it made of the pool',
-     card.open && /Margins and borders · border ‘harness border’ · grace 1%/
+  /* The border has a card of its own since 2026-10-19 (it shared the
+     margins card before). */
+  const card = D().querySelector('.rc-pool-work .rc-borders');
+  ok('the Borders card is open, and says which border and what it made of '
+     + 'the pool', !!card && card.open
+     && /Borders · Classified by ‘harness border’ at grace 1%/
        .test(card.querySelector('summary').textContent)
      && D().querySelector('.rc-pool-work .rc-border-on').textContent
         === nB.ds + ' solid DS · ' + nB.ied + ' solid IED · ' + nB.amb
-            + ' ambiguous', card.querySelector('summary').textContent);
+            + ' ambiguous', card && card.querySelector('summary').textContent);
   ok('with its rule, and how many switch here',
      /Solid IED: max amplitude ≥ 1330 µV.*Here 3 of 100 events with an identity \(3\.0%\) land in the other’s solid class/
        .test(D().querySelector('.rc-pool-work .rc-border-rule').textContent));

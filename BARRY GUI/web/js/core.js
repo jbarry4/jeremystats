@@ -579,7 +579,11 @@ async function apiCall(path, opts) {
   if (!res.ok || data.ok === false) {
     const msg = data.error || ('Request failed (' + res.status + ')');
     record(res.status, msg);
-    throw new Error(msg);
+    // The whole answer rides along, for a refusal that names what it is
+    // about (Root Canal's `away`: the pool members to read again).
+    const err = new Error(msg);
+    err.data = data;
+    throw err;
   }
   record(res.status);
   /* A payload that says it came out of the warm cache. Noticed here, in the

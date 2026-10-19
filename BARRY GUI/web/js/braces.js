@@ -2714,9 +2714,16 @@ BARRY.braces = (function () {
     const cur = vAt();
     const evs = [];
     vRows().forEach((r, i) => {
-      if (view.only === 'flag' && !r.flag && !overlapping(i) && r !== cur) {
-        return;
-      }
+      /* EVERY STAMP IS DRAWN, in either pass (2026-10-15).
+
+         "Needing a decision" used to leave every stamp outside the pass
+         -- every one Braces was sure of -- out of the marks altogether. So
+         the little bars showing where the other spikes are came and went
+         with whether the set still had a flag open, and a stamp could be
+         dragged onto a neighbour nobody could see. The pass decides which
+         stamps the arrows step through (`vWanted`), not which exist: the
+         ones outside it are drawn, quieter (`o`). */
+      const outside = view.only === 'flag' && !r.flag && !overlapping(i);
       const mine = r === cur;
       const said = callFor(i);
       // What the dashed half says: answered, still being asked about, or
@@ -2733,11 +2740,14 @@ BARRY.braces = (function () {
       if (Math.abs(to - r.was) < 1e-9) {
         // It is not going anywhere, so one mark, not two on top of
         // each other.
-        evs.push({ start: r.was, k: 'now', st: st, f: mine ? 1 : 0, r: i });
+        evs.push({ start: r.was, k: 'now', st: st, f: mine ? 1 : 0, r: i,
+                   o: outside ? 1 : 0 });
         return;
       }
-      evs.push({ start: r.was, k: 'was', st: st, f: mine ? 1 : 0, r: i });
-      evs.push({ start: to, k: 'now', st: st, f: mine ? 1 : 0, r: i });
+      evs.push({ start: r.was, k: 'was', st: st, f: mine ? 1 : 0, r: i,
+                 o: outside ? 1 : 0 });
+      evs.push({ start: to, k: 'now', st: st, f: mine ? 1 : 0, r: i,
+                 o: outside ? 1 : 0 });
     });
     evs.sort((a, b) => a.start - b.start);
     view.sess.curationMarks = {
@@ -3770,7 +3780,7 @@ BARRY.braces = (function () {
         ctx.stroke();
         continue;
       }
-      ctx.globalAlpha = 0.72;
+      ctx.globalAlpha = e.o ? 0.45 : 0.72;
       ctx.lineWidth = 1;
       ctx.setLineDash([]);
       ctx.strokeStyle = colour;
@@ -3948,7 +3958,7 @@ BARRY.braces = (function () {
       {
         ctx.setLineDash([]);
         ctx.lineWidth = focus ? 1.5 : 1;
-        ctx.globalAlpha = 0.55;
+        ctx.globalAlpha = (e.o && !focus) ? 0.4 : 0.55;
         ctx.strokeStyle = 'rgba(0,0,0,0.9)';
         ctx.beginPath(); ctx.moveTo(x - 1, top); ctx.lineTo(x - 1, bottom);
         ctx.stroke();
@@ -3960,7 +3970,11 @@ BARRY.braces = (function () {
       /* Curation's weights too: the one being decided is wider and fully
          opaque, a neighbour that has been answered is nearly so, and one
          nobody has looked at is quieter still and dashed. */
-      ctx.globalAlpha = focus ? 1 : (e.st === 'open' ? 0.6 : 0.85);
+      /* A stamp outside the pass -- one Braces was sure of, while the pass
+         is "Needing a decision" -- quieter again, but still there: it is
+         where another spike is. */
+      ctx.globalAlpha = focus ? 1 : (e.st === 'open' ? 0.6 : 0.85)
+                                    * (e.o ? 0.65 : 1);
       ctx.setLineDash(dashed ? [4, 3] : []);
       ctx.lineWidth = focus ? 2.5 : 1.6;
       ctx.strokeStyle = colour;

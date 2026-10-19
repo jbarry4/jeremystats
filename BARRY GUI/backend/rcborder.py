@@ -44,6 +44,17 @@ the grace is found by stepping out from zero.
 A border is in raw units, so it is only the same border under the same
 measurement -- filter, mains, HF band, window, search -- which the app
 checks before it applies one, as it does for a margin.
+
+ONE GROUP: AN ENVELOPE (asked for 2026-10-19). A pool of the controls is
+every event DS, so there is nothing to draw a line BETWEEN. The border is
+then drawn AROUND the group instead: on each axis, the range its events
+span -- a box in µV, dB and ms that wraps every one of them. Inside the box
+is solid <that identity>; outside it on any axis is ambiguous ("outside").
+Grace is then how many of the group's own events the box may leave out:
+none wraps everything; 1% and 5% pull every side in by the same quantile
+until that share is outside, so it ignores more and more outliers. Drawn
+whenever one identity has enough events and the other has too few to draw
+a line between them.
 """
 from __future__ import annotations
 
@@ -166,10 +177,14 @@ def _edges_raw(t, s, sd, sign):
 
 def extract(events, custom=None, identity="cls_single"):
     """The strict border and the band at each grace, from events carrying
-    raw numbers and an identity."""
+    raw numbers and an identity. With one identity alone, its envelope."""
     X = _matrix(events)
     y = identities(events, identity)
     comp = np.isfinite(X).all(axis=1)
+    n_i = int(np.sum(comp & (y == 1)))
+    n_d = int(np.sum(comp & (y == 0)))
+    if n_i < MIN_EACH or n_d < MIN_EACH:
+        return envelope(events, custom=custom, identity=identity)
     ied_above = {}
     for a, (k, _l, _u) in enumerate(AXES):
         mi = X[comp & (y == 1), a]
@@ -228,6 +243,106 @@ def extract(events, custom=None, identity="cls_single"):
     }
 
 
+# --------------------------------------------------------------------------
+# One group: the box around it
+# --------------------------------------------------------------------------
+def _box_at(G, q):
+    """The box that trims a share `q` off each end of every axis."""
+    return (np.quantile(G, q, axis=0), np.quantile(G, 1.0 - q, axis=0))
+
+
+def _inside(X, lo, hi):
+    with np.errstate(invalid="ignore"):
+        return (np.isfinite(X).all(axis=1) & (X >= lo).all(axis=1)
+                & (X <= hi).all(axis=1))
+
+
+def _classify_box(X, lo, hi, group):
+    """Inside the box is the group; outside it, or missing an axis while
+    having another, ambiguous; no values at all, None."""
+    fin = np.isfinite(X)
+    out = np.full(X.shape[0], "amb", dtype=object)
+    out[_inside(X, lo, hi)] = group
+    out[~fin.any(axis=1)] = None
+    return out
+
+
+def _trim_for(G, grace):
+    """The largest trim whose box leaves at most `grace` of G outside.
+    Outside only grows as the box shrinks, so a bisection finds it."""
+    if grace <= 0:
+        return 0.0
+    a, b = 0.0, 0.5
+    for _ in range(40):
+        m = (a + b) / 2.0
+        lo, hi = _box_at(G, m)
+        out = 1.0 - float(np.mean(_inside(G, lo, hi)))
+        if out <= grace + 1e-12:
+            a = m
+        else:
+            b = m
+    return a
+
+
+def envelope(events, custom=None, identity="cls_single"):
+    """The border around ONE identity's events: per axis, the range they
+    span, at no grace; pulled in at each grace until that share of them is
+    left outside."""
+    X = _matrix(events)
+    y = identities(events, identity)
+    comp = np.isfinite(X).all(axis=1)
+    n_i = int(np.sum(comp & (y == 1)))
+    n_d = int(np.sum(comp & (y == 0)))
+    yy = 1 if n_i >= n_d else 0
+    group = "ied" if yy == 1 else "ds"
+    G = X[comp & (y == yy)]
+    if G.shape[0] < MIN_EACH:
+        raise BorderError(
+            "A border needs at least %d complete events of one identity to "
+            "be drawn around; this has %d." % (MIN_EACH, G.shape[0]))
+    graces = list(GRACES)
+    if custom is not None and all(abs(custom - g) > 1e-9 for g in graces):
+        graces.append(float(custom))
+    graces.sort()
+    n_id = int(np.sum(y >= 0))
+    levels = []
+    for g in graces:
+        q = _trim_for(G, float(g))
+        lo, hi = _box_at(G, q)
+        cls = _classify_box(X, lo, hi, group)
+        c, w, r = _counts(cls, y)
+        left = int(np.sum(~_inside(G, lo, hi)))
+        levels.append({
+            "grace": float(g), "trim": round(q, 6), "reached": True,
+            "edges": {k: {"lo": _f(lo[a]), "hi": _f(hi[a])}
+                      for a, (k, _l, _u) in enumerate(AXES)},
+            "counts": c, "wrong": w, "switch_rate": r,
+            "outside": left, "outside_rate": left / float(G.shape[0])})
+    box0 = {k: {"lo": _f(np.min(G[:, a])), "hi": _f(np.max(G[:, a]))}
+            for a, (k, _l, _u) in enumerate(AXES)}
+    cls0 = _classify_box(X, np.array([box0[k]["lo"] for k, _l, _u in AXES]),
+                         np.array([box0[k]["hi"] for k, _l, _u in AXES]),
+                         group)
+    c0, w0, r0 = _counts(cls0, y)
+    return {
+        "schema": 1, "kind": "envelope", "group": group,
+        "axes": [{"key": k, "label": lab, "unit": u} for k, lab, u in AXES],
+        "ied_above": {k: True for k, _l, _u in AXES},
+        "strict": box0,
+        "strict_counts": c0, "strict_wrong": w0, "strict_rate": r0,
+        "fit": {"group": group, "n_group": int(G.shape[0]),
+                "n_other": int(n_d if yy == 1 else n_i)},
+        "levels": levels,
+        "n": len(events), "n_identity": n_id,
+        "n_complete": int(comp.sum()),
+        "identity": identity,
+    }
+
+
+def is_envelope(border):
+    return (border or {}).get("kind") == "envelope"
+
+
 def level_of(border, grace):
     """The saved band at a grace."""
     g = float(grace)
@@ -250,6 +365,16 @@ def apply(events, border, grace, identity="cls_single"):
     the counts -- and, where the events carry an identity, how many of
     them land in the other identity's solid class."""
     lv = level_of(border, grace)
+    if is_envelope(border):
+        X = _matrix(events)
+        ed = lv["edges"]
+        lo = np.array([ed[k]["lo"] for k, _l, _u in AXES], dtype=float)
+        hi = np.array([ed[k]["hi"] for k, _l, _u in AXES], dtype=float)
+        cls = _classify_box(X, lo, hi, border.get("group", "ds"))
+        y = identities(events, identity)
+        c, w, r = _counts(cls, y)
+        return list(cls), {"counts": c, "wrong": w, "switch_rate": r,
+                           "n_identity": int(np.sum(y >= 0))}
     ab = border.get("ied_above") or {}
     sign = _signs({k: ab.get(k, True) for k, _l, _u in AXES})
     X = _matrix(events)
@@ -266,6 +391,19 @@ def apply(events, border, grace, identity="cls_single"):
 def rule_words(border, grace):
     """The rule in a sentence, at a grace."""
     lv = level_of(border, grace)
+    if is_envelope(border):
+        word = "IED" if border.get("group") == "ied" else "DS"
+        ed = lv["edges"]
+        box = ", ".join("%s %s to %s %s" % (lab, _num(ed[k]["lo"]),
+                                            _num(ed[k]["hi"]), u)
+                        for k, lab, u in AXES)
+        g = float(lv["grace"])
+        return ("Solid %s: inside %s. Outside it on any axis is ambiguous "
+                "(grace %s: %s)." % (
+                    word, box, grace_words(g),
+                    "the box wraps every %s event" % word if g == 0 else
+                    "the box leaves out the outermost %s of the %s events"
+                    % (grace_words(g), word)))
     ab = border.get("ied_above") or {}
     ed = lv["edges"]
 
@@ -292,5 +430,12 @@ def _num(v):
 
 def name(border):
     s = border.get("strict") or {}
+    if is_envelope(border):
+        def rng(k):
+            r = s.get(k) or {}
+            return "%s to %s" % (_num(r.get("lo")), _num(r.get("hi")))
+        return "Envelope · %s · %s µV · %s dB · %s ms" % (
+            "IED" if border.get("group") == "ied" else "DS",
+            rng("amp_uV"), rng("hf_db"), rng("hw_ms"))
     return "Border · %s µV · %s dB · %s ms" % (
         _num(s.get("amp_uV")), _num(s.get("hf_db")), _num(s.get("hw_ms")))

@@ -86,9 +86,25 @@ meant for a button, and none of it moves for anybody whose system asks for
 reduced motion. Pop-out windows get the colours and not the visitors.
 Harness: `_dev/spooky.html` (37).
 
-## 2026.10.15.1 - Braces: put a stamp on top of another one and it asks, bud
+## 2026.10.15.1 - Braces: every spike's bar is drawn, and a stamp put on top of another one asks, bud
 
 Nothing on the server changed: pull and reload the page.
+
+### Fixed
+
+- **The little bars showing where the other dentate spikes are sometimes
+  vanished in the review.** The review opens on "Needing a decision"
+  whenever a set still has a flag open. In that mode, every stamp outside
+  the pass (every one Braces was sure of) was left off the trace
+  altogether. So the neighbours were there or not depending on whether a
+  flag was still open, and a stamp could be dragged onto one nobody could
+  see.
+  - Every stamp is drawn now, in either mode. The ones outside the pass
+    are a little quieter, but always there.
+  - The pass still decides which stamps the arrows step through.
+  - Measured before the fix: in a 10 s window with 3 stamps, the one
+    Braces was sure of had no mark and no ink in "Needing a decision". It
+    was drawn only in "All of them".
 
 ### Added
 
@@ -130,6 +146,11 @@ Nothing on the server changed: pull and reload the page.
   - the glove then wags its finger, with three "uh"s;
   - Enter places it where it was dropped;
   - a nudge beside the same neighbour does not ask again.
+- New `bracesticks.html`, 9 checks passing, in a real review with flags
+  still open. In "Needing a decision", after a step, and in "All of
+  them", every stamp whose line is inside the window is in the marks. The
+  real painter also puts ink in its column. Before the fix it failed on
+  exactly that missing stamp.
 - Also passing: braces, bracesbad, braceslist, bracesmany, bracesscroll
   and bracesspan.
 
