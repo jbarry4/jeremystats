@@ -1,0 +1,186 @@
+{
+  "_at": {
+    "added": "2026-09-10T04:15:35.383912+00:00",
+    "curation_label": "2026-09-10T04:15:35.383912+00:00",
+    "duration_s": "2026-09-10T04:15:35.383912+00:00",
+    "events": "2026-09-10T04:15:35.383912+00:00",
+    "gid": "2026-09-10T04:15:35.383912+00:00",
+    "id": "2026-09-10T04:15:35.383912+00:00",
+    "mouse": "2026-09-10T04:15:35.383912+00:00",
+    "n": "2026-09-10T04:15:35.383912+00:00",
+    "name": "2026-09-10T04:15:35.383912+00:00",
+    "note": "2026-09-10T04:15:35.383912+00:00",
+    "project": "2026-09-10T04:15:35.383912+00:00",
+    "recording_start": "2026-09-10T04:15:35.383912+00:00",
+    "schema": "2026-09-10T04:15:35.383912+00:00",
+    "session": "2026-09-10T04:15:35.383912+00:00",
+    "session_key": "2026-09-10T04:15:35.383912+00:00",
+    "session_label": "2026-09-10T04:15:35.383912+00:00",
+    "session_loose_key": "2026-09-10T04:15:35.383912+00:00",
+    "session_path": "2026-09-10T04:15:35.383912+00:00",
+    "source": "2026-09-10T04:15:35.383912+00:00",
+    "specified": "2026-09-10T04:15:35.383912+00:00",
+    "type": "2026-09-10T04:15:35.383912+00:00",
+    "type_name": "2026-09-10T04:15:35.383912+00:00",
+    "units": "2026-09-10T04:15:35.383912+00:00"
+  },
+  "_shard": {
+    "at": "2026-09-10T04:15:35.383912+00:00",
+    "machine": "desktop-nr2h5o7-8845",
+    "schema": 1
+  },
+  "added": {
+    "at": "2026-09-10T00:15:35-04:00",
+    "by": "bankback@harness",
+    "machine": "DESKTOP-NR2H5O7"
+  },
+  "curation_label": null,
+  "duration_s": null,
+  "events": [
+    {
+      "start": 11.0
+    },
+    {
+      "start": 11.11
+    },
+    {
+      "start": 11.22
+    },
+    {
+      "start": 11.33
+    },
+    {
+      "start": 11.44
+    },
+    {
+      "start": 11.55
+    },
+    {
+      "start": 11.66
+    },
+    {
+      "start": 11.77
+    },
+    {
+      "start": 11.88
+    },
+    {
+      "start": 11.99
+    },
+    {
+      "start": 12.1
+    },
+    {
+      "start": 12.21
+    },
+    {
+      "start": 12.32
+    },
+    {
+      "start": 12.43
+    },
+    {
+      "start": 12.54
+    },
+    {
+      "start": 12.65
+    },
+    {
+      "start": 12.76
+    },
+    {
+      "start": 12.87
+    },
+    {
+      "start": 12.98
+    },
+    {
+      "start": 13.09
+    },
+    {
+      "start": 13.2
+    },
+    {
+      "start": 13.31
+    },
+    {
+      "start": 13.42
+    },
+    {
+      "start": 13.53
+    },
+    {
+      "start": 13.64
+    },
+    {
+      "start": 13.75
+    },
+    {
+      "start": 13.86
+    },
+    {
+      "start": 13.97
+    },
+    {
+      "start": 14.08
+    },
+    {
+      "start": 14.19
+    },
+    {
+      "start": 14.3
+    },
+    {
+      "start": 14.41
+    },
+    {
+      "start": 14.52
+    },
+    {
+      "start": 14.63
+    },
+    {
+      "start": 14.74
+    },
+    {
+      "start": 14.85
+    },
+    {
+      "start": 14.96
+    },
+    {
+      "start": 15.07
+    },
+    {
+      "start": 15.18
+    },
+    {
+      "start": 15.29
+    }
+  ],
+  "gid": null,
+  "id": "8f254f6a4175",
+  "mouse": 22,
+  "n": 40,
+  "name": "bankback spikes",
+  "note": "",
+  "project": "KCNT1",
+  "recording_start": "2026-06-18T21:13:10+00:00",
+  "schema": 1,
+  "session": 4,
+  "session_key": "m022_s004_2026-06-18_17-13-10",
+  "session_label": "KCNT1 m22 s4 2026-06-18",
+  "session_loose_key": null,
+  "session_path": null,
+  "source": {
+    "detector": null,
+    "file": null,
+    "parameters": {},
+    "pipeline": "harness: bankback",
+    "run_id": null
+  },
+  "specified": false,
+  "type": "spike",
+  "type_name": "spike",
+  "units": "seconds relative to the start of the recording"
+}
